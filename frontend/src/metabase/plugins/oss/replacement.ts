@@ -1,4 +1,4 @@
-import type { ComponentType, ReactElement } from "react";
+import type { ComponentType, ReactElement, ReactNode } from "react";
 
 import type { SourceReplacementEntry } from "metabase-types/api";
 import type { State } from "metabase-types/store";
@@ -12,11 +12,20 @@ export type SourceReplacementModalProps = {
   onClose: () => void;
 };
 
+export type SourceReplacementButtonChildProps = {
+  tooltip: string | undefined;
+  isDisabled: boolean;
+};
+
+export type SourceReplacementButtonProps = {
+  children: (props: SourceReplacementButtonChildProps) => ReactNode;
+};
+
 type ReplacementPlugin = {
   isEnabled: boolean;
   canReplaceSources: (state: State) => boolean;
   getTransformToolsRoutes: () => ReactElement | null;
-  SourceReplacementButton: ComponentType;
+  SourceReplacementButton: ComponentType<SourceReplacementButtonProps>;
   SourceReplacementModal: ComponentType<SourceReplacementModalProps>;
   SourceReplacementStatus: ComponentType;
   TransformToolsMenu: ComponentType;

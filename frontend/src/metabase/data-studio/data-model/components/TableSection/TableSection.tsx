@@ -82,7 +82,6 @@ const TableSectionBase = ({
   const [isSorting, setIsSorting] = useState(false);
   const hasFields = Boolean(table.fields && table.fields.length > 0);
   const isLibraryEnabled = PLUGIN_LIBRARY.isEnabled;
-  const canReplaceSources = useSelector(PLUGIN_REPLACEMENT.canReplaceSources);
   const isDependencyGraphEnabled = PLUGIN_DEPENDENCIES.isEnabled;
   const remoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
@@ -259,18 +258,21 @@ const TableSectionBase = ({
         >
           {t`Sync settings`}
         </Button>
-        {canReplaceSources && (
-          <Tooltip label={t`Find and replace`}>
-            <Button
-              p="sm"
-              w="2.5rem"
-              flex="0 1 auto"
-              leftSection={<Icon name="find_replace" />}
-              aria-label={t`Find and replace`}
-              onClick={() => setModalType("replace")}
-            />
-          </Tooltip>
-        )}
+        <PLUGIN_REPLACEMENT.SourceReplacementButton>
+          {({ tooltip, isDisabled }) => (
+            <Tooltip label={tooltip ?? t`Find and replace`}>
+              <Button
+                p="sm"
+                w="2.5rem"
+                flex="0 1 auto"
+                leftSection={<Icon name="find_replace" />}
+                aria-label={t`Find and replace`}
+                disabled={isDisabled}
+                onClick={() => setModalType("replace")}
+              />
+            </Tooltip>
+          )}
+        </PLUGIN_REPLACEMENT.SourceReplacementButton>
         {isDependencyGraphEnabled && (
           <Tooltip label={t`Dependency graph`}>
             <Button

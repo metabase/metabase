@@ -2,7 +2,6 @@ import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_REPLACEMENT } from "metabase/plugins";
 import {
   ActionIcon,
@@ -36,7 +35,6 @@ export function PanelHeader({ node, onClose }: PanelHeaderProps) {
   const link = getNodeLink(node);
   const location = getNodeLocationInfo(node);
   const sourceEntry = getNodeSourceReplacementEntry(node);
-  const canReplaceSources = useSelector(PLUGIN_REPLACEMENT.canReplaceSources);
   const [
     isReplaceModalOpened,
     { open: openReplaceModal, close: closeReplaceModal },
@@ -58,15 +56,20 @@ export function PanelHeader({ node, onClose }: PanelHeaderProps) {
           {link != null && (
             <GraphExternalLink label={link.label} url={link.url} />
           )}
-          {canReplaceSources && sourceEntry != null && (
-            <Tooltip label={t`Find and replace`}>
-              <ActionIcon
-                aria-label={t`Replace data source`}
-                onClick={openReplaceModal}
-              >
-                <FixedSizeIcon name="find_replace" />
-              </ActionIcon>
-            </Tooltip>
+          {sourceEntry != null && (
+            <PLUGIN_REPLACEMENT.SourceReplacementButton>
+              {({ tooltip, isDisabled }) => (
+                <Tooltip label={tooltip ?? t`Find and replace`}>
+                  <ActionIcon
+                    aria-label={t`Replace data source`}
+                    disabled={isDisabled}
+                    onClick={openReplaceModal}
+                  >
+                    <FixedSizeIcon name="find_replace" />
+                  </ActionIcon>
+                </Tooltip>
+              )}
+            </PLUGIN_REPLACEMENT.SourceReplacementButton>
           )}
           <ActionIcon aria-label={t`Close`} onClick={onClose}>
             <FixedSizeIcon name="close" />
