@@ -105,7 +105,7 @@
 
 ;;; ------------------------------------------------ API endpoints ------------------------------------------------
 
-(def ^:private valid-replace-with-transform-body
+(def ^:private valid-replace-source-with-transform-body
   "A valid request body for the replace-source-with-transform endpoint."
   {:source_entity_id   999999
    :source_entity_type "card"
@@ -115,13 +115,13 @@
   (testing "POST /replace-source-with-transform — 403 for non-admin"
     (mt/with-premium-features #{:dependencies}
       (mt/user-http-request :rasta :post 403 "ee/replacement/replace-source-with-transform"
-                            valid-replace-with-transform-body))))
+                            valid-replace-source-with-transform-body))))
 
 (deftest replace-source-with-transform-transform-not-found-test
   (testing "POST /replace-source-with-transform — 404 for non-existent transform"
     (mt/with-premium-features #{:dependencies}
       (mt/user-http-request :crowberto :post 404 "ee/replacement/replace-source-with-transform"
-                            valid-replace-with-transform-body))))
+                            valid-replace-source-with-transform-body))))
 
 (deftest replace-source-with-transform-concurrent-409-test
   (testing "POST /replace-source-with-transform — 409 when another run is active"
