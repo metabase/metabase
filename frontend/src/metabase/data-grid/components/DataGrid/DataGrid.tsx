@@ -162,6 +162,7 @@ export const DataGrid = function DataGrid<TData>({
     <DataGridHeader
       headerGroup={headerGroup}
       columns={columns}
+      backgroundColor={backgroundColor}
       onHeaderCellClick={onHeaderCellClick}
       isColumnReorderingDisabled={isColumnReorderingDisabled}
     />
@@ -258,48 +259,51 @@ export const DataGrid = function DataGrid<TData>({
               )}
             </div>
 
-            {rowsCount === 0 && emptyState}
-            <div
-              data-testid="table-body"
-              className={cx(
-                S.bodyContainer,
-                {
-                  [S.selectableBody]: selection.isEnabled,
-                },
-                classNames?.bodyContainer,
-              )}
-              style={styles?.bodyContainer}
-            >
-              {pinnedRows.length > 0 && (
-                <div
-                  className={S.pinnedRowsSection}
-                  style={{
-                    backgroundColor: stickyElementsBackgroundColor,
-                    top: `${HEADER_HEIGHT}px`,
-                  }}
-                >
+            {rowsCount === 0 ? (
+              emptyState
+            ) : (
+              <div
+                data-testid="table-body"
+                className={cx(
+                  S.bodyContainer,
+                  {
+                    [S.selectableBody]: selection.isEnabled,
+                  },
+                  classNames?.bodyContainer,
+                )}
+                style={styles?.bodyContainer}
+              >
+                {pinnedRows.length > 0 && (
+                  <div
+                    className={S.pinnedRowsSection}
+                    style={{
+                      backgroundColor: stickyElementsBackgroundColor,
+                      top: `${HEADER_HEIGHT}px`,
+                    }}
+                  >
+                    {renderGridPanels({
+                      pinnedContent: pinnedRows.map((row, index) =>
+                        renderRow(row, pinnedColumns, `pinned-${index}`),
+                      ),
+                      centerContent: pinnedRows.map((row, index) =>
+                        renderRow(row, centerColumns, `center-${index}`),
+                      ),
+                    })}
+                  </div>
+                )}
+                <div className={S.centerRowsSection}>
                   {renderGridPanels({
-                    pinnedContent: pinnedRows.map((row, index) =>
+                    pinnedContent: centerRows.map((row, index) =>
                       renderRow(row, pinnedColumns, `pinned-${index}`),
                     ),
-                    centerContent: pinnedRows.map((row, index) =>
+                    centerContent: centerRows.map((row, index) =>
                       renderRow(row, centerColumns, `center-${index}`),
                     ),
+                    height: `${totalHeight}px`,
                   })}
                 </div>
-              )}
-              <div className={S.centerRowsSection}>
-                {renderGridPanels({
-                  pinnedContent: centerRows.map((row, index) =>
-                    renderRow(row, pinnedColumns, `pinned-${index}`),
-                  ),
-                  centerContent: centerRows.map((row, index) =>
-                    renderRow(row, centerColumns, `center-${index}`),
-                  ),
-                  height: `${totalHeight}px`,
-                })}
               </div>
-            </div>
+            )}
           </div>
           {isAddColumnButtonSticky && (
             <AddColumnButton

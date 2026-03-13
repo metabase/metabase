@@ -13,6 +13,7 @@ import { SortableHeader } from "../SortableHeader/SortableHeader";
 export interface DataGridHeaderProps<TData> extends DataGridStylesProps {
   headerGroup: HeaderGroup<TData>;
   columns: DataGridColumnType<TData>[];
+  backgroundColor?: string;
   isColumnReorderingDisabled?: boolean;
   onHeaderCellClick?: (
     event: React.MouseEvent<HTMLDivElement>,
@@ -23,6 +24,7 @@ export interface DataGridHeaderProps<TData> extends DataGridStylesProps {
 export const DataGridHeader = <TData,>({
   headerGroup,
   columns,
+  backgroundColor,
   isColumnReorderingDisabled,
   onHeaderCellClick,
   classNames,
@@ -32,6 +34,7 @@ export const DataGridHeader = <TData,>({
     className={cx(S.row, classNames?.row)}
     style={{
       height: `${HEADER_BASE_HEIGHT}px`,
+      backgroundColor,
       ...styles?.row,
     }}
   >
