@@ -168,13 +168,13 @@ function getStatus(run: SourceReplacementRun): LongTaskStatus {
 function getStatusLabel(run: SourceReplacementRun): string {
   switch (run.status) {
     case "started":
-      return run.run_type === "convert-to-transform"
+      return run.run_type === "replace-with-transform"
         ? t`Converting to transform…`
         : t`Replacing data source…`;
     case "succeeded":
       return t`Done!`;
     default:
-      return run.run_type === "convert-to-transform"
+      return run.run_type === "replace-with-transform"
         ? t`Error converting to transform`
         : t`Error replacing`;
   }
@@ -212,13 +212,13 @@ function getStatusItemIcon(
 function getStatusItemDescription(run: SourceReplacementRun): string {
   switch (run.status) {
     case "started":
-      return run.run_type === "convert-to-transform" && run.progress == null
+      return run.run_type === "replace-with-transform" && run.progress == null
         ? t`Running transform…`
         : t`Replacing data source…`;
     case "succeeded":
       return t`Done!`;
     default:
-      return run.run_type === "convert-to-transform" && run.progress == null
+      return run.run_type === "replace-with-transform" && run.progress == null
         ? t`Error running transform`
         : t`Error replacing`;
   }
