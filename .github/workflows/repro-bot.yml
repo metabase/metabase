@@ -41,6 +41,10 @@ jobs:
             echo "number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
           fi
 
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/prepare-backend
+      - uses: ./.github/actions/prepare-frontend
+
       - name: Checkout repro-bot
         uses: actions/checkout@v6
         with:
@@ -51,21 +55,8 @@ jobs:
       - name: Pre-clone metabase bare git repo
         run: git clone --bare https://github.com/metabase/metabase.git git/metabase
 
-      - name: Set up Java
-        uses: actions/setup-java@v5
-        with:
-          distribution: 'temurin'
-          java-version: '21'
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-
       - name: Capture Node.js path for MCP subprocesses
         run: echo "NODE_BIN_DIR=$(dirname $(which node))" >> $GITHUB_ENV
-
-      - uses: ./.github/actions/prepare-backend
 
       - name: Install playwright-cli
         run: |
@@ -150,7 +141,7 @@ jobs:
             - The bare git repo has been pre-cloned at git/metabase. The master worktree still needs setup via setup_master_worktree().
             - The GITHUB_ACTIONS_RUN_URL environment variable is set. If any phase fails catastrophically, follow the CI error handling in repro.md to post the error to Linear with the action run URL.
             - Docker is available for appdb (Postgres/MySQL/MariaDB) if needed.
-            - Java 21 and Python/uv are pre-installed.
+            - Java and Python/uv are pre-installed.
           claude_args: >-
             --allowedTools
             "Glob,
