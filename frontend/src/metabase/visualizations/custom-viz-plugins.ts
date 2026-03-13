@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import * as jsxRuntime from "react/jsx-runtime";
 
 import { useListCustomVizPluginsQuery } from "metabase/api";
@@ -40,6 +40,10 @@ function ensureVizApi() {
 // Track which plugins have already been loaded to avoid re-execution
 const loadedPlugins = new Map<number, string>(); // id → registered identifier
 
+export function isCustomVizDisplay(display: string | undefined): boolean {
+  return display != null && display.startsWith("custom:");
+}
+
 /**
  * Hook that fetches the list of active custom visualization plugins.
  */
@@ -53,14 +57,63 @@ export function useCustomVizPlugins({
     skip: !shouldLoad,
   });
 
-  useEffect(() => {
-    if (plugins && plugins.length > 0) {
-      // eslint-disable-next-line no-console
-      console.log("[custom-viz] Available plugins:", plugins);
-    }
-  }, [plugins]);
-
   return plugins;
+}
+
+/**
+ * Hook that auto-loads a custom viz plugin bundle when the current display
+ * type starts with "custom:". Returns `true` while loading so the caller
+ * can show a spinner instead of rendering the (not-yet-registered) viz.
+ */
+export function useAutoLoadCustomVizPlugin(
+  display: string | undefined,
+): { loading: boolean } {
+  const plugins = useCustomVizPlugins();
+  const [loading, setLoading] = useState(false);
+  const loadingRef = useRef<string | null>(null);
+
+  const load = useCallback(
+    async (pluginToLoad: CustomVizPluginRuntime) => {
+      const ident = `custom:${pluginToLoad.identifier}`;
+      if (loadedPlugins.has(pluginToLoad.id) || loadingRef.current === ident) {
+        return;
+      }
+      loadingRef.current = ident;
+      setLoading(true);
+      try {
+        await loadCustomVizPlugin(pluginToLoad);
+      } finally {
+        loadingRef.current = null;
+        setLoading(false);
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (!isCustomVizDisplay(display) || !plugins) {
+      return;
+    }
+
+    // display is "custom:<identifier>", extract the identifier part
+    const identifier = display!.slice("custom:".length);
+    const plugin = plugins.find(p => p.identifier === identifier);
+    if (plugin && !loadedPlugins.has(plugin.id)) {
+      load(plugin);
+    }
+  }, [display, plugins, load]);
+
+  // Also loading if we need a custom viz but don't have plugins list yet
+  const needsCustomViz = isCustomVizDisplay(display);
+  const isWaiting =
+    needsCustomViz &&
+    !loadedPlugins.has(
+      plugins?.find(
+        p => `custom:${p.identifier}` === display,
+      )?.id ?? -1,
+    );
+
+  return { loading: loading || (needsCustomViz && isWaiting && !plugins) };
 }
 
 /**
@@ -112,11 +165,11 @@ export async function loadCustomVizPlugin(
       identifier,
       getUiName: () => plugin.display_name,
       iconName: (plugin.icon ?? "area") as IconName,
-      minSize: vizDef.minSize ?? { width: 4, height: 3 },
-      defaultSize: vizDef.defaultSize ?? { width: 6, height: 4 },
-      isSensible: vizDef.isSensible ?? (() => false),
-      checkRenderable: vizDef.checkRenderable ?? (() => {}),
-      settings: vizDef.settings ?? {},
+      minSize: vizDef.minSize,
+      defaultSize: vizDef.defaultSize,
+      isSensible: vizDef.isSensible,
+      checkRenderable: vizDef.checkRenderable,
+      settings: vizDef.settings,
       hidden: false,
       noHeader: false,
       canSavePng: false,

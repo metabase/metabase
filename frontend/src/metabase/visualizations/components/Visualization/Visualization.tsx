@@ -40,7 +40,7 @@ import { getMode } from "metabase/visualizations/click-actions/lib/modes";
 import ChartCaption from "metabase/visualizations/components/ChartCaption";
 import ChartTooltip from "metabase/visualizations/components/ChartTooltip";
 import { ConnectedClickActionsPopover } from "metabase/visualizations/components/ClickActions";
-import { useCustomVizPlugins } from "metabase/visualizations/custom-viz-plugins";
+import { useAutoLoadCustomVizPlugin } from "metabase/visualizations/custom-viz-plugins";
 import { performDefaultAction } from "metabase/visualizations/lib/action";
 import {
   ChartSettingsError,
@@ -1033,11 +1033,14 @@ export default _.compose(
 )(
   forwardRef<HTMLDivElement, VisualizationProps>(
     function VisualizationForwardRef(props, ref) {
-      const shouldLoadCustomVizPlugins =
-        Boolean(props.isQueryBuilder) &&
-        props.queryBuilderMode === "view" &&
-        !props.isEmbeddingSdk;
-      useCustomVizPlugins({ enabled: shouldLoadCustomVizPlugins });
+      const display = props.rawSeries?.[0]?.card?.display;
+      const { loading: customVizLoading } =
+        useAutoLoadCustomVizPlugin(display);
+
+      if (customVizLoading) {
+        return <LoadingView isSlow={undefined} />;
+      }
+
       return <VisualizationMemoized {...props} forwardedRef={ref} />;
     },
   ),
