@@ -36,6 +36,7 @@ const VALIDATION_SCHEMA = Yup.object({
   targetName: Yup.string().required(Errors.required),
   targetSchema: Yup.string().nullable().defined(),
   collectionId: Yup.number().nullable().defined(),
+  unpersistModel: Yup.boolean().defined(),
   replaceSource: Yup.boolean().defined(),
 });
 
@@ -97,6 +98,7 @@ function ConvertToTransformForm({
       targetSchema: schemas[0] ?? null,
       targetName: slugify(card.name),
       collectionId: null,
+      unpersistModel: true,
       replaceSource: true,
     }),
     [card.name, schemas],
@@ -129,43 +131,55 @@ function ConvertToTransformForm({
       validationSchema={VALIDATION_SCHEMA}
       onSubmit={handleSubmit}
     >
-      <Form>
-        <Stack gap="lg" mt="sm">
-          <Text>
-            {t`We'll create a transform based on the model, with the same name.`}
-          </Text>
-          <Input.Wrapper label={t`Database`}>
-            <Text>{database.name}</Text>
-          </Input.Wrapper>
-          {supportsSchemas && (
-            <SchemaFormSelect
-              name="targetSchema"
-              label={t`Schema`}
-              data={schemas}
+      {({ values, setFieldValue }) => (
+        <Form>
+          <Stack gap="lg" mt="sm">
+            <Text>
+              {t`We'll create a transform based on the model, with the same name.`}
+            </Text>
+            <Input.Wrapper label={t`Database`}>
+              <Text>{database.name}</Text>
+            </Input.Wrapper>
+            {supportsSchemas && (
+              <SchemaFormSelect
+                name="targetSchema"
+                label={t`Schema`}
+                data={schemas}
+              />
+            )}
+            <TargetNameInput />
+            <FormCollectionPicker
+              name="collectionId"
+              title={t`Collection`}
+              collectionPickerModalProps={{ namespaces: ["transforms"] }}
+              style={{ marginBottom: 0 }}
             />
-          )}
-          <TargetNameInput />
-          <FormCollectionPicker
-            name="collectionId"
-            title={t`Collection`}
-            collectionPickerModalProps={{ namespaces: ["transforms"] }}
-            style={{ marginBottom: 0 }}
-          />
-          <FormSwitch
-            name="replaceSource"
-            label={t`Replace data source of all existing dependents`}
-            description={t`All dependents of the original model will be updated to use the output table instead. If you don't want to do this now, you can do it later with the Data Replacement tool.`}
-            size="sm"
-          />
-          <Group>
-            <Box flex={1}>
-              <FormErrorMessage />
-            </Box>
-            <Button onClick={onClose}>{t`Cancel`}</Button>
-            <FormSubmitButton label={t`Convert`} variant="filled" />
-          </Group>
-        </Stack>
-      </Form>
+            <FormSwitch
+              name="replaceSource"
+              label={t`Replace data source of all existing dependents`}
+              description={t`We'll run the new transform and update all dependents of the original model to use the transform's output table instead. If you don't want to do this now, you can do it later with the Data Replacement tool.`}
+              size="sm"
+              onChange={(event) =>
+                setFieldValue("unpersistModel", event.target.checked)
+              }
+            />
+            <FormSwitch
+              name="unpersistModel"
+              label={t`Unpersist model data`}
+              description={t`The original model will be unpersisted after running the transform and updating all dependents to use the transform's output table.`}
+              size="sm"
+              disabled={!values.replaceSource}
+            />
+            <Group>
+              <Box flex={1}>
+                <FormErrorMessage />
+              </Box>
+              <Button onClick={onClose}>{t`Cancel`}</Button>
+              <FormSubmitButton label={t`Convert`} variant="filled" />
+            </Group>
+          </Stack>
+        </Form>
+      )}
     </FormProvider>
   );
 }

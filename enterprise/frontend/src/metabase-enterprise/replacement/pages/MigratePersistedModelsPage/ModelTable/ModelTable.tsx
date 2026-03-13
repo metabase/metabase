@@ -53,7 +53,7 @@ export function ModelTable({
           instance={treeTableInstance}
           emptyState={
             <Text p="lg" ta="center" c="text-secondary">
-              {t`No models found`}
+              {t`No persisted models found`}
             </Text>
           }
           onRowClick={handleRowActivate}

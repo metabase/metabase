@@ -127,7 +127,8 @@
 
 (defn- cards-for-filter-option [filter-option model-id-or-nil]
   (-> (apply cards-for-filter-option* filter-option (when model-id-or-nil [model-id-or-nil]))
-      (t2/hydrate :creator :collection)))
+      (t2/hydrate :creator :collection)
+      (->> (map collection.root/hydrate-root-collection))))
 
 ;;; -------------------------------------------- List of public or embeddable cards -----------------------------------
 
