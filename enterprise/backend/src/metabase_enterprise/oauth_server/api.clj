@@ -282,17 +282,6 @@
              :body    {:error             "invalid_request"
                        :error_description (ex-message e)}}))))))
 
-(def ^:private all-agent-scopes
-  "All supported OAuth scopes for the MCP/agent API."
-  ["agent:table:read"
-   "agent:metric:read"
-   "agent:search"
-   "agent:query:construct"
-   "agent:query:execute"
-   "agent:workspace:read"
-   "agent:workspace:write"
-   "agent:workspace:execute"])
-
 (defenterprise protected-resource-metadata-handler
   "Returns OAuth Protected Resource Metadata (RFC 9728)."
   :feature :metabot-v3
@@ -302,7 +291,7 @@
      :headers {"Content-Type" "application/json"}
      :body    {:resource                  (str site-url "/api/mcp")
                :authorization_servers     [site-url]
-               :scopes_supported          all-agent-scopes
+               :scopes_supported          oauth-server/all-agent-scopes
                :bearer_methods_supported  ["header"]}}))
 
 (defenterprise token-handler
