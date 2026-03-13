@@ -275,7 +275,11 @@ export const ListViz = ({
     const query = question.query();
     const [orderBy] = Lib.orderBys(query, -1);
     if (orderBy) {
-      const { name, direction } = Lib.displayInfo(query, -1, orderBy);
+      const { name, direction } = Lib.displayInfo(
+        query,
+        -1,
+        orderBy,
+      ) as Lib.OrderByClauseDisplayInfo;
       return {
         sortedColumnName: name,
         sortingDirection: direction,

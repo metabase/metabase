@@ -31,7 +31,11 @@ function createQueryWithOrderBy(direction: Lib.OrderByDirection = "asc") {
     ],
   });
   const [orderBy] = Lib.orderBys(query, 0);
-  const columnInfo = Lib.displayInfo(query, 0, orderBy);
+  const columnInfo = Lib.displayInfo(
+    query,
+    0,
+    orderBy,
+  ) as Lib.OrderByClauseDisplayInfo;
 
   return { query, columnInfo };
 }
@@ -59,7 +63,7 @@ function setup(step = createMockNotebookStep()) {
   function gerRecentOrderByClause() {
     const query = getNextQuery();
     const clause = Lib.orderBys(query, 0)[0];
-    return Lib.displayInfo(query, 0, clause);
+    return Lib.displayInfo(query, 0, clause) as Lib.OrderByClauseDisplayInfo;
   }
 
   return { getNextQuery, gerRecentOrderByClause, updateQuery };

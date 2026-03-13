@@ -34,8 +34,8 @@ import type {
   DependentItem,
   DrillThru,
   DrillThruDisplayInfo,
-  FilterOperator,
   FilterOperatorDisplayInfo,
+  FilterOperatorMetadata,
   JoinStrategy,
   JoinStrategyDisplayInfo,
   MeasureDisplayInfo,
@@ -164,7 +164,7 @@ declare function DisplayInfoFn(
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
-  filterOperator: FilterOperator,
+  filterOperator: FilterOperatorMetadata,
 ): FilterOperatorDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,

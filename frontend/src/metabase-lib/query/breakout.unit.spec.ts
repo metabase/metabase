@@ -102,8 +102,13 @@ describe("breakout", () => {
       const byMonthOfYear = Lib.breakout(query, 0, userBirthDateByMonthOfYear);
       const [breakoutByMonthOfYear] = Lib.breakouts(byMonthOfYear, 0);
       expect(
-        Lib.displayInfo(byMonthOfYear, 0, breakoutByMonthOfYear)
-          .isTemporalExtraction,
+        (
+          Lib.displayInfo(
+            byMonthOfYear,
+            0,
+            breakoutByMonthOfYear,
+          ) as Lib.BreakoutClauseDisplayInfo
+        ).isTemporalExtraction,
       ).toBe(true);
 
       // "month" is a regular temporal bucket, which returns rounded datetimes.
@@ -116,7 +121,13 @@ describe("breakout", () => {
       const byMonth = Lib.breakout(query, 0, userBirthDateByMonth);
       const [breakoutByMonth] = Lib.breakouts(byMonth, 0);
       expect(
-        Lib.displayInfo(byMonth, 0, breakoutByMonth).isTemporalExtraction,
+        (
+          Lib.displayInfo(
+            byMonth,
+            0,
+            breakoutByMonth,
+          ) as Lib.BreakoutClauseDisplayInfo
+        ).isTemporalExtraction,
       ).toBe(false);
     });
   });

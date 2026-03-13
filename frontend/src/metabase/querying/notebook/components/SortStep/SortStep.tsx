@@ -72,7 +72,13 @@ export function SortStep({
       isLastOpened={isLastOpened}
       renderName={(clause) => (
         <SortDisplayName
-          displayInfo={Lib.displayInfo(query, stageIndex, clause)}
+          displayInfo={
+            Lib.displayInfo(
+              query,
+              stageIndex,
+              clause,
+            ) as Lib.OrderByClauseDisplayInfo
+          }
           onToggleSortDirection={() => handleToggleOrderByDirection(clause)}
           disabled={readOnly}
         />
