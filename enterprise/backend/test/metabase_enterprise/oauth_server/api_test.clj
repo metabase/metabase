@@ -31,21 +31,21 @@
           (is (= "http://localhost:3000/oauth/register" (:registration_endpoint response))))))))
 
 (deftest protected-resource-metadata-test
-  (testing "GET /.well-known/oauth-protected-resource returns correct metadata"
+  (testing "GET /.well-known/oauth-protected-resource/api/mcp returns correct metadata"
     (mt/with-premium-features #{:metabot-v3}
       (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
         (let [response (mt/user-http-request :crowberto :get 200
-                                             ".well-known/oauth-protected-resource")]
+                                             ".well-known/oauth-protected-resource/api/mcp")]
           (is (= "http://localhost:3000/api/mcp" (:resource response)))
           (is (= ["http://localhost:3000"] (:authorization_servers response)))
           (is (sequential? (:scopes_supported response)))
           (is (pos? (count (:scopes_supported response))))
           (is (= ["header"] (:bearer_methods_supported response)))))))
 
-  (testing "GET /.well-known/oauth-protected-resource returns 404 without feature flag"
+  (testing "GET /.well-known/oauth-protected-resource/api/mcp returns 404 without feature flag"
     (mt/with-premium-features #{}
       (mt/user-http-request :crowberto :get 404
-                            ".well-known/oauth-protected-resource"))))
+                            ".well-known/oauth-protected-resource/api/mcp"))))
 
 (deftest discovery-endpoint-without-feature-flag-test
   (testing "Discovery endpoint returns 404 when feature disabled"

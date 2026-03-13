@@ -315,7 +315,7 @@
 ;;; ---------------------------------------------------- Handler ---------------------------------------------------
 
 (defn- www-authenticate-discovery []
-  (str "Bearer realm=\"mcp\" resource_metadata=\"" (system/site-url) "/.well-known/oauth-protected-resource\""))
+  (str "Bearer realm=\"mcp\" resource_metadata=\"" (system/site-url) "/.well-known/oauth-protected-resource/api/mcp\""))
 
 (def ^{:arglists '([request respond raise])} handler
   "Ring async handler for the MCP endpoint.

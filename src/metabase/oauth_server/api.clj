@@ -8,12 +8,17 @@
   {:status 404 :body {:error "not_found"}})
 
 (def well-known-routes
-  "Ring handler for `/.well-known/` routes (top-level, per RFC 8414 and RFC 9728)."
+  "Ring handler for `/.well-known/` routes (top-level, per RFC 8414 and RFC 9728).
+   The protected-resource metadata is served at the path-suffixed URI per RFC 9728 §3:
+   `/.well-known/oauth-protected-resource` + the resource path (`/api/mcp`)."
   (routes
+   (GET "/.well-known/oauth-authorization-server" request
+     (or (oauth-server/openid-discovery-handler request)
+         not-found-response))
    (GET "/.well-known/openid-configuration" request
      (or (oauth-server/openid-discovery-handler request)
          not-found-response))
-   (GET "/.well-known/oauth-protected-resource" request
+   (GET "/.well-known/oauth-protected-resource/api/mcp" request
      (or (oauth-server/protected-resource-metadata-handler request)
          not-found-response))))
 
