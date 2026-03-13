@@ -926,7 +926,17 @@ LIMIT
     });
 
     it("should handle sequential changes correctly when first update is in progress", () => {
-      createMbqlTransform({ visitTransform: true });
+      // Use composite_pk_table which has at least two numeric fields (id1, score)
+      // so we can reliably select a second checkpoint field
+      H.resetTestTable({ type: "postgres", table: "composite_pk_table" });
+      H.resyncDatabase({
+        dbId: WRITABLE_DB_ID,
+        tableName: "composite_pk_table",
+      });
+      createMbqlTransform({
+        sourceTable: "composite_pk_table",
+        visitTransform: true,
+      });
       H.DataStudio.Transforms.settingsTab().click();
 
       cy.log("Verify initial state");
@@ -959,12 +969,11 @@ LIMIT
       cy.wait(400);
 
       // Make a second change while first is still in progress
-      // Select any available checkpoint field
+      // Select the second checkpoint field (composite_pk_table has id1 and score)
       getFieldPicker().scrollIntoView().should("be.visible");
       getFieldPicker().click();
 
-      // Click the first available option in the popover
-      H.popover().findAllByRole("option").first().click();
+      H.popover().findAllByRole("option").eq(1).click();
 
       cy.log("Wait for both requests to complete");
       cy.wait("@updateTransformDelayed");
@@ -984,7 +993,15 @@ LIMIT
     });
 
     it("should update source strategy and checkpoint field inline", () => {
-      createMbqlTransform({ visitTransform: true });
+      H.resetTestTable({ type: "postgres", table: "composite_pk_table" });
+      H.resyncDatabase({
+        dbId: WRITABLE_DB_ID,
+        tableName: "composite_pk_table",
+      });
+      createMbqlTransform({
+        sourceTable: "composite_pk_table",
+        visitTransform: true,
+      });
       H.DataStudio.Transforms.settingsTab().click();
 
       cy.log("Enable incremental transformation");
@@ -1000,7 +1017,7 @@ LIMIT
       cy.log("Select a checkpoint field");
       getFieldPicker().click();
       // Click the first available option in the popover
-      H.popover().findAllByRole("option").first().click();
+      H.popover().findAllByRole("option").eq(1).click();
       cy.wait("@updateTransform");
       H.undoToast().should(
         "contain.text",
@@ -2697,7 +2714,9 @@ LIMIT
     beforeEach(() => {
       cy.log("create a transform");
       createSqlTransform({
-        sourceQuery: `SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}"`,
+        sourceQuery: "SELECT * FROM {{ table }}",
+        tableVariableTable: SOURCE_TABLE,
+        tableVariableSchema: TARGET_SCHEMA,
       });
       cy.log("set up remote sync");
       H.setupGitSync();
@@ -3890,6 +3909,8 @@ function createSqlTransform(opts: {
   tagIds?: TransformTagId[];
   visitTransform?: boolean;
   sourceCheckpointStrategy?: TransformSourceCheckpointStrategy;
+  tableVariableTable?: string;
+  tableVariableSchema?: string;
 }) {
   return H.createSqlTransform({
     targetTable: TARGET_TABLE,
