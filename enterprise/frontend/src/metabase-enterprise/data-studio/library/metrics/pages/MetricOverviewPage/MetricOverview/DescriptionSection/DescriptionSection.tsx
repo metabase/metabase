@@ -66,6 +66,8 @@ export function DescriptionSection({ card }: DescriptionSectionProps) {
             initialValue={card.description ?? ""}
             placeholder={t`No description`}
             isMarkdown
+            isOptional
+            isMultiline
             onChange={handleChange}
             px={0}
           />

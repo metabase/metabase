@@ -87,10 +87,26 @@ describe("scenarios > data studio > library > tables", () => {
     it("should be able to view additional properties in sidebar", () => {
       H.DataStudio.Tables.Overview.descriptionSidebar().within(() => {
         cy.findByText("Entity type").should("be.visible");
+
         cy.findByText("Last edited at").should("be.visible");
+
+        cy.findByText("Database").should("be.visible");
+        cy.findByText("Sample Database").should("be.visible");
+
         cy.findByText("Source").should("be.visible");
+        cy.findByPlaceholderText("Select a data source").should(
+          "have.value",
+          "Ingested",
+        );
+
         cy.findByText("Owner").should("be.visible");
+
+        cy.findByPlaceholderText("Pick someone, or type an email").should(
+          "have.value",
+          "No owner",
+        );
         cy.findByText("Fields").should("be.visible");
+
         cy.findByText("Dependents").should("be.visible");
       });
     });

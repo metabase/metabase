@@ -180,6 +180,8 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
           initialValue={table.description ?? ""}
           placeholder={t`No description`}
           isMarkdown
+          isOptional
+          isMultiline
           onChange={handleChange}
         />
       </Box>
