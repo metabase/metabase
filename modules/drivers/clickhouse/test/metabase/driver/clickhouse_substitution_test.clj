@@ -340,24 +340,23 @@
   (mt/test-driver :clickhouse
     (mt/with-clock clock
       (testing "Field filter on a UInt64 column coerced to UNIX milliseconds->DateTime generates valid SQL (#70901)"
-        (let [db    "mb_vars_unix_millis5"
-              ;; Use timestamps around the mock clock time (2019-11-30T23:00:00Z)
+        (let [;; Use timestamps around the mock clock time (2019-11-30T23:00:00Z)
               now   (local-date-time-now)
               ->epoch-millis (fn [^LocalDateTime ldt]
-                               (.toEpochMilli (.toInstant (.atZone ldt (java.time.ZoneId/of "UTC")))))
-              table [["test_table"
-                      [{:field-name        "time"
-                        :base-type         {:native "UInt64"}
-                        :effective-type    :type/Instant
-                        :coercion-strategy :Coercion/UNIXMilliSeconds->DateTime}
-                       {:field-name "name"
-                        :base-type  :type/Text}]
-                      [[(->epoch-millis (.minusDays now 2)) "Event A"]
-                       [(->epoch-millis (.minusHours now 24)) "Event B"]
-                       [(->epoch-millis (.plusHours now 1)) "Event C"]
-                       [(->epoch-millis (.plusDays now 2)) "Event D"]]]]]
+                               (.toEpochMilli (.toInstant (.atZone ldt (java.time.ZoneId/of "UTC")))))]
           (mt/dataset
-            (mt/dataset-definition db table)
+            (mt/dataset-definition "mb_vars_unix_millis"
+                                   [["test_table"
+                                     [{:field-name        "time"
+                                       :base-type         {:native "UInt64"}
+                                       :effective-type    :type/Instant
+                                       :coercion-strategy :Coercion/UNIXMilliSeconds->DateTime}
+                                      {:field-name "name"
+                                       :base-type  :type/Text}]
+                                     [[(->epoch-millis (.minusDays now 2)) "Event A"]
+                                      [(->epoch-millis (.minusHours now 24)) "Event B"]
+                                      [(->epoch-millis (.plusHours now 1)) "Event C"]
+                                      [(->epoch-millis (.plusDays now 2)) "Event D"]]]])
             (let [uuid  (str (java.util.UUID/randomUUID))
                   query {:database   (mt/id)
                          :type       "native"
@@ -368,7 +367,7 @@
                                                           :type         "dimension"
                                                           :dimension    ["field" (mt/id :test-table :time) nil]
                                                           :required     true}}
-                                      :query         (format "SELECT * FROM `%s`.`test_table` WHERE {{x}}" db)}
+                                      :query         "SELECT * FROM `mb_vars_unix_millis`.`test_table` WHERE {{x}}"}
                          :parameters [{:type   "date/all-options"
                                        :value  "past7days"
                                        :target ["dimension" ["template-tag" "x"]]
