@@ -1,12 +1,15 @@
 (ns metabase-enterprise.dependencies.findings-test
   (:require
    [clojure.test :refer :all]
+   [medley.core :as m]
    [metabase-enterprise.dependencies.analysis :as deps.analysis]
    [metabase-enterprise.dependencies.findings :as deps.findings]
    [metabase-enterprise.dependencies.models.analysis-finding :as models.analysis-finding]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -96,31 +99,27 @@
 ;; TODO: (bshepherdson, 2026-02-05) Add a test like does-not-report-errors-in-removable-refs-test-1-stage-fields for
 ;; join clause :fields as well. See QUE-3081 and QUE-3044.
 
-(deftest ^:sequential reports-missing-field-in-downstream-card-fields-test
+(deftest ^:parallel reports-missing-field-in-downstream-card-fields-test
   (testing "Q2 based on Q1 with :fields referencing a column Q1 no longer returns should be reported (GHY-3157)"
-    (let [mp      (mt/metadata-provider)
-          orders  (lib.metadata/table mp (mt/id :orders))
-          q1      (lib/query mp orders)
-          q1-cols (lib/returned-columns q1)]
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/Card {q1-id :id} {:dataset_query q1}]
-          ;; Q2: based on Q1, with :fields selecting some columns including ID
-          (let [mp2       (lib-be/application-database-metadata-provider (mt/id))
-                q1-card   (lib.metadata/card mp2 q1-id)
-                q2-base   (lib/query mp2 q1-card)
-                q2-cols   (lib/returned-columns q2-base)
-                id-col    (some #(when (= (:name %) "ID") %) q2-cols)
-                total-col (some #(when (= (:name %) "TOTAL") %) q2-cols)
-                q2        (lib/with-fields q2-base [id-col total-col])]
-            (mt/with-temp [:model/Card {q2-id :id} {:dataset_query q2}]
-              ;; Now update Q1 to remove ID from its result_metadata, simulating Q1 dropping that field
-              (let [new-result-metadata (vec (remove #(= (:name %) "ID") q1-cols))]
-                (t2/update! :model/Card q1-id {:result_metadata new-result-metadata})
-                ;; check-entity on Q2 should find the missing field
-                (let [mp3     (lib-be/application-database-metadata-provider (mt/id))
-                      results (deps.analysis/check-entity mp3 :card q2-id)]
-                  (is (seq results)
-                      "Q2 should have findings for the missing ID column from Q1"))))))))))
+    (let [mp          meta/metadata-provider
+          q1          (lib/query mp (meta/table-metadata :orders))
+          q1-cols     (lib/returned-columns q1)
+          removed-col (m/find-first #(= (:name %) "ID") q1-cols)
+          ;; Card 101 = Q1 with ID removed from result-metadata (simulates Q1 dropping that field)
+          mp          (lib.tu/metadata-provider-with-card-from-query
+                       mp 101 q1
+                       {:result-metadata (vec (remove #(= (:name %) "ID") q1-cols))})
+          ;; Q2: query based on card 101, with :fields including the now-missing ID
+          q2-base     (lib/query mp {:lib/type :metadata/card :id 101})
+          q2-cols     (lib/returned-columns q2-base)
+          q2          (lib/with-fields q2-base (conj (vec q2-cols) (lib/ref removed-col)))
+          ;; Card 102 = Q2 (provide result-metadata explicitly since q2 has a bad ref)
+          mp          (lib.tu/metadata-provider-with-card-from-query
+                       mp 102 q2
+                       {:result-metadata (vec q2-cols)})
+          results     (deps.analysis/check-entity mp :card 102)]
+      (is (seq results)
+          "Q2 should have findings for the missing ID column from Q1"))))
 
 (defn- stale-map
   "Returns a map of {entity-id stale?} for the given card IDs."
