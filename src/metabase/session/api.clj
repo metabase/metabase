@@ -1,11 +1,15 @@
 (ns metabase.session.api
   "/api/session endpoints"
   (:require
+   [clojure.string :as str]
    [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]
    [metabase.auth-identity.core :as auth-identity]
+   [metabase.auth-identity.mfa-token :as mfa-token]
+   [metabase.auth-identity.session :as auth-session]
+   [metabase.auth-identity.totp :as totp]
    [metabase.channel.email.messages :as messages]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
@@ -130,8 +134,16 @@
         request-time (t/zoned-date-time (t/zone-id "GMT"))
         do-login     (fn []
                        (let [{session-key :key, :as session} (login username password (request/device-info request))
-                             response                        {:id (str session-key)}]
-                         (request/set-session-cookies request response session request-time)))]
+                             user-id (:user_id session)]
+                         (if (t2/select-one-fn :totp_enabled :model/User :id user-id)
+                           ;; MFA required: delete the premature session and return an MFA token
+                           (do
+                             (t2/delete! :model/Session :key_hashed (session/hash-session-key session-key))
+                             {:mfa_required true
+                              :mfa_token    (mfa-token/create-mfa-token user-id)})
+                           ;; No MFA: return session as usual
+                           (let [response {:id (str session-key)}]
+                             (request/set-session-cookies request response session request-time)))))]
     (if throttling-disabled?
       (do-login)
       (http-401-on-error
@@ -152,6 +164,61 @@
         rows-deleted (t2/delete! :model/Session {:where [:or [:= :key_hashed session-key-hashed] [:= :id metabase-session-key]]})]
     (api/check-404 (> rows-deleted 0))
     (request/clear-session-cookie api/generic-204-no-content)))
+
+(def ^:private mfa-throttlers
+  {:ip-address (throttle/make-throttler :username :attempts-threshold 10)})
+
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :post "/mfa-verify"
+  "Verify a TOTP code or recovery code to complete MFA login. Called after `POST /` returns `{:mfa_required true}`."
+  [_route-params
+   _query-params
+   {:keys [mfa-token totp-code recovery-code]} :- [:map
+                                                   [:mfa-token     ms/NonBlankString]
+                                                   [:totp-code     {:optional true} [:maybe ms/NonBlankString]]
+                                                   [:recovery-code {:optional true} [:maybe ms/NonBlankString]]]
+   request]
+  (let [ip-address   (request/ip-address request)
+        request-time (t/zoned-date-time (t/zone-id "GMT"))
+        do-verify    (fn []
+                       (let [{:keys [user-id]} (mfa-token/verify-mfa-token mfa-token)
+                             user              (t2/select-one [:model/User :id :totp_secret :totp_recovery_codes :totp_enabled]
+                                                              :id user-id)]
+                         (api/check-404 user)
+                         (when-not (:totp_enabled user)
+                           (throw (ex-info "MFA is not enabled for this user"
+                                           {:status-code 400})))
+                         (cond
+                           ;; Verify TOTP code
+                           (not (str/blank? totp-code))
+                           (when-not (totp/valid-code? (:totp_secret user) totp-code)
+                             (throw (ex-info "Invalid TOTP code"
+                                             {:status-code 401
+                                              :errors {:totp-code (deferred-tru "Invalid verification code")}})))
+
+                           ;; Verify recovery code
+                           (not (str/blank? recovery-code))
+                           (let [{:keys [valid? remaining]} (totp/verify-recovery-code recovery-code (:totp_recovery_codes user))]
+                             (when-not valid?
+                               (throw (ex-info "Invalid recovery code"
+                                               {:status-code 401
+                                                :errors {:recovery-code (deferred-tru "Invalid recovery code")}})))
+                             ;; Consume the used recovery code
+                             (t2/update! :model/User user-id {:totp_recovery_codes remaining}))
+
+                           :else
+                           (throw (ex-info "Either totp-code or recovery-code is required"
+                                           {:status-code 400})))
+                         ;; MFA verified — create a real session
+                         (let [session  (auth-session/create-session-with-auth-tracking!
+                                         user (request/device-info request) :provider/password)
+                               response {:id (str (:key session))}]
+                           (request/set-session-cookies request response session request-time))))]
+    (if throttling-disabled?
+      (do-verify)
+      (http-401-on-error
+        (throttle/with-throttling [(mfa-throttlers :ip-address) ip-address]
+          (do-verify))))))
 
 ;; Reset tokens: We need some way to match a plaintext token with the a user since the token stored in the DB is
 ;; hashed. So we'll make the plaintext token in the format USER-ID_RANDOM-UUID, e.g.
@@ -299,12 +366,20 @@
               (cond
                 ;; Login succeeded
                 (:success? login-result)
-                (let [session (:session login-result)
-                      response {:id (str (:key session))}]
-                  (request/set-session-cookies request
-                                               response
-                                               session
-                                               (t/zoned-date-time (t/zone-id "GMT"))))
+                (let [session  (:session login-result)
+                      user-id  (:user_id session)]
+                  (if (t2/select-one-fn :totp_enabled :model/User :id user-id)
+                    ;; MFA required: delete the premature session and return an MFA token
+                    (do
+                      (t2/delete! :model/Session :key_hashed (session/hash-session-key (:key session)))
+                      {:mfa_required true
+                       :mfa_token    (mfa-token/create-mfa-token user-id)})
+                    ;; No MFA: return session as usual
+                    (let [response {:id (str (:key session))}]
+                      (request/set-session-cookies request
+                                                   response
+                                                   session
+                                                   (t/zoned-date-time (t/zone-id "GMT"))))))
 
                 ;; Login failed
                 :else

@@ -1,6 +1,7 @@
 (ns metabase.api-routes.routes
   (:require
    [compojure.route :as route]
+   [metabase.account.mfa-api]
    [metabase.actions-rest.api]
    [metabase.activity-feed.api]
    [metabase.analytics.api]
@@ -66,7 +67,8 @@
    [metabase.warehouses-rest.api]
    [metabase.xrays.api]))
 
-(comment metabase.actions-rest.api/keep-me
+(comment metabase.account.mfa-api/keep-me
+         metabase.actions-rest.api/keep-me
          metabase.activity-feed.api/keep-me
          metabase.analytics.api/keep-me
          metabase.api-keys.api/keep-me
@@ -145,7 +147,8 @@
 
 ;;; ↓↓↓ KEEP THIS SORTED OR ELSE! ↓↓↓
 (def ^:private route-map
-  {"/action"               (+auth 'metabase.actions-rest.api)
+  {"/account/mfa"          (+auth 'metabase.account.mfa-api)
+   "/action"               (+auth 'metabase.actions-rest.api)
    "/activity"             (+auth 'metabase.activity-feed.api)
    "/alert"                (+auth metabase.pulse.api/alert-routes)
    "/analytics"            (+auth 'metabase.analytics.api)
