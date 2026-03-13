@@ -166,7 +166,7 @@
   Exception if preconditions such as proper permissions are not met *before* returning the `StreamingResponse`.
 
   See [[metabase.query-processor.card/process-query-for-card]] for more information about the various parameters."
-  {:arglists '([& {:keys [dashboard-id card-id dashcard-id export-format parameters ignore-cache constraints parameters middleware]}])}
+  {:arglists '([& {:keys [dashboard-id card-id dashcard-id export-format parameters ignore-cache constraints parameters middleware visualization-settings]}])}
   [& {:keys [dashboard-id card-id dashcard-id parameters export-format]
       :or   {export-format :api}
       :as   options}]

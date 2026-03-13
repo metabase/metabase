@@ -7,6 +7,7 @@ import {
   canDownloadResults,
   canEditQuestion,
 } from "metabase/dashboard/components/DashCard/DashCardMenu/utils";
+import { useTransientColumnVisibility } from "metabase/dashboard/components/DashCard/TransientColumnVisibilityContext";
 import {
   type DashboardContextReturned,
   useDashboardContext,
@@ -70,6 +71,35 @@ export const DashCardMenu = ({
   const dashcardId = dashcard.id;
   const { dashboard, dashboardId, dashcardMenu, downloadsEnabled } =
     useDashboardContext();
+
+  const columnVisibility = useTransientColumnVisibility();
+  const downloadVizSettings = useMemo(() => {
+    if (!columnVisibility?.hasHiddenColumns) {
+      return undefined;
+    }
+
+    // Build table.columns from the full query result columns (result.data.cols)
+    // so that remapped/extra columns are explicitly accounted for.
+    // Columns tracked by the transient context use its visibility state;
+    // columns NOT tracked (e.g. FK-remapped display columns) are marked disabled
+    // so the backend's not-explicitly-excluded-columns logic doesn't add them back.
+    const contextColumnIds = new Set(
+      columnVisibility.allColumns.map(c => c.id),
+    );
+    const resultCols = result?.data?.cols ?? [];
+
+    const tableColumns = resultCols.map(col => ({
+      name: col.name,
+      enabled: contextColumnIds.has(col.name)
+        ? !columnVisibility.hiddenColumnIds.has(col.name)
+        : false,
+    }));
+
+    return {
+      "table.columns": tableColumns,
+    };
+  }, [columnVisibility, result]);
+
   const [{ loading: isDownloadingData }, handleDownload] = useDownloadData({
     question,
     result,
@@ -79,6 +109,7 @@ export const DashCardMenu = ({
     uuid,
     token,
     params: getParameterValuesBySlugMap(store.getState()),
+    visualizationSettings: downloadVizSettings,
   });
 
   const [menuView, setMenuView] = useState<string | null>(null);

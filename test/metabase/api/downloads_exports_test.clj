@@ -949,6 +949,37 @@
                    {:card-download     (first card-result)
                     :dashcard-download (first dashcard-result)}))))))))
 
+(deftest ^:parallel dashcard-viz-settings-override-downloads-test
+  (testing "visualization_settings sent in the request body override DB-persisted settings in dashcard downloads"
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card {card-id :id} {:display       :table
+                                                 :dataset_query {:database (mt/id)
+                                                                 :type     :query
+                                                                 :query    {:source-table (mt/id :orders)}}}
+                     :model/Dashboard {dashboard-id :id} {}
+                     :model/DashboardCard {dashcard-id :id} {:dashboard_id dashboard-id
+                                                              :card_id      card-id}]
+        (let [;; Build table.columns that enables only ID, Tax, and Quantity, disabling the rest
+              override-viz {"table.columns"
+                            [{"name" "ID"         "fieldRef" ["field" (mt/id :orders :id) nil]         "enabled" true}
+                             {"name" "USER_ID"    "fieldRef" ["field" (mt/id :orders :user-id) nil]    "enabled" false}
+                             {"name" "PRODUCT_ID" "fieldRef" ["field" (mt/id :orders :product-id) nil] "enabled" false}
+                             {"name" "SUBTOTAL"   "fieldRef" ["field" (mt/id :orders :subtotal) nil]   "enabled" false}
+                             {"name" "TAX"        "fieldRef" ["field" (mt/id :orders :tax) nil]        "enabled" true}
+                             {"name" "TOTAL"      "fieldRef" ["field" (mt/id :orders :total) nil]      "enabled" false}
+                             {"name" "DISCOUNT"   "fieldRef" ["field" (mt/id :orders :discount) nil]   "enabled" false}
+                             {"name" "CREATED_AT" "fieldRef" ["field" (mt/id :orders :created-at) nil] "enabled" false}
+                             {"name" "QUANTITY"   "fieldRef" ["field" (mt/id :orders :quantity) nil]   "enabled" true}]}
+              result      (->> (mt/user-http-request :crowberto :post 200
+                                                     (format "dashboard/%d/dashcard/%d/card/%d/query/csv"
+                                                             dashboard-id dashcard-id card-id)
+                                                     {:format_rows             false
+                                                      :visualization_settings  override-viz})
+                               (process-results :csv))]
+          (is (= ["ID" "Tax" "Quantity"]
+                 (first result))
+              "Only columns marked as enabled in the request-body override should appear in the CSV"))))))
+
 (deftest dashcard-viz-settings-attachments-test
   (testing "Dashcard visualization settings are respected in subscription attachments."
     (testing "for csv"
