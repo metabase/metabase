@@ -46,16 +46,16 @@ jobs:
       MB_DB_TYPE: postgres
       MB_DB_PORT: 5432
       MB_DB_HOST: localhost
-      MB_DB_DBNAME: mb_test
-      MB_DB_USER: mb_test
+      MB_DB_DBNAME: circle_test
+      MB_DB_USER: circle_test
     services:
       postgres:
         image: postgres:14-alpine
         ports:
           - "5432:5432"
         env:
-          POSTGRES_USER: mb_test
-          POSTGRES_DB: mb_test
+          POSTGRES_USER: circle_test
+          POSTGRES_DB: circle_test
           POSTGRES_HOST_AUTH_METHOD: trust
     steps:
       - uses: actions/checkout@v4
@@ -72,16 +72,16 @@ jobs:
       MB_DB_TYPE: postgres
       MB_DB_PORT: 5432
       MB_DB_HOST: localhost
-      MB_DB_DBNAME: mb_test
-      MB_DB_USER: mb_test
+      MB_DB_DBNAME: circle_test
+      MB_DB_USER: circle_test
     services:
       postgres:
-        image: postgres:latest
+        image: circleci/postgres:latest
         ports:
           - "5432:5432"
         env:
-          POSTGRES_USER: mb_test
-          POSTGRES_DB: mb_test
+          POSTGRES_USER: circle_test
+          POSTGRES_DB: circle_test
           POSTGRES_HOST_AUTH_METHOD: trust
     steps:
       - uses: actions/checkout@v4
@@ -98,16 +98,13 @@ jobs:
       MB_DB_TYPE: mysql
       MB_DB_HOST: localhost
       MB_DB_PORT: 3306
-      MB_DB_DBNAME: mb_test
+      MB_DB_DBNAME: circle_test
       MB_DB_USER: root
     services:
       mysql:
-        image: mysql:8.4
+        image: cimg/mysql:8.4
         ports:
           - "3306:3306"
-        env:
-          MYSQL_ALLOW_EMPTY_PASSWORD: true
-          MYSQL_DATABASE: mb_test
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/cross-branch-migration-test
@@ -123,7 +120,7 @@ jobs:
       MB_DB_TYPE: mysql
       MB_DB_HOST: localhost
       MB_DB_PORT: 3306
-      MB_DB_DBNAME: mb_test
+      MB_DB_DBNAME: circle_test
       MB_DB_USER: root
       MB_MYSQL_TEST_USER: root
     services:
@@ -131,7 +128,7 @@ jobs:
         image: mysql:latest
         env:
           MYSQL_ALLOW_EMPTY_PASSWORD: true
-          MYSQL_DATABASE: mb_test
+          MYSQL_DATABASE: circle_test
         ports:
           - "3306:3306"
     steps:
@@ -149,16 +146,13 @@ jobs:
       MB_DB_TYPE: mysql
       MB_DB_HOST: localhost
       MB_DB_PORT: 3306
-      MB_DB_DBNAME: mb_test
+      MB_DB_DBNAME: circle_test
       MB_DB_USER: root
     services:
       mariadb:
-        image: mariadb:10.6
+        image: circleci/mariadb:10.6
         ports:
           - "3306:3306"
-        env:
-          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: true
-          MARIADB_DATABASE: mb_test
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/cross-branch-migration-test
@@ -174,16 +168,13 @@ jobs:
       MB_DB_TYPE: mysql
       MB_DB_HOST: localhost
       MB_DB_PORT: 3306
-      MB_DB_DBNAME: mb_test
+      MB_DB_DBNAME: circle_test
       MB_DB_USER: root
     services:
       mariadb:
-        image: mariadb:latest
+        image: circleci/mariadb:latest
         ports:
           - "3306:3306"
-        env:
-          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: true
-          MARIADB_DATABASE: mb_test
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/cross-branch-migration-test
