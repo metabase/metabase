@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useId } from "react";
 import { t } from "ttag";
 
 import { skipToken, useGetFieldQuery } from "metabase/api";
@@ -76,9 +76,23 @@ type InfoSectionItemProps = {
 };
 
 function InfoSectionItem({ label, children }: InfoSectionItemProps) {
+  const labelId = useId();
+
   return (
-    <Stack className={S.section} p="md" gap="xs">
-      <Box className={CS.textWrap} c="text-secondary" fz="sm" lh="h5">
+    <Stack
+      className={S.section}
+      p="md"
+      gap="xs"
+      role="group"
+      aria-labelledby={labelId}
+    >
+      <Box
+        id={labelId}
+        className={CS.textWrap}
+        c="text-secondary"
+        fz="sm"
+        lh="h5"
+      >
         {label}
       </Box>
       <Box lh="h4">{children}</Box>

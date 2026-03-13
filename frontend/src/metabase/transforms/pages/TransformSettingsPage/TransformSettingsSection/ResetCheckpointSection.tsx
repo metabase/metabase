@@ -1,4 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
+import { useId } from "react";
 import { t } from "ttag";
 
 import {
@@ -30,6 +31,8 @@ export function ResetCheckpointSection({
     checkpointFieldId ? { id: checkpointFieldId } : skipToken,
   );
 
+  const labelId = useId();
+
   const handleConfirm = async () => {
     const { error } = await resetCheckpoint(transform.id);
     closeModal();
@@ -46,8 +49,8 @@ export function ResetCheckpointSection({
 
   return (
     <Group gap="md" align="center">
-      <Box c="text-secondary">
-        {t`Current checkpoint`}:{" "}
+      <Box c="text-secondary" role="group" aria-labelledby={labelId}>
+        <span id={labelId}>{t`Current checkpoint`}: </span>
         <Text component="span" fw="bold" c="text-primary">
           <CheckpointValue
             value={transform.last_checkpoint_value}
