@@ -108,10 +108,15 @@
   [expr]
   (mapv lib-metric/expression-leaf-uuid (lib-metric/expression-leaves expr)))
 
-(defn- collect-expression-leaves
-  "Collect [type id] pairs from leaf nodes in an expression tree."
+(defn- collect-expression-leaf-identities
+  "Collect identity tuples for projection matching.
+   For :metric/:measure, returns [type id]. For :adhoc, returns [type lib/uuid]."
   [expr]
-  (mapv (juxt lib-metric/expression-leaf-type lib-metric/expression-leaf-id)
+  (mapv (fn [leaf]
+          (let [leaf-type (lib-metric/expression-leaf-type leaf)]
+            (if (= :adhoc leaf-type)
+              [:adhoc (lib-metric/expression-leaf-uuid leaf)]
+              [leaf-type (lib-metric/expression-leaf-id leaf)])))
         (lib-metric/expression-leaves expr)))
 
 (mr/def ::Definition
@@ -122,9 +127,9 @@
     [:expression  ::lib-metric.schema/metric-math-expression]
     [:filters     {:optional true} [:maybe ::lib-metric.schema/instance-filters]]
     [:projections {:optional true} [:maybe ::lib-metric.schema/typed-projections]]]
-   [:fn {:error/message "Expression must contain at least one metric or measure"}
+   [:fn {:error/message "Expression must contain at least one metric, measure, or adhoc aggregation"}
     (fn [{:keys [expression]}]
-      (seq (collect-expression-leaves expression)))]
+      (seq (collect-expression-uuids expression)))]
    [:fn {:error/message "All :lib/uuid values in expression must be unique"}
     (fn [{:keys [expression]}]
       (let [uuids (collect-expression-uuids expression)]
@@ -135,8 +140,12 @@
         (every? #(contains? expr-uuids (:lib/uuid %)) (or filters []))))]
    [:fn {:error/message "Projection type/id pairs must correspond to expression leaves"}
     (fn [{:keys [expression projections]}]
-      (let [leaves (set (collect-expression-leaves expression))]
-        (every? #(contains? leaves [(:type %) (:id %)]) (or projections []))))]])
+      (let [identities (set (collect-expression-leaf-identities expression))]
+        (every? (fn [proj]
+                  (if (= :adhoc (:type proj))
+                    (contains? identities [:adhoc (:lib/uuid proj)])
+                    (contains? identities [(:type proj) (:id proj)])))
+                (or projections []))))]])
 
 (mr/def ::DatasetRequest
   "Schema for POST /dataset request body."
@@ -159,13 +168,20 @@
                 [:rows [:sequential :any]]]]
    [:row_count ms/IntGreaterThanOrEqualToZero]])
 
+(defn- check-adhoc-table-permissions
+  "Check that the current user has query permissions for the given table."
+  [table-id]
+  (api/query-check (t2/select-one :model/Table :id table-id)))
+
 (defn- check-expression-permissions
-  "Collect all metric/measure leaves from the expression and verify query permissions for each."
+  "Collect all metric/measure/adhoc leaves from the expression and verify query permissions for each."
   [expression]
-  (doseq [[source-type source-id] (collect-expression-leaves expression)]
-    (case source-type
-      :metric  (api/query-check (t2/select-one :model/Card :id source-id :type "metric"))
-      :measure (api/query-check (t2/select-one :model/Measure :id source-id)))))
+  (doseq [leaf (lib-metric/expression-leaves expression)]
+    (let [leaf-type (lib-metric/expression-leaf-type leaf)]
+      (case leaf-type
+        :metric  (api/query-check (t2/select-one :model/Card :id (lib-metric/expression-leaf-id leaf) :type "metric"))
+        :measure (api/query-check (t2/select-one :model/Measure :id (lib-metric/expression-leaf-id leaf)))
+        :adhoc   (check-adhoc-table-permissions (get-in leaf [2 :table-id]))))))
 
 (defn- from-api-definition
   "Create a MetricDefinition from API definition parameters.

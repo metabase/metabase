@@ -39,16 +39,35 @@
                      positions (assoc :projection-positions (vec positions)))))
                dimensions)))
 
+(defn- adhoc-dimensions-from-expression
+  "Extract dimensions from an adhoc expression leaf's inline definition.
+   Converts adhoc dimension declarations to metadata-dimension format."
+  [expression]
+  (let [leaf-uuid (lib-metric.definition/expression-leaf-uuid expression)
+        adhoc-def (nth expression 2)
+        dims      (:dimensions adhoc-def)]
+    (perf/mapv (fn [{:keys [id display-name effective-type semantic-type]}]
+                 (cond-> {:lib/type    :metadata/dimension
+                          :id          id
+                          :source-type :adhoc
+                          :source-id   leaf-uuid}
+                   display-name   (assoc :display-name display-name)
+                   effective-type (assoc :effective-type effective-type)
+                   semantic-type  (assoc :semantic-type semantic-type)))
+               (or dims []))))
+
 (mu/defn projectable-dimensions :- [:sequential ::lib-metric.schema/metadata-dimension]
   "Get dimensions that can be used for projections.
    Returns dimensions with :projection-positions indicating which are already used."
   [definition :- ::lib-metric.schema/metric-definition]
   (let [{:keys [expression projections metadata-provider]} definition
         leaf-type (lib-metric.definition/expression-leaf-type expression)
-        leaf-id   (lib-metric.definition/expression-leaf-id expression)
-        dimensions (case leaf-type
-                     :metric  (lib-metric.dimension/dimensions-for-metric metadata-provider leaf-id)
-                     :measure (lib-metric.dimension/dimensions-for-measure metadata-provider leaf-id))
+        dimensions (if (= :adhoc leaf-type)
+                     (adhoc-dimensions-from-expression expression)
+                     (let [leaf-id (lib-metric.definition/expression-leaf-id expression)]
+                       (case leaf-type
+                         :metric  (lib-metric.dimension/dimensions-for-metric metadata-provider leaf-id)
+                         :measure (lib-metric.dimension/dimensions-for-measure metadata-provider leaf-id))))
         flat-projs (lib-metric.definition/flat-projections (or projections []))]
     (add-projection-positions dimensions flat-projs)))
 
@@ -122,13 +141,15 @@
       (let [leaves (lib-metric.definition/expression-leaves expression)]
         (into []
               (mapcat (fn [leaf]
-                        (let [leaf-type (lib-metric.definition/expression-leaf-type leaf)
-                              leaf-id   (lib-metric.definition/expression-leaf-id leaf)
-                              source-metadata {:lib/type (case leaf-type
-                                                           :metric  :metadata/metric
-                                                           :measure :metadata/measure)
-                                               :id       leaf-id}]
-                          (projectable-dimensions-for-source definition source-metadata))))
+                        (let [leaf-type (lib-metric.definition/expression-leaf-type leaf)]
+                          (if (= :adhoc leaf-type)
+                            (adhoc-dimensions-from-expression leaf)
+                            (let [leaf-id (lib-metric.definition/expression-leaf-id leaf)
+                                  source-metadata {:lib/type (case leaf-type
+                                                               :metric  :metadata/metric
+                                                               :measure :metadata/measure)
+                                                   :id       leaf-id}]
+                              (projectable-dimensions-for-source definition source-metadata))))))
               leaves)))))
 
 (mu/defn projection-dimension :- [:maybe ::lib-metric.schema/metadata-dimension]
@@ -336,14 +357,22 @@
 
 (mu/defn default-breakout-dimensions :- [:sequential ::lib-metric.schema/metadata-dimension]
   "Get dimensions corresponding to the source metric's default breakout columns.
-   Returns DimensionMetadata objects matching the breakout field-ids in the dataset_query."
+   Returns DimensionMetadata objects matching the breakout field-ids in the dataset_query.
+   For adhoc leaves, returns all declared dimensions (the user chose them explicitly)."
   [definition :- ::lib-metric.schema/metric-definition]
   (let [{:keys [expression metadata-provider]} definition
-        leaf-type (lib-metric.definition/expression-leaf-type expression)
-        leaf-id   (lib-metric.definition/expression-leaf-id expression)]
-    (if-not leaf-type
+        leaf-type (lib-metric.definition/expression-leaf-type expression)]
+    (cond
+      (not leaf-type)
       []
-      (let [metadata-type (case leaf-type :metric :metadata/metric :measure :metadata/measure)
+
+      ;; For adhoc, all declared dimensions are "default" breakouts
+      (= :adhoc leaf-type)
+      (adhoc-dimensions-from-expression expression)
+
+      :else
+      (let [leaf-id       (lib-metric.definition/expression-leaf-id expression)
+            metadata-type (case leaf-type :metric :metadata/metric :measure :metadata/measure)
             metadata      (first (lib.metadata.protocols/metadatas
                                   metadata-provider
                                   {:lib/type metadata-type :id #{leaf-id}}))

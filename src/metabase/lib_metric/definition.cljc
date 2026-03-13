@@ -34,11 +34,12 @@
 
 (defn source-type-for-leaf
   "Returns the source type keyword for an expression leaf.
-   :metric -> :source/metric, :measure -> :source/measure."
+   :metric -> :source/metric, :measure -> :source/measure, :adhoc -> :source/adhoc."
   [expression]
   (case (expression-leaf-type expression)
     :metric  :source/metric
     :measure :source/measure
+    :adhoc   :source/adhoc
     nil))
 
 (defn expression-leaves
@@ -101,19 +102,27 @@
     (when (= :measure (expression-leaf-type expr))
       (expression-leaf-id expr))))
 
+(defn- leaf-matches-projection?
+  "Check if a typed-projection matches an expression leaf.
+   For :metric/:measure, matches by type + id.
+   For :adhoc, matches by type + lib/uuid."
+  [leaf tp]
+  (let [leaf-type (expression-leaf-type leaf)]
+    (if (= :adhoc leaf-type)
+      (and (= :adhoc (:type tp))
+           (= (expression-leaf-uuid leaf) (:lib/uuid tp))
+           (seq (:projection tp)))
+      (and (= leaf-type (:type tp))
+           (= (expression-leaf-id leaf) (:id tp))
+           (seq (:projection tp))))))
+
 (defn projection-valid?
   "Returns true when every distinct source leaf in the expression has a non-empty projection defined."
   [definition]
   (let [leaves      (expression-leaves (:expression definition))
         projections (or (:projections definition) [])]
     (perf/every? (fn [leaf]
-                   (let [leaf-type (expression-leaf-type leaf)
-                         leaf-id   (expression-leaf-id leaf)]
-                     (perf/some (fn [tp]
-                                  (and (= leaf-type (:type tp))
-                                       (= leaf-id (:id tp))
-                                       (seq (:projection tp))))
-                                projections)))
+                   (perf/some #(leaf-matches-projection? leaf %) projections))
                  leaves)))
 
 (defn unprojected-sources
@@ -122,13 +131,7 @@
   (let [leaves      (expression-leaves (:expression definition))
         projections (or (:projections definition) [])
         projected?  (fn [leaf]
-                      (let [leaf-type (expression-leaf-type leaf)
-                            leaf-id   (expression-leaf-id leaf)]
-                        (perf/some (fn [tp]
-                                     (and (= leaf-type (:type tp))
-                                          (= leaf-id (:id tp))
-                                          (seq (:projection tp))))
-                                   projections)))]
+                      (perf/some #(leaf-matches-projection? leaf %) projections))]
     (into [] (remove projected?) leaves)))
 
 (defn filters

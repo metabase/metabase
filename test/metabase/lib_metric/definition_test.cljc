@@ -191,7 +191,11 @@
 (deftest ^:parallel expression-leaf-id-test
   (is (= 42 (lib-metric.definition/expression-leaf-id [:metric {:lib/uuid "a"} 42])))
   (is (= 99 (lib-metric.definition/expression-leaf-id [:measure {:lib/uuid "a"} 99])))
-  (is (nil? (lib-metric.definition/expression-leaf-id nil))))
+  (is (nil? (lib-metric.definition/expression-leaf-id nil)))
+  (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs cljs.core/ExceptionInfo)
+                        #"adhoc leaves have no persisted ID"
+                        (lib-metric.definition/expression-leaf-id
+                         [:adhoc {:lib/uuid "x"} {:database-id 1 :table-id 2 :aggregation [:count {}]}]))))
 
 (deftest ^:parallel expression-leaf-uuid-test
   (is (= "a" (lib-metric.definition/expression-leaf-uuid [:metric {:lib/uuid "a"} 42])))
@@ -366,7 +370,6 @@
                       :metadata-provider mock-provider}
           result     (lib-metric.definition/unprojected-sources definition)]
       (is (empty? result)))))
-
 
 ;;; -------------------------------------------------- Schema Validation --------------------------------------------------
 

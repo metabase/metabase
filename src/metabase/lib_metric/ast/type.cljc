@@ -15,4 +15,5 @@
       (derive :filter/or  :filter/compound)
       ;; Source nodes
       (derive :source/metric  :source/any)
-      (derive :source/measure :source/any)))
+      (derive :source/measure :source/any)
+      (derive :source/adhoc   :source/any)))
