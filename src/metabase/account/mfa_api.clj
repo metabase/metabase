@@ -60,8 +60,10 @@
     {:success true}))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/"
-  "Disable TOTP for the current user. Requires password confirmation."
+(api.macros/defendpoint :post "/disable"
+  "Disable TOTP for the current user. Requires password confirmation.
+   Uses POST instead of DELETE to ensure request body is reliably transmitted
+   through proxies and CDNs."
   [_route-params
    _query-params
    {:keys [password]} :- [:map

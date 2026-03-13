@@ -50,7 +50,7 @@
                                     {:totp-code "000000"})))))))
 
 (deftest mfa-disable-test
-  (testing "DELETE /api/account/mfa disables TOTP when given correct password"
+  (testing "POST /api/account/mfa/disable disables TOTP when given correct password"
     (mt/with-temp-vals-in-db :model/User (mt/user->id :rasta) {:totp_enabled false
                                                                :totp_secret  nil
                                                                :totp_recovery_codes nil}
@@ -61,7 +61,7 @@
             valid-code     (totp/totp-code secret time-step)]
         (mt/user-http-request :rasta :post 200 "account/mfa/confirm" {:totp-code valid-code})
         ;; Now disable
-        (mt/user-http-request :rasta :delete 204 "account/mfa"
+        (mt/user-http-request :rasta :post 204 "account/mfa/disable"
                               {:password "password"})
         (is (false? (t2/select-one-fn :totp_enabled :model/User :id (mt/user->id :rasta))))))))
 

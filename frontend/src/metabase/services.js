@@ -327,7 +327,7 @@ export const SessionApi = {
 export const MfaApi = {
   setup: POST("/api/account/mfa/setup"),
   confirm: POST("/api/account/mfa/confirm"),
-  disable: DELETE("/api/account/mfa"),
+  disable: POST("/api/account/mfa/disable"),
   regenerateRecoveryCodes: POST("/api/account/mfa/recovery-codes"),
 };
 
