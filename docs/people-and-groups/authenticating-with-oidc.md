@@ -7,9 +7,9 @@ summary: Connect an OpenID Connect (OIDC) identity provider to Metabase for SSO 
 
 {% include plans-blockquote.html feature="OIDC authentication" %}
 
-Integrating your Open ID Connect (OIDC) provider with Metabase lets you:
+By integrating your Open ID Connect (OIDC) provider with Metabase, you can:
 
-- Provision a Metabase account when someone logs in via your identity provider (IdP).
+- [Provision a Metabase account](#user-provisioning) when someone logs in via your identity provider (IdP).
 - Let people access Metabase without re-authenticating.
 - Automatically pass user attributes (name, email) from your IdP to Metabase.
 
@@ -25,7 +25,7 @@ Set this key in your environment before starting Metabase:
 MB_ENCRYPTION_SECRET_KEY=your-secret-key-at-least-16-characters
 ```
 
-Once set, don't remove it. Metabase encrypts values in the database with this key and will refuse to start without it.
+Once you set an encryption key, don't remove it. Metabase encrypts values in the database with this key and will refuse to start without it.
 
 For more, see [Encrypting your database connection](../databases/encrypting-details-at-rest.md).
 
@@ -35,7 +35,7 @@ To add an OIDC provider to your Metabase, go to **Admin settings** > **Authentic
 
 | Field             | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Key**           | A unique identifier for this provider. Lowercase letters, numbers, and hyphens only. Can't be changed after creation. Use a name that describes the provider (e.g., `keycloak` ), not the application. Metabase constructs the redirect URI as `{site-url}/auth/sso/{key}/callback` . Configure this exact URI in your IdP, so choose the key _before_ configuring the IdP for Metabase. The full redirect URI is shown in the admin UI after you enter the key. |
+| **Key**           | A unique identifier for this provider. Lowercase letters, numbers, and hyphens only. Can't be changed after creation. Use a name that describes the provider (e.g., `keycloak` ), not the application. Metabase constructs the redirect URI as `{site-url}/auth/sso/{key}/callback` . Configure this exact URI in your IdP, so choose the key _before_ configuring your IdP for Metabase. The full redirect URI is shown in the admin UI after you enter the key. |
 | **Login prompt**  | The button label on Metabase's sign-in screen. You can put something like "Sign in with Keycloak", or "Ye who wish to enter Metabase".                                                                                                                                                                                                                                                                                                                           |
 | **Issuer URI**    | Your IdP's issuer URI. Metabase fetches the discovery document from `{issuer-uri}/.well-known/openid-configuration` . This request is made from Metabase's server, not from the browser. In containerized deployments (like Docker), the URI must be reachable from Metabase's container, not just from your browser.                                                                                                                                            |
 | **Client ID**     | The Client ID assigned for Metabase in your OIDC provider.                                                                                                                                                                                                                                                                                                                                                                                                       |
@@ -43,7 +43,7 @@ To add an OIDC provider to your Metabase, go to **Admin settings** > **Authentic
 
 ## Optional settings
 
-**Scopes**: The OIDC scopes to request. In the admin UI, enter scopes as a comma-separated string (e.g., `openid, email, profile`). In the `MB_OIDC_PROVIDERS` environment variable JSON, use an array (e.g., `["openid", "email", "profile"]`). Defaults to `openid, email, profile`. Most providers don't require changes here.
+**Scopes**: The OIDC scopes to request. In the admin UI, enter scopes as a comma-separated string (e.g., `openid, email, profile`). Defaults to `openid, email, profile`. Most providers don't require changes here. If you're setting this with the `MB_OIDC_PROVIDERS` environment variable JSON, use an array (e.g., `["openid", "email", "profile"]`).
 
 ## Attribute mapping
 
@@ -59,9 +59,9 @@ If your IdP uses different claim names, update these fields to match.
 
 ## Check connection
 
-The **Check connection** button verifies two things: that Metabase can fetch the discovery document from your Issuer URI, and that the client credentials are valid.
+The **Check connection** button verifies two things: 1) that Metabase can fetch the discovery document from your Issuer URI, and 2) that the client credentials are valid.
 
-If the check reports "OIDC discovery succeeded, but credentials could not be verified", this typically means the client isn't configured to support the grant type Metabase uses for testing. In Keycloak, for example, you should enable **Service accounts roles** and **Client authentication** on the client.
+If the check reports "OIDC discovery succeeded, but credentials could not be verified", this could mean you need to configure the client to support the grant type Metabase uses for testing. In a Keycloak client, for example, you should turn on **Service accounts roles** and **Client authentication**.
 
 ## User provisioning
 
