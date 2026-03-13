@@ -299,13 +299,15 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
       <metabase-question question-id="${ORDERS_QUESTION_ID}" drills="false" />
       `);
 
+      cy.wait("@getCardQuery");
+
       H.getSimpleEmbedIframeContent()
         .findAllByText("37.65", { timeout: 40000 })
+        .as("cell")
         .first()
-        .should("be.visible");
+        .should("be.visible")
+        .click();
 
-      // Re-query the element to avoid "page updated" errors from table re-renders
-      H.getSimpleEmbedIframeContent().findAllByText("37.65").first().click();
       H.getSimpleEmbedIframeContent()
         .findByText(/Filter by this value/)
         .should("not.exist");
