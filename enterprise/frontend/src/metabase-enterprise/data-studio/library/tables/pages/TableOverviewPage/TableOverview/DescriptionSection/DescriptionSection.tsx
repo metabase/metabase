@@ -235,6 +235,7 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
                 ),
                 section: S.textStyleSection,
               }}
+              showUnknown={!table.data_source}
               onChange={handleDataSourceChange}
             />
           </Group>
