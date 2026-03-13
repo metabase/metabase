@@ -329,9 +329,9 @@ export class Table extends Component<TableProps, TableState> {
         title: t`Display as`,
         widget: options.length === 2 ? "radio" : "select",
         default: defaultValue,
-        props: {
+        getProps: () => ({
           options,
-        },
+        }),
       };
     }
 
