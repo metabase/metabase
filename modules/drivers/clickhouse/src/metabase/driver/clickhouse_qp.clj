@@ -623,8 +623,11 @@
   (format "'%s'" (t/format "HH:mm:ss.SSSZZZZZ" t)))
 
 (defmethod sql.qp/inline-value [:clickhouse LocalDateTime]
-  [_ t]
-  (format "'%s'" (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)))
+  [_ ^LocalDateTime t]
+  (let [fmt (if (zero? (.getNano t))
+              "yyyy-MM-dd HH:mm:ss"
+              "yyyy-MM-dd HH:mm:ss.SSS")]
+    (format "'%s'" (t/format fmt t))))
 
 (defmethod sql.qp/inline-value [:clickhouse OffsetDateTime]
   [_ ^OffsetDateTime t]
@@ -649,7 +652,7 @@
   (format "[%s]" (str/join ", " (map #(sql.qp/inline-value driver %) arr))))
 
 (defmethod sql.qp/inline-value [:clickhouse java.util.HashMap]
-  [driver m]
+  [driver ^java.util.HashMap m]
   (format "{%s}"
           (str/join ", "
                     (map (fn [^java.util.Map$Entry e]
