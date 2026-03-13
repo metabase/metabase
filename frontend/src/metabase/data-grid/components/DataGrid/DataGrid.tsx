@@ -230,6 +230,10 @@ export const DataGrid = function DataGrid<TData>({
             style={{
               backgroundColor,
               color: theme?.cell?.textColor,
+              paddingRight:
+                hasAddColumnButton && isAddColumnButtonSticky
+                  ? `${ADD_COLUMN_BUTTON_WIDTH}px`
+                  : 0,
               ...styles?.tableGrid,
             }}
             onWheel={onWheel}
