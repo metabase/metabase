@@ -103,7 +103,9 @@
        (cond-> {:select    [[:session.user_id :metabase-user-id]
                             [:user.is_superuser :is-superuser?]
                             [:user.is_data_analyst :is-data-analyst?]
-                            [:user.locale :user-locale]]
+                            [:user.locale :user-locale]
+                            [:user.totp_enabled :totp-enabled?]
+                            [:user.sso_source :sso-source]]
                 :from      [[:core_session :session]]
                 :left-join [[:core_user :user] [:= :session.user_id :user.id]
                             [:tenant] [:= :tenant.id :user.tenant_id]]
@@ -189,7 +191,8 @@
                            [anti-csrf-token]))]
       (some-> (t2/query-one (cons sql params))
               ;; is-group-manager? could return `nil, convert it to boolean so it's guaranteed to be only true/false
-              (update :is-group-manager? boolean)))))
+              (update :is-group-manager? boolean)
+              (update :totp-enabled? boolean)))))
 
 (def ^:private api-key-that-should-never-match (str (random-uuid)))
 (def ^:private hash-that-should-never-match (u.password/hash-bcrypt "password"))
