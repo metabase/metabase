@@ -19,6 +19,7 @@ export interface CustomVizPluginRuntime {
   display_name: string;
   icon: string | null;
   bundle_url: string;
+  resolved_commit: string | null;
 }
 
 export interface CreateCustomVizPluginRequest {

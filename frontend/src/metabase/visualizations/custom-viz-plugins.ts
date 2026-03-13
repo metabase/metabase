@@ -11,7 +11,7 @@ import type {
 
 import type { Visualization } from "./types/visualization";
 
-import { registerVisualization } from ".";
+import visualizations, { registerVisualization } from ".";
 
 // ---------------------------------------------------------------------------
 // Global API exposed to plugin bundles via window.__METABASE_VIZ_API__
@@ -37,8 +37,13 @@ function ensureVizApi() {
 // Plugin loading & registration
 // ---------------------------------------------------------------------------
 
-// Track which plugins have already been loaded to avoid re-execution
-const loadedPlugins = new Map<number, string>(); // id → registered identifier
+// Track which plugins have already been loaded to avoid re-execution.
+// Maps plugin id → { identifier, commit } so we can detect when a
+// refetch on the server produced a new commit.
+const loadedPlugins = new Map<
+  number,
+  { identifier: string; commit: string | null }
+>();
 
 export function isCustomVizDisplay(display: string | undefined): boolean {
   return display != null && display.startsWith("custom:");
@@ -65,55 +70,64 @@ export function useCustomVizPlugins({
  * type starts with "custom:". Returns `true` while loading so the caller
  * can show a spinner instead of rendering the (not-yet-registered) viz.
  */
-export function useAutoLoadCustomVizPlugin(
-  display: string | undefined,
-): { loading: boolean } {
+export function useAutoLoadCustomVizPlugin(display: string | undefined): {
+  loading: boolean;
+} {
   const plugins = useCustomVizPlugins();
   const [loading, setLoading] = useState(false);
   const loadingRef = useRef<string | null>(null);
 
-  const load = useCallback(
-    async (pluginToLoad: CustomVizPluginRuntime) => {
-      const ident = `custom:${pluginToLoad.identifier}`;
-      if (loadedPlugins.has(pluginToLoad.id) || loadingRef.current === ident) {
-        return;
-      }
-      loadingRef.current = ident;
-      setLoading(true);
-      try {
-        await loadCustomVizPlugin(pluginToLoad);
-      } finally {
-        loadingRef.current = null;
-        setLoading(false);
-      }
-    },
-    [],
-  );
+  const load = useCallback(async (pluginToLoad: CustomVizPluginRuntime) => {
+    const ident = `custom:${pluginToLoad.identifier}`;
+    if (loadingRef.current === ident) {
+      return;
+    }
+    const existing = loadedPlugins.get(pluginToLoad.id);
+    if (existing && existing.commit === pluginToLoad.resolved_commit) {
+      return;
+    }
+    loadingRef.current = ident;
+    setLoading(true);
+    try {
+      await loadCustomVizPlugin(pluginToLoad);
+    } finally {
+      loadingRef.current = null;
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (!isCustomVizDisplay(display) || !plugins) {
       return;
     }
 
-    // display is "custom:<identifier>", extract the identifier part
     const identifier = display!.slice("custom:".length);
-    const plugin = plugins.find(p => p.identifier === identifier);
-    if (plugin && !loadedPlugins.has(plugin.id)) {
+    const plugin = plugins.find((p) => p.identifier === identifier);
+    if (!plugin) {
+      return;
+    }
+    const existing = loadedPlugins.get(plugin.id);
+    if (!existing || existing.commit !== plugin.resolved_commit) {
       load(plugin);
     }
   }, [display, plugins, load]);
 
-  // Also loading if we need a custom viz but don't have plugins list yet
-  const needsCustomViz = isCustomVizDisplay(display);
-  const isWaiting =
-    needsCustomViz &&
-    !loadedPlugins.has(
-      plugins?.find(
-        p => `custom:${p.identifier}` === display,
-      )?.id ?? -1,
-    );
+  // `loading` state drives re-renders when async load completes.
+  // Without it, the Map-based check alone wouldn't trigger a re-render.
+  if (loading) {
+    return { loading: true };
+  }
 
-  return { loading: loading || (needsCustomViz && isWaiting && !plugins) };
+  const needsCustomViz = isCustomVizDisplay(display);
+  const matchedPlugin = needsCustomViz
+    ? plugins?.find((p) => `custom:${p.identifier}` === display)
+    : undefined;
+  const isReady =
+    matchedPlugin != null &&
+    loadedPlugins.get(matchedPlugin.id)?.commit ===
+      matchedPlugin.resolved_commit;
+
+  return { loading: needsCustomViz && !isReady };
 }
 
 /**
@@ -125,12 +139,12 @@ export async function loadCustomVizPlugin(
   plugin: CustomVizPluginRuntime,
 ): Promise<string | null> {
   const existing = loadedPlugins.get(plugin.id);
-  if (existing) {
+  if (existing && existing.commit === plugin.resolved_commit) {
     // eslint-disable-next-line no-console
     console.log(
-      `[custom-viz] Plugin "${plugin.display_name}" already registered as "${existing}"`,
+      `[custom-viz] Plugin "${plugin.display_name}" already registered as "${existing.identifier}"`,
     );
-    return existing;
+    return existing.identifier;
   }
 
   ensureVizApi();
@@ -139,8 +153,11 @@ export async function loadCustomVizPlugin(
   console.log(`[custom-viz] Loading plugin "${plugin.display_name}"…`);
 
   try {
-    const absoluteUrl = new URL(plugin.bundle_url, window.location.origin).href;
-    const imported = await import(/* webpackIgnore: true */ absoluteUrl);
+    const bundleUrl = new URL(plugin.bundle_url, window.location.origin);
+    if (plugin.resolved_commit) {
+      bundleUrl.searchParams.set("v", plugin.resolved_commit);
+    }
+    const imported = await import(/* webpackIgnore: true */ bundleUrl.href);
 
     const factory = imported.default;
     if (typeof factory !== "function") {
@@ -175,8 +192,17 @@ export async function loadCustomVizPlugin(
       canSavePng: false,
     } satisfies Partial<Record<keyof Visualization, unknown>>);
 
-    registerVisualization(Component);
-    loadedPlugins.set(plugin.id, identifier);
+    // Use registerVisualization for first load; overwrite directly for updates
+    // (registerVisualization throws on duplicate identifiers).
+    if (loadedPlugins.has(plugin.id)) {
+      visualizations.set(identifier, Component);
+    } else {
+      registerVisualization(Component);
+    }
+    loadedPlugins.set(plugin.id, {
+      identifier,
+      commit: plugin.resolved_commit,
+    });
 
     // eslint-disable-next-line no-console
     console.log(
