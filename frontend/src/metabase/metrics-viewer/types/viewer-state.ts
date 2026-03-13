@@ -5,6 +5,7 @@ import type {
   DimensionId,
   TemporalUnit,
 } from "metabase-types/api";
+import type { AdhocLeafDefinition } from "metabase-types/api/metric";
 
 import type { DimensionFilterValue } from "../utils/dimension-filters";
 
@@ -15,7 +16,10 @@ export type MetricsViewerDisplayType = Extract<
   "line" | "area" | "bar" | "map" | "row" | "pie" | "scatter"
 >;
 
-export type MetricSourceId = `metric:${number}` | `measure:${number}`;
+export type MetricSourceId =
+  | `metric:${number}`
+  | `measure:${number}`
+  | `adhoc:${string}`;
 
 export type MetricsViewerTabType =
   | "time"
@@ -46,6 +50,8 @@ export interface StoredMetricsViewerTab {
 export interface MetricsViewerDefinitionEntry {
   id: MetricSourceId;
   definition: MetricDefinition | null;
+  /** Override display name (used for adhoc aggregations). */
+  displayName?: string;
 }
 
 // ── Tab state ──
@@ -90,7 +96,13 @@ export type SourceColorMap = Partial<Record<MetricSourceId, string[]>>;
 export type SelectedMetric = {
   id: number;
   name: string | null;
-  sourceType: "metric" | "measure";
+  sourceType: "metric" | "measure" | "adhoc";
   tableId?: ConcreteTableId;
   isLoading?: boolean;
+  /** For adhoc: the stable UUID used as the leaf's lib/uuid */
+  adhocUuid?: string;
+  /** For adhoc: the table name for display in pills */
+  tableName?: string;
+  /** For adhoc: the inline definition sent to the API */
+  adhocDefinition?: AdhocLeafDefinition;
 };

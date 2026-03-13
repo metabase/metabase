@@ -1,5 +1,5 @@
 import type { Location } from "history";
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { Box, Flex, Stack } from "metabase/ui";
 
@@ -13,6 +13,7 @@ import {
   MetricsViewerTabContent,
   MetricsViewerTabs,
 } from "../../components/MetricsViewerTabs";
+import type { AdhocResult } from "../../components/SummarizeTable";
 import { useMetricsViewer } from "../../hooks/use-metrics-viewer";
 import type { ExpressionToken } from "../../types/operators";
 
@@ -43,6 +44,7 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
     expressionItems,
     standaloneSourceIds,
     addMetric,
+    addAdhocMetric,
     swapMetric,
     removeMetric,
     changeTab,
@@ -54,6 +56,62 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
     updateDefinition,
     setBreakoutDimension,
   } = useMetricsViewer(props, tokens, setTokens);
+
+  const expressionName = useMemo(() => {
+    const metricCount = tokens.filter((t) => t.type === "metric").length;
+    const opCount = tokens.filter((t) => t.type === "operator").length;
+    if (metricCount < 1 || opCount === 0) {
+      return null;
+    }
+    return tokens
+      .map((token) => {
+        if (token.type === "open-paren") {
+          return "(";
+        }
+        if (token.type === "close-paren") {
+          return ")";
+        }
+        if (token.type === "operator") {
+          return token.op;
+        }
+        if (token.type === "constant") {
+          return String(token.value);
+        }
+        if (token.type === "separator") {
+          return ",";
+        }
+        return selectedMetrics[token.metricIndex]?.name ?? "...";
+      })
+      .join(" ");
+  }, [tokens, selectedMetrics]);
+
+  const handleAddAdhoc = useCallback(
+    (result: AdhocResult) => {
+      addAdhocMetric({
+        uuid: result.uuid,
+        databaseId: result.databaseId,
+        tableId: result.tableId,
+        tableName: result.tableName,
+        aggregationOperator: result.aggregationOperator,
+        column: result.column,
+        displayName: result.displayName,
+      });
+    },
+    [addAdhocMetric],
+  );
+
+  // Derive database ID from first definition for scoping the table picker
+  const databaseId = useMemo(() => {
+    for (const metric of selectedMetrics) {
+      if (metric.sourceType === "adhoc") {
+        continue;
+      }
+      if (metric.tableId != null) {
+        return undefined; // measures have tableId but not databaseId directly
+      }
+    }
+    return undefined;
+  }, [selectedMetrics]);
 
   const hasDefinitions = definitions.length > 0;
   const hasLoadedDefinitions = definitions.some(
@@ -74,6 +132,8 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
           onSwapMetric={swapMetric}
           onSetBreakout={setBreakoutDimension}
           onUpdateDefinition={updateDefinition}
+          onAddAdhoc={handleAddAdhoc}
+          databaseId={databaseId}
         />
       </Box>
       <Flex flex="1 1 auto" mih={0}>

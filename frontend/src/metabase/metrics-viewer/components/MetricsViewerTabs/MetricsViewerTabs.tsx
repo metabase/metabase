@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { ActionIcon, Icon, Skeleton, Tabs } from "metabase/ui";
+import { Icon, Skeleton, Tabs } from "metabase/ui";
 
 import type {
   MetricSourceId,
@@ -77,16 +77,20 @@ export function MetricsViewerTabs({
             ) : (
               tab.label
             )}
-            <ActionIcon
+            <span
+              role="button"
+              tabIndex={0}
               className={S.closeButton}
-              size="xs"
-              variant="subtle"
-              ml="xs"
               aria-label={t`Remove ${tab.label} tab`}
               onClick={(e) => handleRemoveTab(e, tab.id)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  handleRemoveTab(e as unknown as React.MouseEvent, tab.id);
+                }
+              }}
             >
               <Icon name="close" size={10} />
-            </ActionIcon>
+            </span>
           </Tabs.Tab>
         ))}
         {hasAvailableDimensions && (

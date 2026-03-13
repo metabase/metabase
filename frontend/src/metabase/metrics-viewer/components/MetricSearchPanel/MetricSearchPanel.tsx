@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { Box, Button, Flex, Icon, Stack, Text, Tooltip } from "metabase/ui";
 import type { MetricDefinition, ProjectionClause } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
+import type { DatabaseId } from "metabase-types/api";
 
 import type { ExpressionToken } from "../../types/operators";
 import type {
@@ -16,6 +17,7 @@ import { FilterPopover } from "../FilterPopover";
 import type { DefinitionSource } from "../FilterPopover/FilterPopoverContent";
 import { MetricSearch } from "../MetricSearch";
 import { MetricsFilterPills } from "../MetricsFilterPills";
+import type { AdhocResult } from "../SummarizeTable";
 
 import S from "./MetricSearchPanel.module.css";
 
@@ -26,7 +28,7 @@ type MetricSearchPanelProps = {
   metricColors: SourceColorMap;
   definitions: MetricsViewerDefinitionEntry[];
   onAddMetric: (metric: SelectedMetric) => void;
-  onRemoveMetric: (metricId: number, sourceType: "metric" | "measure") => void;
+  onRemoveMetric: (metric: SelectedMetric) => void;
   onSwapMetric: (oldMetric: SelectedMetric, newMetric: SelectedMetric) => void;
   onSetBreakout: (
     id: MetricSourceId,
@@ -36,6 +38,8 @@ type MetricSearchPanelProps = {
     id: MetricSourceId,
     definition: MetricDefinition,
   ) => void;
+  onAddAdhoc?: (result: AdhocResult) => void;
+  databaseId?: DatabaseId | null;
 };
 
 export function MetricSearchPanel({
@@ -49,6 +53,8 @@ export function MetricSearchPanel({
   onSwapMetric,
   onSetBreakout,
   onUpdateDefinition,
+  onAddAdhoc,
+  databaseId,
 }: MetricSearchPanelProps) {
   const [isFilterPillsExpanded, setIsFilterPillsExpanded] = useState(true);
 
@@ -136,6 +142,8 @@ export function MetricSearchPanel({
             onRemoveMetric={onRemoveMetric}
             onSwapMetric={onSwapMetric}
             onSetBreakout={onSetBreakout}
+            onAddAdhoc={onAddAdhoc}
+            databaseId={databaseId}
           />
         </Box>
         {hasFilters && isFilterPillsExpanded && (

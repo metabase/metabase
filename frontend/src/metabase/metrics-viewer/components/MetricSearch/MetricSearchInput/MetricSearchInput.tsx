@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import { Flex, Popover, TextInput } from "metabase/ui";
 import type { ProjectionClause } from "metabase-lib/metric";
+import type { DatabaseId } from "metabase-types/api";
 
 import type { ExpressionToken } from "../../../types/operators";
 import type {
@@ -12,9 +13,12 @@ import type {
   SourceColorMap,
 } from "../../../types/viewer-state";
 import {
+  createAdhocSourceId,
   createMeasureSourceId,
   createMetricSourceId,
 } from "../../../utils/source-ids";
+import type { AdhocResult } from "../../SummarizeTable";
+import { SummarizeTableDialog } from "../../SummarizeTable";
 import { MetricExpressionPill } from "../MetricExpressionPill";
 import { MetricPill } from "../MetricPill";
 import { MetricSearchDropdown } from "../MetricSearchDropdown";
@@ -43,12 +47,14 @@ type MetricSearchInputProps = {
   metricColors: SourceColorMap;
   definitions: MetricsViewerDefinitionEntry[];
   onAddMetric: (metric: SelectedMetric) => void;
-  onRemoveMetric: (metricId: number, sourceType: "metric" | "measure") => void;
+  onRemoveMetric: (metric: SelectedMetric) => void;
   onSwapMetric: (oldMetric: SelectedMetric, newMetric: SelectedMetric) => void;
   onSetBreakout: (
     id: MetricSourceId,
     dimension: ProjectionClause | undefined,
   ) => void;
+  onAddAdhoc?: (result: AdhocResult) => void;
+  databaseId?: DatabaseId | null;
 };
 
 export function MetricSearchInput({
@@ -61,6 +67,8 @@ export function MetricSearchInput({
   onRemoveMetric,
   onSwapMetric,
   onSetBreakout,
+  onAddAdhoc,
+  databaseId,
 }: MetricSearchInputProps) {
   // editText is the full expression as plain text — only meaningful while focused
   const [editText, setEditText] = useState("");
@@ -68,6 +76,7 @@ export function MetricSearchInput({
   const [currentWord, setCurrentWord] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
+  const [showSummarizeDialog, setShowSummarizeDialog] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const pendingFocusRef = useRef(false);
@@ -193,7 +202,7 @@ export function MetricSearchInput({
         );
         const metric = selectedMetricsRef.current[removeIdx];
         if (metric) {
-          onRemoveMetric(metric.id, metric.sourceType);
+          onRemoveMetric(metric);
         }
       }
 
@@ -328,13 +337,26 @@ export function MetricSearchInput({
         );
         const metric = selectedMetrics[removeIdx];
         if (metric) {
-          onRemoveMetric(metric.id, metric.sourceType);
+          onRemoveMetric(metric);
         }
       }
 
       onTokensChange(newTokens);
     },
     [tokens, selectedMetrics, onRemoveMetric, onTokensChange],
+  );
+
+  const handleSummarizeTable = useCallback(() => {
+    setIsOpen(false);
+    setShowSummarizeDialog(true);
+  }, []);
+
+  const handleAddAdhoc = useCallback(
+    (result: AdhocResult) => {
+      onAddAdhoc?.(result);
+      setShowSummarizeDialog(false);
+    },
+    [onAddAdhoc],
   );
 
   const handleContainerClick = useCallback(() => {
@@ -389,9 +411,11 @@ export function MetricSearchInput({
                       return null;
                     }
                     const sid =
-                      metric.sourceType === "metric"
-                        ? createMetricSourceId(metric.id)
-                        : createMeasureSourceId(metric.id);
+                      metric.sourceType === "adhoc" && metric.adhocUuid
+                        ? createAdhocSourceId(metric.adhocUuid)
+                        : metric.sourceType === "metric"
+                          ? createMetricSourceId(metric.id)
+                          : createMeasureSourceId(metric.id);
                     const entry = definitionsBySourceId.get(sid);
                     if (!entry) {
                       return null;
@@ -404,9 +428,7 @@ export function MetricSearchInput({
                         selectedMetricIds={selectedMetricIds}
                         selectedMeasureIds={selectedMeasureIds}
                         onSwap={onSwapMetric}
-                        onRemove={(_id, _sourceType) =>
-                          handleRemoveItem(itemIndex)
-                        }
+                        onRemove={() => handleRemoveItem(itemIndex)}
                         onSetBreakout={(dimension) =>
                           onSetBreakout(sid, dimension)
                         }
@@ -427,9 +449,12 @@ export function MetricSearchInput({
                     const expressionColor =
                       firstMetric !== undefined
                         ? metricColors[
-                            firstMetric.sourceType === "metric"
-                              ? createMetricSourceId(firstMetric.id)
-                              : createMeasureSourceId(firstMetric.id)
+                            firstMetric.sourceType === "adhoc" &&
+                            firstMetric.adhocUuid
+                              ? createAdhocSourceId(firstMetric.adhocUuid)
+                              : firstMetric.sourceType === "metric"
+                                ? createMetricSourceId(firstMetric.id)
+                                : createMeasureSourceId(firstMetric.id)
                           ]?.[0]
                         : undefined;
 
@@ -487,12 +512,23 @@ export function MetricSearchInput({
                   selectedMeasureIds={EMPTY_SET}
                   onSelect={handleSelect}
                   externalSearchText={currentWord}
+                  onSummarizeTable={
+                    onAddAdhoc ? handleSummarizeTable : undefined
+                  }
                 />
               )}
             </Popover.Dropdown>
           </Popover>
         )}
       </Flex>
+      {onAddAdhoc && (
+        <SummarizeTableDialog
+          opened={showSummarizeDialog}
+          onClose={() => setShowSummarizeDialog(false)}
+          onAdd={handleAddAdhoc}
+          databaseId={databaseId ?? null}
+        />
+      )}
     </Flex>
   );
 }
