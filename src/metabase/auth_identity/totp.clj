@@ -136,16 +136,16 @@
 (defn verify-recovery-code
   "Check if `code` matches any of the `hashed-codes`. Returns a map with:
    - `:valid?`    — whether the code matched
-   - `:remaining` — the hashed codes with the matched code removed (or unchanged if no match)"
+   - `:remaining` — the hashed codes with the matched code removed (or unchanged if no match)
+   Checks all codes to avoid timing side-channel that could reveal position."
   [^String code hashed-codes]
-  (loop [idx 0
-         remaining (transient [])]
-    (if (>= idx (count hashed-codes))
-      {:valid? false :remaining hashed-codes}
-      (if (u.password/bcrypt-verify code (nth hashed-codes idx))
-        {:valid?    true
-         :remaining (persistent! (reduce conj! remaining (subvec (vec hashed-codes) (inc idx))))}
-        (recur (inc idx) (conj! remaining (nth hashed-codes idx)))))))
+  (let [results (mapv (fn [hashed] (u.password/bcrypt-verify code hashed)) hashed-codes)
+        match-idx (first (keep-indexed (fn [i matched?] (when matched? i)) results))]
+    (if match-idx
+      {:valid?    true
+       :remaining (into (subvec (vec hashed-codes) 0 match-idx)
+                        (subvec (vec hashed-codes) (inc match-idx)))}
+      {:valid? false :remaining hashed-codes})))
 
 ;;; -------------------------------------------------- OTPAuth URI --------------------------------------------------
 
