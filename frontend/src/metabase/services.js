@@ -325,10 +325,10 @@ export const SessionApi = {
 };
 
 export const MfaApi = {
-  setup: POST("/api/account/mfa/setup"),
-  confirm: POST("/api/account/mfa/confirm"),
-  disable: POST("/api/account/mfa/disable"),
-  regenerateRecoveryCodes: POST("/api/account/mfa/recovery-codes"),
+  setup: POST("/api/mfa/setup"),
+  confirm: POST("/api/mfa/confirm"),
+  disable: POST("/api/mfa/disable"),
+  regenerateRecoveryCodes: POST("/api/mfa/recovery-codes"),
 };
 
 export const SettingsApi = {

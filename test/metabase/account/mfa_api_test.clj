@@ -1,5 +1,5 @@
 (ns metabase.account.mfa-api-test
-  "Tests for /api/account/mfa and /api/session MFA flow"
+  "Tests for /api/mfa and /api/session MFA flow"
   (:require
    [clojure.test :refer :all]
    [metabase.auth-identity.totp :as totp]
@@ -14,54 +14,54 @@
 ;;; -------------------------------------------------- MFA Setup Flow --------------------------------------------------
 
 (deftest mfa-setup-test
-  (testing "POST /api/account/mfa/setup returns secret, URI, and recovery codes"
-    (let [response (mt/user-http-request :rasta :post 200 "account/mfa/setup")]
+  (testing "POST /api/mfa/setup returns secret, URI, and recovery codes"
+    (let [response (mt/user-http-request :rasta :post 200 "mfa/setup")]
       (is (string? (:secret response)))
       (is (string? (:otpauth_uri response)))
       (is (= 10 (count (:recovery_codes response)))))))
 
 (deftest mfa-confirm-test
-  (testing "POST /api/account/mfa/confirm activates TOTP with a valid code"
+  (testing "POST /api/mfa/confirm activates TOTP with a valid code"
     (mt/with-temp-vals-in-db :model/User (mt/user->id :rasta) {:totp_enabled false
                                                                :totp_secret  nil
                                                                :totp_recovery_codes nil}
       ;; Step 1: Setup
-      (let [setup-response (mt/user-http-request :rasta :post 200 "account/mfa/setup")
+      (let [setup-response (mt/user-http-request :rasta :post 200 "mfa/setup")
             secret         (:secret setup-response)
             ;; Generate a valid TOTP code from the secret
             time-step      (quot (quot (System/currentTimeMillis) 1000) 30)
             valid-code     (totp/totp-code secret time-step)]
         ;; Step 2: Confirm
-        (let [confirm-response (mt/user-http-request :rasta :post 200 "account/mfa/confirm"
+        (let [confirm-response (mt/user-http-request :rasta :post 200 "mfa/confirm"
                                                      {:totp-code valid-code})]
           (is (= {:success true} confirm-response))
           ;; Verify it's actually enabled in the DB
           (is (true? (t2/select-one-fn :totp_enabled :model/User :id (mt/user->id :rasta)))))))))
 
 (deftest mfa-confirm-invalid-code-test
-  (testing "POST /api/account/mfa/confirm rejects an invalid code"
+  (testing "POST /api/mfa/confirm rejects an invalid code"
     (mt/with-temp-vals-in-db :model/User (mt/user->id :rasta) {:totp_enabled false
                                                                :totp_secret  nil
                                                                :totp_recovery_codes nil}
-      (mt/user-http-request :rasta :post 200 "account/mfa/setup")
+      (mt/user-http-request :rasta :post 200 "mfa/setup")
       (is (= 400
              (:status-code
-              (mt/user-http-request :rasta :post "account/mfa/confirm"
+              (mt/user-http-request :rasta :post "mfa/confirm"
                                     {:totp-code "000000"})))))))
 
 (deftest mfa-disable-test
-  (testing "POST /api/account/mfa/disable disables TOTP when given correct password"
+  (testing "POST /api/mfa/disable disables TOTP when given correct password"
     (mt/with-temp-vals-in-db :model/User (mt/user->id :rasta) {:totp_enabled false
                                                                :totp_secret  nil
                                                                :totp_recovery_codes nil}
       ;; Enable TOTP first
-      (let [setup-response (mt/user-http-request :rasta :post 200 "account/mfa/setup")
+      (let [setup-response (mt/user-http-request :rasta :post 200 "mfa/setup")
             secret         (:secret setup-response)
             time-step      (quot (quot (System/currentTimeMillis) 1000) 30)
             valid-code     (totp/totp-code secret time-step)]
-        (mt/user-http-request :rasta :post 200 "account/mfa/confirm" {:totp-code valid-code})
+        (mt/user-http-request :rasta :post 200 "mfa/confirm" {:totp-code valid-code})
         ;; Now disable
-        (mt/user-http-request :rasta :post 204 "account/mfa/disable"
+        (mt/user-http-request :rasta :post 204 "mfa/disable"
                               {:password "password"})
         (is (false? (t2/select-one-fn :totp_enabled :model/User :id (mt/user->id :rasta))))))))
 
@@ -73,11 +73,11 @@
                                                                :totp_secret  nil
                                                                :totp_recovery_codes nil}
       ;; Enable TOTP
-      (let [setup-response (mt/user-http-request :rasta :post 200 "account/mfa/setup")
+      (let [setup-response (mt/user-http-request :rasta :post 200 "mfa/setup")
             secret         (:secret setup-response)
             time-step      (quot (quot (System/currentTimeMillis) 1000) 30)
             valid-code     (totp/totp-code secret time-step)]
-        (mt/user-http-request :rasta :post 200 "account/mfa/confirm" {:totp-code valid-code})
+        (mt/user-http-request :rasta :post 200 "mfa/confirm" {:totp-code valid-code})
 
         ;; Login should now return mfa_required
         (let [login-response (mt/client :post 200 "session" (mt/user->credentials :rasta))]
@@ -104,12 +104,12 @@
                                                                :totp_secret  nil
                                                                :totp_recovery_codes nil}
       ;; Enable TOTP
-      (let [setup-response (mt/user-http-request :rasta :post 200 "account/mfa/setup")
+      (let [setup-response (mt/user-http-request :rasta :post 200 "mfa/setup")
             secret         (:secret setup-response)
             recovery-codes (:recovery_codes setup-response)
             time-step      (quot (quot (System/currentTimeMillis) 1000) 30)
             valid-code     (totp/totp-code secret time-step)]
-        (mt/user-http-request :rasta :post 200 "account/mfa/confirm" {:totp-code valid-code})
+        (mt/user-http-request :rasta :post 200 "mfa/confirm" {:totp-code valid-code})
 
         ;; Login
         (let [login-response (mt/client :post 200 "session" (mt/user->credentials :rasta))]
@@ -124,11 +124,11 @@
     (mt/with-temp-vals-in-db :model/User (mt/user->id :rasta) {:totp_enabled false
                                                                :totp_secret  nil
                                                                :totp_recovery_codes nil}
-      (let [setup-response (mt/user-http-request :rasta :post 200 "account/mfa/setup")
+      (let [setup-response (mt/user-http-request :rasta :post 200 "mfa/setup")
             secret         (:secret setup-response)
             time-step      (quot (quot (System/currentTimeMillis) 1000) 30)
             valid-code     (totp/totp-code secret time-step)]
-        (mt/user-http-request :rasta :post 200 "account/mfa/confirm" {:totp-code valid-code})
+        (mt/user-http-request :rasta :post 200 "mfa/confirm" {:totp-code valid-code})
         (let [login-response (mt/client :post 200 "session" (mt/user->credentials :rasta))]
           (mt/client :post 401 "session/mfa-verify"
                      {:mfa-token (:mfa_token login-response)

@@ -147,8 +147,7 @@
 
 ;;; ↓↓↓ KEEP THIS SORTED OR ELSE! ↓↓↓
 (def ^:private route-map
-  {"/account/mfa"          (+auth 'metabase.account.mfa-api)
-   "/action"               (+auth 'metabase.actions-rest.api)
+  {"/action"               (+auth 'metabase.actions-rest.api)
    "/activity"             (+auth 'metabase.activity-feed.api)
    "/alert"                (+auth metabase.pulse.api/alert-routes)
    "/analytics"            (+auth 'metabase.analytics.api)
@@ -182,6 +181,7 @@
    "/login-history"        (+auth 'metabase.login-history.api)
    "/measure"              (+auth 'metabase.measures.api)
    "/metric"               (+auth 'metabase.metrics.api)
+   "/mfa"                  (+auth 'metabase.account.mfa-api)
    "/model-index"          (+auth 'metabase.indexed-entities.api)
    "/native-query-snippet" (+auth 'metabase.native-query-snippets.api)
    "/notification"         metabase.notification.api/notification-routes
