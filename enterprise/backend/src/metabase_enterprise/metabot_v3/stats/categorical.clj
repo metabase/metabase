@@ -1,5 +1,5 @@
 (ns metabase-enterprise.metabot-v3.stats.categorical
-  "Categorical chart statistics computation."
+  "Categorical chart statistics."
   (:require
    [metabase-enterprise.metabot-v3.stats.outliers :as outliers]
    [metabase-enterprise.metabot-v3.stats.util :as stats.u]))
@@ -13,13 +13,13 @@
 
 (defn compute-series-stats
   "Compute categorical stats for a single series.
-   x-values = category names (strings), y-values = numeric values."
+  x-values are category names (strings), y-values are numeric values."
   [x-values y-values]
-  (let [pairs   (map vector x-values y-values)
-        valid   (filter (fn [[_ v]] (some? v)) pairs)
-        n       (count valid)
-        ys      (mapv second valid)
-        xs      (mapv first valid)]
+  (let [pairs (map vector x-values y-values)
+        valid (filter (fn [[_ v]] (some? v)) pairs)
+        n     (count valid)
+        ys    (mapv second valid)
+        xs    (mapv first valid)]
     (if (zero? n)
       {:summary        nil
        :category_count 0
@@ -30,22 +30,20 @@
                        (outliers/find-outliers ys (mapv str xs)))
             total    (reduce + 0.0 ys)
             sorted   (sort-by (fn [[_ v]] (- v)) valid)
-            make-cat (fn [[cat-name val]]
+            make-cat (fn [[cat-name value]]
                        {:name       (str cat-name)
-                        :value      val
-                        :percentage (if (pos? total) (* 100.0 (/ val total)) 0.0)})
-            top-cats (mapv make-cat (take top-n-categories sorted))
-            bot-cats (when (> (count sorted) many-categories-threshold)
+                        :value      value
+                        :percentage (if (pos? total) (* 100.0 (/ value total)) 0.0)})
+            bottom   (when (> (count sorted) many-categories-threshold)
                        (mapv make-cat (take-last bottom-n-categories sorted)))]
         (cond-> {:summary        summary
                  :category_count (count (distinct (remove nil? xs)))
-                 :top_categories top-cats
+                 :top_categories (mapv make-cat (take top-n-categories sorted))
                  :outliers       (or outliers [])}
-          bot-cats (assoc :bottom_categories bot-cats))))))
+          bottom (assoc :bottom_categories bottom))))))
 
 (defn compute-categorical-stats
-  "Compute categorical stats for all series in a chart.
-   series-data: map of series-name -> {:x_values [...] :y_values [...] :x {:name ...} :y {:name ...}}"
+  "Compute categorical stats for all series in a chart."
   [series-data opts]
   (let [series-stats (stats.u/compute-series-with-labels series-data compute-series-stats)
         correlations (stats.u/maybe-compute-correlations series-data opts)]
