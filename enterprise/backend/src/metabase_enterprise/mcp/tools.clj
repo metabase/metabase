@@ -1,12 +1,12 @@
 (ns metabase-enterprise.mcp.tools
-  "MCP tool dispatch. Loads tool definitions from tools-manifest.json and delegates
-   tool calls to existing agent API / metabot functions."
+  "MCP tool dispatch. Generates tool definitions from defendpoint metadata and delegates
+   tool calls to existing agent API endpoints."
   (:require
    [clojure.core.async :as a]
-   [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase-enterprise.agent-api.api :as agent-api]
    [metabase.api.common :as api]
+   [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
    [metabase.util :as u]
    [metabase.util.json :as json])
   (:import
@@ -16,7 +16,8 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private manifest
-  (delay (-> (io/resource "mcp/tools-manifest.json") slurp json/decode+kw)))
+  (delay (tools-manifest/generate-tools-manifest
+          {'metabase-enterprise.agent-api.api "/api/agent"})))
 
 (defn list-tools
   "Return the tool definitions suitable for MCP `tools/list` responses."
