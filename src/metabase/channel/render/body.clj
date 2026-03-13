@@ -595,23 +595,10 @@
                                (:visualization_settings card))
             dimension-col-name (get viz-settings :funnel.dimension)
             metric-col-name    (get viz-settings :funnel.metric)]
-        (cond
+        (if (and dimension-col-name metric-col-name)
           ;; Both dimension and metric specified: find by name regardless of position
-          (and dimension-col-name metric-col-name)
           (reorder-cols-for-funnel data dimension-col-name metric-col-name)
-
-          ;; Only dimension specified: find it by name, pick first metric-like column for the other
-          dimension-col-name
-          (let [dim-idx (first (keep-indexed (fn [i c] (when (= (:name c) dimension-col-name) i)) cols))
-                met-idx (when dim-idx
-                          (or (first (keep-indexed (fn [i c] (when (and (not= i dim-idx) (metric-col? c)) i)) cols))
-                              (first (keep-indexed (fn [i _] (when (not= i dim-idx) i)) cols))))]
-            (if (and dim-idx met-idx)
-              (reorder-cols-for-funnel data dimension-col-name (:name (nth cols met-idx)))
-              data))
-
           ;; Auto-detect: metric col should be second, non-metric col should be first
-          :else
           (let [[col1 col2] cols]
             (if (and (metric-col? col1) (not (metric-col? col2)))
               (swap-first-two-cols data)
