@@ -62,11 +62,13 @@
    :out (comp stringify-keys-and-values mi/json-out-without-keywordization)})
 
 (t2/deftransforms :model/User
-  {:login_attributes transform-attributes
-   :jwt_attributes   transform-attributes
-   :settings         mi/transform-encrypted-json
-   :sso_source       mi/transform-keyword
-   :type             mi/transform-keyword})
+  {:login_attributes    transform-attributes
+   :jwt_attributes      transform-attributes
+   :settings            mi/transform-encrypted-json
+   :totp_secret         mi/transform-encrypted-json
+   :totp_recovery_codes mi/transform-encrypted-json
+   :sso_source          mi/transform-keyword
+   :type                mi/transform-keyword})
 
 (def ^:private allowed-user-types
   #{:internal :personal :api-key})
@@ -347,7 +349,7 @@
 
 (def ^:private default-user-columns
   "Sequence of columns that are normally returned when fetching a User from the DB."
-  [:id :email :date_joined :first_name :last_name :last_login :is_superuser :is_data_analyst :is_qbnewb :tenant_id])
+  [:id :email :date_joined :first_name :last_name :last_login :is_superuser :is_data_analyst :is_qbnewb :tenant_id :totp_enabled])
 
 (def admin-or-self-visible-columns
   "Sequence of columns that we can/should return for admins fetching a list of all Users, or for the current user

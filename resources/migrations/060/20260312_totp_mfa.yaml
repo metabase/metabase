@@ -1,0 +1,41 @@
+## Add TOTP-based multi-factor authentication columns to core_user
+
+databaseChangeLog:
+  - logicalFilePath: migrations/060_update_migrations.yaml
+  - changeSet:
+      id: v60.2026-03-12T00:00:00
+      author: chris
+      comment: Add TOTP MFA columns to core_user
+      changes:
+        - addColumn:
+            tableName: core_user
+            columns:
+              - column:
+                  name: totp_secret
+                  type: ${text.type}
+                  remarks: Encrypted Base32-encoded TOTP shared secret
+                  constraints:
+                    nullable: true
+              - column:
+                  name: totp_enabled
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: Whether TOTP MFA is active for this user
+                  constraints:
+                    nullable: false
+              - column:
+                  name: totp_recovery_codes
+                  type: ${text.type}
+                  remarks: Encrypted JSON array of bcrypt-hashed recovery codes
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: core_user
+            columnName: totp_secret
+        - dropColumn:
+            tableName: core_user
+            columnName: totp_enabled
+        - dropColumn:
+            tableName: core_user
+            columnName: totp_recovery_codes
