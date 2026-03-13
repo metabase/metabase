@@ -5,14 +5,18 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [compojure.response :as compojure.response]
+   [metabase-enterprise.oauth-server.core :as oauth-server]
    [metabase.api.common :as api]
+   [metabase.api.macros.scope :as scope]
    [metabase.api.open-api :as open-api]
    [metabase.mcp.tools :as mcp.tools]
    [metabase.request.core :as request]
    [metabase.server.streaming-response :as streaming-response]
+   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [oidc-provider.protocol :as proto])
   (:import
    (java.io BufferedWriter OutputStreamWriter)
    (java.net URI)
@@ -40,13 +44,15 @@
                           m))))
 
 (defn- create-session!
-  [user-id]
-  (sweep-expired-sessions!)
-  (let [session-id (str (UUID/randomUUID))]
-    (swap! sessions assoc session-id {:timer        (u/start-timer)
-                                      :user-id      user-id
-                                      :initialized? false})
-    session-id))
+  ([user-id]
+   (create-session! user-id nil))
+  ([user-id token-scopes]
+   (sweep-expired-sessions!)
+   (let [session-id (str (UUID/randomUUID))]
+     (swap! sessions assoc session-id (cond-> {:timer (u/start-timer) :initialized? false}
+                                        user-id      (assoc :user-id user-id)
+                                        token-scopes (assoc :token-scopes token-scopes)))
+     session-id)))
 
 (defn- delete-session! [session-id]
   (swap! sessions dissoc session-id))
@@ -67,13 +73,35 @@
 (defn- mark-session-initialized! [session-id]
   (swap! sessions assoc-in [session-id :initialized?] true))
 
+(defn- session-token-scopes [session-id]
+  (get-in @sessions [session-id :token-scopes]))
+
+(defn- session-user-id [session-id]
+  (get-in @sessions [session-id :user-id]))
+
 ;;; -------------------------------------------------- Auth --------------------------------------------------------
 
-(defn- resolve-user-id
-  "Return the user ID for the current MCP request from the authenticated session
-   or API key. Returns nil when no authentication is present."
-  []
-  api/*current-user-id*)
+(defn- extract-bearer-token
+  "Extract the bearer token from the Authorization header."
+  [request]
+  (when-let [auth (get-in request [:headers "authorization"])]
+    (when (str/starts-with? (str/lower-case auth) "bearer ")
+      (str/trim (subs auth 7)))))
+
+(defn- validate-bearer-token
+  "Look up and validate an OAuth bearer token. Returns `{:user-id <int> :scopes <set>}` on success, nil on failure."
+  [token-string]
+  (when-let [provider (oauth-server/get-provider)]
+    (when-let [token-data (proto/get-access-token (:token-store provider) token-string)]
+      (let [expiry (:expiry token-data)]
+        (when (or (nil? expiry)
+                  (.isAfter (java.time.Instant/ofEpochSecond expiry) (java.time.Instant/now)))
+          (let [user-id (some-> (:user-id token-data) parse-long)
+                scopes  (when-let [scope-vec (:scope token-data)]
+                          (into #{} scope-vec))]
+            (when user-id
+              {:user-id user-id
+               :scopes  (or scopes #{})})))))))
 
 ;;; ------------------------------------------------- JSON-RPC 2.0 --------------------------------------------------
 
@@ -98,8 +126,8 @@
     :capabilities    {:tools {}}
     :serverInfo      server-info}))
 
-(defn- handle-tools-list [id _params]
-  (jsonrpc-response id {:tools (mcp.tools/list-tools)}))
+(defn- handle-tools-list [id _params token-scopes]
+  (jsonrpc-response id {:tools (mcp.tools/list-tools token-scopes)}))
 
 (defn- handle-tools-call [id params token-scopes]
   (let [tool-name (:name params)
@@ -125,7 +153,7 @@
     (try
       (case method
         "notifications/initialized" (do (mark-session-initialized! session-id) nil)
-        "tools/list"                (when-initialized id session-id (handle-tools-list id params))
+        "tools/list"                (when-initialized id session-id (handle-tools-list id params token-scopes))
         "tools/call"                (when-initialized id session-id (handle-tools-call id params token-scopes))
         "ping"                      (when-initialized id session-id (handle-ping id params))
         (if id
@@ -222,7 +250,7 @@
 
       ;; Initialize: create session and return response with session header
       (and (not batch?) (= "initialize" (:method body)))
-      (let [session-id    (create-session! user-id)
+      (let [session-id    (create-session! user-id (:token-scopes request))
             init-response (handle-initialize (:id body) (:params body))]
         (if (accepts-sse? request)
           (sse-response [init-response] {"Mcp-Session-Id" session-id})
@@ -286,28 +314,55 @@
 
 ;;; ---------------------------------------------------- Handler ---------------------------------------------------
 
+(defn- www-authenticate-discovery []
+  (str "Bearer realm=\"mcp\" resource_metadata=\"" (system/site-url) "/.well-known/oauth-protected-resource\""))
+
 (def ^{:arglists '([request respond raise])} handler
   "Ring async handler for the MCP endpoint.
    Uses JSON-RPC 2.0 over HTTP rather than REST, so the OpenAPI spec is empty."
   (open-api/handler-with-open-api-spec
    (fn [request respond raise]
-     (let [user-id      (resolve-user-id)
-           origin-error (validate-origin request)]
-       (cond
-         (nil? user-id)
-         (respond (json-response 401 (jsonrpc-error nil -32603 "Authentication required")))
+     (let [origin-error    (validate-origin request)
+           bearer-token    (extract-bearer-token request)
+           session-auth    api/*current-user-id*
+           mcp-session-id  (get-in request [:headers "mcp-session-id"])
+           ;; For non-initialize requests with a valid MCP session, inherit stored auth
+           stored-user-id  (when (and (not bearer-token) (not session-auth) mcp-session-id)
+                             (session-user-id mcp-session-id))
+           stored-scopes   (when stored-user-id
+                             (session-token-scopes mcp-session-id))]
+       (letfn [(dispatch [user-id token-scopes]
+                 (request/with-current-user user-id
+                   (try
+                     (let [request (assoc request :token-scopes token-scopes)]
+                       (case (:request-method request)
+                         :post   (respond (handle-post user-id request))
+                         :get    (handle-get user-id request respond raise)
+                         :delete (respond (handle-delete user-id request))
+                         (respond (json-response 405 (jsonrpc-error nil -32600 "Method not allowed")))))
+                     (catch Throwable e
+                       (raise e)))))]
+         (cond
+           (some? origin-error)
+           (respond origin-error)
 
-         (some? origin-error)
-         (respond origin-error)
+           ;; Session auth (browser/cookie) — unrestricted scopes
+           session-auth
+           (dispatch session-auth nil)
 
-         :else
-         (request/with-current-user user-id
-           (try
-             (case (:request-method request)
-               :post   (respond (handle-post user-id request))
-               :get    (handle-get user-id request respond raise)
-               :delete (respond (handle-delete user-id request))
-               (respond (json-response 405 (jsonrpc-error nil -32600 "Method not allowed"))))
-             (catch Throwable e
-               (raise e)))))))
+           ;; Bearer token auth — validate and extract scopes
+           bearer-token
+           (if-let [{:keys [user-id scopes]} (validate-bearer-token bearer-token)]
+             (dispatch user-id scopes)
+             (respond (json-response 401 (jsonrpc-error nil -32603 "Invalid bearer token")
+                                     {"WWW-Authenticate" "Bearer error=\"invalid_token\""})))
+
+           ;; Stored session auth (bearer token was sent on initialize)
+           stored-user-id
+           (dispatch stored-user-id (or stored-scopes #{}))
+
+           ;; No auth at all — return 401 with discovery
+           :else
+           (respond (json-response 401 (jsonrpc-error nil -32603 "Authentication required")
+                                   {"WWW-Authenticate" (www-authenticate-discovery)}))))))
    (constantly nil)))

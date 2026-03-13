@@ -177,7 +177,8 @@
         input-schema (merge-input-schemas defs form)
         resp-schema  (response-schema->json-schema defs (:response-schema form))
         annotations  (infer-annotations method (:annotations tool-md))
-        task-support (:task-support tool-md)]
+        task-support (:task-support tool-md)
+        scope        (get-in form [:metadata :scope])]
     (cond-> {:name        tool-name
              :description description
              :endpoint    {:method (u/upper-case-en (name method))
@@ -185,7 +186,8 @@
       input-schema      (assoc :inputSchema input-schema)
       resp-schema       (assoc :responseSchema resp-schema)
       (seq annotations) (assoc :annotations annotations)
-      task-support      (assoc :execution {:taskSupport (name task-support)}))))
+      task-support      (assoc :execution {:taskSupport (name task-support)})
+      (string? scope)   (assoc :scope scope))))
 
 (defn check-tool-uniqueness
   "Throws if `tools` contains duplicate `:name` values. The exception message lists each

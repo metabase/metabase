@@ -100,7 +100,30 @@
                                :required   [:name]}
               :annotations    {:readOnlyHint   true
                                :idempotentHint true}}
-             result)))))
+             result))))
+
+  (testing "Scope is included when metadata has :scope"
+    (let [defs   (atom (sorted-map))
+          form   {:method          :get
+                  :route           {:path "/v1/table/:id"}
+                  :params          {:route {:binding '{:keys [id]}
+                                            :schema  [:map [:id :int]]}}
+                  :docstr          "Get a table."
+                  :metadata        {:scope "agent:table:read"
+                                    :tool  {:name "get_table"}}
+                  :body            '(nil)}
+          result (tools-manifest/endpoint->tool-definition defs "/api/agent" {:form form})]
+      (is (= "agent:table:read" (:scope result)))))
+
+  (testing "Scope is omitted when metadata has no :scope"
+    (let [defs   (atom (sorted-map))
+          form   {:method          :get
+                  :route           {:path "/v1/test"}
+                  :docstr          "Test endpoint."
+                  :metadata        {:tool {:name "test_no_scope"}}
+                  :body            '(nil)}
+          result (tools-manifest/endpoint->tool-definition defs "/api/test" {:form form})]
+      (is (nil? (:scope result))))))
 
 ;; This test verifies the full pipeline with actual defendpoint endpoints.
 ;; It requires the agent API namespace to be loaded.

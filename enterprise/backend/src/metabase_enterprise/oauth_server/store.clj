@@ -60,11 +60,14 @@
 
 (defn- db-row->auth-code
   "Convert a DB row from :model/OAuthAuthorizationCode to the protocol's map shape.
-   Converts user-id to a string since the oidc-provider library expects string user IDs."
+   Converts user-id to a string since the oidc-provider library expects string user IDs.
+   Ensures :resource is a vector (JSON deserialization may return a list)."
   [row]
   (when row
-    (-> (select-and-kebab-keys row auth-code-db-columns)
-        (update :user-id #(some-> % str)))))
+    (let [m (-> (select-and-kebab-keys row auth-code-db-columns)
+                (update :user-id #(some-> % str)))]
+      (cond-> m
+        (:resource m) (update :resource vec)))))
 
 (def ^:private access-token-db-columns
   [:user_id :client_id :scope :expiry :resource])
@@ -73,8 +76,10 @@
   "Convert a DB row from :model/OAuthAccessToken to the protocol's map shape."
   [row]
   (when row
-    (-> (select-and-kebab-keys row access-token-db-columns)
-        (update :user-id #(some-> % str)))))
+    (let [m (-> (select-and-kebab-keys row access-token-db-columns)
+                (update :user-id #(some-> % str)))]
+      (cond-> m
+        (:resource m) (update :resource vec)))))
 
 (def ^:private refresh-token-db-columns
   [:user_id :client_id :scope :expiry :resource])
@@ -83,8 +88,10 @@
   "Convert a DB row from :model/OAuthRefreshToken to the protocol's map shape."
   [row]
   (when row
-    (-> (select-and-kebab-keys row refresh-token-db-columns)
-        (update :user-id #(some-> % str)))))
+    (let [m (-> (select-and-kebab-keys row refresh-token-db-columns)
+                (update :user-id #(some-> % str)))]
+      (cond-> m
+        (:resource m) (update :resource vec)))))
 
 ;;; ------------------------------------------------ ClientStore -------------------------------------------------------
 

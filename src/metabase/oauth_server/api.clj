@@ -8,10 +8,14 @@
   {:status 404 :body {:error "not_found"}})
 
 (def well-known-routes
-  "Ring handler for `/.well-known/` routes (top-level, per RFC 8414)."
-  (GET "/.well-known/openid-configuration" request
-    (or (oauth-server/openid-discovery-handler request)
-        not-found-response)))
+  "Ring handler for `/.well-known/` routes (top-level, per RFC 8414 and RFC 9728)."
+  (routes
+   (GET "/.well-known/openid-configuration" request
+     (or (oauth-server/openid-discovery-handler request)
+         not-found-response))
+   (GET "/.well-known/oauth-protected-resource" request
+     (or (oauth-server/protected-resource-metadata-handler request)
+         not-found-response))))
 
 (def oauth-routes
   "Ring handler for `/oauth/` routes."

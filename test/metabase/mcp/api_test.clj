@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.api.macros.scope :as scope]
    [metabase.mcp.api :as mcp.api]
    [metabase.mcp.tools :as mcp.tools]
    [metabase.test :as mt]
@@ -27,6 +28,25 @@
                                   :post "mcp"
                                   {:request-options {:headers extra-headers}}
                                   body))))
+
+(defn- mcp-request-unauthenticated
+  "Make an unauthenticated POST request to /api/mcp."
+  ([body]
+   (mcp-request-unauthenticated body {}))
+  ([body extra-headers]
+   (mt/with-additional-premium-features #{:agent-api}
+     (client/client-full-response :post 401 "mcp"
+                                  {:request-options {:headers extra-headers}}
+                                  body))))
+
+(defn- mcp-request-with-bearer
+  "Make a POST request to /api/mcp with a bearer token and optional extra headers."
+  [bearer-token expected-status body extra-headers]
+  (mt/with-additional-premium-features #{:agent-api}
+    (client/client-full-response :post expected-status "mcp"
+                                 {:request-options {:headers (merge {"authorization" (str "Bearer " bearer-token)}
+                                                                    extra-headers)}}
+                                 body)))
 
 (defn- mcp-delete
   "Make a DELETE request to /api/mcp with optional headers.
@@ -276,7 +296,7 @@
         (is (some? (get-in json-data [:result :protocolVersion])))))))
 
 (deftest get-without-session-test
-  (testing "GET without session returns 400"
+  (testing "GET without auth returns 401"
     (let [response (mt/with-additional-premium-features #{:agent-api}
                      (client/client-full-response (test.users/username->token :crowberto)
                                                   :get "mcp"))]
@@ -389,3 +409,46 @@
                    :data      {:cols sequential?
                                :rows (fn [rows] (= 5 (count rows)))}}
                   execute-data)))))))
+
+;;; --------------------------------------------- OAuth Bearer Auth -------------------------------------------------
+
+(deftest unauthenticated-returns-401-test
+  (testing "POST without any auth returns 401 with WWW-Authenticate discovery header"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (let [response (mcp-request-unauthenticated (jsonrpc-request "initialize"))]
+        (is (= 401 (:status response)))
+        (is (str/includes? (get-in response [:headers "WWW-Authenticate"])
+                           "oauth-protected-resource"))))))
+
+(deftest invalid-bearer-token-returns-401-test
+  (testing "POST with invalid bearer token returns 401 with invalid_token error"
+    (let [response (mcp-request-with-bearer "totally-bogus-token" 401
+                                            (jsonrpc-request "initialize")
+                                            {})]
+      (is (= 401 (:status response)))
+      (is (str/includes? (get-in response [:headers "WWW-Authenticate"])
+                         "invalid_token")))))
+
+;;; --------------------------------------------- Scope Filtering ---------------------------------------------------
+
+(deftest tools-list-scope-filtering-test
+  (testing "tools/list with unrestricted scopes returns all tools"
+    (let [tools (mcp.tools/list-tools #{::scope/unrestricted})]
+      (is (= 7 (count tools)))))
+
+  (testing "tools/list with specific scope only returns matching tools"
+    (let [tools (mcp.tools/list-tools #{"agent:search"})]
+      ;; Should include: search (matches scope) + get_field_values (no scope field)
+      (is (contains? (set (map :name tools)) "search"))
+      (is (contains? (set (map :name tools)) "get_field_values"))
+      ;; Should NOT include tools with other scopes
+      (is (not (contains? (set (map :name tools)) "get_table")))
+      (is (not (contains? (set (map :name tools)) "construct_query")))))
+
+  (testing "tools/list with wildcard scope matches all agent tools"
+    (let [tools (mcp.tools/list-tools #{"agent:*"})]
+      (is (= 7 (count tools)))))
+
+  (testing "tools/list with nil scopes returns all tools"
+    (let [tools (mcp.tools/list-tools nil)]
+      (is (= 7 (count tools))))))
