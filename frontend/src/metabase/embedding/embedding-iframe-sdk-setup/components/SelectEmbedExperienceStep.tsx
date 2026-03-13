@@ -16,7 +16,9 @@ export const SelectEmbedExperienceStep = () => {
     useSdkIframeEmbedSetupContext();
 
   const isGuestEmbed = !!settings.isGuest;
-  const isMetabotAvailable = useMetabotEnabledEmbeddingAware();
+  const isMetabotAvailable = useMetabotEnabledEmbeddingAware({
+    forceEmbedding: true,
+  });
 
   const handleEmbedExperienceChange = useHandleExperienceChange();
 

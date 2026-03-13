@@ -215,6 +215,7 @@
            settings
            task
            task-history
+           tracing
            util}}
 
   auth-identity
@@ -397,6 +398,7 @@
            request
            revisions
            settings
+           tracing
            transforms
            upload
            util}}
@@ -589,6 +591,7 @@
            settings
            sql-tools
            system
+           tracing
            util
            warehouse-schema
            warehouses}}
@@ -667,7 +670,8 @@
    :api  #{metabase.events.core
            metabase.events.init}
    :uses #{models
-           util}}
+           util}
+   :friends #{tracing}}
 
   formatter
   {:team "UX West"
@@ -749,6 +753,7 @@
            metabase.lib.schema.common
            metabase.lib.schema.expression
            metabase.lib.schema.expression.temporal
+           metabase.lib.schema.filter
            metabase.lib.schema.id
            metabase.lib.schema.info
            metabase.lib.schema.join
@@ -890,6 +895,7 @@
            system
            task
            task-history
+           tracing
            util}}
 
   models
@@ -963,6 +969,7 @@
            system
            task
            task-history
+           tracing
            users
            util}}
 
@@ -1006,6 +1013,7 @@
            premium-features
            remote-sync
            settings
+           tracing
            util
            enterprise/advanced-permissions}}
 
@@ -1051,6 +1059,7 @@
            settings
            startup
            task
+           tracing
            util}}
 
   product-feedback
@@ -1118,6 +1127,7 @@
            request
            task
            task-history
+           tracing
            util
            enterprise/advanced-permissions
            enterprise/sandbox}}
@@ -1261,6 +1271,7 @@
            server
            settings
            system
+           tracing
            users
            util}}
 
@@ -1342,6 +1353,7 @@
            settings
            startup
            task
+           tracing
            transforms
            util}}
 
@@ -1388,6 +1400,7 @@
            session
            settings
            system
+           tracing
            users
            util
            enterprise/sso}}
@@ -1409,6 +1422,7 @@
            sso
            system
            task
+           tracing
            util}}
 
   settings
@@ -1531,6 +1545,7 @@
            settings
            task
            task-history
+           tracing
            util
            warehouse-schema
            warehouses}}
@@ -1547,6 +1562,7 @@
            metabase.task.core}
    :uses #{app-db
            classloader
+           tracing
            util}}
 
   task-history
@@ -1563,6 +1579,7 @@
            query-processor
            request
            task
+           tracing
            util}}
 
   tenants
@@ -1610,6 +1627,15 @@
            models
            util}}
 
+  tracing
+  {:team "DevEx"
+   :api  #{metabase.tracing.core
+           metabase.tracing.init}
+   :uses #{events
+           settings
+           task
+           util}}
+
   transforms
   {:team "Querying"
    :api  #{metabase.transforms.core
@@ -1632,6 +1658,7 @@
            settings
            task
            task-history
+           tracing
            transforms-base
            util}
    :friends #{models
@@ -2193,6 +2220,7 @@
            request
            revisions
            settings
+           sql-tools
            task
            transforms
            transforms-base
@@ -2436,6 +2464,7 @@
            search
            settings
            task
+           tracing
            util
            enterprise/llm
            enterprise/metabot-v3}}
