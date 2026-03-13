@@ -3,7 +3,8 @@
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.agent.user-context :as user-context]
    [metabase-enterprise.metabot-v3.tools.entity-details :as entity-details]
-   [metabase-enterprise.metabot-v3.tools.llm-representations :as llm-rep]))
+   [metabase-enterprise.metabot-v3.tools.llm-representations :as llm-rep]
+   [metabase.test :as mt]))
 
 (deftest format-current-time-test
   (testing "formats time from context with timezone"
@@ -347,3 +348,34 @@
       (is (nil? (:sql_dialect result)))
       (is (= "" (:viewing_context result)))
       (is (= "" (:recent_views result))))))
+
+(deftest format-entity-fetches-details-from-db-test
+  (testing "question with only type+id fetches name and description from DB"
+    (mt/with-test-user :rasta
+      (mt/with-temp [:model/Card {card-id :id} {:name          "Retention Cohorts"
+                                                :description   "Shows retention by cohort"
+                                                :type          "question"
+                                                :database_id   (mt/id)
+                                                :dataset_query {:database (mt/id)
+                                                                :type     :query
+                                                                :query    {:source-table (mt/id :orders)}}}]
+        (let [result (user-context/format-viewing-context
+                      {:user_is_viewing [{:type "question" :id card-id}]})]
+          (is (re-find #"Retention Cohorts" result))
+          (is (re-find #"Shows retention by cohort" result))))))
+
+  (testing "dashboard with only type+id fetches name and description from DB"
+    (mt/with-test-user :rasta
+      (mt/with-temp [:model/Dashboard {dash-id :id} {:name        "Executive Dashboard"
+                                                     :description "Top-level KPIs"}]
+        (let [result (user-context/format-viewing-context
+                      {:user_is_viewing [{:type "dashboard" :id dash-id}]})]
+          (is (re-find #"Executive Dashboard" result))
+          (is (re-find #"Top-level KPIs" result))))))
+
+  (testing "table with only type+id fetches details including fields from DB"
+    (mt/with-test-user :rasta
+      (let [result (user-context/format-viewing-context
+                    {:user_is_viewing [{:type "table" :id (mt/id :orders)}]})]
+        (is (re-find #"(?i)orders" result))
+        (is (re-find #"(?i)field" result))))))
