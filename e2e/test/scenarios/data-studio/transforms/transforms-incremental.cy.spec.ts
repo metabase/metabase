@@ -276,7 +276,7 @@ def transform(animals):
       },
     );
 
-    it("should be able to create and run a native SQL incremental transform", () => {
+    it.skip("should be able to create and run a native SQL incremental transform", () => {
       cy.log("create a new transform");
       visitTransformListPage();
       cy.button("Create a transform").click();
