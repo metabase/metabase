@@ -212,7 +212,7 @@
             client-id (str (random-uuid))]
         (testing "save-refresh-token returns true"
           (is (true? (proto/save-refresh-token ts token user-id client-id
-                                               ["openid"] nil))))
+                                               ["openid"] nil nil))))
         (testing "get-refresh-token returns the saved token data"
           (let [fetched (proto/get-refresh-token ts token)]
             (is (= (str user-id) (:user-id fetched)))
@@ -229,7 +229,7 @@
             client-id    (str (random-uuid))
             expiry       (+ (System/currentTimeMillis) 3600000)]
         (proto/save-access-token ts access-tok user-id client-id ["openid"] expiry nil)
-        (proto/save-refresh-token ts refresh-tok user-id client-id ["openid"] nil)
+        (proto/save-refresh-token ts refresh-tok user-id client-id ["openid"] nil nil)
         (testing "revoke-token returns true"
           (is (true? (proto/revoke-token ts access-tok)))
           (is (true? (proto/revoke-token ts refresh-tok))))
