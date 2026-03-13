@@ -260,10 +260,10 @@
 (mu/defmethod parse-tag :table :- ReferencedTableQuery
   [{:keys [table-id source-filters]} :- ::mbql.s/TemplateTag _params]
   (when (seq source-filters)
-    (when-let [op (some #(when-not (mbql.s/allowed-source-filter-ops (:op %)) %) source-filters)]
+    (when-let [op (some #(when-not (lib.schema.template-tag/allowed-source-filter-ops (:op %)) %) source-filters)]
       (throw (ex-info (tru "Invalid source-filter operator: {0}. Allowed operators: {1}"
-                           (pr-str op) (pr-str mbql.s/allowed-source-filter-ops))
-                      {:op op :allowed-ops mbql.s/allowed-source-filter-ops}))))
+                           (pr-str op) (pr-str lib.schema.template-tag/allowed-source-filter-ops))
+                      {:op op :allowed-ops lib.schema.template-tag/allowed-source-filter-ops}))))
   (params/->ReferencedTableQuery table-id (not-empty source-filters)))
 
 (mu/defmethod parse-tag :snippet :- ReferencedQuerySnippet
