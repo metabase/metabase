@@ -6,7 +6,6 @@ import { hasFeature } from "metabase/admin/databases/utils";
 import {
   skipToken,
   useCreateTransformMutation,
-  useGetCardQuery,
   useGetDatabaseQuery,
   useListSyncableDatabaseSchemasQuery,
 } from "metabase/api";
@@ -28,7 +27,6 @@ import { Box, Button, Group, Input, Modal, Stack, Text } from "metabase/ui";
 import { useReplaceSourceWithTransformMutation } from "metabase-enterprise/api";
 import type {
   Card,
-  CardId,
   CreateTransformRequest,
   Database,
   ReplaceSourceWithTransformRequest,
@@ -47,13 +45,13 @@ const VALIDATION_SCHEMA = Yup.object({
 type ConvertToTransformValues = Yup.InferType<typeof VALIDATION_SCHEMA>;
 
 type ConvertToTransformModalProps = {
-  cardId: CardId;
+  card: Card;
   opened: boolean;
   onClose: () => void;
 };
 
 export function ConvertToTransformModal({
-  cardId,
+  card,
   opened,
   onClose,
 }: ConvertToTransformModalProps) {
@@ -64,27 +62,21 @@ export function ConvertToTransformModal({
       padding="xl"
       onClose={onClose}
     >
-      <ConvertToTransformLoader cardId={cardId} onClose={onClose} />
+      <ConvertToTransformLoader card={card} onClose={onClose} />
     </Modal>
   );
 }
 
 type ConvertToTransformLoaderProps = {
-  cardId: CardId;
+  card: Card;
   onClose: () => void;
 };
 
 function ConvertToTransformLoader({
-  cardId,
+  card,
   onClose,
 }: ConvertToTransformLoaderProps) {
-  const {
-    data: card,
-    isLoading: isCardLoading,
-    error: cardError,
-  } = useGetCardQuery({ id: cardId });
-
-  const databaseId = card?.database_id;
+  const databaseId = card.database_id;
 
   const {
     data: database,
@@ -98,10 +90,10 @@ function ConvertToTransformLoader({
     error: schemasError,
   } = useListSyncableDatabaseSchemasQuery(databaseId ?? skipToken);
 
-  const isLoading = isCardLoading || isDatabaseLoading || isSchemasLoading;
-  const error = cardError ?? databaseError ?? schemasError;
+  const isLoading = isDatabaseLoading || isSchemasLoading;
+  const error = databaseError ?? schemasError;
 
-  if (isLoading || error != null || card == null || database == null) {
+  if (isLoading || error != null || database == null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 

@@ -49,7 +49,7 @@ export const ModelSidebar = memo(function ModelSidebar({
           <Stack gap="lg">
             <SidebarHeader card={card} onClose={onClose} />
             <LocationSection card={card} />
-            <ActionSection cardId={cardId} />
+            <ActionSection card={card} />
             <InfoSection card={card} />
           </Stack>
         )}
