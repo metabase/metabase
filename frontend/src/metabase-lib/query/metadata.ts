@@ -179,7 +179,7 @@ declare function DisplayInfoFn(
 
 // x can be any sort of opaque object, e.g. a clause or metadata map. Values returned depend on what you pass in, but it
 // should always have display_name... see :metabase.lib.metadata.calculation/display-info schema
-export const displayInfo: typeof DisplayInfoFn = ML.display_info;
+export const displayInfo = ML.display_info as unknown as typeof DisplayInfoFn;
 
 export function groupColumns(columns: ColumnMetadata[]): ColumnGroup[] {
   const columnGroups = ML.group_columns(columns);
@@ -246,7 +246,7 @@ export function queryDisplayInfo(query: Query): QueryDisplayInfo {
    * The third parameter is what you would like to have the info about.
    * It just only happens that the thing we're examining is (again) the query itself.
    */
-  return ML.display_info(query, -1, query);
+  return ML.display_info(query, -1, query) as QueryDisplayInfo;
 }
 
 export function dependentMetadata(
@@ -254,14 +254,17 @@ export function dependentMetadata(
   cardId: CardId | undefined,
   cardType: CardType,
 ): DependentItem[] {
-  return ML.dependent_metadata(query, cardId, cardType);
+  return ML.dependent_metadata(query, cardId, cardType) as DependentItem[];
 }
 
 export function tableOrCardDependentMetadata(
   metadataProvider: MetadataProvider,
   tableId: TableId,
 ): DependentItem[] {
-  return ML.table_or_card_dependent_metadata(metadataProvider, tableId);
+  return ML.table_or_card_dependent_metadata(
+    metadataProvider,
+    tableId,
+  ) as DependentItem[];
 }
 
 export function columnKey(column: ColumnMetadata): string | null {

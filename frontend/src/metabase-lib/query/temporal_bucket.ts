@@ -91,5 +91,5 @@ export function formatRelativeDateRange({
 }
 
 export function availableTemporalUnits(): TemporalUnit[] {
-  return ML.available_temporal_units();
+  return ML.available_temporal_units() as TemporalUnit[];
 }

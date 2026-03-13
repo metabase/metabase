@@ -368,7 +368,7 @@ export const tabsReducer = createReducer<DashboardState>(
           };
 
           // We don't have card (question) data for virtual dashcards (text, heading, link, action)
-          if (isVirtualDashCard(sourceDashCard as StoreDashcard)) {
+          if (isVirtualDashCard(sourceDashCard as unknown as StoreDashcard)) {
             return;
           }
 

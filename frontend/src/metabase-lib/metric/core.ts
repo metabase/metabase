@@ -205,7 +205,7 @@ export function filter(
 }
 
 export function stringFilterClause(parts: StringFilterParts): FilterClause {
-  return LibMetric.stringFilterClause(parts) as FilterClause;
+  return LibMetric.stringFilterClause(parts) as unknown as FilterClause;
 }
 
 export function stringFilterParts(
@@ -219,7 +219,7 @@ export function stringFilterParts(
 }
 
 export function numberFilterClause(parts: NumberFilterParts): FilterClause {
-  return LibMetric.numberFilterClause(parts) as FilterClause;
+  return LibMetric.numberFilterClause(parts) as unknown as FilterClause;
 }
 
 export function numberFilterParts(
@@ -235,7 +235,7 @@ export function numberFilterParts(
 export function coordinateFilterClause(
   parts: CoordinateFilterParts,
 ): FilterClause {
-  return LibMetric.coordinateFilterClause(parts) as FilterClause;
+  return LibMetric.coordinateFilterClause(parts) as unknown as FilterClause;
 }
 
 export function coordinateFilterParts(
@@ -249,7 +249,7 @@ export function coordinateFilterParts(
 }
 
 export function booleanFilterClause(parts: BooleanFilterParts): FilterClause {
-  return LibMetric.booleanFilterClause(parts) as FilterClause;
+  return LibMetric.booleanFilterClause(parts) as unknown as FilterClause;
 }
 
 export function booleanFilterParts(
@@ -265,7 +265,7 @@ export function booleanFilterParts(
 export function specificDateFilterClause(
   parts: SpecificDateFilterParts,
 ): FilterClause {
-  return LibMetric.specificDateFilterClause(parts) as FilterClause;
+  return LibMetric.specificDateFilterClause(parts) as unknown as FilterClause;
 }
 
 export function specificDateFilterParts(
@@ -281,7 +281,7 @@ export function specificDateFilterParts(
 export function relativeDateFilterClause(
   parts: RelativeDateFilterParts,
 ): FilterClause {
-  return LibMetric.relativeDateFilterClause(parts) as FilterClause;
+  return LibMetric.relativeDateFilterClause(parts) as unknown as FilterClause;
 }
 
 export function relativeDateFilterParts(
@@ -297,7 +297,7 @@ export function relativeDateFilterParts(
 export function excludeDateFilterClause(
   parts: ExcludeDateFilterParts,
 ): FilterClause {
-  return LibMetric.excludeDateFilterClause(parts) as FilterClause;
+  return LibMetric.excludeDateFilterClause(parts) as unknown as FilterClause;
 }
 
 export function excludeDateFilterParts(
@@ -314,14 +314,16 @@ export function timeFilterClause(parts: TimeFilterParts): FilterClause {
   return LibMetric.timeFilterClause({
     ...parts,
     values: parts.values.map((value) => dayjs(value)),
-  }) as FilterClause;
+  }) as unknown as FilterClause;
 }
 
 export function timeFilterParts(
   definition: MetricDefinition,
   filterClause: FilterClause,
 ): TimeFilterParts | null {
-  const filterParts = LibMetric.timeFilterParts(definition, filterClause);
+  const filterParts = LibMetric.timeFilterParts(definition, filterClause) as
+    | (TimeFilterParts & { values: Dayjs[] })
+    | null;
   if (!filterParts) {
     return null;
   }
@@ -332,7 +334,7 @@ export function timeFilterParts(
 }
 
 export function defaultFilterClause(parts: DefaultFilterParts): FilterClause {
-  return LibMetric.defaultFilterClause(parts) as FilterClause;
+  return LibMetric.defaultFilterClause(parts) as unknown as FilterClause;
 }
 
 export function defaultFilterParts(
@@ -501,7 +503,10 @@ export function withTemporalBucket(
   projection: Clause | DimensionMetadata,
   bucket: TemporalBucket | null,
 ): ProjectionClause {
-  return LibMetric.withTemporalBucket(projection, bucket) as ProjectionClause;
+  return LibMetric.withTemporalBucket(
+    projection as unknown as ProjectionClause,
+    bucket,
+  ) as ProjectionClause;
 }
 
 export function withDefaultTemporalBucket(
@@ -553,7 +558,10 @@ export function withBinning(
   projection: Clause | DimensionMetadata,
   binningStrategy: BinningStrategy | null,
 ): ProjectionClause {
-  return LibMetric.withBinning(projection, binningStrategy) as ProjectionClause;
+  return LibMetric.withBinning(
+    projection as unknown as ProjectionClause,
+    binningStrategy,
+  ) as ProjectionClause;
 }
 
 export function withDefaultBinning(

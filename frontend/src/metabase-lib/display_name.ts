@@ -9,5 +9,8 @@ export function parseColumnDisplayNameParts(
   displayName: string,
   locale: string,
 ): DisplayNamePart[] {
-  return ML.parse_column_display_name_parts(displayName, locale);
+  return ML.parse_column_display_name_parts(
+    displayName,
+    locale,
+  ) as DisplayNamePart[];
 }

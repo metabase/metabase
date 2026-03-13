@@ -1,5 +1,6 @@
 import type {
   Metabase_LibMetric_Ast_Schema_FilterNode,
+  Metabase_LibMetric_Schema_Binning,
   Metabase_LibMetric_Schema_DimensionReference,
   Metabase_LibMetric_Schema_MetadataDimension,
   Metabase_LibMetric_Schema_MetricDefinition,
@@ -8,7 +9,6 @@ import type {
   Metabase_Lib_Schema_Metadata_Metric,
   Metabase_Lib_Schema_TemporalBucketing_Option,
 } from "cljs/metabase.lib.shared";
-import type { Metabase_LibMetric_Schema_Binning } from "cljs/metabase.lib_metric.projection";
 import type { DimensionId, TemporalUnit } from "metabase-types/api";
 
 import type {

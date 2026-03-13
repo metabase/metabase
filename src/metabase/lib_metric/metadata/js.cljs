@@ -9,7 +9,9 @@
    [metabase.lib-metric.dimension :as lib-metric.dimension]
    [metabase.lib-metric.metadata.provider :as provider]
    [metabase.lib.js.metadata :as js-metadata]
-   [metabase.util :as u]))
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.util :as u]
+   [metabase.util.malli :as mu]))
 
 (defn- object-get [obj k]
   (when (and obj (js-in k obj))
@@ -155,7 +157,7 @@
     table-id    (filter #(= table-id (get-in % [:dimension-mapping :table-id])))
     true        vec))
 
-(defn metadata-provider
+(mu/defn metadata-provider :- ::lib.schema.metadata/metadata-providerable
   "Create a MetricMetadataProvider from JS/Redux data.
 
    Arguments:

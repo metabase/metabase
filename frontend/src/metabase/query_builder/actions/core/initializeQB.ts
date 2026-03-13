@@ -23,7 +23,7 @@ import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { updateCardTemplateTagNames } from "metabase-lib/v1/queries/NativeQuery";
 import { cardIsEquivalent } from "metabase-lib/v1/queries/utils/card";
 import { normalize } from "metabase-lib/v1/queries/utils/normalize";
-import type { Card, SegmentId } from "metabase-types/api";
+import type { Card, DatasetQuery, SegmentId } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
 import { isSavedCard } from "metabase-types/guards";
 import type {
@@ -129,7 +129,9 @@ export function deserializeCard(serializedCard: string) {
   const card = deserializeCardFromUrl(serializedCard);
   if (card.dataset_query.database != null) {
     // Ensure older MBQL is supported
-    card.dataset_query = normalize(card.dataset_query);
+    card.dataset_query = normalize(
+      card.dataset_query,
+    ) as unknown as DatasetQuery;
   }
   return card;
 }
