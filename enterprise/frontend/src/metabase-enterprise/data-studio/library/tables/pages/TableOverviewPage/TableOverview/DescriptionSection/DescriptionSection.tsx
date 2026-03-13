@@ -307,7 +307,10 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
               </Text>
 
               {dependentsCount > 0 ? (
-                <Link to={Urls.dataStudioTableDependencies(table.id)}>
+                <Link
+                  to={Urls.dataStudioTableDependencies(table.id)}
+                  className={S.metricLink}
+                >
                   <Text size="xl" fw={600}>
                     {dependentsCount}
                   </Text>

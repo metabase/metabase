@@ -16,6 +16,8 @@ import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Box, Card, Flex, Group, Icon, Stack, Text, rem } from "metabase/ui";
 import type { Card as CardApiType, CardType } from "metabase-types/api";
 
+import S from "./DescriptionSection.module.css";
+
 type DescriptionSectionProps = {
   card: CardApiType;
 };
@@ -76,7 +78,7 @@ export function DescriptionSection({ card }: DescriptionSectionProps) {
       <Card mx="lg" bg="background-secondary" shadow="none" radius="1rem">
         <Card.Section withBorder p="md">
           <Group gap="sm" mb={4}>
-            <Icon name="refresh" c="brand" />
+            <Icon name="pencil" c="brand" />
             <Text size="md" fw={600} lh="1rem">
               <DateTime value={card.updated_at} />
             </Text>
@@ -129,7 +131,10 @@ export function DescriptionSection({ card }: DescriptionSectionProps) {
                 {t`Dependencies`}
               </Text>
               {dependenciesCount > 0 ? (
-                <Link to={Urls.dataStudioMetricDependencies(card.id)}>
+                <Link
+                  to={Urls.dataStudioMetricDependencies(card.id)}
+                  className={S.metricLink}
+                >
                   <Text size="xl" fw={600}>
                     {dependenciesCount}
                   </Text>
@@ -148,7 +153,10 @@ export function DescriptionSection({ card }: DescriptionSectionProps) {
               </Text>
 
               {dependentsCount > 0 ? (
-                <Link to={Urls.dataStudioMetricDependencies(card.id)}>
+                <Link
+                  to={Urls.dataStudioMetricDependencies(card.id)}
+                  className={S.metricLink}
+                >
                   <Text size="xl" fw={600}>
                     {dependentsCount}
                   </Text>

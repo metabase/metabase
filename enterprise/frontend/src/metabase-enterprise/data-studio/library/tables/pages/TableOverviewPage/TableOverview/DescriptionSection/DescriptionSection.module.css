@@ -1,15 +1,3 @@
-.contentSectionGridContainer {
-  display: grid;
-  grid-template-columns: auto minmax(min-content, 20rem);
-  grid-template-rows: 1fr;
-  gap: 1rem;
-  align-items: center;
-}
-
-.attributesCard {
-  background-color: var(--mb-color-background-primary);
-}
-
 .gridLabelInput {
   .label {
     font-weight: normal;
@@ -34,10 +22,6 @@
       color: var(--mb-color-brand);
     }
   }
-}
-
-.inputActiveIcon {
-  color: var(--mb-color-brand);
 }
 
 .textStyleWrapper {
@@ -73,5 +57,11 @@
   svg {
     width: 0.75rem !important;
     height: 0.75rem !important;
+  }
+}
+
+.metricLink {
+  :hover {
+    color: var(--mb-color-brand);
   }
 }
