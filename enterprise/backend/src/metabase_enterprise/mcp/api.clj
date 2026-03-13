@@ -165,11 +165,14 @@
 
 (defn- sse-response
   "Return a plain Ring response with SSE-formatted body for POST requests."
-  [messages]
-  {:status  200
-   :headers {"Content-Type"  "text/event-stream"
-             "Cache-Control" "no-cache"}
-   :body    (sse-body messages)})
+  ([messages]
+   (sse-response messages nil))
+  ([messages extra-headers]
+   {:status  200
+    :headers (merge {"Content-Type"  "text/event-stream"
+                     "Cache-Control" "no-cache"}
+                    extra-headers)
+    :body    (sse-body messages)}))
 
 (defn- handle-post
   "Handle a POST request containing one or more JSON-RPC messages."
@@ -194,9 +197,11 @@
 
       ;; Initialize: create session and return response with session header
       (and (not batch?) (= "initialize" (:method body)))
-      (let [session-id (create-session!)]
-        (json-response 200 (handle-initialize (:id body) (:params body))
-                       {"Mcp-Session-Id" session-id}))
+      (let [session-id    (create-session!)
+            init-response (handle-initialize (:id body) (:params body))]
+        (if (accepts-sse? request)
+          (sse-response [init-response] {"Mcp-Session-Id" session-id})
+          (json-response 200 init-response {"Mcp-Session-Id" session-id})))
 
       ;; All other requests require a valid session
       (not (valid-session? session-id))
