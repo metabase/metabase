@@ -2,9 +2,9 @@ import type { Row } from "@tanstack/react-table";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import { ListEmptyState } from "metabase/transforms/components/ListEmptyState";
 import {
   Card as MantineCard,
-  Text,
   TreeTable,
   TreeTableSkeleton,
   useTreeTableInstance,
@@ -51,11 +51,7 @@ export function ModelTable({
       ) : (
         <TreeTable
           instance={treeTableInstance}
-          emptyState={
-            <Text p="lg" ta="center" c="text-secondary">
-              {t`No persisted models found`}
-            </Text>
-          }
+          emptyState={<ListEmptyState label={t`No persisted models found`} />}
           onRowClick={handleRowActivate}
         />
       )}

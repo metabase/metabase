@@ -2363,6 +2363,7 @@
            events
            lib
            lib-be
+           model-persistence
            models
            queries
            source-swap

@@ -114,7 +114,7 @@ function ConvertToTransformForm({
 
     if (values.replaceSource) {
       await replaceSourceWithTransform(
-        getReplaceSourceRequest(card, transform),
+        getReplaceSourceRequest(card, transform, values),
       ).unwrap();
     }
 
@@ -207,10 +207,12 @@ function getCreateTransformRequest(
 function getReplaceSourceRequest(
   card: Card,
   transform: Transform,
+  values: ConvertToTransformValues,
 ): ReplaceSourceWithTransformRequest {
   return {
     source_entity_id: card.id,
     source_entity_type: "card",
     transform_id: transform.id,
+    unpersist_model: values.unpersistModel,
   };
 }

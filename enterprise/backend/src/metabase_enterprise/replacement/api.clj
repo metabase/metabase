@@ -96,7 +96,7 @@
    Returns 409 if another replacement or conversion is already running."
   [_route-params
    _query-params
-   {:keys [source_entity_id source_entity_type transform_id]}
+   {:keys [source_entity_id source_entity_type transform_id unpersist_model]}
    :- ::replacement.schema/replace-source-with-transform-request]
   (api/check-superuser)
   (api/check-404 (t2/select-one :model/Transform :id transform_id))
@@ -108,7 +108,8 @@
         work-fn  (fn [progress]
                    (convert/replace-source-with-transform!
                     source_entity_type source_entity_id transform_id
-                    (:id job-row) progress))]
+                    (:id job-row) progress
+                    {:unpersist-model? unpersist_model}))]
     (replacement.execute/execute-async! work-fn progress)
     (-> (response/response {:run_id (:id job-row)})
         (assoc :status 202))))

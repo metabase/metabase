@@ -1,10 +1,10 @@
 import { useDisclosure, useElementSize } from "@mantine/hooks";
 import cx from "classnames";
-import { useState } from "react";
+import { useLayoutEffect, useState } from "react";
 
 import { useListCardsQuery } from "metabase/api";
 import { Flex, Stack } from "metabase/ui";
-import type { Card } from "metabase-types/api";
+import type { CardId } from "metabase-types/api";
 
 import S from "./MigratePersistedModelsPage.module.css";
 import { ModelSidebar } from "./ModelSidebar";
@@ -15,11 +15,22 @@ export function MigratePersistedModelsPage() {
   const { ref: containerRef, width: containerWidth } = useElementSize();
   const [isResizing, { open: startResizing, close: stopResizing }] =
     useDisclosure();
-  const [selectedCard, setSelectedCard] = useState<Card>();
+  const [selectedCardId, setSelectedCardId] = useState<CardId>();
 
   const { data: cards = [], isLoading } = useListCardsQuery({
     f: "persisted",
   });
+
+  const selectedCard =
+    selectedCardId != null
+      ? cards.find((card) => card.id === selectedCardId)
+      : undefined;
+
+  useLayoutEffect(() => {
+    if (selectedCardId != null && selectedCard == null) {
+      setSelectedCardId(undefined);
+    }
+  }, [selectedCardId, selectedCard]);
 
   return (
     <Flex
@@ -33,7 +44,7 @@ export function MigratePersistedModelsPage() {
         <ModelTable
           cards={cards}
           isLoading={isLoading}
-          onSelect={setSelectedCard}
+          onSelect={(card) => setSelectedCardId(card.id)}
         />
       </Stack>
       {selectedCard != null && (
@@ -42,7 +53,7 @@ export function MigratePersistedModelsPage() {
           containerWidth={containerWidth}
           onResizeStart={startResizing}
           onResizeStop={stopResizing}
-          onClose={() => setSelectedCard(undefined)}
+          onClose={() => setSelectedCardId(undefined)}
         />
       )}
     </Flex>

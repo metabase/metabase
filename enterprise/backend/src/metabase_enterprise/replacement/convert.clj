@@ -7,6 +7,7 @@
    [metabase-enterprise.replacement.models.replacement-run :as replacement-run]
    [metabase-enterprise.replacement.protocols :as replacement.protocols]
    [metabase-enterprise.replacement.runner :as replacement.runner]
+   [metabase.model-persistence.models.persisted-info :as persisted-info]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms.core :as transforms]
    [toucan2.core :as t2]))
@@ -27,8 +28,13 @@
    execution/sync, then tracks 0→1 during source replacement.
 
    Note: DB-polling cancellation differs from the transforms system's core.async
-   cancellation, so a cancelled run may produce a \"failed\" transform_run."
-  [source-type source-id transform-id run-id progress]
+   cancellation, so a cancelled run may produce a \"failed\" transform_run.
+
+   Options:
+   - `:unpersist-model?` — when true and source is a card, unpersist the model after
+     replacement (default false)."
+  [source-type source-id transform-id run-id progress
+   {:keys [unpersist-model?] :or {unpersist-model? false}}]
   (let [transform (t2/select-one :model/Transform :id transform-id)
         _         (when-not transform
                     (throw (ex-info "Transform not found" {:transform-id transform-id})))
@@ -55,4 +61,9 @@
         _            (check-canceled! progress)]
 
     ;; --- Phase 3: Replace all usages (0 → 1) ---
-    (replacement.runner/run-swap [source-type source-id] [:table (:id table)] progress)))
+    (replacement.runner/run-swap [source-type source-id] [:table (:id table)] progress)
+
+    ;; --- Phase 4: Unpersist model ---
+    (when unpersist-model?
+      (when-let [persisted-info (t2/select-one :model/PersistedInfo :card_id source-id)]
+        (persisted-info/mark-for-pruning! {:id (:id persisted-info)} "off")))))
