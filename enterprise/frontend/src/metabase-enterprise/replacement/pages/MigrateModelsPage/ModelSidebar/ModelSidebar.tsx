@@ -7,6 +7,7 @@ import { SidebarResizableBox } from "metabase-enterprise/dependencies/components
 import type { CardId } from "metabase-types/api";
 
 import { ActionSection } from "./ActionSection";
+import { DependentsSection } from "./DependentsSection";
 import { InfoSection } from "./InfoSection";
 import { LocationSection } from "./LocationSection";
 import S from "./ModelSidebar.module.css";
@@ -46,11 +47,14 @@ export const ModelSidebar = memo(function ModelSidebar({
             <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />
           </Center>
         ) : (
-          <Stack gap="lg">
-            <SidebarHeader card={card} onClose={onClose} />
-            <LocationSection card={card} />
-            <ActionSection card={card} />
-            <InfoSection card={card} />
+          <Stack gap="xl">
+            <Stack gap="lg">
+              <SidebarHeader card={card} onClose={onClose} />
+              <LocationSection card={card} />
+              <ActionSection card={card} />
+              <InfoSection card={card} />
+            </Stack>
+            <DependentsSection cardId={cardId} />
           </Stack>
         )}
       </Box>
