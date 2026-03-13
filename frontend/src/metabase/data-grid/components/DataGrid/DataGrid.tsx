@@ -171,11 +171,11 @@ export const DataGrid = function DataGrid<TData>({
   const renderGridPanels = ({
     pinnedContent,
     centerContent,
-    height,
+    minHeight,
   }: {
     pinnedContent: React.ReactNode;
     centerContent: React.ReactNode;
-    height?: string;
+    minHeight?: string;
   }) => (
     <>
       {pinnedColumns.length > 0 && (
@@ -185,7 +185,7 @@ export const DataGrid = function DataGrid<TData>({
           })}
           style={{
             width: pinnedPanelWidth,
-            height,
+            minHeight,
             backgroundColor: stickyElementsBackgroundColor,
           }}
         >
@@ -195,7 +195,7 @@ export const DataGrid = function DataGrid<TData>({
       <div
         className={S.centerColumnsSection}
         style={{
-          height,
+          minHeight,
           width: `${columnVirtualizer.getTotalSize()}px`,
           backgroundColor,
           ...({
@@ -303,7 +303,7 @@ export const DataGrid = function DataGrid<TData>({
                     centerContent: centerRows.map((row, index) =>
                       renderRow(row, centerColumns, `center-${index}`),
                     ),
-                    height: `${totalHeight}px`,
+                    minHeight: `${totalHeight}px`,
                   })}
                 </div>
               </div>
