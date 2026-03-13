@@ -27,18 +27,18 @@
       (#'mdb.setup/verify-db-connection :h2 (mdb.data-source/raw-connection-string->DataSource
                                              (format "jdbc:h2:mem:%s" (mt/random-name)))))))
 
-(deftest supported-app-db-version?-test
-  (testing "Should be able to check if an app DB is a supported version"
-    (letfn [(test-supported-versions [db expected-min-version]
-              (doseq [diff [nil {:major 1} {:minor 1} {:patch 1}]]
-                (is (true? (#'mdb.setup/supported-app-db-version? db (merge-with + expected-min-version diff)))))
-              (doseq [diff [{:major -1} {:minor -1} {:patch -1}]]
-                (is (false? (#'mdb.setup/supported-app-db-version? db (merge-with + expected-min-version diff))))))]
+#_(deftest supported-app-db-version?-test
+    (testing "Should be able to check if an app DB is a supported version"
+      (letfn [(test-supported-versions [db expected-min-version]
+                (doseq [diff [nil {:major 1} {:minor 1} {:patch 1}]]
+                  (is (true? (#'mdb.setup/supported-app-db-version? db (merge-with + expected-min-version diff)))))
+                (doseq [diff [{:major -1} {:minor -1} {:patch -1}]]
+                  (is (false? (#'mdb.setup/supported-app-db-version? db (merge-with + expected-min-version diff))))))]
 
-      (test-supported-versions :h2 {:major 2 :minor 1 :patch 214})
-      (test-supported-versions :postgres {:major 14 :minor 0 :patch 0})
-      (test-supported-versions :mysql {:major 8 :minor 4 :patch 0})
-      (test-supported-versions :mariadb {:major 10 :minor 6 :patch 0}))))
+        (test-supported-versions :h2 {:major 2 :minor 1 :patch 214})
+        (test-supported-versions :postgres {:major 14 :minor 0 :patch 0})
+        (test-supported-versions :mysql {:major 8 :minor 4 :patch 0})
+        (test-supported-versions :mariadb {:major 10 :minor 6 :patch 0}))))
 
 (deftest parse-db-version-test
   (testing "Can parse H2 version strings"

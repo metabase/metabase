@@ -152,12 +152,12 @@
    {:major (.getDatabaseMajorVersion metadata)
     :minor (.getDatabaseMinorVersion metadata)}))
 
-(defn- supported-app-db-version?
-  [db-type {:keys [major minor patch]}]
-  (let [required-version (get supported-db-versions db-type)]
-    (and required-version
-         (not (pos? (compare ((juxt :major :minor :patch) required-version)
-                             [major minor patch]))))))
+#_(defn- supported-app-db-version?
+    [db-type {:keys [major minor patch]}]
+    (let [required-version (get supported-db-versions db-type)]
+      (and required-version
+           (not (pos? (compare ((juxt :major :minor :patch) required-version)
+                               [major minor patch]))))))
 
 (mu/defn- verify-db-connection
   "Test connection to application database with `data-source` and throw an exception if we have any troubles
