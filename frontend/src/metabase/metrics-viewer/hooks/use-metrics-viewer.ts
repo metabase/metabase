@@ -22,7 +22,7 @@ import {
   buildBinnedBreakoutDefinition,
   getDefinitionName,
 } from "../utils/definition-builder";
-import { applyDimensionFilter } from "../utils/dimension-filters";
+import { buildDimensionFilterClause } from "../utils/dimension-filters";
 import {
   findBinningStrategy,
   findDimensionById,
@@ -140,7 +140,8 @@ function buildUrlRestoreTransform(
       for (const filter of filters) {
         const dimension = findFilterDimensionById(result, filter.dimensionId);
         if (dimension) {
-          result = applyDimensionFilter(result, dimension, filter.value);
+          const clause = buildDimensionFilterClause(dimension, filter.value);
+          result = LibMetric.filter(result, clause);
         }
       }
     }
