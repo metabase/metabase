@@ -39,31 +39,29 @@ describe("DashboardSettingsSidebar > premium enterprise", () => {
   });
 
   it("should render caching section when can_set_cache_policy is true but can_write is false", async () => {
-    await setup({
-      dashboard: createMockDashboard({
-        can_write: false,
-        can_set_cache_policy: true,
-      }),
-      settings: createMockSettings({
-        "token-features": createMockTokenFeatures(tokenFeatures),
-      }),
-      enterprisePlugins: ["audit_app", "caching"],
-    });
+    await setupEnterprise(
+      {
+        dashboard: createMockDashboard({
+          can_write: false,
+          can_set_cache_policy: true,
+        }),
+      },
+      tokenFeatures,
+    );
 
     expect(await screen.findByText("Caching")).toBeInTheDocument();
   });
 
   it("should not render caching section when can_set_cache_policy is false", async () => {
-    await setup({
-      dashboard: createMockDashboard({
-        can_write: true,
-        can_set_cache_policy: false,
-      }),
-      settings: createMockSettings({
-        "token-features": createMockTokenFeatures(tokenFeatures),
-      }),
-      enterprisePlugins: ["audit_app", "caching"],
-    });
+    await setupEnterprise(
+      {
+        dashboard: createMockDashboard({
+          can_write: true,
+          can_set_cache_policy: false,
+        }),
+      },
+      tokenFeatures,
+    );
 
     expect(screen.queryByText("Caching")).not.toBeInTheDocument();
   });
