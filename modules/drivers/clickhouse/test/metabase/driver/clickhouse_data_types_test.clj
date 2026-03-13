@@ -246,18 +246,16 @@
           result (ctd/rows-without-index query-result)]
       (is (= [["[12345123.123456789, 78.245000000]"], ["[]"]] result)))))
 
-;; TODO: Re-enable these tests once the JDBC driver issue mentioned in
-;; https://github.com/ClickHouse/metabase-clickhouse-driver/pull/305 has been fixed
 (mt/defdataset metabase_test
-  [#_["arrays_inner_types"
-      [{:field-name "arr_str",  :base-type {:native "Array(String)"}}
-       {:field-name "arr_nstr", :base-type {:native "Array(Nullable(String))"}}
-       {:field-name "arr_dec",  :base-type {:native "Array(Decimal(18, 4))"}}
-       {:field-name "arr_ndec", :base-type {:native "Array(Nullable(Decimal(18, 4)))"}}]
-      [[(into-array ["a" "b" "c"])
-        (into-array [nil "d" "e"])
-        (into-array [1 2 3])
-        (into-array [4 nil 5])]]]
+  [["arrays_inner_types"
+    [{:field-name "arr_str",  :base-type {:native "Array(String)"}}
+     {:field-name "arr_nstr", :base-type {:native "Array(Nullable(String))"}}
+     {:field-name "arr_dec",  :base-type {:native "Array(Decimal(18, 4))"}}
+     {:field-name "arr_ndec", :base-type {:native "Array(Nullable(Decimal(18, 4)))"}}]
+    [[(into-array ["a" "b" "c"])
+      (into-array [nil "d" "e"])
+      (into-array [1 2 3])
+      (into-array [4 nil 5])]]]
    ["metabase_test_lowercases"
     [{:field-name "mystring", :base-type {:native "Nullable(String)"}}]
     [["Я_1"] ["R"] ["Я_2"] ["Я"] ["я"] [nil]]]
@@ -274,11 +272,11 @@
     [["127.0.0.1" "0:0:0:0:0:0:0:1"]
      ["0.0.0.0" "2001:438:ffff:0:0:0:407d:1bc1"]
      [nil nil]]]
-   #_["maps_test"
-      [{:field-name "m", :base-type {:native "Map(String, UInt64)"}}]
-      [[(java.util.HashMap. {"key1" 1, "key2" 10})]
-       [(java.util.HashMap. {"key1" 2, "key2" 20})]
-       [(java.util.HashMap. {"key1" 3, "key2" 30})]]]
+   ["maps_test"
+    [{:field-name "m", :base-type {:native "Map(String, UInt64)"}}]
+    [[(java.util.HashMap. {"key1" 1, "key2" 10})]
+     [(java.util.HashMap. {"key1" 2, "key2" 20})]
+     [(java.util.HashMap. {"key1" 3, "key2" 30})]]]
    ["datetime_diff_nullable"
     [{:field-name "idx",  :base-type {:native "Int32"}}
      {:field-name "dt64", :base-type {:native "Nullable(DateTime64(3, 'UTC'))"}}
@@ -404,32 +402,32 @@
             "AAA" true  []
             "AAA" false [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]))))))
 
-#_(deftest ^:parallel clickhouse-array-of-uuids
-    (mt/test-driver :clickhouse
-      (let [row1 (into-array (list "2eac427e-7596-11ed-a1eb-0242ac120002"
-                                   "2eac44f4-7596-11ed-a1eb-0242ac120002"))
-            row2 nil
-            query-result (mt/dataset
-                           (mt/dataset-definition "metabase_tests_array_of_uuids"
-                                                  [["test-data-array-of-uuids"
-                                                    [{:field-name "my_array_of_uuids"
-                                                      :base-type {:native "Array(UUID)"}}]
-                                                    [[row1] [row2]]]])
-                           (mt/run-mbql-query test-data-array-of-uuids {}))
-            result (ctd/rows-without-index query-result)]
-        (is (= [["[2eac427e-7596-11ed-a1eb-0242ac120002, 2eac44f4-7596-11ed-a1eb-0242ac120002]"], ["[]"]] result)))))
+(deftest ^:parallel clickhouse-array-of-uuids
+  (mt/test-driver :clickhouse
+    (let [row1 (into-array (list "2eac427e-7596-11ed-a1eb-0242ac120002"
+                                 "2eac44f4-7596-11ed-a1eb-0242ac120002"))
+          row2 nil
+          query-result (mt/dataset
+                         (mt/dataset-definition "metabase_tests_array_of_uuids"
+                                                [["test-data-array-of-uuids"
+                                                  [{:field-name "my_array_of_uuids"
+                                                    :base-type {:native "Array(UUID)"}}]
+                                                  [[row1] [row2]]]])
+                         (mt/run-mbql-query test-data-array-of-uuids {}))
+          result (ctd/rows-without-index query-result)]
+      (is (= [["[2eac427e-7596-11ed-a1eb-0242ac120002, 2eac44f4-7596-11ed-a1eb-0242ac120002]"], ["[]"]] result)))))
 
-#_(deftest clickhouse-array-inner-types
-    (mt/test-driver :clickhouse
-      (mt/dataset metabase_test
-        (is (= [[1
-                 "[a, b, c]"
-                 "[null, d, e]"
-                 "[1.0000, 2.0000, 3.0000]"
-                 "[4.0000, null, 5.0000]"]]
-               (mt/with-db (mt/db)
-                 (->> (mt/run-mbql-query arrays_inner_types {})
-                      (mt/formatted-rows [int str str str str]))))))))
+(deftest clickhouse-array-inner-types
+  (mt/test-driver :clickhouse
+    (mt/dataset metabase_test
+      (is (= [[1
+               "[a, b, c]"
+               "[null, d, e]"
+               "[1.0000, 2.0000, 3.0000]"
+               "[4.0000, null, 5.0000]"]]
+             (mt/with-db (mt/db)
+               (->> (mt/run-mbql-query arrays_inner_types {})
+                    (mt/formatted-rows [int str str str str]))))))))
 
 (deftest ^:parallel clickhouse-nullable-strings
   (mt/test-driver :clickhouse
@@ -578,19 +576,19 @@
               [int str str]
               (mt/with-db (mt/db) (mt/run-mbql-query ipaddress_test {}))))))))
 
-#_(defn- map-as-string [^java.util.LinkedHashMap m] (.toString m))
+(defn- map-as-string [^java.util.LinkedHashMap m] (.toString m))
 
-#_(deftest clickhouse-simple-map-test
-    (mt/test-driver :clickhouse
-      (mt/dataset metabase_test
-        (is (= [[1 "{key1=1, key2=10}"] [2 "{key1=2, key2=20}"] [3 "{key1=3, key2=30}"]]
-               (mt/formatted-rows
-                [int map-as-string]
-                :format-nil-values
-                (mt/with-db (mt/db)
-                  (mt/run-mbql-query
-                    maps_test
-                    {}))))))))
+(deftest clickhouse-simple-map-test
+  (mt/test-driver :clickhouse
+    (mt/dataset metabase_test
+      (is (= [[1 "{key1=1, key2=10}"] [2 "{key1=2, key2=20}"] [3 "{key1=3, key2=30}"]]
+             (mt/formatted-rows
+              [int map-as-string]
+              :format-nil-values
+              (mt/with-db (mt/db)
+                (mt/run-mbql-query
+                  maps_test
+                  {}))))))))
 
 (deftest clickhouse-datetime-diff-nullable
   (mt/test-driver :clickhouse

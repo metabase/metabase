@@ -623,10 +623,8 @@
   (format "'%s'" (t/format "HH:mm:ss.SSSZZZZZ" t)))
 
 (defmethod sql.qp/inline-value [:clickhouse LocalDateTime]
-  [_ ^LocalDateTime t]
-  (if (zero? (.getNano t))
-    (format "'%s'" (t/format "yyyy-MM-dd HH:mm:ss" t))
-    (format "'%s'" (t/format "yyyy-MM-dd HH:mm:ss.SSS" t))))
+  [_ t]
+  (format "'%s'" (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)))
 
 (defmethod sql.qp/inline-value [:clickhouse OffsetDateTime]
   [_ ^OffsetDateTime t]
@@ -649,6 +647,16 @@
 (defmethod sql.qp/inline-value [:clickhouse (Class/forName "[Ljava.lang.Object;")]
   [driver arr]
   (format "[%s]" (str/join ", " (map #(sql.qp/inline-value driver %) arr))))
+
+(defmethod sql.qp/inline-value [:clickhouse java.util.HashMap]
+  [driver m]
+  (format "{%s}"
+          (str/join ", "
+                    (map (fn [^java.util.Map$Entry e]
+                           (format "%s:%s"
+                                   (sql.qp/inline-value driver (str (.getKey e)))
+                                   (sql.qp/inline-value driver (.getValue e))))
+                         (.entrySet m)))))
 
 (defmethod sql.params.substitution/->replacement-snippet-info [:clickhouse UUID]
   [_driver this]
