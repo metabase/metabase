@@ -17,6 +17,9 @@ databaseChangeLog:
                   defaultValue: "replace"
                   constraints:
                     nullable: false
+        - addColumn:
+            tableName: source_replacement_run
+            columns:
               - column:
                   name: transform_id
                   type: int
