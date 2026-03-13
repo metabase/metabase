@@ -2,8 +2,9 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { ArchiveCardModal } from "metabase/questions/components/ArchiveCardModal";
+import { validateDatabase } from "metabase/transforms/utils";
 import { Button, Group, Icon, Tooltip } from "metabase/ui";
-import type { Card } from "metabase-types/api";
+import type { Card, Database } from "metabase-types/api";
 
 import { SourceReplacementButton } from "../../../../components/SourceReplacementButton";
 import { ConvertToTransformModal } from "../../ConvertToTransformModal";
@@ -12,28 +13,35 @@ type ModalType = "convert-to-transform" | "archive";
 
 type ActionSectionProps = {
   card: Card;
+  database: Database;
 };
 
-export function ActionSection({ card }: ActionSectionProps) {
+export function ActionSection({ card, database }: ActionSectionProps) {
   const [modalType, setModalType] = useState<ModalType>();
+  const validation = validateDatabase(database);
 
   return (
     <>
       <Group gap="sm" wrap="nowrap">
         <SourceReplacementButton>
-          {({ tooltip, isDisabled }) => (
-            <Tooltip label={tooltip} disabled={!tooltip}>
-              <Button
-                variant="filled"
-                leftSection={<Icon name="transform" />}
-                disabled={isDisabled}
-                fullWidth
-                onClick={() => setModalType("convert-to-transform")}
-              >
-                {t`Convert to a transform`}
-              </Button>
-            </Tooltip>
-          )}
+          {({ tooltip, isDisabled }) => {
+            const buttonTooltip = validation.message ?? tooltip;
+            const isButtonDisabled = isDisabled || !validation.isValid;
+
+            return (
+              <Tooltip label={buttonTooltip} disabled={!buttonTooltip}>
+                <Button
+                  variant="filled"
+                  leftSection={<Icon name="transform" />}
+                  disabled={isButtonDisabled}
+                  fullWidth
+                  onClick={() => setModalType("convert-to-transform")}
+                >
+                  {t`Convert to a transform`}
+                </Button>
+              </Tooltip>
+            );
+          }}
         </SourceReplacementButton>
         <Button
           leftSection={<Icon name="trash" />}

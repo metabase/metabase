@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useState } from "react";
 
 import { trackDependencyEntitySelected } from "metabase/data-studio/analytics";
 import { Badge, Group, Loader, Stack, Title } from "metabase/ui";
@@ -55,13 +55,13 @@ export function BrokenDependentsSection({
     },
   );
 
-  const handleGraphOpened = useCallback((dependent: DependencyNode) => {
+  const handleGraphOpened = (dependent: DependencyNode) => {
     trackDependencyEntitySelected({
       entityId: dependent.id,
       triggeredFrom: "diagnostics-broken-list",
       eventDetail: dependent.type,
     });
-  }, []);
+  };
 
   if (count === 0) {
     return null;

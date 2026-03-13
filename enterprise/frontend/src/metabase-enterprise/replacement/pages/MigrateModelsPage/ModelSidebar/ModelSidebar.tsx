@@ -1,6 +1,6 @@
 import { memo } from "react";
 
-import { useGetCardQuery } from "metabase/api";
+import { skipToken, useGetCardQuery, useGetDatabaseQuery } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { Box, Center, Stack } from "metabase/ui";
 import { SidebarResizableBox } from "metabase-enterprise/dependencies/components/DependencyDiagnostics/DiagnosticsSidebar/SidebarResizableBox";
@@ -28,7 +28,22 @@ export const ModelSidebar = memo(function ModelSidebar({
   onResizeStop,
   onClose,
 }: ModelSidebarProps) {
-  const { data: card, isLoading, error } = useGetCardQuery({ id: cardId });
+  const {
+    data: card,
+    isLoading: isCardLoading,
+    error: cardError,
+  } = useGetCardQuery({ id: cardId });
+
+  const {
+    data: database,
+    isLoading: isDatabaseLoading,
+    error: databaseError,
+  } = useGetDatabaseQuery(
+    card?.database_id != null ? { id: card.database_id } : skipToken,
+  );
+
+  const isLoading = isCardLoading || isDatabaseLoading;
+  const error = cardError ?? databaseError;
 
   return (
     <SidebarResizableBox
@@ -42,7 +57,7 @@ export const ModelSidebar = memo(function ModelSidebar({
         bg="background-primary"
         data-testid="model-sidebar"
       >
-        {isLoading || error != null || card == null ? (
+        {isLoading || error != null || card == null || database == null ? (
           <Center>
             <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />
           </Center>
@@ -51,7 +66,7 @@ export const ModelSidebar = memo(function ModelSidebar({
             <Stack gap="lg">
               <SidebarHeader card={card} onClose={onClose} />
               <LocationSection card={card} />
-              <ActionSection card={card} />
+              <ActionSection card={card} database={database} />
               <InfoSection card={card} />
             </Stack>
             <DependentsSection cardId={cardId} />
