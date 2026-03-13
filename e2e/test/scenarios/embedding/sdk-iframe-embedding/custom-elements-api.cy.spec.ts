@@ -302,8 +302,10 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
       H.getSimpleEmbedIframeContent()
         .findAllByText("37.65", { timeout: 40000 })
         .first()
-        .should("be.visible")
-        .click();
+        .should("be.visible");
+
+      // Re-query the element to avoid "page updated" errors from table re-renders
+      H.getSimpleEmbedIframeContent().findAllByText("37.65").first().click();
       H.getSimpleEmbedIframeContent()
         .findByText(/Filter by this value/)
         .should("not.exist");
