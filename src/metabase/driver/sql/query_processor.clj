@@ -1902,7 +1902,7 @@
   [_driver maybe-value-form]
   (lib.util.match/match-lite maybe-value-form
     [:value x & _] x
-    _              &match))
+    _              maybe-value-form))
 
 (defmethod ->honeysql [:sql :!=]
   [driver [_ field value]]

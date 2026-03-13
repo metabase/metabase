@@ -193,7 +193,7 @@
   [_driver maybe-value-form]
   (lib.util.match/match-lite maybe-value-form
     [:value _opts x & _] x
-    _              &match))
+    _                    maybe-value-form))
 
 (defmethod sql.qp/remapped-order-by? :sql-mbql5
   [_driver [_dir _opts [_ opts _name]]]
