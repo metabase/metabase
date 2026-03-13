@@ -1,9 +1,15 @@
-(ns metabase-enterprise.replacement.convert-test
+(ns ^:mb/driver-tests metabase-enterprise.replacement.convert-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.dependencies.events]
    [metabase-enterprise.replacement.models.replacement-run :as replacement-run]
    [metabase-enterprise.replacement.timeout :as replacement.timeout]
+   [metabase.events.core :as events]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
+   [metabase.transforms.test-dataset :as transforms-dataset]
+   [metabase.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -172,3 +178,74 @@
           (let [result (mt/user-http-request :crowberto :get 200 (str "ee/replacement/runs/" (:id run)))]
             (is (= "replace-with-transform" (:run_type result)))
             (is (nil? (:progress result)))))))))
+
+;;; ---------------------------------------- E2E acceptance test ----------------------------------------
+
+(defn- poll-run
+  "Poll a replacement run until it completes or times out. Returns the final run state."
+  [run-id & {:keys [timeout-ms interval-ms]
+             :or   {timeout-ms 30000 interval-ms 200}}]
+  (let [deadline (+ (System/currentTimeMillis) timeout-ms)]
+    (loop []
+      (let [run (mt/user-http-request :crowberto :get 200 (str "ee/replacement/runs/" run-id))]
+        (if (or (not (:is_active run))
+                (> (System/currentTimeMillis) deadline))
+          run
+          (do (Thread/sleep (long interval-ms))
+              (recur)))))))
+
+(deftest replace-source-with-transform-acceptance-test
+  (testing "Full E2E: create model + child, create transform, call endpoint, verify replacement"
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/dataset transforms-dataset/transforms-test
+        (mt/with-premium-features #{:dependencies}
+          (let [mp     (mt/metadata-provider)
+                schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
+            (with-transform-cleanup! [target {:type   "table"
+                                              :schema schema
+                                              :name   "rwt_acceptance"}]
+              (mt/with-temp [:model/Card {model-id :id :as model}
+                             {:database_id   (mt/id)
+                              :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :transforms_products)))
+                              :type          :model
+                              :name          "Source Model"}
+
+                             :model/Card {child-id :id :as child-card}
+                             {:database_id   (mt/id)
+                              :dataset_query (lib/query mp (lib.metadata/card mp model-id))
+                              :type          :question
+                              :name          "Child Question"}
+
+                             :model/Transform {transform-id :id}
+                             {:name   "rwt_acceptance_transform"
+                              :source {:type  :query
+                                       :query (lib/query mp (lib.metadata/table mp (mt/id :transforms_products)))}
+                              :target (assoc target :database (mt/id))}]
+                (mt/with-model-cleanup [:model/ReplacementRun :model/Dependency]
+                  ;; Populate dependency graph
+                  (events/publish-event! :event/card-create {:object model :user-id (mt/user->id :crowberto)})
+                  (events/publish-event! :event/card-create {:object child-card :user-id (mt/user->id :crowberto)})
+
+                  (let [response (mt/user-http-request :crowberto :post 202
+                                                       "ee/replacement/replace-source-with-transform"
+                                                       {:source_entity_id   model-id
+                                                        :source_entity_type "card"
+                                                        :transform_id       transform-id})
+                        run-id   (:run_id response)
+                        final    (poll-run run-id)]
+                    (testing "run succeeds"
+                      (is (= "succeeded" (:status final))))
+
+                    (testing "run metadata is correct"
+                      (is (= "replace-with-transform" (:run_type final)))
+                      (is (= transform-id (:transform_id final)))
+                      (is (= "table" (:target_entity_type final)))
+                      (is (some? (:target_entity_id final))))
+
+                    (testing "child card now references the output table"
+                      (let [child-query (t2/select-one-fn :dataset_query :model/Card :id child-id)
+                            source-table (get-in child-query [:stages 0 :source-table])]
+                        (is (integer? source-table)
+                            "Child should reference a table, not a card")
+                        (is (= (:target_entity_id final) source-table)
+                            "Child should reference the transform's output table")))))))))))))
