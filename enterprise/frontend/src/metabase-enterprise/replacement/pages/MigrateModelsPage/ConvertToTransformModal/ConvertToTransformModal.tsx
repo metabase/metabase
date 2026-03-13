@@ -192,7 +192,11 @@ function ConvertToTransformForm({
               <FormSwitch
                 name="unpersistCard"
                 label={t`Un-persist model data`}
-                description={t`We'll unpersist the model data after updating dependents.`}
+                description={
+                  values.replaceSource
+                    ? t`We'll unpersist the model data after updating dependents.`
+                    : t`We'll unpersist the model data after creating the transform.`
+                }
                 size="sm"
               />
             )}
