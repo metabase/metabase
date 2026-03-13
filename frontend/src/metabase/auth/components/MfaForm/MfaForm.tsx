@@ -27,9 +27,14 @@ const RECOVERY_SCHEMA = Yup.object().shape({
 interface MfaFormProps {
   mfaToken: string;
   onSubmit: (data: MfaVerifyData) => void;
+  onCancel?: () => void;
 }
 
-export const MfaForm = ({ mfaToken, onSubmit }: MfaFormProps): JSX.Element => {
+export const MfaForm = ({
+  mfaToken,
+  onSubmit,
+  onCancel,
+}: MfaFormProps): JSX.Element => {
   const [useRecoveryCode, setUseRecoveryCode] = useState(false);
 
   const initialValues = useMemo(
@@ -99,6 +104,13 @@ export const MfaForm = ({ mfaToken, onSubmit }: MfaFormProps): JSX.Element => {
             : t`Use a recovery code`}
         </Anchor>
       </Text>
+      {onCancel && (
+        <Text ta="center" mt="0.5rem">
+          <Anchor component="button" type="button" onClick={onCancel}>
+            {t`Back to login`}
+          </Anchor>
+        </Text>
+      )}
     </div>
   );
 };

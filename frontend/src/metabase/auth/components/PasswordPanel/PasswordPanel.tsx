@@ -44,8 +44,18 @@ export const PasswordPanel = ({ redirectUrl }: PasswordPanelProps) => {
     [dispatch],
   );
 
+  const handleMfaCancel = useCallback(() => {
+    setMfaToken(null);
+  }, []);
+
   if (mfaToken) {
-    return <MfaForm mfaToken={mfaToken} onSubmit={handleMfaSubmit} />;
+    return (
+      <MfaForm
+        mfaToken={mfaToken}
+        onSubmit={handleMfaSubmit}
+        onCancel={handleMfaCancel}
+      />
+    );
   }
 
   return (
