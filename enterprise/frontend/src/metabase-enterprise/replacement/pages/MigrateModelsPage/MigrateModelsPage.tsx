@@ -1,8 +1,11 @@
 import { useDisclosure, useElementSize } from "@mantine/hooks";
 import cx from "classnames";
 import { useLayoutEffect, useState } from "react";
+import { t } from "ttag";
 
 import { useSearchQuery } from "metabase/api";
+import { ListEmptyState } from "metabase/common/components/ListEmptyState";
+import { ListErrorState } from "metabase/common/components/ListErrorState";
 import { Card, Flex, Stack } from "metabase/ui";
 import type { CardId } from "metabase-types/api";
 
@@ -12,7 +15,7 @@ import { ModelTable } from "./ModelTable";
 import { PageHeader } from "./PageHeader";
 
 export function MigrateModelsPage() {
-  const { data, isLoading } = useSearchQuery({
+  const { data, isLoading, error } = useSearchQuery({
     models: ["dataset"],
   });
   const { ref: containerRef, width: containerWidth } = useElementSize();
@@ -40,11 +43,17 @@ export function MigrateModelsPage() {
       <Stack className={S.main} flex={1} px="3.5rem" pb="md" gap="md">
         <PageHeader />
         <Card flex="0 1 auto" mih={0} p={0} withBorder>
-          <ModelTable
-            searchResults={searchResults}
-            isLoading={isLoading}
-            onSelect={(result) => setSelectedCardId(Number(result.id))}
-          />
+          {!isLoading && error != null ? (
+            <ListErrorState error={error} />
+          ) : !isLoading && searchResults.length === 0 ? (
+            <ListEmptyState label={t`No models yet`} />
+          ) : (
+            <ModelTable
+              searchResults={searchResults}
+              isLoading={isLoading}
+              onSelect={(result) => setSelectedCardId(Number(result.id))}
+            />
+          )}
         </Card>
       </Stack>
       {selectedCardId != null && (

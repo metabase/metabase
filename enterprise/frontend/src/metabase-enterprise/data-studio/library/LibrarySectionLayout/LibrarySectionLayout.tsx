@@ -6,6 +6,7 @@ import { useListCollectionsTreeQuery } from "metabase/api";
 import { isLibraryCollection } from "metabase/collections/utils";
 import { DateTime } from "metabase/common/components/DateTime";
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { SectionLayout } from "metabase/data-studio/app/components/SectionLayout";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
@@ -25,7 +26,6 @@ import { usePageTitle } from "metabase/hooks/use-page-title";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
 import { useRouter } from "metabase/router";
-import { ListEmptyState } from "metabase/transforms/components/ListEmptyState";
 import {
   Anchor,
   Card,

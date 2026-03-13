@@ -1,7 +1,8 @@
 import { t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
-import { Stack, Text } from "metabase/ui";
+import { EmptyState } from "metabase/common/components/EmptyState";
+import { Box } from "metabase/ui";
 
 type ListEmptyStateProps = {
   label: string;
@@ -9,14 +10,19 @@ type ListEmptyStateProps = {
 
 export function ListEmptyState({ label }: ListEmptyStateProps) {
   return (
-    <Stack p="xl" align="center">
-      <img
-        src={EmptyDashboardBot}
-        alt={t`Empty dashboard`}
-        width={100}
-        height={100}
+    <Box p="xl">
+      <EmptyState
+        message={label}
+        spacing="sm"
+        illustrationElement={
+          <img
+            src={EmptyDashboardBot}
+            alt={t`Empty dashboard`}
+            width={100}
+            height={100}
+          />
+        }
       />
-      <Text c="text-secondary">{label}</Text>
-    </Stack>
+    </Box>
   );
 }

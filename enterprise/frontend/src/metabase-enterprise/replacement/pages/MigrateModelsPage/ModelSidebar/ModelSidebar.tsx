@@ -46,13 +46,11 @@ export const ModelSidebar = memo(function ModelSidebar({
             <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />
           </Center>
         ) : (
-          <Stack gap="xl">
-            <Stack gap="lg">
-              <SidebarHeader card={card} onClose={onClose} />
-              <LocationSection card={card} />
-              <InfoSection card={card} />
-            </Stack>
+          <Stack gap="lg">
+            <SidebarHeader card={card} onClose={onClose} />
+            <LocationSection card={card} />
             <ActionSection cardId={cardId} />
+            <InfoSection card={card} />
           </Stack>
         )}
       </Box>

@@ -4,6 +4,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useListTransformJobTransformsQuery } from "metabase/api";
+import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/lib/redux";
@@ -11,7 +12,6 @@ import * as Urls from "metabase/lib/urls";
 import { Card, TreeTable, useTreeTableInstance } from "metabase/ui";
 import type { Transform, TransformJobId } from "metabase-types/api";
 
-import { ListEmptyState } from "../../ListEmptyState";
 import { TitleSection } from "../../TitleSection";
 
 import { getColumns } from "./utils";
