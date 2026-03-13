@@ -4,7 +4,9 @@ import * as Yup from "yup";
 
 import { hasFeature } from "metabase/admin/databases/utils";
 import {
+  skipToken,
   useCreateTransformMutation,
+  useGetCardQuery,
   useGetDatabaseQuery,
   useListSyncableDatabaseSchemasQuery,
 } from "metabase/api";
@@ -26,7 +28,9 @@ import { Box, Button, Group, Input, Modal, Stack, Text } from "metabase/ui";
 import { useReplaceSourceWithTransformMutation } from "metabase-enterprise/api";
 import type {
   Card,
+  CardId,
   CreateTransformRequest,
+  Database,
   ReplaceSourceWithTransformRequest,
   Transform,
 } from "metabase-types/api";
@@ -43,13 +47,13 @@ const VALIDATION_SCHEMA = Yup.object({
 type ConvertToTransformValues = Yup.InferType<typeof VALIDATION_SCHEMA>;
 
 type ConvertToTransformModalProps = {
-  card: Card;
+  cardId: CardId;
   opened: boolean;
   onClose: () => void;
 };
 
 export function ConvertToTransformModal({
-  card,
+  cardId,
   opened,
   onClose,
 }: ConvertToTransformModalProps) {
@@ -60,37 +64,71 @@ export function ConvertToTransformModal({
       padding="xl"
       onClose={onClose}
     >
-      <ConvertToTransformForm card={card} onClose={onClose} />
+      <ConvertToTransformLoader cardId={cardId} onClose={onClose} />
     </Modal>
   );
 }
 
-type ConvertToTransformFormProps = {
-  card: Card;
+type ConvertToTransformLoaderProps = {
+  cardId: CardId;
   onClose: () => void;
 };
 
-function ConvertToTransformForm({
-  card,
+function ConvertToTransformLoader({
+  cardId,
   onClose,
-}: ConvertToTransformFormProps) {
-  const databaseId = checkNotNull(card.database_id);
+}: ConvertToTransformLoaderProps) {
+  const {
+    data: card,
+    isLoading: isCardLoading,
+    error: cardError,
+  } = useGetCardQuery({ id: cardId });
+
+  const databaseId = card?.database_id;
 
   const {
     data: database,
     isLoading: isDatabaseLoading,
     error: databaseError,
-  } = useGetDatabaseQuery({ id: databaseId });
+  } = useGetDatabaseQuery(databaseId != null ? { id: databaseId } : skipToken);
 
   const {
     data: schemas = [],
     isLoading: isSchemasLoading,
     error: schemasError,
-  } = useListSyncableDatabaseSchemasQuery(databaseId);
+  } = useListSyncableDatabaseSchemasQuery(databaseId ?? skipToken);
 
-  const supportsSchemas = database && hasFeature(database, "schemas");
-  const isLoading = isDatabaseLoading || isSchemasLoading;
-  const error = databaseError ?? schemasError;
+  const isLoading = isCardLoading || isDatabaseLoading || isSchemasLoading;
+  const error = cardError ?? databaseError ?? schemasError;
+
+  if (isLoading || error != null || card == null || database == null) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
+
+  return (
+    <ConvertToTransformForm
+      card={card}
+      database={database}
+      schemas={schemas}
+      onClose={onClose}
+    />
+  );
+}
+
+type ConvertToTransformFormProps = {
+  card: Card;
+  database: Database;
+  schemas: string[];
+  onClose: () => void;
+};
+
+function ConvertToTransformForm({
+  card,
+  database,
+  schemas,
+  onClose,
+}: ConvertToTransformFormProps) {
+  const supportsSchemas = hasFeature(database, "schemas");
 
   const initialValues: ConvertToTransformValues = useMemo(
     () => ({
@@ -120,10 +158,6 @@ function ConvertToTransformForm({
 
     onClose();
   };
-
-  if (isLoading || error != null || database == null) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
-  }
 
   return (
     <FormProvider

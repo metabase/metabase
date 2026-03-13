@@ -2,8 +2,8 @@ import { useDisclosure, useElementSize } from "@mantine/hooks";
 import cx from "classnames";
 import { useLayoutEffect, useState } from "react";
 
-import { useListCardsQuery } from "metabase/api";
-import { Flex, Stack } from "metabase/ui";
+import { useSearchQuery } from "metabase/api";
+import { Card, Flex, Stack } from "metabase/ui";
 import type { CardId } from "metabase-types/api";
 
 import S from "./MigrateModelsPage.module.css";
@@ -12,25 +12,23 @@ import { ModelTable } from "./ModelTable";
 import { PageHeader } from "./PageHeader";
 
 export function MigrateModelsPage() {
+  const { data, isLoading } = useSearchQuery({
+    models: ["dataset"],
+  });
   const { ref: containerRef, width: containerWidth } = useElementSize();
   const [isResizing, { open: startResizing, close: stopResizing }] =
     useDisclosure();
   const [selectedCardId, setSelectedCardId] = useState<CardId>();
-
-  const { data: cards = [], isLoading } = useListCardsQuery({
-    f: "persisted",
-  });
-
-  const selectedCard =
-    selectedCardId != null
-      ? cards.find((card) => card.id === selectedCardId)
-      : undefined;
+  const searchResults = data?.data ?? [];
+  const selectedSearchResult = searchResults.find(
+    (result) => result.id === selectedCardId,
+  );
 
   useLayoutEffect(() => {
-    if (selectedCardId != null && selectedCard == null) {
+    if (selectedCardId != null && selectedSearchResult == null) {
       setSelectedCardId(undefined);
     }
-  }, [selectedCardId, selectedCard]);
+  }, [selectedCardId, selectedSearchResult]);
 
   return (
     <Flex
@@ -41,15 +39,17 @@ export function MigrateModelsPage() {
     >
       <Stack className={S.main} flex={1} px="3.5rem" pb="md" gap="md">
         <PageHeader />
-        <ModelTable
-          cards={cards}
-          isLoading={isLoading}
-          onSelect={(card) => setSelectedCardId(card.id)}
-        />
+        <Card flex="0 1 auto" mih={0} p={0} withBorder>
+          <ModelTable
+            searchResults={searchResults}
+            isLoading={isLoading}
+            onSelect={(result) => setSelectedCardId(Number(result.id))}
+          />
+        </Card>
       </Stack>
-      {selectedCard != null && (
+      {selectedCardId != null && (
         <ModelSidebar
-          card={selectedCard}
+          cardId={selectedCardId}
           containerWidth={containerWidth}
           onResizeStart={startResizing}
           onResizeStop={stopResizing}

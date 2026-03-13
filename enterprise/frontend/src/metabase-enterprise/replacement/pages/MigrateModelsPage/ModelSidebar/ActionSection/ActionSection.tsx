@@ -2,16 +2,16 @@ import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
 import { Button, Icon, Tooltip } from "metabase/ui";
-import type { Card } from "metabase-types/api";
+import type { CardId } from "metabase-types/api";
 
 import { SourceReplacementButton } from "../../../../components/SourceReplacementButton";
 import { ConvertToTransformModal } from "../../ConvertToTransformModal";
 
 type ActionSectionProps = {
-  card: Card;
+  cardId: CardId;
 };
 
-export function ActionSection({ card }: ActionSectionProps) {
+export function ActionSection({ cardId }: ActionSectionProps) {
   const [isModalOpen, { open: openModal, close: closeModal }] =
     useDisclosure(false);
 
@@ -32,7 +32,7 @@ export function ActionSection({ card }: ActionSectionProps) {
         )}
       </SourceReplacementButton>
       <ConvertToTransformModal
-        card={card}
+        cardId={cardId}
         opened={isModalOpen}
         onClose={closeModal}
       />

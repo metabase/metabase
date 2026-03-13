@@ -3,9 +3,9 @@ import { t } from "ttag";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import type { TreeTableColumnDef } from "metabase/ui";
 import { EntityNameCell } from "metabase/ui";
-import type { Card } from "metabase-types/api";
+import type { SearchResult } from "metabase-types/api";
 
-export function getColumns(): TreeTableColumnDef<Card>[] {
+export function getColumns(): TreeTableColumnDef<SearchResult>[] {
   return [
     {
       id: "name",
@@ -14,7 +14,7 @@ export function getColumns(): TreeTableColumnDef<Card>[] {
       minWidth: 120,
       maxAutoWidth: 520,
       enableSorting: true,
-      accessorFn: (card) => card.name,
+      accessorFn: (result) => result.name,
       cell: ({ row }) => (
         <EntityNameCell icon="model" name={row.original.name} />
       ),
@@ -26,10 +26,10 @@ export function getColumns(): TreeTableColumnDef<Card>[] {
       minWidth: 100,
       maxAutoWidth: 520,
       enableSorting: true,
-      accessorFn: (card) => card.collection?.name,
+      accessorFn: (result) => result.collection.name,
       cell: ({ row }) => (
         <Ellipsified tooltipProps={{ openDelay: 300 }}>
-          {row.original.collection?.name}
+          {row.original.collection.name}
         </Ellipsified>
       ),
     },
@@ -40,7 +40,7 @@ export function getColumns(): TreeTableColumnDef<Card>[] {
       minWidth: 100,
       maxAutoWidth: 520,
       enableSorting: true,
-      accessorFn: (card) => card.description ?? "",
+      accessorFn: (result) => result.description ?? "",
       cell: ({ row }) => (
         <Ellipsified tooltipProps={{ openDelay: 300 }}>
           {row.original.description ?? ""}

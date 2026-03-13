@@ -1,8 +1,10 @@
 import { memo } from "react";
 
-import { Stack } from "metabase/ui";
+import { useGetCardQuery } from "metabase/api";
+import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import { Box, Center, Stack } from "metabase/ui";
 import { SidebarResizableBox } from "metabase-enterprise/dependencies/components/DependencyDiagnostics/DiagnosticsSidebar/SidebarResizableBox";
-import type { Card } from "metabase-types/api";
+import type { CardId } from "metabase-types/api";
 
 import { ActionSection } from "./ActionSection";
 import { InfoSection } from "./InfoSection";
@@ -11,7 +13,7 @@ import S from "./ModelSidebar.module.css";
 import { SidebarHeader } from "./SidebarHeader";
 
 type ModelSidebarProps = {
-  card: Card;
+  cardId: CardId;
   containerWidth: number;
   onResizeStart: () => void;
   onResizeStop: () => void;
@@ -19,32 +21,41 @@ type ModelSidebarProps = {
 };
 
 export const ModelSidebar = memo(function ModelSidebar({
-  card,
+  cardId,
   containerWidth,
   onResizeStart,
   onResizeStop,
   onClose,
 }: ModelSidebarProps) {
+  const { data: card, isLoading, error } = useGetCardQuery({ id: cardId });
+
   return (
     <SidebarResizableBox
       containerWidth={containerWidth}
       onResizeStart={onResizeStart}
       onResizeStop={onResizeStop}
     >
-      <Stack
+      <Box
         className={S.sidebar}
         p="lg"
-        gap="xl"
         bg="background-primary"
         data-testid="model-sidebar"
       >
-        <Stack gap="lg">
-          <SidebarHeader card={card} onClose={onClose} />
-          <LocationSection card={card} />
-          <InfoSection card={card} />
-        </Stack>
-        <ActionSection card={card} />
-      </Stack>
+        {isLoading || error != null || card == null ? (
+          <Center>
+            <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />
+          </Center>
+        ) : (
+          <Stack gap="xl">
+            <Stack gap="lg">
+              <SidebarHeader card={card} onClose={onClose} />
+              <LocationSection card={card} />
+              <InfoSection card={card} />
+            </Stack>
+            <ActionSection cardId={cardId} />
+          </Stack>
+        )}
+      </Box>
     </SidebarResizableBox>
   );
 });
