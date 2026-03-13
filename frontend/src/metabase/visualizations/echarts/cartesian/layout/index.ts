@@ -7,6 +7,7 @@ import type {
   AxisFormatter,
   ChartDataset,
   NumericAxisScaleTransforms,
+  SeriesExtents,
   SeriesFormatters,
   SeriesModel,
   StackModel,
@@ -38,6 +39,7 @@ export interface ChartLayoutInput {
   seriesModels?: SeriesModel[];
   stackModels?: StackModel[];
   seriesLabelsFormatters?: SeriesFormatters;
+  seriesExtents?: SeriesExtents;
 }
 
 // Cartesian charts use `transformedDataset` (scaled/transformed values) while simpler
@@ -848,33 +850,12 @@ const computeSplitPanelLayout = (
   renderingContext: RenderingContext,
 ): ChartLayout => {
   const panelCount = visibleSeries.length;
-
-  const dataset = getDataset(input);
-  const perPanelYAxisExtents = new Map<string, [number, number]>();
-
-  for (const series of visibleSeries) {
-    let min = Infinity;
-    let max = -Infinity;
-    for (const datum of dataset) {
-      const value = datum[series.dataKey];
-      if (typeof value === "number" && isFinite(value)) {
-        min = Math.min(min, value);
-        max = Math.max(max, value);
-      }
-    }
-    if (!isFinite(min)) {
-      min = 0;
-    }
-    if (!isFinite(max)) {
-      max = 0;
-    }
-    perPanelYAxisExtents.set(series.dataKey, [min, max]);
-  }
+  const seriesExtents = input.seriesExtents ?? {};
 
   const yAxisTickWidths: number[] = [];
   if (input.leftAxisModel) {
     for (const series of visibleSeries) {
-      const extent = perPanelYAxisExtents.get(series.dataKey) ?? [0, 0];
+      const extent = seriesExtents[series.dataKey] ?? [0, 0];
       const tempAxisModel: YAxisModel = {
         ...input.leftAxisModel,
         extent,
@@ -960,10 +941,6 @@ const computeSplitPanelLayout = (
     boundaryWidth,
     outerHeight: height,
     axisEnabledSetting,
-    panelCount,
     panelHeight,
-    panelGap,
-    maxYTicksWidth,
-    perPanelYAxisExtents,
   };
 };

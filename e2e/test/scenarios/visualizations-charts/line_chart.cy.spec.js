@@ -738,4 +738,62 @@ describe("scenarios > visualizations > line chart", () => {
       cy.findByText("12,345.67%").should("exist");
     });
   });
+
+  it("should split into panels and render each series in its own panel", () => {
+    H.visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [
+            ["sum", ["field", ORDERS.TOTAL, null]],
+            ["avg", ["field", ORDERS.QUANTITY, null]],
+          ],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ],
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "line",
+    });
+
+    cy.findAllByTestId("legend-item").should("have.length", 2);
+
+    H.openVizSettingsSidebar();
+    H.leftSidebar().within(() => {
+      cy.findByText("Display").click();
+      cy.findByText("Split into panels").click();
+    });
+
+    H.echartsContainer().within(() => {
+      cy.findByText("60,000").should("be.visible");
+      cy.findByText("8").should("be.visible");
+    });
+
+    H.cartesianChartCircleWithColor("#88BF4D");
+    H.cartesianChartCircleWithColor("#A989C5");
+
+    H.leftSidebar().within(() => {
+      cy.button("Done").click();
+    });
+
+    H.cartesianChartCircle().first().trigger("mousemove");
+    H.assertEChartsTooltip({
+      rows: [
+        { name: "Sum of Total", value: "52.76" },
+        { name: "Average of Quantity", value: "2" },
+      ],
+      blurAfter: true,
+    });
+
+    // Brush
+    cy.findByTestId("query-visualization-root")
+      .trigger("mousedown", 180, 200)
+      .trigger("mousemove", 180, 200)
+      .trigger("mouseup", 400, 200);
+
+    H.cartesianChartCircleWithColor("#88BF4D");
+    H.cartesianChartCircleWithColor("#A989C5");
+  });
 });

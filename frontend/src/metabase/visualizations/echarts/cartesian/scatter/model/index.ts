@@ -108,7 +108,7 @@ export function getScatterPlotModel(
     showWarning,
   );
 
-  const { leftAxisModel, rightAxisModel } = getYAxesModels(
+  const { leftAxisModel, rightAxisModel, seriesExtents } = getYAxesModels(
     seriesModels,
     dataset,
     transformedDataset,
@@ -141,6 +141,7 @@ export function getScatterPlotModel(
     xAxisModel,
     leftAxisModel,
     rightAxisModel,
+    seriesExtents,
     trendLinesModel,
     bubbleSizeDomain: getBubbleSizeDomain(seriesModels, transformedDataset),
     seriesLabelsFormatters: {},

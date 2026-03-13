@@ -1,4 +1,3 @@
-import type { DataKey } from "metabase/visualizations/echarts/cartesian/model/types";
 import type {
   ComputedVisualizationSettings,
   Padding,
@@ -29,9 +28,5 @@ export interface ChartLayout {
   outerHeight: number;
   axisEnabledSetting: ComputedVisualizationSettings["graph.x_axis.axis_enabled"];
   stackedBarTicksRotation?: TicksRotation;
-  panelCount?: number;
   panelHeight?: number;
-  panelGap?: number;
-  maxYTicksWidth?: number;
-  perPanelYAxisExtents?: Map<DataKey, [number, number]>;
 }

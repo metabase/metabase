@@ -912,8 +912,7 @@ export const buildEChartsSeries = (
   chartLayout: ChartLayout,
   renderingContext: RenderingContext,
 ): EChartsSeriesOption[] => {
-  const isSplitPanels =
-    chartLayout.panelCount != null && chartLayout.panelCount > 1;
+  const isSplitPanels = chartLayout.panelHeight != null;
 
   const seriesSettingsByDataKey = getDisplaySeriesSettingsByDataKey(
     chartModel.seriesModels,

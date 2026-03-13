@@ -340,11 +340,17 @@ export const STACKABLE_SETTINGS: VisualizationSettingsDefinitions = {
       ],
     }),
     isValid: (series, settings) => {
+      if (settings["graph.split_panels"] === true) {
+        return settings["stackable.stack_type"] == null;
+      }
       const seriesDisplays = getSeriesDisplays(series, settings);
 
       return isStackingValueValid(settings, seriesDisplays);
     },
     getDefault: ([{ card }], settings) => {
+      if (settings["graph.split_panels"] === true) {
+        return null;
+      }
       return getDefaultStackingValue(settings, card);
     },
     getHidden: (series, settings) => {
@@ -360,7 +366,12 @@ export const STACKABLE_SETTINGS: VisualizationSettingsDefinitions = {
 
       return stackableDisplays.length <= 1;
     },
-    readDependencies: ["graph.metrics", "graph.dimensions", "series"],
+    readDependencies: [
+      "graph.metrics",
+      "graph.dimensions",
+      "series",
+      "graph.split_panels",
+    ],
   },
 };
 
@@ -377,21 +388,13 @@ export const SPLIT_PANELS_SETTINGS: VisualizationSettingsDefinitions = {
     inline: true,
     marginBottom: "1rem",
     getHidden: (series, settings) => {
-      if (settings["stackable.stack_type"] != null) {
-        return true;
-      }
       const displays = series.map(
         (single) => settings.series?.(single).display,
       );
       const visibleDisplays = displays.filter((display) => display != null);
       return visibleDisplays.length <= 1;
     },
-    readDependencies: [
-      "graph.metrics",
-      "graph.dimensions",
-      "series",
-      "stackable.stack_type",
-    ],
+    readDependencies: ["graph.metrics", "graph.dimensions", "series"],
   },
 };
 

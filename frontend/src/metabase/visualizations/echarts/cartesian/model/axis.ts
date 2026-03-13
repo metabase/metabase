@@ -644,6 +644,7 @@ export function getYAxesModels(
         gridSize,
       },
     ),
+    seriesExtents: getDatasetExtents(seriesDataKeys, transformedDataset),
   };
 }
 

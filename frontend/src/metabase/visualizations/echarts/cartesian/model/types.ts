@@ -230,6 +230,7 @@ export type BaseCartesianChartModel = {
   xAxisModel: XAxisModel;
 
   columnByDataKey: Record<DataKey, DatasetColumn>;
+  seriesExtents: SeriesExtents;
 
   // Allows to use multiple ECharts series options to represent single data series
   // and map series ids to data keys for chart events

@@ -1,4 +1,9 @@
 import type { EChartsCoreOption } from "echarts/core";
+import type {
+  GridOption,
+  XAXisOption,
+  YAXisOption,
+} from "echarts/types/dist/shared";
 import type { OptionSourceData } from "echarts/types/src/util/types";
 
 import type {
@@ -8,10 +13,17 @@ import type {
 import type { TimelineEventId } from "metabase-types/api";
 
 import { X_AXIS_DATA_KEY } from "../../constants/dataset";
+import { CHART_STYLE } from "../../constants/style";
 import type { ChartLayout } from "../../layout/types";
 import type { ScatterPlotModel } from "../../model/types";
-import { getSharedEChartsOptions } from "../../option";
-import { buildAxes } from "../../option/axis";
+import {
+  buildPerPanelXAxes,
+  buildPerPanelYAxes,
+  buildSplitPanelYAxisLabel,
+  getSharedEChartsOptions,
+  remapTrendLinesToPanels,
+} from "../../option";
+import { buildAxes, buildDimensionAxis } from "../../option/axis";
 import {
   getGoalLineParams,
   getGoalLineSeriesOption,
@@ -35,6 +47,45 @@ export function getScatterPlotOption(
   renderingContext: RenderingContext,
 ): EChartsCoreOption {
   const hasTimelineEvents = timelineEventsModel != null;
+  const visibleSeries = chartModel.seriesModels.filter(
+    (series) => series.visible,
+  );
+  const panelCount = visibleSeries.length;
+  const isSplitPanels = chartLayout.panelHeight != null && panelCount > 1;
+
+  const dataSeriesOptions: EChartsSeriesOption[] = visibleSeries.map(
+    (seriesModel, index) =>
+      buildEChartsScatterSeries(
+        seriesModel,
+        chartModel.bubbleSizeDomain,
+        isSplitPanels
+          ? index
+          : getSeriesYAxisIndex(seriesModel.dataKey, chartModel),
+        renderingContext,
+        isSplitPanels ? index : undefined,
+      ),
+  );
+
+  const baseGoalSeriesOption = getGoalLineSeriesOption(
+    getGoalLineParams(chartModel),
+    settings,
+    renderingContext,
+  );
+
+  const goalSeriesOption =
+    isSplitPanels && baseGoalSeriesOption
+      ? visibleSeries.map((_, index) => ({
+          ...baseGoalSeriesOption,
+          id: `${baseGoalSeriesOption.id}_${index}`,
+          xAxisIndex: index,
+          yAxisIndex: index,
+        }))
+      : baseGoalSeriesOption;
+
+  const trendSeriesOption = isSplitPanels
+    ? remapTrendLinesToPanels(chartModel, visibleSeries)
+    : getTrendLinesOption(chartModel);
+
   const timelineEventsSeries = hasTimelineEvents
     ? getTimelineEventsSeries(
         timelineEventsModel,
@@ -43,30 +94,17 @@ export function getScatterPlotOption(
       )
     : null;
 
-  const dataSeriesOptions: EChartsSeriesOption[] = chartModel.seriesModels
-    .filter((seriesModel) => seriesModel.visible)
-    .map((seriesModel) =>
-      buildEChartsScatterSeries(
-        seriesModel,
-        chartModel.bubbleSizeDomain,
-        getSeriesYAxisIndex(seriesModel.dataKey, chartModel),
-        renderingContext,
-      ),
-    );
-  const goalSeriesOption = getGoalLineSeriesOption(
-    getGoalLineParams(chartModel),
-    settings,
-    renderingContext,
-  );
-  const trendSeriesOption = getTrendLinesOption(chartModel);
-
   const seriesOption = [
-    // Data series should always come first for correct labels positioning
-    // since series labelLayout function params return seriesIndex which is used to access label value
     dataSeriesOptions,
     goalSeriesOption,
     trendSeriesOption,
-    timelineEventsSeries,
+    isSplitPanels && timelineEventsSeries
+      ? {
+          ...timelineEventsSeries,
+          xAxisIndex: panelCount - 1,
+          yAxisIndex: panelCount - 1,
+        }
+      : timelineEventsSeries,
   ].flatMap((option) => option ?? []);
 
   const dimensions = [
@@ -96,21 +134,72 @@ export function getScatterPlotOption(
     });
   }
 
-  return {
-    ...getSharedEChartsOptions(isAnimated),
-    grid: {
-      ...chartLayout.padding,
-      outerBoundsMode: "none",
-    },
-    dataset: echartsDataset,
-    series: seriesOption,
-    ...buildAxes(
+  let grid: GridOption | GridOption[];
+  let xAxis: XAXisOption | XAXisOption[];
+  let yAxis: YAXisOption[];
+
+  if (isSplitPanels) {
+    grid = visibleSeries.map((_, index) => ({
+      left: chartLayout.padding.left,
+      right: chartLayout.padding.right,
+      top:
+        chartLayout.padding.top +
+        index * ((chartLayout.panelHeight ?? 0) + CHART_STYLE.splitPanel.gap),
+      height: chartLayout.panelHeight ?? 0,
+    }));
+
+    const baseXAxis = buildDimensionAxis(
+      chartModel,
+      chartWidth,
+      settings,
+      chartLayout,
+      false,
+      renderingContext,
+    );
+
+    xAxis = buildPerPanelXAxes(baseXAxis, panelCount, renderingContext);
+    yAxis = buildPerPanelYAxes(
+      visibleSeries,
+      chartModel,
+      chartLayout,
+      settings,
+      renderingContext,
+    );
+  } else {
+    grid = { ...chartLayout.padding, outerBoundsMode: "none" };
+    const axes = buildAxes(
       chartModel,
       chartWidth,
       chartLayout,
       settings,
       hasTimelineEvents,
       renderingContext,
-    ),
+    );
+    xAxis = axes.xAxis;
+    yAxis = axes.yAxis;
+  }
+
+  const splitPanelOverrides = isSplitPanels
+    ? {
+        axisPointer: {
+          link: [{ xAxisIndex: "all" as unknown as number }],
+        },
+        graphic: buildSplitPanelYAxisLabel(
+          chartModel,
+          chartLayout,
+          panelCount,
+          renderingContext,
+        ),
+      }
+    : {};
+
+  return {
+    ...getSharedEChartsOptions(isAnimated),
+    ...splitPanelOverrides,
+    grid,
+    xAxis,
+    yAxis,
+    dataset: echartsDataset,
+    series: seriesOption,
   };
 }

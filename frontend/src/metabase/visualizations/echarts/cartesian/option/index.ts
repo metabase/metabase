@@ -147,12 +147,12 @@ export const getCartesianChartOption = (
   isAnimated: boolean,
   renderingContext: RenderingContext,
 ): EChartsCoreOption => {
+  const visibleSeries = chartModel.seriesModels.filter(
+    (series) => series.visible,
+  );
   const isSplitPanels =
-    chartLayout.panelCount != null && chartLayout.panelCount > 1;
+    chartLayout.panelHeight != null && visibleSeries.length > 1;
   const hasTimelineEvents = timelineEventsModel != null;
-  const visibleSeries = isSplitPanels
-    ? chartModel.seriesModels.filter((series) => series.visible)
-    : [];
   const panelCount = visibleSeries.length;
 
   // Series (shared — buildEChartsSeries handles split panels via chartLayout)
@@ -212,8 +212,7 @@ export const getCartesianChartOption = (
         right: chartLayout.padding.right,
         top:
           chartLayout.padding.top +
-          index *
-            ((chartLayout.panelHeight ?? 0) + (chartLayout.panelGap ?? 0)),
+          index * ((chartLayout.panelHeight ?? 0) + CHART_STYLE.splitPanel.gap),
         height: chartLayout.panelHeight ?? 0,
       }))
     : { ...chartLayout.padding, outerBoundsMode: "none" };
@@ -301,8 +300,8 @@ export const getCartesianChartOption = (
   };
 };
 
-function buildSplitPanelYAxisLabel(
-  chartModel: CartesianChartModel,
+export function buildSplitPanelYAxisLabel(
+  chartModel: BaseCartesianChartModel,
   chartLayout: ChartLayout,
   panelCount: number,
   renderingContext: RenderingContext,
@@ -313,9 +312,8 @@ function buildSplitPanelYAxisLabel(
   }
 
   const panelHeight = chartLayout.panelHeight ?? 0;
-  const panelGap = chartLayout.panelGap ?? 0;
   const totalPanelsHeight =
-    panelCount * panelHeight + (panelCount - 1) * panelGap;
+    panelCount * panelHeight + (panelCount - 1) * CHART_STYLE.splitPanel.gap;
   const { fontSize } = renderingContext.theme.cartesian.label;
 
   return [
@@ -337,20 +335,18 @@ function buildSplitPanelYAxisLabel(
   ];
 }
 
-function buildPerPanelYAxes(
+export function buildPerPanelYAxes(
   visibleSeries: SeriesModel[],
-  chartModel: CartesianChartModel,
+  chartModel: BaseCartesianChartModel,
   chartLayout: ChartLayout,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ): YAXisOption[] {
-  const maxYTicksWidth = chartLayout.maxYTicksWidth ?? 0;
+  const yTicksWidth = chartLayout.ticksDimensions.yTicksWidthLeft;
   const defaultFormatter = (value: unknown) => String(value);
 
   return visibleSeries.map((seriesModel, index) => {
-    const extent = chartLayout.perPanelYAxisExtents?.get(
-      seriesModel.dataKey,
-    ) ?? [0, 0];
+    const extent = chartModel.seriesExtents[seriesModel.dataKey] ?? [0, 0];
 
     const axisModel: YAxisModel = chartModel.leftAxisModel
       ? {
@@ -373,7 +369,7 @@ function buildPerPanelYAxes(
       ...buildMetricAxis(
         axisModel,
         chartModel.yAxisScaleTransforms,
-        maxYTicksWidth - CHART_STYLE.axisTicksMarginY,
+        yTicksWidth - CHART_STYLE.axisTicksMarginY,
         settings,
         "left",
         true,
@@ -384,7 +380,7 @@ function buildPerPanelYAxes(
   });
 }
 
-function buildPerPanelXAxes(
+export function buildPerPanelXAxes(
   baseXAxis: XAXisOption,
   panelCount: number,
   renderingContext: RenderingContext,
@@ -409,8 +405,8 @@ function buildPerPanelXAxes(
   });
 }
 
-function remapTrendLinesToPanels(
-  chartModel: CartesianChartModel,
+export function remapTrendLinesToPanels(
+  chartModel: BaseCartesianChartModel,
   visibleSeries: SeriesModel[],
 ): EChartsSeriesOption[] {
   const trendSeriesOptions = getTrendLinesOption(chartModel);
