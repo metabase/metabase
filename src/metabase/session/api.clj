@@ -196,15 +196,19 @@
                                              {:status-code 401
                                               :errors {:totp-code (deferred-tru "Invalid verification code")}})))
 
-                           ;; Verify recovery code
+                           ;; Verify recovery code — use transaction + row lock to prevent concurrent consumption
                            (not (str/blank? recovery-code))
-                           (let [{:keys [valid? remaining]} (totp/verify-recovery-code recovery-code (:totp_recovery_codes user))]
-                             (when-not valid?
-                               (throw (ex-info "Invalid recovery code"
-                                               {:status-code 401
-                                                :errors {:recovery-code (deferred-tru "Invalid recovery code")}})))
-                             ;; Consume the used recovery code
-                             (t2/update! :model/User user-id {:totp_recovery_codes remaining}))
+                           (t2/with-transaction [_tx]
+                             (let [locked-user (t2/select-one [:model/User :id :totp_recovery_codes]
+                                                              :id user-id
+                                                              {:for :update})
+                                   {:keys [valid? remaining]} (totp/verify-recovery-code recovery-code (:totp_recovery_codes locked-user))]
+                               (when-not valid?
+                                 (throw (ex-info "Invalid recovery code"
+                                                 {:status-code 401
+                                                  :errors {:recovery-code (deferred-tru "Invalid recovery code")}})))
+                               ;; Consume the used recovery code
+                               (t2/update! :model/User user-id {:totp_recovery_codes remaining})))
 
                            :else
                            (throw (ex-info "Either totp-code or recovery-code is required"
