@@ -130,13 +130,16 @@ export const IncrementalTransformSettings = ({
       <>
         {description}
         {showMetabaseLinks && (
-          <Anchor
-            href={incrementalTransformsDocsUrl}
-            target="_blank"
-            td="underline"
-            c="inherit"
-            size="sm"
-          >{t`Learn more.`}</Anchor>
+          <>
+            {" "}
+            <Anchor
+              href={incrementalTransformsDocsUrl}
+              target="_blank"
+              td="underline"
+              c="inherit"
+              size="sm"
+            >{t`Learn more.`}</Anchor>
+          </>
         )}{" "}
       </>
     );
