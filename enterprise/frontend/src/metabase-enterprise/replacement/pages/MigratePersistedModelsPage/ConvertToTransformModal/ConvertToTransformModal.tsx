@@ -19,11 +19,17 @@ import {
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 import { slugify } from "metabase/lib/formatting/url";
+import { checkNotNull } from "metabase/lib/types";
 import { SchemaFormSelect } from "metabase/transforms/components/SchemaFormSelect";
 import { TargetNameInput } from "metabase/transforms/components/TargetNameInput";
 import { Box, Button, Group, Input, Modal, Stack, Text } from "metabase/ui";
 import { useReplaceSourceWithTransformMutation } from "metabase-enterprise/api";
-import type { Card } from "metabase-types/api";
+import type {
+  Card,
+  CreateTransformRequest,
+  ReplaceSourceWithTransformRequest,
+  Transform,
+} from "metabase-types/api";
 
 const VALIDATION_SCHEMA = Yup.object({
   name: Yup.string().required(Errors.required),
@@ -67,10 +73,7 @@ function ConvertToTransformForm({
   card,
   onClose,
 }: ConvertToTransformFormProps) {
-  const databaseId = card.database_id;
-  if (databaseId == null) {
-    throw new Error("database_id is required on the card");
-  }
+  const databaseId = checkNotNull(card.database_id);
 
   const {
     data: database,
@@ -103,27 +106,14 @@ function ConvertToTransformForm({
   const [replaceSourceWithTransform] = useReplaceSourceWithTransformMutation();
 
   const handleSubmit = async (values: ConvertToTransformValues) => {
-    const transform = await createTransform({
-      name: card.name,
-      source: {
-        type: "query",
-        query: card.dataset_query,
-      },
-      target: {
-        type: "table",
-        name: values.targetName,
-        schema: values.targetSchema,
-        database: databaseId,
-      },
-      collection_id: values.collectionId,
-    }).unwrap();
+    const transform = await createTransform(
+      getCreateTransformRequest(card, values),
+    ).unwrap();
 
     if (values.replaceSource) {
-      await replaceSourceWithTransform({
-        source_entity_id: card.id,
-        source_entity_type: "card",
-        transform_id: transform.id,
-      }).unwrap();
+      await replaceSourceWithTransform(
+        getReplaceSourceRequest(card, transform),
+      ).unwrap();
     }
 
     onClose();
@@ -178,4 +168,35 @@ function ConvertToTransformForm({
       </Form>
     </FormProvider>
   );
+}
+
+function getCreateTransformRequest(
+  card: Card,
+  values: ConvertToTransformValues,
+): CreateTransformRequest {
+  return {
+    name: card.name,
+    source: {
+      type: "query",
+      query: card.dataset_query,
+    },
+    target: {
+      type: "table",
+      name: values.targetName,
+      schema: values.targetSchema,
+      database: checkNotNull(card.database_id),
+    },
+    collection_id: values.collectionId,
+  };
+}
+
+function getReplaceSourceRequest(
+  card: Card,
+  transform: Transform,
+): ReplaceSourceWithTransformRequest {
+  return {
+    source_entity_id: card.id,
+    source_entity_type: "card",
+    transform_id: transform.id,
+  };
 }
