@@ -416,3 +416,18 @@ databaseChangeLog:
             tableName: oauth_refresh_token
             constraintName: uq_oauth_refresh_token_token
             columnNames: token
+
+  - changeSet:
+      id: v60.2026-03-13T00:00:00
+      author: epaget
+      comment: Add expiry column to oauth_refresh_token for refresh token expiration
+      changes:
+        - addColumn:
+            tableName: oauth_refresh_token
+            columns:
+              - column:
+                  name: expiry
+                  type: bigint
+                  remarks: Milliseconds since epoch (null means no expiry)
+                  constraints:
+                    nullable: true
