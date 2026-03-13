@@ -102,7 +102,7 @@
         "hast-util-from-html": "^2.0.1",
         "hast-util-to-html": "^9.0.0",
         "history": "3",
-        "html2canvas-pro": "1.5.0",
+        "html2canvas-pro": "^2.0.2",
         "humanize-plus": "^1.8.1",
         "icepick": "2.4.0",
         "iframe-resizer": "~4.3.2",
@@ -3270,7 +3270,7 @@
 
     "html2canvas": ["html2canvas@1.4.1", "", { "dependencies": { "css-line-break": "^2.1.0", "text-segmentation": "^1.0.3" } }, "sha512-fPU6BHNpsyIhr8yyMpTLLxAbkaK8ArIBcmZIRiBLiDhjeqvXolaEmDGmELFuX9I4xDcaKKcJl+TKZLqruBbmWA=="],
 
-    "html2canvas-pro": ["html2canvas-pro@1.5.0", "", { "dependencies": { "css-line-break": "^2.1.0", "text-segmentation": "^1.0.3" } }, "sha512-izxSphcINRwfEVV6eamsPVdhsxSYqX8n/hxzK+niVWdB+onM+aYRoVO+xgS9iMmZoUleZTWg1tJwryikib2hXg=="],
+    "html2canvas-pro": ["html2canvas-pro@2.0.2", "", { "dependencies": { "css-line-break": "^2.1.0", "text-segmentation": "^1.0.3" } }, "sha512-9G/t0XgCZWonLwL0JwI7su6NdbOPUY7Ur4Ihpp8+XMaW9ibA2nDXF181Jr6tm94k8lX6sthpaXB3XqEnsMd5Cw=="],
 
     "htmlparser2": ["htmlparser2@6.1.0", "", { "dependencies": { "domelementtype": "^2.0.1", "domhandler": "^4.0.0", "domutils": "^2.5.2", "entities": "^2.0.0" } }, "sha512-gyyPk6rgonLFEDGoeRgQNaEUvdJ4ktTmmUh/h2t7s+M8oPpIPxgNACWa+6ESR57kXstwqPiCut0V8NRpcwgU7A=="],
 
