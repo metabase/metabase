@@ -116,12 +116,16 @@
    dimension-ref :- ::lib-metric.schema/dimension-reference]
   (let [expression    (:expression definition)
         leaf-type     (lib-metric.definition/expression-leaf-type expression)
-        leaf-id       (lib-metric.definition/expression-leaf-id expression)
+        adhoc?        (= :adhoc leaf-type)
+        leaf-uuid     (lib-metric.definition/expression-leaf-uuid expression)
+        leaf-id       (when-not adhoc? (lib-metric.definition/expression-leaf-id expression))
         dimension-ref (lib/ensure-uuid dimension-ref)
         projections   (or (:projections definition) [])
         ;; Find existing typed-projection entry for this source
         existing-idx  (perf/some (fn [[idx tp]]
-                                   (when (and (= leaf-type (:type tp)) (= leaf-id (:id tp)))
+                                   (when (if adhoc?
+                                           (and (= :adhoc (:type tp)) (= leaf-uuid (:lib/uuid tp)))
+                                           (and (= leaf-type (:type tp)) (= leaf-id (:id tp))))
                                      idx))
                                  (map-indexed vector projections))]
     (if existing-idx
@@ -129,7 +133,9 @@
       (update-in definition [:projections existing-idx :projection] conj dimension-ref)
       ;; Create new typed-projection entry
       (update definition :projections (fnil conj [])
-              {:type leaf-type :id leaf-id :projection [dimension-ref]}))))
+              (if adhoc?
+                {:type :adhoc :lib/uuid leaf-uuid :projection [dimension-ref]}
+                {:type leaf-type :id leaf-id :projection [dimension-ref]})))))
 
 (defn- all-projectable-dimensions
   "Get all projectable dimensions, handling both single-source and multi-source definitions."

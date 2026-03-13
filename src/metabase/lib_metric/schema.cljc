@@ -8,7 +8,7 @@
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [some]]))
+   [metabase.util.performance :as perf :refer [some]]))
 
 (comment lib.schema.ref/keep-me)
 
@@ -247,6 +247,30 @@
    [:filter       {:optional true} [:maybe :any]]
    [:dimensions   [:sequential ::adhoc-dimension]]])
 
+(defn- normalize-field-ref
+  "Normalize a field-ref clause: ensure opts map has normalized keys."
+  [field-ref]
+  (if (and (sequential? field-ref) (>= (count field-ref) 3))
+    (let [[tag opts & args] field-ref]
+      (into [(lib.schema.common/normalize-keyword tag)
+             (lib.schema.common/normalize-options-map (or opts {}))]
+            args))
+    field-ref))
+
+(defn- normalize-adhoc-dimension
+  "Normalize an adhoc dimension map, keywordizing type values."
+  [dim]
+  (cond-> dim
+    (string? (:effective-type dim))  (update :effective-type lib.schema.common/normalize-keyword)
+    (string? (:semantic-type dim))   (update :semantic-type lib.schema.common/normalize-keyword)
+    (:field-ref dim)                 (update :field-ref normalize-field-ref)))
+
+(defn- normalize-adhoc-definition
+  "Normalize the inline definition map inside an adhoc expression ref."
+  [definition]
+  (cond-> definition
+    (:dimensions definition) (update :dimensions #(perf/mapv normalize-adhoc-dimension %))))
+
 (defn- normalize-adhoc-ref
   "Normalize an adhoc expression ref from API format."
   [x]
@@ -256,7 +280,7 @@
       (when (or (= t "adhoc") (= t :adhoc))
         [:adhoc
          (lib.schema.common/normalize-options-map (or opts {}))
-         definition]))))
+         (normalize-adhoc-definition definition)]))))
 
 (mr/def ::adhoc-expression-ref
   "An ad-hoc aggregation reference in an expression: [:adhoc {:lib/uuid uuid} definition-map]."
@@ -404,8 +428,8 @@
 ;;; fetchable through the MetricContextMetadataProvider.
 
 (mr/def ::dimension-source-type
-  "Source type indicating whether a dimension comes from a metric or measure."
-  [:enum :metric :measure])
+  "Source type indicating whether a dimension comes from a metric, measure, or adhoc aggregation."
+  [:enum :metric :measure :adhoc])
 
 (mr/def ::metadata-dimension
   "Schema for dimension metadata fetchable via metadata provider.
@@ -425,7 +449,7 @@
    [:group            {:optional true} [:maybe ::dimension-group]]
    ;; Source tracking
    [:source-type      ::dimension-source-type]
-   [:source-id        pos-int?]
+   [:source-id        [:or pos-int? ::lib.schema.common/non-blank-string]]
    ;; Optional mapping for field resolution
    [:dimension-mapping {:optional true} [:maybe ::dimension-mapping]]])
 
