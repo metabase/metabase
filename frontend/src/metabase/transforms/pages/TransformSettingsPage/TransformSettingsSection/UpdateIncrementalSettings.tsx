@@ -30,6 +30,11 @@ const IncrementalTransformSettingsWrapper = ({
 
   const handleIncrementalChange = (value: boolean) => {
     setFieldValue("incremental", value);
+
+    // If incremental is turned off, reset the checkpoint filter field
+    if (!value) {
+      setFieldValue("checkpointFilterFieldId", null);
+    }
   };
 
   return (
