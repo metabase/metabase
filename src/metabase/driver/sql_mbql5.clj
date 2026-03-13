@@ -191,7 +191,7 @@
 
 (defmethod sql.qp/unwrap-value-literal :sql-mbql5
   [_driver maybe-value-form]
-  (lib.util.match/match-one maybe-value-form
+  (lib.util.match/match-lite maybe-value-form
     [:value _opts x & _] x
     _              &match))
 

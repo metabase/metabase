@@ -1900,7 +1900,7 @@
 
 (defmethod unwrap-value-literal :sql
   [_driver maybe-value-form]
-  (lib.util.match/match-one maybe-value-form
+  (lib.util.match/match-lite maybe-value-form
     [:value x & _] x
     _              &match))
 
