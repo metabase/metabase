@@ -12,6 +12,7 @@
    [metabase.analytics.core :as analytics]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.engine :as search.engine]
+   [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.realize :as t2.realize]))
@@ -38,53 +39,54 @@
   when semantic search returns too few results and some results were filtered out (e.g. due to permission checks)."
   :feature :semantic-search
   [search-ctx]
-  (try
-    (let [{:keys [results raw-count]}
-          (semantic.pgvector-api/query (semantic.env/get-pgvector-datasource!)
-                                       (semantic.env/get-index-metadata)
-                                       search-ctx)
-          final-count (count results)
-          threshold (semantic.settings/semantic-search-min-results-threshold)]
-      (if (or (>= final-count threshold)
-              (and (zero? raw-count)
-                   ;; :search-string is nil when using search to populate the list of tables for a given database in
-                   ;; the native query editor. Semantic search doesn't support this, so fallback in this case.
-                   (not (str/blank? (:search-string search-ctx)))))
-        results
-        ;; Fallback: semantic search found results but some were filtered out (e.g. due to permission checks), so try to
-        ;; supplement with appdb search.
+  (tracing/with-span :search "search.semantic.execute" {:search/query-length (count (:search-string search-ctx))}
+    (try
+      (let [{:keys [results raw-count]}
+            (semantic.pgvector-api/query (semantic.env/get-pgvector-datasource!)
+                                         (semantic.env/get-index-metadata)
+                                         search-ctx)
+            final-count (count results)
+            threshold (semantic.settings/semantic-search-min-results-threshold)]
+        (if (or (>= final-count threshold)
+                (and (zero? raw-count)
+                     ;; :search-string is nil when using search to populate the list of tables for a given database in
+                     ;; the native query editor. Semantic search doesn't support this, so fallback in this case.
+                     (not (str/blank? (:search-string search-ctx)))))
+          results
+          ;; Fallback: semantic search found results but some were filtered out (e.g. due to permission checks), so try to
+          ;; supplement with appdb search.
+          (let [fallback (fallback-engine)]
+            (log/debugf "Semantic search returned %d final results (< %d) from %d raw results, supplementing with %s search"
+                        final-count threshold raw-count fallback)
+            (analytics/inc! :metabase-search/semantic-fallback-triggered {:fallback-engine fallback})
+            (analytics/observe! :metabase-search/semantic-results-before-fallback final-count)
+
+            (when (some-> (:offset-int search-ctx) pos?)
+              (log/warn "Using an offset with semantic search will produce strange results, e.g. missing expected results, or duplicating them across pages"))
+
+            (let [total-limit      (semantic.settings/semantic-search-results-limit)
+                  fallback-results (try
+                                     (cond->> (search.engine/results (assoc search-ctx :search-engine fallback))
+                                       ;; The in-place engine returns a reducible (but not seqable) result that needs to
+                                       ;; be realized before we concat and dedup with the semantic engine results.
+                                       (= :search.engine/in-place fallback)
+                                       (into [] (comp (map t2.realize/realize)
+                                                      (take total-limit))))
+                                     (catch Throwable t
+                                       (log/warn t "Semantic search fallback errored, ignoring")
+                                       []))
+                  fallback-results (take total-limit fallback-results)
+                  _                (analytics/observe! :metabase-search/semantic-fallback-results-usage (count fallback-results))
+                  combined-results (concat results fallback-results)
+                  deduped-results  (m/distinct-by (juxt :model :id) combined-results)]
+              (take total-limit deduped-results)))))
+      (catch Exception e
+        (log/error e "Error executing semantic search, falling back to appdb")
         (let [fallback (fallback-engine)]
-          (log/debugf "Semantic search returned %d final results (< %d) from %d raw results, supplementing with %s search"
-                      final-count threshold raw-count fallback)
-          (analytics/inc! :metabase-search/semantic-fallback-triggered {:fallback-engine fallback})
-          (analytics/observe! :metabase-search/semantic-results-before-fallback final-count)
-
-          (when (some-> (:offset-int search-ctx) pos?)
-            (log/warn "Using an offset with semantic search will produce strange results, e.g. missing expected results, or duplicating them across pages"))
-
-          (let [total-limit      (semantic.settings/semantic-search-results-limit)
-                fallback-results (try
-                                   (cond->> (search.engine/results (assoc search-ctx :search-engine fallback))
-                                     ;; The in-place engine returns a reducible (but not seqable) result that needs to
-                                     ;; be realized before we concat and dedup with the semantic engine results.
-                                     (= :search.engine/in-place fallback)
-                                     (into [] (comp (map t2.realize/realize)
-                                                    (take total-limit))))
-                                   (catch Throwable t
-                                     (log/warn t "Semantic search fallback errored, ignoring")
-                                     []))
-                fallback-results (take total-limit fallback-results)
-                _                (analytics/observe! :metabase-search/semantic-fallback-results-usage (count fallback-results))
-                combined-results (concat results fallback-results)
-                deduped-results  (m/distinct-by (juxt :model :id) combined-results)]
-            (take total-limit deduped-results)))))
-    (catch Exception e
-      (log/error e "Error executing semantic search, falling back to appdb")
-      (let [fallback (fallback-engine)]
-        (analytics/inc! :metabase-search/semantic-error-fallback {:fallback-engine fallback})
-        (if fallback
-          (search.engine/results (assoc search-ctx :search-engine fallback))
-          (throw (ex-info "Error executing semantic search" {:type :semantic-search-error} e)))))))
+          (analytics/inc! :metabase-search/semantic-error-fallback {:fallback-engine fallback})
+          (if fallback
+            (search.engine/results (assoc search-ctx :search-engine fallback))
+            (throw (ex-info "Error executing semantic search" {:type :semantic-search-error} e))))))))
 
 (defenterprise update-index!
   "Enterprise implementation of semantic index updating."
