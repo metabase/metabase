@@ -10,6 +10,7 @@ import { useCallback, useEffect } from "react";
 import _ from "underscore";
 
 import { useForceUpdate } from "metabase/common/hooks/use-force-update";
+import { getScrollBarSize } from "metabase/lib/dom";
 
 import {
   ADD_COLUMN_BUTTON_WIDTH,
@@ -130,6 +131,11 @@ export const DataGrid = function DataGrid<TData>({
 
   const totalHeight = rowVirtualizer.getTotalSize();
 
+  const addColumnMarginRight =
+    totalHeight >= (gridRef.current?.offsetHeight ?? Infinity)
+      ? getScrollBarSize()
+      : 0;
+
   const renderRow = (
     row: DataGridRowType<TData>,
     columns: DataGridColumnType<TData>[],
@@ -223,9 +229,6 @@ export const DataGrid = function DataGrid<TData>({
             style={{
               backgroundColor,
               color: theme?.cell?.textColor,
-              paddingRight: isAddColumnButtonSticky
-                ? ADD_COLUMN_BUTTON_WIDTH
-                : undefined,
               ...styles?.tableGrid,
             }}
             onWheel={onWheel}
@@ -299,7 +302,11 @@ export const DataGrid = function DataGrid<TData>({
             </div>
           </div>
           {isAddColumnButtonSticky && (
-            <AddColumnButton isSticky onClick={onAddColumnClick} />
+            <AddColumnButton
+              isSticky
+              marginRight={addColumnMarginRight}
+              onClick={onAddColumnClick}
+            />
           )}
 
           <Footer

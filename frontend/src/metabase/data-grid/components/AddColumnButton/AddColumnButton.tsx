@@ -8,14 +8,19 @@ import S from "./AddColumnButton.module.css";
 
 interface AddColumnButtonProps extends HTMLAttributes<HTMLButtonElement> {
   isSticky?: boolean;
+  marginRight?: number;
 }
 
 export const AddColumnButton = memo(function AddColumnButton({
   isSticky,
+  marginRight,
   onClick,
 }: AddColumnButtonProps) {
   return (
-    <div className={cx(S.root, { [S.sticky]: isSticky })}>
+    <div
+      className={cx(S.root, { [S.sticky]: isSticky })}
+      style={{ marginRight }}
+    >
       <Button
         className={S.button}
         variant="subtle"
