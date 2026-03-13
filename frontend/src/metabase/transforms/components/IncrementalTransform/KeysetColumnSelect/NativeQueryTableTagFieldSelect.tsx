@@ -22,7 +22,6 @@ type NativeQueryTableTagFieldSelectProps = {
   descriptionProps?: InputDescriptionProps & DataAttributes;
   query: Lib.Query;
   disabled?: boolean;
-  autoSelectFirst?: boolean;
 };
 
 export function NativeQueryTableTagFieldSelect({
@@ -33,7 +32,6 @@ export function NativeQueryTableTagFieldSelect({
   descriptionProps,
   query,
   disabled,
-  autoSelectFirst,
 }: NativeQueryTableTagFieldSelectProps) {
   const { fieldOptions, isLoading, tableIds, hasError } =
     useNativeCheckpointFieldOptions(query);
@@ -51,9 +49,7 @@ export function NativeQueryTableTagFieldSelect({
   useAutoSelectFirstOption({
     name,
     options: fieldOptions,
-    disabled,
-    isLoading,
-    autoSelectFirst,
+    disabled: disabled || isLoading,
   });
 
   if (noQueryMessage) {

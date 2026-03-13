@@ -7,23 +7,19 @@ type UseAutoSelectFirstOptionProps = {
   name: string;
   options: SelectOption[];
   disabled?: boolean;
-  isLoading?: boolean;
-  autoSelectFirst?: boolean;
 };
 
 export function useAutoSelectFirstOption({
   name,
   options,
   disabled,
-  isLoading,
-  autoSelectFirst,
 }: UseAutoSelectFirstOptionProps) {
   const { setFieldValue, values } =
     useFormikContext<Record<string, string | null>>();
   const currentValue = values[name];
 
   useEffect(() => {
-    if (!autoSelectFirst || disabled || isLoading || options.length === 0) {
+    if (disabled || options.length === 0) {
       return;
     }
 
@@ -36,13 +32,5 @@ export function useAutoSelectFirstOption({
     }
 
     setFieldValue(name, options[0].value);
-  }, [
-    autoSelectFirst,
-    currentValue,
-    disabled,
-    isLoading,
-    name,
-    options,
-    setFieldValue,
-  ]);
+  }, [currentValue, disabled, name, options, setFieldValue]);
 }

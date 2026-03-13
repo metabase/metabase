@@ -14,7 +14,6 @@ type MBQLKeysetColumnSelectProps = {
   descriptionProps?: InputDescriptionProps & DataAttributes;
   query: Lib.Query;
   disabled?: boolean;
-  autoSelectFirst?: boolean;
 };
 
 export const MBQLKeysetColumnSelect = ({
@@ -26,7 +25,6 @@ export const MBQLKeysetColumnSelect = ({
   descriptionProps,
   query,
   disabled,
-  autoSelectFirst,
 }: MBQLKeysetColumnSelectProps) => {
   /**
    * we need this metadata in order to get incremental fields to select
@@ -44,7 +42,6 @@ export const MBQLKeysetColumnSelect = ({
       descriptionProps={descriptionProps}
       disabled={disabled}
       isLoading={isLoading}
-      autoSelectFirst={autoSelectFirst}
     />
   );
 };

@@ -18,7 +18,6 @@ type PythonKeysetColumnSelectProps = {
   descriptionProps?: InputDescriptionProps & DataAttributes;
   sourceTables: PythonTransformTableAliases;
   disabled?: boolean;
-  autoSelectFirst?: boolean;
 };
 
 export function PythonKeysetColumnSelect({
@@ -29,7 +28,6 @@ export function PythonKeysetColumnSelect({
   descriptionProps,
   sourceTables,
   disabled,
-  autoSelectFirst,
 }: PythonKeysetColumnSelectProps) {
   const metadata = useSelector(getMetadata);
 
@@ -75,7 +73,6 @@ export function PythonKeysetColumnSelect({
       query={query}
       disabled={disabled || !!error}
       isLoading={isLoading}
-      autoSelectFirst={autoSelectFirst}
     />
   );
 }

@@ -70,7 +70,6 @@ type KeysetColumnSelectProps = {
   query: Lib.Query | null;
   disabled?: boolean;
   isLoading?: boolean;
-  autoSelectFirst?: boolean;
 };
 
 export function KeysetColumnSelect({
@@ -82,7 +81,6 @@ export function KeysetColumnSelect({
   query,
   disabled,
   isLoading,
-  autoSelectFirst,
 }: KeysetColumnSelectProps) {
   const columnOptions = useMemo((): Array<SelectOption> => {
     if (!query) {
@@ -103,9 +101,7 @@ export function KeysetColumnSelect({
   useAutoSelectFirstOption({
     name,
     options: columnOptions,
-    disabled,
-    isLoading,
-    autoSelectFirst,
+    disabled: disabled || isLoading,
   });
 
   return (

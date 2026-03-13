@@ -265,7 +265,6 @@ function SourceStrategyFields({
               query={query}
               source={source}
               disabled={readOnly}
-              autoSelectFirst
             />
           )}
           {transformType === "native" && query && (
@@ -277,7 +276,6 @@ function SourceStrategyFields({
               descriptionProps={{ lh: "1rem" }}
               query={query}
               disabled={readOnly}
-              autoSelectFirst
             />
           )}
           {transformType === "python" && "source-tables" in source && (
@@ -289,7 +287,6 @@ function SourceStrategyFields({
               descriptionProps={{ lh: "1rem" }}
               sourceTables={source["source-tables"]}
               disabled={readOnly}
-              autoSelectFirst
             />
           )}
         </>
