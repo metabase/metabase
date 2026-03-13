@@ -19,6 +19,7 @@
    [metabase.search.spec :as search.spec]
    [metabase.search.util :as search.util]
    [metabase.settings.core :as setting]
+   [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.json :as json]
@@ -145,33 +146,34 @@
                        :index-state-after  @@#'search.index/*indexes*
                        :index-metadata     (t2/select :model/SearchIndexMetadata :engine :appdb)}))))
 
-  (try
-    (when (setting/string->boolean (:mb-experimental-search-block-on-queue env/env))
-      ;; wait for a bit for the queue to be drained
-      (let [pending-updates #(.size ^Queue @#'search.ingestion/queue)]
-        (when-not (u/poll {:thunk       pending-updates
-                           :done?       zero?
-                           :timeout-ms  2000
-                           :interval-ms 100})
-          (log/warn "Returning search results even though they may be stale. Queue size:" (pending-updates)))))
+  (tracing/with-span :search "search.appdb.query" {:search/query-length (count search-string)}
+    (try
+      (when (setting/string->boolean (:mb-experimental-search-block-on-queue env/env))
+        ;; wait for a bit for the queue to be drained
+        (let [pending-updates #(.size ^Queue @#'search.ingestion/queue)]
+          (when-not (u/poll {:thunk       pending-updates
+                             :done?       zero?
+                             :timeout-ms  2000
+                             :interval-ms 100})
+            (log/warn "Returning search results even though they may be stale. Queue size:" (pending-updates)))))
 
-    (let [weights (search.config/weights search-ctx)
-          scorers (search.scoring/scorers search-ctx)
-          query   (->> (search.index/search-query search-string search-ctx [:legacy_input])
-                       (add-collection-join-and-where-clauses search-ctx)
-                       (add-table-where-clauses search-ctx)
-                       (#(sql.helpers/where % (search.filter/transform-source-type-where-clause
-                                               search-ctx
-                                               :search_index.model
-                                               :search_index.source_type)))
-                       (search.scoring/with-scores search-ctx scorers)
-                       (search.filter/with-filters search-ctx))]
-      (->> (t2/query query)
-           (map (partial rehydrate weights (keys scorers)))))
-    (catch Exception e
-      ;; Rule out the error coming from stale index metadata.
-      (#'search.index/sync-tracking-atoms!)
-      (throw e))))
+      (let [weights (search.config/weights search-ctx)
+            scorers (search.scoring/scorers search-ctx)
+            query   (->> (search.index/search-query search-string search-ctx [:legacy_input])
+                         (add-collection-join-and-where-clauses search-ctx)
+                         (add-table-where-clauses search-ctx)
+                         (#(sql.helpers/where % (search.filter/transform-source-type-where-clause
+                                                 search-ctx
+                                                 :search_index.model
+                                                 :search_index.source_type)))
+                         (search.scoring/with-scores search-ctx scorers)
+                         (search.filter/with-filters search-ctx))]
+        (->> (t2/query query)
+             (map (partial rehydrate weights (keys scorers)))))
+      (catch Exception e
+        ;; Rule out the error coming from stale index metadata.
+        (#'search.index/sync-tracking-atoms!)
+        (throw e)))))
 
 (defmethod search.engine/results :search.engine/appdb
   [search-ctx]
