@@ -109,7 +109,7 @@
     (t2/select :model/ReplacementRun {:order-by [[:id :desc]]})))
 
 (defn update-transform-id!
-  "Record the transform ID on a convert-to-transform run."
+  "Record the transform ID on a `:replace-with-transform` run."
   [run-id transform-id]
   (t2/update! :model/ReplacementRun
               :id run-id
@@ -119,7 +119,7 @@
   "Return failed/timed-out runs that have a transform_id set."
   []
   (t2/select :model/ReplacementRun
-             :run_type [:in [:convert-to-transform :replace-with-transform]]
+             :run_type [:in [:replace-with-transform]]
              :status [:in [:failed :timeout]]
              {:where [:not= :transform_id nil]}))
 

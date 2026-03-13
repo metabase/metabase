@@ -20,7 +20,7 @@
   [:enum :pending :started :succeeded :failed :canceled :timeout])
 
 (mr/def ::run-type
-  [:enum :replace :convert-to-transform :replace-with-transform])
+  [:enum :replace :replace-with-transform])
 
 (mr/def ::run
   [:map

@@ -9,7 +9,7 @@ import type { Card, Database } from "metabase-types/api";
 import { SourceReplacementButton } from "../../../../components/SourceReplacementButton";
 import { ConvertToTransformModal } from "../../ConvertToTransformModal";
 
-type ModalType = "convert-to-transform" | "archive";
+type ModalType = "convert" | "archive";
 
 type ActionSectionProps = {
   card: Card;
@@ -35,7 +35,7 @@ export function ActionSection({ card, database }: ActionSectionProps) {
                   leftSection={<Icon name="transform" />}
                   disabled={isButtonDisabled}
                   fullWidth
-                  onClick={() => setModalType("convert-to-transform")}
+                  onClick={() => setModalType("convert")}
                 >
                   {t`Convert to a transform`}
                 </Button>
@@ -48,7 +48,7 @@ export function ActionSection({ card, database }: ActionSectionProps) {
           onClick={() => setModalType("archive")}
         />
       </Group>
-      {modalType === "convert-to-transform" && (
+      {modalType === "convert" && (
         <ConvertToTransformModal
           card={card}
           opened
