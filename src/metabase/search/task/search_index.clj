@@ -12,9 +12,7 @@
    [metabase.search.ingestion :as ingestion]
    [metabase.search.spec :as search.spec]
    [metabase.startup.core :as startup]
-   [metabase.task.core :as task]
-   [metabase.tracing.core :as tracing]
-   [metabase.util.queue :as queue])
+   [metabase.task.core :as task])
   (:import
    (java.time Instant)
    (java.util Date)
@@ -34,14 +32,6 @@
   (jobs/key (str reindex-stem ".job")))
 
 ;; We define the job bodies outside the defrecord, so that we can redefine them live from the REPL
-
-(defn init!
-  "Create a new index, if necessary"
-  []
-  (when (search/supports-index?)
-    (tracing/with-span :search "search.task.init" {}
-      (cluster-lock/with-cluster-lock cluster-lock-name
-        (search/init-index! {:force-reset? false, :re-populate? false})))))
 
 (task/defjob ^{DisallowConcurrentExecution true
                :doc                        "Populate a new Search Index"}
