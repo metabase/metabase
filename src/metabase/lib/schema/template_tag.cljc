@@ -154,6 +154,7 @@
     [:map
      [:type                  [:= :table]]
      [:table-id              ::id/table]
+     [:emit-alias            {:optional true} :boolean]
      [:source-filters        {:optional true} [:sequential [:ref ::source-filter]]]]]
    [:ref ::disallow-dimension]])
 
