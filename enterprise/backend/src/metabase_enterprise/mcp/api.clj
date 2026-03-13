@@ -161,11 +161,10 @@
 
 (defn- sse-response
   "Return a plain Ring response with SSE-formatted body for POST requests."
-  [messages extra-headers]
+  [messages]
   {:status  200
-   :headers (merge {"Content-Type"  "text/event-stream"
-                    "Cache-Control" "no-cache"}
-                   extra-headers)
+   :headers {"Content-Type"  "text/event-stream"
+             "Cache-Control" "no-cache"}
    :body    (sse-body messages)})
 
 (defn- handle-post
@@ -204,7 +203,7 @@
           {:status 202 :headers {"Content-Type" "application/json"} :body ""}
 
           (accepts-sse? request)
-          (sse-response responses nil)
+          (sse-response responses)
 
           (and (not batch?) (= 1 (count responses)))
           (json-response 200 (first responses))
@@ -216,7 +215,8 @@
   "Handle a GET request for SSE stream (keepalive for server-initiated notifications)."
   [request respond raise]
   (let [session-id (get-in request [:headers "mcp-session-id"])]
-    (if (valid-session? session-id)
+    (if (and (valid-session? session-id)
+             (session-initialized? session-id))
       (let [resp (streaming-response/streaming-response
                   {:content-type "text/event-stream"
                    :headers      {"Cache-Control" "no-cache"}
@@ -236,7 +236,7 @@
   "Handle a DELETE request to tear down a session."
   [request]
   (let [session-id (get-in request [:headers "mcp-session-id"])]
-    (if (and session-id (valid-session? session-id))
+    (if (valid-session? session-id)
       (do (delete-session! session-id)
           {:status 200 :headers {"Content-Type" "application/json"} :body ""})
       (json-response 400 (jsonrpc-error nil -32600 "Invalid or missing Mcp-Session-Id")))))
