@@ -33,6 +33,22 @@
       (oauth-settings/oauth-server-signing-key! (serialize-key k))
       k)))
 
+;; TODO(edpaget): these should be replaced by dynamic scope discovery
+(def base-scopes
+  "Base oidc scopes"
+  ["openid" "profile" "email"])
+
+(def all-agent-scopes
+  "All supported OAuth scopes for the MCP/agent API."
+  ["agent:table:read"
+   "agent:metric:read"
+   "agent:search"
+   "agent:query:construct"
+   "agent:query:execute"
+   "agent:workspace:read"
+   "agent:workspace:write"
+   "agent:workspace:execute"])
+
 (defn- build-provider-config
   "Build the configuration map for the OIDC provider from Metabase settings."
   [signing-key]
@@ -49,6 +65,7 @@
      :client-store                   (store/create-client-store)
      :code-store                     (store/create-authorization-code-store)
      :token-store                    (store/create-token-store)
+     :scopes-supported               (into base-scopes all-agent-scopes)
      :claims-provider                (store/create-claims-provider)}))
 
 (defn create-provider!

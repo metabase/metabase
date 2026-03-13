@@ -84,7 +84,7 @@
      (fn [error] (deliver result {:status 500 :body {:message (ex-message error)}})))
     (let [response (deref result 30000 {:status 504 :body {:message "Timeout"}})]
       (cond
-        (instance? StreamingResponse response)
+        (instance? StreamingResponse (:body response))
         (capture-streaming-response response)
 
         (= 200 (:status response))

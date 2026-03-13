@@ -15,6 +15,7 @@
    [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [oidc-provider.protocol :as proto])
   (:import
    (java.io BufferedWriter OutputStreamWriter)
@@ -243,14 +244,14 @@
               (empty? responses)
               {:status 202 :headers (merge {"Content-Type" "application/json"} extra-headers) :body ""}
 
-          (accepts-sse? request)
-          (sse-response responses)
+              (accepts-sse? request)
+              (sse-response responses)
 
-          (and (not batch?) (= 1 (count responses)))
-          (json-response 200 (first responses))
+              (and (not batch?) (= 1 (count responses)))
+              (json-response 200 (first responses))
 
-          :else
-          (json-response 200 responses))))))))
+              :else
+              (json-response 200 responses))))))))
 
 (defn- handle-get
   "Handle a GET request for SSE stream (keepalive for server-initiated notifications)."
@@ -285,7 +286,7 @@
 ;;; ---------------------------------------------------- Handler ---------------------------------------------------
 
 (defn- www-authenticate-discovery []
-  (str "Bearer realm=\"mcp\" resource_metadata=\"" (system/site-url) "/.well-known/oauth-protected-resource\""))
+  (str "Bearer realm=\"mcp\" resource_metadata=\"" (system/site-url) "/.well-known/oauth-protected-resource/api/mcp\""))
 
 (def ^{:arglists '([request respond raise])} handler
   "Ring async handler for the MCP endpoint.
