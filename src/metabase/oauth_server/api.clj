@@ -28,4 +28,7 @@
            not-found-response))
      (POST "/authorize/decision" request
        (or (oauth-server/authorize-decision-handler request)
+           not-found-response))
+     (POST "/token" request
+       (or (oauth-server/token-handler request)
            not-found-response)))))

@@ -150,7 +150,7 @@
         (try
           (let [parsed (oidc/parse-authorization-request provider query-string)]
             (if approved
-              (let [url (oidc/authorize provider parsed (:metabase-user-id request))]
+              (let [url (oidc/authorize provider parsed (str (:metabase-user-id request)))]
                 {:status  302
                  :headers {"Location" url}
                  :body    ""})
@@ -162,4 +162,27 @@
             {:status  400
              :headers {"Content-Type" "application/json"}
              :body    {:error             "invalid_request"
+                       :error_description (ex-message e)}}))))))
+
+(defenterprise token-handler
+  "Handles the token endpoint (POST /oauth/token)."
+  :feature :metabot-v3
+  [request]
+  (when-let [provider (oauth-server/get-provider)]
+    (let [params               (:params request)
+          authorization-header (get-in request [:headers "authorization"])]
+      (try
+        (let [response (oidc/token-request provider params authorization-header)]
+          {:status  200
+           :headers {"Content-Type"  "application/json"
+                     "Cache-Control" "no-store"
+                     "Pragma"        "no-cache"}
+           :body    response})
+        (catch clojure.lang.ExceptionInfo e
+          (let [data (ex-data e)]
+            {:status  (if (= (:error data) "invalid_client") 401 400)
+             :headers {"Content-Type"  "application/json"
+                       "Cache-Control" "no-store"
+                       "Pragma"        "no-cache"}
+             :body    {:error             (or (:error data) "invalid_request")
                        :error_description (ex-message e)}}))))))
