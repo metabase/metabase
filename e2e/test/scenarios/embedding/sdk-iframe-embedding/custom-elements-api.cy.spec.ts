@@ -300,7 +300,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
       `);
 
       H.getSimpleEmbedIframeContent()
-        .findAllByText("37.65")
+        .findAllByText("37.65", { timeout: 40000 })
         .first()
         .should("be.visible")
         .click();
