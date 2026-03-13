@@ -2,7 +2,7 @@
 title: Writable connection
 summary: Add an optional separate database connection for write operations like transforms or editable tables to keep the main Metabase connection read-only for analytics.
 redirect_from:
-  - /docs/latest/databases/writeable-connection.md
+  - /docs/latest/databases/writeable-connection
 ---
 
 ## Writable connection
