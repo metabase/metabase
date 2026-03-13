@@ -36,6 +36,7 @@ export const MfaSetup = ({
   const [step, setStep] = useState<SetupStep>("idle");
   const [setupData, setSetupData] = useState<SetupData | null>(null);
   const [verifyCode, setVerifyCode] = useState("");
+  const [setupPassword, setSetupPassword] = useState("");
   const [disablePassword, setDisablePassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -47,18 +48,21 @@ export const MfaSetup = ({
     setError(null);
     setIsLoading(true);
     try {
-      const data = await MfaApi.setup();
+      const data = await MfaApi.setup({ password: setupPassword });
       setSetupData(data);
+      setSetupPassword("");
       setStep("qr");
     } catch (e: unknown) {
       setError(
         (e as { data?: { message?: string } })?.data?.message ??
+          (e as { data?: { errors?: { password?: string } } })?.data?.errors
+            ?.password ??
           t`Failed to start setup`,
       );
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [setupPassword]);
 
   const handleConfirm = useCallback(async () => {
     setError(null);
@@ -295,9 +299,24 @@ export const MfaSetup = ({
         {t`Add an extra layer of security to your account by requiring a verification code from an authenticator app when you sign in.`}
       </Text>
       <Box>
-        <Button variant="filled" onClick={handleStartSetup} loading={isLoading}>
-          {t`Enable two-factor authentication`}
-        </Button>
+        <Group>
+          <TextInput
+            type="password"
+            placeholder={t`Current password`}
+            value={setupPassword}
+            onChange={(e: ChangeEvent<HTMLInputElement>) =>
+              setSetupPassword(e.currentTarget.value)
+            }
+          />
+          <Button
+            variant="filled"
+            onClick={handleStartSetup}
+            loading={isLoading}
+            disabled={!setupPassword}
+          >
+            {t`Enable two-factor authentication`}
+          </Button>
+        </Group>
       </Box>
       {error && <Alert color="error">{error}</Alert>}
     </Stack>

@@ -26,8 +26,13 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/setup"
   "Begin TOTP enrollment. Generates a new secret and recovery codes.
+   Requires password confirmation to prevent session-hijacking from escalating to MFA enrollment.
    The secret is stored on the user but TOTP is not yet enabled — call `POST /confirm` to activate."
-  []
+  [_route-params
+   _query-params
+   {:keys [password]} :- [:map
+                          [:password ms/NonBlankString]]]
+  (verify-user-password! password)
   (when (t2/select-one-fn :totp_enabled :model/User :id api/*current-user-id*)
     (throw (ex-info (tru "TOTP is already enabled") {:status-code 400})))
   (let [secret         (totp/generate-secret)
