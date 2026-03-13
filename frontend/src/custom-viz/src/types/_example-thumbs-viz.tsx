@@ -50,6 +50,7 @@ const createThumbsViz: CreateCustomVisualization<ThumbsVizSettings> = ({
     settings: {
       threshold: {
         id: "threshold",
+        title: "Threshold",
         widget: "number",
         getDefault() {
           return 0;
