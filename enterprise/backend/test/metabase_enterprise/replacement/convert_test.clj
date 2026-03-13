@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.dependencies.events]
    [metabase-enterprise.replacement.models.replacement-run :as replacement-run]
+   [metabase-enterprise.replacement.protocols :as replacement.protocols]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -43,12 +44,22 @@
           (is (not (some #(= (:id run1) (:id %)) runs))))))))
 
 (deftest update-target-test
-  (mt/with-model-cleanup [:model/ReplacementRun]
-    (let [run (replacement-run/create-run! :card 1 :card 1 (mt/user->id :crowberto) :convert-to-transform)]
-      (replacement-run/update-target! (:id run) :table 42)
-      (let [updated (t2/select-one :model/ReplacementRun :id (:id run))]
-        (is (= :table (:target_entity_type updated)))
-        (is (= 42 (:target_entity_id updated)))))))
+  (testing "model-layer update-target! updates target on the run row"
+    (mt/with-model-cleanup [:model/ReplacementRun]
+      (let [run (replacement-run/create-run! :card 1 :card 1 (mt/user->id :crowberto) :convert-to-transform)]
+        (replacement-run/update-target! (:id run) :table 42)
+        (let [updated (t2/select-one :model/ReplacementRun :id (:id run))]
+          (is (= :table (:target_entity_type updated)))
+          (is (= 42 (:target_entity_id updated)))))))
+  (testing "progress protocol update-target! delegates to model layer"
+    (mt/with-model-cleanup [:model/ReplacementRun]
+      (let [run      (replacement-run/create-convert-run! :card 1 (mt/user->id :crowberto))
+            progress (replacement-run/run-row->progress run)]
+        (is (= :card (:target_entity_type run)) "starts with source=target placeholder")
+        (replacement.protocols/update-target! progress :table 99)
+        (let [updated (t2/select-one :model/ReplacementRun :id (:id run))]
+          (is (= :table (:target_entity_type updated)))
+          (is (= 99 (:target_entity_id updated))))))))
 
 ;;; ------------------------------------------------ API endpoints ------------------------------------------------
 
