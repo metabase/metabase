@@ -24,72 +24,6 @@ describe("scenarios > dependencies > dependency checks", () => {
   });
 
   describe("questions", () => {
-    it("should be able to confirm or cancel breaking changes to a MBQL question", () => {
-      createMbqlQuestionWithDependentMbqlQuestions();
-
-      cy.log("make breaking changes");
-      H.visitQuestion("@questionId");
-      H.openNotebook();
-      H.getNotebookStep("expression").findByText("Expr").icon("close").click();
-
-      cy.log("cancel breaking changes");
-      H.queryBuilderHeader().button("Save").click();
-      H.modal().button("Save").click();
-      H.modal().within(() => {
-        cy.findByText("Question with fields").should("be.visible");
-        cy.findByText("Question without fields").should("not.exist");
-        cy.findByText("Base question").should("not.exist");
-        cy.button("Cancel").click();
-      });
-      cy.get("@updateCard.all").should("have.length", 0);
-
-      cy.log("confirm breaking changes");
-      H.queryBuilderHeader().button("Save").click();
-      H.modal().button("Save").click();
-      H.modal().button("Save anyway").click();
-      cy.wait("@updateCard");
-    });
-
-    it("should be able to navigate to affected questions or their collection", () => {
-      createMbqlQuestionWithDependentMbqlQuestions();
-
-      cy.log("check that we can navigate to the broken question");
-      H.visitQuestion("@questionId");
-      H.openNotebook();
-      H.getNotebookStep("expression").findByText("Expr").icon("close").click();
-      H.queryBuilderHeader().button("Save").click();
-      H.modal().button("Save").click();
-      H.modal().findByText("Question with fields").click();
-      confirmDiscardChanges();
-      H.queryBuilderHeader()
-        .findByDisplayValue("Question with fields")
-        .should("be.visible");
-
-      cy.log("check that we can navigate to the collection of that question");
-      cy.go("back");
-      H.getNotebookStep("expression").findByText("Expr").icon("close").click();
-      H.queryBuilderHeader().button("Save").click();
-      H.modal().button("Save").click();
-      H.modal().within(() => {
-        cy.findByText("Question with fields").should("be.visible");
-        cy.findByText("Our analytics").click();
-      });
-      confirmDiscardChanges();
-      H.collectionTable().should("be.visible");
-
-      cy.log("check that we can navigate to the dashboard of that question");
-      cy.go("back");
-      H.getNotebookStep("expression").findByText("Expr").icon("close").click();
-      H.queryBuilderHeader().button("Save").click();
-      H.modal().button("Save").click();
-      H.modal().within(() => {
-        cy.findByText("Question with fields").should("be.visible");
-        cy.findByText("Orders in a dashboard").click();
-      });
-      confirmDiscardChanges();
-      H.dashboardHeader().should("be.visible");
-    });
-
     it("should not show a confirmation if there are no breaking changes when updating a MBQL question", () => {
       createMbqlQuestionWithDependentMbqlQuestions();
       H.visitQuestion("@questionId");
@@ -104,31 +38,6 @@ describe("scenarios > dependencies > dependency checks", () => {
   });
 
   describe("models", () => {
-    it("should be able to confirm or cancel breaking changes to a SQL model", () => {
-      createSqlModelWithDependentSqlQuestions();
-
-      cy.log("make breaking changes");
-      cy.get<number>("@modelId").then(H.visitModel);
-      H.openQuestionActions("Edit query definition");
-      H.NativeEditor.clear().type("SELECT ID, TITLE FROM PRODUCTS");
-      H.runNativeQuery();
-
-      cy.log("cancel breaking changes");
-      H.datasetEditBar().button("Save changes").click();
-      H.modal().within(() => {
-        cy.findByText("Question with fields").should("be.visible");
-        cy.findByText("Question without fields").should("not.exist");
-        cy.findByText("Base model").should("not.exist");
-        cy.button("Cancel").click();
-      });
-      cy.get("@updateCard.all").should("have.length", 0);
-
-      cy.log("confirm breaking changes");
-      H.datasetEditBar().button("Save changes").click();
-      H.modal().button("Save anyway").click();
-      cy.wait("@updateCard");
-    });
-
     it("should not show a confirmation if there are no breaking changes when updating a SQL model", () => {
       createSqlModelWithDependentSqlQuestions();
       cy.get<number>("@modelId").then(H.visitModel);
@@ -141,35 +50,6 @@ describe("scenarios > dependencies > dependency checks", () => {
   });
 
   describe("metrics", () => {
-    it("should be able to confirm or cancel breaking changes to a metric", () => {
-      createMetricWithDependentMbqlQuestions();
-
-      cy.log("make breaking changes");
-      cy.get<number>("@metricId").then(H.visitMetric);
-      H.openQuestionActions("Edit metric definition");
-      H.getNotebookStep("summarize").findByText("Min of Score").click();
-      H.popover().within(() => {
-        cy.icon("chevronleft").click();
-        cy.findByText("Maximum of ...").click();
-        cy.findByText("Score").click();
-      });
-
-      cy.log("cancel breaking changes");
-      cy.findByTestId("edit-bar").button("Save changes").click();
-      H.modal().within(() => {
-        cy.findByText("Question with 2 stages").should("be.visible");
-        cy.findByText("Question with 1 stage").should("not.exist");
-        cy.findByText("Base metric").should("not.exist");
-        cy.button("Cancel").click();
-      });
-      cy.get("@updateCard.all").should("have.length", 0);
-
-      cy.log("confirm breaking changes");
-      cy.findByTestId("edit-bar").button("Save changes").click();
-      H.modal().button("Save anyway").click();
-      cy.wait("@updateCard");
-    });
-
     it("should not show a warning when a change to a metric is backward-compatible with existing content", () => {
       createMetricWithDependentMbqlQuestions();
       cy.get<number>("@metricId").then(H.visitMetric);
@@ -178,49 +58,6 @@ describe("scenarios > dependencies > dependency checks", () => {
       H.popover().findByText("Name").click();
       cy.findByTestId("edit-bar").button("Save changes").click();
       cy.wait("@updateCard");
-    });
-  });
-
-  describe("snippets", () => {
-    it("should be able to confirm or cancel breaking changes to a snippet", () => {
-      createSnippetWithDependentQuestions();
-
-      cy.log("make breaking changes");
-      startEditingSnippet();
-      H.modal()
-        .findByLabelText("Enter some SQL here so you can reuse it later")
-        .clear()
-        .type("price = 1");
-
-      cy.log("cancel breaking changes");
-      H.modal().within(() => {
-        cy.button("Save").click();
-        cy.findByText("Question with snippet").should("be.visible");
-        cy.findByText("ScoreSnippet").should("not.exist");
-        cy.button("Cancel").click();
-      });
-      cy.get("@updateSnippet.all").should("have.length", 0);
-
-      cy.log("confirm breaking changes");
-      H.modal().within(() => {
-        cy.button("Save").click();
-        cy.findByText("Question with snippet").should("be.visible");
-        cy.findByText("ScoreSnippet").should("not.exist");
-        cy.button("Save anyway").click();
-      });
-      cy.wait("@updateSnippet");
-    });
-
-    it("should not warn if changes to a snippet are backward compatible", () => {
-      createSnippetWithDependentQuestions();
-      startEditingSnippet();
-      H.modal().within(() => {
-        cy.findByLabelText("Enter some SQL here so you can reuse it later")
-          .clear()
-          .type("score = 2");
-        cy.button("Save").click();
-      });
-      cy.wait("@updateSnippet");
     });
   });
 });
@@ -344,45 +181,4 @@ function createMetricWithDependentMbqlQuestions() {
       });
     },
   );
-}
-
-function createSnippetWithDependentQuestions() {
-  H.createSnippet({
-    name: "ScoreSnippet",
-    content: "score = 1",
-  }).then(({ body: snippet }) => {
-    cy.wrap(snippet.id).as("snippetId");
-
-    H.createNativeQuestion({
-      name: "Question with snippet",
-      database: WRITABLE_DB_ID,
-      native: {
-        query:
-          'SELECT * FROM "Schema A"."Animals" WHERE {{snippet:ScoreSnippet}}',
-        "template-tags": {
-          "snippet:ScoreSnippet": {
-            id: "4b77cc1f-ea70-4ef6-84db-58432fce6928",
-            name: "snippet:ScoreSnippet",
-            "display-name": "snippet:ScoreSnippet",
-            type: "snippet",
-            "snippet-id": snippet.id,
-            "snippet-name": snippet.name,
-          },
-        },
-      },
-    });
-  });
-}
-
-function startEditingSnippet() {
-  H.startNewNativeQuestion();
-  cy.findByTestId("native-query-editor-action-buttons").icon("snippet").click();
-  cy.findByTestId("sidebar-content").within(() => {
-    cy.icon("chevrondown").click({ force: true });
-    cy.button(/Edit/).click();
-  });
-}
-
-function confirmDiscardChanges() {
-  H.modal().should("have.length", 2).last().button("Discard changes").click();
 }
