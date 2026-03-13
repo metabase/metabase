@@ -4,10 +4,14 @@
    instead of a session. This token is then exchanged for a real session after TOTP verification."
   (:require
    [buddy.sign.jwt :as jwt]
-   [java-time.api :as t])
+   [java-time.api :as t]
+   [metabase.util.encryption :as encryption]
+   [metabase.util.log :as log])
   (:import
    (java.security SecureRandom)
-   (java.util.concurrent ConcurrentHashMap)))
+   (java.util.concurrent ConcurrentHashMap)
+   (javax.crypto Mac)
+   (javax.crypto.spec SecretKeySpec)))
 
 (set! *warn-on-reflection* true)
 
@@ -19,12 +23,29 @@
   "Token type claim to prevent reuse of other JWTs as MFA tokens."
   "mfa-pending")
 
+(defn- derive-signing-key
+  "Derive a 32-byte signing key from the encryption secret via HMAC-SHA256.
+   Falls back to a random key if no encryption secret is configured."
+  ^bytes []
+  (if (encryption/default-encryption-enabled?)
+    (let [mac (Mac/getInstance "HmacSHA256")
+          ;; Use a fixed context string to derive the MFA-specific key
+          context (.getBytes "metabase-mfa-signing-key" "UTF-8")]
+      (.init mac (SecretKeySpec. (encryption/default-secret-key-hashed) "HmacSHA256"))
+      (.doFinal mac context))
+    (do
+      (log/warn "MB_ENCRYPTION_SECRET_KEY is not set; MFA signing key is instance-local."
+                "MFA tokens will not be portable across instances.")
+      (let [buf (byte-array 32)]
+        (.nextBytes (SecureRandom.) buf)
+        buf))))
+
 (defonce ^:private ^bytes signing-key
-  (let [buf (byte-array 32)]
-    (.nextBytes (SecureRandom.) buf)
-    buf))
+  (derive-signing-key))
 
 ;; Track consumed token JTIs to enforce single-use. Values are expiry instants for cleanup.
+;; NOTE: This is an in-memory store, so single-use enforcement is per-instance. Given the
+;; 5-minute token expiry, the replay window in multi-instance deployments is small.
 (defonce ^:private ^ConcurrentHashMap consumed-tokens
   (ConcurrentHashMap.))
 

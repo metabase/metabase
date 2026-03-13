@@ -61,6 +61,12 @@
   []
   (boolean default-secret-key))
 
+(defn default-secret-key-hashed
+  "Return the hashed encryption secret key bytes, or nil if encryption is not enabled.
+   Used to derive secondary keys (e.g. MFA token signing) from the same root secret."
+  ^bytes []
+  default-secret-key)
+
 ;; log a nice message letting people know whether DB details encryption is enabled
 (when-not *compile-files*
   (log/info
