@@ -45,9 +45,8 @@ describe("translateFieldValuesInSeries", () => {
     ];
 
     const result = translateFieldValuesInSeries(
-      series,
       mockTranslateWithoutTranslations,
-    );
+    )(series);
 
     expect(result).toBe(series);
   });
@@ -59,9 +58,8 @@ describe("translateFieldValuesInSeries", () => {
       } as SingleSeries,
     ];
 
-    const result = translateFieldValuesInSeries(
+    const result = translateFieldValuesInSeries(mockTranslateWithTranslations)(
       series,
-      mockTranslateWithTranslations,
     );
 
     expect(result).toEqual([
@@ -84,9 +82,8 @@ describe("translateFieldValuesInSeries", () => {
       } as SingleSeries,
     ];
 
-    const result = translateFieldValuesInSeries(
+    const result = translateFieldValuesInSeries(mockTranslateWithTranslations)(
       series,
-      mockTranslateWithTranslations,
     ) as MaybeTranslatedSeries;
 
     expect(result[0].data?.rows).toEqual([
@@ -113,9 +110,8 @@ describe("translateFieldValuesInSeries", () => {
       } as SingleSeries,
     ];
 
-    const result = translateFieldValuesInSeries(
+    const result = translateFieldValuesInSeries(mockTranslateWithTranslations)(
       series,
-      mockTranslateWithTranslations,
     ) as MaybeTranslatedSeries;
 
     expect(result[0].data?.rows).toEqual([
@@ -150,9 +146,8 @@ describe("translateFieldValuesInSeries", () => {
       ];
 
       const result = translateFieldValuesInSeries(
-        series,
         mockTranslateWithTranslations,
-      ) as MaybeTranslatedSeries;
+      )(series) as MaybeTranslatedSeries;
 
       expect(result[0].data?.rows).toEqual([
         ["translated_Apple", 10],
@@ -179,9 +174,8 @@ describe("translateFieldValuesInSeries", () => {
       ];
 
       const result = translateFieldValuesInSeries(
-        series,
         mockTranslateWithTranslations,
-      ) as MaybeTranslatedSeries;
+      )(series) as MaybeTranslatedSeries;
 
       expect(result[0].data?.rows).toEqual([
         ["translated_apple", 10],
@@ -223,9 +217,8 @@ describe("translateFieldValuesInSeries", () => {
       ];
 
       const result = translateFieldValuesInSeries(
-        series,
         mockTranslateWithTranslations,
-      ) as MaybeTranslatedSeries;
+      )(series) as MaybeTranslatedSeries;
 
       expect(result[0].data?.rows).toEqual([
         ["translated_Apple", 100, 30],
@@ -252,9 +245,8 @@ describe("translateFieldValuesInSeries", () => {
       ];
 
       const result = translateFieldValuesInSeries(
-        series,
         mockTranslateWithTranslations,
-      ) as MaybeTranslatedSeries;
+      )(series) as MaybeTranslatedSeries;
 
       expect(result[0].data?.rows).toEqual([
         ["translated_Apple", 100, 30],
@@ -278,9 +270,8 @@ describe("translateFieldValuesInSeries", () => {
       } as SingleSeries,
     ];
 
-    const result = translateFieldValuesInSeries(
+    const result = translateFieldValuesInSeries(mockTranslateWithTranslations)(
       series,
-      mockTranslateWithTranslations,
     ) as MaybeTranslatedSeries;
 
     expect(result).toHaveLength(2);
@@ -297,9 +288,8 @@ describe("translateFieldValuesInSeries", () => {
       } as SingleSeries,
     ];
 
-    const result = translateFieldValuesInSeries(
+    const result = translateFieldValuesInSeries(mockTranslateWithTranslations)(
       series,
-      mockTranslateWithTranslations,
     ) as MaybeTranslatedSeries;
 
     expect(result[0].data?.rows).toEqual([]);
@@ -714,9 +704,8 @@ describe("translateSeriesNames", () => {
       }),
     ];
 
-    const result = translateSeriesNames(
+    const result = translateSeriesNames(mockTranslateWithoutTranslations)(
       series,
-      mockTranslateWithoutTranslations,
     );
 
     expect(result).toBe(series);
@@ -731,7 +720,7 @@ describe("translateSeriesNames", () => {
       }),
     ];
 
-    const result = translateSeriesNames(series, mockTranslateWithTranslations);
+    const result = translateSeriesNames(mockTranslateWithTranslations)(series);
 
     expect(result[0]).toBe(series[0]);
   });
@@ -745,7 +734,7 @@ describe("translateSeriesNames", () => {
       }),
     ];
 
-    const result = translateSeriesNames(series, mockTranslateWithTranslations);
+    const result = translateSeriesNames(mockTranslateWithTranslations)(series);
 
     expect(result[0]).toBe(series[0]);
   });
@@ -763,7 +752,7 @@ describe("translateSeriesNames", () => {
       }),
     ];
 
-    const result = translateSeriesNames(series, mockTranslateWithTranslations);
+    const result = translateSeriesNames(mockTranslateWithTranslations)(series);
 
     expect(
       result[0].card.visualization_settings.series_settings?.metric1?.title,
@@ -785,7 +774,7 @@ describe("translateSeriesNames", () => {
       }),
     ];
 
-    const result = translateSeriesNames(series, mockTranslateWithTranslations);
+    const result = translateSeriesNames(mockTranslateWithTranslations)(series);
 
     expect(
       result[0].card.visualization_settings.series_settings?.metric1?.title,
@@ -807,7 +796,7 @@ describe("translateSeriesNames", () => {
       }),
     ];
 
-    const result = translateSeriesNames(series, mockTranslateWithTranslations);
+    const result = translateSeriesNames(mockTranslateWithTranslations)(series);
 
     const settings =
       result[0].card.visualization_settings.series_settings?.metric1;
@@ -828,7 +817,7 @@ describe("translateSeriesNames", () => {
       }),
     ];
 
-    const result = translateSeriesNames(series, mockTranslateWithTranslations);
+    const result = translateSeriesNames(mockTranslateWithTranslations)(series);
 
     expect(
       result[0].card.visualization_settings.series_settings?.metric1?.title,
