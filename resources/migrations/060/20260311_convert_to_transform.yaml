@@ -5,7 +5,7 @@ databaseChangeLog:
   - changeSet:
       id: v60.2026-03-11T12:00:00
       author: bcm
-      comment: Add run_type and transform_id columns for convert-to-transform runs
+      comment: Add run_type column to source_replacement_run
       changes:
         - addColumn:
             tableName: source_replacement_run
@@ -17,6 +17,11 @@ databaseChangeLog:
                   defaultValue: "replace"
                   constraints:
                     nullable: false
+  - changeSet:
+      id: v60.2026-03-11T12:00:01
+      author: bcm
+      comment: Add transform_id column to source_replacement_run
+      changes:
         - addColumn:
             tableName: source_replacement_run
             columns:
