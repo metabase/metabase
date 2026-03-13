@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.auth-identity.totp :as totp]
+   [metabase.session.settings :as session.settings]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
    [metabase.util.password :as u.password]
@@ -74,6 +75,10 @@
    {:keys [password]} :- [:map
                           [:password ms/NonBlankString]]]
   (verify-user-password! password)
+  (when (and (session.settings/require-mfa)
+             (nil? (t2/select-one-fn :sso_source :model/User :id api/*current-user-id*)))
+    (throw (ex-info (tru "Cannot disable two-factor authentication while it is required by your administrator.")
+                    {:status-code 400})))
   (t2/update! :model/User api/*current-user-id*
               {:totp_enabled        false
                :totp_secret         nil

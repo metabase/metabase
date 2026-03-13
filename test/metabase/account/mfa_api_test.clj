@@ -139,3 +139,24 @@
     (mt/client :post 401 "session/mfa-verify"
                {:mfa-token     "invalid-token"
                 :totp-code     "123456"})))
+
+;;; ------------------------------------------- MFA Disable When Required -------------------------------------------
+
+(deftest mfa-disable-blocked-when-required-test
+  (testing "POST /api/mfa/disable is blocked when require-mfa is enabled for password-auth users"
+    (mt/with-temp-vals-in-db :model/User (mt/user->id :rasta) {:totp_enabled true}
+      (mt/with-temp-vals-in-db :model/User (mt/user->id :crowberto) {:totp_enabled true}
+        (mt/user-http-request :crowberto :put 204 "setting/require-mfa" {:value true})
+        (try
+          (is (re-find #"required by your administrator"
+                       (mt/user-http-request :rasta :post 400 "mfa/disable"
+                                             {:password (:password (mt/user->credentials :rasta))})))
+          (finally
+            (mt/user-http-request :crowberto :put 204 "setting/require-mfa" {:value false}))))))
+
+  (testing "POST /api/mfa/disable works when require-mfa is disabled"
+    (mt/with-temp-vals-in-db :model/User (mt/user->id :rasta) {:totp_enabled true
+                                                               :totp_secret  "JBSWY3DPEHPK3PXP"}
+      (mt/user-http-request :rasta :post 204 "mfa/disable"
+                            {:password (:password (mt/user->credentials :rasta))})
+      (is (false? (t2/select-one-fn :totp_enabled :model/User :id (mt/user->id :rasta)))))))
