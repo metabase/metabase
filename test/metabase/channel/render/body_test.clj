@@ -587,7 +587,7 @@
                                           [:field (mt/id :stages :step)]]}}
             funnel-card  {:display       :funnel
                           :dataset_query funnel-query
-                          :visualization_settings {:funnel.dimension "step"}}]
+                          :visualization_settings {:funnel.dimension "STEP"}}]
         (mt/with-temp [:model/Card {card-id :id} funnel-card]
           (let [row-names  (into #{} (map second funnel-numeric-first-rows))
                 doc        (render.tu/render-card-as-hickory! card-id)
@@ -598,6 +598,48 @@
                                 (filter row-names))]
             (is (not (render-error? pulse-body)))
             (is (seq labels) "Dimension labels should appear when funnel.dimension is set")))))))
+
+;; Test data with 3 columns where dimension is at index 2
+;; This matches the bug scenario: SELECT 'foo' as col, 100 as val, 'step 1' as step
+(def ^:private funnel-three-col-rows
+  [["foo" 100 "homepage"]
+   ["bar" 50  "cart"]
+   ["baz" 25  "checkout"]
+   ["qux" 10  "purchase"]])
+
+(tx/defdataset funnel-three-col-data
+  [["stages"
+    [{:field-name "col", :base-type :type/Text}
+     {:field-name "val", :base-type :type/Integer}
+     {:field-name "step", :base-type :type/Text}]
+    funnel-three-col-rows]])
+
+(deftest render-funnel-with-three-columns-explicit-settings-test
+  (testing "Static-viz Funnel Chart works when dimension is at index 2 with explicit funnel.dimension and funnel.metric"
+    (mt/dataset funnel-three-col-data
+      (let [funnel-query {:database (mt/id)
+                          :type     :query
+                          :query
+                          {:source-table (mt/id :stages)
+                           :fields       [[:field (mt/id :stages :col)]
+                                          [:field (mt/id :stages :val)]
+                                          [:field (mt/id :stages :step)]]}}
+            funnel-card  {:display       :funnel
+                          :dataset_query funnel-query
+                          :visualization_settings {:funnel.dimension "STEP"
+                                                   :funnel.metric    "VAL"}}]
+        (mt/with-temp [:model/Card {card-id :id} funnel-card]
+          (let [row-names  (into #{} (map #(nth % 2) funnel-three-col-rows))
+                doc        (render.tu/render-card-as-hickory! card-id)
+                pulse-body (hik.s/select (hik.s/class "pulse-body") doc)
+                labels     (->> doc
+                                (hik.s/select (hik.s/tag :tspan))
+                                (mapv (comp first :content))
+                                (filter row-names))]
+            (is (not (render-error? pulse-body))
+                "3-column funnel with explicit dimension/metric should not error")
+            (is (seq labels)
+                "Dimension labels (step names) should appear in the rendered funnel")))))))
 
 (deftest render-pie-chart-test
   (testing "The static-viz pie chart renders correctly."

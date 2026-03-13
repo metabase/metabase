@@ -560,6 +560,19 @@
                   (str/ends-with? col-name "_id")
                   (str/ends-with? col-name "-id"))))))
 
+(defn- reorder-cols-for-funnel
+  "Reorder :cols and :rows so that the dimension column is first and metric column is second.
+   Finds columns by name, mirroring the frontend FunnelNormal.tsx findIndex logic."
+  [data dim-col-name metric-col-name]
+  (let [cols    (:cols data)
+        dim-idx (first (keep-indexed (fn [i c] (when (= (:name c) dim-col-name) i)) cols))
+        met-idx (first (keep-indexed (fn [i c] (when (= (:name c) metric-col-name) i)) cols))]
+    (if (and dim-idx met-idx)
+      (-> data
+          (assoc :cols [(nth cols dim-idx) (nth cols met-idx)])
+          (update :rows (fn [rs] (mapv (fn [r] (let [v (vec r)] [(v dim-idx) (v met-idx)])) rs))))
+      data)))
+
 (defn- swap-first-two-cols
   "Swap the first two columns in data, reordering both :cols and :rows."
   [data]
@@ -569,23 +582,33 @@
 
 (defn- normalize-funnel-data
   "Ensure funnel data has dimension column first and metric column second.
-   Reorders both :cols and :rows if needed."
+   Reorders both :cols and :rows if needed. When explicit funnel.dimension and
+   funnel.metric settings are present, finds columns by name (like the frontend)."
   [card dashcard data]
   (let [cols (:cols data)]
     (if (or (< (count cols) 2)
             (and (not= :funnel (:display card))
                  (not (render.util/is-visualizer-dashcard? dashcard))))
       data
-      (let [dimension-col-name
-            (if (render.util/is-visualizer-dashcard? dashcard)
-              (get-in data [:viz-settings :funnel.dimension])
-              (get-in card [:visualization_settings :funnel.dimension]))]
+      (let [viz-settings     (if (render.util/is-visualizer-dashcard? dashcard)
+                               (:viz-settings data)
+                               (:visualization_settings card))
+            dimension-col-name (get viz-settings :funnel.dimension)
+            metric-col-name    (get viz-settings :funnel.metric)]
         (cond
-          ;; Explicit funnel.dimension: ensure that column is first
+          ;; Both dimension and metric specified: find by name regardless of position
+          (and dimension-col-name metric-col-name)
+          (reorder-cols-for-funnel data dimension-col-name metric-col-name)
+
+          ;; Only dimension specified: find it by name, pick first metric-like column for the other
           dimension-col-name
-          (if (= (:name (first cols)) dimension-col-name)
-            data
-            (swap-first-two-cols data))
+          (let [dim-idx (first (keep-indexed (fn [i c] (when (= (:name c) dimension-col-name) i)) cols))
+                met-idx (when dim-idx
+                          (or (first (keep-indexed (fn [i c] (when (and (not= i dim-idx) (metric-col? c)) i)) cols))
+                              (first (keep-indexed (fn [i _] (when (not= i dim-idx) i)) cols))))]
+            (if (and dim-idx met-idx)
+              (reorder-cols-for-funnel data dimension-col-name (:name (nth cols met-idx)))
+              data))
 
           ;; Auto-detect: metric col should be second, non-metric col should be first
           :else
