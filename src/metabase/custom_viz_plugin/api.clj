@@ -30,11 +30,12 @@
 
 (def ^:private CustomVizPluginRuntimeResponse
   [:map
-   [:id           ms/PositiveInt]
-   [:identifier   ms/NonBlankString]
-   [:display_name ms/NonBlankString]
-   [:icon         {:optional true} [:maybe :string]]
-   [:bundle_url   ms/NonBlankString]])
+   [:id              ms/PositiveInt]
+   [:identifier      ms/NonBlankString]
+   [:display_name    ms/NonBlankString]
+   [:icon            {:optional true} [:maybe :string]]
+   [:bundle_url      ms/NonBlankString]
+   [:resolved_commit {:optional true} [:maybe :string]]])
 
 ;;; ------------------------------------------------ Helpers ------------------------------------------------
 
@@ -52,12 +53,13 @@
 
 (defn- plugin->runtime-response
   "Convert a plugin record to the safe runtime response shape."
-  [{:keys [id identifier display_name icon]}]
-  {:id           id
-   :identifier   identifier
-   :display_name display_name
-   :icon         icon
-   :bundle_url   (format "/api/custom-viz-plugin/%d/bundle" id)})
+  [{:keys [id identifier display_name icon resolved_commit]}]
+  {:id              id
+   :identifier      identifier
+   :display_name    display_name
+   :icon            icon
+   :bundle_url      (format "/api/custom-viz-plugin/%d/bundle" id)
+   :resolved_commit resolved_commit})
 
 ;;; ------------------------------------------------ Endpoints ------------------------------------------------
 
@@ -97,7 +99,7 @@
   "List active and enabled custom visualization plugins. Available to any authenticated user."
   []
   (map plugin->runtime-response
-       (t2/select [:model/CustomVizPlugin :id :identifier :display_name :icon]
+       (t2/select [:model/CustomVizPlugin :id :identifier :display_name :icon :resolved_commit]
                   :status :active
                   :enabled true
                   {:order-by [[:display_name :asc]]})))
@@ -152,7 +154,7 @@
         (respond {:status  200
                   :headers {"Content-Type"  "application/javascript"
                             "ETag"          (:hash entry)
-                            "Cache-Control" "public, max-age=3600"}
+                            "Cache-Control" "public, max-age=31536000, immutable"}
                   :body    (:content entry)})
         (respond {:status 503
                   :headers {"Content-Type" "application/json"}
