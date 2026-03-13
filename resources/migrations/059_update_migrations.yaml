@@ -58,6 +58,75 @@ databaseChangeLog:
             columnDataType: int
 
   - changeSet:
+      id: v59.2025-12-03T17:08:36
+      author: nvoxland
+      comment: Add collection_id column to transform table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            changeSetExecuted:
+              id: v58.2025-12-03T17:08:36
+              author: nvoxland
+              changeLogFile: migrations/058_update_migrations.yaml
+        - not:
+            columnExists:
+              tableName: transform
+              columnName: collection_id
+      changes:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: collection_id
+                  type: int
+                  remarks: The collection the transform is in
+
+  - changeSet:
+      id: v59.2025-12-03T17:08:37
+      author: nvoxland
+      comment: Add index on transform.collection_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            changeSetExecuted:
+              id: v58.2025-12-03T17:08:37
+              author: nvoxland
+              changeLogFile: migrations/058_update_migrations.yaml
+        - not:
+            indexExists:
+              tableName: transform
+              indexName: idx_transform_collection_id
+      changes:
+        - createIndex:
+            tableName: transform
+            indexName: idx_transform_collection_id
+            columns:
+              - column:
+                  name: collection_id
+
+  - changeSet:
+      id: v59.2025-12-03T17:08:38
+      author: nvoxland
+      comment: Add fk_transform_collection_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            changeSetExecuted:
+              id: v58.2025-12-03T17:08:38
+              author: nvoxland
+              changeLogFile: migrations/058_update_migrations.yaml
+        - not:
+            foreignKeyConstraintExists:
+              foreignKeyName: fk_transform_collection_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: transform
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_transform_collection_id
+
+  - changeSet:
       id: v59.2025-12-04T12:00:00
       author: metabase
       comment: Create measure table for saved aggregation expressions
@@ -202,6 +271,85 @@ databaseChangeLog:
         - dropForeignKeyConstraint:
             baseTableName: measure
             constraintName: fk_measure_ref_creator_id
+
+  - changeSet:
+      id: v59.2025-12-30T22:48:02
+      author: edpaget
+      comment: Add remote_sync_object.model_table_id for parent table reference
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            changeSetExecuted:
+              id: v58.2025-12-30T22:48:02
+              author: edpaget
+              changeLogFile: migrations/058_update_migrations.yaml
+        - not:
+            columnExists:
+              tableName: remote_sync_object
+              columnName: model_table_id
+      changes:
+        - addColumn:
+            tableName: remote_sync_object
+            columns:
+              - column:
+                  name: model_table_id
+                  type: int
+                  remarks: Parent table ID for Field/Segment/Table models
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v59.2025-12-30T22:48:03
+      author: edpaget
+      comment: Add remote_sync_object.model_table_name for parent table name
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            changeSetExecuted:
+              id: v58.2025-12-30T22:48:03
+              author: edpaget
+              changeLogFile: migrations/058_update_migrations.yaml
+        - not:
+            columnExists:
+              tableName: remote_sync_object
+              columnName: model_table_name
+      changes:
+        - addColumn:
+            tableName: remote_sync_object
+            columns:
+              - column:
+                  name: model_table_name
+                  type: varchar(255)
+                  remarks: Parent table name for Field/Segment/Table models
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v59.2026-01-05T12:00:00
+      author: metasasha
+      comment: Add is_data_analyst column to core_user table for analyst role
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            changeSetExecuted:
+              id: v58.2026-01-05T12:00:00
+              author: metasasha
+              changeLogFile: migrations/058_update_migrations.yaml
+        - not:
+            columnExists:
+              tableName: core_user
+              columnName: is_data_analyst
+      changes:
+        - addColumn:
+            tableName: core_user
+            columns:
+              - column:
+                  name: is_data_analyst
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: Indicates if the user has data analyst privileges for Data Studio
+                  constraints:
+                    nullable: false
 
   - changeSet:
       id: v59.2026-01-06T10:00:00
@@ -395,6 +543,87 @@ databaseChangeLog:
             columns:
               - column:
                   name: result
+
+  - changeSet:
+      id: v59.2026-01-09T11:30:00
+      author: johnswanson
+      comment: |
+        Migration `v58.2026-01-09T12:00:00` had an issue for some customers (where a user-defined Data Analysts group
+        already existed). We need to replace this migration with a new one, but don't want the old migration to still
+        exist in the `databasechangelog`, to avoid incorrectly reporting that the latest migration is a `v58`
+        migration (if someone downgrades to v57).
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            changeSetExecuted:
+              id: v58.2026-01-09T11:30:00
+              author: johnswanson
+              changeLogFile: migrations/058_update_migrations.yaml
+      changes:
+        - sql:
+            dbms: postgres,h2
+            sql: >-
+              DELETE FROM databasechangelog WHERE id = 'v58.2026-01-09T12:00:00';
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DELETE FROM DATABASECHANGELOG WHERE id = 'v58.2026-01-09T12:00:00';
+      rollback: # not needed
+
+  - changeSet:
+      id: v59.2026-01-09T11:30:01
+      author: johnswanson
+      comment: Create data-analyst magic permissions group, handling name conflicts
+      validCheckSum: ANY
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            changeSetExecuted:
+              id: v58.2026-01-09T11:30:01
+              author: johnswanson
+              changeLogFile: migrations/058_update_migrations.yaml
+        - sqlCheck:
+            expectedResult: 0
+            sql: SELECT COUNT(*) FROM permissions_group WHERE magic_group_type = 'data-analyst'
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO permissions_group (name, magic_group_type)
+              SELECT
+                CASE WHEN EXISTS (SELECT 1 FROM permissions_group WHERE name = 'Data Analysts')
+                THEN 'Metabase Data Analysts'
+                ELSE 'Data Analysts'
+                END,
+                'data-analyst'
+      rollback:
+        - sql:
+            sql: DELETE FROM permissions_group WHERE magic_group_type = 'data-analyst';
+
+  - changeSet:
+      id: v59.2026-01-09T12:00:01
+      author: johnswanson
+      comment: Grant read permissions on existing Library collections to Data Analysts group
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            changeSetExecuted:
+              id: v58.2026-01-09T12:00:01
+              author: johnswanson
+              changeLogFile: migrations/058_update_migrations.yaml
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO permissions (group_id, object)
+              SELECT pg.id, '/collection/' || c.id || '/'
+              FROM permissions_group pg, collection c
+              WHERE pg.magic_group_type = 'data-analyst'
+                AND c.type IN ('library', 'library-data', 'library-metrics')
+      rollback:
+        - sql:
+            # We can safely delete ALL permissions for this group because it will be deleted in the rollback above
+            sql: >-
+              DELETE FROM permissions
+              WHERE group_id IN (SELECT id FROM permissions_group WHERE magic_group_type = 'data-analyst');
 
   - changeSet:
       id: v59.2026-01-16T00:00:00
@@ -782,6 +1011,66 @@ databaseChangeLog:
             relativeToChangelogFile: true
 
   - changeSet:
+      id: v59.2026-01-23T05:55:14
+      author: johnswanson
+      comment: Fix missing perm_value/perm_type/collection_id from v58.2026-01-09T12:00:01
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            changeSetExecuted:
+              id: v58.2026-01-23T05:55:14
+              author: johnswanson
+              changeLogFile: migrations/058_update_migrations.yaml
+      rollback: # not needed
+      changes:
+        - sql:
+            dbms: postgres
+            sql: >-
+              UPDATE permissions p
+              SET perm_value = 'read-and-write',
+                  perm_type = 'perms/collection-access',
+                  collection_id = c.id
+              FROM permissions_group pg, collection c
+              WHERE p.group_id = pg.id
+                AND pg.magic_group_type = 'data-analyst'
+                AND p.object = '/collection/' || c.id || '/'
+                AND c.type IN ('library', 'library-data', 'library-metrics')
+                AND p.perm_value IS NULL
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE permissions p
+              JOIN permissions_group pg ON p.group_id = pg.id
+              JOIN collection c ON p.object = CONCAT('/collection/', c.id, '/')
+              SET p.perm_value = 'read-and-write',
+                  p.perm_type = 'perms/collection-access',
+                  p.collection_id = c.id
+              WHERE pg.magic_group_type = 'data-analyst'
+                AND c.type IN ('library', 'library-data', 'library-metrics')
+                AND p.perm_value IS NULL
+        - sql:
+            dbms: h2
+            sql: >-
+              UPDATE permissions p
+              SET (perm_value, perm_type, collection_id) = (
+                SELECT 'read-and-write', 'perms/collection-access', c.id
+                FROM permissions_group pg, collection c
+                WHERE p.group_id = pg.id
+                  AND pg.magic_group_type = 'data-analyst'
+                  AND p.object = '/collection/' || c.id || '/'
+                  AND c.type IN ('library', 'library-data', 'library-metrics')
+              )
+              WHERE p.perm_value IS NULL
+                AND EXISTS (
+                  SELECT 1
+                  FROM permissions_group pg, collection c
+                  WHERE p.group_id = pg.id
+                    AND pg.magic_group_type = 'data-analyst'
+                    AND p.object = '/collection/' || c.id || '/'
+                    AND c.type IN ('library', 'library-data', 'library-metrics')
+                )
+
+  - changeSet:
       id: v59.2026-01-23T12:00:00
       author: bronsa
       comment: Insert default common.py entry in python_library if not exists
@@ -935,6 +1224,34 @@ databaseChangeLog:
         - dropUniqueConstraint:
             tableName: python_library
             constraintName: unique_python_library_entity_id
+
+  - changeSet:
+      id: v59.2026-01-27T13:00:00
+      author: wotbrew
+      comment: Drop medallion names for data_layer enum use (hidden, internal instead)
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            changeSetExecuted:
+              id: v58.2026-01-27T13:00:00
+              author: wotbrew
+              changeLogFile: migrations/058_update_migrations.yaml
+      changes:
+        - sql:
+            sql: >-
+              UPDATE metabase_table
+              SET data_layer = CASE data_layer
+                WHEN 'copper' THEN 'hidden'
+                ELSE 'final'
+              END
+      rollback:
+        - sql:
+            sql: >-
+              UPDATE metabase_table
+              SET data_layer = CASE data_layer
+                WHEN 'hidden' THEN 'copper'
+                ELSE 'bronze'
+              END
 
   - changeSet:
       id: v59.2026-01-28T10:00:00
@@ -3042,6 +3359,30 @@ databaseChangeLog:
       changes:
         - customChange:
             class: "metabase.app_db.custom_migrations.FixClickHouseUploadDBSchemaNames"
+
+  - changeSet:
+      id: v59.2026-03-11T00:00:00
+      author: christruter
+      comment: >-
+        Clean up old v58 changeset rows from databasechangelog left behind when
+        migrations were moved to v59. These stale rows block downgrade to older versions.
+      changes:
+        - sql:
+            sql: >-
+              DELETE FROM ${databasechangelog.name} WHERE id IN (
+                'v58.2025-12-03T17:08:36',
+                'v58.2025-12-03T17:08:37',
+                'v58.2025-12-03T17:08:38',
+                'v58.2025-12-30T22:48:02',
+                'v58.2025-12-30T22:48:03',
+                'v58.2026-01-05T12:00:00',
+                'v58.2026-01-09T11:30:00',
+                'v58.2026-01-09T11:30:01',
+                'v58.2026-01-09T12:00:01',
+                'v58.2026-01-23T05:55:14',
+                'v58.2026-01-27T13:00:00'
+              );
+      rollback: # nothing to undo - these rows should not exist in v59
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
