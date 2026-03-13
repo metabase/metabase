@@ -3,7 +3,6 @@
    [clojure.test :refer :all]
    [metabase-enterprise.dependencies.events]
    [metabase-enterprise.replacement.models.replacement-run :as replacement-run]
-   [metabase-enterprise.replacement.timeout :as replacement.timeout]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -50,58 +49,6 @@
       (let [updated (t2/select-one :model/ReplacementRun :id (:id run))]
         (is (= :table (:target_entity_type updated)))
         (is (= 42 (:target_entity_id updated)))))))
-
-(deftest update-transform-id-test
-  (mt/with-model-cleanup [:model/ReplacementRun]
-    (let [run (replacement-run/create-run! :card 1 :card 1 (mt/user->id :crowberto) :convert-to-transform)]
-      (is (nil? (:transform_id run)))
-      (replacement-run/update-transform-id! (:id run) 42)
-      (let [updated (t2/select-one :model/ReplacementRun :id (:id run))]
-        (is (= 42 (:transform_id updated)))))))
-
-(deftest failed-runs-with-transforms-test
-  (mt/with-model-cleanup [:model/ReplacementRun]
-    (let [failed-rwt    (replacement-run/create-run! :card 1 :card 1 (mt/user->id :crowberto) :convert-to-transform)
-          failed-replace (replacement-run/create-run! :card 2 :card 3 (mt/user->id :crowberto))
-          ok-rwt         (replacement-run/create-run! :card 4 :card 4 (mt/user->id :crowberto) :convert-to-transform)]
-      ;; Start and fail the convert-to-transform run with a transform_id
-      (replacement-run/start-run! (:id failed-rwt))
-      (replacement-run/update-transform-id! (:id failed-rwt) 100)
-      (replacement-run/fail-run! (:id failed-rwt) "boom")
-      ;; Start and fail the replace run (no transform_id)
-      (replacement-run/start-run! (:id failed-replace))
-      (replacement-run/fail-run! (:id failed-replace) "boom")
-      ;; Start and succeed the other run
-      (replacement-run/start-run! (:id ok-rwt))
-      (replacement-run/update-transform-id! (:id ok-rwt) 200)
-      (replacement-run/succeed-run! (:id ok-rwt))
-      (testing "returns only failed runs with transform_id"
-        (let [runs (replacement-run/failed-runs-with-transforms)]
-          (is (= 1 (count runs)))
-          (is (= (:id failed-rwt) (:id (first runs))))
-          (is (= 100 (:transform_id (first runs)))))))))
-
-(deftest cleanup-failed-runs-with-transforms-test
-  (testing "cleanup deletes orphaned transforms and clears transform_id on the run"
-    (mt/with-model-cleanup [:model/ReplacementRun :model/Transform]
-      (let [transform (t2/insert-returning-instance! :model/Transform
-                                                     {:name               "orphaned"
-                                                      :source             {:type  "query"
-                                                                           :query (mt/mbql-query orders)}
-                                                      :target             {:type "table" :name "t" :schema "s"}
-                                                      :source_database_id (mt/id)
-                                                      :creator_id         (mt/user->id :crowberto)})
-            run       (replacement-run/create-run! :card 1 :card 1 (mt/user->id :crowberto) :convert-to-transform)]
-        (replacement-run/start-run! (:id run))
-        (replacement-run/update-transform-id! (:id run) (:id transform))
-        (replacement-run/fail-run! (:id run) "boom")
-        ;; Run cleanup
-        (#'replacement.timeout/cleanup-failed-runs-with-transforms!)
-        ;; Transform should be deleted
-        (is (nil? (t2/select-one :model/Transform :id (:id transform))))
-        ;; Run should have transform_id cleared
-        (let [updated (t2/select-one :model/ReplacementRun :id (:id run))]
-          (is (nil? (:transform_id updated))))))))
 
 ;;; ------------------------------------------------ API endpoints ------------------------------------------------
 
@@ -238,7 +185,6 @@
 
                     (testing "run metadata is correct"
                       (is (= "convert-to-transform" (:run_type final)))
-                      (is (= transform-id (:transform_id final)))
                       (is (= "table" (:target_entity_type final)))
                       (is (some? (:target_entity_id final))))
 

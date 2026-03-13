@@ -36,6 +36,12 @@
                                    :is_active          nil
                                    :progress           (when (= run-type :replace) 0.0)})))
 
+(defn create-convert-run!
+  "Create a `:convert-to-transform` run. Source and target start as the same entity
+   (target is updated mid-execution once the output table is known)."
+  [source-type source-id user-id]
+  (create-run! source-type source-id source-type source-id user-id :convert-to-transform))
+
 (defn start-run!
   "Mark the active run as started."
   [run-id]
@@ -108,21 +114,6 @@
     (t2/select :model/ReplacementRun :is_active true {:order-by [[:id :desc]]})
     (t2/select :model/ReplacementRun {:order-by [[:id :desc]]})))
 
-(defn update-transform-id!
-  "Record the transform ID on a `:convert-to-transform` run."
-  [run-id transform-id]
-  (t2/update! :model/ReplacementRun
-              :id run-id
-              {:transform_id transform-id}))
-
-(defn failed-runs-with-transforms
-  "Return failed/timed-out runs that have a transform_id set."
-  []
-  (t2/select :model/ReplacementRun
-             :run_type :convert-to-transform
-             :status [:in [:failed :timeout]]
-             {:where [:not= :transform_id nil]}))
-
 (defn update-target!
   "Update the target entity type and ID on a run (for convert runs where target is determined mid-execution)."
   [run-id target-type target-id]
@@ -168,6 +159,8 @@
                  (when on-complete
                    (deliver on-complete :run/cancelled))
                  (throw (ex-info "Run canceled" {:run-id run-id})))))))
+       (update-target! [_ target-type target-id]
+         (update-target! run-id target-type target-id))
        (canceled? [_]
          (not (:is_active (t2/select-one [:model/ReplacementRun :is_active] :id run-id))))
        (start-run! [_]

@@ -4,7 +4,6 @@
    The FE creates the transform via the transforms API. This module re-runs it,
    finds the output table, and replaces all dependents of the source entity."
   (:require
-   [metabase-enterprise.replacement.models.replacement-run :as replacement-run]
    [metabase-enterprise.replacement.protocols :as replacement.protocols]
    [metabase-enterprise.replacement.runner :as replacement.runner]
    [metabase.model-persistence.core :as model-persistence]
@@ -35,12 +34,11 @@
      replacement (default false).
    - `:archive-card?` — when true and source is a card, archive the card after all
      steps are done (default false)."
-  [source-type source-id transform-id run-id progress
+  [source-type source-id transform-id progress
    {:keys [unpersist-card? archive-card?] :or {unpersist-card? false archive-card? false}}]
   (let [transform (t2/select-one :model/Transform :id transform-id)
         _         (when-not transform
                     (throw (ex-info "Transform not found" {:transform-id transform-id})))
-        _         (replacement-run/update-transform-id! run-id transform-id)
 
         ;; --- Phase 1: Execute transform (synchronous — also syncs the output table) ---
         _         (transforms/execute! transform {:run-method :manual})
@@ -59,7 +57,7 @@
         _            (when-not table
                        (throw (ex-info "Output table not found after transform execution"
                                        {:db-id target-db-id :schema table-schema :name table-name})))
-        _            (replacement-run/update-target! run-id :table (:id table))
+        _            (replacement.protocols/update-target! progress :table (:id table))
         _            (check-canceled! progress)]
 
     ;; --- Phase 3: Replace all usages (0 → 1) ---

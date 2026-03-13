@@ -100,15 +100,14 @@
    :- ::replacement.schema/replace-source-with-transform-request]
   (api/check-superuser)
   (api/check-404 (t2/select-one :model/Transform :id transform_id))
-  (let [job-row  (replacement-run/create-run!
+  (let [job-row  (replacement-run/create-convert-run!
                   source_entity_type source_entity_id
-                  source_entity_type source_entity_id
-                  api/*current-user-id* :convert-to-transform)
+                  api/*current-user-id*)
         progress (replacement-run/run-row->progress job-row)
         work-fn  (fn [progress]
                    (convert/replace-source-with-transform!
                     source_entity_type source_entity_id transform_id
-                    (:id job-row) progress
+                    progress
                     {:unpersist-card? unpersist_card
                      :archive-card?   archive_card}))]
     (replacement.execute/execute-async! work-fn progress)
