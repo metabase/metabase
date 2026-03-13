@@ -184,12 +184,12 @@
   (:body (slack-post-json client "/views.open" {:trigger_id trigger_id
                                                 :view       view})))
 
-(defn download-file
-  "Download a file from Slack using the client's token for authentication.
-   Returns byte array of file contents."
+(defn download-file-stream
+  "Download a file from Slack, returning an InputStream instead of buffering in memory.
+   Caller is responsible for closing the stream (e.g. via `with-open`)."
   [client url]
   (-> (http/get url {:headers {"Authorization" (str "Bearer " (:token client))}
-                     :as      :byte-array})
+                     :as      :stream})
       :body))
 
 ;; -------------------- SLACK STREAMING API --------------------

@@ -22,6 +22,14 @@
   []
   (setting/get-value-of-type :string :metabot-slack-signing-secret))
 
+(defsetting slackbot-event-handler-pool-size
+  (deferred-tru "Maximum number of concurrent Slack event handler threads.")
+  :visibility :internal
+  :type       :integer
+  :default    64
+  :setter     :none
+  :export?    false)
+
 (defenterprise metabot-slack-signing-secret-setting
   "Returns the Slack signing secret for Metabot."
   :feature :metabot-v3

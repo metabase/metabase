@@ -1,10 +1,12 @@
 (ns metabase-enterprise.slackbot.uploads-test
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.slackbot.client :as slackbot.client]
    [metabase-enterprise.slackbot.test-util :as tu]
    [metabase-enterprise.slackbot.uploads :as slackbot.uploads]
+   [metabase.channel.settings :as channel.settings]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.upload.db :as upload.db]
@@ -43,9 +45,9 @@
        upload.impl/create-csv-upload! (fn [params]
                                         (swap! upload-calls conj params)
                                         upload-result)
-       slackbot.client/download-file  (fn [_client url]
-                                        (swap! download-calls conj url)
-                                        download-content)]
+       slackbot.client/download-file-stream  (fn [_client url]
+                                               (swap! download-calls conj url)
+                                               (io/input-stream download-content))]
       (body-fn {:upload-calls   upload-calls
                 :download-calls download-calls}))))
 
@@ -223,7 +225,7 @@
 (deftest csv-upload-file-too-large-test
   (testing "POST /events with file exceeding size limit"
     (tu/with-slackbot-setup
-      (let [too-large-size (inc (* 1024 1024 1024)) ;; Just over 1GB
+      (let [too-large-size (inc (* 200 1024 1024)) ;; Just over 200MB
             event-body    (update tu/base-dm-event :event merge
                                   {:subtype "file_share"
                                    :text    "Here's my huge file"
@@ -235,7 +237,7 @@
           {:uploads-enabled? true}
           (fn [{:keys [upload-calls download-calls]}]
             (tu/with-slackbot-mocks
-              {:ai-text "The file exceeds the 1GB size limit."}
+              {:ai-text "The file exceeds the 200MB size limit."}
               (fn [{:keys [stop-stream-calls]}]
                 (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
                                           (tu/slack-request-options event-body)
@@ -275,6 +277,25 @@
                   (testing "AI responds with permission error"
                     (is (some #(= "You don't have permission to upload files." %)
                               @append-text-calls))))))))))))
+
+(deftest process-csv-file-streams-to-temp-file-test
+  (testing "process-csv-file streams download content through a temp file to the upload fn"
+    (let [csv-content   "col1,col2\nfoo,bar\nbaz,qux"
+          uploaded-file (atom nil)]
+      (mt/with-dynamic-fn-redefs
+        [slackbot.client/download-file-stream (fn [_client _url]
+                                                (io/input-stream (.getBytes csv-content)))
+         upload.impl/create-csv-upload!       (fn [{:keys [file] :as _params}]
+                                                (reset! uploaded-file (slurp file))
+                                                {:id 1 :name "test"})
+         ;; stub out the token lookup
+         channel.settings/unobfuscated-slack-app-token (constantly "xoxb-fake")]
+        (let [result (#'slackbot.uploads/process-csv-file
+                      {:db_id 1 :schema_name nil :table_prefix nil}
+                      {:name "test.csv" :url_private "https://example.com/test.csv" :size 100})]
+          (is (= 1 (:model-id result)))
+          (testing "file content was streamed correctly through temp file"
+            (is (= csv-content @uploaded-file))))))))
 
 (deftest ^:parallel csv-file-detection-test
   (testing "csv-file? correctly identifies CSV/TSV files"

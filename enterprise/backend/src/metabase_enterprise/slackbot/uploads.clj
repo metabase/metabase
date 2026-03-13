@@ -13,8 +13,8 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private max-file-size-bytes
-  "Maximum file size for CSV uploads (1GB, matches Slack's limit)"
-  (* 1024 1024 1024))
+  "Maximum file size for CSV uploads (200MB)"
+  (* 200 1024 1024))
 
 (def ^:private allowed-csv-filetypes
   "File types that are allowed for CSV uploads"
@@ -29,7 +29,7 @@
   "Returns nil if valid, error string if too large."
   [{:keys [name size]}]
   (when (> size max-file-size-bytes)
-    (format "File '%s' exceeds 1GB size limit" name)))
+    (format "File '%s' exceeds %dMB size limit" name (quot max-file-size-bytes (* 1024 1024)))))
 
 (defn- upload-settings
   "Get upload settings map. Returns nil if uploads are not enabled."
@@ -49,8 +49,8 @@
       {:error size-error :filename name})
     (let [temp-file (java.io.File/createTempFile "slack-upload-" (str "-" name))]
       (try
-        (let [content (slackbot.client/download-file {:token (channel.settings/unobfuscated-slack-app-token)} url_private)]
-          (io/copy content temp-file)
+        (with-open [stream (slackbot.client/download-file-stream {:token (channel.settings/unobfuscated-slack-app-token)} url_private)]
+          (io/copy stream temp-file)
           (let [result (upload/create-csv-upload!
                         {:filename      name
                          :file          temp-file

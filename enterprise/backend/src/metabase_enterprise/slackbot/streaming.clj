@@ -46,6 +46,10 @@
                       (.setDaemon true))))]
     (Executors/newFixedThreadPool viz-prefetch-pool-size factory)))
 
+(def ^:private slack-writer-await-timeout-ms
+  "Maximum time to wait for the Slack writer agent to flush pending writes."
+  (* 30 1000))
+
 (def ^:private thinking-placeholder
   "Displayed while waiting for AI response. Excluded from history."
   "_Thinking..._")
@@ -522,7 +526,8 @@
                           :req-slack-msg-id     (:ts event)
                           :get-res-slack-msg-id (fn [] (:stream_ts @stream-state))})]
         (request-flush! true)
-        (await slack-writer)
+        (when-not (await-for slack-writer-await-timeout-ms slack-writer)
+          (log/warn "[slackbot] Timed out waiting for slack-writer agent to flush"))
         (if-let [{:keys [stream_ts channel]} @stream-state]
           ;; Hold stop-stream until all viz futures finish so text + viz + controls
           ;; finalize as a single message.
@@ -544,7 +549,8 @@
       (catch Exception e
         (cancel-prefetched-viz! prefetched-viz)
         (log/error e "[slackbot] Error in streaming response")
-        (await slack-writer)
+        (when-not (await-for slack-writer-await-timeout-ms slack-writer)
+          (log/warn "[slackbot] Timed out waiting for slack-writer agent to flush"))
         (if-let [{:keys [stream_ts channel]} @stream-state]
           (try
             (slackbot.client/append-markdown-text client channel stream_ts

@@ -32,9 +32,25 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.util.concurrent ExecutorService Executors ThreadFactory)))
 
 (set! *warn-on-reflection* true)
+
+(defonce ^:private event-handler-executor
+  (delay
+    (let [counter (atom 0)
+          factory (reify ThreadFactory
+                    (newThread [_ r]
+                      (doto (Thread. r (str "slack-event-handler-" (swap! counter inc)))
+                        (.setDaemon true))))]
+      (Executors/newFixedThreadPool (long (slackbot.settings/slackbot-event-handler-pool-size)) factory))))
+
+(defn- submit-async
+  "Submit a function for async execution on the bounded event handler thread pool."
+  [f]
+  (.submit ^ExecutorService @event-handler-executor ^Runnable f))
 
 (defenterprise clear-slack-bot-settings!
   "Clears all slackbot-related settings when Slack token is cleared.
@@ -191,22 +207,23 @@
   [handler client event]
   (let [event-type (or (:subtype event) (:channel_type event) (:type event))]
     (log/debugf "[slackbot] Processing %s event" event-type)
-    (future
-      (try
-        (when-let [user-id (require-authenticated-slack-user! client event)]
-          (request/with-current-user user-id
-            (let [source (event-source event)
-                  timer  (u/start-timer)]
-              (try
-                (handler client event)
-                (analytics/inc! :metabase-slackbot/responses-generated {:source source :result "success"})
-                (catch Exception e
-                  (analytics/inc! :metabase-slackbot/responses-generated {:source source :result "error"})
-                  (throw e))
-                (finally
-                  (analytics/observe! :metabase-slackbot/response-duration-ms {:source source} (u/since-ms timer)))))))
-        (catch Exception e
-          (log/errorf e "[slackbot] Error processing %s: %s" event-type (ex-message e)))))))
+    (submit-async
+     (fn []
+       (try
+         (when-let [user-id (require-authenticated-slack-user! client event)]
+           (request/with-current-user user-id
+             (let [source (event-source event)
+                   timer  (u/start-timer)]
+               (try
+                 (handler client event)
+                 (analytics/inc! :metabase-slackbot/responses-generated {:source source :result "success"})
+                 (catch Exception e
+                   (analytics/inc! :metabase-slackbot/responses-generated {:source source :result "error"})
+                   (throw e))
+                 (finally
+                   (analytics/observe! :metabase-slackbot/response-duration-ms {:source source} (u/since-ms timer)))))))
+         (catch Exception e
+           (log/errorf e "[slackbot] Error processing %s: %s" event-type (ex-message e))))))))
 
 (defn- ignore-event
   "Handle any event we don't care to process"
@@ -375,7 +392,7 @@
         (process-async handle-message-file-share client event)
 
         (delete-reaction-event? event)
-        (future (handle-delete-reaction client event))
+        (submit-async (fn [] (handle-delete-reaction client event)))
 
         (slackbot.events/reaction-added? event)
         (log/debugf "[slackbot] Ignoring reaction_added for non-delete emoji reaction=%s item_type=%s channel=%s ts=%s"
@@ -545,11 +562,12 @@
     (case (:status authorization)
       :authorized
       (let [client {:token (channel.settings/unobfuscated-slack-app-token)}]
-        (future
-          (try
-            (replace-response-with-removed-notice! client channel-id message-ts (:request-user-id authorization))
-            (catch Exception e
-              (log/errorf e "[slackbot] Error replacing metabot response with removed notice: %s" (ex-data e))))))
+        (submit-async
+         (fn []
+           (try
+             (replace-response-with-removed-notice! client channel-id message-ts (:request-user-id authorization))
+             (catch Exception e
+               (log/errorf e "[slackbot] Error replacing metabot response with removed notice: %s" (ex-data e)))))))
 
       (log-ignored-delete-request (assoc authorization :source "action")))))
 
@@ -561,14 +579,15 @@
         values           (get-in payload [:view :state :values])
         issue-type       (get-in values [:issue_type :issue_type_select :selected_option :value])
         freeform         (get-in values [:freeform_feedback :freeform_input :value])]
-    (future
-      (try
-        (metabot-v3.feedback/submit-to-harbormaster!
-         (cond-> (build-base-feedback user_id conversation_id positive)
-           true       (assoc-in [:feedback :freeform_feedback] (or freeform ""))
-           issue-type (assoc-in [:feedback :issue_type] issue-type)))
-        (catch Exception e
-          (log/error e "[slackbot] Error submitting feedback to Harbormaster"))))))
+    (submit-async
+     (fn []
+       (try
+         (metabot-v3.feedback/submit-to-harbormaster!
+          (cond-> (build-base-feedback user_id conversation_id positive)
+            true       (assoc-in [:feedback :freeform_feedback] (or freeform ""))
+            issue-type (assoc-in [:feedback :issue_type] issue-type)))
+         (catch Exception e
+           (log/error e "[slackbot] Error submitting feedback to Harbormaster")))))))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/interactive"
