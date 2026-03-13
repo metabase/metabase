@@ -128,6 +128,7 @@
         "prosemirror-dropcursor": "1.8.2",
         "prosemirror-state": "^1.4.4",
         "prosemirror-view": "^1.40.1",
+        "qrcode.react": "^4.2.0",
         "querystring-es3": "^0.2.1",
         "re-reselect": "^4.0.1",
         "react": "^18.2.0",
@@ -4447,6 +4448,8 @@
     "pure-rand": ["pure-rand@7.0.1", "", {}, "sha512-oTUZM/NAZS8p7ANR3SHh30kXB+zK2r2BPcEn/awJIbOvq82WoMN4p62AWWp3Hhw50G0xMsw1mhIBLqHw64EcNQ=="],
 
     "qified": ["qified@0.5.0", "", { "dependencies": { "hookified": "^1.12.1" } }, "sha512-Zj6Q/Vc/SQ+Fzc87N90jJUzBzxD7MVQ2ZvGyMmYtnl2u1a07CejAhvtk4ZwASos+SiHKCAIylyGHJKIek75QBw=="],
+
+    "qrcode.react": ["qrcode.react@4.2.0", "", { "peerDependencies": { "react": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-QpgqWi8rD9DsS9EP3z7BT+5lY5SFhsqGjpgW5DY/i3mK4M9DTBNz3ErMi8BWYEfI3L0d8GIbGmcdFAS1uIRGjA=="],
 
     "qs": ["qs@6.12.3", "", { "dependencies": { "side-channel": "^1.0.6" } }, "sha512-AWJm14H1vVaO/iNZ4/hO+HyaTehuy9nRqVdkTqlJt0HWvBiBIEXFmb4C0DGeYo3Xes9rrEW+TxHsaigCbN5ICQ=="],
 

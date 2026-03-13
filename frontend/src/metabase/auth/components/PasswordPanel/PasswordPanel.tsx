@@ -1,17 +1,18 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 
-import { login } from "../../actions";
+import { login, mfaVerify } from "../../actions";
 import {
   getExternalAuthProviders,
   getHasSessionCookies,
   getIsLdapEnabled,
 } from "../../selectors";
-import type { LoginData } from "../../types";
+import type { LoginData, MfaVerifyData } from "../../types";
 import { AuthButton } from "../AuthButton";
 import { LoginForm } from "../LoginForm";
+import { MfaForm } from "../MfaForm";
 
 import { ActionList, ActionListItem } from "./PasswordPanel.styled";
 
@@ -24,20 +25,35 @@ export const PasswordPanel = ({ redirectUrl }: PasswordPanelProps) => {
   const isLdapEnabled = useSelector(getIsLdapEnabled);
   const hasSessionCookies = useSelector(getHasSessionCookies);
   const dispatch = useDispatch();
+  const [mfaToken, setMfaToken] = useState<string | null>(null);
 
-  const handleSubmit = useCallback(
+  const handleLoginSubmit = useCallback(
     async (data: LoginData) => {
-      await dispatch(login({ data, redirectUrl })).unwrap();
+      const result = await dispatch(login({ data, redirectUrl })).unwrap();
+      if (result?.mfaRequired && result.mfaToken) {
+        setMfaToken(result.mfaToken);
+      }
     },
     [dispatch, redirectUrl],
   );
+
+  const handleMfaSubmit = useCallback(
+    async (data: MfaVerifyData) => {
+      await dispatch(mfaVerify(data)).unwrap();
+    },
+    [dispatch],
+  );
+
+  if (mfaToken) {
+    return <MfaForm mfaToken={mfaToken} onSubmit={handleMfaSubmit} />;
+  }
 
   return (
     <div>
       <LoginForm
         isLdapEnabled={isLdapEnabled}
         hasSessionCookies={hasSessionCookies}
-        onSubmit={handleSubmit}
+        onSubmit={handleLoginSubmit}
       />
       <ActionList>
         <ActionListItem>

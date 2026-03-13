@@ -36,6 +36,7 @@ export interface BaseUser {
   is_qbnewb: boolean;
   is_superuser: boolean;
   is_data_analyst: boolean;
+  totp_enabled: boolean;
 
   date_joined: string;
   last_login: string;

@@ -37,6 +37,7 @@ export const AccountHeader = ({
       ...(hasPasswordChange
         ? [{ name: t`Password`, value: "/account/password" }]
         : []),
+      { name: t`Security`, value: "/account/security" },
       { name: t`Login History`, value: "/account/login-history" },
       { name: t`Notifications`, value: "/account/notifications" },
     ],
