@@ -1,5 +1,6 @@
 (ns metabase-enterprise.dependencies.events
   (:require
+   [metabase-enterprise.dependencies.async :as async]
    [metabase-enterprise.dependencies.calculation :as deps.calculation]
    [metabase-enterprise.dependencies.findings :as deps.findings]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
@@ -287,12 +288,14 @@
   [_ {:keys [object]}]
   (when (and (premium-features/has-feature? :dependencies)
              (not (models.dependency/is-native-entity? :card object)))
-    (lib-be/with-metadata-provider-cache
-      (let [has-stale-dependents? (t2/with-transaction [_conn]
-                                    (deps.findings/upsert-analysis! object)
-                                    (deps.findings/mark-dependents-stale! :card (:id object)))]
-        (when has-stale-dependents?
-          (task.entity-check/trigger-entity-check-job!))))))
+    (async/submit!
+     (fn []
+       (lib-be/with-metadata-provider-cache
+         (let [has-stale-dependents? (t2/with-transaction [_conn]
+                                       (deps.findings/upsert-analysis! object)
+                                       (deps.findings/mark-dependents-stale! :card (:id object)))]
+           (when has-stale-dependents?
+             (task.entity-check/trigger-entity-check-job!))))))))
 
 (derive ::check-transform :metabase/event)
 (derive :event/create-transform ::check-transform)
