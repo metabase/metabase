@@ -1,6 +1,10 @@
 import { match } from "ts-pattern";
 
-import { skipToken, useGetTableQueryMetadataQuery } from "metabase/api";
+import {
+  skipToken,
+  useGetAdhocQueryMetadataQuery,
+  useGetTableQueryMetadataQuery,
+} from "metabase/api";
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getLibQuery, isMbqlQuery } from "metabase/transforms/utils";
@@ -14,6 +18,13 @@ import { useNativeHasCheckpointFieldOptions } from "./useNativeCheckpointFieldOp
 export const useHasCheckpointOptions = (source: TransformSource) => {
   const metadata = useSelector(getMetadata);
   const libQuery = getLibQuery(source, metadata);
+
+  // Trigger query metadata fetch for MBQL/native query sources so metadata is populated
+  // before we compute hasCheckpointOptions. Without this, getSourceFieldOptions(libQuery)
+  // can return [] when the query references a card or needs schema from the API.
+  useGetAdhocQueryMetadataQuery(
+    source.type === "query" ? source.query : skipToken,
+  );
 
   const isPythonTransform = source.type === "python";
   const transformType = match({
