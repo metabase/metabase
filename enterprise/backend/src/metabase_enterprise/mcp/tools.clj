@@ -49,8 +49,9 @@
    then parse the JSON output and return it as MCP text content."
   [^StreamingResponse response]
   (let [baos (ByteArrayOutputStream.)
-        canceled-chan (a/promise-chan)]
-    (.f response baos canceled-chan)
+        canceled-chan (a/promise-chan)
+        f (.f response)]
+    (f baos canceled-chan)
     (text-content (json/decode+kw (.toString baos "UTF-8")))))
 
 (defn- invoke-agent-api
@@ -67,8 +68,8 @@
      (fn [error] (deliver result {:status 500 :body {:message (ex-message error)}})))
     (let [response (deref result 30000 {:status 504 :body {:message "Timeout"}})]
       (cond
-        (instance? StreamingResponse response)
-        (capture-streaming-response response)
+        (instance? StreamingResponse (:body response))
+        (capture-streaming-response (:body response))
 
         (= 200 (:status response))
         (text-content (:body response))
