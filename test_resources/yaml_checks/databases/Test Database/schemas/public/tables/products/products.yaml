@@ -1,0 +1,34 @@
+name: products
+display_name: Products
+description: Product catalog
+created_at: '2026-01-01T00:00:00.000000Z'
+db_id: Test Database
+schema: public
+entity_type: entity/ProductTable
+active: true
+is_upload: false
+field_order: database
+visibility_type: null
+show_in_getting_started: false
+initial_sync_status: complete
+points_of_interest: null
+caveats: null
+serdes/meta:
+- id: Test Database
+  model: Database
+- id: public
+  model: Schema
+- id: products
+  model: Table
+archived_at: null
+collection_id: null
+data_authority: unconfigured
+data_layer: internal
+data_source: null
+database_require_filter: null
+deactivated_at: null
+is_published: false
+is_writable: true
+owner_email: null
+owner_user_id: null
+transform_id: null
