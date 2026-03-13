@@ -1573,6 +1573,22 @@
                      2 1 123 110.93 6.1 117.03 nil "2018-05-15T08:04:04.58Z" 3]]
                    (mt/rows (qp/process-query q2))))))))))
 
+(deftest ^:parallell self-join-with-capitalized-table-test
+  (mt/test-drivers (mt/normal-driver-select {:+features [:left-join]})
+    (mt/dataset (mt/dataset-definition "self-join-db"
+                                       [["TableA"
+                                         [{:field-name "foo" :base-type :type/Integer}]
+                                         [[1] [2]]]])
+      (let [mp    (mt/metadata-provider)
+            table-a   (lib.metadata/table mp (mt/id :TableA))
+            id   (lib.metadata/field mp (mt/id :TableA :id))
+            query (-> (lib/query mp table-a)
+                      (lib/join (lib/join-clause table-a [(lib/= id id)]))
+                      (lib/order-by id :asc))]
+        (tap> (sql.qp-test-util/query->sql query))
+        (is (= [[1 1 1 1] [2 2 2 2]]
+               (mt/rows (qp/process-query query))))))))
+
 (deftest ^:parallel dangling-join-condition-lhs-errors-if-fuzzy-matched-to-rhs-test
   (testing (str "When upstream changes leave a dangling ref in a join condition LHS, QP throws if it is fuzzy-matched"
                 "to a column from the RHS of the same join (#67667)")
