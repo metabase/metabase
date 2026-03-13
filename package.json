@@ -315,7 +315,7 @@
     "eslint-plugin-storybook": "9.1.17",
     "eslint-plugin-testing-library": "7.15.4",
     "eslint-plugin-ttag": "^1.1.0",
-    "fetch-mock": "^12.0.0",
+    "fetch-mock": "12.6.0",
     "get-nonce": "^1.0.1",
     "glob": "^7.1.1",
     "globals": "^15.14.0",

@@ -310,7 +310,7 @@
         "eslint-plugin-storybook": "9.1.17",
         "eslint-plugin-testing-library": "7.15.4",
         "eslint-plugin-ttag": "^1.1.0",
-        "fetch-mock": "^12.0.0",
+        "fetch-mock": "12.6.0",
         "get-nonce": "^1.0.1",
         "glob": "^7.1.1",
         "globals": "^15.14.0",
@@ -3025,7 +3025,7 @@
 
     "fdir": ["fdir@6.5.0", "", {}, "sha512-tIbYtZbucOs0BRGqPJkshJUYdL+SDH7dVM8gjy+ERp3WAUjLEFJE+02kanyHtwjWOnwrKYBiwAmM0p4kLJAnXg=="],
 
-    "fetch-mock": ["fetch-mock@12.5.3", "", { "dependencies": { "@types/glob-to-regexp": "^0.4.4", "dequal": "^2.0.3", "glob-to-regexp": "^0.4.1", "regexparam": "^3.0.0" } }, "sha512-SiqPv1IXvDjNjLWCvfFUltba3VeiYucxjyynoVW8Ft07GLFQRitlzjYZI/f5wZpeQFRIVZ84fmMgJfjwb/dAEA=="],
+    "fetch-mock": ["fetch-mock@12.6.0", "", { "dependencies": { "@types/glob-to-regexp": "^0.4.4", "dequal": "^2.0.3", "glob-to-regexp": "^0.4.1", "regexparam": "^3.0.0" } }, "sha512-oAy0OqAvjAvduqCeWveBix7LLuDbARPqZZ8ERYtBcCURA3gy7EALA3XWq0tCNxsSg+RmmJqyaeeZlOCV9abv6w=="],
 
     "fflate": ["fflate@0.8.2", "", {}, "sha512-cPJU47OaAoCbg0pBvzsgpTPhmhqI5eJjh/JIu8tPj5q+T7iLvW/JAYUqmE7KOB4R1ZyEhzBaIQpQpardBF5z8A=="],
 
