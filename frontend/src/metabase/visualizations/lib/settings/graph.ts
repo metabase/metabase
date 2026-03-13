@@ -348,6 +348,9 @@ export const STACKABLE_SETTINGS: VisualizationSettingsDefinitions = {
       return getDefaultStackingValue(settings, card);
     },
     getHidden: (series, settings) => {
+      if (settings["graph.split_panels"] === true) {
+        return true;
+      }
       const displays = series.map(
         (single) => settings.series?.(single).display,
       );
@@ -916,7 +919,9 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
     widget: "toggle",
     inline: true,
     getDefault: getDefaultIsAutoSplitEnabled,
-    getHidden: (series) => series.length < 2,
+    getHidden: (series, vizSettings) =>
+      series.length < 2 || vizSettings["graph.split_panels"] === true,
+    readDependencies: ["graph.split_panels"],
   },
   "graph.x_axis.labels_enabled": {
     get section() {

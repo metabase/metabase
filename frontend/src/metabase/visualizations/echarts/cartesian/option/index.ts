@@ -164,11 +164,21 @@ export const getCartesianChartOption = (
     renderingContext,
   );
 
-  const goalSeriesOption = getGoalLineSeriesOption(
+  const baseGoalSeriesOption = getGoalLineSeriesOption(
     getGoalLineParams(chartModel),
     settings,
     renderingContext,
   );
+
+  const goalSeriesOption =
+    isSplitPanels && baseGoalSeriesOption
+      ? visibleSeries.map((_, index) => ({
+          ...baseGoalSeriesOption,
+          id: `${baseGoalSeriesOption.id}_${index}`,
+          xAxisIndex: index,
+          yAxisIndex: index,
+        }))
+      : baseGoalSeriesOption;
 
   const trendSeriesOption = isSplitPanels
     ? remapTrendLinesToPanels(chartModel, visibleSeries)

@@ -80,7 +80,7 @@ export function shouldAutoSplitYAxis(
   seriesModels: SeriesModel[],
   seriesExtents: SeriesExtents,
 ) {
-  if (!settings["graph.y_axis.auto_split"]) {
+  if (!settings["graph.y_axis.auto_split"] || settings["graph.split_panels"]) {
     return false;
   }
 
@@ -258,6 +258,13 @@ const getYAxisSplit = (
   )
     ? "right"
     : "left";
+
+  if (settings["graph.split_panels"]) {
+    const allKeys = new Set(
+      seriesModels.map((seriesModel) => seriesModel.dataKey),
+    );
+    return [allKeys, new Set<DataKey>()];
+  }
 
   if (settings["stackable.stack_type"] === "normalized") {
     return stackedSeriesAxis === "left"
