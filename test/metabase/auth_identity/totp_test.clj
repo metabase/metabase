@@ -2,7 +2,9 @@
   (:require
    [clojure.test :refer :all]
    [metabase.auth-identity.totp :as totp]
-   [metabase.util.password :as u.password]))
+   [metabase.util.password :as u.password])
+  (:import
+   (org.apache.commons.codec.binary Base32)))
 
 (set! *warn-on-reflection* true)
 
@@ -16,6 +18,35 @@
   (testing "generates unique secrets"
     (let [secrets (repeatedly 10 totp/generate-secret)]
       (is (= 10 (count (set secrets)))))))
+
+;;; -------------------------------------------------- RFC Test Vectors --------------------------------------------------
+
+(def ^:private rfc4226-secret-b32
+  "Base32 encoding of the ASCII string \"12345678901234567890\" used in RFC 4226 Appendix D."
+  (.encodeToString (Base32.) (.getBytes "12345678901234567890" "ASCII")))
+
+(deftest rfc4226-appendix-d-test
+  (testing "HOTP codes match RFC 4226 Appendix D test vectors (secret = \"12345678901234567890\")"
+    (let [expected ["755224" "287082" "359152" "969429" "338314"
+                    "254676" "287922" "162583" "399871" "520489"]]
+      (doseq [[count expected-code] (map-indexed vector expected)]
+        (testing (str "count=" count)
+          (is (= expected-code (totp/totp-code rfc4226-secret-b32 count))))))))
+
+(deftest rfc6238-appendix-b-test
+  (testing "TOTP codes match RFC 6238 Appendix B test vectors for SHA1"
+    ;; RFC 6238 Appendix B test values (SHA1, 8-digit codes with T0=0 X=30)
+    ;; We use the 6-digit implementation so we verify the last 6 digits match
+    (let [test-cases [[59          "287082"]
+                      [1111111109  "081804"]
+                      [1111111111  "050471"]
+                      [1234567890  "005924"]
+                      [2000000000  "279037"]
+                      [20000000000 "353130"]]]
+      (doseq [[unix-time expected-6digit] test-cases]
+        (testing (str "time=" unix-time)
+          (let [step (quot unix-time 30)]
+            (is (= expected-6digit (totp/totp-code rfc4226-secret-b32 step)))))))))
 
 (deftest totp-code-test
   (testing "generates 6-digit codes"
