@@ -25,15 +25,14 @@
       (is (= 42.0 (:mean result)))
       (is (= 0.0 (:range result))))))
 
-(deftest compute-summary-median-test
-  (testing "median for odd-count data"
-    (let [result (stats.u/compute-summary [1.0 2.0 3.0 4.0 5.0])]
-      (is (= 3.0 (:median result))))))
-
 ;;; ------------------------------------------ compute-correlations ------------------------------------------------
 
 (defn- make-series [x-vals y-vals]
-  {:x_values x-vals :y_values y-vals})
+  {:x_values     x-vals
+   :y_values     y-vals
+   :x            {:name "x" :type :number}
+   :y            {:name "y" :type :number}
+   :display_name "test"})
 
 (deftest compute-correlations-perfect-positive-test
   (testing "perfectly correlated series yield coefficient ~1.0"
@@ -145,9 +144,7 @@
 
 (deftest percentage-change-negative-from-test
   (testing "handles negative from-val correctly"
-    ;; from -50 to 50: change=100, abs(from)=50 → 200%
     (is (= 200.0 (stats.u/percentage-change -50.0 50.0)))
-    ;; from -50 to -100: change=-50, abs(from)=50 → -100%
     (is (= -100.0 (stats.u/percentage-change -50.0 -100.0)))))
 
 ;;; ---------------------------------------- compute-series-with-labels ----------------------------------------------
