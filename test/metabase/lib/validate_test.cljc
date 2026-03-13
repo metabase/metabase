@@ -268,6 +268,29 @@
               :name               "missingcol"}
              (first errors))))))
 
+(deftest ^:parallel find-bad-refs-with-source-inactive-field-in-fields-is-soft-test
+  (testing "inactive field refs in top-level `:fields` clauses are marked :soft?"
+    (let [mp           meta/metadata-provider
+          base         (lib/query mp (meta/table-metadata :orders))
+          fieldable    (->> (lib/fieldable-columns base)
+                            (filter :selected?))
+          last-col     (last fieldable)
+          ;; Create a provider where this field is inactive
+          mp           (lib.tu/mock-metadata-provider
+                        mp
+                        {:fields [(assoc last-col :active false)]})
+          query        (lib/query mp (meta/table-metadata :orders))
+          fields       (mapv lib/ref fieldable)
+          bad-query    (lib/with-fields query fields)
+          errors       (lib/find-bad-refs-with-source bad-query)]
+      (is (= 1 (count errors)))
+      (is (= {:type               :missing-column
+              :source-entity-type :table
+              :source-entity-id   (meta/id :orders)
+              :name               (:name last-col)
+              :soft?              true}
+             (first errors))))))
+
 (deftest ^:parallel find-bad-refs-with-source-missing-field-in-fields-not-soft-test
   (testing "missing field refs in `:fields` (not just inactive) should NOT be marked :soft? (GHY-3157)"
     (let [mp           meta/metadata-provider
