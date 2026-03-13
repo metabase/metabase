@@ -8,7 +8,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.query-processor.test :as qp]
+   [metabase.query-processor :as qp]
    [metabase.sync.analyze.fingerprint :as fingerprint]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
