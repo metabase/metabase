@@ -14,11 +14,13 @@ import { QuestionAlertModalProvider } from "embedding-sdk-bundle/components/priv
 import { useExtractResourceIdFromJwtToken } from "embedding-sdk-bundle/hooks/private/use-extract-resource-id-from-jwt-token";
 import { useLoadQuestion } from "embedding-sdk-bundle/hooks/private/use-load-question";
 import { useSetupContentTranslations } from "embedding-sdk-bundle/hooks/private/use-setup-content-translations";
-import { useSdkSelector } from "embedding-sdk-bundle/store";
+import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
+import { setInitialGuestToken } from "embedding-sdk-bundle/store/guest-embed/guest-embed-auth";
 import {
   getError,
   getIsGuestEmbed,
   getPlugins,
+  getSessionTokenState,
 } from "embedding-sdk-bundle/store/selectors";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
@@ -75,7 +77,22 @@ export const SdkQuestionProvider = ({
   onVisualizationChange,
 }: SdkQuestionProviderProps) => {
   const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
+  const dispatch = useSdkDispatch();
   const navigation = useSdkInternalNavigationOptional();
+
+  // Get token from Redux store (will be populated after refresh)
+  const tokenFromStore = useSdkSelector(getSessionTokenState).rawToken;
+
+  // Store initial token in Redux for the refresh handler to check expiry later.
+  // We don't need to wait for this - the component uses the fallback pattern
+  // (tokenFromStore ?? rawToken) so initial requests work immediately with the
+  // rawToken prop. Storing it in Redux enables the handler to detect token
+  // expiry and trigger automatic refresh on future requests.
+  useEffect(() => {
+    if (rawToken && isGuestEmbed) {
+      dispatch(setInitialGuestToken(rawToken));
+    }
+  }, [rawToken, isGuestEmbed, dispatch]);
 
   const {
     resourceId: questionId,
@@ -84,7 +101,7 @@ export const SdkQuestionProvider = ({
   } = useExtractResourceIdFromJwtToken({
     isGuestEmbed,
     resourceId: rawQuestionId,
-    token: rawToken ?? undefined,
+    token: tokenFromStore ?? rawToken ?? undefined, // Use token from store with fallback to prop
   });
 
   useSetupContentTranslations({ token });
