@@ -51,9 +51,10 @@ jobs:
           repository: metabase/repro-bot
           ref: ${{ github.event.inputs.repro_bot_branch || 'main' }}
           token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          path: repro-bot
 
       - name: Pre-clone metabase bare git repo
-        run: git clone --bare https://github.com/metabase/metabase.git git/metabase
+        run: git clone --bare .git repro-bot/git/metabase
 
       - name: Capture Node.js path for MCP subprocesses
         run: echo "NODE_BIN_DIR=$(dirname $(which node))" >> $GITHUB_ENV
@@ -127,6 +128,7 @@ jobs:
         uses: anthropics/claude-code-action@v1
         env:
           CLAUDE_CODE_DEBUG_LOGS_DIR: /tmp/claude-debug-logs
+          CLAUDE_WORKING_DIR: ${{ github.workspace }}/repro-bot
           MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.PR_ENV_MB_PREMIUM_EMBEDDING_TOKEN }}
           GITHUB_ACTIONS_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         timeout-minutes: 30
