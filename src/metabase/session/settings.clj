@@ -1,9 +1,11 @@
 (ns metabase.session.settings
   (:require
+   [metabase.api.common :as api]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.sso.core :as sso]
-   [metabase.util.i18n :refer [deferred-tru]]
-   [metabase.util.password :as u.password]))
+   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.password :as u.password]
+   [toucan2.core :as t2]))
 
 (defsetting enable-password-login
   (deferred-tru "Allow logging in by email and password.")
@@ -43,3 +45,17 @@
   :type       :integer
   :default    48
   :audit      :getter)
+
+(defsetting require-mfa
+  (deferred-tru "Require all password-authenticated users to set up two-factor authentication.")
+  :visibility :public
+  :type       :boolean
+  :default    false
+  :audit      :raw-value
+  :setter     (fn [new-value]
+                (when new-value
+                  (api/check-superuser)
+                  (when-not (t2/select-one-fn :totp_enabled :model/User :id api/*current-user-id*)
+                    (throw (ex-info (str (tru "You must enable two-factor authentication on your own account before requiring it for others."))
+                                    {:status-code 400}))))
+                (setting/set-value-of-type! :boolean :require-mfa new-value)))
