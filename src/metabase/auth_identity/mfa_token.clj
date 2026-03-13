@@ -6,7 +6,8 @@
    [buddy.sign.jwt :as jwt]
    [java-time.api :as t])
   (:import
-   (java.security SecureRandom)))
+   (java.security SecureRandom)
+   (java.util.concurrent ConcurrentHashMap)))
 
 (set! *warn-on-reflection* true)
 
@@ -23,17 +24,32 @@
     (.nextBytes (SecureRandom.) buf)
     buf))
 
+;; Track consumed token JTIs to enforce single-use. Values are expiry instants for cleanup.
+(defonce ^:private ^ConcurrentHashMap consumed-tokens
+  (ConcurrentHashMap.))
+
+(defn- cleanup-expired-tokens!
+  "Remove expired entries from the consumed-tokens map."
+  []
+  (let [now (t/instant)]
+    (doseq [^java.util.Map$Entry entry (.entrySet consumed-tokens)]
+      (when (t/before? (.getValue entry) now)
+        (.remove consumed-tokens (.getKey entry))))))
+
 (defn create-mfa-token
-  "Create a short-lived JWT for MFA verification. Contains the user-id and expires in 5 minutes."
+  "Create a short-lived JWT for MFA verification. Contains the user-id and expires in 5 minutes.
+   Each token has a unique `jti` claim to enforce single-use."
   ^String [user-id]
   (jwt/sign {:user-id user-id
              :type    token-type
+             :jti     (str (random-uuid))
              :exp     (t/plus (t/instant) (t/minutes mfa-token-expiry-minutes))}
             signing-key))
 
 (defn verify-mfa-token
   "Verify and decode an MFA pending token. Returns `{:user-id <id>}` on success.
-   Throws an exception if the token is invalid, expired, or not an MFA pending token."
+   Throws an exception if the token is invalid, expired, already used, or not an MFA pending token.
+   Each token can only be verified once (single-use enforcement via `jti` claim)."
   [^String token]
   (let [claims (try
                  (jwt/unsign token signing-key {:leeway 0})
@@ -45,4 +61,15 @@
       (throw (ex-info "Invalid token type"
                       {:status-code 401
                        :type        (:type claims)})))
+    ;; Enforce single-use via jti
+    (let [jti (:jti claims)]
+      (when-not jti
+        (throw (ex-info "MFA token missing jti claim"
+                        {:status-code 401})))
+      (when (.putIfAbsent consumed-tokens jti
+                          (t/plus (t/instant) (t/minutes (inc mfa-token-expiry-minutes))))
+        (throw (ex-info "MFA token has already been used"
+                        {:status-code 401})))
+      ;; Periodically clean up expired entries
+      (cleanup-expired-tokens!))
     {:user-id (:user-id claims)}))

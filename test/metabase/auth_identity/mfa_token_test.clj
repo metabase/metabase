@@ -36,3 +36,11 @@
       (is (not= token1 token2))
       (is (= {:user-id 1} (mfa-token/verify-mfa-token token1)))
       (is (= {:user-id 2} (mfa-token/verify-mfa-token token2))))))
+
+(deftest single-use-enforcement-test
+  (testing "a token cannot be used twice (replay prevention)"
+    (let [token (mfa-token/create-mfa-token 99)]
+      (is (= {:user-id 99} (mfa-token/verify-mfa-token token)))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"MFA token has already been used"
+                            (mfa-token/verify-mfa-token token))))))
