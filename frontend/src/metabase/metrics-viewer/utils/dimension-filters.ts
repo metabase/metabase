@@ -61,7 +61,7 @@ export type DimensionFilterValue =
   | { type: "time"; operator: TimeFilterParts["operator"]; values: Date[] }
   | { type: "default"; operator: DefaultFilterParts["operator"] };
 
-export type ParsedFilter = {
+type ParsedFilter = {
   dimension: DimensionMetadata;
   value: DimensionFilterValue;
 };
@@ -285,34 +285,5 @@ export function extractDefinitionFilters(
     result.push({ dimensionId: dimInfo.id, value: parsed.value });
   }
 
-  return result;
-}
-
-// ── Filter application ──
-
-function removeFiltersOnDimension(
-  def: MetricDefinition,
-  dimension: DimensionMetadata,
-): MetricDefinition {
-  const existingFilters = LibMetric.filters(def);
-
-  let result = def;
-  for (const filter of existingFilters) {
-    const parts = LibMetric.filterParts(def, filter);
-    if (parts && LibMetric.isSameSource(parts.dimension, dimension)) {
-      result = LibMetric.removeClause(result, filter);
-    }
-  }
-  return result;
-}
-
-export function applyDimensionFilter(
-  def: MetricDefinition,
-  dimension: DimensionMetadata,
-  filterValue: DimensionFilterValue,
-): MetricDefinition {
-  let result = removeFiltersOnDimension(def, dimension);
-  const filterClause = buildDimensionFilterClause(dimension, filterValue);
-  result = LibMetric.filter(result, filterClause);
   return result;
 }

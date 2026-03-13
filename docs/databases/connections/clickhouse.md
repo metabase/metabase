@@ -77,10 +77,10 @@ You can limit the number of HTTP connections in the JDBC driver used to connect 
 
 ### Additional JDBC connection string options
 
-You can append options to the JDBC connection string. Separate options with `&`, like so:
+You can append options to the JDBC connection string. All [server settings must be prefixed with `clickhouse_setting_`](https://clickhouse.com/docs/integrations/language-clients/java/jdbc#connection-properties). Separate options with `&`, like so:
 
 ```
-connection_timeout=1000&socket_timeout=300000
+clickhouse_setting_connection_timeout=1000&clickhouse_setting_socket_timeout=300000
 ```
 
 ### Re-run queries for simple explorations

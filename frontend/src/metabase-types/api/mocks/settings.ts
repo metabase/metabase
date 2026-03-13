@@ -385,6 +385,7 @@ export const createMockSettings = (
   "subscription-allowed-domains": null,
   "token-features": createMockTokenFeatures(),
   "token-status": null,
+  "tracing-enabled": false,
   "transforms-enabled": false,
   version: createMockVersion(),
   "version-info": createMockVersionInfo(),
