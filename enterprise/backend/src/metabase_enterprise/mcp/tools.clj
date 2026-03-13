@@ -7,6 +7,7 @@
    [metabase-enterprise.agent-api.api :as agent-api]
    [metabase.api.common :as api]
    [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
+   [metabase.api.macros.scope :as scope]
    [metabase.config.core :as config]
    [metabase.util :as u]
    [metabase.util.json :as json])
@@ -31,13 +32,24 @@
     (generate-manifest)
     @manifest-delay))
 
+(defn- tool-visible?
+  "Check if a tool should be visible given the current token scopes."
+  [token-scopes tool]
+  (or (nil? token-scopes)
+      (contains? token-scopes ::scope/unrestricted)
+      (nil? (:scope tool))
+      (scope/scope-satisfied? token-scopes (:scope tool))))
+
 (defn list-tools
-  "Return the tool definitions suitable for MCP `tools/list` responses."
-  []
-  (mapv (fn [tool]
-          {:name        (:name tool)
-           :description (:description tool)
-           :inputSchema (:inputSchema tool)})
+  "Return the tool definitions suitable for MCP `tools/list` responses.
+   Filters tools based on `token-scopes` when provided."
+  [token-scopes]
+  (into []
+        (comp (filter (partial tool-visible? token-scopes))
+              (map (fn [tool]
+                     {:name        (:name tool)
+                      :description (:description tool)
+                      :inputSchema (:inputSchema tool)})))
         (:tools (manifest))))
 
 (defn- build-tool-index []

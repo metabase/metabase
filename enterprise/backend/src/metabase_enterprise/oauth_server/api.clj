@@ -101,11 +101,15 @@
              :body    {"error" "invalid_token"}}))))))
 
 (defn- build-query-string
-  "Build a URL query string from a map of parameters."
+  "Build a URL query string from a map of parameters.
+   Handles vector values by emitting multiple key=value pairs (RFC 8707 resource parameter)."
   [params]
   (->> params
        (remove (fn [[_k v]] (nil? v)))
-       (map (fn [[k v]] (str (name k) "=" (URLEncoder/encode (str v) "UTF-8"))))
+       (mapcat (fn [[k v]]
+                 (let [values (if (sequential? v) v [v])]
+                   (map (fn [val] (str (name k) "=" (URLEncoder/encode (str val) "UTF-8")))
+                        values))))
        (str/join "&")))
 
 (defn- login-redirect-url
@@ -205,7 +209,8 @@
                [:li scope])]])
          [:form {:method "POST" :action "/oauth/authorize/decision"}
           (for [[k v] oauth-params
-                :when (some? v)]
+                :when (some? v)
+                v (if (sequential? v) v [v])]
             [:input {:type "hidden" :name (name k) :value v}])
           [:div.actions
            [:button.deny {:type "submit" :name "approved" :value "false"} "Deny"]
@@ -236,7 +241,8 @@
                                      :state                 (:state parsed)
                                      :nonce                 (:nonce parsed)
                                      :code_challenge        (:code_challenge parsed)
-                                     :code_challenge_method (:code_challenge_method parsed)}})})
+                                     :code_challenge_method (:code_challenge_method parsed)
+                                     :resource              (:resource parsed)}})})
         (catch clojure.lang.ExceptionInfo e
           {:status  400
            :headers {"Content-Type" "application/json"}
@@ -248,6 +254,7 @@
    Accepts form-encoded params from the consent page."
   :feature :metabot-v3
   [request]
+  #p request
   (if-not (:metabase-user-id request)
     {:status  401
      :headers {"Content-Type" "application/json"}
@@ -257,7 +264,7 @@
             approved (= "true" (str (:approved params)))
             ;; Rebuild query string from the forwarded authorization params to re-validate
             auth-params  (select-keys params [:client_id :redirect_uri :response_type :scope :state :nonce
-                                              :code_challenge :code_challenge_method])
+                                              :code_challenge :code_challenge_method :resource])
             query-string (build-query-string auth-params)]
         (try
           (let [parsed (oidc/parse-authorization-request provider query-string)]
@@ -276,25 +283,49 @@
              :body    {:error             "invalid_request"
                        :error_description (ex-message e)}}))))))
 
+(def ^:private all-agent-scopes
+  "All supported OAuth scopes for the MCP/agent API."
+  ["agent:table:read"
+   "agent:metric:read"
+   "agent:search"
+   "agent:query:construct"
+   "agent:query:execute"
+   "agent:workspace:read"
+   "agent:workspace:write"
+   "agent:workspace:execute"])
+
+(defenterprise protected-resource-metadata-handler
+  "Returns OAuth Protected Resource Metadata (RFC 9728)."
+  :feature :metabot-v3
+  [_request]
+  (let [site-url (system/site-url)]
+    {:status  200
+     :headers {"Content-Type" "application/json"}
+     :body    {:resource                  (str site-url "/api/mcp")
+               :authorization_servers     [site-url]
+               :scopes_supported          all-agent-scopes
+               :bearer_methods_supported  ["header"]}}))
+
 (defenterprise token-handler
   "Handles the token endpoint (POST /oauth/token)."
   :feature :metabot-v3
   [request]
+  #p request
   (when-let [provider (oauth-server/get-provider)]
     (let [params               (:params request)
           authorization-header (get-in request [:headers "authorization"])]
       (try
-        (let [response (oidc/token-request provider params authorization-header)]
+        (let [response #p (oidc/token-request provider params authorization-header)]
           {:status  200
            :headers {"Content-Type"  "application/json"
                      "Cache-Control" "no-store"
                      "Pragma"        "no-cache"}
            :body    response})
         (catch clojure.lang.ExceptionInfo e
-          (let [data (ex-data e)]
-            {:status  (if (= (:error data) "invalid_client") 401 400)
-             :headers {"Content-Type"  "application/json"
-                       "Cache-Control" "no-store"
-                       "Pragma"        "no-cache"}
-             :body    {:error             (or (:error data) "invalid_request")
-                       :error_description (ex-message e)}}))))))
+          (let [data (ex-data #p e)]
+            #p {:status  (if (= (:error data) "invalid_client") 401 400)
+                :headers {"Content-Type"  "application/json"
+                          "Cache-Control" "no-store"
+                          "Pragma"        "no-cache"}
+                :body    {:error             (or (:error data) "invalid_request")
+                          :error_description (ex-message e)}}))))))
