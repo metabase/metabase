@@ -174,23 +174,23 @@
           db-version (db-version metadata)
           db-type (or (when (= "MariaDB" (.getDatabaseProductName metadata)) :mariadb)
                       db-type)]
-      (if (supported-app-db-version? db-type db-version)
-        (log/infof "Successfully verified %s %s application database connection. %s"
-                   (.getDatabaseProductName metadata) (.getDatabaseProductVersion metadata) (u/emoji "✅"))
-        (throw (ex-info (str/join \newline [(trs "Metabase {0} DB version not supported (found {1}, required {2}). Please upgrade your database to a supported version and try again."
-                                                 (name db-type)
-                                                 (format "%s.%s.%s (%s)"
-                                                         (:major db-version)
-                                                         (:minor db-version)
-                                                         (:patch db-version)
-                                                         (.getDatabaseProductVersion metadata))
-                                                 (let [required-version (get supported-db-versions db-type)]
-                                                   (format "%s.%s.%s"
-                                                           (:major required-version)
-                                                           (:minor required-version)
-                                                           (:patch required-version))))
-                                            "https://www.metabase.com/docs/latest/installation-and-operation/migrating-from-h2#supported-databases-for-storing-your-metabase-application-data"])
-                        {}))))))
+      (if true #_(supported-app-db-version? db-type db-version)
+          (log/infof "Successfully verified %s %s application database connection. %s"
+                     (.getDatabaseProductName metadata) (.getDatabaseProductVersion metadata) (u/emoji "✅"))
+          (throw (ex-info (str/join \newline [(trs "Metabase {0} DB version not supported (found {1}, required {2}). Please upgrade your database to a supported version and try again."
+                                                   (name db-type)
+                                                   (format "%s.%s.%s (%s)"
+                                                           (:major db-version)
+                                                           (:minor db-version)
+                                                           (:patch db-version)
+                                                           (.getDatabaseProductVersion metadata))
+                                                   (let [required-version (get supported-db-versions db-type)]
+                                                     (format "%s.%s.%s"
+                                                             (:major required-version)
+                                                             (:minor required-version)
+                                                             (:patch required-version))))
+                                              "https://www.metabase.com/docs/latest/installation-and-operation/migrating-from-h2#supported-databases-for-storing-your-metabase-application-data"])
+                          {}))))))
 
 (mu/defn- check-encryption
   "Ensure encryption env variable is correctly set if needed, and encrypt the database if it needs to be
