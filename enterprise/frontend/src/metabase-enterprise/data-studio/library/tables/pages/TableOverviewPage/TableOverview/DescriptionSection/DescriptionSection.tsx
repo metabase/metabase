@@ -278,7 +278,10 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
             <Text size="md" c="text-secondary">
               {t`Fields`}
             </Text>
-            <Link to={Urls.dataStudioTableFields(table.id)}>
+            <Link
+              to={Urls.dataStudioTableFields(table.id)}
+              className={S.metricLink}
+            >
               <Text size="xl" fw={600}>
                 {table.fields?.length ?? 0}
               </Text>
