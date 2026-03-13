@@ -182,98 +182,96 @@
           [{:name "foo" :endpoint {:method "GET"  :path "/v1/foo"}}
            {:name "foo" :endpoint {:method "POST" :path "/v1/foo"}}])))))
 
-(deftest ^:parallel generate-tools-manifest-test
-  (testing "Generate manifest from test endpoints in this namespace"
-    (let [manifest (tools-manifest/generate-tools-manifest
-                    {'metabase.api.macros.defendpoint.tools-manifest-test "/api/test"})
-          tools-by-name (into {} (map (juxt :name identity)) (:tools manifest))]
-      (testing "top-level structure"
-        (is (= "https://json-schema.org/draft/2020-12/schema" (:$schema manifest)))
-        (is (= "1.0.0" (:version manifest)))
-        (is (= 6 (count (:tools manifest))))
-        (is (= (mapv :name (:tools manifest))
-               (sort (mapv :name (:tools manifest))))
-            "tools should be sorted by name"))
+(defn- test-manifest []
+  (tools-manifest/generate-tools-manifest
+   {'metabase.api.macros.defendpoint.tools-manifest-test "/api/test"}))
 
-      ;; NOTE: simple registered schemas like ::test-status are inlined by malli
-      ;; rather than producing $defs/$ref. $defs generation is exercised by the
-      ;; real agent API endpoints which use complex recursive schemas.
+(defn- test-tool [tool-name]
+  (let [manifest (test-manifest)]
+    (some #(when (= (:name %) tool-name) %) (:tools manifest))))
 
-      (testing "GET endpoint with route params (test_get_thing)"
-        (let [tool (get tools-by-name "test_get_thing")]
-          (is (= {:name           "test_get_thing"
-                  :description    "A test endpoint for tools manifest generation."
-                  :annotations    {:readOnlyHint true :idempotentHint true}
-                  :endpoint       {:method "GET" :path "/api/test/v1/test/{id}"}
-                  :inputSchema    {:type       "object"
-                                   :properties {:id {:type "integer"}}
-                                   :required   [:id]}}
-                 tool))))
+(deftest ^:parallel generate-tools-manifest-top-level-test
+  (let [manifest (test-manifest)]
+    (is (= "https://json-schema.org/draft/2020-12/schema" (:$schema manifest)))
+    (is (= "1.0.0" (:version manifest)))
+    (is (= 6 (count (:tools manifest))))
+    (is (= (mapv :name (:tools manifest))
+           (sort (mapv :name (:tools manifest))))
+        "tools should be sorted by name")))
 
-      (testing "POST endpoint with body params and annotation override (test_action)"
-        (let [tool (get tools-by-name "test_action")]
-          (is (= {:name           "test_action"
-                  :description    "A test POST action."
-                  :annotations    {:readOnlyHint true}
-                  :endpoint       {:method "POST" :path "/api/test/v1/test-action"}
-                  :inputSchema    {:type       "object"
-                                   :properties {:name {:type "string"}}
-                                   :required   [:name]}}
-                 tool))))
+;; NOTE: simple registered schemas like ::test-status are inlined by malli
+;; rather than producing $defs/$ref. $defs generation is exercised by the
+;; real agent API endpoints which use complex recursive schemas.
 
-      (testing "DELETE endpoint with inferred name (delete_test)"
-        (let [tool (get tools-by-name "delete_test")]
-          (is (= {:name           "delete_test"
-                  :description    "Delete a test resource."
-                  :annotations    {:destructiveHint true :idempotentHint true}
-                  :endpoint       {:method "DELETE" :path "/api/test/v1/test/{id}"}
-                  :inputSchema    {:type       "object"
-                                   :properties {:id {:type "integer"}}
-                                   :required   [:id]}}
-                 tool))))
+(deftest ^:parallel generate-tools-manifest-get-with-route-params-test
+  (is (= {:name           "test_get_thing"
+          :description    "A test endpoint for tools manifest generation."
+          :annotations    {:readOnlyHint true :idempotentHint true}
+          :endpoint       {:method "GET" :path "/api/test/v1/test/{id}"}
+          :inputSchema    {:type       "object"
+                           :properties {:id {:type "integer"}}
+                           :required   [:id]}}
+         (test-tool "test_get_thing"))))
 
-      (testing "GET with query params, tool/description, and response schema (test_search)"
-        (let [tool (get tools-by-name "test_search")]
-          (is (= {:name           "test_search"
-                  :description    "Search for things."
-                  :annotations    {:readOnlyHint true :idempotentHint true}
-                  :endpoint       {:method "GET" :path "/api/test/v1/test-search"}
-                  :inputSchema    {:type       "object"
-                                   :properties {:q     {:type "string"}
-                                                :limit {:type        "integer"
-                                                        :description "Maximum number of results to return"}}
-                                   :required   [:q]}
-                  :responseSchema {:type       "object"
-                                   :properties {:results {:type "array" :items {:type "string"}}}
-                                   :required   [:results]}}
-                 tool))))
+(deftest ^:parallel generate-tools-manifest-post-with-annotation-override-test
+  (is (= {:name           "test_action"
+          :description    "A test POST action."
+          :annotations    {:readOnlyHint true}
+          :endpoint       {:method "POST" :path "/api/test/v1/test-action"}
+          :inputSchema    {:type       "object"
+                           :properties {:name {:type "string"}}
+                           :required   [:name]}}
+         (test-tool "test_action"))))
 
-      (testing "POST with route+body, task-support, and registered schema in response (test_resource_action)"
-        (let [tool (get tools-by-name "test_resource_action")]
-          (is (= {:name           "test_resource_action"
-                  :description    "Perform an action on a resource."
-                  :endpoint       {:method "POST" :path "/api/test/v1/test-resource/{id}/action"}
-                  :inputSchema    {:type       "object"
-                                   :properties {:id     {:type "integer"}
-                                                :action {:type "string"}}
-                                   :required   [:id :action]}
-                  :responseSchema {:type       "object"
-                                   :properties {:id     {:type "integer"}
-                                                :status {:type "string"
-                                                         :enum ["active" "inactive" "pending"]}}
-                                   :required   [:id :status]}
-                  :execution      {:taskSupport "parallel"}}
-                 tool))))
+(deftest ^:parallel generate-tools-manifest-delete-test
+  (is (= {:name           "delete_test"
+          :description    "Delete a test resource."
+          :annotations    {:destructiveHint true :idempotentHint true}
+          :endpoint       {:method "DELETE" :path "/api/test/v1/test/{id}"}
+          :inputSchema    {:type       "object"
+                           :properties {:id {:type "integer"}}
+                           :required   [:id]}}
+         (test-tool "delete_test"))))
 
-      (testing "PUT with route+query+body, inferred name (test_resource)"
-        (let [tool (get tools-by-name "test_resource")]
-          (is (= {:name           "test_resource"
-                  :description    "Update a test resource."
-                  :annotations    {:destructiveHint false :idempotentHint true}
-                  :endpoint       {:method "PUT" :path "/api/test/v1/test-resource/{id}"}
-                  :inputSchema    {:type       "object"
-                                   :properties {:id      {:type "integer"}
-                                                :dry-run {:oneOf [{:type "boolean"} {:type "null"}]}
-                                                :name    {:type "string"}}
-                                   :required   [:id :name]}}
-                 tool)))))))
+(deftest ^:parallel generate-tools-manifest-get-with-query-params-test
+  (is (= {:name           "test_search"
+          :description    "Search for things."
+          :annotations    {:readOnlyHint true :idempotentHint true}
+          :endpoint       {:method "GET" :path "/api/test/v1/test-search"}
+          :inputSchema    {:type       "object"
+                           :properties {:q     {:type "string"}
+                                        :limit {:type        "integer"
+                                                :description "Maximum number of results to return"}}
+                           :required   [:q]}
+          :responseSchema {:type       "object"
+                           :properties {:results {:type "array" :items {:type "string"}}}
+                           :required   [:results]}}
+         (test-tool "test_search"))))
+
+(deftest ^:parallel generate-tools-manifest-post-with-task-support-test
+  (is (= {:name           "test_resource_action"
+          :description    "Perform an action on a resource."
+          :endpoint       {:method "POST" :path "/api/test/v1/test-resource/{id}/action"}
+          :inputSchema    {:type       "object"
+                           :properties {:id     {:type "integer"}
+                                        :action {:type "string"}}
+                           :required   [:id :action]}
+          :responseSchema {:type       "object"
+                           :properties {:id     {:type "integer"}
+                                        :status {:type "string"
+                                                 :enum ["active" "inactive" "pending"]}}
+                           :required   [:id :status]}
+          :execution      {:taskSupport "parallel"}}
+         (test-tool "test_resource_action"))))
+
+(deftest ^:parallel generate-tools-manifest-put-with-three-way-merge-test
+  (is (= {:name           "test_resource"
+          :description    "Update a test resource."
+          :annotations    {:destructiveHint false :idempotentHint true}
+          :endpoint       {:method "PUT" :path "/api/test/v1/test-resource/{id}"}
+          :inputSchema    {:type       "object"
+                           :properties {:id      {:type "integer"}
+                                        :dry-run {:oneOf [{:type "boolean"} {:type "null"}]}
+                                        :name    {:type "string"}}
+                           :required   [:id :name]}}
+         (test-tool "test_resource"))))

@@ -170,7 +170,7 @@
         route-path   (get-in form [:route :path])
         tool-md      (get-in form [:metadata :tool])
         tool-name    (:name tool-md)
-        _            (assert tool-name "Tool defined without :name")
+        _            (assert (string? tool-name) "Tool :name must be a string")
         description  (or (:description tool-md)
                          (:docstr form))
         full-path    (str prefix (route-path->endpoint-path route-path))
