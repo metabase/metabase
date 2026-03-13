@@ -21,7 +21,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.performance :as perf :refer [not-empty]])
+   [metabase.util.performance :refer [not-empty]])
   (:import
    (com.clickhouse.client.api.query QuerySettings)
    (java.sql Connection SQLException Statement PreparedStatement)
