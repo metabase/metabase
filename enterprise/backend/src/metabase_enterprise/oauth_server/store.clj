@@ -14,6 +14,18 @@
 
 ;;; ------------------------------------------------- Helpers ----------------------------------------------------------
 
+(defn- parse-user-id
+  "Parse a user-id string to an integer, returning nil if not a valid integer.
+   The oidc-provider library passes user-id as a string. For authorization_code and
+   refresh_token grants this is a stringified Metabase user ID. For client_credentials
+   grants the library passes the client-id string, which is not a valid integer."
+  [user-id]
+  (when user-id
+    (try
+      (Integer/parseInt (str user-id))
+      (catch NumberFormatException _
+        nil))))
+
 (def ^:private client-db-columns
   "DB columns to select/project for OAuthClient rows."
   [:client_id :client_type :redirect_uris :grant_types :response_types :scopes :registration_type
@@ -51,10 +63,12 @@
    :code_challenge :code_challenge_method :resource])
 
 (defn- db-row->auth-code
-  "Convert a DB row from :model/OAuthAuthorizationCode to the protocol's map shape."
+  "Convert a DB row from :model/OAuthAuthorizationCode to the protocol's map shape.
+   Converts user-id to a string since the oidc-provider library expects string user IDs."
   [row]
   (when row
-    (select-and-kebab-keys row auth-code-db-columns)))
+    (-> (select-and-kebab-keys row auth-code-db-columns)
+        (update :user-id #(some-> % str)))))
 
 (def ^:private access-token-db-columns
   [:user_id :client_id :scope :expiry :resource])
@@ -63,7 +77,8 @@
   "Convert a DB row from :model/OAuthAccessToken to the protocol's map shape."
   [row]
   (when row
-    (select-and-kebab-keys row access-token-db-columns)))
+    (-> (select-and-kebab-keys row access-token-db-columns)
+        (update :user-id #(some-> % str)))))
 
 (def ^:private refresh-token-db-columns
   [:user_id :client_id :scope :resource])
@@ -72,7 +87,8 @@
   "Convert a DB row from :model/OAuthRefreshToken to the protocol's map shape."
   [row]
   (when row
-    (select-and-kebab-keys row refresh-token-db-columns)))
+    (-> (select-and-kebab-keys row refresh-token-db-columns)
+        (update :user-id #(some-> % str)))))
 
 ;;; ------------------------------------------------ ClientStore -------------------------------------------------------
 
@@ -120,7 +136,7 @@
   (save-authorization-code [_ code user-id client-id redirect-uri scope nonce expiry code-challenge code-challenge-method resource]
     (t2/insert! :model/OAuthAuthorizationCode
                 (cond-> {:code         code
-                         :user_id      user-id
+                         :user_id      (parse-user-id user-id)
                          :client_id    client-id
                          :redirect_uri redirect-uri
                          :scope        (vec scope)
@@ -146,7 +162,7 @@
   (save-access-token [_ token user-id client-id scope expiry resource]
     (t2/insert! :model/OAuthAccessToken
                 (cond-> {:token     token
-                         :user_id   user-id
+                         :user_id   (parse-user-id user-id)
                          :client_id client-id
                          :scope     (vec scope)
                          :expiry    expiry}
@@ -160,7 +176,7 @@
   (save-refresh-token [_ token user-id client-id scope resource]
     (t2/insert! :model/OAuthRefreshToken
                 (cond-> {:token     token
-                         :user_id   user-id
+                         :user_id   (parse-user-id user-id)
                          :client_id client-id
                          :scope     (vec scope)}
                   resource (assoc :resource (vec resource))))
@@ -182,7 +198,7 @@
   proto/ClaimsProvider
   (get-claims [_ user-id scope]
     (let [scope-set (set scope)
-          user      (t2/select-one [:model/User :id :first_name :last_name :email] :id user-id)]
+          user      (t2/select-one [:model/User :id :first_name :last_name :email] :id (parse-user-id user-id))]
       (when user
         (cond-> {:sub (str user-id)}
           (scope-set "profile")
