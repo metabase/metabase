@@ -682,8 +682,9 @@
   [explanation expr]
   (let [[type-desc in-path] (find-type-error explanation)
         op-name (parent-operator-name expr in-path)
-        param-pos (ordinal-str (dec (last in-path)))]
-    (if (and op-name type-desc)
+        param-pos (when (last in-path)
+                    (ordinal-str (dec (last in-path))))]
+    (if (and op-name type-desc param-pos)
       (i18n/tru "Types are incompatible: {0} expects {1} as the {2} parameter." op-name type-desc param-pos)
       (i18n/tru "Types are incompatible."))))
 

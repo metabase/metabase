@@ -508,7 +508,7 @@
                               (lib.tu/venues-query) 0 mode
                               (lib.convert/->pMBQL expr)
                               #?(:clj nil :cljs js/undefined)))
-      :expression  [:/ [:field 1 {:base-type :type/Address}] 100] "Types are incompatible: / expects a number."
+      :expression  [:/ [:field 1 {:base-type :type/Address}] 100] "Types are incompatible: / expects a number as the 1st parameter."
       ;; To make this test case work, the aggregation schema has to be
       ;; tighter and not allow anything. That's a bigger piece of work,
       ;; because it makes expressions and aggregations mutually recursive
@@ -636,29 +636,29 @@
                         (lib.convert/->pMBQL expr)
                         #?(:clj nil :cljs js/undefined)))
       ;; basic checks with different types
-      [:+ 1 true]  "Types are incompatible: + expects a number."
-      [:- 1 "str"] "Types are incompatible: - expects a number."
-      [:* false 1] "Types are incompatible: * expects a number."
-      [:/ "str" 1] "Types are incompatible: / expects a number."
+      [:+ 1 true]  "Types are incompatible: + expects a number as the 2nd parameter."
+      [:- 1 "str"] "Types are incompatible: - expects a number as the 2nd parameter."
+      [:* false 1] "Types are incompatible: * expects a number as the 1st parameter."
+      [:/ "str" 1] "Types are incompatible: / expects a number as the 1st parameter."
       ;; functions that expect different types
-      [:upper 1]   "Types are incompatible: upper expects a string."
-      [:get-day 1] "Types are incompatible: get-day expects a temporal value."
-      [:not 1]     "Types are incompatible: not expects a boolean."
+      [:upper 1]   "Types are incompatible: upper expects a string as the 1st parameter."
+      [:get-day 1] "Types are incompatible: get-day expects a temporal value as the 1st parameter."
+      [:not 1]     "Types are incompatible: not expects a boolean as the 1st parameter."
       [:> 1 true]  "Types are incompatible."
-      [:> [:field 1 {:base-type :type/JSON}] 1] "Types are incompatible: > expects an orderable type (e.g. number, string, temporal)."
+      [:> [:field 1 {:base-type :type/JSON}] 1] "Types are incompatible: > expects an orderable type (e.g. number, string, temporal) as the 1st parameter."
       ;; function with multiple args of different types
-      [:substring 1 1 1]        "Types are incompatible: substring expects a string."
-      [:substring "str" 1 true] "Types are incompatible: substring expects an integer."
-      [:substring "str" true 1] "Types are incompatible: substring expects an integer."
-      [:substring 1 true false] "Types are incompatible: substring expects a string."
+      [:substring 1 1 1]        "Types are incompatible: substring expects a string as the 1st parameter."
+      [:substring "str" 1 true] "Types are incompatible: substring expects an integer as the 3rd parameter."
+      [:substring "str" true 1] "Types are incompatible: substring expects an integer as the 2nd parameter."
+      [:substring 1 true false] "Types are incompatible: substring expects a string as the 1st parameter."
       ;; nested expressions
-      [:+ 1 [:- 1 true] 1] "Types are incompatible: - expects a number."
-      [:+ true [:- 1 1] 1] "Types are incompatible: + expects a number."
-      [:+ 1 [:- 1 1] true] "Types are incompatible: + expects a number."
-      [:+ true [:- 1 true] 1] "Types are incompatible: + expects a number."
-      [:+ 1 [:- 1 true] true] "Types are incompatible: - expects a number."
-      [:+ 1 [:- 1 [:* 1 [:/ 1 true]]]] "Types are incompatible: / expects a number."
-      [:+ 1 [:- 1 [:* true [:/ 1 1]]]] "Types are incompatible: * expects a number.")))
+      [:+ 1 [:- 1 true] 1] "Types are incompatible: - expects a number as the 2nd parameter."
+      [:+ true [:- 1 1] 1] "Types are incompatible: + expects a number as the 1st parameter."
+      [:+ 1 [:- 1 1] true] "Types are incompatible: + expects a number as the 3rd parameter."
+      [:+ true [:- 1 true] 1] "Types are incompatible: + expects a number as the 1st parameter."
+      [:+ 1 [:- 1 true] true] "Types are incompatible: - expects a number as the 2nd parameter."
+      [:+ 1 [:- 1 [:* 1 [:/ 1 true]]]] "Types are incompatible: / expects a number as the 2nd parameter."
+      [:+ 1 [:- 1 [:* true [:/ 1 1]]]] "Types are incompatible: * expects a number as the 1st parameter.")))
 
 (deftest ^:parallel date-and-time-string-literals-test-1-dates
   (are [types input] (= types (lib.schema.expression/type-of input))
