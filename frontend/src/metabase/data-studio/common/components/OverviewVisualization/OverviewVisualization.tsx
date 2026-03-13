@@ -1,37 +1,42 @@
 import { useMemo } from "react";
 
-import {
-  skipToken,
-  useGetAdhocQueryQuery,
-  useGetCardQueryQuery,
-} from "metabase/api";
 import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
 import { useSelector } from "metabase/lib/redux";
 import { QueryVisualization } from "metabase/query_builder/components/QueryVisualization";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
-import type { Card } from "metabase-types/api";
+import type { Card, Dataset } from "metabase-types/api";
 
 import S from "./OverviewVisualization.module.css";
+import { useCardQueryData } from "./use-card-query-data";
 
 type OverviewVisualizationProps = {
   card: Card;
+  data?: Dataset;
+  isLoading?: boolean;
 };
 
-export function OverviewVisualization({ card }: OverviewVisualizationProps) {
+export function OverviewVisualization({
+  card,
+  data: externalData,
+  isLoading: externalIsLoading,
+}: OverviewVisualizationProps) {
   const metadata = useSelector(getMetadata);
   const question = useMemo(
     () => new Question(card, metadata),
     [card, metadata],
   );
 
-  const { data: cardData, isLoading: isLoadingCardData } = useGetCardQueryQuery(
-    card.id != null ? { cardId: card.id } : skipToken,
+  const hasExternalData = externalData !== undefined;
+  const { data: internalData, isLoading: internalIsLoading } = useCardQueryData(
+    card,
+    { skip: hasExternalData },
   );
-  const { data: adhocData, isLoading: isLoadingAdhocData } =
-    useGetAdhocQueryQuery(card.id == null ? card.dataset_query : skipToken);
-  const data = cardData || adhocData;
-  const isLoading = isLoadingCardData || isLoadingAdhocData;
+
+  const data = hasExternalData ? externalData : internalData;
+  const isLoading = hasExternalData
+    ? (externalIsLoading ?? false)
+    : internalIsLoading;
 
   const rawSeries = useMemo(
     () => (data ? [{ card, data: data.data }] : null),

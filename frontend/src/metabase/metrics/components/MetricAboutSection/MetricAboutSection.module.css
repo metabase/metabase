@@ -5,3 +5,7 @@
 .sidebar {
   flex-shrink: 0;
 }
+
+.visualizationColumn {
+  container-type: inline-size;
+}

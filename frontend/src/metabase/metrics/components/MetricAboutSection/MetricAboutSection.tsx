@@ -1,8 +1,19 @@
+import { useMemo } from "react";
+
 import { EntityCreationInfo } from "metabase/common/components/EntityCreationInfo";
-import { OverviewVisualization } from "metabase/data-studio/common/components/OverviewVisualization";
+import {
+  OverviewVisualization,
+  useCardQueryData,
+} from "metabase/data-studio/common/components/OverviewVisualization";
 import { DescriptionSection } from "metabase/metrics/components/DescriptionSection";
 import { QuerySourceSection } from "metabase/metrics/components/QuerySourceSection";
+import { useMetricDefinition } from "metabase/metrics/common/hooks";
 import { Flex, Stack } from "metabase/ui";
+import {
+  TrendInfo,
+  useTrendData,
+} from "metabase/visualizations/components/TrendInfo";
+import * as LibMetric from "metabase-lib/metric";
 import type { Card } from "metabase-types/api";
 
 import S from "./MetricAboutSection.module.css";
@@ -12,10 +23,31 @@ type MetricAboutSectionProps = {
 };
 
 export function MetricAboutSection({ card }: MetricAboutSectionProps) {
+  const { definition } = useMetricDefinition(card.id ?? null);
+
+  const hasTimeDimension = useMemo(
+    () =>
+      definition
+        ? LibMetric.defaultBreakoutDimensions(definition).some(
+            LibMetric.isDateOrDateTime,
+          )
+        : false,
+    [definition],
+  );
+
   return (
     <Flex className={S.root} flex={1}>
-      <Flex direction="column" flex={1} mah={700}>
-        <OverviewVisualization card={card} />
+      <Flex
+        direction="column"
+        flex={1}
+        mah={700}
+        className={S.visualizationColumn}
+      >
+        {hasTimeDimension ? (
+          <AboutVisualization card={card} />
+        ) : (
+          <OverviewVisualization card={card} />
+        )}
       </Flex>
       <Stack w={300} ml="lg" gap="lg" className={S.sidebar}>
         <DescriptionSection card={card} />
@@ -28,5 +60,26 @@ export function MetricAboutSection({ card }: MetricAboutSectionProps) {
         />
       </Stack>
     </Flex>
+  );
+}
+
+function AboutVisualization({ card }: { card: Card }) {
+  const { data, isLoading } = useCardQueryData(card);
+  const trendData = useTrendData(data);
+
+  const lineCard = useMemo(
+    () => ({ ...card, display: "line" as const }),
+    [card],
+  );
+
+  return (
+    <Stack gap="lg" h="100%">
+      {trendData && <TrendInfo {...trendData} />}
+      <OverviewVisualization
+        card={lineCard}
+        data={data}
+        isLoading={isLoading}
+      />
+    </Stack>
   );
 }
