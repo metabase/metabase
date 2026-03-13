@@ -1,5 +1,6 @@
 import type React from "react";
 import { memo, useMemo } from "react";
+import { t } from "ttag";
 
 import { QueryColumnInfoPopover } from "metabase/common/components/MetadataInfo/ColumnInfoPopover";
 import {
@@ -7,7 +8,7 @@ import {
   type HeaderCellProps,
   HeaderCellWrapper,
 } from "metabase/data-grid";
-import type { MantineTheme } from "metabase/ui";
+import { ActionIcon, Icon, type MantineTheme } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { DatasetColumn } from "metabase-types/api";
@@ -27,6 +28,8 @@ export interface HeaderCellWithColumnInfoProps extends HeaderCellProps {
     index: number,
     theme: MantineTheme,
   ) => React.ReactNode;
+  onHideColumn?: (columnId: string) => void;
+  columnId?: string;
 }
 
 export const HeaderCellWithColumnInfo = memo(
@@ -43,6 +46,8 @@ export const HeaderCellWithColumnInfo = memo(
     theme,
     className,
     renderTableHeader,
+    onHideColumn,
+    columnId,
   }: HeaderCellWithColumnInfoProps) {
     const headerCellOverride = useMemo(() => {
       return renderTableHeader != null
@@ -87,6 +92,19 @@ export const HeaderCellWithColumnInfo = memo(
     return (
       <HeaderCellWrapper className={className} variant={variant} align={align}>
         {headerContent}
+        {onHideColumn && columnId && (
+          <ActionIcon
+            size="xs"
+            className={S.hideButton}
+            onClick={(e: React.MouseEvent) => {
+              e.stopPropagation();
+              onHideColumn(columnId);
+            }}
+            aria-label={t`Hide column`}
+          >
+            <Icon name="eye_crossed_out" size={12} />
+          </ActionIcon>
+        )}
       </HeaderCellWrapper>
     );
   },

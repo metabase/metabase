@@ -6,6 +6,7 @@ import _ from "underscore";
 import { ExternalLink } from "metabase/common/components/ExternalLink/ExternalLink";
 import { useLearnUrl } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
+import { TransientColumnVisibilityProvider } from "metabase/dashboard/components/DashCard/TransientColumnVisibilityContext";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { useClickBehaviorData } from "metabase/dashboard/hooks";
 import { useResponsiveParameterList } from "metabase/dashboard/hooks/use-responsive-parameter-list";
@@ -590,51 +591,53 @@ export function DashCardVisualization({
       })}
       ref={containerRef}
     >
-      <EmbeddingEntityContextProvider uuid={uuid ?? null} token={token ?? null}>
-        <Visualization
-          className={cx(CS.flexFull, {
-            [CS.overflowAuto]: visualizationOverlay,
-            [CS.overflowHidden]: !visualizationOverlay,
-          })}
-          dashboard={dashboard ?? undefined}
-          dashcard={dashcard}
-          rawSeries={series}
-          visualizerRawSeries={
-            isVisualizerDashboardCard(dashcard) ? rawSeries : undefined
-          }
-          metadata={metadata}
-          mode={getClickActionMode}
-          getHref={getHref}
-          gridSize={gridSize}
-          totalNumGridCols={totalNumGridCols}
-          headerIcon={headerIcon}
-          expectedDuration={expectedDuration}
-          error={error?.message}
-          errorIcon={error?.icon}
-          showTitle={cardTitled}
-          canToggleSeriesVisibility={!isEditing}
-          isAction={isAction}
-          isDashboard
-          isSlow={isSlow}
-          isFullscreen={isFullscreen}
-          isEditing={isEditing}
-          isPreviewing={isPreviewing}
-          isEditingParameter={isEditingParameter}
-          isMobile={isMobile}
-          actionButtons={actionButtons}
-          replacementContent={visualizationOverlay}
-          getExtraDataForClick={getExtraDataForClick}
-          onUpdateVisualizationSettings={handleOnUpdateVisualizationSettings}
-          onTogglePreviewing={onTogglePreviewing}
-          onChangeCardAndRun={onChangeCardAndRun}
-          onChangeLocation={onChangeLocation}
-          renderLoadingView={renderLoadingView}
-          titleMenuItems={titleMenuItems}
-          errorMessageOverride={visualizerErrMsg}
-          enableEntityNavigation={enableEntityNavigation}
-          autoAdjustSettings
-        />
-      </EmbeddingEntityContextProvider>
+      <TransientColumnVisibilityProvider>
+        <EmbeddingEntityContextProvider uuid={uuid ?? null} token={token ?? null}>
+          <Visualization
+            className={cx(CS.flexFull, {
+              [CS.overflowAuto]: visualizationOverlay,
+              [CS.overflowHidden]: !visualizationOverlay,
+            })}
+            dashboard={dashboard ?? undefined}
+            dashcard={dashcard}
+            rawSeries={series}
+            visualizerRawSeries={
+              isVisualizerDashboardCard(dashcard) ? rawSeries : undefined
+            }
+            metadata={metadata}
+            mode={getClickActionMode}
+            getHref={getHref}
+            gridSize={gridSize}
+            totalNumGridCols={totalNumGridCols}
+            headerIcon={headerIcon}
+            expectedDuration={expectedDuration}
+            error={error?.message}
+            errorIcon={error?.icon}
+            showTitle={cardTitled}
+            canToggleSeriesVisibility={!isEditing}
+            isAction={isAction}
+            isDashboard
+            isSlow={isSlow}
+            isFullscreen={isFullscreen}
+            isEditing={isEditing}
+            isPreviewing={isPreviewing}
+            isEditingParameter={isEditingParameter}
+            isMobile={isMobile}
+            actionButtons={actionButtons}
+            replacementContent={visualizationOverlay}
+            getExtraDataForClick={getExtraDataForClick}
+            onUpdateVisualizationSettings={handleOnUpdateVisualizationSettings}
+            onTogglePreviewing={onTogglePreviewing}
+            onChangeCardAndRun={onChangeCardAndRun}
+            onChangeLocation={onChangeLocation}
+            renderLoadingView={renderLoadingView}
+            titleMenuItems={titleMenuItems}
+            errorMessageOverride={visualizerErrMsg}
+            enableEntityNavigation={enableEntityNavigation}
+            autoAdjustSettings
+          />
+        </EmbeddingEntityContextProvider>
+      </TransientColumnVisibilityProvider>
     </div>
   );
 }

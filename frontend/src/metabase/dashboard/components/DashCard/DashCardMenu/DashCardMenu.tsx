@@ -25,6 +25,7 @@ import type { DashboardCard, Dataset } from "metabase-types/api";
 
 import { getDashcardTokenId, getDashcardUuid } from "../dashcard-ids";
 
+import { DashCardColumnsMenuItem } from "./DashCardColumnsMenuItem";
 import { DashCardMenuItems } from "./DashCardMenuItems";
 
 interface DashCardMenuProps {
@@ -117,6 +118,7 @@ export const DashCardMenu = ({
 
     return (
       <>
+        <DashCardColumnsMenuItem />
         <DashCardMenuItems
           dashcardId={dashcardId}
           question={question}

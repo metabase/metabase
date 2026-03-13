@@ -115,6 +115,17 @@ export class Table extends Component<TableProps, TableState> {
       widget: "toggle",
       default: false,
     },
+    "table.allow_column_hiding": {
+      get section() {
+        return t`Columns`;
+      },
+      get title() {
+        return t`Allow column selection`;
+      },
+      inline: true,
+      widget: "toggle",
+      default: false,
+    },
     "table.pivot": {
       get section() {
         return t`Columns`;
