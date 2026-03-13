@@ -32,6 +32,8 @@ function getApiError(e: unknown): string | undefined {
 interface MfaSetupProps {
   totpEnabled: boolean;
   onStatusChange: () => void;
+  /** When true, hides the disable option (used when MFA is required by admin). */
+  required?: boolean;
 }
 
 type SetupStep = "idle" | "qr" | "verify" | "complete";
@@ -45,6 +47,7 @@ interface SetupData {
 export const MfaSetup = ({
   totpEnabled,
   onStatusChange,
+  required = false,
 }: MfaSetupProps): JSX.Element => {
   const [step, setStep] = useState<SetupStep>("idle");
   const [setupData, setSetupData] = useState<SetupData | null>(null);
@@ -165,30 +168,32 @@ export const MfaSetup = ({
           </Box>
         )}
 
-        <Box>
-          <Text fw="bold" mb="sm">
-            {t`Disable two-factor authentication`}
-          </Text>
-          <Group>
-            <TextInput
-              type="password"
-              placeholder={t`Current password`}
-              value={disablePassword}
-              onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                setDisablePassword(e.currentTarget.value)
-              }
-            />
-            <Button
-              variant="outline"
-              color="danger"
-              onClick={handleDisable}
-              loading={isLoading}
-              disabled={!disablePassword}
-            >
-              {t`Disable`}
-            </Button>
-          </Group>
-        </Box>
+        {!required && (
+          <Box>
+            <Text fw="bold" mb="sm">
+              {t`Disable two-factor authentication`}
+            </Text>
+            <Group>
+              <TextInput
+                type="password"
+                placeholder={t`Current password`}
+                value={disablePassword}
+                onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                  setDisablePassword(e.currentTarget.value)
+                }
+              />
+              <Button
+                variant="outline"
+                color="danger"
+                onClick={handleDisable}
+                loading={isLoading}
+                disabled={!disablePassword}
+              >
+                {t`Disable`}
+              </Button>
+            </Group>
+          </Box>
+        )}
 
         {error && <Alert color="error">{error}</Alert>}
       </Stack>

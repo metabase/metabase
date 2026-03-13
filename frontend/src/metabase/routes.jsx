@@ -1,6 +1,7 @@
 import { IndexRedirect, IndexRoute, Redirect, Route } from "react-router";
 
 import App from "metabase/App.tsx";
+import MfaRequiredApp from "metabase/account/mfa/containers/MfaRequiredApp";
 import { getAccountRoutes } from "metabase/account/routes";
 import CollectionPermissionsModal from "metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal";
 import { getRoutes as getAdminRoutes } from "metabase/admin/routes";
@@ -128,6 +129,9 @@ export const getRoutes = (store) => {
           <Route path="forgot_password" component={ForgotPassword} />
           <Route path="reset_password/:token" component={ResetPassword} />
         </Route>
+
+        {/* MFA SETUP REQUIRED — must be outside IsAuthenticated to avoid circular redirect */}
+        <Route path="/mfa/setup-required" component={MfaRequiredApp} />
 
         {/* MAIN */}
         <Route component={IsAuthenticated}>

@@ -331,6 +331,7 @@ export const createMockSettings = (
   "report-timezone": "Europe/London",
   "report-timezone-short": "UTC",
   "report-timezone-long": "Europe/London",
+  "require-mfa": false,
   "oidc-configured": false,
   "oidc-enabled": false,
   "oidc-login-providers": [],

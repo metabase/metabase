@@ -586,6 +586,7 @@ interface PublicSettings {
   "report-timezone": string | null;
   "report-timezone-long": string;
   "report-timezone-short": string;
+  "require-mfa": boolean;
   "session-cookies": boolean | null;
   "setup-token": string | null;
   "metabot-enabled?": boolean;
