@@ -94,6 +94,7 @@ function ConvertToTransformLoader({
     error: schemasError,
   } = useListSyncableDatabaseSchemasQuery(databaseId ?? skipToken);
 
+  // returns 404 when the model was never persisted, so cannot use `error`
   const { data: persistedInfo, isLoading: isPersistedInfoLoading } =
     useGetPersistedInfoByCardQuery(card.id);
 
