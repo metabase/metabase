@@ -20,7 +20,7 @@
     (mt/with-premium-features #{:metabot-v3}
       (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
         (let [response (mt/user-http-request :crowberto :get 200
-                                             "oauth/.well-known/openid-configuration")]
+                                             ".well-known/openid-configuration")]
           (is (contains? response :issuer))
           (is (contains? response :authorization_endpoint))
           (is (contains? response :token_endpoint))
@@ -34,7 +34,7 @@
   (testing "Discovery endpoint returns 404 when feature disabled"
     (mt/with-premium-features #{}
       (mt/user-http-request :crowberto :get 404
-                            "oauth/.well-known/openid-configuration"))))
+                            ".well-known/openid-configuration"))))
 
 (deftest jwks-endpoint-with-feature-flag-test
   (testing "JWKS endpoint returns valid key set when feature enabled"

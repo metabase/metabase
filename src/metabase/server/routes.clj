@@ -98,6 +98,7 @@
   #_{:clj-kondo/ignore [:discouraged-var]}
   (compojure/routes
    auth-wrapper/routes
+   oauth-server.api/well-known-routes
    oauth-server.api/oauth-routes
    ;; ^/$ -> index.html
    (GET "/" [] index/index)
