@@ -114,15 +114,15 @@
         (is (= -32600 (get-in response [:body :error :code])))))))
 
 (deftest tools-list-test
-  (testing "tools/list returns the 6 agent tools"
+  (testing "tools/list returns the 7 agent tools"
     (let [[session-id _] (initialize!)
           response (mcp-request (jsonrpc-request "tools/list")
                                 {"mcp-session-id" session-id})
           tools (get-in response [:body :result :tools])]
       (is (= 200 (:status response)))
-      (is (= 6 (count tools)))
-      (is (= #{"search" "get_table" "get_metric" "get_field_values"
-               "construct_query" "execute_query"}
+      (is (= 7 (count tools)))
+      (is (= #{"search" "get_table" "get_metric" "get_table_field_values"
+               "get_metric_field_values" "construct_query" "execute_query"}
              (set (map :name tools))))
       (testing "each tool has a description and inputSchema"
         (doseq [tool tools]
@@ -237,7 +237,7 @@
     (let [[session-id _] (initialize!)
           response (mcp-request (jsonrpc-request "tools/call"
                                                  {:name      "get_table"
-                                                  :arguments {:table_id (mt/id :orders)}})
+                                                  :arguments {:id (mt/id :orders)}})
                                 {"mcp-session-id" session-id})
           result       (get-in response [:body :result])
           ;; Use first+:text since :content is a lazy seq (not indexable by get-in)
@@ -286,7 +286,7 @@
           list-response (mcp-request (jsonrpc-request "tools/list")
                                      {"mcp-session-id" session-id})]
       (is (= 200 (:status list-response)))
-      (is (= 6 (count (get-in list-response [:body :result :tools])))))))
+      (is (= 7 (count (get-in list-response [:body :result :tools])))))))
 
 (deftest batch-with-notifications-test
   (testing "batch with mix of notifications and requests returns only request responses"
