@@ -8,7 +8,6 @@ import { EmptyState } from "metabase/common/components/EmptyState";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { displayNameForColumn, formatValue } from "metabase/lib/formatting";
-import { ExpandableString } from "metabase/query_builder/components/ExpandableString";
 import type { ClickObject } from "metabase-lib";
 import { findColumnIndexesForColumnSettings } from "metabase-lib/v1/queries/utils/dataset";
 import { TYPE } from "metabase-lib/v1/types/constants";
@@ -24,6 +23,7 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
+import { ExpandableString } from "./ExpandableString";
 import {
   FitImage,
   GridCell,
