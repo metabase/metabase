@@ -38,8 +38,9 @@ const VALIDATION_SCHEMA = Yup.object({
   targetName: Yup.string().required(Errors.required),
   targetSchema: Yup.string().nullable().defined(),
   collectionId: Yup.number().nullable().defined(),
-  unpersistModel: Yup.boolean().defined(),
   replaceSource: Yup.boolean().defined(),
+  unpersisteCard: Yup.boolean().defined(),
+  archiveCard: Yup.boolean().defined(),
 });
 
 type ConvertToTransformValues = Yup.InferType<typeof VALIDATION_SCHEMA>;
@@ -128,8 +129,9 @@ function ConvertToTransformForm({
       targetSchema: schemas[0] ?? null,
       targetName: slugify(card.name),
       collectionId: null,
-      unpersistModel: true,
       replaceSource: true,
+      unpersisteCard: true,
+      archiveCard: true,
     }),
     [card.name, schemas],
   );
@@ -157,7 +159,7 @@ function ConvertToTransformForm({
       validationSchema={VALIDATION_SCHEMA}
       onSubmit={handleSubmit}
     >
-      {({ values, setFieldValue }) => (
+      {({ values }) => (
         <Form>
           <Stack gap="lg" mt="sm">
             <Text>
@@ -182,19 +184,29 @@ function ConvertToTransformForm({
             />
             <FormSwitch
               name="replaceSource"
-              label={t`Replace data source of all existing dependents`}
-              description={t`We'll run the new transform and update all dependents of the original model to use the transform's output table instead. If you don't want to do this now, you can do it later with the Data Replacement tool.`}
+              label={t`Replace data source of all this models dependents`}
+              description={t`We'll run the new transform, then update all dependents of the original model to use the transform's output table instead. You can always do this later with the data replacement tool.`}
               size="sm"
-              onChange={(event) =>
-                setFieldValue("unpersistModel", event.target.checked)
-              }
             />
             <FormSwitch
-              name="unpersistModel"
-              label={t`Unpersist model data`}
-              description={t`The original model will be unpersisted after running the transform and updating all dependents to use the transform's output table.`}
+              name="unpersisteCard"
+              label={t`Un-persist model data`}
+              description={
+                values.replaceSource
+                  ? t`We'll unpersist the model data after updating dependents.`
+                  : t`We'll unpersist the model data after creating the transform.`
+              }
               size="sm"
-              disabled={!values.replaceSource}
+            />
+            <FormSwitch
+              name="archiveCard"
+              label={t`Put this model in the trash`}
+              description={
+                values.replaceSource
+                  ? t`We'll put the model in the trash after updating dependents.`
+                  : t`We'll put the model in the trash after creating the transform.`
+              }
+              size="sm"
             />
             <Group>
               <Box flex={1}>
@@ -239,6 +251,7 @@ function getReplaceSourceRequest(
     source_entity_id: card.id,
     source_entity_type: "card",
     transform_id: transform.id,
-    unpersist_model: values.unpersistModel,
+    unpersist_card: values.unpersisteCard,
+    archive_card: values.archiveCard,
   };
 }

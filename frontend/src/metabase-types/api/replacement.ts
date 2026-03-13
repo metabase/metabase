@@ -99,7 +99,8 @@ export type ReplaceSourceWithTransformRequest = {
   source_entity_id: SourceReplacementEntityId;
   source_entity_type: SourceReplacementEntityType;
   transform_id: TransformId;
-  unpersist_model?: boolean;
+  unpersist_card?: boolean;
+  archive_card?: boolean;
 };
 
 export type ReplaceSourceWithTransformResponse = {

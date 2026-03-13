@@ -209,17 +209,17 @@ function getStatusItemIcon(
   return "table";
 }
 
-function getStatusItemDescription(run: SourceReplacementRun): string {
-  switch (run.status) {
-    case "started":
-      return run.run_type === "replace-with-transform" && run.progress == null
-        ? t`Running transform…`
-        : t`Replacing data source…`;
-    case "succeeded":
-      return t`Done!`;
-    default:
-      return run.run_type === "replace-with-transform" && run.progress == null
-        ? t`Error running transform`
-        : t`Error replacing`;
+function getStatusItemDescription(
+  run: SourceReplacementRun,
+): string | undefined {
+  if (run.status === "started") {
+    if (run.run_type === "replace-with-transform" && run.progress == null) {
+      return t`Running transform…`;
+    }
+    if (run.progress != null) {
+      const percentage = Math.round(run.progress * 100);
+      return t`${percentage}% complete`;
+    }
   }
+  return undefined;
 }
