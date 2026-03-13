@@ -268,7 +268,8 @@
                            500 "OpenRouter: internal server error"
                            502 "OpenRouter: upstream provider error"
                            503 "OpenRouter: service unavailable"
-                           "Unhandled error accessing OpenRouter API")]
+                           (or (-> res :body :error :message)
+                               "Unhandled error accessing OpenRouter API"))]
               (throw (ex-info msg (assoc res :api-error true) e)))
             (throw e)))))))
 
