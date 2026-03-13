@@ -69,6 +69,7 @@
 ;;   :value     - the value to compare against
 ;; When present, the table reference is rendered as a filtered subquery:
 ;;   (SELECT * FROM "table" WHERE "col" > ? AND "col" <= ?)
+;; This was introduced to support incremental transforms, unused by the frontend.
 (p.types/defrecord+ ReferencedTableQuery [table-id source-filters]
   pretty/PrettyPrintable
   (pretty [this]

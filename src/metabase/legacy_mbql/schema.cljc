@@ -1536,9 +1536,12 @@
     [:type    [:= {:decode/normalize helpers/normalize-keyword} :card]]
     [:card-id ::lib.schema.id/card]]])
 
-(def allowed-source-filter-ops
-  "Set of allowed source-filter ops"
-  #{:> :>= :< :<= := :!=})
+(mr/def ::TemplateTag.SourceFilter
+  "Schema for a single source-filter applied to a table template tag."
+  [:map
+   [:field-id ::lib.schema.id/field]
+   [:op       (into [:enum] lib.schema.template-tag/allowed-source-filter-ops)]
+   [:value    :any]])
 
 ;; Example:
 ;;
@@ -1546,14 +1549,8 @@
 ;;     :name         "#1635"
 ;;     :display-name "#1635"
 ;;     :type         :table
-;;     :table-id     2}
-(mr/def ::TemplateTag.SourceFilter
-  "Schema for a single source-filter applied to a table template tag."
-  [:map
-   [:field-id ::lib.schema.id/field]
-   [:op       (into [:enum] allowed-source-filter-ops)]
-   [:value    :any]])
-
+;;     :table-id     2
+;;     :source-filters [{:op :> :field-id 3 :value 500}]}
 (mr/def ::TemplateTag.SourceTable
   "Schema for a source query template tag."
   [:merge
