@@ -8,6 +8,8 @@
    [metabase.test.http-client :as client]
    [metabase.util.json :as json]))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
 ;;; --------------------------------------------------- Helpers ----------------------------------------------------
