@@ -81,7 +81,7 @@ const ThumbsVizComponent = (props: CustomVisualizationProps<ThumbsVizSettings>) 
         alignItems: 'center',
         width,
         height,
-        fontSize: 16,
+        fontSize: "10rem",
       }}
     >
       {emoji}
