@@ -395,6 +395,8 @@ export class Api extends EventEmitter {
           PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers
             .getOrRefreshSessionHandler,
           PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers
+            .getOrRefreshGuestSessionHandler,
+          PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers
             .overrideRequestsForGuestEmbeds,
         ],
       );

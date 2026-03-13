@@ -4,6 +4,9 @@ const getDefaultPluginEmbeddingSdk = () => ({
   isEnabled: () => false,
   onBeforeRequestHandlers: {
     getOrRefreshSessionHandler: async () => {},
+    getOrRefreshGuestSessionHandler: async (
+      _data: OnBeforeRequestHandlerData,
+    ): Promise<OnBeforeRequestHandlerData | void> => {},
     overrideRequestsForGuestEmbeds: async (
       _data: OnBeforeRequestHandlerData,
     ): Promise<OnBeforeRequestHandlerData | void> => {},
