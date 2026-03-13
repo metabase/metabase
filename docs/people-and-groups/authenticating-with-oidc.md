@@ -17,7 +17,7 @@ Integrating your Open ID Connect (OIDC) provider with Metabase lets you:
 
 > Metabase Cloud encrypts credentials by default, so this section only applies to self-hosted Metabases.
 
-[ `MB_ENCRYPTION_SECRET_KEY` ](../configuring-metabase/environment-variables.md#mb_encryption_secret_key) must be set before enabling OIDC. Metabase uses this key to encrypt the OIDC state cookie. Without it, Metabase will return a 500 error when a person tries to log in via OIDC.
+[`MB_ENCRYPTION_SECRET_KEY`](../configuring-metabase/environment-variables.md#mb_encryption_secret_key) must be set before enabling OIDC. Metabase uses this key to encrypt the OIDC state cookie. Without it, Metabase will return a 500 error when a person tries to log in via OIDC.
 
 Set this key in your environment before starting Metabase:
 
@@ -43,7 +43,7 @@ To add an OIDC provider to your Metabase, go to **Admin settings** > **Authentic
 
 ## Optional settings
 
-**Scopes**: The OIDC scopes to request. Scopes should be comma-separated. Defaults to `openid, email, profile` . Most providers don't require changes here.
+**Scopes**: The OIDC scopes to request. In the admin UI, enter scopes as a comma-separated string (e.g., `openid, email, profile`). In the `MB_OIDC_PROVIDERS` environment variable JSON, use an array (e.g., `["openid", "email", "profile"]`). Defaults to `openid, email, profile`. Most providers don't require changes here.
 
 ## Attribute mapping
 
@@ -79,8 +79,9 @@ If no matching account exists, and auto-provisioning is off, the person gets an 
 
 You can also configure OIDC via environment variables instead of the admin UI:
 
-- [ `MB_OIDC_USER_PROVISIONING_ENABLED` ](../configuring-metabase/environment-variables.md#mb_oidc_user_provisioning_enabled) — toggle auto-provisioning ( `true` by default).
-- [ `MB_OIDC_PROVIDERS` ](../configuring-metabase/environment-variables.md#mb_oidc_providers) — JSON string containing the full provider configuration. The value is an array of provider objects:
+- [`MB_OIDC_ALLOWED_NETWORKS`](../configuring-metabase/environment-variables.md#mb_oidc_allowed_networks): controls which networks OIDC requests are allowed to reach. Possible values: `allow-all` (default), `allow-private`, or `external-only`.
+- [`MB_OIDC_USER_PROVISIONING_ENABLED`](../configuring-metabase/environment-variables.md#mb_oidc_user_provisioning_enabled): toggle auto-provisioning (`true` by default).
+- [`MB_OIDC_PROVIDERS`](../configuring-metabase/environment-variables.md#mb_oidc_providers): JSON string containing the full provider configuration. The value is an array of provider objects:
 
 ```json
 [
@@ -96,7 +97,7 @@ You can also configure OIDC via environment variables instead of the admin UI:
       "email": "email",
       "first_name": "given_name",
       "last_name": "family_name"
-    },
+    }
   }
 ]
 ```

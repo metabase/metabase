@@ -7,7 +7,7 @@ summary: Step-by-step guide to setting up Keycloak as an OIDC identity provider 
 
 {% include plans-blockquote.html feature="OIDC authentication" %}
 
-Keycloak is an open-source identity provider that supports [OpenID Connect (OIDC) authentication](./authenticating-with-oidc.md).out of the box.
+Keycloak is an open-source identity provider that supports [OpenID Connect (OIDC) authentication](./authenticating-with-oidc.md) out of the box.
 
 1. [Set up OIDC in Keycloak](#working-in-the-keycloak-console) (the identity provider).
 2. [Set up OIDC in Metabase](./authenticating-with-oidc.md#set-up-oidc-in-metabase) (the service provider).
@@ -52,7 +52,7 @@ Here's a basic user setup to help you test a connection.
 
 ## Configure OIDC in Metabase
 
-If you're self-hosting Metabase, make sure you've set `MB_ENCRYPTION_SECRET_KEY` before enabling OIDC. See [OIDC-based authentication](./authenticating-with-oidc.md#if-youre-self-hosting-metabase-you-must-encrypt-your-credentials) for details.
+If you're self-hosting Metabase, make sure you've set `MB_ENCRYPTION_SECRET_KEY` before enabling OIDC. See [OIDC-based authentication](./authenticating-with-oidc.md#if-youre-self-hosting-metabase-you-must-encrypt-your-database-credentials) for details.
 
 Go to **Admin settings** > **Authentication** > **OIDC** and enter:
 

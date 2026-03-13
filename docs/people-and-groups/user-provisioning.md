@@ -48,9 +48,7 @@ Copy the token and save the token somewhere safe. For security, Metabase can't s
 
 Once you've enabled SCIM in Metabase and gotten your SCIM endpoint URL and SCIM token, follow the docs for [Setting up SCIM in Okta](https://help.okta.com/en-us/content/topics/apps/apps_app_integration_wizard_scim.htm?cshid=ext_Apps_App_Integration_Wizard-scim).
 
-With Okta, Metabase supports user and group provisioning; groups are created and populated in Metabase.
-
-NOTE: the authentication mode you need to set is "HTTP Header"
+With Okta, Metabase supports user and group provisioning; groups are created and populated in Metabase. The authentication mode you need to set is "HTTP Header".
 
 ## SCIM with Microsoft Entra ID
 
@@ -63,3 +61,4 @@ With Microsoft Entra ID, Metabase only supports user provisioning (groups aren't
 - [Authenticating with SAML](./authenticating-with-saml.md)
 - [SAML with Okta](./saml-okta.md)
 - [SAML with Microsoft Entra ID](./saml-azure.md)
+- [OIDC-based authentication](./authenticating-with-oidc.md)
