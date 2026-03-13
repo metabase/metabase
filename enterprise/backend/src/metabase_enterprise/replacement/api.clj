@@ -103,7 +103,7 @@
   (let [job-row  (replacement-run/create-run!
                   source_entity_type source_entity_id
                   source_entity_type source_entity_id
-                  api/*current-user-id* :replace-with-transform)
+                  api/*current-user-id* :convert-to-transform)
         progress (replacement-run/run-row->progress job-row)
         work-fn  (fn [progress]
                    (convert/replace-source-with-transform!

@@ -26,7 +26,6 @@ import { filterDisplayGroupsBySearch } from "./utils";
 
 const LIST_WIDTH = "20rem";
 const FILTER_WIDTH = "24rem";
-const DIMENSION_LIST_MAX_HEIGHT = Infinity;
 
 export type DefinitionSource = {
   id: MetricSourceId;
@@ -196,7 +195,7 @@ function DimensionList({
       renderItemName={(item) => item.name}
       renderItemIcon={renderItemIcon}
       width="100%"
-      maxHeight={DIMENSION_LIST_MAX_HEIGHT}
+      maxHeight={Infinity}
       searchable={false}
       alwaysExpanded
     />
