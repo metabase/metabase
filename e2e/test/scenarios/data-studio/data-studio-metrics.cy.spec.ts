@@ -73,9 +73,10 @@ describe("scenarios > data studio > library > metrics", () => {
     });
 
     H.DataStudio.Metrics.overviewPageDescriptionSidebar().within(() => {
+      cy.findByText("Last edited by Bobby Tables").should("be.visible");
       cy.findByText("Sample Database").should("be.visible");
-      cy.findByText("ORDERS").should("be.visible");
-      cy.findByText("Last update").should("be.visible");
+      cy.findByText("Orders").should("be.visible");
+      cy.findByText("Source table").should("be.visible");
 
       cy.findByText("Dependencies").should("be.visible");
       cy.findByText("Dependents").should("be.visible");
