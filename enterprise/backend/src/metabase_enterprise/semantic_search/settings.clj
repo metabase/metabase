@@ -62,7 +62,7 @@
 
 (defsetting ee-embedding-service-api-key
   (deferred-tru "API key for authenticating with the embedding service.")
-  :encryption :when-encryption-key-set
+  :sensitive? true
   :visibility :settings-manager
   :export?    false
   :doc        false)
