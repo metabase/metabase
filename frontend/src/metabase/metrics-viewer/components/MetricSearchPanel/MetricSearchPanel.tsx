@@ -4,7 +4,6 @@ import { t } from "ttag";
 import { Box, Button, Flex, Icon, Stack, Text, Tooltip } from "metabase/ui";
 import type { MetricDefinition, ProjectionClause } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
-import type { DatabaseId } from "metabase-types/api";
 
 import type { ExpressionToken } from "../../types/operators";
 import type {
@@ -39,7 +38,6 @@ type MetricSearchPanelProps = {
     definition: MetricDefinition,
   ) => void;
   onAddAdhoc?: (result: AdhocResult) => void;
-  databaseId?: DatabaseId | null;
 };
 
 export function MetricSearchPanel({
@@ -54,7 +52,6 @@ export function MetricSearchPanel({
   onSetBreakout,
   onUpdateDefinition,
   onAddAdhoc,
-  databaseId,
 }: MetricSearchPanelProps) {
   const [isFilterPillsExpanded, setIsFilterPillsExpanded] = useState(true);
 
@@ -143,7 +140,6 @@ export function MetricSearchPanel({
             onSwapMetric={onSwapMetric}
             onSetBreakout={onSetBreakout}
             onAddAdhoc={onAddAdhoc}
-            databaseId={databaseId}
           />
         </Box>
         {hasFilters && isFilterPillsExpanded && (

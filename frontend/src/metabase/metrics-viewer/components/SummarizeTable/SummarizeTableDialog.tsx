@@ -1,8 +1,9 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import {
   useGetTableQueryMetadataQuery,
+  useListDatabasesQuery,
   useListTablesQuery,
 } from "metabase/api";
 import {
@@ -12,10 +13,11 @@ import {
   Icon,
   Modal,
   Popover,
+  Select,
   Text,
   TextInput,
 } from "metabase/ui";
-import type { DatabaseId, Field, Table } from "metabase-types/api";
+import type { Field, Table } from "metabase-types/api";
 
 import type { AdhocAggregationOperator } from "../../utils/adhoc-definition";
 import { buildAdhocDisplayName } from "../../utils/adhoc-definition";
@@ -36,7 +38,6 @@ type SummarizeTableDialogProps = {
   opened: boolean;
   onClose: () => void;
   onAdd: (result: AdhocResult) => void;
-  databaseId: DatabaseId | null;
 };
 
 const AGGREGATION_OPTIONS: {
@@ -100,23 +101,40 @@ function isTemporalField(field: Field): boolean {
 // ── Table Picker Step ──
 
 function TablePickerStep({
-  databaseId,
   onSelectTable,
   onClose,
 }: {
-  databaseId: DatabaseId | null;
   onSelectTable: (table: Table) => void;
   onClose: () => void;
 }) {
   const [searchText, setSearchText] = useState("");
-  const { data: allTables, isLoading } = useListTablesQuery();
+  const [selectedDbId, setSelectedDbId] = useState<string | null>(null);
+
+  const { data: dbResponse } = useListDatabasesQuery();
+  const { data: allTables, isLoading: isLoadingTables } = useListTablesQuery();
+
+  const dbData = dbResponse?.data;
+  const databases = useMemo(() => dbData ?? [], [dbData]);
+
+  // Auto-select first database when loaded
+  useEffect(() => {
+    if (selectedDbId === null && databases.length > 0) {
+      setSelectedDbId(String(databases[0].id));
+    }
+  }, [databases, selectedDbId]);
+
+  const databaseOptions = useMemo(
+    () => databases.map((db) => ({ value: String(db.id), label: db.name })),
+    [databases],
+  );
 
   const tables = useMemo(() => {
     if (!allTables) {
       return [];
     }
+    const dbId = selectedDbId != null ? Number(selectedDbId) : null;
     return allTables.filter((table) => {
-      if (databaseId != null && table.db_id !== databaseId) {
+      if (dbId != null && table.db_id !== dbId) {
         return false;
       }
       if (table.visibility_type !== null) {
@@ -129,7 +147,9 @@ function TablePickerStep({
       }
       return true;
     });
-  }, [allTables, databaseId, searchText]);
+  }, [allTables, selectedDbId, searchText]);
+
+  const isLoading = isLoadingTables || databases.length === 0;
 
   return (
     <Box className={S.dialog}>
@@ -145,6 +165,12 @@ function TablePickerStep({
         </button>
       </Box>
       <Box className={S.searchWrapper}>
+        <Select
+          data={databaseOptions}
+          value={selectedDbId}
+          onChange={setSelectedDbId}
+          mb="xs"
+        />
         <TextInput
           placeholder={t`Search tables`}
           leftSection={<Icon name="search" size={14} />}
@@ -228,7 +254,7 @@ function ConfigurationStep({
   );
 
   // Auto-select first temporal field as group-by when fields load
-  useMemo(() => {
+  useEffect(() => {
     if (breakoutFields.length > 0 && selectedGroupBy === null) {
       const temporalField = breakoutFields.find(isTemporalField);
       if (temporalField) {
@@ -469,7 +495,6 @@ export function SummarizeTableDialog({
   opened,
   onClose,
   onAdd,
-  databaseId,
 }: SummarizeTableDialogProps) {
   const [step, setStep] = useState<"table-picker" | "configuration">(
     "table-picker",
@@ -511,7 +536,6 @@ export function SummarizeTableDialog({
     >
       {step === "table-picker" && (
         <TablePickerStep
-          databaseId={databaseId}
           onSelectTable={handleSelectTable}
           onClose={handleClose}
         />

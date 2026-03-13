@@ -536,7 +536,7 @@ export function getSelectedMetricsInfo(
             id: 0,
             sourceType: "adhoc",
             adhocUuid: parsed.uuid,
-            name: null,
+            name: entry.displayName ?? null,
             isLoading,
           },
         ];
@@ -545,7 +545,7 @@ export function getSelectedMetricsInfo(
         {
           id: parsed.id,
           sourceType: parsed.type,
-          name: null,
+          name: entry.displayName ?? null,
           isLoading,
         },
       ];

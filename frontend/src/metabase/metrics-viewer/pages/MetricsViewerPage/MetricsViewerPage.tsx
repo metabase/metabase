@@ -1,5 +1,5 @@
 import type { Location } from "history";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 
 import { Box, Flex, Stack } from "metabase/ui";
 
@@ -57,34 +57,6 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
     setBreakoutDimension,
   } = useMetricsViewer(props, tokens, setTokens);
 
-  const expressionName = useMemo(() => {
-    const metricCount = tokens.filter((t) => t.type === "metric").length;
-    const opCount = tokens.filter((t) => t.type === "operator").length;
-    if (metricCount < 1 || opCount === 0) {
-      return null;
-    }
-    return tokens
-      .map((token) => {
-        if (token.type === "open-paren") {
-          return "(";
-        }
-        if (token.type === "close-paren") {
-          return ")";
-        }
-        if (token.type === "operator") {
-          return token.op;
-        }
-        if (token.type === "constant") {
-          return String(token.value);
-        }
-        if (token.type === "separator") {
-          return ",";
-        }
-        return selectedMetrics[token.metricIndex]?.name ?? "...";
-      })
-      .join(" ");
-  }, [tokens, selectedMetrics]);
-
   const handleAddAdhoc = useCallback(
     (result: AdhocResult) => {
       addAdhocMetric({
@@ -96,22 +68,22 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
         column: result.column,
         displayName: result.displayName,
       });
-    },
-    [addAdhocMetric],
-  );
 
-  // Derive database ID from first definition for scoping the table picker
-  const databaseId = useMemo(() => {
-    for (const metric of selectedMetrics) {
-      if (metric.sourceType === "adhoc") {
-        continue;
-      }
-      if (metric.tableId != null) {
-        return undefined; // measures have tableId but not databaseId directly
-      }
-    }
-    return undefined;
-  }, [selectedMetrics]);
+      // Append a token so the adhoc metric appears in the text box / as a pill.
+      // The new metric will be appended to selectedMetrics at this index.
+      const newIndex = selectedMetrics.length;
+      const metricToken: ExpressionToken = {
+        type: "metric",
+        metricIndex: newIndex,
+      };
+      setTokens((prev) =>
+        prev.length > 0
+          ? [...prev, { type: "separator" as const }, metricToken]
+          : [metricToken],
+      );
+    },
+    [addAdhocMetric, selectedMetrics.length, setTokens],
+  );
 
   const hasDefinitions = definitions.length > 0;
   const hasLoadedDefinitions = definitions.some(
@@ -133,7 +105,6 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
           onSetBreakout={setBreakoutDimension}
           onUpdateDefinition={updateDefinition}
           onAddAdhoc={handleAddAdhoc}
-          databaseId={databaseId}
         />
       </Box>
       <Flex flex="1 1 auto" mih={0}>
