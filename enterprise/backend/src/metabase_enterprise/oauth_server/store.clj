@@ -1,10 +1,6 @@
 (ns metabase-enterprise.oauth-server.store
   "Database-backed implementations of OIDC provider storage protocols."
   (:require
-   [metabase-enterprise.oauth-server.models.oauth-access-token]
-   [metabase-enterprise.oauth-server.models.oauth-authorization-code]
-   [metabase-enterprise.oauth-server.models.oauth-client]
-   [metabase-enterprise.oauth-server.models.oauth-refresh-token]
    [metabase.util :as u]
    [oidc-provider.protocol :as proto]
    [oidc-provider.util :as oidc-util]
@@ -81,7 +77,7 @@
         (update :user-id #(some-> % str)))))
 
 (def ^:private refresh-token-db-columns
-  [:user_id :client_id :scope :resource])
+  [:user_id :client_id :scope :expiry :resource])
 
 (defn- db-row->refresh-token
   "Convert a DB row from :model/OAuthRefreshToken to the protocol's map shape."
@@ -173,12 +169,13 @@
     (-> (t2/select-one :model/OAuthAccessToken :token token :revoked_at nil)
         db-row->access-token))
 
-  (save-refresh-token [_ token user-id client-id scope resource]
+  (save-refresh-token [_ token user-id client-id scope expiry resource]
     (t2/insert! :model/OAuthRefreshToken
                 (cond-> {:token     token
                          :user_id   (parse-user-id user-id)
                          :client_id client-id
                          :scope     (vec scope)}
+                  expiry   (assoc :expiry expiry)
                   resource (assoc :resource (vec resource))))
     true)
 
