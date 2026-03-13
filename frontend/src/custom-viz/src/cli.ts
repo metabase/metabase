@@ -1,7 +1,20 @@
 #!/usr/bin/env node
 /* eslint-disable metabase/no-literal-metabase-strings */
+/* eslint-disable no-console */
+
+import { existsSync } from "node:fs";
+import { mkdir, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 
 import { Command } from "commander";
+
+import {
+  generateGitignore,
+  generateIndexTsx,
+  generatePackageJson,
+  generateTsConfig,
+  generateViteConfig,
+} from "./templates";
 
 const program = new Command();
 
@@ -14,10 +27,43 @@ program
   .command("init")
   .description("Scaffold a new custom visualization")
   .argument("<name>", "Name of the custom visualization")
-  .action((name: string) => {
-    // eslint-disable-next-line no-console
-    console.log(`Scaffolding custom visualization: ${name}`);
-    // TODO: implement scaffolding
+  .action(async (name: string) => {
+    if (!name || !/^[a-z0-9@][a-z0-9._\-/]*$/i.test(name)) {
+      console.error(
+        `Error: "${name}" is not a valid project name. Use lowercase letters, numbers, hyphens, and dots.`,
+      );
+      process.exit(1);
+    }
+
+    if (existsSync(name)) {
+      console.error(`Error: Directory "${name}" already exists.`);
+      process.exit(1);
+    }
+
+    console.log(`Scaffolding custom visualization: ${name}\n`);
+
+    await mkdir(join(name, "src"), { recursive: true });
+
+    await Promise.all([
+      writeFile(join(name, "package.json"), generatePackageJson(name)),
+      writeFile(join(name, "vite.config.ts"), generateViteConfig()),
+      writeFile(join(name, "tsconfig.json"), generateTsConfig()),
+      writeFile(join(name, "src", "index.tsx"), generateIndexTsx(name)),
+      writeFile(join(name, ".gitignore"), generateGitignore()),
+    ]);
+
+    console.log("Created files:");
+    console.log(`  ${name}/package.json`);
+    console.log(`  ${name}/vite.config.ts`);
+    console.log(`  ${name}/tsconfig.json`);
+    console.log(`  ${name}/src/index.tsx`);
+    console.log(`  ${name}/.gitignore`);
+    console.log();
+    console.log("Next steps:");
+    console.log(`  cd ${name}`);
+    console.log("  npm install");
+    console.log("  npm run dev      # Watch mode");
+    console.log("  npm run build    # Production build");
   });
 
 program.parse();

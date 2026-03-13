@@ -1,10 +1,10 @@
-import { CreateCustomVisualization, CustomVisualizationProps } from './viz';
+import type { CreateCustomVisualization, CustomVisualizationProps } from './viz';
 
 type ThumbsVizSettings = {
   threshold?: number;
 };
 
-export const createThumbsViz: CreateCustomVisualization<ThumbsVizSettings> = ({}) => {
+export const createThumbsViz: CreateCustomVisualization<ThumbsVizSettings> = ({ }) => {
   return {
     id: 'thumbs-viz',
     getName: () => 'Thumbs',

@@ -21,7 +21,7 @@ export default defineConfig({
       formats: ["es"],
     },
     rolldownOptions: {
-      external: ["commander", "react"],
+      external: ["commander", "react", /^node:/],
     },
   },
 });
