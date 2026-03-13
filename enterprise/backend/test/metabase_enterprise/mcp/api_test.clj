@@ -168,7 +168,7 @@
       (is (= "text" (:type (first (:content result))))))))
 
 (deftest tools-call-search-test
-  (testing "search tool invocation works"
+  (testing "search tool invocation works and returns parseable results"
     (let [[session-id _] (initialize!)
           response (mcp-request (jsonrpc-request "tools/call"
                                                  {:name "search"
@@ -177,7 +177,10 @@
           result (get-in response [:body :result])]
       (is (= 200 (:status response)))
       (is (nil? (:isError result)))
-      (is (= "text" (:type (first (:content result))))))))
+      (is (= "text" (:type (first (:content result)))))
+      (let [search-data (json/decode+kw (:text (first (:content result))))]
+        (is (contains? search-data :data))
+        (is (contains? search-data :total_count))))))
 
 ;;; ------------------------------------------------ SSE Transport -------------------------------------------------
 
@@ -247,7 +250,8 @@
         (is (some? (:name table-data)))
         (is (some? (:display_name table-data)))
         (is (some? (:database_id table-data)))
-        (is (= "table" (:type table-data)))))))
+        (is (= "table" (:type table-data)))
+        (is (seq (:fields table-data)))))))
 
 (deftest initialized-enforcement-test
   (testing "requests before notifications/initialized are rejected"
@@ -283,3 +287,34 @@
                                      {"mcp-session-id" session-id})]
       (is (= 200 (:status list-response)))
       (is (= 6 (count (get-in list-response [:body :result :tools])))))))
+
+(deftest batch-with-notifications-test
+  (testing "batch with mix of notifications and requests returns only request responses"
+    (let [[session-id _] (initialize!)
+          response (mcp-request [(jsonrpc-notification "notifications/initialized")
+                                 (jsonrpc-request "ping" {} 1)]
+                                {"mcp-session-id" session-id})]
+      (is (= 200 (:status response)))
+      (is (sequential? (:body response)))
+      (is (= 1 (count (:body response))))
+      (is (= 1 (:id (first (:body response))))))))
+
+(deftest tools-call-missing-params-test
+  (testing "tools/call without name returns an error"
+    (let [[session-id _] (initialize!)
+          response (mcp-request (jsonrpc-request "tools/call"
+                                                 {:arguments {}})
+                                {"mcp-session-id" session-id})
+          result (get-in response [:body :result])]
+      (is (= 200 (:status response)))
+      (is (true? (:isError result)))))
+
+  (testing "tools/call with missing path params returns an error"
+    (let [[session-id _] (initialize!)
+          response (mcp-request (jsonrpc-request "tools/call"
+                                                 {:name "get_table" :arguments {}})
+                                {"mcp-session-id" session-id})
+          result (get-in response [:body :result])]
+      (is (= 200 (:status response)))
+      (is (true? (:isError result)))
+      (is (str/includes? (:text (first (:content result))) "Missing required path parameter")))))

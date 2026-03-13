@@ -224,7 +224,10 @@
           "description": "Temporal bucket"
         }
       },
-      "required": ["function"]
+      "oneOf": [
+          { "required": ["function"] },
+          { "required": ["measure_id"] }
+        ]
     },
     "GroupBy": {
       "type": "object",

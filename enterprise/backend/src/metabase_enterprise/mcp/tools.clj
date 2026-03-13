@@ -83,7 +83,11 @@
   [path arguments]
   (let [params    (re-seq #"\{([^}]+)\}" path)
         resolved  (reduce (fn [p [placeholder k]]
-                            (str/replace p placeholder (str (get arguments (keyword k)))))
+                            (let [v (get arguments (keyword k))]
+                              (when (nil? v)
+                                (throw (ex-info (str "Missing required path parameter: " k)
+                                                {:parameter k :path path})))
+                              (str/replace p placeholder (str v))))
                           path
                           params)
         path-keys (set (map (comp keyword second) params))]
