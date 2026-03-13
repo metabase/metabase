@@ -104,6 +104,19 @@
                 {:status-code 401
                  :errors      {:password password-fail-snippet}}))))
 
+(defn- mfa-gate-session
+  "Check if the user who just authenticated has TOTP enabled. If so, delete the premature session and
+   return an MFA token response. Otherwise, build the normal session response with cookies."
+  [session-key session request request-time]
+  (let [user-id (:user_id session)]
+    (if (t2/select-one-fn :totp_enabled :model/User :id user-id)
+      (do
+        (t2/delete! :model/Session :key_hashed (session/hash-session-key session-key))
+        {:mfa_required true
+         :mfa_token    (mfa-token/create-mfa-token user-id)})
+      (let [response {:id (str session-key)}]
+        (request/set-session-cookies request response session request-time)))))
+
 (defn- do-http-401-on-error [f]
   (try
     (f)
@@ -133,17 +146,8 @@
   (let [ip-address   (request/ip-address request)
         request-time (t/zoned-date-time (t/zone-id "GMT"))
         do-login     (fn []
-                       (let [{session-key :key, :as session} (login username password (request/device-info request))
-                             user-id (:user_id session)]
-                         (if (t2/select-one-fn :totp_enabled :model/User :id user-id)
-                           ;; MFA required: delete the premature session and return an MFA token
-                           (do
-                             (t2/delete! :model/Session :key_hashed (session/hash-session-key session-key))
-                             {:mfa_required true
-                              :mfa_token    (mfa-token/create-mfa-token user-id)})
-                           ;; No MFA: return session as usual
-                           (let [response {:id (str session-key)}]
-                             (request/set-session-cookies request response session request-time)))))]
+                       (let [{session-key :key, :as session} (login username password (request/device-info request))]
+                         (mfa-gate-session session-key session request request-time)))]
     (if throttling-disabled?
       (do-login)
       (http-401-on-error
@@ -370,20 +374,9 @@
               (cond
                 ;; Login succeeded
                 (:success? login-result)
-                (let [session  (:session login-result)
-                      user-id  (:user_id session)]
-                  (if (t2/select-one-fn :totp_enabled :model/User :id user-id)
-                    ;; MFA required: delete the premature session and return an MFA token
-                    (do
-                      (t2/delete! :model/Session :key_hashed (session/hash-session-key (:key session)))
-                      {:mfa_required true
-                       :mfa_token    (mfa-token/create-mfa-token user-id)})
-                    ;; No MFA: return session as usual
-                    (let [response {:id (str (:key session))}]
-                      (request/set-session-cookies request
-                                                   response
-                                                   session
-                                                   (t/zoned-date-time (t/zone-id "GMT"))))))
+                (let [session (:session login-result)]
+                  (mfa-gate-session (:key session) session request
+                                    (t/zoned-date-time (t/zone-id "GMT"))))
 
                 ;; Login failed
                 :else
