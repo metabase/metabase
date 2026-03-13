@@ -15,6 +15,7 @@
       "@metabase/embedding-sdk-react": [
         "../enterprise/frontend/src/embedding-sdk-package/index.ts"
       ],
+      "cljs/*": ["../target/cljs_dev/*"],
       "*": ["../frontend/src/*"]
     }
   },
