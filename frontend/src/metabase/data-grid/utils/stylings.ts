@@ -1,12 +1,15 @@
 import type React from "react";
 
+import { ROW_HEIGHT } from "../constants";
 import type { DataGridColumnType, DataGridRowType } from "../types";
 
 export const getRowPositionStyles = <TData>(
   row: DataGridRowType<TData>,
 ): React.CSSProperties => {
   if (!row.virtualItem) {
-    return {};
+    return {
+      minHeight: `${ROW_HEIGHT}px`,
+    };
   }
   return {
     position: "absolute",
