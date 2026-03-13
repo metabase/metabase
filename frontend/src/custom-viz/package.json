@@ -1,0 +1,41 @@
+{
+  "name": "@metabase/custom-viz",
+  "version": "0.0.1",
+  "description": "Creating custom visualizations for Metabase",
+  "type": "module",
+  "bin": {
+    "metabase-custom-viz": "dist/cli.js"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "dev": "vite build --watch",
+    "build": "vite build",
+    "lint": "oxlint src/",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "release": "npm run build && np"
+  },
+  "dependencies": {
+    "commander": "^13.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "@types/react": "^19.2.14",
+    "lefthook": "^2.1.4",
+    "np": "^10.2.0",
+    "prettier": "^3.5.3",
+    "typescript": "^5.9.3",
+    "vite": "^8.0.0",
+    "vite-plugin-dts": "^4.5.4"
+  }
+}
