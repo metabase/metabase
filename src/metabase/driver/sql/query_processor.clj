@@ -1566,16 +1566,25 @@
     ;; -> [[::h2x/identifier ...] [[::h2x/identifier ...]]]
     ;; -> SELECT date_extract(\"x\", 'month') AS \"x\"
 
-  `clause` will be wrapped in a ::cast if ::add-cast is found in the `clause` options
+    `clause` will be wrapped in a ::cast if ::add-cast is found in the `clause` options
 
     ;; Honey SQL 2
     (as [:expression \"x\" {:base-type :type/Boolean, ::add-cast :bit}])
     ;; -> [[::h2x/typed [:cast ... [:raw \"bit\"]] {:database-type \"bit\"}] [[::h2x/identifier ...]]]
-    ;; -> SELECT CAST(1 AS bit) AS \"x\""
+    ;; -> SELECT CAST(1 AS bit) AS \"x\"
+
+    `clause` will be wrapped in a ::case if ::wrap-in-case is found in the `clause` options
+
+    ;; Honey SQL 2
+    (as [:expression \"x\" {:base-type :type/Boolean, ::wrap-in-case true}])
+    ;; -> [:case [:> ... ...] [:inline 1] :else [:inline 0]]
+    ;; -> SELECT CASE WHEN ... > ... THEN 1 ELSE 0 END AS \"x\""
   [driver clause & _unique-name-fn]
-  (let [cast-type     (-> clause driver-api/field-options ::add-cast)
-        wrap-cast     #(vector ::cast % cast-type)
-        maybe-cast    #(cond-> % cast-type wrap-cast)
+  (let [{cast-type ::add-cast
+         wrap-in-case? ::wrap-in-case} (driver-api/field-options clause)
+        maybe-cast    #(cond-> %
+                         wrap-in-case? (as-> <> (vector ::wrap-in-case <>))
+                         cast-type     (as-> <> (vector ::cast <> cast-type)))
         honeysql-form (->honeysql driver (maybe-cast clause))
         field-alias   (field-clause->alias driver clause)]
     (if field-alias

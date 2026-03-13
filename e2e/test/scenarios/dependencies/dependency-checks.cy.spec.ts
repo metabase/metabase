@@ -394,6 +394,8 @@ function createSqlTransformWithDependentMbqlQuestions() {
 }
 
 function createMbqlTransformWithDependentMbqlTransforms() {
+  const targetTableName = "base_transform";
+
   H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then(
     (tableId) => {
       H.createTransform(
@@ -411,66 +413,70 @@ function createMbqlTransformWithDependentMbqlTransforms() {
           },
           target: {
             type: "table",
-            name: "base_transform",
+            name: targetTableName,
             schema: "public",
             database: WRITABLE_DB_ID,
           },
         },
         { wrapId: true },
-      );
-      cy.get<number>("@transformId").then((transformId) =>
-        H.runTransformAndWaitForSuccess(transformId),
-      );
-
-      H.getTableId({ databaseId: WRITABLE_DB_ID, name: "base_transform" }).then(
-        (tableId) => {
-          H.getFieldId({ tableId, name: "name" }).then((fieldId) => {
-            H.createTransform({
-              name: "Name transform",
-              source: {
-                type: "query",
-                query: {
-                  database: WRITABLE_DB_ID,
+      )
+        .then(({ body }) => H.runTransformAndWaitForSuccess(body.id))
+        .then(() => {
+          H.resyncDatabase({
+            dbId: WRITABLE_DB_ID,
+            tableName: targetTableName,
+          });
+          H.getTableId({
+            databaseId: WRITABLE_DB_ID,
+            name: targetTableName,
+          }).then((tableId) => {
+            H.getFieldId({ tableId, name: "name" }).then((fieldId) => {
+              H.createTransform({
+                name: "Name transform",
+                source: {
                   type: "query",
                   query: {
-                    "source-table": tableId,
-                    fields: [["field", fieldId, null]],
+                    database: WRITABLE_DB_ID,
+                    type: "query",
+                    query: {
+                      "source-table": tableId,
+                      fields: [["field", fieldId, null]],
+                    },
                   },
                 },
-              },
-              target: {
-                type: "table",
-                name: "name_transform",
-                schema: "public",
-                database: WRITABLE_DB_ID,
-              },
-            });
-          });
-
-          H.getFieldId({ tableId, name: "score" }).then((fieldId) => {
-            H.createTransform({
-              name: "Score transform",
-              source: {
-                type: "query",
-                query: {
+                target: {
+                  type: "table",
+                  name: "name_transform",
+                  schema: "public",
                   database: WRITABLE_DB_ID,
+                },
+              });
+            });
+
+            H.getFieldId({ tableId, name: "score" }).then((fieldId) => {
+              H.createTransform({
+                name: "Score transform",
+                source: {
                   type: "query",
                   query: {
-                    "source-table": tableId,
-                    filter: [">", ["field", fieldId, null], 1],
+                    database: WRITABLE_DB_ID,
+                    type: "query",
+                    query: {
+                      "source-table": tableId,
+                      filter: [">", ["field", fieldId, null], 1],
+                    },
                   },
                 },
-              },
-              target: {
-                type: "table",
-                name: "score_transform",
-                schema: "public",
-                database: WRITABLE_DB_ID,
-              },
+                target: {
+                  type: "table",
+                  name: "score_transform",
+                  schema: "public",
+                  database: WRITABLE_DB_ID,
+                },
+              });
             });
           });
-        },
-      );
+        });
     },
   );
 }
