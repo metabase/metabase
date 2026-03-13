@@ -45,3 +45,9 @@
   metabase-enterprise.oauth-server.api
   [_request]
   nil)
+
+(defenterprise protected-resource-metadata-handler
+  "Returns OAuth Protected Resource Metadata (RFC 9728), or nil if unavailable."
+  metabase-enterprise.oauth-server.api
+  [_request]
+  nil)

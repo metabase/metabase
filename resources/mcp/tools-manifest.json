@@ -275,6 +275,7 @@
   "tools": [
     {
       "name": "construct_query",
+      "scope": "agent:query:construct",
       "description": "Construct a query against a Metabase table or metric. Returns an opaque query string that can be executed with execute_query.",
       "endpoint": {
         "method": "POST",
@@ -345,6 +346,7 @@
     },
     {
       "name": "execute_query",
+      "scope": "agent:query:execute",
       "_TODO": "Change responseFormat back to markdown once the execute tool formats results as a markdown table",
       "description": "Execute a previously constructed query and return the results as JSON with row count and execution time.",
       "endpoint": {
@@ -397,6 +399,7 @@
     },
     {
       "name": "search",
+      "scope": "agent:search",
       "description": "Search for tables and metrics in Metabase. Use term_queries for keyword search or semantic_queries for natural language search.",
       "endpoint": {
         "method": "POST",
@@ -433,6 +436,7 @@
     },
     {
       "name": "get_table",
+      "scope": "agent:table:read",
       "description": "Get details about a table including its fields, related tables, and metrics.",
       "endpoint": {
         "method": "GET",
@@ -495,6 +499,7 @@
     },
     {
       "name": "get_metric",
+      "scope": "agent:metric:read",
       "description": "Get details about a metric including its queryable dimensions.",
       "endpoint": {
         "method": "GET",

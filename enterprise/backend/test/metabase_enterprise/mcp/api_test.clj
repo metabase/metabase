@@ -3,6 +3,8 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.mcp.api :as mcp.api]
+   [metabase-enterprise.mcp.tools :as mcp.tools]
+   [metabase.api.macros.scope :as scope]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
@@ -15,21 +17,40 @@
 ;;; --------------------------------------------------- Helpers ----------------------------------------------------
 
 (defn- mcp-request
-  "Make a POST request to /api/mcp with the given JSON-RPC body and optional extra headers."
+  "Make an authenticated POST request to /api/mcp with the given JSON-RPC body and optional extra headers."
   ([body]
    (mcp-request body {}))
   ([body extra-headers]
    (mt/with-additional-premium-features #{:agent-api}
-     (client/client-full-response :post "mcp"
+     (mt/user-http-request-full-response :crowberto :post "mcp"
+                                         {:request-options {:headers extra-headers}}
+                                         body))))
+
+(defn- mcp-request-unauthenticated
+  "Make an unauthenticated POST request to /api/mcp."
+  ([body]
+   (mcp-request-unauthenticated body {}))
+  ([body extra-headers]
+   (mt/with-additional-premium-features #{:agent-api}
+     (client/client-full-response :post 401 "mcp"
                                   {:request-options {:headers extra-headers}}
                                   body))))
 
+(defn- mcp-request-with-bearer
+  "Make a POST request to /api/mcp with a bearer token and optional extra headers."
+  [bearer-token expected-status body extra-headers]
+  (mt/with-additional-premium-features #{:agent-api}
+    (client/client-full-response :post expected-status "mcp"
+                                 {:request-options {:headers (merge {"authorization" (str "Bearer " bearer-token)}
+                                                                    extra-headers)}}
+                                 body)))
+
 (defn- mcp-delete
-  "Make a DELETE request to /api/mcp with optional headers."
+  "Make an authenticated DELETE request to /api/mcp with optional headers."
   [extra-headers]
   (mt/with-additional-premium-features #{:agent-api}
-    (client/client-full-response :delete "mcp"
-                                 {:request-options {:headers extra-headers}})))
+    (mt/user-http-request-full-response :crowberto :delete "mcp"
+                                        {:request-options {:headers extra-headers}})))
 
 (defn- jsonrpc-request
   "Build a JSON-RPC 2.0 request map."
@@ -221,9 +242,14 @@
         (is (some? (get-in json-data [:result :protocolVersion])))))))
 
 (deftest get-without-session-test
-  (testing "GET without session returns 400"
+  (testing "GET without auth returns 401"
     (let [response (mt/with-additional-premium-features #{:agent-api}
-                     (client/client-full-response :get "mcp"))]
+                     (client/client-full-response :get 401 "mcp"))]
+      (is (= 401 (:status response)))))
+
+  (testing "GET with auth but no MCP session returns 400"
+    (let [response (mt/with-additional-premium-features #{:agent-api}
+                     (mt/user-http-request-full-response :crowberto :get "mcp"))]
       (is (= 400 (:status response)))
       (is (= -32600 (get-in response [:body :error :code]))))))
 
@@ -283,3 +309,50 @@
                                      {"mcp-session-id" session-id})]
       (is (= 200 (:status list-response)))
       (is (= 6 (count (get-in list-response [:body :result :tools])))))))
+
+;;; --------------------------------------------- OAuth Bearer Auth -------------------------------------------------
+
+(deftest unauthenticated-returns-401-test
+  (testing "POST without any auth returns 401 with WWW-Authenticate discovery header"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (let [response (mcp-request-unauthenticated (jsonrpc-request "initialize"))]
+        (is (= 401 (:status response)))
+        (is (str/includes? (get-in response [:headers "WWW-Authenticate"])
+                           "oauth-protected-resource"))))))
+
+(deftest invalid-bearer-token-returns-401-test
+  (testing "POST with invalid bearer token returns 401 with invalid_token error"
+    (let [response (mcp-request-with-bearer "totally-bogus-token" 401
+                                            (jsonrpc-request "initialize")
+                                            {})]
+      (is (= 401 (:status response)))
+      (is (str/includes? (get-in response [:headers "WWW-Authenticate"])
+                         "invalid_token")))))
+
+;;; --------------------------------------------- Scope Filtering ---------------------------------------------------
+
+(deftest tools-list-scope-filtering-test
+  (testing "tools/list with unrestricted scopes returns all tools"
+    (binding [mcp.tools/*token-scopes* #{::scope/unrestricted}]
+      (let [tools (mcp.tools/list-tools)]
+        (is (= 6 (count tools))))))
+
+  (testing "tools/list with specific scope only returns matching tools"
+    (binding [mcp.tools/*token-scopes* #{"agent:search"}]
+      (let [tools (mcp.tools/list-tools)]
+        ;; Should include: search (matches scope) + get_field_values (no scope field)
+        (is (contains? (set (map :name tools)) "search"))
+        (is (contains? (set (map :name tools)) "get_field_values"))
+        ;; Should NOT include tools with other scopes
+        (is (not (contains? (set (map :name tools)) "get_table")))
+        (is (not (contains? (set (map :name tools)) "construct_query"))))))
+
+  (testing "tools/list with wildcard scope matches all agent tools"
+    (binding [mcp.tools/*token-scopes* #{"agent:*"}]
+      (let [tools (mcp.tools/list-tools)]
+        (is (= 6 (count tools))))))
+
+  (testing "tools/list with nil scopes returns all tools"
+    (binding [mcp.tools/*token-scopes* nil]
+      (let [tools (mcp.tools/list-tools)]
+        (is (= 6 (count tools)))))))

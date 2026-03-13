@@ -7,6 +7,7 @@
    [clojure.string :as str]
    [metabase-enterprise.agent-api.api :as agent-api]
    [metabase.api.common :as api]
+   [metabase.api.macros.scope :as scope]
    [metabase.util :as u]
    [metabase.util.json :as json])
   (:import
@@ -15,16 +16,32 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:dynamic *token-scopes*
+  "Set of OAuth scopes for the current MCP session. nil means no scope filtering (legacy).
+   Contains `::scope/unrestricted` for session-authenticated requests."
+  nil)
+
 (def ^:private manifest
   (delay (-> (io/resource "mcp/tools-manifest.json") slurp json/decode+kw)))
 
+(defn- tool-visible?
+  "Check if a tool should be visible given the current token scopes."
+  [token-scopes tool]
+  (or (nil? token-scopes)
+      (contains? token-scopes ::scope/unrestricted)
+      (nil? (:scope tool))
+      (scope/scope-satisfied? token-scopes (:scope tool))))
+
 (defn list-tools
-  "Return the tool definitions suitable for MCP `tools/list` responses."
+  "Return the tool definitions suitable for MCP `tools/list` responses.
+   Filters tools based on `*token-scopes*` when set."
   []
-  (mapv (fn [tool]
-          {:name        (:name tool)
-           :description (:description tool)
-           :inputSchema (:inputSchema tool)})
+  (into []
+        (comp (filter (partial tool-visible? *token-scopes*))
+              (map (fn [tool]
+                     {:name        (:name tool)
+                      :description (:description tool)
+                      :inputSchema (:inputSchema tool)})))
         (:tools @manifest)))
 
 (def ^:private tool-index
@@ -61,7 +78,8 @@
      (cond-> {:request-method   method
               :uri              path
               :metabase-user-id api/*current-user-id*}
-       body (assoc :body body))
+       body           (assoc :body body)
+       *token-scopes* (assoc :token-scopes *token-scopes*))
      (fn [response] (deliver result response))
      (fn [error] (deliver result {:status 500 :body {:message (ex-message error)}})))
     (let [response (deref result 30000 {:status 504 :body {:message "Timeout"}})]

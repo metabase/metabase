@@ -6,14 +6,16 @@
    [clojure.string :as str]
    [compojure.response :as compojure.response]
    [metabase-enterprise.mcp.tools :as mcp.tools]
+   [metabase-enterprise.oauth-server.core :as oauth-server]
    [metabase.api.common :as api]
+   [metabase.api.macros.scope :as scope]
    [metabase.api.open-api :as open-api]
    [metabase.request.core :as request]
    [metabase.server.streaming-response :as streaming-response]
+   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [oidc-provider.protocol :as proto])
   (:import
    (java.io BufferedWriter OutputStreamWriter)
    (java.nio.charset StandardCharsets)
@@ -39,11 +41,16 @@
                                        (>= (u/since-ms timer) session-ttl-ms)))
                           m))))
 
-(defn- create-session! []
-  (sweep-expired-sessions!)
-  (let [session-id (str (UUID/randomUUID))]
-    (swap! sessions assoc session-id {:timer (u/start-timer) :initialized? false})
-    session-id))
+(defn- create-session!
+  ([]
+   (create-session! nil nil))
+  ([user-id token-scopes]
+   (sweep-expired-sessions!)
+   (let [session-id (str (UUID/randomUUID))]
+     (swap! sessions assoc session-id (cond-> {:timer (u/start-timer) :initialized? false}
+                                        user-id      (assoc :user-id user-id)
+                                        token-scopes (assoc :token-scopes token-scopes)))
+     session-id)))
 
 (defn- delete-session! [session-id]
   (swap! sessions dissoc session-id))
@@ -60,27 +67,35 @@
 (defn- mark-session-initialized! [session-id]
   (swap! sessions assoc-in [session-id :initialized?] true))
 
+(defn- session-token-scopes [session-id]
+  (get-in @sessions [session-id :token-scopes]))
+
+(defn- session-user-id [session-id]
+  (get-in @sessions [session-id :user-id]))
+
 ;;; -------------------------------------------------- Auth --------------------------------------------------------
 
-;; TODO: Remove this fallback once MCP authentication is fully implemented.
-;; This is a temporary measure so that unauthenticated MCP clients (e.g. local
-;; dev tools) can still function.  Once we support proper token/session auth on
-;; the MCP endpoint, every request should already carry a user identity and this
-;; superuser fallback should be deleted.
-(defn- first-superuser-id
-  "Return the ID of the first active superuser.
-   Temporary fallback for when no authenticated user is present on the request."
-  []
-  (:id (t2/select-one :model/User :is_superuser true :is_active true {:order-by [[:id :asc]]})))
+(defn- extract-bearer-token
+  "Extract the bearer token from the Authorization header."
+  [request]
+  (when-let [auth (get-in request [:headers "authorization"])]
+    (when (str/starts-with? (str/lower-case auth) "bearer ")
+      (str/trim (subs auth 7)))))
 
-(defn- resolve-user-id
-  "Return the user ID for the current MCP request. Uses the authenticated user
-   from the request when available, falling back to the first active superuser
-   as a temporary measure."
-  []
-  (or api/*current-user-id*
-      (do (log/warn "MCP request has no authenticated user; falling back to first superuser (temporary)")
-          (first-superuser-id))))
+(defn- validate-bearer-token
+  "Look up and validate an OAuth bearer token. Returns `{:user-id <int> :scopes <set>}` on success, nil on failure."
+  [token-string]
+  (when-let [provider (oauth-server/get-provider)]
+    (when-let [token-data (proto/get-access-token (:token-store provider) token-string)]
+      (let [expiry (:expiry token-data)]
+        (when (or (nil? expiry)
+                  (.isAfter (java.time.Instant/ofEpochSecond expiry) (java.time.Instant/now)))
+          (let [user-id (some-> (:user-id token-data) parse-long)
+                scopes  (when-let [scope-vec (:scope token-data)]
+                          (into #{} scope-vec))]
+            (when user-id
+              {:user-id user-id
+               :scopes  (or scopes #{})})))))))
 
 ;;; ------------------------------------------------- JSON-RPC 2.0 --------------------------------------------------
 
@@ -203,12 +218,30 @@
       (json-response 400 (jsonrpc-error nil -32600 "Invalid or missing Mcp-Session-Id"))
 
       :else
-      (let [messages  (if batch? body [body])
-            results   (mapv #(dispatch-request % session-id) messages)
-            responses (filterv some? results)]
-        (cond
-          (empty? responses)
-          {:status 202 :headers {"Content-Type" "application/json"} :body ""}
+      (let [messages       (if batch? body [body])
+            ;; For initialize requests, create a new session
+            initializing?  (some #(= "initialize" (:method %)) messages)
+            session-id     (if initializing?
+                             (create-session! api/*current-user-id* mcp.tools/*token-scopes*)
+                             session-id)]
+        ;; Validate session for non-initialize requests
+        (if (and (not initializing?) (not (valid-session? session-id)))
+          (json-response 400 (jsonrpc-error nil -32600 "Invalid or missing Mcp-Session-Id"))
+          (let [results       (mapv #(dispatch-request % session-id) messages)
+                ;; Collect extra headers from initialize responses
+                extra-headers (reduce (fn [h r] (merge h (when (map? r) (:headers r)))) {} results)
+                ;; Unwrap {response, headers} maps, keep plain responses and nils
+                responses     (mapv (fn [r]
+                                      (if (and (map? r) (:response r))
+                                        (:response r)
+                                        r))
+                                    results)
+                ;; Filter out nil (notification) responses
+                responses     (filterv some? responses)]
+            (cond
+              ;; All notifications — return 202
+              (empty? responses)
+              {:status 202 :headers (merge {"Content-Type" "application/json"} extra-headers) :body ""}
 
           (accepts-sse? request)
           (sse-response responses)
@@ -217,7 +250,7 @@
           (json-response 200 (first responses))
 
           :else
-          (json-response 200 responses))))))
+          (json-response 200 responses))))))))
 
 (defn- handle-get
   "Handle a GET request for SSE stream (keepalive for server-initiated notifications)."
@@ -251,23 +284,56 @@
 
 ;;; ---------------------------------------------------- Handler ---------------------------------------------------
 
+(defn- www-authenticate-discovery []
+  (str "Bearer realm=\"mcp\" resource_metadata=\"" (system/site-url) "/.well-known/oauth-protected-resource\""))
+
 (def ^{:arglists '([request respond raise])} handler
   "Ring async handler for the MCP endpoint.
    Uses JSON-RPC 2.0 over HTTP rather than REST, so the OpenAPI spec is empty."
   (open-api/handler-with-open-api-spec
    (fn [request respond raise]
-     (let [user-id (resolve-user-id)]
-       (if (nil? user-id)
-         (respond (json-response 500 (jsonrpc-error nil -32603 "No authenticated user and no superuser fallback available")))
-         (request/with-current-user user-id
-           (try
-             (case (:request-method request)
-               :post   (respond (handle-post request))
-               :get    (handle-get request respond raise)
-               :delete (respond (handle-delete request))
-               (respond {:status  405
-                         :headers {"Content-Type" "application/json"}
-                         :body    (json/encode {:error "Method not allowed"})}))
-             (catch Throwable e
-               (raise e)))))))
+     (let [bearer-token    (extract-bearer-token request)
+           session-auth    (:metabase-user-id request)
+           mcp-session-id  (get-in request [:headers "mcp-session-id"])
+           ;; For non-initialize requests with a valid MCP session, inherit stored auth
+           stored-user-id  (when (and (not bearer-token) (not session-auth) mcp-session-id)
+                             (session-user-id mcp-session-id))
+           stored-scopes   (when stored-user-id
+                             (session-token-scopes mcp-session-id))]
+       (letfn [(dispatch [user-id scopes]
+                 (request/with-current-user user-id
+                   (try
+                     (binding [mcp.tools/*token-scopes* scopes]
+                       (case (:request-method request)
+                         :post   (respond (handle-post request))
+                         :get    (handle-get request respond raise)
+                         :delete (respond (handle-delete request))
+                         (respond {:status  405
+                                   :headers {"Content-Type" "application/json"}
+                                   :body    (json/encode {:error "Method not allowed"})})))
+                     (catch Throwable e
+                       (raise e)))))]
+         (cond
+           ;; Session auth (browser/cookie) — unrestricted scopes
+           session-auth
+           (dispatch session-auth #{::scope/unrestricted})
+
+           ;; Bearer token auth — validate and extract scopes
+           bearer-token
+           (if-let [{:keys [user-id scopes]} (validate-bearer-token bearer-token)]
+             (dispatch user-id scopes)
+             ;; Invalid/expired bearer token
+             (respond {:status  401
+                       :headers {"Content-Type"     "application/json"
+                                 "WWW-Authenticate" "Bearer error=\"invalid_token\""}
+                       :body    (json/encode {:error "invalid_token"})}))
+
+           ;; Stored session auth (bearer token was sent on initialize)
+           stored-user-id
+           (dispatch stored-user-id (or stored-scopes #{}))
+
+           ;; No auth at all — return 401 with discovery
+           :else
+           (respond {:status  401
+                     :headers {"WWW-Authenticate" (www-authenticate-discovery)}})))))
    (constantly nil)))
