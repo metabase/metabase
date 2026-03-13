@@ -254,7 +254,6 @@
    Accepts form-encoded params from the consent page."
   :feature :metabot-v3
   [request]
-  #p request
   (if-not (:metabase-user-id request)
     {:status  401
      :headers {"Content-Type" "application/json"}
@@ -310,22 +309,21 @@
   "Handles the token endpoint (POST /oauth/token)."
   :feature :metabot-v3
   [request]
-  #p request
   (when-let [provider (oauth-server/get-provider)]
     (let [params               (:params request)
           authorization-header (get-in request [:headers "authorization"])]
       (try
-        (let [response #p (oidc/token-request provider params authorization-header)]
+        (let [response (oidc/token-request provider params authorization-header)]
           {:status  200
            :headers {"Content-Type"  "application/json"
                      "Cache-Control" "no-store"
                      "Pragma"        "no-cache"}
            :body    response})
         (catch clojure.lang.ExceptionInfo e
-          (let [data (ex-data #p e)]
-            #p {:status  (if (= (:error data) "invalid_client") 401 400)
-                :headers {"Content-Type"  "application/json"
-                          "Cache-Control" "no-store"
-                          "Pragma"        "no-cache"}
-                :body    {:error             (or (:error data) "invalid_request")
-                          :error_description (ex-message e)}}))))))
+          (let [data (ex-data e)]
+            {:status  (if (= (:error data) "invalid_client") 401 400)
+             :headers {"Content-Type"  "application/json"
+                       "Cache-Control" "no-store"
+                       "Pragma"        "no-cache"}
+             :body    {:error             (or (:error data) "invalid_request")
+                       :error_description (ex-message e)}}))))))

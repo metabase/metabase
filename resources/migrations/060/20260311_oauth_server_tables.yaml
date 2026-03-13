@@ -89,6 +89,13 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
+                  name: client_type
+                  type: varchar(50)
+                  remarks: "confidential or public"
+                  defaultValue: "confidential"
+                  constraints:
+                    nullable: false
+              - column:
                   name: registration_access_token_hash
                   type: ${text.type}
                   remarks: Hashed RFC 7592 registration access token
@@ -116,22 +123,6 @@ databaseChangeLog:
             tableName: oauth_client
             constraintName: uq_oauth_client_client_id
             columnNames: client_id
-
-  - changeSet:
-      id: v60.2026-03-12T00:00:00
-      author: epaget
-      comment: Add client_type column to oauth_client
-      changes:
-        - addColumn:
-            tableName: oauth_client
-            columns:
-              - column:
-                  name: client_type
-                  type: varchar(50)
-                  remarks: "confidential or public"
-                  defaultValue: "confidential"
-                  constraints:
-                    nullable: false
 
   # oauth_authorization_code table
   - changeSet:
@@ -395,6 +386,12 @@ databaseChangeLog:
                   constraints:
                     nullable: true
               - column:
+                  name: expiry
+                  type: bigint
+                  remarks: Milliseconds since epoch (null means no expiry)
+                  constraints:
+                    nullable: true
+              - column:
                   name: revoked_at
                   type: ${timestamp_type}
                   remarks: Null if active
@@ -416,18 +413,3 @@ databaseChangeLog:
             tableName: oauth_refresh_token
             constraintName: uq_oauth_refresh_token_token
             columnNames: token
-
-  - changeSet:
-      id: v60.2026-03-13T00:00:00
-      author: epaget
-      comment: Add expiry column to oauth_refresh_token for refresh token expiration
-      changes:
-        - addColumn:
-            tableName: oauth_refresh_token
-            columns:
-              - column:
-                  name: expiry
-                  type: bigint
-                  remarks: Milliseconds since epoch (null means no expiry)
-                  constraints:
-                    nullable: true
