@@ -436,6 +436,10 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
       await this._authenticate();
     }
 
+    if (event.data.type === "metabase.embed.requestGuestTokenRefresh") {
+      await this._refreshGuestToken(event.data.data.expiredToken);
+    }
+
     // Note: if we wrap other functions like this, let's come up with a generic utility function
     if (event.data.type === "metabase.embed.handleLink") {
       const { url, requestId } = event.data.data;
@@ -498,6 +502,83 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     }
 
     await this._authManager.authenticate();
+  }
+
+  /**
+   * Refreshes a guest embed JWT token by calling the configured refresh endpoint.
+   * Implements the refresh logic directly (based on enterprise runFetchRequestToken)
+   * to maintain OSS compatibility without enterprise dependencies.
+   */
+  private async _refreshGuestToken(expiredToken: string): Promise<void> {
+    const guestEmbedJwtRefreshUrl = this.properties.guestEmbedJwtRefreshUrl;
+
+    if (!guestEmbedJwtRefreshUrl) {
+      this.sendMessage("metabase.embed.reportAuthenticationError", {
+        error: new MetabaseError(
+          "CANNOT_FETCH_JWT_TOKEN",
+          "guestEmbedJwtRefreshUrl not configured",
+        ),
+      });
+      return;
+    }
+
+    try {
+      // Build URL with support for relative URLs
+      const url = new URL(guestEmbedJwtRefreshUrl, window.location.origin);
+      url.searchParams.set("response", "json");
+
+      // POST request with expired token (matches enterprise implementation)
+      const response = await fetch(url.toString(), {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ expiredToken }),
+      });
+
+      if (!response.ok) {
+        throw new MetabaseError(
+          "CANNOT_FETCH_JWT_TOKEN",
+          `Token refresh failed with status ${response.status}`,
+        );
+      }
+
+      const data = await response.json();
+
+      // Validate response format
+      if (
+        typeof data !== "object" ||
+        !("jwt" in data) ||
+        typeof data.jwt !== "string"
+      ) {
+        throw new MetabaseError(
+          "DEFAULT_ENDPOINT_ERROR",
+          `Invalid refresh response: expected { jwt: string }, got ${JSON.stringify(data)}`,
+        );
+      }
+
+      const newToken = data.jwt;
+
+      // Send new token back to iframe
+      this.sendMessage("metabase.embed.submitRefreshedGuestToken", {
+        token: newToken,
+      });
+    } catch (error) {
+      // Send error back to iframe
+      if (error instanceof MetabaseError) {
+        this.sendMessage("metabase.embed.reportAuthenticationError", {
+          error,
+        });
+      } else {
+        this.sendMessage("metabase.embed.reportAuthenticationError", {
+          error: new MetabaseError(
+            "CANNOT_FETCH_JWT_TOKEN",
+            error instanceof Error ? error.message : String(error),
+          ),
+        });
+      }
+    }
   }
 }
 
