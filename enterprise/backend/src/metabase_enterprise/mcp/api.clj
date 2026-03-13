@@ -115,6 +115,13 @@
 (defn- handle-ping [id _params]
   (jsonrpc-response id {}))
 
+(defmacro ^:private when-initialized
+  "Return a JSON-RPC error if the session is not yet initialized, otherwise evaluate `body`."
+  [id session-id & body]
+  `(if (session-initialized? ~session-id)
+     (do ~@body)
+     (jsonrpc-error ~id -32600 "Session not initialized: send notifications/initialized first")))
+
 (defn- dispatch-request
   "Dispatch a single JSON-RPC request. Returns a response map or nil for notifications."
   [msg session-id]
@@ -122,23 +129,11 @@
         method (:method msg)
         params (:params msg)]
     (case method
-      "initialize"
-      (handle-initialize id params session-id)
-
-      "notifications/initialized"
-      (do (mark-session-initialized! session-id)
-          nil) ; notification — no response
-
-      ;; All other methods require the session to be initialized
-      ("tools/list" "tools/call" "ping")
-      (if-not (session-initialized? session-id)
-        (jsonrpc-error id -32600 "Session not initialized: send notifications/initialized first")
-        (case method
-          "tools/list" (handle-tools-list id params)
-          "tools/call" (handle-tools-call id params)
-          "ping"       (handle-ping id params)))
-
-      ;; unknown method
+      "initialize"                (handle-initialize id params session-id)
+      "notifications/initialized" (do (mark-session-initialized! session-id) nil)
+      "tools/list"                (when-initialized id session-id (handle-tools-list id params))
+      "tools/call"                (when-initialized id session-id (handle-tools-call id params))
+      "ping"                      (when-initialized id session-id (handle-ping id params))
       (if id
         (jsonrpc-error id -32601 (str "Method not found: " method))
         nil))))
