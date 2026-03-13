@@ -80,7 +80,6 @@ function CartesianChartInner(props: VisualizationProps) {
     },
     containerRef,
   );
-  window.rawSeries = rawSeries;
   useChartDebug({ isQueryBuilder, rawSeries, option, chartModel });
 
   const chartRef = useRef<EChartsType>();
