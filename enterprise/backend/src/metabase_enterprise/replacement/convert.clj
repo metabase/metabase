@@ -31,10 +31,12 @@
    cancellation, so a cancelled run may produce a \"failed\" transform_run.
 
    Options:
-   - `:unpersist-model?` — when true and source is a card, unpersist the model after
-     replacement (default false)."
+   - `:unpersist-card?` — when true and source is a card, unpersist the model after
+     replacement (default false).
+   - `:archive-card?` — when true and source is a card, archive the card after all
+     steps are done (default false)."
   [source-type source-id transform-id run-id progress
-   {:keys [unpersist-model?] :or {unpersist-model? false}}]
+   {:keys [unpersist-card? archive-card?] :or {unpersist-card? false archive-card? false}}]
   (let [transform (t2/select-one :model/Transform :id transform-id)
         _         (when-not transform
                     (throw (ex-info "Transform not found" {:transform-id transform-id})))
@@ -64,6 +66,10 @@
     (replacement.runner/run-swap [source-type source-id] [:table (:id table)] progress)
 
     ;; --- Phase 4: Unpersist model ---
-    (when unpersist-model?
+    (when unpersist-card?
       (when-let [persisted-info (t2/select-one :model/PersistedInfo :card_id source-id)]
-        (persisted-info/mark-for-pruning! {:id (:id persisted-info)} "off")))))
+        (persisted-info/mark-for-pruning! {:id (:id persisted-info)} "off")))
+
+    ;; --- Phase 5: Archive card ---
+    (when (and archive-card? (= source-type :card))
+      (t2/update! :model/Card source-id {:archived true}))))

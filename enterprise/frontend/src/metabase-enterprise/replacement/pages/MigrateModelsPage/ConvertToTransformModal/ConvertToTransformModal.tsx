@@ -7,7 +7,10 @@ import {
   skipToken,
   useCreateTransformMutation,
   useGetDatabaseQuery,
+  useGetPersistedInfoByCardQuery,
   useListSyncableDatabaseSchemasQuery,
+  useUnpersistModelMutation,
+  useUpdateCardMutation,
 } from "metabase/api";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -39,7 +42,7 @@ const VALIDATION_SCHEMA = Yup.object({
   targetSchema: Yup.string().nullable().defined(),
   collectionId: Yup.number().nullable().defined(),
   replaceSource: Yup.boolean().defined(),
-  unpersisteCard: Yup.boolean().defined(),
+  unpersistCard: Yup.boolean().defined(),
   archiveCard: Yup.boolean().defined(),
 });
 
@@ -91,8 +94,13 @@ function ConvertToTransformLoader({
     error: schemasError,
   } = useListSyncableDatabaseSchemasQuery(databaseId ?? skipToken);
 
-  const isLoading = isDatabaseLoading || isSchemasLoading;
+  const { data: persistedInfo, isLoading: isPersistedInfoLoading } =
+    useGetPersistedInfoByCardQuery(card.id);
+
+  const isLoading =
+    isDatabaseLoading || isSchemasLoading || isPersistedInfoLoading;
   const error = databaseError ?? schemasError;
+  const isPersisted = persistedInfo != null && persistedInfo.state !== "off";
 
   if (isLoading || error != null || database == null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
@@ -103,6 +111,7 @@ function ConvertToTransformLoader({
       card={card}
       database={database}
       schemas={schemas}
+      isPersisted={isPersisted}
       onClose={onClose}
     />
   );
@@ -112,6 +121,7 @@ type ConvertToTransformFormProps = {
   card: Card;
   database: Database;
   schemas: string[];
+  isPersisted: boolean;
   onClose: () => void;
 };
 
@@ -119,10 +129,10 @@ function ConvertToTransformForm({
   card,
   database,
   schemas,
+  isPersisted,
   onClose,
 }: ConvertToTransformFormProps) {
   const supportsSchemas = hasFeature(database, "schemas");
-
   const initialValues: ConvertToTransformValues = useMemo(
     () => ({
       name: card.name,
@@ -130,28 +140,17 @@ function ConvertToTransformForm({
       targetName: slugify(card.name),
       collectionId: null,
       replaceSource: true,
-      unpersisteCard: true,
+      unpersistCard: true,
       archiveCard: true,
     }),
     [card.name, schemas],
   );
 
-  const [createTransform] = useCreateTransformMutation();
-  const [replaceSourceWithTransform] = useReplaceSourceWithTransformMutation();
-
-  const handleSubmit = async (values: ConvertToTransformValues) => {
-    const transform = await createTransform(
-      getCreateTransformRequest(card, values),
-    ).unwrap();
-
-    if (values.replaceSource) {
-      await replaceSourceWithTransform(
-        getReplaceSourceRequest(card, transform, values),
-      ).unwrap();
-    }
-
-    onClose();
-  };
+  const handleSubmit = useConvertToTransform({
+    card,
+    isPersisted,
+    onSuccess: onClose,
+  });
 
   return (
     <FormProvider
@@ -188,16 +187,14 @@ function ConvertToTransformForm({
               description={t`We'll run the new transform, then update all dependents of the original model to use the transform's output table instead. You can always do this later with the data replacement tool.`}
               size="sm"
             />
-            <FormSwitch
-              name="unpersisteCard"
-              label={t`Un-persist model data`}
-              description={
-                values.replaceSource
-                  ? t`We'll unpersist the model data after updating dependents.`
-                  : t`We'll unpersist the model data after creating the transform.`
-              }
-              size="sm"
-            />
+            {isPersisted && (
+              <FormSwitch
+                name="unpersistCard"
+                label={t`Un-persist model data`}
+                description={t`We'll unpersist the model data after updating dependents.`}
+                size="sm"
+              />
+            )}
             <FormSwitch
               name="archiveCard"
               label={t`Put this model in the trash`}
@@ -220,6 +217,46 @@ function ConvertToTransformForm({
       )}
     </FormProvider>
   );
+}
+
+type UseConvertToTransformProps = {
+  card: Card;
+  isPersisted: boolean;
+  onSuccess: () => void;
+};
+
+function useConvertToTransform({
+  card,
+  isPersisted,
+  onSuccess,
+}: UseConvertToTransformProps) {
+  const [createTransform] = useCreateTransformMutation();
+  const [replaceSourceWithTransform] = useReplaceSourceWithTransformMutation();
+  const [updateCard] = useUpdateCardMutation();
+  const [unpersistModel] = useUnpersistModelMutation();
+
+  const handleSubmit = async (values: ConvertToTransformValues) => {
+    const transform = await createTransform(
+      getCreateTransformRequest(card, values),
+    ).unwrap();
+
+    if (values.replaceSource) {
+      await replaceSourceWithTransform(
+        getReplaceSourceRequest(card, transform, values),
+      ).unwrap();
+    } else {
+      if (isPersisted && values.unpersistCard) {
+        await unpersistModel(card.id).unwrap();
+      }
+      if (values.archiveCard) {
+        await updateCard({ id: card.id, archived: true }).unwrap();
+      }
+    }
+
+    onSuccess();
+  };
+
+  return handleSubmit;
 }
 
 function getCreateTransformRequest(
@@ -251,7 +288,7 @@ function getReplaceSourceRequest(
     source_entity_id: card.id,
     source_entity_type: "card",
     transform_id: transform.id,
-    unpersist_card: values.unpersisteCard,
+    unpersist_card: values.unpersistCard,
     archive_card: values.archiveCard,
   };
 }

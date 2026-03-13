@@ -62,7 +62,8 @@
    [:source_entity_id   ::source-entity-id]
    [:source_entity_type ::source-entity-type]
    [:transform_id       pos-int?]
-   [:unpersist_model    {:optional true :default false} :boolean]])
+   [:unpersist_card     {:optional true :default false} :boolean]
+   [:archive_card       {:optional true :default false} :boolean]])
 
 (mr/def ::check-replace-source-response
   [:map
