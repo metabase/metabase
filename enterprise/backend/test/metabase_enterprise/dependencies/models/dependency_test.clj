@@ -227,37 +227,38 @@
 
 (deftest filtered-graph-dependencies-test
   (testing "filtered-graph-dependencies respects filter clause"
-    (mt/with-temp [:model/User user {:email "me@wherever.com"}]
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-model-cleanup [:model/Card :model/Dependency]
-          (let [{id1 :id :as card1} (card/create-card! (basic-orders) user)
-                {id2 :id :as card2} (card/create-card! (wrap-card card1) user)
-                {id3 :id :as _card3} (card/create-card! (wrap-card card2) user)]
-            (testing "without filter, returns all dependencies"
-              (let [graph (deps.graph/graph-dependencies)
-                    deps (graph/transitive graph [[:card id3]])]
-                (is (= #{[:card id2] [:card id1] [:table (mt/id :orders)]}
-                       (set deps)))))
-            (testing "with filter excluding card1, omits card1 and its dependencies"
-              (let [filter-fn (fn [entity-type-field entity-id-field]
-                                [:and
-                                 [:= entity-type-field "card"]
-                                 [:in entity-id-field [id2 id3]]])
-                    graph (deps.graph/filtered-graph-dependencies filter-fn)
-                    deps (graph/transitive graph [[:card id3]])]
-                (is (= #{[:card id2]}
-                       (set deps))
-                    "Should only include card2, not card1 or table")))
-            (testing "with filter excluding card2, breaks the chain"
-              (let [filter-fn (fn [entity-type-field entity-id-field]
-                                [:and
-                                 [:= entity-type-field "card"]
-                                 [:in entity-id-field [id1 id3]]])
-                    graph (deps.graph/filtered-graph-dependencies filter-fn)
-                    deps (graph/transitive graph [[:card id3]])]
-                (is (= #{}
-                       (set deps))
-                    "Should be empty, chain is broken at card2")))))))))
+    (mt/with-empty-h2-app-db!
+      (mt/with-temp [:model/User user {:email "me@wherever.com"}]
+        (mt/with-premium-features #{:dependencies}
+          (mt/with-model-cleanup [:model/Card :model/Dependency]
+            (let [{id1 :id :as card1} (card/create-card! (basic-orders) user)
+                  {id2 :id :as card2} (card/create-card! (wrap-card card1) user)
+                  {id3 :id :as _card3} (card/create-card! (wrap-card card2) user)]
+              (testing "without filter, returns all dependencies"
+                (let [graph (deps.graph/graph-dependencies)
+                      deps (graph/transitive graph [[:card id3]])]
+                  (is (= #{[:card id2] [:card id1] [:table (mt/id :orders)]}
+                         (set deps)))))
+              (testing "with filter excluding card1, omits card1 and its dependencies"
+                (let [filter-fn (fn [entity-type-field entity-id-field]
+                                  [:and
+                                   [:= entity-type-field "card"]
+                                   [:in entity-id-field [id2 id3]]])
+                      graph (deps.graph/filtered-graph-dependencies filter-fn)
+                      deps (graph/transitive graph [[:card id3]])]
+                  (is (= #{[:card id2]}
+                         (set deps))
+                      "Should only include card2, not card1 or table")))
+              (testing "with filter excluding card2, breaks the chain"
+                (let [filter-fn (fn [entity-type-field entity-id-field]
+                                  [:and
+                                   [:= entity-type-field "card"]
+                                   [:in entity-id-field [id1 id3]]])
+                      graph (deps.graph/filtered-graph-dependencies filter-fn)
+                      deps (graph/transitive graph [[:card id3]])]
+                  (is (= #{}
+                         (set deps))
+                      "Should be empty, chain is broken at card2"))))))))))
 
 (deftest filtered-graph-dependents-test
   (testing "filtered-graph-dependents respects filter clause"

@@ -1616,11 +1616,12 @@
 (deftest ^:sequential unreferenced-sample-db-test
   (testing "GET /api/ee/dependencies/unreferenced - should not return tables from the sample database"
     (mt/with-premium-features #{:dependencies}
-      (mt/with-temp [:model/Database {db-id :id} {:is_sample true}
-                     :model/Table    _           {:db_id db-id :name "Sample DB table - unreftest"}]
-        (is (=? {:data   []
-                 :total  0}
-                (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=table&query=unreftest")))))))
+      (mt/with-empty-h2-app-db!
+        (mt/with-temp [:model/Database {db-id :id} {:is_sample true}
+                       :model/Table    _           {:db_id db-id :name "Sample DB table - unreftest"}]
+          (is (=? {:data   []
+                   :total  0}
+                  (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=table&query=unreftest"))))))))
 
 (deftest ^:sequential unreferenced-audit-db-test
   (testing "GET /api/ee/dependencies/unreferenced - should not return tables from the audit database"
