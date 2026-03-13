@@ -9,9 +9,7 @@
    [metabase.util.log :as log])
   (:import
    (java.security SecureRandom)
-   (java.util.concurrent ConcurrentHashMap)
-   (javax.crypto Mac)
-   (javax.crypto.spec SecretKeySpec)))
+   (java.util.concurrent ConcurrentHashMap)))
 
 (set! *warn-on-reflection* true)
 
@@ -24,21 +22,17 @@
   "mfa-pending")
 
 (defn- derive-signing-key
-  "Derive a 32-byte signing key from the encryption secret via HMAC-SHA256.
-   Falls back to a random key if no encryption secret is configured."
+  "Derive a 32-byte signing key for MFA tokens. Uses `encryption/derive-key` to produce a
+   purpose-scoped sub-key from `MB_ENCRYPTION_SECRET_KEY` (deterministic across instances).
+   Falls back to a random per-instance key if no encryption secret is configured."
   ^bytes []
-  (if (encryption/default-encryption-enabled?)
-    (let [mac (Mac/getInstance "HmacSHA256")
-          ;; Use a fixed context string to derive the MFA-specific key
-          context (.getBytes "metabase-mfa-signing-key" "UTF-8")]
-      (.init mac (SecretKeySpec. (encryption/default-secret-key-hashed) "HmacSHA256"))
-      (.doFinal mac context))
-    (do
-      (log/warn "MB_ENCRYPTION_SECRET_KEY is not set; MFA signing key is instance-local."
-                "MFA tokens will not be portable across instances.")
-      (let [buf (byte-array 32)]
-        (.nextBytes (SecureRandom.) buf)
-        buf))))
+  (or (encryption/derive-key "metabase-mfa-signing-key")
+      (do
+        (log/warn "MB_ENCRYPTION_SECRET_KEY is not set; MFA signing key is instance-local."
+                  "MFA tokens will not be portable across instances.")
+        (let [buf (byte-array 32)]
+          (.nextBytes (SecureRandom.) buf)
+          buf))))
 
 (defonce ^:private ^bytes signing-key
   (derive-signing-key))

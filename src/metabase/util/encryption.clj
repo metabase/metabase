@@ -61,11 +61,15 @@
   []
   (boolean default-secret-key))
 
-(defn default-secret-key-hashed
-  "Return the hashed encryption secret key bytes, or nil if encryption is not enabled.
-   Used to derive secondary keys (e.g. MFA token signing) from the same root secret."
-  ^bytes []
-  default-secret-key)
+(defn derive-key
+  "Derive a 32-byte sub-key from `MB_ENCRYPTION_SECRET_KEY` for a specific purpose.
+   `context` is a string identifying the purpose (e.g. \"mfa-signing-key\").
+   Returns nil if encryption is not enabled. The master key never leaves this namespace."
+  ^bytes [^String context]
+  (when default-secret-key
+    (let [mac (javax.crypto.Mac/getInstance "HmacSHA256")]
+      (.init mac (SecretKeySpec. default-secret-key "HmacSHA256"))
+      (.doFinal mac (.getBytes context "UTF-8")))))
 
 ;; log a nice message letting people know whether DB details encryption is enabled
 (when-not *compile-files*
