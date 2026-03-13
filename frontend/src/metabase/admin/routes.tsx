@@ -243,7 +243,7 @@ export const getRoutes = (
 
         {/* APPS */}
         <Route path="apps" component={createAdminRouteGuard("apps")}>
-          <Route title={t`Apps`} component={AdminAppsApp}>
+          <Route component={AdminAppsApp}>
             <IndexRoute component={AppsList} />
             <Route path="create" component={AppForm} />
             <Route path=":id" component={AppForm} />

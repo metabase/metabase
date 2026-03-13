@@ -68,7 +68,7 @@
   </div>
 
   <script>
-    var INSTANCE_URL = window.location.origin;
+    var INSTANCE_URL = 'http://localhost:3000';
     var script = document.createElement('script');
     script.src = INSTANCE_URL + '/app/embed.js';
     script.defer = true;
@@ -81,7 +81,7 @@
   </script>
   <script>
     defineMetabaseConfig({
-      instanceUrl: window.location.origin"
+      instanceUrl: 'http://localhost:3000'"
        (cond
          api-key             (str ",\n      apiKey: \"" api-key "\"")
          use-current-session nil
