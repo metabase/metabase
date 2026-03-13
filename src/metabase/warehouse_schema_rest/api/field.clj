@@ -51,6 +51,24 @@
                                                                    [:include_editable_data_model {:default false} ms/BooleanValue]]]
   (schema.field/get-field id {:include-editable-data-model? include-editable-data-model?}))
 
+(defn- field-db-id
+  "Given a field ID, return the `db_id` of the database it belongs to."
+  [field-id]
+  (-> (t2/query {:select [[:t.db_id :db_id]]
+                 :from   [[(t2/table-name :model/Field) :f]]
+                 :join   [[(t2/table-name :model/Table) :t] [:= :f.table_id :t.id]]
+                 :where  [:= :f.id field-id]})
+      first
+      :db_id))
+
+(defn- check-field-in-same-database!
+  "Check that `target-field-id` belongs to the same database as `source-field-id`. Throws a 400 if not."
+  [source-field-id target-field-id param-name]
+  (let [source-db-id (field-db-id source-field-id)
+        target-db-id (field-db-id target-field-id)]
+    (api/checkp (= source-db-id target-db-id)
+                param-name "Target field must belong to the same database")))
+
 (defn- clear-dimension-on-fk-change! [{:keys [dimensions], :as _field}]
   (doseq [{dimension-id :id, dimension-type :type} dimensions]
     (when (and dimension-id (= :external dimension-type))
@@ -149,11 +167,11 @@
         removed-fk?        (removed-fk-semantic-type? (:semantic_type field) new-semantic-type)
         fk-target-field-id (get body :fk_target_field_id (:fk_target_field_id field))]
 
-    ;; validate that fk_target_field_id is a valid Field
-    ;; TODO - we should also check that the Field is within the same database as our field
+    ;; validate that fk_target_field_id is a valid Field in the same database
     (when fk-target-field-id
       (api/checkp (t2/exists? :model/Field :id fk-target-field-id)
-                  :fk_target_field_id "Invalid target field"))
+                  :fk_target_field_id "Invalid target field")
+      (check-field-in-same-database! id fk-target-field-id :fk_target_field_id))
     (when (and display-name
                (not removed-fk?)
                (not= (:display_name field) display-name))
@@ -223,6 +241,10 @@
                  (and (= dimension-type "external")
                       human-readable-field-id))
              [400 "Foreign key based remappings require a human readable field id"])
+  (when human-readable-field-id
+    (api/checkp (t2/exists? :model/Field :id human-readable-field-id)
+                :human_readable_field_id "Invalid target field")
+    (check-field-in-same-database! id human-readable-field-id :human_readable_field_id))
   (if-let [dimension (t2/select-one :model/Dimension :field_id id)]
     (t2/update! :model/Dimension (u/the-id dimension)
                 {:type                    dimension-type
