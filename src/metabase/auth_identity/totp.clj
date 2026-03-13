@@ -156,7 +156,7 @@
   (format "otpauth://totp/%s:%s?secret=%s&issuer=%s&digits=%d&period=%d"
           (java.net.URLEncoder/encode issuer "UTF-8")
           (java.net.URLEncoder/encode email "UTF-8")
-          secret
+          (java.net.URLEncoder/encode secret "UTF-8")
           (java.net.URLEncoder/encode issuer "UTF-8")
           totp-digits
           totp-period))
