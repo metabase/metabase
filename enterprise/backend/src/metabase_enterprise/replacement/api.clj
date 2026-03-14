@@ -3,7 +3,7 @@
   (:require
    [metabase-enterprise.replacement.execute :as replacement.execute]
    [metabase-enterprise.replacement.models.replacement-run :as replacement-run]
-   [metabase-enterprise.replacement.runner :as runner]
+   [metabase-enterprise.replacement.runner :as replacement.runner]
    [metabase-enterprise.replacement.schema :as replacement.schema]
    [metabase-enterprise.replacement.source-check :as replacement.source-check]
    [metabase.api.common :as api]
@@ -54,7 +54,7 @@
       (throw (ex-info "Sources are not replaceable" {:status-code 400
                                                      :errors      (:errors result)}))))
   (let [work-fn  (fn [progress]
-                   (runner/run-swap-source!
+                   (replacement.runner/run-swap-source!
                     [source_entity_type source_entity_id]
                     [target_entity_type target_entity_id]
                     progress))
@@ -95,7 +95,7 @@
                    api/*current-user-id*)
         progress  (replacement-run/run-row->progress job-row)
         work-fn   (fn [progress]
-                    (runner/run-swap-model! card_id (:id transform) progress))]
+                    (replacement.runner/run-swap-model! card_id (:id transform) progress))]
     (replacement.execute/execute-async! work-fn progress)
     (-> (response/response {:run_id (:id job-row)})
         (assoc :status 202))))
