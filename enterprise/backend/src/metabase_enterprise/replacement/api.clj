@@ -3,9 +3,9 @@
   (:require
    [metabase-enterprise.replacement.execute :as replacement.execute]
    [metabase-enterprise.replacement.models.replacement-run :as replacement-run]
-   [metabase-enterprise.replacement.runner :as replacement.runner]
    [metabase-enterprise.replacement.schema :as replacement.schema]
    [metabase-enterprise.replacement.source-check :as replacement.source-check]
+   [metabase-enterprise.replacement.source-swap-runner :as source-swap-runner]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -53,7 +53,7 @@
       (throw (ex-info "Sources are not replaceable" {:status-code 400
                                                      :errors      (:errors result)}))))
   (let [work-fn  (fn [progress]
-                   (replacement.runner/run-swap
+                   (source-swap-runner/run-swap
                     [source_entity_type source_entity_id]
                     [target_entity_type target_entity_id]
                     progress))

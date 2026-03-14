@@ -5,6 +5,8 @@
 (set! *warn-on-reflection* true)
 
 (p.types/defprotocol+ IRunnerProgress
+  (set-target! [this target]
+    "Set the target entity for the run.")
   (set-total! [this total]
     "Set the total number of items to process (across all phases). Called once.")
   (advance! [this] [this n]
