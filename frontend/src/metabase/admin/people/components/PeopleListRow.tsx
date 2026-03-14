@@ -71,6 +71,7 @@ export const PeopleListRow = ({
   const isPasswordLoginEnabled = useSelector((state) =>
     getSetting(state, enablePasswordLoginKey),
   );
+  const requireMfa = useSelector((state) => getSetting(state, "require-mfa"));
 
   return (
     <tr key={user.id}>
@@ -91,6 +92,23 @@ export const PeopleListRow = ({
         ) : null}
       </td>
       <td>{user.email}</td>
+      {requireMfa && (
+        <td>
+          {user.sso_source ? (
+            <Tooltip label={t`SSO user — exempt`}>
+              <Text c="text-tertiary" fz="sm">{t`N/A`}</Text>
+            </Tooltip>
+          ) : user.totp_enabled ? (
+            <Tooltip label={t`MFA enabled`}>
+              <Icon name="lock" c="success" />
+            </Tooltip>
+          ) : (
+            <Tooltip label={t`MFA not set up`}>
+              <Icon name="warning" c="warning" />
+            </Tooltip>
+          )}
+        </td>
+      )}
       {showDeactivated ? (
         <Fragment>
           {isExternal && (
