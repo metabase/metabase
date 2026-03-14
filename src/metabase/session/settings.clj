@@ -59,14 +59,14 @@
                   (when-not (t2/select-one-fn :totp_enabled :model/User :id api/*current-user-id*)
                     (throw (ex-info (str (tru "You must enable two-factor authentication on your own account before requiring it for others."))
                                     {:status-code 400}))))
-                (let [was-enabled (require-mfa)]
+                (let [was-enabled (setting/get-value-of-type :boolean :require-mfa)]
                   (setting/set-value-of-type! :boolean :require-mfa new-value)
                   ;; Send notification emails when transitioning from disabled to enabled
                   (when (and new-value (not was-enabled))
                     (future
                       (try
                         ;; Re-check the setting inside the future to guard against rapid toggle-off-on
-                        (when (require-mfa)
+                        (when (setting/get-value-of-type :boolean :require-mfa)
                           (let [affected-users (t2/select [:model/User :email]
                                                           :is_active true
                                                           :totp_enabled false
