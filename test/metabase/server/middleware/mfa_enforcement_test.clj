@@ -2,8 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]
-   [toucan2.core :as t2]))
+   [metabase.test.fixtures :as fixtures]))
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
 
@@ -39,8 +38,7 @@
       (mt/with-temp-vals-in-db :model/User (mt/user->id :rasta) {:sso_source "google"}
         (is (some? (mt/user-http-request :rasta :get 200 "card")))))
     (finally
-      (disable-require-mfa!)
-      (t2/update! :model/User (mt/user->id :rasta) {:sso_source nil}))))
+      (disable-require-mfa!))))
 
 (deftest enforcement-exempts-superusers-with-mfa-test
   (enable-require-mfa!)
