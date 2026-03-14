@@ -2,7 +2,7 @@ import type { CardId } from "./card";
 import type { CollectionId } from "./collection";
 import type { Field } from "./field";
 import type { ConcreteTableId } from "./table";
-import type { TransformId, TransformRunId, TransformTarget } from "./transform";
+import type { TransformTarget } from "./transform";
 
 export type SourceReplacementEntityId = ConcreteTableId | CardId;
 
@@ -78,21 +78,6 @@ export type SourceReplacementRun = {
   end_time: string | null;
 };
 
-export type ModelReplacementRunId = number;
-
-export type ModelReplacementRun = {
-  id: ModelReplacementRunId;
-  status: SourceReplacementRunStatus;
-  is_active: boolean | null;
-  card_id: CardId;
-  transform_id: TransformId | null;
-  transform_run_id: TransformRunId | null;
-  source_replacement_run_id: SourceReplacementRunId | null;
-  user_id: number | null;
-  start_time: string;
-  end_time: string | null;
-};
-
 export type ReplaceSourceRequest = {
   source_entity_id: SourceReplacementEntityId;
   source_entity_type: SourceReplacementEntityType;
@@ -117,8 +102,4 @@ export type ReplaceModelRequest = {
 
 export type ReplaceModelResponse = {
   run_id: SourceReplacementRunId;
-};
-
-export type ListModelReplacementRunsRequest = {
-  "is-active"?: boolean;
 };

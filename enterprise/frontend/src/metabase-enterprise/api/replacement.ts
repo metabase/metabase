@@ -1,8 +1,5 @@
 import type {
-  ListModelReplacementRunsRequest,
   ListSourceReplacementRunsRequest,
-  ModelReplacementRun,
-  ModelReplacementRunId,
   ReplaceModelRequest,
   ReplaceModelResponse,
   ReplaceSourceRequest,
@@ -17,8 +14,6 @@ import {
   idTag,
   invalidateTags,
   listTag,
-  provideModelReplacementRunListTags,
-  provideModelReplacementRunTags,
   provideSourceReplacementRunListTags,
   provideSourceReplacementRunTags,
 } from "./tags";
@@ -31,7 +26,7 @@ export const replacementApi = EnterpriseApi.injectEndpoints({
     >({
       query: (body) => ({
         method: "POST",
-        url: "/api/ee/replacement/source/check-replace",
+        url: "/api/ee/replacement/check-replace-source",
         body,
       }),
       providesTags: (_response, _error, request) => [
@@ -45,7 +40,7 @@ export const replacementApi = EnterpriseApi.injectEndpoints({
     >({
       query: (body) => ({
         method: "POST",
-        url: "/api/ee/replacement/source/replace",
+        url: "/api/ee/replacement/replace-source",
         body,
       }),
       invalidatesTags: (_response, error) =>
@@ -57,7 +52,7 @@ export const replacementApi = EnterpriseApi.injectEndpoints({
     >({
       query: (params) => ({
         method: "GET",
-        url: "/api/ee/replacement/source/runs",
+        url: "/api/ee/replacement/runs",
         params,
       }),
       providesTags: (runs) =>
@@ -69,40 +64,18 @@ export const replacementApi = EnterpriseApi.injectEndpoints({
     >({
       query: (id) => ({
         method: "GET",
-        url: `/api/ee/replacement/source/runs/${id}`,
+        url: `/api/ee/replacement/runs/${id}`,
       }),
       providesTags: (run) => (run ? provideSourceReplacementRunTags(run) : []),
     }),
     replaceModel: builder.mutation<ReplaceModelResponse, ReplaceModelRequest>({
       query: (body) => ({
         method: "POST",
-        url: "/api/ee/replacement/model/replace",
+        url: "/api/ee/replacement/replace-model",
         body,
       }),
       invalidatesTags: (_response, error) =>
-        invalidateTags(error, [listTag("model-replacement-run")]),
-    }),
-    listModelReplacementRuns: builder.query<
-      ModelReplacementRun[],
-      ListModelReplacementRunsRequest
-    >({
-      query: (params) => ({
-        method: "GET",
-        url: "/api/ee/replacement/model/runs",
-        params,
-      }),
-      providesTags: (runs) =>
-        runs ? provideModelReplacementRunListTags(runs) : [],
-    }),
-    getModelReplacementRun: builder.query<
-      ModelReplacementRun,
-      ModelReplacementRunId
-    >({
-      query: (id) => ({
-        method: "GET",
-        url: `/api/ee/replacement/model/runs/${id}`,
-      }),
-      providesTags: (run) => (run ? provideModelReplacementRunTags(run) : []),
+        invalidateTags(error, [listTag("source-replacement-run")]),
     }),
   }),
 });
@@ -113,6 +86,4 @@ export const {
   useListSourceReplacementRunsQuery,
   useGetSourceReplacementRunQuery,
   useReplaceModelMutation,
-  useListModelReplacementRunsQuery,
-  useGetModelReplacementRunQuery,
 } = replacementApi;

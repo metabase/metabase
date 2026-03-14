@@ -21,7 +21,7 @@
              :or   {timeout-ms 10000 interval-ms 100}}]
   (let [deadline (+ (System/currentTimeMillis) timeout-ms)]
     (loop []
-      (let [run (mt/user-http-request :crowberto :get 200 (str "ee/replacement/source/runs/" run-id))]
+      (let [run (mt/user-http-request :crowberto :get 200 (str "ee/replacement/runs/" run-id))]
         (if (or (not (:is_active run))
                 (> (System/currentTimeMillis) deadline))
           run
@@ -40,7 +40,7 @@
                                      :effective_type :type/Integer}
                      :model/Field _ {:table_id t2-id :name "id" :base_type :type/Integer
                                      :effective_type :type/Integer}]
-        (let [result (mt/user-http-request :crowberto :post 200 "ee/replacement/source/check-replace"
+        (let [result (mt/user-http-request :crowberto :post 200 "ee/replacement/check-replace-source"
                                            {:source_entity_id   t1-id
                                             :source_entity_type :table
                                             :target_entity_id   t2-id
@@ -57,7 +57,7 @@
                      :model/Table {t2-id :id} {:db_id db2-id}
                      :model/Field _ {:table_id t1-id :name "id" :base_type :type/Integer}
                      :model/Field _ {:table_id t2-id :name "id" :base_type :type/Integer}]
-        (let [result (mt/user-http-request :crowberto :post 200 "ee/replacement/source/check-replace"
+        (let [result (mt/user-http-request :crowberto :post 200 "ee/replacement/check-replace-source"
                                            {:source_entity_id   t1-id
                                             :source_entity_type :table
                                             :target_entity_id   t2-id
@@ -133,7 +133,7 @@
             (doseq [card [old-model mbql-child-1 mbql-child-2 native-child grandchild grandchild-native]]
               (events/publish-event! :event/card-create {:object card :user-id (mt/user->id :crowberto)}))
 
-            (let [response (mt/user-http-request :crowberto :post 202 "ee/replacement/source/replace"
+            (let [response (mt/user-http-request :crowberto :post 202 "ee/replacement/replace-source"
                                                  {:source_entity_id   old-id
                                                   :source_entity_type :card
                                                   :target_entity_id   new-id
@@ -200,7 +200,7 @@
           ;; Insert a fake active run to simulate one already running
           (let [run (replacement-run/create-run! :card old-id :card new-id (mt/user->id :crowberto))]
             (replacement-run/start-run! (:id run)))
-          (mt/user-http-request :crowberto :post 409 "ee/replacement/source/replace"
+          (mt/user-http-request :crowberto :post 409 "ee/replacement/replace-source"
                                 {:source_entity_id   old-id
                                  :source_entity_type :card
                                  :target_entity_id   new-id
@@ -228,7 +228,7 @@
                                              :name          "Child Card"}]
         (mt/with-model-cleanup [:model/ReplacementRun :model/Dependency]
           (events/publish-event! :event/card-create {:object child-card :user-id (mt/user->id :crowberto)})
-          (let [response (mt/user-http-request :crowberto :post 202 "ee/replacement/source/replace"
+          (let [response (mt/user-http-request :crowberto :post 202 "ee/replacement/replace-source"
                                                {:source_entity_id   old-id
                                                 :source_entity_type :card
                                                 :target_entity_id   new-id
@@ -260,7 +260,7 @@
                                              :name          "Child card"}]
         (mt/with-model-cleanup [:model/ReplacementRun :model/Dependency]
           (events/publish-event! :event/card-create {:object child-card :user-id (mt/user->id :crowberto)})
-          (let [response  (mt/user-http-request :crowberto :post 202 "ee/replacement/source/replace"
+          (let [response  (mt/user-http-request :crowberto :post 202 "ee/replacement/replace-source"
                                                 {:source_entity_id   old-id
                                                  :source_entity_type :card
                                                  :target_entity_id   new-id
@@ -279,7 +279,7 @@
 (deftest get-run-not-found-test
   (testing "GET /runs/:id — returns 404 for non-existent run"
     (mt/with-premium-features #{:dependencies}
-      (mt/user-http-request :crowberto :get 404 "ee/replacement/source/runs/999999"))))
+      (mt/user-http-request :crowberto :get 404 "ee/replacement/runs/999999"))))
 
 (deftest execute-async-progress-tracking-test
   (testing "execute-async! invokes the protocol methods correctly"
@@ -321,7 +321,7 @@
           (let [run (replacement-run/create-run! :card 1 :card 2 (mt/user->id :crowberto))
                 _   (replacement-run/start-run! (:id run))
                 response (mt/user-http-request :crowberto :post 200
-                                               (str "ee/replacement/source/runs/" (:id run) "/cancel"))]
+                                               (str "ee/replacement/runs/" (:id run) "/cancel"))]
             (is (true? (:success response)))
             (let [updated (t2/select-one :model/ReplacementRun :id (:id run))]
               (is (= :canceled (:status updated)))
@@ -336,12 +336,12 @@
             (replacement-run/start-run! (:id run))
             (replacement-run/succeed-run! (:id run))
             (mt/user-http-request :crowberto :post 409
-                                  (str "ee/replacement/source/runs/" (:id run) "/cancel"))))))))
+                                  (str "ee/replacement/runs/" (:id run) "/cancel"))))))))
 
 (deftest cancel-not-found-run-returns-404-test
   (testing "POST /runs/:id/cancel — returns 404 for non-existent run"
     (mt/with-premium-features #{:dependencies}
-      (mt/user-http-request :crowberto :post 404 "ee/replacement/source/runs/999999/cancel"))))
+      (mt/user-http-request :crowberto :post 404 "ee/replacement/runs/999999/cancel"))))
 
 (deftest all-endpoints-require-superuser-test
   (testing "All /ee/replacement/ endpoints return 403 for non-admin users"
@@ -350,10 +350,10 @@
                   :source_entity_type :table
                   :target_entity_id   2
                   :target_entity_type :table}]
-        (doseq [[method url params] [[:post "ee/replacement/source/check-replace" body]
-                                     [:post "ee/replacement/source/replace" body]
-                                     [:get  "ee/replacement/source/runs/1" nil]
-                                     [:post "ee/replacement/source/runs/1/cancel" nil]]]
+        (doseq [[method url params] [[:post "ee/replacement/check-replace-source" body]
+                                     [:post "ee/replacement/replace-source" body]
+                                     [:get  "ee/replacement/runs/1" nil]
+                                     [:post "ee/replacement/runs/1/cancel" nil]]]
           (testing (str (name method) " " url)
             (is (= "You don't have permissions to do that."
                    (if params
@@ -363,10 +363,10 @@
 (deftest all-endpoints-require-dependencies-feature-test
   (testing "All /ee/replacement/ endpoints return 402 without the :dependencies feature flag"
     (mt/with-premium-features #{}
-      (doseq [[method url] [[:post "ee/replacement/source/check-replace"]
-                            [:post "ee/replacement/source/replace"]
-                            [:get  "ee/replacement/source/runs/1"]
-                            [:post "ee/replacement/source/runs/1/cancel"]]]
+      (doseq [[method url] [[:post "ee/replacement/check-replace-source"]
+                            [:post "ee/replacement/replace-source"]
+                            [:get  "ee/replacement/runs/1"]
+                            [:post "ee/replacement/runs/1/cancel"]]]
         (testing (str (name method) " " url)
           (mt/assert-has-premium-feature-error
            "Dependency Tracking"
