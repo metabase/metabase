@@ -19,10 +19,8 @@
 
 (defn- allowlisted-request?
   "Check whether this request path is allowlisted for MFA-pending users."
-  [{:keys [uri request-method]}]
+  [{:keys [uri]}]
   (or (contains? allowlisted-paths uri)
-      ;; Allow all sub-paths of /api/session (e.g., /api/session/properties)
-      ;; but the main set already covers the critical ones.
       ;; Allow non-API paths (static assets, health check, etc.)
       (not (str/starts-with? uri "/api/"))))
 
@@ -37,7 +35,7 @@
   [request]
   (and (session.settings/require-mfa)
        ;; Only enforce for session-based auth (not API keys)
-       (:metabase-session-key request)
+       (not (get-in request [:headers "x-api-key"]))
        ;; Only enforce for password-auth users (SSO users are exempt)
        (not (:sso-source request))
        ;; Only enforce for users who haven't set up TOTP
