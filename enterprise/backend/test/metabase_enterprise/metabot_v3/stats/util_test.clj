@@ -9,21 +9,21 @@
 
 (deftest compute-summary-basic-test
   (testing "computes correct summary statistics"
-    (let [result (stats.u/compute-summary [10.0 20.0 30.0 40.0 50.0])]
-      (is (= 10.0 (:min result)))
-      (is (= 50.0 (:max result)))
-      (is (= 30.0 (:mean result)))
-      (is (= 30.0 (:median result)))
-      (is (= 40.0 (:range result)))
-      (is (pos? (:std_dev result))))))
+    (is (=? {:min 10.0
+             :max 50.0
+             :mean 30.0
+             :median 30.0
+             :range 40.0
+             :std_dev pos?}
+            (stats.u/compute-summary [10.0 20.0 30.0 40.0 50.0])))))
 
 (deftest compute-summary-single-value-test
   (testing "single value has zero range"
-    (let [result (stats.u/compute-summary [42.0])]
-      (is (= 42.0 (:min result)))
-      (is (= 42.0 (:max result)))
-      (is (= 42.0 (:mean result)))
-      (is (= 0.0 (:range result))))))
+    (is (=? {:min 42.0
+             :max 42.0
+             :mean 42.0
+             :range 0.0}
+            (stats.u/compute-summary [42.0])))))
 
 ;;; ------------------------------------------ compute-correlations ------------------------------------------------
 
@@ -41,9 +41,10 @@
                   {"a" (make-series xs xs)
                    "b" (make-series xs (mapv #(+ 10.0 (* 2.0 %)) xs))})]
       (is (= 1 (count result)))
-      (is (> (:coefficient (first result)) 0.99))
-      (is (= :strong (:strength (first result))))
-      (is (= :positive (:direction (first result)))))))
+      (is (=? [{:coefficient #(> % 0.99)
+                :strength    :strong
+                :direction   :positive}]
+              result)))))
 
 (deftest compute-correlations-perfect-negative-test
   (testing "inversely correlated series yield coefficient ~-1.0"
@@ -52,32 +53,30 @@
                   {"a" (make-series xs xs)
                    "b" (make-series xs (mapv #(- 100.0 %) xs))})]
       (is (= 1 (count result)))
-      (is (< (:coefficient (first result)) -0.99))
-      (is (= :strong (:strength (first result))))
-      (is (= :negative (:direction (first result)))))))
+      (is (=? [{:coefficient #(< % -0.99)
+                :strength    :strong
+                :direction   :negative}]
+              result)))))
 
 (deftest compute-correlations-skipped-when-too-few-aligned-points-test
   (testing "pairs with fewer than 10 aligned points are skipped"
-    (let [result (stats.u/compute-correlations
-                  {"a" (make-series (range 5) (range 5))
-                   "b" (make-series (range 5) (range 5 10))})]
-      (is (empty? result)))))
+    (is (empty? (stats.u/compute-correlations
+                 {"a" (make-series (range 5) (range 5))
+                  "b" (make-series (range 5) (range 5 10))})))))
 
 (deftest compute-correlations-no-overlap-test
   (testing "series with no common x-values produce no correlations"
-    (let [result (stats.u/compute-correlations
-                  {"a" (make-series (range 0 20) (range 0 20))
-                   "b" (make-series (range 100 120) (range 100 120))})]
-      (is (empty? result)))))
+    (is (empty? (stats.u/compute-correlations
+                 {"a" (make-series (range 0 20) (range 0 20))
+                  "b" (make-series (range 100 120) (range 100 120))})))))
 
 (deftest compute-correlations-three-series-test
   (testing "three series produce up to C(3,2) = 3 correlation pairs"
-    (let [xs     (mapv double (range 20))
-          result (stats.u/compute-correlations
-                  {"a" (make-series xs xs)
-                   "b" (make-series xs (mapv #(* 2.0 %) xs))
-                   "c" (make-series xs (mapv #(* 3.0 %) xs))})]
-      (is (= 3 (count result))))))
+    (let [xs (mapv double (range 20))]
+      (is (= 3 (count (stats.u/compute-correlations
+                       {"a" (make-series xs xs)
+                        "b" (make-series xs (mapv #(* 2.0 %) xs))
+                        "c" (make-series xs (mapv #(* 3.0 %) xs))})))))))
 
 ;;; --------------------------------------- maybe-compute-correlations ---------------------------------------------
 
@@ -98,12 +97,11 @@
 
 (deftest maybe-compute-correlations-computes-when-deep-test
   (testing "computes correlations when deep? is true and multiple series"
-    (let [xs     (mapv double (range 20))
-          result (stats.u/maybe-compute-correlations
-                  {"a" (make-series xs xs)
-                   "b" (make-series xs (mapv #(* 2.0 %) xs))}
-                  {:deep? true})]
-      (is (= 1 (count result))))))
+    (let [xs (mapv double (range 20))]
+      (is (= 1 (count (stats.u/maybe-compute-correlations
+                       {"a" (make-series xs xs)
+                        "b" (make-series xs (mapv #(* 2.0 %) xs))}
+                       {:deep? true})))))))
 
 (deftest maybe-compute-correlations-respects-max-cap-test
   (testing "caps number of series used for correlation"
@@ -159,10 +157,11 @@
                   series-data
                   (fn [xs ys] {:sum (reduce + ys) :count (count xs)}))]
       (is (= 1 (count result)))
-      (is (= 60 (get-in result ["s1" :sum])))
-      (is (= 3 (get-in result ["s1" :count])))
-      (is (= "Date" (get-in result ["s1" :x_name])))
-      (is (= "Revenue" (get-in result ["s1" :y_name]))))))
+      (is (=? {"s1" {:sum 60
+                     :count 3
+                     :x_name "Date"
+                     :y_name "Revenue"}}
+              result)))))
 
 (deftest compute-series-with-labels-nil-metadata-test
   (testing "handles nil column metadata gracefully"
@@ -170,23 +169,36 @@
           result (stats.u/compute-series-with-labels
                   series-data
                   (fn [_ _] {:ok true}))]
-      (is (nil? (get-in result ["s1" :x_name])))
-      (is (nil? (get-in result ["s1" :y_name]))))))
+      (is (=? {"s1" {:x_name nil?
+                     :y_name nil?}}
+              result)))))
 
 (deftest compute-series-with-labels-multiple-series-test
   (testing "processes multiple series"
-    (let [series-data {"a" {:x_values [1] :y_values [10] :x {:name "X"} :y {:name "Y"}}
-                       "b" {:x_values [2] :y_values [20] :x {:name "X"} :y {:name "Y"}}}
+    (let [series-data {"a" {:x_values [1]
+                            :y_values [10]
+                            :x {:name "X"}
+                            :y {:name "Y"}}
+                       "b" {:x_values [2]
+                            :y_values [20]
+                            :x {:name "X"}
+                            :y {:name "Y"}}}
           result (stats.u/compute-series-with-labels
                   series-data
                   (fn [_ ys] {:val (first ys)}))]
-      (is (= 10 (get-in result ["a" :val])))
-      (is (= 20 (get-in result ["b" :val]))))))
+      (is (=? {"a" {:val 10}
+               "b" {:val 20}}
+              result)))))
 
 ;;; ------------------------------------------- make-chart-result ----------------------------------------------------
 
 (def ^:private sample-summary
-  {:min 1.0 :max 10.0 :mean 5.0 :median 5.0 :std_dev 2.0 :range 9.0})
+  {:min     1.0
+   :max     10.0
+   :mean    5.0
+   :median  5.0
+   :std_dev 2.0
+   :range   9.0})
 
 (def ^:private sample-categorical-series
   {"s1" {:summary        sample-summary
@@ -202,11 +214,11 @@
 
 (deftest make-chart-result-basic-test
   (testing "builds standard chart result with valid schema"
-    (let [result (stats.u/make-chart-result :categorical {"s1" {}} sample-categorical-series nil)]
-      (is (= :categorical (:chart_type result)))
-      (is (= 1 (:series_count result)))
-      (is (= sample-categorical-series (:series result)))
-      (is (not (contains? result :correlations))))))
+    (is (=? {:chart_type    :categorical
+             :series_count  1
+             :series        sample-categorical-series
+             :correlations  (symbol "nil #_\"key is not present.\"")}
+            (stats.u/make-chart-result :categorical {"s1" {}} sample-categorical-series nil)))))
 
 (deftest make-chart-result-with-correlations-test
   (testing "includes correlations when provided"
@@ -225,5 +237,5 @@
 
 (deftest make-chart-result-nil-correlations-test
   (testing "omits correlations when nil"
-    (let [result (stats.u/make-chart-result :histogram {"s1" {}} sample-histogram-series nil)]
-      (is (not (contains? result :correlations))))))
+    (is (=? {:correlations (symbol "nil #_\"key is not present.\"")}
+            (stats.u/make-chart-result :histogram {"s1" {}} sample-histogram-series nil)))))

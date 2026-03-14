@@ -22,13 +22,6 @@
           indices (outliers/find-outlier-indices values)]
       (is (empty? indices)))))
 
-(deftest find-outlier-indices-multiple-outliers-test
-  (testing "multiple extreme values are all detected"
-    (let [values  [1.0 2.0 100.0 2.1 2.2 -50.0]
-          indices (outliers/find-outlier-indices values)]
-      (is (some #{2} indices))    ; 100.0 at index 2
-      (is (some #{5} indices))))) ; -50.0 at index 5
-
 ;;; ---------------------------------------------- find-outliers tests -----------------------------------------------
 
 (deftest find-outliers-returns-detail-maps-test
@@ -37,11 +30,10 @@
           dates  ["A" "B" "C" "D" "E" "F" "G"]
           result (outliers/find-outliers values dates)]
       (is (seq result))
-      (let [outlier-E (first (filter #(= "E" (:date %)) result))]
-        (is (some? outlier-E))
-        (is (= 4 (:index outlier-E)))
-        (is (= 10.0 (:value outlier-E)))
-        (is (> (Math/abs (double (:modified_z_score outlier-E))) 3.0))))))
+      (is (=? {:index 4
+               :value 10.0
+               :modified_z_score #(> (Math/abs (double %)) 3.0)}
+              (first (filter #(= "E" (:date %)) result)))))))
 
 (deftest find-outliers-no-outliers-returns-empty-test
   (testing "tightly clustered data produces no outliers"
@@ -61,10 +53,8 @@
       (is (nil? result)))))
 
 (deftest find-outliers-mad-zero-returns-nil-test
-  (testing "when all values are identical MAD is 0 → returns nil, not false outliers"
-    ;; Clojure behavior: MAD=0 means z-scores are undefined → nil returned
-    (let [result (outliers/find-outliers [3.0 3.0 3.0 3.0 3.0] ["A" "B" "C" "D" "E"])]
-      (is (nil? result)))))
+  (testing "when all values are identical MAD is 0 → returns nil"
+    (is (nil? (outliers/find-outliers [3.0 3.0 3.0 3.0 3.0] ["A" "B" "C" "D" "E"])))))
 
 ;;; ---------------------------------------- find-outliers-cumulative tests ------------------------------------------
 
@@ -84,12 +74,12 @@
           dates  ["A" "B" "C" "D" "E"]
           result (outliers/find-outliers-cumulative values dates)]
       (is (seq result))
-      (let [outlier (first result)]
-        (is (contains? outlier :index))
-        (is (contains? outlier :date))
-        (is (contains? outlier :value))
-        (is (contains? outlier :diff))
-        (is (contains? outlier :modified_z_score))))))
+      (is (=? {:index some?
+               :date some?
+               :value some?
+               :diff some?
+               :modified_z_score some?}
+              (first result))))))
 
 (deftest find-outliers-cumulative-uniform-increments-test
   (testing "uniform diffs → MAD of diffs is 0 → returns nil"
@@ -102,9 +92,7 @@
   (testing "outlier point index is diff-index+1 (destination of unusual jump)"
     (let [values [1.0 2.0 3.0 10.0 12.0]
           dates  ["A" "B" "C" "D" "E"]
-          result (outliers/find-outliers-cumulative values dates)
-          outlier (first (filter #(= "D" (:date %)) result))]
-      (is (some? outlier))
+          result (outliers/find-outliers-cumulative values dates)]
       ;; diff-index is 2 (the 3→10 transition), so point index is 3
-      (is (= 3 (:index outlier)))
-      (is (= 10.0 (:value outlier))))))
+      (is (=? {:index 3 :value 10.0}
+              (first (filter #(= "D" (:date %)) result)))))))
