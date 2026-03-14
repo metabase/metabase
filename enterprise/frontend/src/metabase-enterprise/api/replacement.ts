@@ -1,9 +1,12 @@
 import type {
+  ListModelReplacementRunsRequest,
   ListSourceReplacementRunsRequest,
+  ModelReplacementRun,
+  ModelReplacementRunId,
+  ReplaceModelRequest,
+  ReplaceModelResponse,
   ReplaceSourceRequest,
   ReplaceSourceResponse,
-  ReplaceSourceWithTransformRequest,
-  ReplaceSourceWithTransformResponse,
   SourceReplacementCheckInfo,
   SourceReplacementRun,
   SourceReplacementRunId,
@@ -14,6 +17,8 @@ import {
   idTag,
   invalidateTags,
   listTag,
+  provideModelReplacementRunListTags,
+  provideModelReplacementRunTags,
   provideSourceReplacementRunListTags,
   provideSourceReplacementRunTags,
 } from "./tags";
@@ -26,7 +31,7 @@ export const replacementApi = EnterpriseApi.injectEndpoints({
     >({
       query: (body) => ({
         method: "POST",
-        url: "/api/ee/replacement/check-replace-source",
+        url: "/api/ee/replacement/source/check-replace",
         body,
       }),
       providesTags: (_response, _error, request) => [
@@ -34,13 +39,25 @@ export const replacementApi = EnterpriseApi.injectEndpoints({
         idTag(request.target_entity_type, request.target_entity_id),
       ],
     }),
+    replaceSource: builder.mutation<
+      ReplaceSourceResponse,
+      ReplaceSourceRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/ee/replacement/source/replace",
+        body,
+      }),
+      invalidatesTags: (_response, error) =>
+        invalidateTags(error, [listTag("source-replacement-run")]),
+    }),
     listSourceReplacementRuns: builder.query<
       SourceReplacementRun[],
       ListSourceReplacementRunsRequest
     >({
       query: (params) => ({
         method: "GET",
-        url: "/api/ee/replacement/runs",
+        url: "/api/ee/replacement/source/runs",
         params,
       }),
       providesTags: (runs) =>
@@ -52,41 +69,50 @@ export const replacementApi = EnterpriseApi.injectEndpoints({
     >({
       query: (id) => ({
         method: "GET",
-        url: `/api/ee/replacement/runs/${id}`,
+        url: `/api/ee/replacement/source/runs/${id}`,
       }),
       providesTags: (run) => (run ? provideSourceReplacementRunTags(run) : []),
     }),
-    replaceSource: builder.mutation<
-      ReplaceSourceResponse,
-      ReplaceSourceRequest
-    >({
+    replaceModel: builder.mutation<ReplaceModelResponse, ReplaceModelRequest>({
       query: (body) => ({
         method: "POST",
-        url: "/api/ee/replacement/replace-source",
+        url: "/api/ee/replacement/model/replace",
         body,
       }),
       invalidatesTags: (_response, error) =>
-        invalidateTags(error, [listTag("source-replacement-run")]),
+        invalidateTags(error, [listTag("model-replacement-run")]),
     }),
-    replaceSourceWithTransform: builder.mutation<
-      ReplaceSourceWithTransformResponse,
-      ReplaceSourceWithTransformRequest
+    listModelReplacementRuns: builder.query<
+      ModelReplacementRun[],
+      ListModelReplacementRunsRequest
     >({
-      query: (body) => ({
-        method: "POST",
-        url: "/api/ee/replacement/replace-source-with-transform",
-        body,
+      query: (params) => ({
+        method: "GET",
+        url: "/api/ee/replacement/model/runs",
+        params,
       }),
-      invalidatesTags: (_response, error) =>
-        invalidateTags(error, [listTag("source-replacement-run")]),
+      providesTags: (runs) =>
+        runs ? provideModelReplacementRunListTags(runs) : [],
+    }),
+    getModelReplacementRun: builder.query<
+      ModelReplacementRun,
+      ModelReplacementRunId
+    >({
+      query: (id) => ({
+        method: "GET",
+        url: `/api/ee/replacement/model/runs/${id}`,
+      }),
+      providesTags: (run) => (run ? provideModelReplacementRunTags(run) : []),
     }),
   }),
 });
 
 export const {
   useCheckReplaceSourceQuery,
+  useReplaceSourceMutation,
   useListSourceReplacementRunsQuery,
   useGetSourceReplacementRunQuery,
-  useReplaceSourceMutation,
-  useReplaceSourceWithTransformMutation,
+  useReplaceModelMutation,
+  useListModelReplacementRunsQuery,
+  useGetModelReplacementRunQuery,
 } = replacementApi;

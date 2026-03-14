@@ -168,15 +168,11 @@ function getStatus(run: SourceReplacementRun): LongTaskStatus {
 function getStatusLabel(run: SourceReplacementRun): string {
   switch (run.status) {
     case "started":
-      return run.run_type === "replace-with-transform"
-        ? t`Converting to transform…`
-        : t`Replacing data source…`;
+      return t`Replacing data source…`;
     case "succeeded":
       return t`Done!`;
     default:
-      return run.run_type === "replace-with-transform"
-        ? t`Error converting to transform`
-        : t`Error replacing`;
+      return t`Error replacing`;
   }
 }
 
@@ -213,9 +209,6 @@ function getStatusItemDescription(
   run: SourceReplacementRun,
 ): string | undefined {
   if (run.status === "started") {
-    if (run.run_type === "replace-with-transform" && run.progress == null) {
-      return t`Running transform…`;
-    }
     if (run.progress != null) {
       const percentage = Math.round(run.progress * 100);
       return t`${percentage}% complete`;

@@ -1,15 +1,14 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { ArchiveCardModal } from "metabase/questions/components/ArchiveCardModal";
 import { validateDatabase } from "metabase/transforms/utils";
 import { Button, Group, Icon, Tooltip } from "metabase/ui";
 import type { Card, Database } from "metabase-types/api";
 
 import { SourceReplacementButton } from "../../../../components/SourceReplacementButton";
-import { ConvertToTransformModal } from "../../ConvertToTransformModal";
+import { ReplaceModelModal } from "../../ReplaceModelModal";
 
-type ModalType = "convert" | "archive";
+type ModalType = "replace";
 
 type ActionSectionProps = {
   card: Card;
@@ -34,8 +33,7 @@ export function ActionSection({ card, database }: ActionSectionProps) {
                   variant="filled"
                   leftSection={<Icon name="transform" />}
                   disabled={isButtonDisabled}
-                  fullWidth
-                  onClick={() => setModalType("convert")}
+                  onClick={() => setModalType("replace")}
                 >
                   {t`Convert to a transform`}
                 </Button>
@@ -43,21 +41,12 @@ export function ActionSection({ card, database }: ActionSectionProps) {
             );
           }}
         </SourceReplacementButton>
-        <Button
-          leftSection={<Icon name="trash" />}
-          onClick={() => setModalType("archive")}
-        />
       </Group>
-      {modalType === "convert" && (
-        <ConvertToTransformModal
-          card={card}
-          opened
-          onClose={() => setModalType(undefined)}
-        />
-      )}
-      {modalType === "archive" && (
-        <ArchiveCardModal card={card} onClose={() => setModalType(undefined)} />
-      )}
+      <ReplaceModelModal
+        card={card}
+        isOpened={modalType === "replace"}
+        onClose={() => setModalType(undefined)}
+      />
     </>
   );
 }

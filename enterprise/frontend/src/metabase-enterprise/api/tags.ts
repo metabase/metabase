@@ -18,6 +18,7 @@ import {
   type DocumentDependencyNode,
   type ExternalTransform,
   type MeasureDependencyNode,
+  type ModelReplacementRun,
   type PythonLibrary,
   type SandboxDependencyNode,
   type SegmentDependencyNode,
@@ -37,6 +38,7 @@ export const ENTERPRISE_TAG_TYPES = [
   "metabot",
   "metabot-entities-list",
   "metabot-prompt-suggestions",
+  "model-replacement-run",
   "gsheets-status",
   "sandbox",
   "workspace-transforms",
@@ -293,5 +295,20 @@ export function provideSourceReplacementRunListTags(
   return [
     listTag("source-replacement-run"),
     ...runs.flatMap(provideSourceReplacementRunTags),
+  ];
+}
+
+export function provideModelReplacementRunTags(
+  run: ModelReplacementRun,
+): TagDescription<EnterpriseTagType>[] {
+  return [idTag("model-replacement-run", run.id)];
+}
+
+export function provideModelReplacementRunListTags(
+  runs: ModelReplacementRun[],
+): TagDescription<EnterpriseTagType>[] {
+  return [
+    listTag("model-replacement-run"),
+    ...runs.flatMap(provideModelReplacementRunTags),
   ];
 }

@@ -1,7 +1,8 @@
 import type { CardId } from "./card";
+import type { CollectionId } from "./collection";
 import type { Field } from "./field";
 import type { ConcreteTableId } from "./table";
-import type { TransformId } from "./transform";
+import type { TransformId, TransformRunId, TransformTarget } from "./transform";
 
 export type SourceReplacementEntityId = ConcreteTableId | CardId;
 
@@ -55,8 +56,6 @@ export type SourceReplacementCheckInfo = {
 
 export type SourceReplacementRunId = number;
 
-export type SourceReplacementRunType = "replace" | "replace-with-transform";
-
 export type SourceReplacementRunStatus =
   | "started"
   | "succeeded"
@@ -66,7 +65,6 @@ export type SourceReplacementRunStatus =
 
 export type SourceReplacementRun = {
   id: SourceReplacementRunId;
-  run_type: SourceReplacementRunType;
   status: SourceReplacementRunStatus;
   is_active: boolean | null;
   source_entity_type: SourceReplacementEntityType;
@@ -75,6 +73,21 @@ export type SourceReplacementRun = {
   target_entity_id: SourceReplacementEntityId;
   progress: number | null;
   message: string | null;
+  user_id: number | null;
+  start_time: string;
+  end_time: string | null;
+};
+
+export type ModelReplacementRunId = number;
+
+export type ModelReplacementRun = {
+  id: ModelReplacementRunId;
+  status: SourceReplacementRunStatus;
+  is_active: boolean | null;
+  card_id: CardId;
+  transform_id: TransformId | null;
+  transform_run_id: TransformRunId | null;
+  source_replacement_run_id: SourceReplacementRunId | null;
   user_id: number | null;
   start_time: string;
   end_time: string | null;
@@ -95,14 +108,17 @@ export type ListSourceReplacementRunsRequest = {
   "is-active"?: boolean;
 };
 
-export type ReplaceSourceWithTransformRequest = {
-  source_entity_id: SourceReplacementEntityId;
-  source_entity_type: SourceReplacementEntityType;
-  transform_id: TransformId;
-  unpersist_card?: boolean;
-  archive_card?: boolean;
+export type ReplaceModelRequest = {
+  card_id: CardId;
+  transform_name: string;
+  transform_target: TransformTarget;
+  target_collection_id: CollectionId | null;
 };
 
-export type ReplaceSourceWithTransformResponse = {
+export type ReplaceModelResponse = {
   run_id: SourceReplacementRunId;
+};
+
+export type ListModelReplacementRunsRequest = {
+  "is-active"?: boolean;
 };
