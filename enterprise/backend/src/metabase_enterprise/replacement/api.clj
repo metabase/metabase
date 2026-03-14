@@ -9,7 +9,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.transforms.crud :as transforms.crud]
+   [metabase.transforms.core :as transforms]
    [ring.util.response :as response]
    [toucan2.core :as t2]))
 
@@ -83,7 +83,7 @@
        [:target_collection_id {:optional true} [:maybe ::replacement.schema/source-entity-id]]]]
   (api/check-superuser)
   (let [card      (api/check-404 (t2/select-one :model/Card :id card_id))
-        transform (transforms.crud/create-transform!
+        transform (transforms/create-transform!
                    {:name          transform_name
                     :source        {:type  :query
                                     :query (:dataset_query card)}

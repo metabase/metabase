@@ -11,7 +11,7 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.model-persistence.core :as model-persistence]
    [metabase.transforms-base.interface :as transforms-base.i]
-   [metabase.transforms.execute :as transforms.execute]
+   [metabase.transforms.core :as transforms]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -194,7 +194,7 @@
    (let [transform (or (t2/select-one :model/Transform :id transform-id)
                        (throw (ex-info "Transform not found" {:transform-id transform-id})))]
      ;; phase 1: execute the transform
-     (transforms.execute/execute! transform {:run-method :manual})
+     (transforms/execute! transform {:run-method :manual})
 
      ;; phase 2: find the output table and run source swap
      (let [table (find-output-table transform)]
