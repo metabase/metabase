@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { jt, t } from "ttag";
 
 import { useAdminSetting } from "metabase/api/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -24,10 +24,7 @@ export function MfaCard() {
     <Card withBorder p="lg">
       <Group justify="space-between" align="flex-start">
         <div>
-          <Title
-            order={4}
-            mb="xs"
-          >{t`Two-factor authentication`}</Title>
+          <Title order={4} mb="xs">{t`Two-factor authentication`}</Title>
           <Text
             c="text-secondary"
             fz="sm"
@@ -35,11 +32,7 @@ export function MfaCard() {
           >{t`When enabled, all password-authenticated users must set up two-factor authentication. SSO users and API keys are exempt.`}</Text>
           {!adminHasMfa && !isRequired && (
             <Text c="error" fz="sm" mt="sm">
-              {t`You must`}{" "}
-              <Anchor
-                href="/account/security"
-              >{t`enable two-factor authentication on your own account`}</Anchor>{" "}
-              {t`before requiring it for others.`}
+              {jt`You must ${(<Anchor key="link" href="/account/security">{t`enable two-factor authentication on your own account`}</Anchor>)} before requiring it for others.`}
             </Text>
           )}
         </div>
