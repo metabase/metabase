@@ -1,10 +1,10 @@
-(ns metabase-enterprise.replacement.source-swap-runner-test
+(ns metabase-enterprise.replacement.runner-test
   "Tests for bulk metadata loading in the replacement runner."
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.dependencies.events]
    [metabase-enterprise.replacement.protocols :as replacement.protocols]
-   [metabase-enterprise.replacement.source-swap-runner :as source-swap-runner]
+   [metabase-enterprise.replacement.runner :as runner]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -38,7 +38,7 @@
                                [:table table-id]
                                [:segment segment-id]]
             metadata-provider (lib-be/application-database-metadata-provider (mt/id))
-            loaded            (#'source-swap-runner/bulk-load-metadata-for-entities!
+            loaded            (#'runner/bulk-load-metadata-for-entities!
                                metadata-provider
                                entities)]
 
@@ -85,7 +85,7 @@
                                  [:card dep-1-card-id]
                                  [:card dep-2-card-id]]
               metadata-provider (lib-be/application-database-metadata-provider (mt/id))
-              value             (#'source-swap-runner/bulk-load-metadata-for-entities!
+              value             (#'runner/bulk-load-metadata-for-entities!
                                  metadata-provider
                                  entities)
               ;; After bulk loading, the source card should be in the metadata provider's cache
@@ -126,7 +126,7 @@
                                [:measure measure-id]
                                [:dashboard dashboard-id]]
             metadata-provider (lib-be/application-database-metadata-provider (mt/id))
-            loaded            (#'source-swap-runner/bulk-load-metadata-for-entities!
+            loaded            (#'runner/bulk-load-metadata-for-entities!
                                metadata-provider
                                entities)]
 
@@ -147,7 +147,7 @@
   (testing "bulk-load-metadata-for-entities! handles empty batch gracefully"
     (let [entities          []
           metadata-provider (lib-be/application-database-metadata-provider (mt/id))
-          loaded            (#'source-swap-runner/bulk-load-metadata-for-entities!
+          loaded            (#'runner/bulk-load-metadata-for-entities!
                              metadata-provider
                              entities)]
 
@@ -161,7 +161,7 @@
       (let [entities          [[:dashboard dashboard-id]
                                [:document 123]]
             metadata-provider (lib-be/application-database-metadata-provider (mt/id))
-            loaded            (#'source-swap-runner/bulk-load-metadata-for-entities!
+            loaded            (#'runner/bulk-load-metadata-for-entities!
                                metadata-provider
                                entities)]
 
@@ -171,8 +171,8 @@
         (testing "documents are not fetched (no-op entities)"
           (is (not (contains? loaded [:document 123]))))))))
 
-(deftest run-swap-updates-dependent-cards-test
-  (testing "run-swap upgrades field refs and swaps source for all transitive dependents"
+(deftest run-swap-source!-updates-dependent-cards-test
+  (testing "run-swap-source! upgrades field refs and swaps source for all transitive dependents"
     (mt/with-premium-features #{:dependencies}
       (mt/with-test-user :rasta
         (let [mp (mt/metadata-provider)]
@@ -211,7 +211,7 @@
                                    (start-run! [_])
                                    (succeed-run! [_])
                                    (fail-run! [_ _]))]
-                (source-swap-runner/run-swap [:card old-id] [:card new-id] progress)
+                (runner/run-swap-source! [:card old-id] [:card new-id] progress)
 
                 (testing "child card's source-card is updated to new model"
                   (is (= new-id (get-in (t2/select-one-fn :dataset_query :model/Card :id child-id)

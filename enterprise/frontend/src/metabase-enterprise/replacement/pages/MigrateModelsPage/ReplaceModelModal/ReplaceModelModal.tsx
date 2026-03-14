@@ -15,7 +15,6 @@ import {
   FormErrorMessage,
   FormProvider,
   FormSubmitButton,
-  FormSwitch,
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 import { slugify } from "metabase/lib/formatting/url";
@@ -162,12 +161,6 @@ function ReplaceModelForm({
             title={t`Collection`}
             collectionPickerModalProps={{ namespaces: ["transforms"] }}
             style={{ marginBottom: 0 }}
-          />
-          <FormSwitch
-            name="replaceSource"
-            label={t`Replace data source of all this models dependents`}
-            description={t`We'll run the new transform, then update all dependents of the original model to use the transform's output table instead. You can always do this later with the data replacement tool.`}
-            size="sm"
           />
           <Group>
             <Box flex={1}>

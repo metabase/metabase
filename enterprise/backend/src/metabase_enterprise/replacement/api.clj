@@ -3,12 +3,13 @@
   (:require
    [metabase-enterprise.replacement.execute :as replacement.execute]
    [metabase-enterprise.replacement.models.replacement-run :as replacement-run]
+   [metabase-enterprise.replacement.runner :as runner]
    [metabase-enterprise.replacement.schema :as replacement.schema]
    [metabase-enterprise.replacement.source-check :as replacement.source-check]
-   [metabase-enterprise.replacement.source-swap-runner :as source-swap-runner]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.transforms.crud :as transforms.crud]
    [ring.util.response :as response]
    [toucan2.core :as t2]))
 
@@ -53,7 +54,7 @@
       (throw (ex-info "Sources are not replaceable" {:status-code 400
                                                      :errors      (:errors result)}))))
   (let [work-fn  (fn [progress]
-                   (source-swap-runner/run-swap
+                   (runner/run-swap-source!
                     [source_entity_type source_entity_id]
                     [target_entity_type target_entity_id]
                     progress))
@@ -64,6 +65,49 @@
     (replacement.execute/execute-async! work-fn progress)
     (-> (response/response {:run_id (:id job-row)})
         (assoc :status 202))))
+
+(api.macros/defendpoint :post "/replace-model" :- [:map
+                                                   [:status [:= 202]]
+                                                   [:body [:map {:closed true}
+                                                           [:run_id ::replacement.schema/run-id]]]]
+  "Create a transform from a model, execute it, and replace all usages of the model
+   with the output table. Un-persists the model and converts it to a saved question.
+   Returns 202 with a run_id for polling."
+  [_route-params
+   _query-params
+   {:keys [card_id transform_name transform_target target_collection_id]}
+   :- [:map
+       [:card_id              ::replacement.schema/source-entity-id]
+       [:transform_name       :string]
+       [:transform_target     :map]
+       [:target_collection_id {:optional true} [:maybe ::replacement.schema/source-entity-id]]]]
+  (api/check-superuser)
+  (let [card      (api/check-404 (t2/select-one :model/Card :id card_id))
+        transform (transforms.crud/create-transform!
+                   {:name          transform_name
+                    :source        {:type  :query
+                                    :query (:dataset_query card)}
+                    :target        transform_target
+                    :collection_id target_collection_id})
+        job-row   (replacement-run/create-run!
+                   :card card_id
+                   :transform (:id transform)
+                   api/*current-user-id*)
+        progress  (replacement-run/run-row->progress job-row)
+        work-fn   (fn [progress]
+                    (runner/run-swap-model! card_id (:id transform) progress))]
+    (replacement.execute/execute-async! work-fn progress)
+    (-> (response/response {:run_id (:id job-row)})
+        (assoc :status 202))))
+
+(api.macros/defendpoint :get "/runs" :- [:sequential ::replacement.schema/run]
+  "List replacement runs, optionally filtered by is-active."
+  [_route-params
+   {:keys [is-active]} :- [:map [:is-active {:optional true} [:maybe :boolean]]]]
+  (api/check-superuser)
+  (t2/select :model/ReplacementRun
+             (cond-> {:order-by [[:start_time :desc]]}
+               (some? is-active) (assoc :where [:= :is_active is-active]))))
 
 (api.macros/defendpoint :get "/runs/:id" :- ::replacement.schema/run
   "Get the status of a source replacement run."
