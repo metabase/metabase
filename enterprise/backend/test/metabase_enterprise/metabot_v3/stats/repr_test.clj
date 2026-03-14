@@ -1,0 +1,165 @@
+(ns metabase-enterprise.metabot-v3.stats.repr-test
+  (:require
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase-enterprise.metabot-v3.stats.categorical :as categorical]
+   [metabase-enterprise.metabot-v3.stats.core :as stats.core]
+   [metabase-enterprise.metabot-v3.stats.histogram :as histogram]
+   [metabase-enterprise.metabot-v3.stats.repr :as repr]
+   [metabase-enterprise.metabot-v3.stats.scatter :as scatter]
+   [metabase-enterprise.metabot-v3.stats.time-series :as time-series]
+   [metabase.util :as u]))
+
+(set! *warn-on-reflection* true)
+
+;;; -------------------------------------------------- Helpers -------------------------------------------------------
+
+(defn- make-series
+  "Create a series config with n data points."
+  [n]
+  {:x {:name "Date" :type :datetime}
+   :y {:name "Value" :type :number}
+   :display_name "Test"
+   :x_values (mapv #(str "2020-01-" (format "%02d" (inc (mod % 28)))) (range n))
+   :y_values (mapv double (range n))})
+
+(defn- make-chart-config
+  "Create a chart config with the given number of series, each with n data points."
+  [series-count n]
+  {:display_type "line"
+   :title "Test Chart"
+   :series (into {} (for [i (range series-count)]
+                      [(str "series_" i) (make-series n)]))})
+
+;;; ------------------------------------------ Repr Limits Note Tests ------------------------------------------------
+
+(deftest repr-includes-downsampled-note-test
+  (testing "Representation includes a note about downsampled data"
+    (let [n      (+ stats.core/max-data-points-per-series 1000)
+          config (make-chart-config 1 n)
+          stats  (stats.core/compute-chart-stats config {:deep? false})
+          repr   (repr/generate-representation {:title "Test" :display-type "line" :stats stats})]
+      (is (str/includes? repr "Data Limits Applied"))
+      (is (str/includes? repr "downsampled")))))
+
+(deftest repr-includes-correlations-capped-note-test
+  (testing "Representation includes a note about capped correlations"
+    (let [n-series (+ stats.core/max-series-for-correlations 5)
+          config   (make-chart-config n-series 50)
+          stats    (stats.core/compute-chart-stats config {:deep? true})
+          repr     (repr/generate-representation {:title "Test" :display-type "line" :stats stats})]
+      (is (str/includes? repr "Data Limits Applied"))
+      (is (str/includes? repr "correlations were limited")))))
+
+(deftest repr-no-limits-note-when-within-bounds-test
+  (testing "No limits note when data is within bounds"
+    (let [config (make-chart-config 2 100)
+          stats  (stats.core/compute-chart-stats config {:deep? true})
+          repr   (repr/generate-representation {:title "Test" :display-type "line" :stats stats})]
+      (is (not (str/includes? repr "Data Limits Applied"))))))
+
+;;; ------------------------------------------- Histogram Repr Tests -------------------------------------------------
+
+(deftest repr-histogram-shows-shape-test
+  (testing "representation includes Distribution Shape when enough data"
+    (let [series-stats (histogram/compute-series-stats (range 1 101))
+          stats        {:chart_type   :histogram
+                        :series_count 1
+                        :series       {"Test Series" series-stats}}
+          rep          (repr/generate-histogram-representation {:stats stats})]
+      (is (str/includes? rep "Test Series"))
+      (is (str/includes? rep "Distribution Shape")))))
+
+;;; -------------------------------------------- Scatter Repr Tests --------------------------------------------------
+
+(deftest repr-scatter-shows-relationship-test
+  (testing "representation includes Relationship with strength and direction"
+    (let [series-stats (scatter/compute-series-stats [1 2 3 4 5] [10 20 30 40 50])
+          stats        {:chart_type   :scatter
+                        :series_count 1
+                        :series       {"Test Series" series-stats}}
+          rep          (repr/generate-scatter-representation {:stats stats})]
+      (is (str/includes? rep "Test Series"))
+      (is (str/includes? rep "Relationship"))
+      (is (str/includes? rep "strong positive")))))
+
+;;; ------------------------------------------ Categorical Repr Tests ------------------------------------------------
+
+(deftest repr-categorical-includes-key-info-test
+  (testing "representation includes series name, data count, and Categories"
+    (let [series-stats (categorical/compute-series-stats ["A" "B" "C"] [100 200 150])
+          stats        {:chart_type   :categorical
+                        :series_count 1
+                        :series       {"Test Series" series-stats}}
+          rep          (repr/generate-categorical-representation {:stats stats})]
+      (is (str/includes? rep "Test Series"))
+      (is (str/includes? rep "Categories"))
+      (is (str/includes? rep "Top Categories")))))
+
+(deftest repr-categorical-shows-bottom-categories-for-large-dataset-test
+  (testing "Bottom Categories shown when > 15 categories"
+    (let [xs           (map #(str "Cat" (format "%02d" %)) (range 1 21))
+          ys           (map double (range 1 21))
+          series-stats (categorical/compute-series-stats xs ys)
+          stats        {:chart_type   :categorical
+                        :series_count 1
+                        :series       {"Many" series-stats}}
+          rep          (repr/generate-categorical-representation {:stats stats})]
+      (is (str/includes? rep "Top Categories"))
+      (is (str/includes? rep "Bottom Categories"))
+      ;; highest value category (Cat20) appears
+      (is (str/includes? rep "Cat20"))
+      ;; lowest value category (Cat01) appears
+      (is (str/includes? rep "Cat01")))))
+
+(deftest repr-categorical-no-bottom-categories-for-small-dataset-test
+  (testing "Bottom Categories absent when <= 15 categories"
+    (let [xs           (map #(str "Cat" %) (range 1 16))
+          ys           (map double (range 1 16))
+          series-stats (categorical/compute-series-stats xs ys)
+          stats        {:chart_type   :categorical
+                        :series_count 1
+                        :series       {"Few" series-stats}}
+          rep          (repr/generate-categorical-representation {:stats stats})]
+      (is (str/includes? rep "Top Categories"))
+      (is (not (str/includes? rep "Bottom Categories"))))))
+
+;;; ----------------------------------------- Time Series Repr Tests -------------------------------------------------
+
+(deftest generate-temporal-context-test
+  (testing "temporal context includes current date, day of week, week, month, and quarter"
+    (let [result (repr/generate-temporal-context)]
+      (is (str/includes? result "Today is"))
+      (is (some #(str/includes? result %)
+                ["Monday" "Tuesday" "Wednesday" "Thursday" "Friday" "Saturday" "Sunday"]))
+      (is (str/includes? (u/lower-case-en result) "week"))
+      (is (str/includes? (u/lower-case-en result) "month"))
+      (is (str/includes? (u/lower-case-en result) "quarter"))
+      (is (some #(str/includes? result %) ["Q1" "Q2" "Q3" "Q4"])))))
+
+(deftest repr-time-series-includes-series-name-and-trend-test
+  (testing "time series representation includes series name and trend direction"
+    (let [values [10.0 20.0 30.0 40.0 50.0]
+          dates  ["2024-01" "2024-02" "2024-03" "2024-04" "2024-05"]
+          series-stats (time-series/compute-series-stats values dates {})
+          stats {:chart_type   :time-series
+                 :series_count 1
+                 :series       {"Revenue" series-stats}}
+          rep (repr/generate-time-series-representation {:stats stats})]
+      (is (str/includes? rep "Revenue"))
+      (is (str/includes? rep "Trend"))
+      (is (str/includes? rep "Time Series")))))
+
+(deftest repr-time-series-multi-series-test
+  (testing "representation with multiple series includes all series names"
+    (let [make-stats (fn [values dates]
+                       (time-series/compute-series-stats values dates {}))
+          stats {:chart_type   :time-series
+                 :series_count 2
+                 :series       {"Sales"   (make-stats [10.0 20.0 30.0 40.0 50.0]
+                                                      ["d1" "d2" "d3" "d4" "d5"])
+                                "Revenue" (make-stats [20.0 40.0 60.0 80.0 100.0]
+                                                      ["d1" "d2" "d3" "d4" "d5"])}}
+          rep (repr/generate-time-series-representation {:stats stats})]
+      (is (str/includes? rep "Sales"))
+      (is (str/includes? rep "Revenue")))))

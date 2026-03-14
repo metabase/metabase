@@ -3,10 +3,8 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [mb.hawk.assert-exprs.approximately-equal :as =?]
-   [metabase-enterprise.metabot-v3.stats.repr :as repr]
    [metabase-enterprise.metabot-v3.stats.time-series :as time-series]
-   [metabase-enterprise.metabot-v3.stats.util :as stats.u]
-   [metabase.util :as u]))
+   [metabase-enterprise.metabot-v3.stats.util :as stats.u]))
 
 (set! *warn-on-reflection* true)
 
@@ -377,42 +375,3 @@
       (is (=? {:correlations #(= 1 (count %))}
               result)))))
 
-;;; ---------------------------------------- temporal context / repr tests -------------------------------------------
-
-(deftest generate-temporal-context-test
-  (testing "temporal context includes current date, day of week, week, month, and quarter"
-    (let [result (repr/generate-temporal-context)]
-      (is (str/includes? result "Today is"))
-      (is (some #(str/includes? result %)
-                ["Monday" "Tuesday" "Wednesday" "Thursday" "Friday" "Saturday" "Sunday"]))
-      (is (str/includes? (u/lower-case-en result) "week"))
-      (is (str/includes? (u/lower-case-en result) "month"))
-      (is (str/includes? (u/lower-case-en result) "quarter"))
-      (is (some #(str/includes? result %) ["Q1" "Q2" "Q3" "Q4"])))))
-
-(deftest repr-time-series-includes-series-name-and-trend-test
-  (testing "time series representation includes series name and trend direction"
-    (let [values [10.0 20.0 30.0 40.0 50.0]
-          dates  ["2024-01" "2024-02" "2024-03" "2024-04" "2024-05"]
-          series-stats (time-series/compute-series-stats values dates {})
-          stats {:chart_type   :time-series
-                 :series_count 1
-                 :series       {"Revenue" series-stats}}
-          rep (repr/generate-time-series-representation {:stats stats})]
-      (is (str/includes? rep "Revenue"))
-      (is (str/includes? rep "Trend"))
-      (is (str/includes? rep "Time Series")))))
-
-(deftest repr-time-series-multi-series-test
-  (testing "representation with multiple series includes all series names"
-    (let [make-stats (fn [values dates]
-                       (time-series/compute-series-stats values dates {}))
-          stats {:chart_type   :time-series
-                 :series_count 2
-                 :series       {"Sales"   (make-stats [10.0 20.0 30.0 40.0 50.0]
-                                                      ["d1" "d2" "d3" "d4" "d5"])
-                                "Revenue" (make-stats [20.0 40.0 60.0 80.0 100.0]
-                                                      ["d1" "d2" "d3" "d4" "d5"])}}
-          rep (repr/generate-time-series-representation {:stats stats})]
-      (is (str/includes? rep "Sales"))
-      (is (str/includes? rep "Revenue")))))

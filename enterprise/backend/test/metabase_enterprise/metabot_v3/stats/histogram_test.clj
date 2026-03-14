@@ -1,9 +1,7 @@
 (ns metabase-enterprise.metabot-v3.stats.histogram-test
   (:require
-   [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase-enterprise.metabot-v3.stats.histogram :as histogram]
-   [metabase-enterprise.metabot-v3.stats.repr :as repr]))
+   [metabase-enterprise.metabot-v3.stats.histogram :as histogram]))
 
 (set! *warn-on-reflection* true)
 
@@ -129,13 +127,3 @@
   (testing "negative values handled correctly"
     (is (=? {:summary {:min -50.0 :max 50.0 :mean 0.0}}
             (histogram/compute-series-stats [-50 -25 0 25 50])))))
-
-(deftest repr-histogram-shows-shape-test
-  (testing "representation includes Distribution Shape when enough data"
-    (let [series-stats (histogram/compute-series-stats (range 1 101))
-          stats        {:chart_type   :histogram
-                        :series_count 1
-                        :series       {"Test Series" series-stats}}
-          rep          (repr/generate-histogram-representation {:stats stats})]
-      (is (str/includes? rep "Test Series"))
-      (is (str/includes? rep "Distribution Shape")))))

@@ -1,9 +1,7 @@
 (ns metabase-enterprise.metabot-v3.stats.core-test
   (:require
-   [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase-enterprise.metabot-v3.stats.core :as stats.core]
-   [metabase-enterprise.metabot-v3.stats.repr :as repr]))
+   [metabase-enterprise.metabot-v3.stats.core :as stats.core]))
 
 (set! *warn-on-reflection* true)
 
@@ -100,29 +98,3 @@
             max-pairs (/ (* max-k (dec max-k)) 2)]
         (is (<= (count (:correlations stats)) max-pairs))))))
 
-;;; ------------------------------------------ Repr Limits Note Tests ----------------------------------------------
-
-(deftest repr-includes-downsampled-note-test
-  (testing "Representation includes a note about downsampled data"
-    (let [n      (+ stats.core/max-data-points-per-series 1000)
-          config (make-chart-config 1 n)
-          stats  (stats.core/compute-chart-stats config {:deep? false})
-          repr   (repr/generate-representation {:title "Test" :display-type "line" :stats stats})]
-      (is (str/includes? repr "Data Limits Applied"))
-      (is (str/includes? repr "downsampled")))))
-
-(deftest repr-includes-correlations-capped-note-test
-  (testing "Representation includes a note about capped correlations"
-    (let [n-series (+ stats.core/max-series-for-correlations 5)
-          config   (make-chart-config n-series 50)
-          stats    (stats.core/compute-chart-stats config {:deep? true})
-          repr     (repr/generate-representation {:title "Test" :display-type "line" :stats stats})]
-      (is (str/includes? repr "Data Limits Applied"))
-      (is (str/includes? repr "correlations were limited")))))
-
-(deftest repr-no-limits-note-when-within-bounds-test
-  (testing "No limits note when data is within bounds"
-    (let [config (make-chart-config 2 100)
-          stats  (stats.core/compute-chart-stats config {:deep? true})
-          repr   (repr/generate-representation {:title "Test" :display-type "line" :stats stats})]
-      (is (not (str/includes? repr "Data Limits Applied"))))))

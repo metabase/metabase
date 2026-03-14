@@ -1,9 +1,7 @@
 (ns metabase-enterprise.metabot-v3.stats.scatter-test
   (:require
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [mb.hawk.assert-exprs.approximately-equal :as =?]
-   [metabase-enterprise.metabot-v3.stats.repr :as repr]
    [metabase-enterprise.metabot-v3.stats.scatter :as scatter]))
 
 (set! *warn-on-reflection* true)
@@ -114,14 +112,3 @@
             (scatter/compute-series-stats
              [1.5 2.5 3.5 4.5 5.5]
              [10.1 20.2 30.3 40.4 50.5])))))
-
-(deftest repr-scatter-shows-relationship-test
-  (testing "representation includes Relationship with strength and direction"
-    (let [series-stats (scatter/compute-series-stats [1 2 3 4 5] [10 20 30 40 50])
-          stats        {:chart_type   :scatter
-                        :series_count 1
-                        :series       {"Test Series" series-stats}}
-          rep          (repr/generate-scatter-representation {:stats stats})]
-      (is (str/includes? rep "Test Series"))
-      (is (str/includes? rep "Relationship"))
-      (is (str/includes? rep "strong positive")))))

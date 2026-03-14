@@ -1,10 +1,8 @@
 (ns metabase-enterprise.metabot-v3.stats.categorical-test
   (:require
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [mb.hawk.assert-exprs.approximately-equal :as =?]
-   [metabase-enterprise.metabot-v3.stats.categorical :as categorical]
-   [metabase-enterprise.metabot-v3.stats.repr :as repr]))
+   [metabase-enterprise.metabot-v3.stats.categorical :as categorical]))
 
 (set! *warn-on-reflection* true)
 
@@ -205,44 +203,3 @@
                  :top_categories
                  (map (juxt :name :percentage))
                  (into {}))))))
-
-;;; Representation tests
-
-(deftest repr-categorical-includes-key-info-test
-  (testing "representation includes series name, data count, and Categories"
-    (let [series-stats (categorical/compute-series-stats ["A" "B" "C"] [100 200 150])
-          stats        {:chart_type   :categorical
-                        :series_count 1
-                        :series       {"Test Series" series-stats}}
-          rep          (repr/generate-categorical-representation {:stats stats})]
-      (is (str/includes? rep "Test Series"))
-      (is (str/includes? rep "Categories"))
-      (is (str/includes? rep "Top Categories")))))
-
-(deftest repr-categorical-shows-bottom-categories-for-large-dataset-test
-  (testing "Bottom Categories shown when > 15 categories"
-    (let [xs           (map #(str "Cat" (format "%02d" %)) (range 1 21))
-          ys           (map double (range 1 21))
-          series-stats (categorical/compute-series-stats xs ys)
-          stats        {:chart_type   :categorical
-                        :series_count 1
-                        :series       {"Many" series-stats}}
-          rep          (repr/generate-categorical-representation {:stats stats})]
-      (is (str/includes? rep "Top Categories"))
-      (is (str/includes? rep "Bottom Categories"))
-      ;; highest value category (Cat20) appears
-      (is (str/includes? rep "Cat20"))
-      ;; lowest value category (Cat01) appears
-      (is (str/includes? rep "Cat01")))))
-
-(deftest repr-categorical-no-bottom-categories-for-small-dataset-test
-  (testing "Bottom Categories absent when <= 15 categories"
-    (let [xs           (map #(str "Cat" %) (range 1 16))
-          ys           (map double (range 1 16))
-          series-stats (categorical/compute-series-stats xs ys)
-          stats        {:chart_type   :categorical
-                        :series_count 1
-                        :series       {"Few" series-stats}}
-          rep          (repr/generate-categorical-representation {:stats stats})]
-      (is (str/includes? rep "Top Categories"))
-      (is (not (str/includes? rep "Bottom Categories"))))))
