@@ -52,14 +52,6 @@
    [:target {:optional true} [:maybe ::column]]
    [:errors {:optional true} [:sequential ::source-swap.schema/column-error]]])
 
-(mr/def ::replace-source-with-transform-request
-  [:map
-   [:source_entity_id   ::source-entity-id]
-   [:source_entity_type ::source-entity-type]
-   [:transform_id       pos-int?]
-   [:unpersist_card     {:optional true :default false} :boolean]
-   [:archive_card       {:optional true :default false} :boolean]])
-
 (mr/def ::check-replace-source-response
   [:map
    [:success         :boolean]

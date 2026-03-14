@@ -1,7 +1,6 @@
 (ns metabase-enterprise.replacement.api
   "`/api/ee/replacement/` routes"
   (:require
-   [metabase-enterprise.replacement.convert :as convert]
    [metabase-enterprise.replacement.execute :as replacement.execute]
    [metabase-enterprise.replacement.models.replacement-run :as replacement-run]
    [metabase-enterprise.replacement.runner :as replacement.runner]
@@ -84,45 +83,6 @@
       (throw (ex-info "Run is not active" {:status-code 409})))
     (replacement-run/cancel-run! id)
     {:success true}))
-
-(api.macros/defendpoint :post "/replace-source-with-transform"
-  :- [:map [:status [:= 202]]]
-  "Re-run a transform and replace all usages of the source entity with the output
-   table. The FE should create the transform first via the transforms API.
-   Returns 202 immediately after the TransformRun row is created.
-   The ReplacementRun is created later, once the transform finishes and the output
-   table is known. FE polls GET /transform/runs and GET /replacement/runs independently."
-  [_route-params
-   _query-params
-   {:keys [source_entity_id source_entity_type transform_id unpersist_card archive_card]}
-   :- ::replacement.schema/replace-source-with-transform-request]
-  (api/check-superuser)
-  (api/check-404 (t2/select-one :model/Transform :id transform_id))
-  (let [user-id       api/*current-user-id*
-        start-promise (promise)]
-    (convert/run-async!
-     {:source-type    source_entity_type
-      :source-id      source_entity_id
-      :transform-id   transform_id
-      :user-id        user-id
-      :start-promise  start-promise
-      :unpersist-card? unpersist_card
-      :archive-card?   archive_card})
-    ;; Wait for the TransformRun row to be created so FE can poll it immediately.
-    (let [result (deref start-promise 30000 :timeout)]
-      (when (instance? Throwable result)
-        (throw result)))
-    (-> (response/response {})
-        (assoc :status 202))))
-
-(api.macros/defendpoint :get "/runs"
-  :- [:sequential ::replacement.schema/run]
-  "List source replacement/conversion runs. Optionally filter to only active runs."
-  [_route-params
-   {:keys [is-active]}
-   :- [:map [:is-active {:optional true} [:maybe :boolean]]]]
-  (api/check-superuser)
-  (replacement-run/list-runs :is-active is-active))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/replacement` routes."

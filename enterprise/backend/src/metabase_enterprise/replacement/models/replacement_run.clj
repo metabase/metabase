@@ -29,7 +29,7 @@
                                   :target_entity_id   target-id
                                   :user_id            user-id
                                   :status             :pending
-                                  :is_active          nil
+                                  :is_active          false
                                   :progress           0.0}))
 
 (defn start-run!
@@ -96,13 +96,6 @@
   "Return the single active run, or nil."
   []
   (t2/select-one :model/ReplacementRun :is_active true))
-
-(defn list-runs
-  "List runs, optionally filtered to only active ones."
-  [& {:keys [is-active]}]
-  (if is-active
-    (t2/select :model/ReplacementRun :is_active true {:order-by [[:id :desc]]})
-    (t2/select :model/ReplacementRun {:order-by [[:id :desc]]})))
 
 (def ^:private ^:const progress-batch-size
   "Write progress to DB every N items (and always on the final item)."
