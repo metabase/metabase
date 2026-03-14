@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [mb.hawk.assert-exprs.approximately-equal :as =?]
    [metabase-enterprise.metabot-v3.stats.repr :as repr]
    [metabase-enterprise.metabot-v3.stats.scatter :as scatter]))
 
@@ -91,9 +92,9 @@
 
 (deftest compute-series-stats-regression-intercept-test
   (testing "regression intercept computed correctly for y = 2x + 10"
-    (is (=? {:regression {:slope     #(< (Math/abs (- % 2.0)) 0.001)
-                          :intercept #(< (Math/abs (- % 10.0)) 0.001)
-                          :r_squared #(< (Math/abs (- % 1.0)) 0.001)}}
+    (is (=? {:regression {:slope     (=?/approx [2.0 0.001])
+                          :intercept (=?/approx [10.0 0.001])
+                          :r_squared (=?/approx [1.0 0.001])}}
             (scatter/compute-series-stats [1 2 3 4 5] [12 14 16 18 20])))))
 
 (deftest compute-series-stats-constant-y-test
@@ -106,10 +107,10 @@
 (deftest compute-series-stats-float-values-test
   (testing "float x and y values handled correctly"
     (is (=? {:data_points 5
-             :x_summary {:min #(< (Math/abs (- % 1.5)) 0.001)
-                         :max #(< (Math/abs (- % 5.5)) 0.001)}
-             :y_summary {:min #(< (Math/abs (- % 10.1)) 0.001)
-                         :max #(< (Math/abs (- % 50.5)) 0.001)}}
+             :x_summary {:min (=?/approx [1.5 0.001])
+                         :max (=?/approx [5.5 0.001])}
+             :y_summary {:min (=?/approx [10.1 0.001])
+                         :max (=?/approx [50.5 0.001])}}
             (scatter/compute-series-stats
              [1.5 2.5 3.5 4.5 5.5]
              [10.1 20.2 30.3 40.4 50.5])))))

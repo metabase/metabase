@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [mb.hawk.assert-exprs.approximately-equal :as =?]
    [metabase-enterprise.metabot-v3.stats.repr :as repr]
    [metabase-enterprise.metabot-v3.stats.time-series :as time-series]
    [metabase-enterprise.metabot-v3.stats.util :as stats.u]
@@ -274,7 +275,7 @@
     (is (=? {:from_value 10.0
              :to_value   15.0
              :change_abs 5.0
-             :change_pct #(< (Math/abs (- % 50.0)) 0.001)}
+             :change_pct (=?/approx [50.0 0.001])}
             (time-series/compute-most-recent-change [10.0 15.0] ["d1" "d2"])))))
 
 ;;; --------------------------------------------- compute-series-stats tests ----------------------------------------
