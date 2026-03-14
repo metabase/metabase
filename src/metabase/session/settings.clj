@@ -66,14 +66,16 @@
                   (when (and new-value (not was-enabled))
                     (future
                       (try
-                        (let [affected-users (t2/select [:model/User :email]
-                                                        :is_active true
-                                                        :totp_enabled false
-                                                        :sso_source nil)]
-                          (doseq [{:keys [email]} affected-users]
-                            (try
-                              (messages/send-mfa-required-email! email)
-                              (catch Exception e
-                                (log/warnf e "Failed to send MFA required email to %s" email)))))
+                        ;; Re-check the setting inside the future to guard against rapid toggle-off-on
+                        (when (require-mfa)
+                          (let [affected-users (t2/select [:model/User :email]
+                                                          :is_active true
+                                                          :totp_enabled false
+                                                          :sso_source nil)]
+                            (doseq [{:keys [email]} affected-users]
+                              (try
+                                (messages/send-mfa-required-email! email)
+                                (catch Exception e
+                                  (log/warnf e "Failed to send MFA required email to %s" email))))))
                         (catch Exception e
                           (log/error e "Failed to send MFA required notification emails"))))))))
