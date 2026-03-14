@@ -154,6 +154,19 @@
           (finally
             (mt/user-http-request :crowberto :put 204 "setting/require-mfa" {:value false}))))))
 
+  (testing "SSO users can disable TOTP even when require-mfa is enabled"
+    (mt/with-temp-vals-in-db :model/User (mt/user->id :rasta) {:totp_enabled true
+                                                               :totp_secret  "JBSWY3DPEHPK3PXP"
+                                                               :sso_source   "google"}
+      (mt/with-temp-vals-in-db :model/User (mt/user->id :crowberto) {:totp_enabled true}
+        (mt/user-http-request :crowberto :put 204 "setting/require-mfa" {:value true})
+        (try
+          (mt/user-http-request :rasta :post 204 "mfa/disable"
+                                {:password (:password (mt/user->credentials :rasta))})
+          (is (false? (t2/select-one-fn :totp_enabled :model/User :id (mt/user->id :rasta))))
+          (finally
+            (mt/user-http-request :crowberto :put 204 "setting/require-mfa" {:value false}))))))
+
   (testing "POST /api/mfa/disable works when require-mfa is disabled"
     (mt/with-temp-vals-in-db :model/User (mt/user->id :rasta) {:totp_enabled true
                                                                :totp_secret  "JBSWY3DPEHPK3PXP"}
