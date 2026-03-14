@@ -40,7 +40,7 @@
 
 (doseq [[feature supported?] {:actions                          false
                               :convert-timezone                 false
-                              :database-routing                 false
+                              :database-routing                 true
                               :datetime-diff                    true
                               :describe-default-expr            true
                               :describe-fks                     false
