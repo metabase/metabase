@@ -25,12 +25,6 @@
      :q3     q3
      :iqr    (- q3 q1)}))
 
-(defn- nan->nil
-  "Convert NaN to nil."
-  [x]
-  (when-not (Double/isNaN (double x))
-    x))
-
 (defn- compute-series-stats
   "Compute histogram stats for a single series.
   x_values are (bin edges/centers) and y_values are (counts/frequencies).
@@ -51,9 +45,9 @@
              percentiles (compute-percentiles valid)
              quartiles   (compute-quartiles valid)
              skewness    (when (>= n min-shape-metrics-points)
-                           (nan->nil (dfn/skew valid)))
+                           (stats.u/nan->nil (dfn/skew valid)))
              kurtosis    (when (>= n min-shape-metrics-points)
-                           (nan->nil (dfn/kurtosis valid)))]
+                           (stats.u/nan->nil (dfn/kurtosis valid)))]
          {:summary      summary
           :data_points  n
           :bin_data     (mapv vector valid-xs valid)

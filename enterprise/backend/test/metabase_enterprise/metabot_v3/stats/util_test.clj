@@ -6,6 +6,18 @@
 
 (set! *warn-on-reflection* true)
 
+;;; ------------------------------------------------ nan->nil -------------------------------------------------------
+
+(deftest ^:parallel nan->nil-test
+  (testing "NaN becomes nil"
+    (is (nil? (stats.u/nan->nil Double/NaN))))
+  (testing "normal numbers pass through"
+    (is (= 42.0 (stats.u/nan->nil 42.0)))
+    (is (= 0.0 (stats.u/nan->nil 0.0)))
+    (is (= -1.5 (stats.u/nan->nil -1.5))))
+  (testing "infinity passes through (not NaN)"
+    (is (= Double/POSITIVE_INFINITY (stats.u/nan->nil Double/POSITIVE_INFINITY)))))
+
 ;;; -------------------------------------------- compute-summary ---------------------------------------------------
 
 (deftest ^:parallel compute-summary-basic-test

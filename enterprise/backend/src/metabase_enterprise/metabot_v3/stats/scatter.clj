@@ -36,7 +36,7 @@
             x-summary        (stats.u/compute-summary xs)
             y-summary        (stats.u/compute-summary ys)
             raw-coef         (dfn/pearsons-correlation xs ys)
-            coef             (when-not (Double/isNaN (double raw-coef)) raw-coef)
+            coef             (stats.u/nan->nil raw-coef)
             correlation      (when coef
                                {:coefficient coef
                                 :strength    (stats.u/correlation-strength coef)

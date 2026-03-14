@@ -7,6 +7,12 @@
 
 (set! *warn-on-reflection* true)
 
+(mu/defn nan->nil :- [:maybe number?]
+  "Convert NaN to nil, pass through other values."
+  [x :- number?]
+  (when-not (Double/isNaN (double x))
+    x))
+
 (mu/defn compute-summary :- ::stats.types/series-summary
   "Compute basic statistical summary for a series of values."
   [values :- [:sequential number?]]
