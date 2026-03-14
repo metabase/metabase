@@ -2,11 +2,15 @@ import type { CardId } from "./card";
 import type { CollectionId } from "./collection";
 import type { Field } from "./field";
 import type { ConcreteTableId } from "./table";
-import type { TransformTarget } from "./transform";
+import type { TransformId, TransformTarget } from "./transform";
 
-export type SourceReplacementEntityId = ConcreteTableId | CardId;
+export type SourceReplacementEntityId = ConcreteTableId | CardId | TransformId;
 
-export const SOURCE_REPLACEMENT_ENTITY_TYPES = ["card", "table"] as const;
+export const SOURCE_REPLACEMENT_ENTITY_TYPES = [
+  "card",
+  "table",
+  "transform",
+] as const;
 export type SourceReplacementEntityType =
   (typeof SOURCE_REPLACEMENT_ENTITY_TYPES)[number];
 

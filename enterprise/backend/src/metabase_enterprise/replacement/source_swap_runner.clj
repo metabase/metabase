@@ -17,7 +17,6 @@
 (def noop-progress
   "No-op progress tracker for REPL / non-async usage."
   (reify replacement.protocols/IRunnerProgress
-    (set-target! [_ _target])
     (set-total! [_ _total])
     (advance! [_])
     (advance! [_ _n])
