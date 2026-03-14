@@ -54,6 +54,8 @@
   :default    false
   :audit      :raw-value
   :setter     (fn [new-value]
+                ;; NOTE: the setter assumes HTTP request context (api/*current-user-id* must be bound).
+                ;; Programmatic callers (REPL, migrations) should use setting/set-value-of-type! directly.
                 (when new-value
                   (api/check-superuser)
                   (when-not (t2/select-one-fn :totp_enabled :model/User :id api/*current-user-id*)

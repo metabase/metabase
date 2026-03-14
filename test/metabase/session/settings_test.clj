@@ -3,8 +3,7 @@
    [clojure.test :refer :all]
    [metabase.session.settings :as session.settings]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]
-   [toucan2.core :as t2]))
+   [metabase.test.fixtures :as fixtures]))
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
 
@@ -46,9 +45,8 @@
     (mt/with-fake-inbox
       (mt/with-temp-vals-in-db :model/User (mt/user->id :crowberto) {:totp_enabled true}
         (mt/with-temp-vals-in-db :model/User (mt/user->id :rasta) {:totp_enabled false, :sso_source nil}
-          (mt/user-http-request :crowberto :put 204 "setting/require-mfa" {:value true})
-          ;; Wait for the async future to complete
-          (Thread/sleep 2000)
+          (mt/with-expected-messages 1
+            (mt/user-http-request :crowberto :put 204 "setting/require-mfa" {:value true}))
           (let [inbox @mt/inbox]
             (testing "rasta (password user without MFA) receives email"
               (is (seq (get inbox (:email (mt/fetch-user :rasta))))))
@@ -61,19 +59,20 @@
       (mt/with-temp-vals-in-db :model/User (mt/user->id :crowberto) {:totp_enabled true}
         (mt/with-temp-vals-in-db :model/User (mt/user->id :rasta) {:totp_enabled false, :sso_source "google"}
           (mt/user-http-request :crowberto :put 204 "setting/require-mfa" {:value true})
-          (Thread/sleep 2000)
+          ;; Short sleep since we can't prove a negative with with-expected-messages
+          (Thread/sleep 1000)
           (let [inbox @mt/inbox]
             (testing "rasta (SSO user) does not receive email"
               (is (empty? (get inbox (:email (mt/fetch-user :rasta)))))))
-          (mt/user-http-request :crowberto :put 204 "setting/require-mfa" {:value false})))
-      (t2/update! :model/User (mt/user->id :rasta) {:sso_source nil})))
+          (mt/user-http-request :crowberto :put 204 "setting/require-mfa" {:value false})))))
 
   (testing "users with MFA already enabled do not receive email"
     (mt/with-fake-inbox
       (mt/with-temp-vals-in-db :model/User (mt/user->id :crowberto) {:totp_enabled true}
         (mt/with-temp-vals-in-db :model/User (mt/user->id :rasta) {:totp_enabled true}
           (mt/user-http-request :crowberto :put 204 "setting/require-mfa" {:value true})
-          (Thread/sleep 2000)
+          ;; Short sleep since we can't prove a negative with with-expected-messages
+          (Thread/sleep 1000)
           (let [inbox @mt/inbox]
             (testing "rasta (already has MFA) does not receive email"
               (is (empty? (get inbox (:email (mt/fetch-user :rasta)))))))
