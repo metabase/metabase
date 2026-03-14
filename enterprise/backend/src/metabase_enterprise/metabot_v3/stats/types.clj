@@ -43,11 +43,6 @@
    [:display_type {:optional true} [:maybe :string]]
    [:title {:optional true} [:maybe :string]]])
 
-(mr/def ::analyze-chart-input
-  "Input schema for the analyze-chart tool."
-  [:map
-   [:chart_config ::chart-config]])
-
 ;;; ------------------------------------------------- Output Schemas -------------------------------------------------
 
 (mr/def ::series-summary
@@ -254,10 +249,6 @@
    [:series_count :int]
    [:series [:map-of :string ::histogram-series-stats]]])
 
-(mr/def ::chart-type
-  "Detected chart type."
-  [:enum :time-series :categorical :scatter :histogram :unknown])
-
 (mr/def ::chart-stats
   "Union of all chart statistics types."
   [:or
@@ -277,10 +268,3 @@
    [:display-type {:optional true} [:maybe :string]]
    [:timeline-events {:optional true} [:maybe [:sequential ::timeline-event]]]])
 
-;;; --------------------------------------------- Tool Response Schema -----------------------------------------------
-
-(mr/def ::analyze-chart-output
-  "Output schema for the analyze-chart tool."
-  [:map
-   [:output :string]
-   [:stats {:optional true} [:maybe ::chart-stats]]])
