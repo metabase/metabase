@@ -3,6 +3,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { refreshSiteSettings } from "metabase/redux/settings";
 import { refreshCurrentUser } from "metabase/redux/user";
 import { getUser } from "metabase/selectors/user";
 import { Alert, Box, Stack } from "metabase/ui";
@@ -15,6 +16,7 @@ const MfaRequiredApp = (): JSX.Element | null => {
 
   const handleStatusChange = useCallback(async () => {
     await dispatch(refreshCurrentUser());
+    await dispatch(refreshSiteSettings());
     dispatch(push("/"));
   }, [dispatch]);
 
