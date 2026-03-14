@@ -1,7 +1,6 @@
 (ns metabase.session.settings
   (:require
    [metabase.api.common :as api]
-   [metabase.channel.email.messages :as messages]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.sso.core :as sso]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -74,7 +73,7 @@
                                                           :sso_source nil)]
                             (doseq [{:keys [email]} affected-users]
                               (try
-                                (messages/send-mfa-required-email! email)
+                                ((requiring-resolve 'metabase.channel.email.messages/send-mfa-required-email!) email)
                                 (catch Exception e
                                   (log/warnf e "Failed to send MFA required email to %s" email))))))
                         (catch Exception e
