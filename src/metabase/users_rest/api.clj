@@ -639,6 +639,23 @@
   (events/publish-event! :event/user-deactivated {:object (t2/select-one :model/User :id id) :user-id api/*current-user-id*})
   {:success true})
 
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :post "/:id/reset-mfa"
+  "Reset a user's TOTP multi-factor authentication enrollment. Superuser only.
+   Clears totp_secret, totp_enabled, and totp_recovery_codes so the user can re-enroll."
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
+  (api/check-superuser)
+  (let [totp-enabled? (t2/select-one-fn :totp_enabled :model/User :id id :is_active true)]
+    (api/check-404 (some? totp-enabled?))
+    (when-not totp-enabled?
+      (throw (ex-info (tru "This user does not have two-factor authentication enabled.")
+                      {:status-code 400}))))
+  (t2/update! :model/User id {:totp_enabled        false
+                               :totp_secret         nil
+                               :totp_recovery_codes nil})
+  api/generic-204-no-content)
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             Other Endpoints                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+

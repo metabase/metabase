@@ -22,6 +22,7 @@ import { GroupsListingApp } from "metabase/admin/people/containers/GroupsListing
 import { NewUserModal } from "metabase/admin/people/containers/NewUserModal";
 import { PeopleListingApp } from "metabase/admin/people/containers/PeopleListingApp";
 import { UserActivationModal } from "metabase/admin/people/containers/UserActivationModal";
+import { UserMfaResetModal } from "metabase/admin/people/containers/UserMfaResetModal";
 import { UserPasswordResetModal } from "metabase/admin/people/containers/UserPasswordResetModal";
 import { UserSuccessModal } from "metabase/admin/people/containers/UserSuccessModal";
 import { PerformanceApp } from "metabase/admin/performance/components/PerformanceApp";
@@ -165,6 +166,11 @@ export const getRoutes = (
               <ModalRoute path="edit" modal={EditUserModal} noWrap />
               <ModalRoute path="success" modal={UserSuccessModal} noWrap />
               <ModalRoute path="reset" modal={UserPasswordResetModal} noWrap />
+              <ModalRoute
+                path="reset-mfa"
+                modal={UserMfaResetModal}
+                noWrap
+              />
               <ModalRoute
                 path="deactivate"
                 modal={UserActivationModal}

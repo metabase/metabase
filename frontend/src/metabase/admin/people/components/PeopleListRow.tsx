@@ -172,6 +172,15 @@ export const PeopleListRow = ({
                     </Menu.Item>
                   )}
 
+                  {user.totp_enabled && (
+                    <Menu.Item
+                      component={ForwardRefLink}
+                      to={Urls.resetMfa(user)}
+                    >
+                      {t`Reset MFA`}
+                    </Menu.Item>
+                  )}
+
                   {PLUGIN_ADMIN_USER_MENU_ITEMS.flatMap((getItems) =>
                     getItems(user),
                   )}

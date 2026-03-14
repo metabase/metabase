@@ -329,6 +329,7 @@ export const MfaApi = {
   confirm: POST("/api/mfa/confirm"),
   disable: POST("/api/mfa/disable"),
   regenerateRecoveryCodes: POST("/api/mfa/recovery-codes"),
+  adminReset: POST("/api/user/:id/reset-mfa"),
 };
 
 export const SettingsApi = {

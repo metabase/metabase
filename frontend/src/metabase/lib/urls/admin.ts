@@ -34,6 +34,12 @@ export function newUserSuccess(user: BaseUser) {
     : `/admin/people/tenants/people/${user.id}/success`;
 }
 
+export function resetMfa(user: BaseUser) {
+  return isInternalUser(user)
+    ? `/admin/people/${user.id}/reset-mfa`
+    : `/admin/people/tenants/people/${user.id}/reset-mfa`;
+}
+
 export function deactivateUser(user: BaseUser) {
   return isInternalUser(user)
     ? `/admin/people/${user.id}/deactivate`
