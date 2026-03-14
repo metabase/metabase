@@ -161,6 +161,20 @@
       :message-type :html
       :message      message-body})))
 
+(defn send-mfa-required-email!
+  "Send an email notifying a user that MFA is now required by their administrator."
+  [email]
+  {:pre [(u/email? email)]}
+  (let [message-body (channel.template/render
+                      "metabase/channel/email/mfa_required.hbs"
+                      (merge (common-context)
+                             {:logoHeader true}))]
+    (send-email-with-logo!
+     {:subject      (trs "[{0}] Two-factor authentication is now required" (app-name-trs))
+      :recipients   [email]
+      :message-type :html
+      :message      message-body})))
+
 (mu/defn send-login-from-new-device-email!
   "Format and send an email informing the user that this is the first time we've seen a login from this device. Expects
   login history information as returned by [[metabase.login-history.models.login-history/human-friendly-infos]]."

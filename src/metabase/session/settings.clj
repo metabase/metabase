@@ -1,9 +1,11 @@
 (ns metabase.session.settings
   (:require
    [metabase.api.common :as api]
+   [metabase.channel.email.messages :as messages]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.sso.core :as sso]
    [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.log :as log]
    [metabase.util.password :as u.password]
    [toucan2.core :as t2]))
 
@@ -58,4 +60,20 @@
                   (when-not (t2/select-one-fn :totp_enabled :model/User :id api/*current-user-id*)
                     (throw (ex-info (str (tru "You must enable two-factor authentication on your own account before requiring it for others."))
                                     {:status-code 400}))))
-                (setting/set-value-of-type! :boolean :require-mfa new-value)))
+                (let [was-enabled (require-mfa)]
+                  (setting/set-value-of-type! :boolean :require-mfa new-value)
+                  ;; Send notification emails when transitioning from disabled to enabled
+                  (when (and new-value (not was-enabled))
+                    (future
+                      (try
+                        (let [affected-users (t2/select [:model/User :email]
+                                                        :is_active true
+                                                        :totp_enabled false
+                                                        :sso_source nil)]
+                          (doseq [{:keys [email]} affected-users]
+                            (try
+                              (messages/send-mfa-required-email! email)
+                              (catch Exception e
+                                (log/warnf e "Failed to send MFA required email to %s" email)))))
+                        (catch Exception e
+                          (log/error e "Failed to send MFA required notification emails"))))))))
