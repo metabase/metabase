@@ -79,7 +79,7 @@
 
 (deftest ^:parallel correlations-not-capped-when-within-limit-test
   (testing "Correlations are computed for all series when count <= max"
-    (is (=? {:correlations some?
+    (is (=? {:correlations #(= 3 (count %))
              :limits (symbol "nil #_\"key is not present.\"")}
             (stats.core/compute-chart-stats (make-chart-config 3 50) {:deep? true})))))
 

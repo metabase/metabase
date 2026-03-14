@@ -1,6 +1,7 @@
 (ns metabase-enterprise.metabot-v3.stats.histogram-test
   (:require
    [clojure.test :refer :all]
+   [mb.hawk.assert-exprs.approximately-equal :as =?]
    [metabase-enterprise.metabot-v3.stats.histogram :as histogram]))
 
 (set! *warn-on-reflection* true)
@@ -8,7 +9,8 @@
 (deftest ^:parallel compute-series-stats-empty-test
   (testing "empty values returns zero counts"
     (is (=? {:data_points  0
-             :distribution some?}
+             :distribution {:percentiles empty?
+                            :quartiles {:q1 0 :median 0 :q3 0 :iqr 0}}}
             (#'histogram/compute-series-stats [])))))
 
 (deftest ^:parallel compute-series-stats-nil-filtered-test
@@ -26,7 +28,8 @@
 (deftest ^:parallel compute-series-stats-enough-points-has-shape-test
   (testing ">= 8 values produces skewness and kurtosis"
     (is (=? {:data_points  8
-             :distribution {:skewness some? :kurtosis some?}}
+             :distribution {:skewness 0.0
+                            :kurtosis (=?/approx [-1.2 0.001])}}
             (#'histogram/compute-series-stats [1 2 3 4 5 6 7 8])))))
 
 (deftest ^:parallel compute-series-stats-symmetric-skewness-test
@@ -54,8 +57,8 @@
           result (#'histogram/compute-series-stats values)
           p50 (get-in result [:distribution :percentiles 50])
           median (:median (:summary result))]
-      (is (some? p50))
-      (is (< (Math/abs (- (double p50) (double median))) 0.01)))))
+      (is (= 6.0 p50))
+      (is (= p50 median)))))
 
 (deftest ^:parallel compute-series-stats-iqr-test
   (testing "IQR = Q3 - Q1"
@@ -66,21 +69,30 @@
 
 (deftest ^:parallel compute-histogram-stats-multi-series-test
   (testing "per-series structure with correct chart_type"
-    (let [series-data {"Bins" {:x_values [0 1 2 3 4] :y_values [5 10 20 10 5]
+    (let [series-data {"Bins" {:x_values [0 1 2 3 4]
+                               :y_values [5 10 20 10 5]
                                :x {:name "bin" :type :number}
                                :y {:name "count" :type :number}
                                :display_name "Bins"}}]
       (is (=? {:chart_type   :histogram
                :series_count 1
                :series       {"Bins" {:data_points  5
-                                      :summary      some?
-                                      :distribution some?}}}
+                                      :summary      {:min 5.0
+                                                     :max 20.0
+                                                     :mean 10.0}
+                                      :distribution {:quartiles {:q1 5.0
+                                                                 :q3 15.0
+                                                                 :iqr 10.0}}}}}
               (histogram/compute-histogram-stats series-data {}))))))
 
 (deftest ^:parallel compute-series-stats-all-nil-test
   (testing "all-nil values returns zero data_points"
     (is (=? {:data_points  0
-             :distribution some?}
+             :distribution {:percentiles empty?
+                            :quartiles {:q1 0
+                                        :median 0
+                                        :q3 0
+                                        :iqr 0}}}
             (#'histogram/compute-series-stats [nil nil nil])))))
 
 (deftest ^:parallel compute-series-stats-all-percentiles-present-test
@@ -102,8 +114,7 @@
   (testing "uniform distribution has negative excess kurtosis"
     (let [result (#'histogram/compute-series-stats (range 1 101))
           kurtosis (get-in result [:distribution :kurtosis])]
-      (is (some? kurtosis))
-      (is (< (double kurtosis) 0)))))
+      (is (== -1.2 kurtosis)))))
 
 (deftest ^:parallel compute-series-stats-single-value-test
   (testing "single value: min = max = mean"

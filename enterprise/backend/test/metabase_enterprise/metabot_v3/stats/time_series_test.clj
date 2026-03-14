@@ -149,11 +149,10 @@
     (let [values (mapv #(* 10.0 %) (range 1 11))
           dates  (mapv #(format "2024-%02d" %) (range 1 11))
           result (#'time-series/detect-patterns values dates)]
-      (when (seq result)
-        (is (=? {:from_date   some?
-                 :to_date     some?
-                 :description some?}
-                (first result)))))))
+      (is (=? [{:type      :consecutive_increase
+                :from_date "2024-02"
+                :to_date   "2024-10"}]
+              result)))))
 
 ;;; ------------------------------------------- compute-correlations tests -------------------------------------------
 
@@ -244,12 +243,19 @@
     (let [values [10.0 15.0 20.0]
           dates  ["d1" "d2" "d3"]
           result (#'time-series/find-significant-changes values dates 3)]
-      (doseq [change result]
-        (is (=? {:change_abs some?
-                 :change_pct some?
-                 :from_date  some?
-                 :to_date    some?}
-                change))))))
+      (is (=? [{:from_date  "d1"
+                :to_date    "d2"
+                :from_value 10.0
+                :to_value   15.0
+                :change_abs 5.0
+                :change_pct 50.0}
+               {:from_date  "d2"
+                :to_date    "d3"
+                :from_value 15.0
+                :to_value   20.0
+                :change_abs 5.0
+                :change_pct (=?/approx [33.33 0.01])}]
+              result)))))
 
 ;;; ---------------------------------------- compute-most-recent-change tests ----------------------------------------
 
@@ -280,10 +286,15 @@
 
 (deftest ^:parallel compute-series-stats-basic-fields-test
   (testing "basic stats include summary, time_range, trend, data_points, is_cumulative"
-    (is (=? {:data_points 5
-             :summary     {:min 10.0 :max 50.0}
-             :trend       some?
-             :time_range  {:start "2024-01" :end "2024-05"}}
+    (is (=? {:data_points   5
+             :summary       {:min 10.0 :max 50.0}
+             :trend         {:direction          :strongly_increasing
+                             :overall_change_pct 400.0
+                             :start_value        10.0
+                             :end_value          50.0}
+             :time_range    {:start "2024-01"
+                             :end   "2024-05"}
+             :is_cumulative true}
             (#'time-series/compute-series-stats
              [10.0 20.0 30.0 40.0 50.0]
              ["2024-01" "2024-02" "2024-03" "2024-04" "2024-05"]
@@ -317,10 +328,19 @@
 
 (deftest ^:parallel compute-series-stats-deep-stats-with-opt-test
   (testing "with deep? true, volatility and patterns are computed"
-    (is (=? {:volatility          some?
-             :patterns            some?
-             :significant_changes some?
-             :most_recent_change  some?}
+    (is (=? {:volatility          {:level                    :extreme
+                                   :coefficient_of_variation #(> % 0.5)
+                                   :max_period_change_pct    100.0}
+             :patterns            [{:type      :consecutive_increase
+                                    :from_date "2024-02"
+                                    :to_date   "2024-12"}]
+             :significant_changes #(= 3 (count %))
+             :most_recent_change  {:from_date  "2024-11"
+                                   :to_date    "2024-12"
+                                   :from_value 110.0
+                                   :to_value   120.0
+                                   :change_abs 10.0
+                                   :change_pct (=?/approx [9.09 0.01])}}
             (#'time-series/compute-series-stats
              (mapv #(* 10.0 %) (range 1 13))
              (mapv #(format "2024-%02d" %) (range 1 13))
@@ -353,7 +373,10 @@
                              :display_name "S2"}}]
       (is (=? {:chart_type    :time-series
                :series_count  2
-               :series        {"S1" some? "S2" some?}
+               :series        {"S1" {:data_points 5
+                                     :trend {:direction :strongly_increasing}}
+                               "S2" {:data_points 5
+                                     :trend {:direction :strongly_decreasing}}}
                :correlations  (symbol "nil #_\"key is not present.\"")}
               (time-series/compute-time-series-stats series-data {}))))))
 

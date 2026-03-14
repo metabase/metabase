@@ -1,6 +1,7 @@
 (ns metabase-enterprise.metabot-v3.stats.util-test
   (:require
    [clojure.test :refer :all]
+   [mb.hawk.assert-exprs.approximately-equal :as =?]
    [metabase-enterprise.metabot-v3.stats.util :as stats.u]))
 
 (set! *warn-on-reflection* true)
@@ -14,7 +15,7 @@
              :mean 30.0
              :median 30.0
              :range 40.0
-             :std_dev pos?}
+             :std_dev (=?/approx [15.81 0.01])}
             (stats.u/compute-summary [10.0 20.0 30.0 40.0 50.0])))))
 
 (deftest ^:parallel compute-summary-single-value-test

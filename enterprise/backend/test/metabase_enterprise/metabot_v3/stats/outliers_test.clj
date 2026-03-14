@@ -1,6 +1,7 @@
 (ns metabase-enterprise.metabot-v3.stats.outliers-test
   (:require
    [clojure.test :refer :all]
+   [mb.hawk.assert-exprs.approximately-equal :as =?]
    [metabase-enterprise.metabot-v3.stats.outliers :as outliers]))
 
 (set! *warn-on-reflection* true)
@@ -74,11 +75,11 @@
           dates  ["A" "B" "C" "D" "E"]
           result (outliers/find-outliers-cumulative values dates)]
       (is (seq result))
-      (is (=? {:index some?
-               :date some?
-               :value some?
-               :diff some?
-               :modified_z_score some?}
+      (is (=? {:index 3
+               :date "D"
+               :value 10.0
+               :diff 7.0
+               :modified_z_score (=?/approx [3.37 0.01])}
               (first result))))))
 
 (deftest ^:parallel find-outliers-cumulative-uniform-increments-test

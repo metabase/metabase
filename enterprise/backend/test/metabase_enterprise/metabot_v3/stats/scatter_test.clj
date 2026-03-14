@@ -29,7 +29,7 @@
 (deftest ^:parallel compute-series-stats-two-valid-pairs-test
   (testing "2 valid pairs gives correlation but no regression (< 3)"
     (is (=? {:data_points 2
-             :correlation some?
+             :correlation {:coefficient 1.0 :strength :strong :direction :positive}
              :regression  (symbol "nil #_\"key is not present.\"")}
             (#'scatter/compute-series-stats [1 2] [3 4])))))
 
@@ -84,7 +84,14 @@
                              :display_name "S2"}}]
       (is (=? {:chart_type    :scatter
                :series_count  2
-               :series        {"S1" some? "S2" some?}
+               :series        {"S1" {:data_points 3
+                                     :correlation {:coefficient 1.0
+                                                   :strength :strong
+                                                   :direction :positive}}
+                               "S2" {:data_points 3
+                                     :correlation {:coefficient -1.0
+                                                   :strength :strong
+                                                   :direction :negative}}}
                :correlations  (symbol "nil #_\"key is not present.\"")}
               (scatter/compute-scatter-stats series-data {}))))))
 
