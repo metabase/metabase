@@ -33,7 +33,7 @@
 
 ;;; ------------------------------------------ Repr Limits Note Tests ------------------------------------------------
 
-(deftest repr-includes-downsampled-note-test
+(deftest ^:parallel repr-includes-downsampled-note-test
   (testing "Representation includes a note about downsampled data"
     (let [n      (+ stats.core/max-data-points-per-series 1000)
           config (make-chart-config 1 n)
@@ -42,7 +42,7 @@
       (is (str/includes? repr "Data Limits Applied"))
       (is (str/includes? repr "downsampled")))))
 
-(deftest repr-includes-correlations-capped-note-test
+(deftest ^:parallel repr-includes-correlations-capped-note-test
   (testing "Representation includes a note about capped correlations"
     (let [n-series (+ stats.core/max-series-for-correlations 5)
           config   (make-chart-config n-series 50)
@@ -51,7 +51,7 @@
       (is (str/includes? repr "Data Limits Applied"))
       (is (str/includes? repr "correlations were limited")))))
 
-(deftest repr-no-limits-note-when-within-bounds-test
+(deftest ^:parallel repr-no-limits-note-when-within-bounds-test
   (testing "No limits note when data is within bounds"
     (let [config (make-chart-config 2 100)
           stats  (stats.core/compute-chart-stats config {:deep? true})
@@ -60,7 +60,7 @@
 
 ;;; ------------------------------------------- Histogram Repr Tests -------------------------------------------------
 
-(deftest repr-histogram-shows-shape-test
+(deftest ^:parallel repr-histogram-shows-shape-test
   (testing "representation includes Distribution Shape when enough data"
     (let [series-stats (histogram/compute-series-stats (range 1 101))
           stats        {:chart_type   :histogram
@@ -70,7 +70,7 @@
       (is (str/includes? rep "Test Series"))
       (is (str/includes? rep "Distribution Shape")))))
 
-(deftest repr-histogram-shows-percentiles-and-iqr-test
+(deftest ^:parallel repr-histogram-shows-percentiles-and-iqr-test
   (testing "histogram representation includes percentiles and IQR for sufficient data"
     (let [series-stats (histogram/compute-series-stats (range 1 101))
           stats        {:chart_type   :histogram
@@ -83,7 +83,7 @@
 
 ;;; -------------------------------------------- Scatter Repr Tests --------------------------------------------------
 
-(deftest repr-scatter-shows-relationship-test
+(deftest ^:parallel repr-scatter-shows-relationship-test
   (testing "representation includes Relationship with strength and direction"
     (let [series-stats (scatter/compute-series-stats [1 2 3 4 5] [10 20 30 40 50])
           stats        {:chart_type   :scatter
@@ -94,7 +94,7 @@
       (is (str/includes? rep "Relationship"))
       (is (str/includes? rep "strong positive")))))
 
-(deftest repr-scatter-shows-trend-line-test
+(deftest ^:parallel repr-scatter-shows-trend-line-test
   (testing "scatter representation includes trend line equation when regression is present"
     (let [series-stats (scatter/compute-series-stats [1 2 3 4 5] [12 14 16 18 20])
           stats        {:chart_type   :scatter
@@ -106,7 +106,7 @@
 
 ;;; ------------------------------------------ Categorical Repr Tests ------------------------------------------------
 
-(deftest repr-categorical-includes-key-info-test
+(deftest ^:parallel repr-categorical-includes-key-info-test
   (testing "representation includes series name, data count, and Categories"
     (let [series-stats (categorical/compute-series-stats ["A" "B" "C"] [100 200 150])
           stats        {:chart_type   :categorical
@@ -117,7 +117,7 @@
       (is (str/includes? rep "Categories"))
       (is (str/includes? rep "Top Categories")))))
 
-(deftest repr-categorical-shows-bottom-categories-for-large-dataset-test
+(deftest ^:parallel repr-categorical-shows-bottom-categories-for-large-dataset-test
   (testing "Bottom Categories shown when > 15 categories"
     (let [xs           (map #(str "Cat" (format "%02d" %)) (range 1 21))
           ys           (map double (range 1 21))
@@ -133,7 +133,7 @@
       ;; lowest value category (Cat01) appears
       (is (str/includes? rep "Cat01")))))
 
-(deftest repr-categorical-no-bottom-categories-for-small-dataset-test
+(deftest ^:parallel repr-categorical-no-bottom-categories-for-small-dataset-test
   (testing "Bottom Categories absent when <= 15 categories"
     (let [xs           (map #(str "Cat" %) (range 1 16))
           ys           (map double (range 1 16))
@@ -145,7 +145,7 @@
       (is (str/includes? rep "Top Categories"))
       (is (not (str/includes? rep "Bottom Categories"))))))
 
-(deftest repr-categorical-sparse-data-warning-test
+(deftest ^:parallel repr-categorical-sparse-data-warning-test
   (testing "sparse data warning shown for series with < 10 data points"
     (let [series-stats (categorical/compute-series-stats ["A" "B" "C"] [100 200 150])
           stats        {:chart_type   :categorical
@@ -156,7 +156,7 @@
 
 ;;; ----------------------------------------- Time Series Repr Tests -------------------------------------------------
 
-(deftest generate-temporal-context-test
+(deftest ^:parallel generate-temporal-context-test
   (testing "temporal context includes current date, day of week, week, month, and quarter"
     (let [result (repr/generate-temporal-context)]
       (is (str/includes? result "Today is"))
@@ -167,7 +167,7 @@
       (is (str/includes? (u/lower-case-en result) "quarter"))
       (is (some #(str/includes? result %) ["Q1" "Q2" "Q3" "Q4"])))))
 
-(deftest repr-time-series-includes-series-name-and-trend-test
+(deftest ^:parallel repr-time-series-includes-series-name-and-trend-test
   (testing "time series representation includes series name and trend direction"
     (let [values [10.0 20.0 30.0 40.0 50.0]
           dates  ["2024-01" "2024-02" "2024-03" "2024-04" "2024-05"]
@@ -180,7 +180,7 @@
       (is (str/includes? rep "Trend"))
       (is (str/includes? rep "Time Series")))))
 
-(deftest repr-time-series-multi-series-test
+(deftest ^:parallel repr-time-series-multi-series-test
   (testing "representation with multiple series includes all series names"
     (let [make-stats (fn [values dates]
                        (time-series/compute-series-stats values dates {}))
@@ -194,7 +194,7 @@
       (is (str/includes? rep "Sales"))
       (is (str/includes? rep "Revenue")))))
 
-(deftest repr-time-series-deep-stats-test
+(deftest ^:parallel repr-time-series-deep-stats-test
   (testing "deep stats include volatility, significant changes, and most recent change"
     (let [values (mapv #(* 10.0 %) (range 1 13))
           dates  (mapv #(format "2024-%02d" %) (range 1 13))
@@ -209,7 +209,7 @@
 
 ;;; ---------------------------------------- generate-representation dispatch ------------------------------------------
 
-(deftest generate-representation-dispatches-to-correct-renderer-test
+(deftest ^:parallel generate-representation-dispatches-to-correct-renderer-test
   (testing "dispatches to the correct renderer for known chart type"
     (let [ts-stats {:chart_type :time-series :series_count 1
                     :series {"S" (time-series/compute-series-stats
@@ -217,7 +217,7 @@
                                   ["d1" "d2" "d3" "d4" "d5"] {})}}]
       (is (str/includes? (repr/generate-representation {:stats ts-stats}) "Time Series")))))
 
-(deftest generate-representation-unknown-chart-type-fallback-test
+(deftest ^:parallel generate-representation-unknown-chart-type-fallback-test
   (testing "unknown chart type produces fallback message"
     (is (str/includes?
          (repr/generate-representation {:stats {:chart_type :waterfall}})

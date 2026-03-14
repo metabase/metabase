@@ -32,13 +32,13 @@
   ;; random-sample is probabilistic, so allow 20% tolerance
   (< n (* 1.2 stats.core/max-data-points-per-series)))
 
-(deftest data-points-within-limit-are-not-downsampled-test
+(deftest ^:parallel data-points-within-limit-are-not-downsampled-test
   (testing "Series within the limit are not modified"
     (is (=? {:limits (symbol "nil #_\"key is not present.\"")
              :series {"series_0" {:data_points 100}}}
             (stats.core/compute-chart-stats (make-chart-config 1 100) {:deep? false})))))
 
-(deftest data-points-exceeding-limit-are-downsampled-test
+(deftest ^:parallel data-points-exceeding-limit-are-downsampled-test
   (testing "Series exceeding max-data-points-per-series are downsampled"
     (let [n      (+ stats.core/max-data-points-per-series 5000)
           config (make-chart-config 1 n)
@@ -50,7 +50,7 @@
       (is (approx=max-data-points-per-series? sampled)
           (str "sampled " sampled " should be roughly <= " stats.core/max-data-points-per-series)))))
 
-(deftest downsampling-preserves-first-and-last-points-test
+(deftest ^:parallel downsampling-preserves-first-and-last-points-test
   (testing "Downsampled series preserves the first and last data points"
     (let [n       (+ stats.core/max-data-points-per-series 1000)
           config  (make-chart-config 1 n)
@@ -59,7 +59,7 @@
                                             :end_value   (double (last orig-ys))}}}}
               (stats.core/compute-chart-stats config {:deep? false}))))))
 
-(deftest multiple-series-downsampled-independently-test
+(deftest ^:parallel multiple-series-downsampled-independently-test
   (testing "Each series is downsampled independently, limits tracks each"
     (let [small-n 100
           large-n (+ stats.core/max-data-points-per-series 2000)
@@ -77,13 +77,13 @@
 
 ;;; ---------------------------------------- Correlation Cap Tests -------------------------------------------------
 
-(deftest correlations-not-capped-when-within-limit-test
+(deftest ^:parallel correlations-not-capped-when-within-limit-test
   (testing "Correlations are computed for all series when count <= max"
     (is (=? {:correlations some?
              :limits (symbol "nil #_\"key is not present.\"")}
             (stats.core/compute-chart-stats (make-chart-config 3 50) {:deep? true})))))
 
-(deftest correlations-capped-when-exceeding-limit-test
+(deftest ^:parallel correlations-capped-when-exceeding-limit-test
   (testing "Correlations are limited to max-series-for-correlations"
     (let [n-series (+ stats.core/max-series-for-correlations 5)
           config   (make-chart-config n-series 50)

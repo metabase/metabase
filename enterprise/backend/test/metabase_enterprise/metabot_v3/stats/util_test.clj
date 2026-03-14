@@ -7,7 +7,7 @@
 
 ;;; -------------------------------------------- compute-summary ---------------------------------------------------
 
-(deftest compute-summary-basic-test
+(deftest ^:parallel compute-summary-basic-test
   (testing "computes correct summary statistics"
     (is (=? {:min 10.0
              :max 50.0
@@ -17,7 +17,7 @@
              :std_dev pos?}
             (stats.u/compute-summary [10.0 20.0 30.0 40.0 50.0])))))
 
-(deftest compute-summary-single-value-test
+(deftest ^:parallel compute-summary-single-value-test
   (testing "single value has zero range"
     (is (=? {:min 42.0
              :max 42.0
@@ -34,7 +34,7 @@
    :y            {:name "y" :type :number}
    :display_name "test"})
 
-(deftest compute-correlations-perfect-positive-test
+(deftest ^:parallel compute-correlations-perfect-positive-test
   (testing "perfectly correlated series yield coefficient ~1.0"
     (let [xs     (mapv double (range 20))
           result (stats.u/compute-correlations
@@ -46,7 +46,7 @@
                 :direction   :positive}]
               result)))))
 
-(deftest compute-correlations-perfect-negative-test
+(deftest ^:parallel compute-correlations-perfect-negative-test
   (testing "inversely correlated series yield coefficient ~-1.0"
     (let [xs     (mapv double (range 20))
           result (stats.u/compute-correlations
@@ -58,19 +58,19 @@
                 :direction   :negative}]
               result)))))
 
-(deftest compute-correlations-skipped-when-too-few-aligned-points-test
+(deftest ^:parallel compute-correlations-skipped-when-too-few-aligned-points-test
   (testing "pairs with fewer than 10 aligned points are skipped"
     (is (empty? (stats.u/compute-correlations
                  {"a" (make-series (range 5) (range 5))
                   "b" (make-series (range 5) (range 5 10))})))))
 
-(deftest compute-correlations-no-overlap-test
+(deftest ^:parallel compute-correlations-no-overlap-test
   (testing "series with no common x-values produce no correlations"
     (is (empty? (stats.u/compute-correlations
                  {"a" (make-series (range 0 20) (range 0 20))
                   "b" (make-series (range 100 120) (range 100 120))})))))
 
-(deftest compute-correlations-three-series-test
+(deftest ^:parallel compute-correlations-three-series-test
   (testing "three series produce up to C(3,2) = 3 correlation pairs"
     (let [xs (mapv double (range 20))]
       (is (= 3 (count (stats.u/compute-correlations
@@ -80,7 +80,7 @@
 
 ;;; --------------------------------------- maybe-compute-correlations ---------------------------------------------
 
-(deftest maybe-compute-correlations-nil-when-not-deep-test
+(deftest ^:parallel maybe-compute-correlations-nil-when-not-deep-test
   (testing "returns nil when deep? is false"
     (let [xs (mapv double (range 20))]
       (is (nil? (stats.u/maybe-compute-correlations
@@ -88,14 +88,14 @@
                   "b" (make-series xs xs)}
                  {:deep? false}))))))
 
-(deftest maybe-compute-correlations-nil-for-single-series-test
+(deftest ^:parallel maybe-compute-correlations-nil-for-single-series-test
   (testing "returns nil when only one series"
     (let [xs (mapv double (range 20))]
       (is (nil? (stats.u/maybe-compute-correlations
                  {"a" (make-series xs xs)}
                  {:deep? true}))))))
 
-(deftest maybe-compute-correlations-computes-when-deep-test
+(deftest ^:parallel maybe-compute-correlations-computes-when-deep-test
   (testing "computes correlations when deep? is true and multiple series"
     (let [xs (mapv double (range 20))]
       (is (= 1 (count (stats.u/maybe-compute-correlations
@@ -103,7 +103,7 @@
                         "b" (make-series xs (mapv #(* 2.0 %) xs))}
                        {:deep? true})))))))
 
-(deftest maybe-compute-correlations-respects-max-cap-test
+(deftest ^:parallel maybe-compute-correlations-respects-max-cap-test
   (testing "caps number of series used for correlation"
     (let [xs         (mapv double (range 20))
           series-map (into {} (for [i (range 5)]
@@ -116,7 +116,7 @@
 
 ;;; ------------------------------------------ correlation-strength --------------------------------------------------
 
-(deftest correlation-strength-test
+(deftest ^:parallel correlation-strength-test
   (testing "classifies correlation coefficients correctly"
     (is (= :strong (stats.u/correlation-strength 0.9)))
     (is (= :strong (stats.u/correlation-strength -0.7)))
@@ -129,25 +129,25 @@
 
 ;;; ------------------------------------------- percentage-change ----------------------------------------------------
 
-(deftest percentage-change-basic-test
+(deftest ^:parallel percentage-change-basic-test
   (testing "computes correct percentage change"
     (is (= 100.0 (stats.u/percentage-change 50.0 100.0)))
     (is (= -50.0 (stats.u/percentage-change 100.0 50.0)))
     (is (= 0.0 (stats.u/percentage-change 100.0 100.0)))))
 
-(deftest percentage-change-zero-from-test
+(deftest ^:parallel percentage-change-zero-from-test
   (testing "returns 0.0 when from-val is zero"
     (is (= 0.0 (stats.u/percentage-change 0.0 100.0)))
     (is (= 0.0 (stats.u/percentage-change 0 0)))))
 
-(deftest percentage-change-negative-from-test
+(deftest ^:parallel percentage-change-negative-from-test
   (testing "handles negative from-val correctly"
     (is (= 200.0 (stats.u/percentage-change -50.0 50.0)))
     (is (= -100.0 (stats.u/percentage-change -50.0 -100.0)))))
 
 ;;; ---------------------------------------- compute-series-with-labels ----------------------------------------------
 
-(deftest compute-series-with-labels-test
+(deftest ^:parallel compute-series-with-labels-test
   (testing "applies compute-fn and attaches column names"
     (let [series-data {"s1" {:x_values [1 2 3]
                              :y_values [10 20 30]
@@ -163,7 +163,7 @@
                      :y_name "Revenue"}}
               result)))))
 
-(deftest compute-series-with-labels-nil-metadata-test
+(deftest ^:parallel compute-series-with-labels-nil-metadata-test
   (testing "handles nil column metadata gracefully"
     (let [series-data {"s1" {:x_values [1] :y_values [10]}}
           result (stats.u/compute-series-with-labels
@@ -173,7 +173,7 @@
                      :y_name nil?}}
               result)))))
 
-(deftest compute-series-with-labels-multiple-series-test
+(deftest ^:parallel compute-series-with-labels-multiple-series-test
   (testing "processes multiple series"
     (let [series-data {"a" {:x_values [1]
                             :y_values [10]
@@ -212,7 +212,7 @@
          :distribution {:percentiles {25 2.0 50 5.0 75 8.0 90 9.0 95 9.5 99 9.9}
                         :quartiles   {:q1 2.0 :median 5.0 :q3 8.0 :iqr 6.0}}}})
 
-(deftest make-chart-result-basic-test
+(deftest ^:parallel make-chart-result-basic-test
   (testing "builds standard chart result with valid schema"
     (is (=? {:chart_type    :categorical
              :series_count  1
@@ -220,7 +220,7 @@
              :correlations  (symbol "nil #_\"key is not present.\"")}
             (stats.u/make-chart-result :categorical {"s1" {}} sample-categorical-series nil)))))
 
-(deftest make-chart-result-with-correlations-test
+(deftest ^:parallel make-chart-result-with-correlations-test
   (testing "includes correlations when provided"
     (let [corrs [{:series_a "a" :series_b "b" :coefficient 0.9
                   :strength :strong :direction :positive}]
@@ -235,7 +235,7 @@
           result (stats.u/make-chart-result :categorical {"a" {} "b" {}} series corrs)]
       (is (= corrs (:correlations result))))))
 
-(deftest make-chart-result-nil-correlations-test
+(deftest ^:parallel make-chart-result-nil-correlations-test
   (testing "omits correlations when nil"
     (is (=? {:correlations (symbol "nil #_\"key is not present.\"")}
             (stats.u/make-chart-result :histogram {"s1" {}} sample-histogram-series nil)))))

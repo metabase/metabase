@@ -6,7 +6,7 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest compute-series-stats-empty-test
+(deftest ^:parallel compute-series-stats-empty-test
   (testing "empty series returns zero counts without crashing"
     (is (=? {:category_count 0
              :top_categories []
@@ -14,14 +14,14 @@
              :summary        nil?}
             (categorical/compute-series-stats [] [])))))
 
-(deftest compute-series-stats-nil-y-filtered-test
+(deftest ^:parallel compute-series-stats-nil-y-filtered-test
   (testing "nil y-values are filtered out"
     (is (=? {:category_count 2
              :top_categories [{:name "C" :value 200}
                               {:name "A" :value 100}]}
             (categorical/compute-series-stats ["A" "B" "C"] [100 nil 200])))))
 
-(deftest compute-series-stats-single-category-test
+(deftest ^:parallel compute-series-stats-single-category-test
   (testing "single category has 100% share"
     (is (=? {:category_count 1
              :top_categories [{:name "only"
@@ -29,7 +29,7 @@
                                :percentage 100.0}]}
             (categorical/compute-series-stats ["only"] [42])))))
 
-(deftest compute-series-stats-percentages-sum-to-100-test
+(deftest ^:parallel compute-series-stats-percentages-sum-to-100-test
   (testing "percentages sum to approximately 100"
     (let [result (categorical/compute-series-stats
                   ["A" "B" "C" "D"]
@@ -38,14 +38,14 @@
       (let [total-pct (reduce + (map :percentage (:top_categories result)))]
         (is (== total-pct 100.0))))))
 
-(deftest compute-series-stats-sorted-by-value-desc-test
+(deftest ^:parallel compute-series-stats-sorted-by-value-desc-test
   (testing "top categories are sorted by value descending"
     (is (= ["C" "B" "A"]
            (->> (categorical/compute-series-stats ["C" "A" "B"] [30 10 20])
                 :top_categories
                 (map :name))))))
 
-(deftest compute-series-stats-top-10-limit-test
+(deftest ^:parallel compute-series-stats-top-10-limit-test
   (testing "top_categories capped at 10"
     (let [xs (map str (range 20))
           ys (range 1 21)]
@@ -53,21 +53,21 @@
                :top_categories #(= 10 (count %))}
               (categorical/compute-series-stats xs ys))))))
 
-(deftest compute-series-stats-bottom-categories-present-test
+(deftest ^:parallel compute-series-stats-bottom-categories-present-test
   (testing "bottom_categories populated when > 15 categories"
     (let [xs (map str (range 16))
           ys (range 1 17)]
       (is (=? {:bottom_categories #(= 5 (count %))}
               (categorical/compute-series-stats xs ys))))))
 
-(deftest compute-series-stats-bottom-categories-missing-test
+(deftest ^:parallel compute-series-stats-bottom-categories-missing-test
   (testing "bottom_categories absent when <= 15 categories"
     (is (=? {:bottom_categories (symbol "nil #_\"key is not present.\"")}
             (categorical/compute-series-stats
              (map str (range 15))
              (range 1 16))))))
 
-(deftest compute-series-stats-outliers-present-test
+(deftest ^:parallel compute-series-stats-outliers-present-test
   (testing "outlier detection triggered at >= 5 valid points"
     (is (=? {:outliers [{:index 5
                          :date "F"
@@ -77,14 +77,14 @@
              ["A" "B" "C" "D" "E" "F"]
              [10 12 11 9 13 1000])))))
 
-(deftest compute-series-stats-outliers-missing-test
+(deftest ^:parallel compute-series-stats-outliers-missing-test
   (testing "outlier detection not triggered at < 5 valid points"
     (is (=? {:outliers empty?}
             (categorical/compute-series-stats
              ["A" "B" "C"]
              [10 10 1000])))))
 
-(deftest compute-categorical-stats-multi-series-test
+(deftest ^:parallel compute-categorical-stats-multi-series-test
   (testing "multiple series each get their own stats"
     (let [series-data {"Revenue" {:x_values ["A" "B"]
                                   :y_values [100 200]
@@ -134,7 +134,7 @@
                                 :y_name "cost"}}}
               (categorical/compute-categorical-stats series-data {:deep? false}))))))
 
-(deftest compute-categorical-stats-correlations-when-deep?-test
+(deftest ^:parallel compute-categorical-stats-correlations-when-deep?-test
   (testing "correlations computed with deep? and multiple series with >= 10 shared x-values"
     (let [xs  (map str (range 12))
           series-data {"A" {:x_values xs
@@ -150,7 +150,7 @@
       (is (=? {:correlations #(pos? (count %))}
               (categorical/compute-categorical-stats series-data {:deep? true}))))))
 
-(deftest compute-categorical-stats-correlations-when-not-deep?-test
+(deftest ^:parallel compute-categorical-stats-correlations-when-not-deep?-test
   (testing "no correlations without deep?"
     (let [series-data {"A" {:x_values ["x" "y"]
                             :y_values [1 2]
@@ -165,7 +165,7 @@
       (is (=? {:correlations (symbol "nil #_\"key is not present.\"")}
               (categorical/compute-categorical-stats series-data {:deep? false}))))))
 
-(deftest compute-series-stats-duplicate-categories-test
+(deftest ^:parallel compute-series-stats-duplicate-categories-test
   (testing "duplicate x-values: category_count counts unique dimensions only"
     (let [result (categorical/compute-series-stats
                   ["A" "A" "B"]
@@ -175,14 +175,14 @@
       ;; category_count is unique dimensions
       (is (=? {:category_count 2} result)))))
 
-(deftest compute-series-stats-nil-dimensions-excluded-test
+(deftest ^:parallel compute-series-stats-nil-dimensions-excluded-test
   (testing "nil x-values are excluded from category_count"
     (is (=? {:category_count 1}
             (categorical/compute-series-stats
              [nil "A" nil]
              [100 200 150])))))
 
-(deftest compute-series-stats-summary-values-test
+(deftest ^:parallel compute-series-stats-summary-values-test
   (testing "summary min, max, and mean are correct"
     (is (=? {:summary {:min  80
                        :max  200
@@ -191,7 +191,7 @@
              ["North" "South" "East" "West"]
              [100 200 150 80])))))
 
-(deftest compute-series-stats-exact-percentages-test
+(deftest ^:parallel compute-series-stats-exact-percentages-test
   (testing "percentages in top_categories match expected values"
     ;; enabled=112, disabled=103, invited=85 → total=300
     (is (=? {"enabled"  (=?/approx [37.3 0.1])
