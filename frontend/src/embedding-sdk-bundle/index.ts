@@ -19,6 +19,7 @@ import "sdk-specific-imports";
 
 import type { MetabaseEmbeddingSdkBundleExports } from "./types/sdk-bundle";
 
+import { AdHocQuestion } from "./components/public/AdHocQuestion";
 import { CollectionBrowser } from "./components/public/CollectionBrowser";
 import { CreateDashboardModal } from "./components/public/CreateDashboardModal";
 import { CreateQuestion } from "./components/public/CreateQuestion";
@@ -53,6 +54,7 @@ defineBuildInfo("METABASE_EMBEDDING_SDK_BUNDLE_BUILD_INFO");
  * and should be done via the deprecation of the field first.
  */
 const sdkBundleExports: MetabaseEmbeddingSdkBundleExports = {
+  AdHocQuestion,
   CollectionBrowser,
   CreateDashboardModal,
   CreateQuestion,

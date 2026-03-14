@@ -11,6 +11,7 @@ EMBEDDING_SDK_CONFIG.isEmbeddingSdk = true;
 defineBuildInfo("METABASE_EMBEDDING_SDK_PACKAGE_BUILD_INFO");
 defineGlobalDependencies();
 
+export { AdHocQuestion } from "./components/public/AdHocQuestion";
 export { CollectionBrowser } from "./components/public/CollectionBrowser";
 export { CreateQuestion } from "./components/public/CreateQuestion";
 export { CreateDashboardModal } from "./components/public/CreateDashboardModal";
@@ -36,6 +37,7 @@ export {
   type CollectionBrowserProps,
   type CollectionBrowserListColumns,
 } from "embedding-sdk-bundle/components/public/CollectionBrowser";
+export { type AdHocQuestionProps } from "embedding-sdk-bundle/components/public/AdHocQuestion";
 export { type CreateDashboardModalProps } from "embedding-sdk-bundle/components/public/CreateDashboardModal";
 export { type CreateQuestionProps } from "embedding-sdk-bundle/components/public/CreateQuestion";
 export type {
