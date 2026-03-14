@@ -14,7 +14,7 @@
 
 (set! *warn-on-reflection* true)
 
-(api.macros/defendpoint :post "/check-replace-source" :- ::replacement.schema/check-replace-source-response
+(api.macros/defendpoint :post "/source/check-replace" :- ::replacement.schema/check-replace-source-response
   "Check whether a source entity can be replaced by a target entity. Returns compatibility
   errors describing column mismatches, type mismatches, primary key mismatches, and foreign
   key mismatches."
@@ -31,7 +31,7 @@
    [source_entity_type source_entity_id]
    [target_entity_type target_entity_id]))
 
-(api.macros/defendpoint :post "/replace-source" :- [:map
+(api.macros/defendpoint :post "/source/replace" :- [:map
                                                     [:status [:= 202]] ;; throws to return 409
                                                     [:body [:map {:closed true}
                                                             [:run_id ::replacement.schema/run-id]]]]
@@ -65,20 +65,26 @@
     (-> (response/response {:run_id (:id job-row)})
         (assoc :status 202))))
 
-(api.macros/defendpoint :get "/runs/:id" :- ::replacement.schema/run
+(api.macros/defendpoint :get "/source/runs" :- [:sequential ::replacement.schema/run]
+  "List source replacement runs, optionally filtered by is-active."
+  [_route-params
+   {:keys [is-active]} :- [:map [:is-active {:optional true} [:maybe :boolean]]]]
+  (api/check-superuser)
+  (t2/select :model/ReplacementRun
+             (cond-> {:order-by [[:start_time :desc]]}
+               (some? is-active) (assoc :where [:= :is_active is-active]))))
+
+(api.macros/defendpoint :get "/source/runs/:id" :- ::replacement.schema/run
   "Get the status of a source replacement run."
   [{:keys [id]} :- [:map [:id ::replacement.schema/run-id]]]
   (api/check-superuser)
-  (or (t2/select-one :model/ReplacementRun :id id)
-      (throw (ex-info "Run not found" {:status-code 404}))))
+  (api/check-404 (t2/select-one :model/ReplacementRun :id id)))
 
-(api.macros/defendpoint :post "/runs/:id/cancel" :- [:map [:success boolean?]]
+(api.macros/defendpoint :post "/source/runs/:id/cancel" :- [:map [:success boolean?]]
   "Cancel a running source replacement."
   [{:keys [id]} :- [:map [:id ::replacement.schema/run-id]]]
   (api/check-superuser)
-  (let [run (t2/select-one :model/ReplacementRun :id id)]
-    (when-not run
-      (throw (ex-info "Run not found" {:status-code 404})))
+  (let [run (api/check-404 (t2/select-one :model/ReplacementRun :id id))]
     (when-not (:is_active run)
       (throw (ex-info "Run is not active" {:status-code 409})))
     (replacement-run/cancel-run! id)
