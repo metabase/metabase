@@ -29,7 +29,7 @@
   (when-not (Double/isNaN (double x))
     x))
 
-(defn compute-series-stats
+(defn- compute-series-stats
   "Compute histogram stats for a single series.
   x_values are (bin edges/centers) and y_values are (counts/frequencies).
   Single-arity form uses sequential indices as x_values."

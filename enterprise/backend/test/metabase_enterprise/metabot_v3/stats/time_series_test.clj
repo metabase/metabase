@@ -12,31 +12,31 @@
 
 (deftest ^:parallel detect-cumulative-strictly-increasing-test
   (testing "strictly increasing data is cumulative"
-    (is (true? (time-series/detect-cumulative? [10.0 20.0 30.0 40.0 50.0 60.0])))))
+    (is (true? (#'time-series/detect-cumulative? [10.0 20.0 30.0 40.0 50.0 60.0])))))
 
 (deftest ^:parallel detect-cumulative-monotone-with-plateaus-test
   (testing "monotone non-decreasing data with flat sections is cumulative"
-    (is (true? (time-series/detect-cumulative? [100.0 100.0 150.0 150.0 200.0 200.0 250.0])))))
+    (is (true? (#'time-series/detect-cumulative? [100.0 100.0 150.0 150.0 200.0 200.0 250.0])))))
 
 (deftest ^:parallel detect-cumulative-not-cumulative-test
   (testing "data with frequent decreases is not cumulative"
-    (is (false? (time-series/detect-cumulative? [1.0 2.0 1.5 3.0 2.8])))))
+    (is (false? (#'time-series/detect-cumulative? [1.0 2.0 1.5 3.0 2.8])))))
 
 (deftest ^:parallel detect-cumulative-multiple-significant-decreases-test
   (testing "data with many significant drops is not cumulative"
-    (is (false? (time-series/detect-cumulative? [100.0 90.0 120.0 100.0 150.0 130.0 180.0])))))
+    (is (false? (#'time-series/detect-cumulative? [100.0 90.0 120.0 100.0 150.0 130.0 180.0])))))
 
 (deftest ^:parallel detect-cumulative-single-value-test
   (testing "single value has no diffs → not cumulative"
-    (is (false? (time-series/detect-cumulative? [100.0])))))
+    (is (false? (#'time-series/detect-cumulative? [100.0])))))
 
 (deftest ^:parallel detect-cumulative-empty-test
   (testing "empty values are not cumulative"
-    (is (false? (time-series/detect-cumulative? [])))))
+    (is (false? (#'time-series/detect-cumulative? [])))))
 
 (deftest ^:parallel detect-cumulative-mostly-increasing-with-significant-drop-test
   (testing "data where >5% of consecutive diffs are negative is not cumulative"
-    (is (false? (time-series/detect-cumulative? [1.0 2.0 3.0 2.9 4.0 5.0])))))
+    (is (false? (#'time-series/detect-cumulative? [1.0 2.0 3.0 2.9 4.0 5.0])))))
 
 ;;; ---------------------------------------------- compute-trend tests -----------------------------------------------
 
@@ -47,30 +47,30 @@
              :overall_change_pct pos?
              :start_value        10.0
              :end_value          30.0}
-            (time-series/compute-trend [10.0 15.0 20.0 25.0 30.0])))))
+            (#'time-series/compute-trend [10.0 15.0 20.0 25.0 30.0])))))
 
 (deftest ^:parallel compute-trend-strongly-decreasing-test
   (testing "strongly decreasing series detected as :strongly_decreasing"
     (is (=? {:direction          :strongly_decreasing
              :overall_change_pct neg?}
-            (time-series/compute-trend [100.0 80.0 60.0 40.0 20.0])))))
+            (#'time-series/compute-trend [100.0 80.0 60.0 40.0 20.0])))))
 
 (deftest ^:parallel compute-trend-flat-test
   (testing "roughly flat series detected as :flat"
     (is (=? {:direction :flat}
-            (time-series/compute-trend [50.0 51.0 50.0 50.5 50.0])))))
+            (#'time-series/compute-trend [50.0 51.0 50.0 50.5 50.0])))))
 
 (deftest ^:parallel compute-trend-increasing-moderate-test
   (testing "moderate increase (10-50% range) detected as :increasing"
     ;; slope=10, mean=120, total_change=40, pct=33.3% → :increasing
     (is (=? {:direction :increasing}
-            (time-series/compute-trend [100.0 110.0 120.0 130.0 140.0])))))
+            (#'time-series/compute-trend [100.0 110.0 120.0 130.0 140.0])))))
 
 (deftest ^:parallel compute-trend-returns-start-end-values-test
   (testing "trend includes correct start and end values"
     (is (=? {:start_value 5.0
              :end_value   25.0}
-            (time-series/compute-trend [5.0 10.0 15.0 20.0 25.0])))))
+            (#'time-series/compute-trend [5.0 10.0 15.0 20.0 25.0])))))
 
 ;;; --------------------------------------------- compute-volatility tests -------------------------------------------
 
@@ -79,34 +79,34 @@
     ;; mean≈101.6, std≈1.1, cv≈0.011
     (is (=? {:level                    :low
              :coefficient_of_variation #(< % 0.1)}
-            (time-series/compute-volatility [100.0 102.0 101.0 103.0 102.0])))))
+            (#'time-series/compute-volatility [100.0 102.0 101.0 103.0 102.0])))))
 
 (deftest ^:parallel compute-volatility-moderate-test
   (testing "moderately variable data produces :moderate volatility (0.1 ≤ cv < 0.3)"
     ;; mean=100, std≈17.3, cv≈0.173
     (is (=? {:level                    :moderate
              :coefficient_of_variation #(and (<= 0.1 %) (< % 0.3))}
-            (time-series/compute-volatility [80.0 100.0 120.0 90.0 110.0])))))
+            (#'time-series/compute-volatility [80.0 100.0 120.0 90.0 110.0])))))
 
 (deftest ^:parallel compute-volatility-high-test
   (testing "fairly variable data produces :high volatility (0.3 ≤ cv < 0.5)"
     ;; mean=100, std≈34.6, cv≈0.346
     (is (=? {:level                    :high
              :coefficient_of_variation #(and (<= 0.3 %) (< % 0.5))}
-            (time-series/compute-volatility [60.0 100.0 140.0 70.0 130.0])))))
+            (#'time-series/compute-volatility [60.0 100.0 140.0 70.0 130.0])))))
 
 (deftest ^:parallel compute-volatility-extreme-test
   (testing "very variable data produces :extreme volatility (cv ≥ 0.5)"
     ;; mean≈102, std≈75, cv≈0.73
     (is (=? {:level                    :extreme
              :coefficient_of_variation #(>= % 0.5)}
-            (time-series/compute-volatility [10.0 100.0 200.0 50.0 150.0])))))
+            (#'time-series/compute-volatility [10.0 100.0 200.0 50.0 150.0])))))
 
 (deftest ^:parallel compute-volatility-max-period-change-test
   (testing "max period change is computed as absolute percentage of previous value"
     ;; changes 100%, 25%, 100% → max = 100%
     (is (=? {:max_period_change_pct #(and (>= % 99.0) (<= % 101.0))}
-            (time-series/compute-volatility [100.0 200.0 250.0 500.0])))))
+            (#'time-series/compute-volatility [100.0 200.0 250.0 500.0])))))
 
 ;;; ----------------------------------------------- detect-patterns tests --------------------------------------------
 
@@ -114,7 +114,7 @@
   (testing "detects consecutive increases of 5+ periods"
     (let [values (mapv #(* 10.0 %) (range 1 11))  ; [10 20 ... 100]
           dates  (mapv #(format "2024-%02d" %) (range 1 11))
-          result (time-series/detect-patterns values dates)]
+          result (#'time-series/detect-patterns values dates)]
       (is (pos? (count result)))
       (is (=? {:type        :consecutive_increase
                :description #(str/includes? % "increase")}
@@ -124,7 +124,7 @@
   (testing "detects consecutive decreases of 5+ periods"
     (let [values (mapv #(* 10.0 %) (range 10 0 -1))  ; [100 90 ... 10]
           dates  (mapv #(format "2024-%02d" %) (range 1 11))
-          result (time-series/detect-patterns values dates)]
+          result (#'time-series/detect-patterns values dates)]
       (is (pos? (count result)))
       (is (=? {:type        :consecutive_decrease
                :description #(str/includes? % "decrease")}
@@ -134,21 +134,21 @@
   (testing "fewer than 5 consecutive changes → no streak detected"
     (let [values [10.0 20.0 30.0]
           dates  ["2024-01" "2024-02" "2024-03"]
-          result (time-series/detect-patterns values dates)]
+          result (#'time-series/detect-patterns values dates)]
       (is (empty? result)))))
 
 (deftest ^:parallel detect-patterns-insufficient-data-test
   (testing "only 2 data points → no streaks possible"
     (let [values [10.0 20.0]
           dates  ["2024-01" "2024-02"]
-          result (time-series/detect-patterns values dates)]
+          result (#'time-series/detect-patterns values dates)]
       (is (empty? result)))))
 
 (deftest ^:parallel detect-patterns-includes-date-range-test
   (testing "pattern maps include :from_date and :to_date"
     (let [values (mapv #(* 10.0 %) (range 1 11))
           dates  (mapv #(format "2024-%02d" %) (range 1 11))
-          result (time-series/detect-patterns values dates)]
+          result (#'time-series/detect-patterns values dates)]
       (when (seq result)
         (is (=? {:from_date   some?
                  :to_date     some?
@@ -173,7 +173,7 @@
           x-vals  (mapv str (range 1 (inc n)))
           series-map {"Revenue" (make-corr-series "Revenue" x-vals (mapv #(* 10.0 %) (range 1 (inc n))))
                       "Sales"   (make-corr-series "Sales" x-vals (mapv #(* 20.0 %) (range 1 (inc n))))}
-          result  (stats.u/compute-correlations series-map)]
+          result  (#'stats.u/compute-correlations series-map)]
       (is (= 1 (count result)))
       ;; "Revenue" < "Sales" alphabetically → series_a="Revenue", series_b="Sales"
       (is (=? {:series_a    "Revenue"
@@ -189,7 +189,7 @@
           x-vals (mapv str (range 1 (inc n)))
           series-map {"Costs" (make-corr-series "Costs" x-vals (mapv #(* 10.0 %) (range 1 (inc n))))
                       "Sales" (make-corr-series "Sales" x-vals (mapv #(* 10.0 %) (range (inc n) 0 -1)))}
-          result (stats.u/compute-correlations series-map)]
+          result (#'stats.u/compute-correlations series-map)]
       (is (= 1 (count result)))
       (is (=? {:coefficient #(< % -0.9)
                :strength    :strong
@@ -201,7 +201,7 @@
     (let [n      10
           x-vals (mapv str (range 1 (inc n)))
           series-map {"Sales" (make-corr-series "Sales" x-vals (mapv #(* 10.0 %) (range 1 (inc n))))}
-          result (stats.u/compute-correlations series-map)]
+          result (#'stats.u/compute-correlations series-map)]
       (is (empty? result)))))
 
 (deftest ^:parallel compute-correlations-three-series-all-pairs-test
@@ -212,7 +212,7 @@
           series-map {"A" (make-corr-series "A" x-vals vals)
                       "B" (make-corr-series "B" x-vals vals)
                       "C" (make-corr-series "C" x-vals vals)}
-          result (stats.u/compute-correlations series-map)]
+          result (#'stats.u/compute-correlations series-map)]
       (is (= 3 (count result))))))
 
 (deftest ^:parallel compute-correlations-insufficient-points-skipped-test
@@ -221,7 +221,7 @@
     (let [x-vals (mapv str (range 1 6))
           series-map {"A" (make-corr-series "A" x-vals [1.0 2.0 3.0 4.0 5.0])
                       "B" (make-corr-series "B" x-vals [2.0 4.0 6.0 8.0 10.0])}
-          result (stats.u/compute-correlations series-map)]
+          result (#'stats.u/compute-correlations series-map)]
       (is (empty? result)))))
 
 ;;; ----------------------------------------- find-significant-changes tests -----------------------------------------
@@ -232,7 +232,7 @@
     ;; Top 3 by |abs|: 12→25 (13), 10→15 (5), 15→12 or 25→22 (3)
     (let [values [10.0 15.0 12.0 25.0 22.0 20.0]
           dates  ["d1" "d2" "d3" "d4" "d5" "d6"]
-          result (time-series/find-significant-changes values dates 3)]
+          result (#'time-series/find-significant-changes values dates 3)]
       (is (<= (count result) 3))
       ;; Largest change is 12→25 (abs=13)
       (is (=? {:from_value 12.0
@@ -243,7 +243,7 @@
   (testing "change maps include :change_abs and :change_pct"
     (let [values [10.0 15.0 20.0]
           dates  ["d1" "d2" "d3"]
-          result (time-series/find-significant-changes values dates 3)]
+          result (#'time-series/find-significant-changes values dates 3)]
       (doseq [change result]
         (is (=? {:change_abs some?
                  :change_pct some?
@@ -260,13 +260,13 @@
              :from_value 22.0
              :to_value   20.0
              :change_abs -2.0}
-            (time-series/compute-most-recent-change
+            (#'time-series/compute-most-recent-change
              [10.0 15.0 12.0 25.0 22.0 20.0]
              ["2024-01" "2024-02" "2024-03" "2024-04" "2024-05" "2024-06"])))))
 
 (deftest ^:parallel compute-most-recent-change-single-value-test
   (testing "single value returns nil (no previous point)"
-    (is (nil? (time-series/compute-most-recent-change [10.0] ["d1"])))))
+    (is (nil? (#'time-series/compute-most-recent-change [10.0] ["d1"])))))
 
 (deftest ^:parallel compute-most-recent-change-two-values-test
   (testing "two values returns the one change"
@@ -274,7 +274,7 @@
              :to_value   15.0
              :change_abs 5.0
              :change_pct (=?/approx [50.0 0.001])}
-            (time-series/compute-most-recent-change [10.0 15.0] ["d1" "d2"])))))
+            (#'time-series/compute-most-recent-change [10.0 15.0] ["d1" "d2"])))))
 
 ;;; --------------------------------------------- compute-series-stats tests ----------------------------------------
 
@@ -284,7 +284,7 @@
              :summary     {:min 10.0 :max 50.0}
              :trend       some?
              :time_range  {:start "2024-01" :end "2024-05"}}
-            (time-series/compute-series-stats
+            (#'time-series/compute-series-stats
              [10.0 20.0 30.0 40.0 50.0]
              ["2024-01" "2024-02" "2024-03" "2024-04" "2024-05"]
              {})))))
@@ -292,7 +292,7 @@
 (deftest ^:parallel compute-series-stats-cumulative-detection-test
   (testing "cumulative data is flagged as :is_cumulative true"
     (is (=? {:is_cumulative true}
-            (time-series/compute-series-stats
+            (#'time-series/compute-series-stats
              (mapv #(* 10.0 %) (range 1 13))
              (mapv #(format "2024-%02d" %) (range 1 13))
              {})))))
@@ -300,7 +300,7 @@
 (deftest ^:parallel compute-series-stats-non-cumulative-detection-test
   (testing "non-cumulative data is flagged as :is_cumulative false"
     (is (=? {:is_cumulative false}
-            (time-series/compute-series-stats
+            (#'time-series/compute-series-stats
              [10.0 5.0 15.0 8.0 20.0]
              ["d1" "d2" "d3" "d4" "d5"]
              {})))))
@@ -310,7 +310,7 @@
     (is (=? {:volatility          (symbol "nil #_\"key is not present.\"")
              :patterns            (symbol "nil #_\"key is not present.\"")
              :significant_changes (symbol "nil #_\"key is not present.\"")}
-            (time-series/compute-series-stats
+            (#'time-series/compute-series-stats
              (mapv #(* 10.0 %) (range 1 13))
              (mapv #(format "2024-%02d" %) (range 1 13))
              {})))))
@@ -321,14 +321,14 @@
              :patterns            some?
              :significant_changes some?
              :most_recent_change  some?}
-            (time-series/compute-series-stats
+            (#'time-series/compute-series-stats
              (mapv #(* 10.0 %) (range 1 13))
              (mapv #(format "2024-%02d" %) (range 1 13))
              {:deep? true})))))
 
 (deftest ^:parallel compute-series-stats-deep-significant-changes-capped-at-3-test
   (testing "significant_changes contains at most 3 entries"
-    (let [result (time-series/compute-series-stats
+    (let [result (#'time-series/compute-series-stats
                   [10.0 15.0 12.0 25.0 22.0 20.0]
                   ["2024-01" "2024-02" "2024-03" "2024-04" "2024-05" "2024-06"]
                   {:deep? true})]

@@ -45,7 +45,7 @@
   "Minimum sample size required for meaningful correlation computation."
   10)
 
-(mu/defn compute-correlations :- [:sequential ::stats.types/correlation]
+(mu/defn ^:private compute-correlations :- [:sequential ::stats.types/correlation]
   "Compute pairwise correlations between multiple series.
   Aligns series on common x-values (listwise deletion) before computing correlation.
   Skips pairs with fewer than 10 aligned data points."

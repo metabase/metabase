@@ -13,7 +13,7 @@
 
 ;;; ------------------------------------------------ Basic Statistics ------------------------------------------------
 
-(defn compute-time-range
+(defn- compute-time-range
   "Compute time range information from dates.
   Returns map with :start :end :span_description"
   [dates]
@@ -42,7 +42,7 @@
         (< pct-change -10) :decreasing
         :else :flat))))
 
-(defn compute-trend
+(defn- compute-trend
   "Compute trend summary using linear regression.
   Returns map with :direction :overall_change_pct :start_value :end_value"
   [values]
@@ -62,7 +62,7 @@
 
 ;;; --------------------------------------------- Cumulative Detection -----------------------------------------------
 
-(defn detect-cumulative?
+(defn- detect-cumulative?
   "Detect if data appears to be cumulative (monotonically increasing).
   Returns true if at least 95% of consecutive differences are non-negative."
   [values]
@@ -75,7 +75,7 @@
 
 ;;; ------------------------------------------------ Deep Statistics -------------------------------------------------
 
-(defn compute-volatility
+(defn- compute-volatility
   "Compute volatility metrics for time series.
   Returns map with :level :coefficient_of_variation :max_period_change_pct"
   [values]
@@ -127,7 +127,7 @@
                                 streaks)]
               (recur (inc i) direction i new-streaks))))))))
 
-(defn detect-patterns
+(defn- detect-patterns
   "Detect patterns like consecutive increases/decreases (5+ periods).
   Returns sequence of pattern insight maps."
   [values dates]
@@ -140,7 +140,7 @@
              :to_date (nth dates-vec end_idx)})
           streaks)))
 
-(defn find-significant-changes
+(defn- find-significant-changes
   "Find the top N most significant period-to-period changes.
   Returns sequence of significant change maps sorted by magnitude."
   [values dates n]
@@ -162,7 +162,7 @@
          (take n)
          vec)))
 
-(defn compute-most-recent-change
+(defn- compute-most-recent-change
   "Compute the most recent period-to-period change.
   Returns a significant change map or nil if insufficient data."
   [values dates]
@@ -183,7 +183,7 @@
 
 ;;; ------------------------------------------------ Main Entry Point ------------------------------------------------
 
-(defn compute-series-stats
+(defn- compute-series-stats
   "Compute statistics for a single time series.
 
   Arguments:

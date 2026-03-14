@@ -19,7 +19,7 @@
     (vec coll)
     (vec (take max-points (shuffle coll)))))
 
-(defn compute-series-stats
+(defn- compute-series-stats
   "Compute stats for a single scatter series."
   [x-values y-values]
   (let [valid-pairs (filter (fn [[x y]] (and (some? x) (some? y)))

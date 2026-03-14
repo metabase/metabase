@@ -42,7 +42,7 @@
             scaled (dfn// centered mad)]
         (dfn/* scaled mad-normalization-constant)))))
 
-(defn find-outlier-indices
+(defn- find-outlier-indices
   "Find indices of outlier values using the Modified Z-score method.
 
   Returns a vector of indices where |modified_z| > 3.5.

@@ -37,7 +37,7 @@
 (deftest ^:parallel compute-correlations-perfect-positive-test
   (testing "perfectly correlated series yield coefficient ~1.0"
     (let [xs     (mapv double (range 20))
-          result (stats.u/compute-correlations
+          result (#'stats.u/compute-correlations
                   {"a" (make-series xs xs)
                    "b" (make-series xs (mapv #(+ 10.0 (* 2.0 %)) xs))})]
       (is (= 1 (count result)))
@@ -49,7 +49,7 @@
 (deftest ^:parallel compute-correlations-perfect-negative-test
   (testing "inversely correlated series yield coefficient ~-1.0"
     (let [xs     (mapv double (range 20))
-          result (stats.u/compute-correlations
+          result (#'stats.u/compute-correlations
                   {"a" (make-series xs xs)
                    "b" (make-series xs (mapv #(- 100.0 %) xs))})]
       (is (= 1 (count result)))
@@ -60,20 +60,20 @@
 
 (deftest ^:parallel compute-correlations-skipped-when-too-few-aligned-points-test
   (testing "pairs with fewer than 10 aligned points are skipped"
-    (is (empty? (stats.u/compute-correlations
+    (is (empty? (#'stats.u/compute-correlations
                  {"a" (make-series (range 5) (range 5))
                   "b" (make-series (range 5) (range 5 10))})))))
 
 (deftest ^:parallel compute-correlations-no-overlap-test
   (testing "series with no common x-values produce no correlations"
-    (is (empty? (stats.u/compute-correlations
+    (is (empty? (#'stats.u/compute-correlations
                  {"a" (make-series (range 0 20) (range 0 20))
                   "b" (make-series (range 100 120) (range 100 120))})))))
 
 (deftest ^:parallel compute-correlations-three-series-test
   (testing "three series produce up to C(3,2) = 3 correlation pairs"
     (let [xs (mapv double (range 20))]
-      (is (= 3 (count (stats.u/compute-correlations
+      (is (= 3 (count (#'stats.u/compute-correlations
                        {"a" (make-series xs xs)
                         "b" (make-series xs (mapv #(* 2.0 %) xs))
                         "c" (make-series xs (mapv #(* 3.0 %) xs))})))))))

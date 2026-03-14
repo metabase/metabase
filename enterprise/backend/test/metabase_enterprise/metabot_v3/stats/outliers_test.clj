@@ -12,14 +12,14 @@
     ;; In [1 2 2.1 2.2 10 1.9 2.3]: median≈2.1, MAD≈0.2
     ;; modified-z for 1.0 ≈ 3.71 and for 10.0 ≈ 26.6 → both exceed threshold 3.0
     (let [values  [1.0 2.0 2.1 2.2 10.0 1.9 2.3]
-          indices (outliers/find-outlier-indices values)]
+          indices (#'outliers/find-outlier-indices values)]
       (is (some #{0} indices))    ; 1.0 at index 0
       (is (some #{4} indices))))) ; 10.0 at index 4
 
 (deftest ^:parallel find-outlier-indices-no-outliers-test
   (testing "tightly clustered values produce no outliers"
     (let [values  [1.0 1.1 1.2 0.9 1.15]
-          indices (outliers/find-outlier-indices values)]
+          indices (#'outliers/find-outlier-indices values)]
       (is (empty? indices)))))
 
 ;;; ---------------------------------------------- find-outliers tests -----------------------------------------------

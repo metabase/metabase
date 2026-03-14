@@ -12,14 +12,14 @@
              :top_categories []
              :outliers       []
              :summary        nil?}
-            (categorical/compute-series-stats [] [])))))
+            (#'categorical/compute-series-stats [] [])))))
 
 (deftest ^:parallel compute-series-stats-nil-y-filtered-test
   (testing "nil y-values are filtered out"
     (is (=? {:category_count 2
              :top_categories [{:name "C" :value 200}
                               {:name "A" :value 100}]}
-            (categorical/compute-series-stats ["A" "B" "C"] [100 nil 200])))))
+            (#'categorical/compute-series-stats ["A" "B" "C"] [100 nil 200])))))
 
 (deftest ^:parallel compute-series-stats-single-category-test
   (testing "single category has 100% share"
@@ -27,11 +27,11 @@
              :top_categories [{:name "only"
                                :value 42
                                :percentage 100.0}]}
-            (categorical/compute-series-stats ["only"] [42])))))
+            (#'categorical/compute-series-stats ["only"] [42])))))
 
 (deftest ^:parallel compute-series-stats-percentages-sum-to-100-test
   (testing "percentages sum to approximately 100"
-    (let [result (categorical/compute-series-stats
+    (let [result (#'categorical/compute-series-stats
                   ["A" "B" "C" "D"]
                   [10 20 30 40])]
       (is (= 4 (:category_count result)))
@@ -41,7 +41,7 @@
 (deftest ^:parallel compute-series-stats-sorted-by-value-desc-test
   (testing "top categories are sorted by value descending"
     (is (= ["C" "B" "A"]
-           (->> (categorical/compute-series-stats ["C" "A" "B"] [30 10 20])
+           (->> (#'categorical/compute-series-stats ["C" "A" "B"] [30 10 20])
                 :top_categories
                 (map :name))))))
 
@@ -51,19 +51,19 @@
           ys (range 1 21)]
       (is (=? {:category_count 20
                :top_categories #(= 10 (count %))}
-              (categorical/compute-series-stats xs ys))))))
+              (#'categorical/compute-series-stats xs ys))))))
 
 (deftest ^:parallel compute-series-stats-bottom-categories-present-test
   (testing "bottom_categories populated when > 15 categories"
     (let [xs (map str (range 16))
           ys (range 1 17)]
       (is (=? {:bottom_categories #(= 5 (count %))}
-              (categorical/compute-series-stats xs ys))))))
+              (#'categorical/compute-series-stats xs ys))))))
 
 (deftest ^:parallel compute-series-stats-bottom-categories-missing-test
   (testing "bottom_categories absent when <= 15 categories"
     (is (=? {:bottom_categories (symbol "nil #_\"key is not present.\"")}
-            (categorical/compute-series-stats
+            (#'categorical/compute-series-stats
              (map str (range 15))
              (range 1 16))))))
 
@@ -73,14 +73,14 @@
                          :date "F"
                          :value 1000
                          :modified_z_score pos?}]}
-            (categorical/compute-series-stats
+            (#'categorical/compute-series-stats
              ["A" "B" "C" "D" "E" "F"]
              [10 12 11 9 13 1000])))))
 
 (deftest ^:parallel compute-series-stats-outliers-missing-test
   (testing "outlier detection not triggered at < 5 valid points"
     (is (=? {:outliers empty?}
-            (categorical/compute-series-stats
+            (#'categorical/compute-series-stats
              ["A" "B" "C"]
              [10 10 1000])))))
 
@@ -167,7 +167,7 @@
 
 (deftest ^:parallel compute-series-stats-duplicate-categories-test
   (testing "duplicate x-values: category_count counts unique dimensions only"
-    (let [result (categorical/compute-series-stats
+    (let [result (#'categorical/compute-series-stats
                   ["A" "A" "B"]
                   [100 150 200])]
       ;; data_point_count includes all valid pairs including duplicates
@@ -178,7 +178,7 @@
 (deftest ^:parallel compute-series-stats-nil-dimensions-excluded-test
   (testing "nil x-values are excluded from category_count"
     (is (=? {:category_count 1}
-            (categorical/compute-series-stats
+            (#'categorical/compute-series-stats
              [nil "A" nil]
              [100 200 150])))))
 
@@ -187,7 +187,7 @@
     (is (=? {:summary {:min  80
                        :max  200
                        :mean 132.5}}
-            (categorical/compute-series-stats
+            (#'categorical/compute-series-stats
              ["North" "South" "East" "West"]
              [100 200 150 80])))))
 
@@ -197,7 +197,7 @@
     (is (=? {"enabled"  (=?/approx [37.3 0.1])
              "disabled" (=?/approx [34.4 0.1])
              "invited"  (=?/approx [28.3 0.1])}
-            (->> (categorical/compute-series-stats
+            (->> (#'categorical/compute-series-stats
                   ["enabled" "disabled" "invited"]
                   [112 103 85])
                  :top_categories

@@ -11,7 +11,7 @@
 (def ^:private bottom-n-categories 5)
 (def ^:private many-categories-threshold 15)
 
-(defn compute-series-stats
+(defn- compute-series-stats
   "Compute categorical stats for a single series.
   x-values are category names (strings), y-values are numeric values."
   [x-values y-values]

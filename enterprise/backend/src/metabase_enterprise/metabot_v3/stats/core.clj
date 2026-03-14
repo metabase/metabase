@@ -10,12 +10,12 @@
 
 ;;; ------------------------------------------------- Data Limits --------------------------------------------------
 
-(def max-data-points-per-series
+(def ^:private max-data-points-per-series
   "Maximum number of data points per series. Series exceeding this limit are downsampled to keep memory and CPU usage
   bounded."
   10000)
 
-(def max-series-for-correlations
+(def ^:private max-series-for-correlations
   "Maximum number of series to include in pairwise correlation computation."
   10)
 

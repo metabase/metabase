@@ -27,10 +27,10 @@
 ;;; ------------------------------------------- Downsampling Tests -------------------------------------------------
 
 (defn- approx=max-data-points-per-series?
-  "Is `n` approximately [[stats.core/max-data-points-per-series]]?"
+  "Is `n` approximately [[@#'stats.core/max-data-points-per-series]]?"
   [n]
   ;; random-sample is probabilistic, so allow 20% tolerance
-  (< n (* 1.2 stats.core/max-data-points-per-series)))
+  (< n (* 1.2 @#'stats.core/max-data-points-per-series)))
 
 (deftest ^:parallel data-points-within-limit-are-not-downsampled-test
   (testing "Series within the limit are not modified"
@@ -40,7 +40,7 @@
 
 (deftest ^:parallel data-points-exceeding-limit-are-downsampled-test
   (testing "Series exceeding max-data-points-per-series are downsampled"
-    (let [n      (+ stats.core/max-data-points-per-series 5000)
+    (let [n      (+ @#'stats.core/max-data-points-per-series 5000)
           config (make-chart-config 1 n)
           stats  (stats.core/compute-chart-stats config {:deep? false})
           sampled (get-in stats [:series "series_0" :data_points])]
@@ -48,11 +48,11 @@
               stats))
 
       (is (approx=max-data-points-per-series? sampled)
-          (str "sampled " sampled " should be roughly <= " stats.core/max-data-points-per-series)))))
+          (str "sampled " sampled " should be roughly <= " @#'stats.core/max-data-points-per-series)))))
 
 (deftest ^:parallel downsampling-preserves-first-and-last-points-test
   (testing "Downsampled series preserves the first and last data points"
-    (let [n       (+ stats.core/max-data-points-per-series 1000)
+    (let [n       (+ @#'stats.core/max-data-points-per-series 1000)
           config  (make-chart-config 1 n)
           orig-ys (get-in config [:series "series_0" :y_values])]
       (is (=? {:series {"series_0" {:trend {:start_value (double (first orig-ys))
@@ -62,7 +62,7 @@
 (deftest ^:parallel multiple-series-downsampled-independently-test
   (testing "Each series is downsampled independently, limits tracks each"
     (let [small-n 100
-          large-n (+ stats.core/max-data-points-per-series 2000)
+          large-n (+ @#'stats.core/max-data-points-per-series 2000)
           config  {:display_type "line"
                    :title "Multi"
                    :series {"small" (make-series small-n)
@@ -85,16 +85,16 @@
 
 (deftest ^:parallel correlations-capped-when-exceeding-limit-test
   (testing "Correlations are limited to max-series-for-correlations"
-    (let [n-series (+ stats.core/max-series-for-correlations 5)
+    (let [n-series (+ @#'stats.core/max-series-for-correlations 5)
           config   (make-chart-config n-series 50)
           stats    (stats.core/compute-chart-stats config {:deep? true})]
       (is (=? {:limits       {:correlations_capped {:total_series   n-series
-                                                    :max_correlated stats.core/max-series-for-correlations}}
+                                                    :max_correlated @#'stats.core/max-series-for-correlations}}
                :series       #(= n-series (count %))
                :series_count n-series}
               stats))
       ;; Correlations should have at most C(max-k, 2) entries
-      (let [max-k stats.core/max-series-for-correlations
+      (let [max-k @#'stats.core/max-series-for-correlations
             max-pairs (/ (* max-k (dec max-k)) 2)]
         (is (<= (count (:correlations stats)) max-pairs))))))
 

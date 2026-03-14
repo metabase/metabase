@@ -17,7 +17,7 @@
 (defn- quarter-of-year [^LocalDate date]
   (inc (quot (dec (.getMonthValue date)) 3)))
 
-(defn generate-temporal-context
+(defn- generate-temporal-context
   "Generate temporal context string for the current date.
   Helps the LLM understand recency of data points."
   []
@@ -271,7 +271,7 @@
                   (render-outliers outliers)]]
     (str/join "\n" (remove nil? sections))))
 
-(defn generate-categorical-representation
+(defn- generate-categorical-representation
   "Generate markdown representation for categorical (bar, pie, funnel, etc.) stats."
   [{:keys [title display-type stats timeline-events]}]
   (let [{:keys [series_count series correlations limits]} stats
@@ -343,7 +343,7 @@
                   (render-scatter-outliers outliers)]]
     (str/join "\n" (remove nil? sections))))
 
-(defn generate-scatter-representation
+(defn- generate-scatter-representation
   "Generate markdown representation for scatter plot stats."
   [{:keys [title display-type stats timeline-events]}]
   (let [{:keys [series_count series limits]} stats
@@ -413,7 +413,7 @@
                    (render-histogram-bin-data bin_data)]]
     (str/join "\n" (remove nil? sections))))
 
-(defn generate-histogram-representation
+(defn- generate-histogram-representation
   "Generate markdown representation for histogram stats."
   [{:keys [title display-type stats timeline-events]}]
   (let [{:keys [series_count series limits]} stats
@@ -431,7 +431,7 @@
 
 ;;; ----------------------------------------- Main Representation ----------------------------------------------------
 
-(defn generate-time-series-representation
+(defn- generate-time-series-representation
   "Generate comprehensive markdown representation for time series stats."
   [{:keys [title display-type stats timeline-events]}]
   (let [{:keys [series_count series correlations limits]} stats
