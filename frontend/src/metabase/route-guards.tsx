@@ -144,7 +144,9 @@ export const IsAuthenticated = MetabaseIsSetup(
   UserIsAuthenticated(UserHasMfaIfRequired(({ children }) => children)),
 );
 export const IsAdmin = MetabaseIsSetup(
-  UserIsAuthenticated(UserIsAdmin(({ children }) => children)),
+  UserIsAuthenticated(
+    UserHasMfaIfRequired(UserIsAdmin(({ children }) => children)),
+  ),
 );
 
 export const IsNotAuthenticated = MetabaseIsSetup(
@@ -152,7 +154,9 @@ export const IsNotAuthenticated = MetabaseIsSetup(
 );
 
 export const CanAccessSettings = MetabaseIsSetup(
-  UserIsAuthenticated(UserCanAccessSettings(({ children }) => children)),
+  UserIsAuthenticated(
+    UserHasMfaIfRequired(UserCanAccessSettings(({ children }) => children)),
+  ),
 );
 
 export const CanAccessOnboarding = UserCanAccessOnboarding(
@@ -162,7 +166,9 @@ export const CanAccessOnboarding = UserCanAccessOnboarding(
 // Must be in sync with canAccessDataStudio in frontend/src/metabase/data-studio/selectors.ts
 export const CanAccessDataStudio = MetabaseIsSetup(
   UserIsAuthenticated(
-    UserCanAccessDataStudio(AvailableInEmbedding(({ children }) => children)),
+    UserHasMfaIfRequired(
+      UserCanAccessDataStudio(AvailableInEmbedding(({ children }) => children)),
+    ),
   ),
 );
 

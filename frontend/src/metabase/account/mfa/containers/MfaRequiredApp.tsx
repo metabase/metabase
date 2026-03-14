@@ -1,5 +1,5 @@
-import { useCallback } from "react";
-import { push } from "react-router-redux";
+import { useCallback, useEffect } from "react";
+import { push, replace } from "react-router-redux";
 import { t } from "ttag";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -20,13 +20,21 @@ const MfaRequiredApp = (): JSX.Element | null => {
     dispatch(push("/"));
   }, [dispatch]);
 
-  if (!user) {
-    return null;
-  }
+  // Redirect unauthenticated users to login
+  useEffect(() => {
+    if (!user) {
+      dispatch(replace("/auth/login"));
+    }
+  }, [user, dispatch]);
 
-  // If the user already has MFA enabled, redirect home
-  if (user.totp_enabled) {
-    dispatch(push("/"));
+  // Redirect home if MFA is already enabled
+  useEffect(() => {
+    if (user?.totp_enabled) {
+      dispatch(replace("/"));
+    }
+  }, [user?.totp_enabled, dispatch]);
+
+  if (!user || user.totp_enabled) {
     return null;
   }
 
