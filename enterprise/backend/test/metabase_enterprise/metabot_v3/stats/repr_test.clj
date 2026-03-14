@@ -70,6 +70,17 @@
       (is (str/includes? rep "Test Series"))
       (is (str/includes? rep "Distribution Shape")))))
 
+(deftest repr-histogram-shows-percentiles-and-iqr-test
+  (testing "histogram representation includes percentiles and IQR for sufficient data"
+    (let [series-stats (histogram/compute-series-stats (range 1 101))
+          stats        {:chart_type   :histogram
+                        :series_count 1
+                        :series       {"Values" series-stats}}
+          rep          (repr/generate-histogram-representation {:stats stats})]
+      (is (str/includes? rep "Percentiles"))
+      (is (str/includes? rep "P50="))
+      (is (str/includes? rep "IQR")))))
+
 ;;; -------------------------------------------- Scatter Repr Tests --------------------------------------------------
 
 (deftest repr-scatter-shows-relationship-test
@@ -82,6 +93,16 @@
       (is (str/includes? rep "Test Series"))
       (is (str/includes? rep "Relationship"))
       (is (str/includes? rep "strong positive")))))
+
+(deftest repr-scatter-shows-trend-line-test
+  (testing "scatter representation includes trend line equation when regression is present"
+    (let [series-stats (scatter/compute-series-stats [1 2 3 4 5] [12 14 16 18 20])
+          stats        {:chart_type   :scatter
+                        :series_count 1
+                        :series       {"Linear" series-stats}}
+          rep          (repr/generate-scatter-representation {:stats stats})]
+      (is (str/includes? rep "Trend Line"))
+      (is (str/includes? rep "y =")))))
 
 ;;; ------------------------------------------ Categorical Repr Tests ------------------------------------------------
 
@@ -124,6 +145,15 @@
       (is (str/includes? rep "Top Categories"))
       (is (not (str/includes? rep "Bottom Categories"))))))
 
+(deftest repr-categorical-sparse-data-warning-test
+  (testing "sparse data warning shown for series with < 10 data points"
+    (let [series-stats (categorical/compute-series-stats ["A" "B" "C"] [100 200 150])
+          stats        {:chart_type   :categorical
+                        :series_count 1
+                        :series       {"Few" series-stats}}
+          rep          (repr/generate-categorical-representation {:stats stats})]
+      (is (str/includes? rep "limited data points")))))
+
 ;;; ----------------------------------------- Time Series Repr Tests -------------------------------------------------
 
 (deftest generate-temporal-context-test
@@ -163,3 +193,32 @@
           rep (repr/generate-time-series-representation {:stats stats})]
       (is (str/includes? rep "Sales"))
       (is (str/includes? rep "Revenue")))))
+
+(deftest repr-time-series-deep-stats-test
+  (testing "deep stats include volatility, significant changes, and most recent change"
+    (let [values (mapv #(* 10.0 %) (range 1 13))
+          dates  (mapv #(format "2024-%02d" %) (range 1 13))
+          series-stats (time-series/compute-series-stats values dates {:deep? true})
+          stats  {:chart_type   :time-series
+                  :series_count 1
+                  :series       {"Metric" series-stats}}
+          rep    (repr/generate-time-series-representation {:stats stats})]
+      (is (str/includes? rep "Volatility"))
+      (is (str/includes? rep "Significant Changes"))
+      (is (str/includes? rep "Most Recent Change")))))
+
+;;; ---------------------------------------- generate-representation dispatch ------------------------------------------
+
+(deftest generate-representation-dispatches-to-correct-renderer-test
+  (testing "dispatches to the correct renderer for known chart type"
+    (let [ts-stats {:chart_type :time-series :series_count 1
+                    :series {"S" (time-series/compute-series-stats
+                                  [1.0 2.0 3.0 4.0 5.0]
+                                  ["d1" "d2" "d3" "d4" "d5"] {})}}]
+      (is (str/includes? (repr/generate-representation {:stats ts-stats}) "Time Series")))))
+
+(deftest generate-representation-unknown-chart-type-fallback-test
+  (testing "unknown chart type produces fallback message"
+    (is (str/includes?
+         (repr/generate-representation {:stats {:chart_type :waterfall}})
+         "not yet implemented"))))
