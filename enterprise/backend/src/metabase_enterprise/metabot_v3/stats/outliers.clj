@@ -44,16 +44,6 @@
             scaled (dfn// centered mad)]
         (dfn/* scaled mad-normalization-constant)))))
 
-(defn- find-outlier-indices
-  "Find indices of outlier values using the Modified Z-score method.
-
-  Returns a vector of indices where |modified_z| > 3.5.
-  Returns empty vector if no outliers found or if MAD is zero."
-  [values]
-  (if-let [z-scores (compute-modified-z-scores values)]
-    (vec (argops/argfilter #(> (Math/abs (double %)) modified-z-threshold) z-scores))
-    []))
-
 (mu/defn find-outliers :- [:maybe [:sequential ::stats.types/outlier]]
   "Find outliers in a dataset with their details.
 
