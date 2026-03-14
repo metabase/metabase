@@ -6,7 +6,9 @@
   - Deep: volatility, patterns, significant changes, correlations"
   (:require
    [metabase-enterprise.metabot-v3.stats.outliers :as outliers]
+   [metabase-enterprise.metabot-v3.stats.types :as stats.types]
    [metabase-enterprise.metabot-v3.stats.util :as stats.u]
+   [metabase.util.malli :as mu]
    [tech.v3.datatype.functional :as dfn]))
 
 (set! *warn-on-reflection* true)
@@ -210,14 +212,15 @@
              :most_recent_change (compute-most-recent-change values dates))
       basic-stats)))
 
-(defn compute-time-series-stats
+(mu/defn compute-time-series-stats :- ::stats.types/time-series-stats
   "Compute complete time series statistics for a chart.
 
   Arguments:
     series-data - map of series-name -> {:x_values [...] :y_values [...]}
     opts        - options map:
                   :deep? - if true, compute additional stats"
-  [series-data opts]
+  [series-data :- [:map-of :string ::stats.types/series-config]
+   opts        :- ::stats.types/options]
   (let [series-stats (stats.u/compute-series-with-labels
                       series-data
                       (fn [x-vals y-vals]

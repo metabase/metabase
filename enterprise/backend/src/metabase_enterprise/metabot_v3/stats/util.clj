@@ -74,7 +74,7 @@
   "Compute pairwise correlations if deep mode is enabled and there are multiple series.
   Respects :max-correlation-series opt to cap the number of series considered."
   [series-data :- [:map-of :string ::stats.types/series-config]
-   opts :- :map]
+   opts :- ::stats.types/options]
   (when (and (:deep? opts) (> (count series-data) 1))
     (let [capped (if-let [max-k (:max-correlation-series opts)]
                    (into {} (take max-k series-data))

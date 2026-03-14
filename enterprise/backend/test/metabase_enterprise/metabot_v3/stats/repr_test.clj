@@ -220,5 +220,5 @@
 (deftest ^:parallel generate-representation-unknown-chart-type-fallback-test
   (testing "unknown chart type produces fallback message"
     (is (str/includes?
-         (repr/generate-representation {:stats {:chart_type :waterfall}})
+         (repr/generate-representation {:stats {:chart_type :unknown}})
          "not yet implemented"))))

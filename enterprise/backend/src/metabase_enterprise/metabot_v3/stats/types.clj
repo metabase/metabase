@@ -137,25 +137,45 @@
    [:value number?]
    [:modified_z_score number?]])
 
+(mr/def ::cumulative-outlier
+  "An outlier detected in cumulative data (via period-over-period diffs)."
+  [:map
+   [:index :int]
+   [:date :any]
+   [:value number?]
+   [:diff number?]
+   [:modified_z_score number?]])
+
+;;; --------------------------------------------------- Options ------------------------------------------------------
+
+(mr/def ::options
+  "Options map for chart statistics computation."
+  [:map
+   [:deep? {:optional true} [:maybe :boolean]]
+   [:max-correlation-series {:optional true} [:maybe :int]]])
+
 ;;; ---------------------------------------------- Chart Type Stats --------------------------------------------------
+
+(mr/def ::time-series-series-stats
+  "Statistics for a single time series."
+  [:map
+   [:summary ::series-summary]
+   [:time_range ::time-range]
+   [:data_points :int]
+   [:trend ::trend-summary]
+   [:is_cumulative :boolean]
+   [:outliers {:optional true} [:maybe [:sequential ::outlier]]]
+   [:volatility {:optional true} [:maybe ::volatility]]
+   [:patterns {:optional true} [:maybe [:sequential ::pattern-insight]]]
+   [:significant_changes {:optional true} [:maybe [:sequential ::significant-change]]]
+   [:most_recent_change {:optional true} [:maybe ::significant-change]]])
 
 (mr/def ::time-series-stats
   "Statistics for time series charts."
   [:map
    [:chart_type [:= :time-series]]
    [:series_count :int]
-   [:series [:map-of :string
-             [:map
-              [:summary ::series-summary]
-              [:time_range ::time-range]
-              [:data_points :int]
-              [:trend ::trend-summary]
-              [:is_cumulative :boolean]
-              [:outliers {:optional true} [:maybe [:sequential ::outlier]]]
-              [:volatility {:optional true} [:maybe ::volatility]]
-              [:patterns {:optional true} [:maybe [:sequential ::pattern-insight]]]
-              [:significant_changes {:optional true} [:maybe [:sequential ::significant-change]]]
-              [:most_recent_change {:optional true} [:maybe ::significant-change]]]]]
+   [:series [:map-of :string ::time-series-series-stats]]
    [:correlations {:optional true} [:maybe [:sequential ::correlation]]]])
 
 (mr/def ::category-stat
@@ -165,18 +185,21 @@
    [:value number?]
    [:percentage number?]])
 
+(mr/def ::categorical-series-stats
+  "Statistics for a single categorical series."
+  [:map
+   [:summary [:maybe ::series-summary]]
+   [:category_count :int]
+   [:top_categories [:sequential ::category-stat]]
+   [:bottom_categories {:optional true} [:maybe [:sequential ::category-stat]]]
+   [:outliers {:optional true} [:maybe [:sequential ::outlier]]]])
+
 (mr/def ::categorical-stats
   "Statistics for categorical charts (bar, pie, etc.)."
   [:map
    [:chart_type [:= :categorical]]
    [:series_count :int]
-   [:series [:map-of :string
-             [:map
-              [:summary [:maybe ::series-summary]]
-              [:category_count :int]
-              [:top_categories [:sequential ::category-stat]]
-              [:bottom_categories {:optional true} [:maybe [:sequential ::category-stat]]]
-              [:outliers {:optional true} [:maybe [:sequential ::outlier]]]]]]
+   [:series [:map-of :string ::categorical-series-stats]]
    [:correlations {:optional true} [:maybe [:sequential ::correlation]]]])
 
 (mr/def ::regression-stats
@@ -186,21 +209,24 @@
    [:intercept number?]
    [:r_squared number?]])
 
+(mr/def ::scatter-series-stats
+  "Statistics for a single scatter series."
+  [:map
+   [:x_summary [:maybe ::series-summary]]
+   [:y_summary [:maybe ::series-summary]]
+   [:data_points :int]
+   [:correlation {:optional true} [:maybe [:map
+                                           [:coefficient number?]
+                                           [:strength ::correlation-strength]
+                                           [:direction ::correlation-direction]]]]
+   [:regression {:optional true} [:maybe ::regression-stats]]])
+
 (mr/def ::scatter-stats
   "Statistics for scatter plots."
   [:map
    [:chart_type [:= :scatter]]
    [:series_count :int]
-   [:series [:map-of :string
-             [:map
-              [:x_summary [:maybe ::series-summary]]
-              [:y_summary [:maybe ::series-summary]]
-              [:data_points :int]
-              [:correlation {:optional true} [:maybe [:map
-                                                      [:coefficient number?]
-                                                      [:strength ::correlation-strength]
-                                                      [:direction ::correlation-direction]]]]
-              [:regression {:optional true} [:maybe ::regression-stats]]]]]])
+   [:series [:map-of :string ::scatter-series-stats]]])
 
 (mr/def ::distribution-stats
   "Distribution statistics for histogram data."
@@ -214,16 +240,19 @@
    [:skewness {:optional true} [:maybe number?]]
    [:kurtosis {:optional true} [:maybe number?]]])
 
+(mr/def ::histogram-series-stats
+  "Statistics for a single histogram series."
+  [:map
+   [:summary ::series-summary]
+   [:data_points :int]
+   [:distribution ::distribution-stats]])
+
 (mr/def ::histogram-stats
   "Statistics for histogram charts."
   [:map
    [:chart_type [:= :histogram]]
    [:series_count :int]
-   [:series [:map-of :string
-             [:map
-              [:summary ::series-summary]
-              [:data_points :int]
-              [:distribution ::distribution-stats]]]]])
+   [:series [:map-of :string ::histogram-series-stats]]])
 
 (mr/def ::chart-type
   "Detected chart type."
@@ -236,6 +265,17 @@
    ::categorical-stats
    ::scatter-stats
    ::histogram-stats])
+
+;;; ------------------------------------------ Representation Schema ------------------------------------------------
+
+(mr/def ::generate-repr-context
+  "Context map for generating chart statistics representation.
+  Accepts either a valid ::chart-stats or a map with :chart_type :unknown for the fallback branch."
+  [:map
+   [:stats [:or ::chart-stats [:map [:chart_type [:= :unknown]]]]]
+   [:title {:optional true} [:maybe :string]]
+   [:display-type {:optional true} [:maybe :string]]
+   [:timeline-events {:optional true} [:maybe [:sequential ::timeline-event]]]])
 
 ;;; --------------------------------------------- Tool Response Schema -----------------------------------------------
 

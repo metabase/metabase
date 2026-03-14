@@ -4,7 +4,9 @@
    [metabase-enterprise.metabot-v3.stats.categorical :as categorical]
    [metabase-enterprise.metabot-v3.stats.histogram :as histogram]
    [metabase-enterprise.metabot-v3.stats.scatter :as scatter]
-   [metabase-enterprise.metabot-v3.stats.time-series :as time-series]))
+   [metabase-enterprise.metabot-v3.stats.time-series :as time-series]
+   [metabase-enterprise.metabot-v3.stats.types :as stats.types]
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -133,7 +135,7 @@
 
    :categorical))
 
-(defn compute-chart-stats
+(mu/defn compute-chart-stats :- ::stats.types/chart-stats
   "Compute statistics for a chart based on its detected type.
 
   Applies data limits before computation:
@@ -144,7 +146,8 @@
     chart-config - the full chart configuration
     opts         - options map:
                    :deep? - compute additional statistics"
-  [chart-config opts]
+  [chart-config :- ::stats.types/chart-config
+   opts         :- ::stats.types/options]
   (let [chart-type                   (detect-chart-type chart-config)
         [limited-series limits-info] (apply-data-limits (:series chart-config))
         too-many-series?             (> (count limited-series) max-series-for-correlations)

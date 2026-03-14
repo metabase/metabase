@@ -1,7 +1,9 @@
 (ns metabase-enterprise.metabot-v3.stats.histogram
   "Histogram chart statistics."
   (:require
+   [metabase-enterprise.metabot-v3.stats.types :as stats.types]
    [metabase-enterprise.metabot-v3.stats.util :as stats.u]
+   [metabase.util.malli :as mu]
    [tech.v3.datatype.functional :as dfn]))
 
 (set! *warn-on-reflection* true)
@@ -60,8 +62,9 @@
                           skewness (assoc :skewness skewness)
                           kurtosis (assoc :kurtosis kurtosis))})))))
 
-(defn compute-histogram-stats
+(mu/defn compute-histogram-stats :- ::stats.types/histogram-stats
   "Compute statistics for histogram data."
-  [series-data _opts]
+  [series-data :- [:map-of :string ::stats.types/series-config]
+   _opts       :- ::stats.types/options]
   (let [series-stats (stats.u/compute-series-with-labels series-data compute-series-stats)]
     (stats.u/make-chart-result :histogram series-data series-stats nil)))

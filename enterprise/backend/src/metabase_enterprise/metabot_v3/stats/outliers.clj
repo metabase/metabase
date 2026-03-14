@@ -5,6 +5,8 @@
   because it uses median and MAD (Median Absolute Deviation) instead of mean
   and standard deviation, making it resistant to outliers in the calculation itself."
   (:require
+   [metabase-enterprise.metabot-v3.stats.types :as stats.types]
+   [metabase.util.malli :as mu]
    [tech.v3.datatype.argops :as argops]
    [tech.v3.datatype.functional :as dfn]))
 
@@ -52,7 +54,7 @@
     (vec (argops/argfilter #(> (Math/abs (double %)) modified-z-threshold) z-scores))
     []))
 
-(defn find-outliers
+(mu/defn find-outliers :- [:maybe [:sequential ::stats.types/outlier]]
   "Find outliers in a dataset with their details.
 
   Arguments:
@@ -64,7 +66,8 @@
     :date            - the date/dimension value at that position
     :value           - the numeric value
     :modified_z_score - the modified Z-score"
-  [values dates]
+  [values :- [:sequential number?]
+   dates  :- [:sequential :any]]
   (when-let [z-scores (compute-modified-z-scores values)]
     (let [indices (vec (argops/argfilter #(> (Math/abs (double %)) modified-z-threshold) z-scores))
           values-vec (vec values)
@@ -77,7 +80,7 @@
                :modified_z_score (nth z-scores-vec idx)})
             indices))))
 
-(defn find-outliers-cumulative
+(mu/defn find-outliers-cumulative :- [:maybe [:sequential ::stats.types/cumulative-outlier]]
   "Find outliers in cumulative data by analyzing period-over-period diffs.
 
   For cumulative (monotonically increasing) data, outliers are detected in the
@@ -94,7 +97,8 @@
     :value           - the numeric value at that position
     :diff            - the period-over-period change that was flagged
     :modified_z_score - the modified Z-score of the diff"
-  [values dates]
+  [values :- [:sequential number?]
+   dates  :- [:sequential :any]]
   (let [values-vec (vec values)
         dates-vec (vec dates)
         diffs (mapv - (rest values-vec) values-vec)]

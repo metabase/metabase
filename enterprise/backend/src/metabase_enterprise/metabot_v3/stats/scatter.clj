@@ -2,7 +2,9 @@
   "Scatter plot statistics."
   (:require
    [metabase-enterprise.metabot-v3.stats.outliers :as outliers]
+   [metabase-enterprise.metabot-v3.stats.types :as stats.types]
    [metabase-enterprise.metabot-v3.stats.util :as stats.u]
+   [metabase.util.malli :as mu]
    [tech.v3.datatype.functional :as dfn]))
 
 (set! *warn-on-reflection* true)
@@ -61,8 +63,9 @@
           regression             (assoc :regression regression)
           (seq scatter-outliers) (assoc :outliers scatter-outliers))))))
 
-(defn compute-scatter-stats
+(mu/defn compute-scatter-stats :- ::stats.types/scatter-stats
   "Compute scatter stats for all series in a chart."
-  [series-data _opts]
+  [series-data :- [:map-of :string ::stats.types/series-config]
+   _opts       :- ::stats.types/options]
   (let [series-stats (stats.u/compute-series-with-labels series-data compute-series-stats)]
     (stats.u/make-chart-result :scatter series-data series-stats nil)))

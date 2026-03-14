@@ -2,7 +2,9 @@
   "Categorical chart statistics."
   (:require
    [metabase-enterprise.metabot-v3.stats.outliers :as outliers]
-   [metabase-enterprise.metabot-v3.stats.util :as stats.u]))
+   [metabase-enterprise.metabot-v3.stats.types :as stats.types]
+   [metabase-enterprise.metabot-v3.stats.util :as stats.u]
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -42,9 +44,10 @@
                  :outliers       (or outliers [])}
           bottom (assoc :bottom_categories bottom))))))
 
-(defn compute-categorical-stats
+(mu/defn compute-categorical-stats :- ::stats.types/categorical-stats
   "Compute categorical stats for all series in a chart."
-  [series-data opts]
+  [series-data :- [:map-of :string ::stats.types/series-config]
+   opts        :- ::stats.types/options]
   (let [series-stats (stats.u/compute-series-with-labels series-data compute-series-stats)
         correlations (stats.u/maybe-compute-correlations series-data opts)]
     (stats.u/make-chart-result :categorical series-data series-stats correlations)))

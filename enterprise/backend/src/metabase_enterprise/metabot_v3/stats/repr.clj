@@ -1,7 +1,9 @@
 (ns metabase-enterprise.metabot-v3.stats.repr
   "LLM-friendly text representation generator for chart statistics."
   (:require
-   [clojure.string :as str])
+   [clojure.string :as str]
+   [metabase-enterprise.metabot-v3.stats.types :as stats.types]
+   [metabase.util.malli :as mu])
   (:import
    (java.time LocalDate LocalDateTime ZonedDateTime)
    (java.time.format DateTimeFormatter TextStyle)
@@ -455,10 +457,10 @@
                        correlation-section
                        events-section]))))
 
-(defn generate-representation
+(mu/defn generate-representation :- :string
   "Generate markdown representation for chart statistics.
   Dispatches based on chart type."
-  [{:keys [stats] :as context}]
+  [{:keys [stats] :as context} :- ::stats.types/generate-repr-context]
   (case (:chart_type stats)
     :time-series  (generate-time-series-representation context)
     :categorical  (generate-categorical-representation context)
