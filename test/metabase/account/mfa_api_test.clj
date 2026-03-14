@@ -62,7 +62,7 @@
         (mt/user-http-request :rasta :post 200 "mfa/confirm" {:totp-code valid-code})
         ;; Now disable
         (mt/user-http-request :rasta :post 204 "mfa/disable"
-                              {:password "password"})
+                              {:password (:password (mt/user->credentials :rasta))})
         (is (false? (t2/select-one-fn :totp_enabled :model/User :id (mt/user->id :rasta))))))))
 
 ;;; -------------------------------------------------- MFA Login Flow --------------------------------------------------

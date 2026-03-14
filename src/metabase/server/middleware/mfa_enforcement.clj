@@ -34,8 +34,8 @@
    5. Request is not on the allowlist"
   [request]
   (and (session.settings/require-mfa)
-       ;; Only enforce for session-based auth (not API keys)
-       (not (get-in request [:headers "x-api-key"]))
+       ;; Only enforce for session-based auth — API key auth doesn't set :metabase-session-key
+       (:metabase-session-key request)
        ;; Only enforce for password-auth users (SSO users are exempt)
        (not (:sso-source request))
        ;; Only enforce for users who haven't set up TOTP

@@ -16,7 +16,8 @@ const MfaRequiredApp = (): JSX.Element | null => {
 
   const handleStatusChange = useCallback(async () => {
     await dispatch(refreshCurrentUser());
-    await dispatch(refreshSiteSettings());
+    // Best-effort — don't block navigation if settings refresh fails
+    dispatch(refreshSiteSettings());
     dispatch(push("/"));
   }, [dispatch]);
 
