@@ -17,8 +17,8 @@
 (defn- make-series
   "Create a series config with n data points."
   [n]
-  {:x {:name "Date" :type :datetime}
-   :y {:name "Value" :type :number}
+  {:x {:name "Date" :type "datetime"}
+   :y {:name "Value" :type "number"}
    :display_name "Test"
    :x_values (mapv #(str "2020-01-" (format "%02d" (inc (mod % 28)))) (range n))
    :y_values (mapv double (range n))})

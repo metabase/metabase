@@ -75,12 +75,12 @@
 (deftest ^:parallel compute-scatter-stats-multi-series-test
   (testing "each series gets independent stats; no cross-series correlations"
     (let [series-data {"S1" {:x_values [1 2 3] :y_values [4 5 6]
-                             :x {:name "x" :type :number}
-                             :y {:name "y" :type :number}
+                             :x {:name "x" :type "number"}
+                             :y {:name "y" :type "number"}
                              :display_name "S1"}
                        "S2" {:x_values [1 2 3] :y_values [6 5 4]
-                             :x {:name "x" :type :number}
-                             :y {:name "y" :type :number}
+                             :x {:name "x" :type "number"}
+                             :y {:name "y" :type "number"}
                              :display_name "S2"}}]
       (is (=? {:chart_type    :scatter
                :series_count  2

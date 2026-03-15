@@ -161,8 +161,8 @@
   [display-name x-vals y-vals]
   {:x_values     x-vals
    :y_values     y-vals
-   :x            {:name "x" :type :string}
-   :y            {:name "y" :type :number}
+   :x            {:name "x" :type "string"}
+   :y            {:name "y" :type "number"}
    :display_name display-name})
 
 (deftest ^:parallel compute-correlations-strong-positive-test
@@ -363,13 +363,13 @@
   (testing "each series gets independent stats; no cross-series correlations without deep?"
     (let [series-data {"S1" {:x_values ["d1" "d2" "d3" "d4" "d5"]
                              :y_values [1.0 2.0 3.0 4.0 5.0]
-                             :x {:name "x" :type :string}
-                             :y {:name "y" :type :number}
+                             :x {:name "x" :type "string"}
+                             :y {:name "y" :type "number"}
                              :display_name "S1"}
                        "S2" {:x_values ["d1" "d2" "d3" "d4" "d5"]
                              :y_values [5.0 4.0 3.0 2.0 1.0]
-                             :x {:name "x" :type :string}
-                             :y {:name "y" :type :number}
+                             :x {:name "x" :type "string"}
+                             :y {:name "y" :type "number"}
                              :display_name "S2"}}]
       (is (=? {:chart_type    :time-series
                :series_count  2
@@ -386,13 +386,13 @@
           x-vals      (mapv #(format "2024-%02d" %) (range 1 (inc n)))
           series-data {"A" {:x_values x-vals
                             :y_values (mapv #(* 10.0 %) (range 1 (inc n)))
-                            :x {:name "x" :type :string}
-                            :y {:name "y" :type :number}
+                            :x {:name "x" :type "string"}
+                            :y {:name "y" :type "number"}
                             :display_name "A"}
                        "B" {:x_values x-vals
                             :y_values (mapv #(* 20.0 %) (range 1 (inc n)))
-                            :x {:name "x" :type :string}
-                            :y {:name "y" :type :number}
+                            :x {:name "x" :type "string"}
+                            :y {:name "y" :type "number"}
                             :display_name "B"}}
           result (time-series/compute-time-series-stats series-data {:deep? true})]
       (is (=? {:correlations #(= 1 (count %))}

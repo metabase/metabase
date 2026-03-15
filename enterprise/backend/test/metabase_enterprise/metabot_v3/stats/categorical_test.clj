@@ -88,13 +88,13 @@
   (testing "multiple series each get their own stats"
     (let [series-data {"Revenue" {:x_values ["A" "B"]
                                   :y_values [100 200]
-                                  :x {:name "cat" :type :string}
-                                  :y {:name "rev" :type :number}
+                                  :x {:name "cat" :type "string"}
+                                  :y {:name "rev" :type "number"}
                                   :display_name "Revenue"}
                        "Cost"    {:x_values ["A" "B"]
                                   :y_values [50 80]
-                                  :x {:name "cat" :type :string}
-                                  :y {:name "cost" :type :number}
+                                  :x {:name "cat" :type "string"}
+                                  :y {:name "cost" :type "number"}
                                   :display_name "Cost"}}]
       (is (=? {:chart_type :categorical
                :series_count 2
@@ -139,13 +139,13 @@
     (let [xs  (map str (range 12))
           series-data {"A" {:x_values xs
                             :y_values (range 1 13)
-                            :x {:name "cat" :type :string}
-                            :y {:name "a" :type :number}
+                            :x {:name "cat" :type "string"}
+                            :y {:name "a" :type "number"}
                             :display_name "A"}
                        "B" {:x_values xs
                             :y_values (range 2 14)
-                            :x {:name "cat" :type :string}
-                            :y {:name "b" :type :number}
+                            :x {:name "cat" :type "string"}
+                            :y {:name "b" :type "number"}
                             :display_name "B"}}]
       (is (=? {:correlations #(pos? (count %))}
               (categorical/compute-categorical-stats series-data {:deep? true}))))))
@@ -154,13 +154,13 @@
   (testing "no correlations without deep?"
     (let [series-data {"A" {:x_values ["x" "y"]
                             :y_values [1 2]
-                            :x {:name "cat" :type :string}
-                            :y {:name "a" :type :number}
+                            :x {:name "cat" :type "string"}
+                            :y {:name "a" :type "number"}
                             :display_name "A"}
                        "B" {:x_values ["x" "y"]
                             :y_values [2 3]
-                            :x {:name "cat" :type :string}
-                            :y {:name "b" :type :number}
+                            :x {:name "cat" :type "string"}
+                            :y {:name "b" :type "number"}
                             :display_name "B"}}]
       (is (=? {:correlations (symbol "nil #_\"key is not present.\"")}
               (categorical/compute-categorical-stats series-data {:deep? false}))))))

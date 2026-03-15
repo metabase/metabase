@@ -71,8 +71,8 @@
   (testing "per-series structure with correct chart_type"
     (let [series-data {"Bins" {:x_values [0 1 2 3 4]
                                :y_values [5 10 20 10 5]
-                               :x {:name "bin" :type :number}
-                               :y {:name "count" :type :number}
+                               :x {:name "bin" :type "number"}
+                               :y {:name "count" :type "number"}
                                :display_name "Bins"}}]
       (is (=? {:chart_type   :histogram
                :series_count 1

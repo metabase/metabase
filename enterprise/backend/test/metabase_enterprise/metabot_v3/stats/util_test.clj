@@ -43,8 +43,8 @@
 (defn- make-series [x-vals y-vals]
   {:x_values     x-vals
    :y_values     y-vals
-   :x            {:name "x" :type :number}
-   :y            {:name "y" :type :number}
+   :x            {:name "x" :type "number"}
+   :y            {:name "y" :type "number"}
    :display_name "test"})
 
 (deftest ^:parallel compute-correlations-perfect-positive-test

@@ -69,12 +69,12 @@
 (defn- temporal-column-type?
   "Check if column type indicates temporal data."
   [col-type]
-  (contains? #{:datetime :date :time "datetime" "date" "time"} col-type))
+  (contains? #{"datetime" "date" "time"} col-type))
 
 (defn- numeric-column-type?
   "Check if column type indicates numeric data."
   [col-type]
-  (contains? #{:number "number"} col-type))
+  (contains? #{"number"} col-type))
 
 (defn- looks-like-date-string?
   "Heuristic check if a string value looks like a date."

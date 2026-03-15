@@ -7,7 +7,7 @@
 
 (mr/def ::column-type
   "Type of data in a column."
-  [:enum :string :number :datetime :date :time :boolean])
+  [:enum "string" "number" "datetime" "date" "time" "boolean"])
 
 (mr/def ::column-metadata
   "Metadata about a column in the chart data."
