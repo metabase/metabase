@@ -6,7 +6,7 @@ import {
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > question > notebook > native query preview sidebar", () => {
   beforeEach(() => {
@@ -192,18 +192,24 @@ describe("converting question to SQL (metabase#12651, metabase#21615, metabase#3
   });
 
   it("should be possible to convert an ad-hoc time-series table query to SQL (metabase#21615)", () => {
-    H.visitQuestionAdhoc({
+    H.visitAdHocQuestionWithTestQuery({
       display: "table",
       dataset_query: {
-        type: "query",
         database: SAMPLE_DB_ID,
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          breakout: [
-            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
-          ],
-        },
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            aggregations: [{ type: "operator", operator: "count" }],
+            breakouts: [
+              {
+                type: "column",
+                name: "CREATED_AT",
+                sourceName: "ORDERS",
+                unit: "month",
+              },
+            ],
+          },
+        ],
       },
     });
 
@@ -232,10 +238,12 @@ describe("converting question to SQL (metabase#12651, metabase#21615, metabase#3
   });
 
   it("should be possible to save a question based on another question after converting to SQL (metabase#40422)", () => {
-    H.createQuestion(
-      { query: { "source-table": `card__${ORDERS_QUESTION_ID}` } },
-      { visitQuestion: true },
-    );
+    H.createCardWithTestQuery({
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        stages: [{ source: { type: "card", id: ORDERS_QUESTION_ID } }],
+      },
+    }).then(H.visitCard);
     convertToSql();
     H.saveSavedQuestion();
     cy.get("[data-testid=cell-data]").should("contain", "37.65");
@@ -318,24 +326,22 @@ describe(
         H.withDatabase(
           MONGO_DB_ID,
           ({ PRODUCTS_ID }: { PRODUCTS_ID: number }) => {
-            H.createQuestion({
+            H.createCardWithTestQuery({
               name: "Mongo Source",
-              query: {
-                "source-table": PRODUCTS_ID,
-                limit: 1,
+              dataset_query: {
+                database: MONGO_DB_ID,
+                stages: [
+                  { source: { type: "table", id: PRODUCTS_ID }, limit: 1 },
+                ],
               },
-              database: MONGO_DB_ID,
-            }).then(({ body: { id: sourceId } }) => {
-              H.createQuestion(
-                {
-                  name: "Mongo Nested",
-                  query: {
-                    "source-table": `card__${sourceId}`,
-                  },
+            }).then((card) => {
+              H.createCardWithTestQuery({
+                name: "Mongo Nested",
+                dataset_query: {
                   database: MONGO_DB_ID,
+                  stages: [{ source: { type: "card", id: card.id } }],
                 },
-                { visitQuestion: true },
-              );
+              }).then(H.visitCard);
             });
           },
         );

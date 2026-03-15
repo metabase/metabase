@@ -833,25 +833,20 @@ describe("54205", () => {
         });
       });
 
-      H.createTestQuery({
-        database: WRITABLE_DB_ID,
-        stages: [
-          {
-            source: {
-              type: "table",
-              id: tableId,
+      H.createCardWithTestQuery({
+        name: "Q 54205",
+        dataset_query: {
+          database: WRITABLE_DB_ID,
+          stages: [
+            {
+              source: {
+                type: "table",
+                id: tableId,
+              },
             },
-          },
-        ],
-      }).then((query) => {
-        H.createCard({
-          name: "Q 54205",
-          dataset_query: query,
-        }).then((card) => {
-          cy.wrap(card.id).as("questionId");
-          H.visitQuestion(card.id);
-        });
-      });
+          ],
+        },
+      }).then(H.visitCard);
     });
 
     cy.findByTestId("query-visualization-root").contains("Name").click();

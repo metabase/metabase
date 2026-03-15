@@ -3,143 +3,251 @@ import _ from "underscore";
 const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import type { FieldReference, StructuredQuery } from "metabase-types/api";
 
-const { PRODUCTS_ID, PRODUCTS, ORDERS, ORDERS_ID, PEOPLE } = SAMPLE_DATABASE;
+const { PRODUCTS_ID, PRODUCTS, ORDERS_ID } = SAMPLE_DATABASE;
 
-const FIELD_PRICE: FieldReference = [
-  "field",
-  PRODUCTS.PRICE,
-  { "base-type": "type/Float" },
-];
-
-const BREAKOUT_BINNED_DATETIME: FieldReference = [
-  "field",
-  PRODUCTS.CREATED_AT,
-  { "base-type": "type/DateTime", "temporal-unit": "month" },
-];
-
-const BREAKOUT_NON_BINNED_DATETIME: FieldReference = [
-  "field",
-  PRODUCTS.CREATED_AT,
-  { "base-type": "type/DateTime" },
-];
-
-const BREAKOUT_NON_DATETIME: FieldReference = [
-  "field",
-  PRODUCTS.CATEGORY,
-  { "base-type": "type/Text" },
-];
-
-const BREAKOUT_OTHER_DATETIME: FieldReference = [
-  "field",
-  PEOPLE.CREATED_AT,
-  {
-    "base-type": "type/DateTime",
-    "temporal-unit": "month",
-    "source-field": ORDERS.USER_ID,
-  },
-];
-
-const QUERY_NO_AGGREGATION: StructuredQuery = {
-  "source-table": PRODUCTS_ID,
-};
-
-const QUERY_SINGLE_AGGREGATION_NO_BREAKOUT: StructuredQuery = {
-  "source-table": PRODUCTS_ID,
-  aggregation: [["count"]],
-};
-
-const QUERY_MULTIPLE_AGGREGATIONS_NO_BREAKOUT: StructuredQuery = {
-  "source-table": PRODUCTS_ID,
-  aggregation: [["count"], ["sum", FIELD_PRICE]],
-};
-
-const QUERY_SINGLE_AGGREGATION_BINNED_DATETIME_BREAKOUT: StructuredQuery = {
-  "source-table": PRODUCTS_ID,
-  aggregation: [["count"]],
-  breakout: [BREAKOUT_BINNED_DATETIME],
-};
-
-const QUERY_SINGLE_AGGREGATION_OTHER_DATETIME: StructuredQuery = {
-  "source-table": ORDERS_ID,
-  aggregation: [["count"]],
-  breakout: [BREAKOUT_OTHER_DATETIME],
-};
-
-const QUERY_SINGLE_AGGREGATION_NON_BINNED_DATETIME_BREAKOUT: StructuredQuery = {
-  "source-table": PRODUCTS_ID,
-  aggregation: [["count"]],
-  breakout: [BREAKOUT_NON_BINNED_DATETIME],
-};
-
-const QUERY_SINGLE_AGGREGATION_NON_DATETIME_BREAKOUT: StructuredQuery = {
-  "source-table": PRODUCTS_ID,
-  aggregation: [["count"]],
-  breakout: [BREAKOUT_NON_DATETIME],
-};
-
-const QUERY_MULTIPLE_AGGREGATIONS_BINNED_DATETIME_BREAKOUT: StructuredQuery = {
-  "source-table": PRODUCTS_ID,
-  aggregation: [["count"], ["sum", FIELD_PRICE]],
-  breakout: [BREAKOUT_BINNED_DATETIME],
-};
-
-const QUERY_MULTIPLE_AGGREGATIONS_NON_BINNED_DATETIME_BREAKOUT: StructuredQuery =
-  {
-    "source-table": PRODUCTS_ID,
-    aggregation: [["count"], ["sum", FIELD_PRICE]],
-    breakout: [BREAKOUT_NON_BINNED_DATETIME],
-  };
-
-const QUERY_MULTIPLE_AGGREGATIONS_NON_DATETIME_BREAKOUT: StructuredQuery = {
-  "source-table": PRODUCTS_ID,
-  aggregation: [["count"], ["sum", FIELD_PRICE]],
-  breakout: [BREAKOUT_NON_DATETIME],
-};
-
-const QUERY_MULTIPLE_BREAKOUTS: StructuredQuery = {
-  "source-table": PRODUCTS_ID,
-  aggregation: [["count"]],
-  breakout: [BREAKOUT_NON_DATETIME, BREAKOUT_BINNED_DATETIME],
-};
-
-const QUERY_MULTIPLE_TEMPORAL_BREAKOUTS: StructuredQuery = {
-  "source-table": PRODUCTS_ID,
-  aggregation: [["count"]],
-  breakout: [
-    BREAKOUT_NON_DATETIME,
-    BREAKOUT_BINNED_DATETIME,
-    BREAKOUT_NON_BINNED_DATETIME,
+const QUERY_NO_AGGREGATION = {
+  database: SAMPLE_DB_ID,
+  stages: [
+    {
+      source: { type: "table" as const, id: PRODUCTS_ID },
+    },
   ],
 };
 
-const QUERY_TEMPORAL_EXPRESSION_BREAKOUT: StructuredQuery = {
-  "source-table": PRODUCTS_ID,
-  expressions: {
-    "Created At plus one month": [
-      "datetime-add",
-      [
-        "field",
-        PRODUCTS.CREATED_AT,
+const QUERY_SINGLE_AGGREGATION_NO_BREAKOUT = {
+  database: SAMPLE_DB_ID,
+  stages: [
+    {
+      source: { type: "table" as const, id: PRODUCTS_ID },
+      aggregations: [{ type: "operator" as const, operator: "count" }],
+    },
+  ],
+};
+
+const QUERY_MULTIPLE_AGGREGATIONS_NO_BREAKOUT = {
+  database: SAMPLE_DB_ID,
+  stages: [
+    {
+      source: { type: "table" as const, id: PRODUCTS_ID },
+      aggregations: [
+        { type: "operator" as const, operator: "count" },
         {
-          "base-type": "type/DateTime",
+          type: "operator" as const,
+          operator: "sum",
+          args: [
+            { type: "column" as const, name: "PRICE", sourceName: "PRODUCTS" },
+          ],
         },
       ],
-      1,
-      "month",
-    ],
-  },
-  aggregation: [["count"]],
-  breakout: [
-    [
-      "expression",
-      "Created At plus one month",
-      {
-        "base-type": "type/DateTime",
-        "temporal-unit": "month",
-      },
-    ],
+    },
+  ],
+};
+
+const QUERY_SINGLE_AGGREGATION_BINNED_DATETIME_BREAKOUT = {
+  database: SAMPLE_DB_ID,
+  stages: [
+    {
+      source: { type: "table" as const, id: PRODUCTS_ID },
+      aggregations: [{ type: "operator" as const, operator: "count" }],
+      breakouts: [
+        {
+          type: "column" as const,
+          name: "CREATED_AT",
+          sourceName: "PRODUCTS",
+          unit: "month" as const,
+        },
+      ],
+    },
+  ],
+};
+
+const QUERY_SINGLE_AGGREGATION_OTHER_DATETIME = {
+  database: SAMPLE_DB_ID,
+  stages: [
+    {
+      source: { type: "table" as const, id: ORDERS_ID },
+      aggregations: [{ type: "operator" as const, operator: "count" }],
+      breakouts: [
+        {
+          type: "column" as const,
+          name: "CREATED_AT",
+          sourceName: "People",
+          unit: "month" as const,
+        },
+      ],
+    },
+  ],
+};
+
+const QUERY_SINGLE_AGGREGATION_NON_BINNED_DATETIME_BREAKOUT = {
+  database: SAMPLE_DB_ID,
+  stages: [
+    {
+      source: { type: "table" as const, id: PRODUCTS_ID },
+      aggregations: [{ type: "operator" as const, operator: "count" }],
+      breakouts: [
+        { type: "column" as const, name: "CREATED_AT", sourceName: "PRODUCTS" },
+      ],
+    },
+  ],
+};
+
+const QUERY_SINGLE_AGGREGATION_NON_DATETIME_BREAKOUT = {
+  database: SAMPLE_DB_ID,
+  stages: [
+    {
+      source: { type: "table" as const, id: PRODUCTS_ID },
+      aggregations: [{ type: "operator" as const, operator: "count" }],
+      breakouts: [
+        { type: "column" as const, name: "CATEGORY", sourceName: "PRODUCTS" },
+      ],
+    },
+  ],
+};
+
+const QUERY_MULTIPLE_AGGREGATIONS_BINNED_DATETIME_BREAKOUT = {
+  database: SAMPLE_DB_ID,
+  stages: [
+    {
+      source: { type: "table" as const, id: PRODUCTS_ID },
+      aggregations: [
+        { type: "operator" as const, operator: "count" },
+        {
+          type: "operator" as const,
+          operator: "sum",
+          args: [
+            { type: "column" as const, name: "PRICE", sourceName: "PRODUCTS" },
+          ],
+        },
+      ],
+      breakouts: [
+        {
+          type: "column" as const,
+          name: "CREATED_AT",
+          sourceName: "PRODUCTS",
+          unit: "month" as const,
+        },
+      ],
+    },
+  ],
+};
+
+const QUERY_MULTIPLE_AGGREGATIONS_NON_BINNED_DATETIME_BREAKOUT = {
+  database: SAMPLE_DB_ID,
+  stages: [
+    {
+      source: { type: "table" as const, id: PRODUCTS_ID },
+      aggregations: [
+        { type: "operator" as const, operator: "count" },
+        {
+          type: "operator" as const,
+          operator: "sum",
+          args: [
+            { type: "column" as const, name: "PRICE", sourceName: "PRODUCTS" },
+          ],
+        },
+      ],
+      breakouts: [
+        { type: "column" as const, name: "CREATED_AT", sourceName: "PRODUCTS" },
+      ],
+    },
+  ],
+};
+
+const QUERY_MULTIPLE_AGGREGATIONS_NON_DATETIME_BREAKOUT = {
+  database: SAMPLE_DB_ID,
+  stages: [
+    {
+      source: { type: "table" as const, id: PRODUCTS_ID },
+      aggregations: [
+        { type: "operator" as const, operator: "count" },
+        {
+          type: "operator" as const,
+          operator: "sum",
+          args: [
+            { type: "column" as const, name: "PRICE", sourceName: "PRODUCTS" },
+          ],
+        },
+      ],
+      breakouts: [
+        { type: "column" as const, name: "CATEGORY", sourceName: "PRODUCTS" },
+      ],
+    },
+  ],
+};
+
+const QUERY_MULTIPLE_BREAKOUTS = {
+  database: SAMPLE_DB_ID,
+  stages: [
+    {
+      source: { type: "table" as const, id: PRODUCTS_ID },
+      aggregations: [{ type: "operator" as const, operator: "count" }],
+      breakouts: [
+        { type: "column" as const, name: "CATEGORY", sourceName: "PRODUCTS" },
+        {
+          type: "column" as const,
+          name: "CREATED_AT",
+          sourceName: "PRODUCTS",
+          unit: "month" as const,
+        },
+      ],
+    },
+  ],
+};
+
+const QUERY_MULTIPLE_TEMPORAL_BREAKOUTS = {
+  database: SAMPLE_DB_ID,
+  stages: [
+    {
+      source: { type: "table" as const, id: PRODUCTS_ID },
+      aggregations: [{ type: "operator" as const, operator: "count" }],
+      breakouts: [
+        { type: "column" as const, name: "CATEGORY", sourceName: "PRODUCTS" },
+        {
+          type: "column" as const,
+          name: "CREATED_AT",
+          sourceName: "PRODUCTS",
+          unit: "month" as const,
+        },
+        { type: "column" as const, name: "CREATED_AT", sourceName: "PRODUCTS" },
+      ],
+    },
+  ],
+};
+
+const QUERY_TEMPORAL_EXPRESSION_BREAKOUT = {
+  database: SAMPLE_DB_ID,
+  stages: [
+    {
+      source: { type: "table" as const, id: PRODUCTS_ID },
+      expressions: [
+        {
+          name: "Created At plus one month",
+          value: {
+            type: "operator" as const,
+            operator: "datetime-add",
+            args: [
+              {
+                type: "column" as const,
+                name: "CREATED_AT",
+                sourceName: "PRODUCTS",
+              },
+              { type: "literal" as const, value: 1 },
+              { type: "literal" as const, value: "month" },
+            ],
+          },
+        },
+      ],
+      aggregations: [{ type: "operator" as const, operator: "count" }],
+      breakouts: [
+        {
+          type: "column" as const,
+          name: "Created At plus one month",
+          unit: "month" as const,
+        },
+      ],
+    },
   ],
 };
 
@@ -197,9 +305,11 @@ describe("scenarios > question", { tags: "@skip" }, () => {
 
     describe("no aggregations", () => {
       it("does not show column compare shortcut", () => {
-        H.createQuestion(
-          { query: QUERY_NO_AGGREGATION },
-          { visitQuestion: true, wrapId: true, idAlias: "questionId" },
+        H.createCardWithTestQuery({ dataset_query: QUERY_NO_AGGREGATION }).then(
+          (card) => {
+            cy.wrap(card.id).as("questionId");
+            return H.visitCard(card);
+          },
         );
 
         cy.log("chill mode - summarize sidebar");
@@ -231,9 +341,11 @@ describe("scenarios > question", { tags: "@skip" }, () => {
       });
 
       it("no breakout", () => {
-        H.createQuestion(
-          { query: QUERY_NO_AGGREGATION },
-          { visitQuestion: true, wrapId: true, idAlias: "questionId" },
+        H.createCardWithTestQuery({ dataset_query: QUERY_NO_AGGREGATION }).then(
+          (card) => {
+            cy.wrap(card.id).as("questionId");
+            return H.visitCard(card);
+          },
         );
 
         cy.log("chill mode - summarize sidebar");
@@ -257,10 +369,12 @@ describe("scenarios > question", { tags: "@skip" }, () => {
       });
 
       it("one breakout", () => {
-        H.createQuestion(
-          { query: QUERY_SINGLE_AGGREGATION_NON_DATETIME_BREAKOUT },
-          { visitQuestion: true, wrapId: true, idAlias: "questionId" },
-        );
+        H.createCardWithTestQuery({
+          dataset_query: QUERY_SINGLE_AGGREGATION_NON_DATETIME_BREAKOUT,
+        }).then((card) => {
+          cy.wrap(card.id).as("questionId");
+          return H.visitCard(card);
+        });
 
         cy.log("chill mode - summarize sidebar");
         cy.button(/Summarize/).click();
@@ -285,10 +399,12 @@ describe("scenarios > question", { tags: "@skip" }, () => {
 
     describe("offset", () => {
       it("should be possible to change the temporal bucket through a preset", () => {
-        H.createQuestion(
-          { query: QUERY_SINGLE_AGGREGATION_NO_BREAKOUT },
-          { visitQuestion: true, wrapId: true, idAlias: "questionId" },
-        );
+        H.createCardWithTestQuery({
+          dataset_query: QUERY_SINGLE_AGGREGATION_NO_BREAKOUT,
+        }).then((card) => {
+          cy.wrap(card.id).as("questionId");
+          return H.visitCard(card);
+        });
 
         H.openNotebook();
         // eslint-disable-next-line metabase/no-unsafe-element-filtering
@@ -324,10 +440,12 @@ describe("scenarios > question", { tags: "@skip" }, () => {
       });
 
       it("should be possible to change the temporal bucket with a custom offset", () => {
-        H.createQuestion(
-          { query: QUERY_SINGLE_AGGREGATION_NO_BREAKOUT },
-          { visitQuestion: true, wrapId: true, idAlias: "questionId" },
-        );
+        H.createCardWithTestQuery({
+          dataset_query: QUERY_SINGLE_AGGREGATION_NO_BREAKOUT,
+        }).then((card) => {
+          cy.wrap(card.id).as("questionId");
+          return H.visitCard(card);
+        });
 
         H.openNotebook();
         // eslint-disable-next-line metabase/no-unsafe-element-filtering
@@ -373,10 +491,12 @@ describe("scenarios > question", { tags: "@skip" }, () => {
 
       describe("single aggregation", () => {
         it("no breakout", () => {
-          H.createQuestion(
-            { query: QUERY_SINGLE_AGGREGATION_NO_BREAKOUT },
-            { visitQuestion: true, wrapId: true, idAlias: "questionId" },
-          );
+          H.createCardWithTestQuery({
+            dataset_query: QUERY_SINGLE_AGGREGATION_NO_BREAKOUT,
+          }).then((card) => {
+            cy.wrap(card.id).as("questionId");
+            return H.visitCard(card);
+          });
 
           const info = {
             itemName: "Compare to the past",
@@ -424,10 +544,12 @@ describe("scenarios > question", { tags: "@skip" }, () => {
         });
 
         it("breakout on binned datetime column", () => {
-          H.createQuestion(
-            { query: QUERY_SINGLE_AGGREGATION_BINNED_DATETIME_BREAKOUT },
-            { visitQuestion: true, wrapId: true, idAlias: "questionId" },
-          );
+          H.createCardWithTestQuery({
+            dataset_query: QUERY_SINGLE_AGGREGATION_BINNED_DATETIME_BREAKOUT,
+          }).then((card) => {
+            cy.wrap(card.id).as("questionId");
+            return H.visitCard(card);
+          });
 
           const info = {
             itemName: "Compare to the past",
@@ -484,10 +606,13 @@ describe("scenarios > question", { tags: "@skip" }, () => {
         });
 
         it("breakout on non-binned datetime column", () => {
-          H.createQuestion(
-            { query: QUERY_SINGLE_AGGREGATION_NON_BINNED_DATETIME_BREAKOUT },
-            { visitQuestion: true, wrapId: true, idAlias: "questionId" },
-          );
+          H.createCardWithTestQuery({
+            dataset_query:
+              QUERY_SINGLE_AGGREGATION_NON_BINNED_DATETIME_BREAKOUT,
+          }).then((card) => {
+            cy.wrap(card.id).as("questionId");
+            return H.visitCard(card);
+          });
 
           const info = {
             itemName: "Compare to the past",
@@ -540,10 +665,12 @@ describe("scenarios > question", { tags: "@skip" }, () => {
         });
 
         it("breakout on non-datetime column", () => {
-          H.createQuestion(
-            { query: QUERY_SINGLE_AGGREGATION_NON_DATETIME_BREAKOUT },
-            { visitQuestion: true, wrapId: true, idAlias: "questionId" },
-          );
+          H.createCardWithTestQuery({
+            dataset_query: QUERY_SINGLE_AGGREGATION_NON_DATETIME_BREAKOUT,
+          }).then((card) => {
+            cy.wrap(card.id).as("questionId");
+            return H.visitCard(card);
+          });
 
           const info = {
             itemName: "Compare to the past",
@@ -611,10 +738,12 @@ describe("scenarios > question", { tags: "@skip" }, () => {
         });
 
         it("breakout on temporal column which is an expression", () => {
-          H.createQuestion(
-            { query: QUERY_TEMPORAL_EXPRESSION_BREAKOUT },
-            { visitQuestion: true, wrapId: true, idAlias: "questionId" },
-          );
+          H.createCardWithTestQuery({
+            dataset_query: QUERY_TEMPORAL_EXPRESSION_BREAKOUT,
+          }).then((card) => {
+            cy.wrap(card.id).as("questionId");
+            return H.visitCard(card);
+          });
 
           const info = {
             itemName: "Compare to the past",
@@ -672,10 +801,12 @@ describe("scenarios > question", { tags: "@skip" }, () => {
         });
 
         it("multiple breakouts", () => {
-          H.createQuestion(
-            { query: QUERY_MULTIPLE_BREAKOUTS },
-            { visitQuestion: true, wrapId: true, idAlias: "questionId" },
-          );
+          H.createCardWithTestQuery({
+            dataset_query: QUERY_MULTIPLE_BREAKOUTS,
+          }).then((card) => {
+            cy.wrap(card.id).as("questionId");
+            return H.visitCard(card);
+          });
 
           const info = {
             itemName: "Compare to the past",
@@ -729,10 +860,12 @@ describe("scenarios > question", { tags: "@skip" }, () => {
         });
 
         it("multiple temporal breakouts", () => {
-          H.createQuestion(
-            { query: QUERY_MULTIPLE_TEMPORAL_BREAKOUTS },
-            { visitQuestion: true, wrapId: true, idAlias: "questionId" },
-          );
+          H.createCardWithTestQuery({
+            dataset_query: QUERY_MULTIPLE_TEMPORAL_BREAKOUTS,
+          }).then((card) => {
+            cy.wrap(card.id).as("questionId");
+            return H.visitCard(card);
+          });
 
           const info = {
             itemName: "Compare to the past",
@@ -787,10 +920,12 @@ describe("scenarios > question", { tags: "@skip" }, () => {
         });
 
         it("one breakout on non-default datetime column", () => {
-          H.createQuestion(
-            { query: QUERY_SINGLE_AGGREGATION_OTHER_DATETIME },
-            { visitQuestion: true, wrapId: true, idAlias: "questionId" },
-          );
+          H.createCardWithTestQuery({
+            dataset_query: QUERY_SINGLE_AGGREGATION_OTHER_DATETIME,
+          }).then((card) => {
+            cy.wrap(card.id).as("questionId");
+            return H.visitCard(card);
+          });
 
           const info = {
             itemName: "Compare to the past",
@@ -853,10 +988,12 @@ describe("scenarios > question", { tags: "@skip" }, () => {
 
       describe("multiple aggregations", () => {
         it("no breakout", () => {
-          H.createQuestion(
-            { query: QUERY_MULTIPLE_AGGREGATIONS_NO_BREAKOUT },
-            { visitQuestion: true, wrapId: true, idAlias: "questionId" },
-          );
+          H.createCardWithTestQuery({
+            dataset_query: QUERY_MULTIPLE_AGGREGATIONS_NO_BREAKOUT,
+          }).then((card) => {
+            cy.wrap(card.id).as("questionId");
+            return H.visitCard(card);
+          });
 
           const info = {
             itemName: "Compare to the past",
@@ -904,10 +1041,12 @@ describe("scenarios > question", { tags: "@skip" }, () => {
         });
 
         it("breakout on binned datetime column", () => {
-          H.createQuestion(
-            { query: QUERY_MULTIPLE_AGGREGATIONS_BINNED_DATETIME_BREAKOUT },
-            { visitQuestion: true, wrapId: true, idAlias: "questionId" },
-          );
+          H.createCardWithTestQuery({
+            dataset_query: QUERY_MULTIPLE_AGGREGATIONS_BINNED_DATETIME_BREAKOUT,
+          }).then((card) => {
+            cy.wrap(card.id).as("questionId");
+            return H.visitCard(card);
+          });
 
           const info = {
             itemName: "Compare to the past",
@@ -961,10 +1100,13 @@ describe("scenarios > question", { tags: "@skip" }, () => {
         });
 
         it("breakout on non-binned datetime column", () => {
-          H.createQuestion(
-            { query: QUERY_MULTIPLE_AGGREGATIONS_NON_BINNED_DATETIME_BREAKOUT },
-            { visitQuestion: true, wrapId: true, idAlias: "questionId" },
-          );
+          H.createCardWithTestQuery({
+            dataset_query:
+              QUERY_MULTIPLE_AGGREGATIONS_NON_BINNED_DATETIME_BREAKOUT,
+          }).then((card) => {
+            cy.wrap(card.id).as("questionId");
+            return H.visitCard(card);
+          });
 
           const info = {
             itemName: "Compare to the past",
@@ -1018,10 +1160,12 @@ describe("scenarios > question", { tags: "@skip" }, () => {
         });
 
         it("breakout on non-datetime column", () => {
-          H.createQuestion(
-            { query: QUERY_MULTIPLE_AGGREGATIONS_NON_DATETIME_BREAKOUT },
-            { visitQuestion: true, wrapId: true, idAlias: "questionId" },
-          );
+          H.createCardWithTestQuery({
+            dataset_query: QUERY_MULTIPLE_AGGREGATIONS_NON_DATETIME_BREAKOUT,
+          }).then((card) => {
+            cy.wrap(card.id).as("questionId");
+            return H.visitCard(card);
+          });
 
           const info = {
             itemName: "Compare to the past",
@@ -1078,10 +1222,12 @@ describe("scenarios > question", { tags: "@skip" }, () => {
 
     describe("moving average", () => {
       it("should be possible to change the temporal bucket with a custom offset", () => {
-        H.createQuestion(
-          { query: QUERY_SINGLE_AGGREGATION_NO_BREAKOUT },
-          { visitQuestion: true, wrapId: true, idAlias: "questionId" },
-        );
+        H.createCardWithTestQuery({
+          dataset_query: QUERY_SINGLE_AGGREGATION_NO_BREAKOUT,
+        }).then((card) => {
+          cy.wrap(card.id).as("questionId");
+          return H.visitCard(card);
+        });
 
         H.openNotebook();
         // eslint-disable-next-line metabase/no-unsafe-element-filtering
@@ -1129,10 +1275,12 @@ describe("scenarios > question", { tags: "@skip" }, () => {
 
       describe("single aggregation", () => {
         it("no breakout", () => {
-          H.createQuestion(
-            { query: QUERY_SINGLE_AGGREGATION_NO_BREAKOUT },
-            { visitQuestion: true, wrapId: true, idAlias: "questionId" },
-          );
+          H.createCardWithTestQuery({
+            dataset_query: QUERY_SINGLE_AGGREGATION_NO_BREAKOUT,
+          }).then((card) => {
+            cy.wrap(card.id).as("questionId");
+            return H.visitCard(card);
+          });
 
           const info = {
             type: "moving-average" as const,
@@ -1187,10 +1335,12 @@ describe("scenarios > question", { tags: "@skip" }, () => {
         });
 
         it("breakout on binned datetime column", () => {
-          H.createQuestion(
-            { query: QUERY_SINGLE_AGGREGATION_BINNED_DATETIME_BREAKOUT },
-            { visitQuestion: true, wrapId: true, idAlias: "questionId" },
-          );
+          H.createCardWithTestQuery({
+            dataset_query: QUERY_SINGLE_AGGREGATION_BINNED_DATETIME_BREAKOUT,
+          }).then((card) => {
+            cy.wrap(card.id).as("questionId");
+            return H.visitCard(card);
+          });
 
           const info = {
             type: "moving-average" as const,
@@ -1249,10 +1399,13 @@ describe("scenarios > question", { tags: "@skip" }, () => {
         });
 
         it("breakout on non-binned datetime column", () => {
-          H.createQuestion(
-            { query: QUERY_SINGLE_AGGREGATION_NON_BINNED_DATETIME_BREAKOUT },
-            { visitQuestion: true, wrapId: true, idAlias: "questionId" },
-          );
+          H.createCardWithTestQuery({
+            dataset_query:
+              QUERY_SINGLE_AGGREGATION_NON_BINNED_DATETIME_BREAKOUT,
+          }).then((card) => {
+            cy.wrap(card.id).as("questionId");
+            return H.visitCard(card);
+          });
 
           const info = {
             type: "moving-average" as const,
@@ -1310,10 +1463,12 @@ describe("scenarios > question", { tags: "@skip" }, () => {
         });
 
         it("breakout on non-datetime column", () => {
-          H.createQuestion(
-            { query: QUERY_SINGLE_AGGREGATION_NON_DATETIME_BREAKOUT },
-            { visitQuestion: true, wrapId: true, idAlias: "questionId" },
-          );
+          H.createCardWithTestQuery({
+            dataset_query: QUERY_SINGLE_AGGREGATION_NON_DATETIME_BREAKOUT,
+          }).then((card) => {
+            cy.wrap(card.id).as("questionId");
+            return H.visitCard(card);
+          });
 
           const info = {
             type: "moving-average" as const,
@@ -1382,10 +1537,12 @@ describe("scenarios > question", { tags: "@skip" }, () => {
         });
 
         it("multiple breakouts", () => {
-          H.createQuestion(
-            { query: QUERY_MULTIPLE_BREAKOUTS },
-            { visitQuestion: true, wrapId: true, idAlias: "questionId" },
-          );
+          H.createCardWithTestQuery({
+            dataset_query: QUERY_MULTIPLE_BREAKOUTS,
+          }).then((card) => {
+            cy.wrap(card.id).as("questionId");
+            return H.visitCard(card);
+          });
 
           const info = {
             type: "moving-average" as const,
@@ -1440,10 +1597,12 @@ describe("scenarios > question", { tags: "@skip" }, () => {
         });
 
         it("multiple temporal breakouts", () => {
-          H.createQuestion(
-            { query: QUERY_MULTIPLE_TEMPORAL_BREAKOUTS },
-            { visitQuestion: true, wrapId: true, idAlias: "questionId" },
-          );
+          H.createCardWithTestQuery({
+            dataset_query: QUERY_MULTIPLE_TEMPORAL_BREAKOUTS,
+          }).then((card) => {
+            cy.wrap(card.id).as("questionId");
+            return H.visitCard(card);
+          });
 
           const info = {
             type: "moving-average" as const,
@@ -1498,10 +1657,12 @@ describe("scenarios > question", { tags: "@skip" }, () => {
         });
 
         it("one breakout on non-default datetime column", () => {
-          H.createQuestion(
-            { query: QUERY_SINGLE_AGGREGATION_OTHER_DATETIME },
-            { visitQuestion: true, wrapId: true, idAlias: "questionId" },
-          );
+          H.createCardWithTestQuery({
+            dataset_query: QUERY_SINGLE_AGGREGATION_OTHER_DATETIME,
+          }).then((card) => {
+            cy.wrap(card.id).as("questionId");
+            return H.visitCard(card);
+          });
 
           const info = {
             type: "moving-average" as const,
@@ -1565,10 +1726,12 @@ describe("scenarios > question", { tags: "@skip" }, () => {
 
       describe("multiple aggregations", () => {
         it("no breakout", () => {
-          H.createQuestion(
-            { query: QUERY_MULTIPLE_AGGREGATIONS_NO_BREAKOUT },
-            { visitQuestion: true, wrapId: true, idAlias: "questionId" },
-          );
+          H.createCardWithTestQuery({
+            dataset_query: QUERY_MULTIPLE_AGGREGATIONS_NO_BREAKOUT,
+          }).then((card) => {
+            cy.wrap(card.id).as("questionId");
+            return H.visitCard(card);
+          });
 
           const info = {
             type: "moving-average" as const,
@@ -1623,10 +1786,12 @@ describe("scenarios > question", { tags: "@skip" }, () => {
         });
 
         it("breakout on binned datetime column", () => {
-          H.createQuestion(
-            { query: QUERY_MULTIPLE_AGGREGATIONS_BINNED_DATETIME_BREAKOUT },
-            { visitQuestion: true, wrapId: true, idAlias: "questionId" },
-          );
+          H.createCardWithTestQuery({
+            dataset_query: QUERY_MULTIPLE_AGGREGATIONS_BINNED_DATETIME_BREAKOUT,
+          }).then((card) => {
+            cy.wrap(card.id).as("questionId");
+            return H.visitCard(card);
+          });
 
           const info = {
             type: "moving-average" as const,
@@ -1681,10 +1846,13 @@ describe("scenarios > question", { tags: "@skip" }, () => {
         });
 
         it("breakout on non-binned datetime column", () => {
-          H.createQuestion(
-            { query: QUERY_MULTIPLE_AGGREGATIONS_NON_BINNED_DATETIME_BREAKOUT },
-            { visitQuestion: true, wrapId: true, idAlias: "questionId" },
-          );
+          H.createCardWithTestQuery({
+            dataset_query:
+              QUERY_MULTIPLE_AGGREGATIONS_NON_BINNED_DATETIME_BREAKOUT,
+          }).then((card) => {
+            cy.wrap(card.id).as("questionId");
+            return H.visitCard(card);
+          });
 
           const info = {
             type: "moving-average" as const,
@@ -1739,10 +1907,12 @@ describe("scenarios > question", { tags: "@skip" }, () => {
         });
 
         it("breakout on non-datetime column", () => {
-          H.createQuestion(
-            { query: QUERY_MULTIPLE_AGGREGATIONS_NON_DATETIME_BREAKOUT },
-            { visitQuestion: true, wrapId: true, idAlias: "questionId" },
-          );
+          H.createCardWithTestQuery({
+            dataset_query: QUERY_MULTIPLE_AGGREGATIONS_NON_DATETIME_BREAKOUT,
+          }).then((card) => {
+            cy.wrap(card.id).as("questionId");
+            return H.visitCard(card);
+          });
 
           const info = {
             type: "moving-average" as const,

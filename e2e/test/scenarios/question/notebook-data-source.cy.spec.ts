@@ -1,12 +1,11 @@
 const { H } = cy;
-import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_MODEL_ID,
   SECOND_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import type { StructuredQuestionDetails } from "e2e/support/helpers";
 import { checkNotNull } from "metabase/lib/types";
 
 const { ORDERS_ID, PRODUCTS_ID, REVIEWS_ID } = SAMPLE_DATABASE;
@@ -227,11 +226,16 @@ describe("scenarios > notebook > data source", () => {
   });
 
   describe("saved entity as a source (aka the virtual table)", () => {
-    const modelDetails: StructuredQuestionDetails = {
+    const modelDetails = {
       name: "GUI Model",
-      query: { "source-table": REVIEWS_ID, limit: 1 },
-      display: "table",
-      type: "model",
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        stages: [
+          { source: { type: "table" as const, id: REVIEWS_ID }, limit: 1 },
+        ],
+      },
+      display: "table" as const,
+      type: "model" as const,
       collection_id: SECOND_COLLECTION_ID,
     };
 
@@ -241,7 +245,7 @@ describe("scenarios > notebook > data source", () => {
     });
 
     it("data selector should properly show a model as the source (metabase#39699)", () => {
-      H.createQuestion(modelDetails, { visitQuestion: true });
+      H.createCardWithTestQuery(modelDetails).then(H.visitCard);
       H.openNotebook();
       cy.findByTestId("data-step-cell")
         .should("have.text", modelDetails.name)
@@ -296,15 +300,13 @@ describe("scenarios > notebook > data source", () => {
         name: sourceQuestionName,
       });
 
-      const nestedQuestionDetails = {
+      H.createCardWithTestQuery({
         name: "Nested Question",
-        query: { "source-table": `card__${SOURCE_QUESTION_ID}` },
-      };
-
-      H.createQuestion(nestedQuestionDetails, {
-        wrapId: true,
-        idAlias: "nestedQuestionId",
-      });
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          stages: [{ source: { type: "card", id: SOURCE_QUESTION_ID } }],
+        },
+      }).then((card) => cy.wrap(card.id).as("nestedQuestionId"));
 
       cy.log("see nested question in our analytics");
 
@@ -436,11 +438,12 @@ describe("issue 32252", () => {
           throw new Error("collection.id is not a number");
         }
 
-        H.createQuestion({
+        H.createCardWithTestQuery({
           name: "My question",
           collection_id: collection.id,
-          query: {
-            "source-table": ORDERS_ID,
+          dataset_query: {
+            database: SAMPLE_DB_ID,
+            stages: [{ source: { type: "table", id: ORDERS_ID } }],
           },
         });
       },

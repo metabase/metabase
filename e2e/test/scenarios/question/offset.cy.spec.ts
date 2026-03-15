@@ -1,50 +1,10 @@
 const { H } = cy;
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import type { StructuredQuestionDetails } from "e2e/support/helpers";
-import { uuid } from "metabase/lib/uuid";
-import type {
-  Aggregation,
-  Breakout,
-  FieldReference,
-  StructuredQuery,
-} from "metabase-types/api";
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
-
-const ORDERS_ID_FIELD_REF: FieldReference = [
-  "field",
-  ORDERS.ID,
-  { "base-type": "type/BigInteger" },
-];
-
-const ORDERS_TOTAL_FIELD_REF: FieldReference = [
-  "field",
-  ORDERS.TOTAL,
-  { "base-type": "type/Float" },
-];
-
-const ORDERS_CREATED_AT_BREAKOUT: Breakout = [
-  "field",
-  ORDERS.CREATED_AT,
-  { "base-type": "type/DateTime", "temporal-unit": "month" },
-];
-
-const PRODUCTS_CATEGORY_BREAKOUT: Breakout = [
-  "field",
-  PRODUCTS.CATEGORY,
-  { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
-];
-
-const SUM_TOTAL_AGGREGATION: Aggregation = ["sum", ORDERS_TOTAL_FIELD_REF];
+const { ORDERS, ORDERS_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const OFFSET_SUM_TOTAL_AGGREGATION_NAME = "Offsetted sum of total";
-
-const OFFSET_SUM_TOTAL_AGGREGATION: Aggregation = [
-  "offset",
-  createOffsetOptions(OFFSET_SUM_TOTAL_AGGREGATION_NAME),
-  SUM_TOTAL_AGGREGATION,
-  -1,
-];
 
 describe("scenarios > question > offset", () => {
   beforeEach(() => {
@@ -60,14 +20,30 @@ describe("scenarios > question > offset", () => {
       const expression = "Offset([Total], -1)";
       const prefixLength = 3;
       const prefix = expression.substring(0, prefixLength);
-      const query: StructuredQuery = {
-        "source-table": ORDERS_ID,
-        fields: [ORDERS_ID_FIELD_REF, ORDERS_TOTAL_FIELD_REF],
-        limit: 5,
-        "order-by": [["asc", ORDERS_TOTAL_FIELD_REF]],
-      };
 
-      H.createQuestion({ query }, { visitQuestion: true });
+      H.createCardWithTestQuery({
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              fields: [
+                { type: "column", name: "ID", sourceName: "ORDERS" },
+                { type: "column", name: "TOTAL", sourceName: "ORDERS" },
+              ],
+              limit: 5,
+              orderBys: [
+                {
+                  type: "column",
+                  name: "TOTAL",
+                  sourceName: "ORDERS",
+                  direction: "asc",
+                },
+              ],
+            },
+          ],
+        },
+      }).then(H.visitCard);
       H.openNotebook();
       cy.button("Custom column").click();
       H.enterCustomColumnDetails({ formula: prefix });
@@ -91,13 +67,22 @@ describe("scenarios > question > offset", () => {
       const expression = "Offset([Total], -1)";
       const prefixLength = 3;
       const prefix = expression.substring(0, prefixLength);
-      const query: StructuredQuery = {
-        "source-table": ORDERS_ID,
-        fields: [ORDERS_ID_FIELD_REF, ORDERS_TOTAL_FIELD_REF],
-        limit: 5,
-      };
 
-      H.createQuestion({ query }, { visitQuestion: true });
+      H.createCardWithTestQuery({
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              fields: [
+                { type: "column", name: "ID", sourceName: "ORDERS" },
+                { type: "column", name: "TOTAL", sourceName: "ORDERS" },
+              ],
+              limit: 5,
+            },
+          ],
+        },
+      }).then(H.visitCard);
       H.openNotebook();
       cy.button("Custom column").click();
       H.enterCustomColumnDetails({ formula: prefix });
@@ -155,21 +140,39 @@ describe("scenarios > question > offset", () => {
         const expression = `Offset([${offsettedColumnName}], -1)`;
         const prefixLength = "Offset([x".length;
         const prefix = expression.substring(0, prefixLength);
-        const query: StructuredQuery = {
-          "source-table": ORDERS_ID,
-          expressions: {
-            [offsettedColumnName]: [
-              "offset",
-              createOffsetOptions(offsettedColumnName),
-              ORDERS_TOTAL_FIELD_REF,
-              -1,
+
+        H.createCardWithTestQuery({
+          dataset_query: {
+            database: SAMPLE_DB_ID,
+            stages: [
+              {
+                source: { type: "table", id: ORDERS_ID },
+                expressions: [
+                  {
+                    name: offsettedColumnName,
+                    value: {
+                      type: "operator",
+                      operator: "offset",
+                      args: [
+                        { type: "column", name: "TOTAL", sourceName: "ORDERS" },
+                        { type: "literal", value: -1 },
+                      ],
+                    },
+                  },
+                ],
+                orderBys: [
+                  {
+                    type: "column",
+                    name: "ID",
+                    sourceName: "ORDERS",
+                    direction: "asc",
+                  },
+                ],
+                limit: 5,
+              },
             ],
           },
-          "order-by": [["asc", ORDERS_ID_FIELD_REF]],
-          limit: 5,
-        };
-
-        H.createQuestion({ query }, { visitQuestion: true });
+        }).then(H.visitCard);
 
         cy.log("custom column drills");
         const rowIndex = 1;
@@ -213,12 +216,13 @@ describe("scenarios > question > offset", () => {
       const expression = "Offset([Total], -1) > 0";
       const prefixLength = 3;
       const prefix = expression.substring(0, prefixLength);
-      const query: StructuredQuery = {
-        "source-table": ORDERS_ID,
-        limit: 5,
-      };
 
-      H.createQuestion({ query }, { visitQuestion: true });
+      H.createCardWithTestQuery({
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          stages: [{ source: { type: "table", id: ORDERS_ID }, limit: 5 }],
+        },
+      }).then(H.visitCard);
       H.openNotebook();
       cy.button("Filter").click();
       H.popover().findByText("Custom Expression").click();
@@ -244,12 +248,13 @@ describe("scenarios > question > offset", () => {
       const expression = "Offset(Sum([Total]), -1)";
       const prefixLength = 3;
       const prefix = expression.substring(0, prefixLength);
-      const query: StructuredQuery = {
-        "source-table": ORDERS_ID,
-        limit: 5,
-      };
 
-      H.createQuestion({ query }, { visitQuestion: true });
+      H.createCardWithTestQuery({
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          stages: [{ source: { type: "table", id: ORDERS_ID }, limit: 5 }],
+        },
+      }).then(H.visitCard);
       H.openNotebook();
       cy.button("Summarize").click();
       H.getNotebookStep("summarize")
@@ -278,12 +283,39 @@ describe("scenarios > question > offset", () => {
     });
 
     it("does not work without a breakout", () => {
-      const query: StructuredQuery = {
-        "source-table": ORDERS_ID,
-        aggregation: [OFFSET_SUM_TOTAL_AGGREGATION],
-      };
-
-      H.createQuestion({ query }, { visitQuestion: true });
+      H.createCardWithTestQuery({
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              aggregations: [
+                {
+                  name: OFFSET_SUM_TOTAL_AGGREGATION_NAME,
+                  value: {
+                    type: "operator",
+                    operator: "offset",
+                    args: [
+                      {
+                        type: "operator",
+                        operator: "sum",
+                        args: [
+                          {
+                            type: "column",
+                            name: "TOTAL",
+                            sourceName: "ORDERS",
+                          },
+                        ],
+                      },
+                      { type: "literal", value: -1 },
+                    ],
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      }).then(H.visitCard);
 
       verifyQuestionError(
         "Window function requires either breakouts or order by in the query",
@@ -296,13 +328,40 @@ describe("scenarios > question > offset", () => {
       () => {
         cy.intercept("POST", "/api/dataset/native").as("sqlPreview");
 
-        const query: StructuredQuery = {
-          "source-table": ORDERS_ID,
-          aggregation: [OFFSET_SUM_TOTAL_AGGREGATION],
-          limit: 5,
-        };
-
-        H.createQuestion({ query }, { visitQuestion: true });
+        H.createCardWithTestQuery({
+          dataset_query: {
+            database: SAMPLE_DB_ID,
+            stages: [
+              {
+                source: { type: "table", id: ORDERS_ID },
+                aggregations: [
+                  {
+                    name: OFFSET_SUM_TOTAL_AGGREGATION_NAME,
+                    value: {
+                      type: "operator",
+                      operator: "offset",
+                      args: [
+                        {
+                          type: "operator",
+                          operator: "sum",
+                          args: [
+                            {
+                              type: "column",
+                              name: "TOTAL",
+                              sourceName: "ORDERS",
+                            },
+                          ],
+                        },
+                        { type: "literal", value: -1 },
+                      ],
+                    },
+                  },
+                ],
+                limit: 5,
+              },
+            ],
+          },
+        }).then(H.visitCard);
 
         H.openNotebook();
 
@@ -317,14 +376,48 @@ describe("scenarios > question > offset", () => {
     );
 
     it("works with a single breakout", () => {
-      const query: StructuredQuery = {
-        "source-table": ORDERS_ID,
-        aggregation: [OFFSET_SUM_TOTAL_AGGREGATION],
-        breakout: [ORDERS_CREATED_AT_BREAKOUT],
-        limit: 5,
-      };
-
-      H.createQuestion({ query }, { visitQuestion: true });
+      H.createCardWithTestQuery({
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              aggregations: [
+                {
+                  name: OFFSET_SUM_TOTAL_AGGREGATION_NAME,
+                  value: {
+                    type: "operator",
+                    operator: "offset",
+                    args: [
+                      {
+                        type: "operator",
+                        operator: "sum",
+                        args: [
+                          {
+                            type: "column",
+                            name: "TOTAL",
+                            sourceName: "ORDERS",
+                          },
+                        ],
+                      },
+                      { type: "literal", value: -1 },
+                    ],
+                  },
+                },
+              ],
+              breakouts: [
+                {
+                  type: "column",
+                  name: "CREATED_AT",
+                  sourceName: "ORDERS",
+                  unit: "month",
+                },
+              ],
+              limit: 5,
+            },
+          ],
+        },
+      }).then(H.visitCard);
 
       verifyNoQuestionError();
       verifyTableContent([
@@ -337,15 +430,57 @@ describe("scenarios > question > offset", () => {
     });
 
     it("works with a single breakout and sorting by breakout", () => {
-      const query: StructuredQuery = {
-        "source-table": ORDERS_ID,
-        aggregation: [OFFSET_SUM_TOTAL_AGGREGATION],
-        breakout: [ORDERS_CREATED_AT_BREAKOUT],
-        limit: 5,
-        "order-by": [["desc", ORDERS_CREATED_AT_BREAKOUT]],
-      };
-
-      H.createQuestion({ query }, { visitQuestion: true });
+      H.createCardWithTestQuery({
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              aggregations: [
+                {
+                  name: OFFSET_SUM_TOTAL_AGGREGATION_NAME,
+                  value: {
+                    type: "operator",
+                    operator: "offset",
+                    args: [
+                      {
+                        type: "operator",
+                        operator: "sum",
+                        args: [
+                          {
+                            type: "column",
+                            name: "TOTAL",
+                            sourceName: "ORDERS",
+                          },
+                        ],
+                      },
+                      { type: "literal", value: -1 },
+                    ],
+                  },
+                },
+              ],
+              breakouts: [
+                {
+                  type: "column",
+                  name: "CREATED_AT",
+                  sourceName: "ORDERS",
+                  unit: "month",
+                },
+              ],
+              limit: 5,
+              orderBys: [
+                {
+                  type: "column",
+                  name: "CREATED_AT",
+                  sourceName: "ORDERS",
+                  unit: "month",
+                  direction: "desc",
+                },
+              ],
+            },
+          ],
+        },
+      }).then(H.visitCard);
 
       verifyNoQuestionError();
       verifyTableContent([
@@ -355,15 +490,55 @@ describe("scenarios > question > offset", () => {
     });
 
     it("works with a single breakout and sorting by aggregation (metabase#42554)", () => {
-      const query: StructuredQuery = {
-        "source-table": ORDERS_ID,
-        aggregation: [OFFSET_SUM_TOTAL_AGGREGATION],
-        breakout: [ORDERS_CREATED_AT_BREAKOUT],
-        limit: 5,
-        "order-by": [["desc", ["aggregation", 0]]],
-      };
-
-      H.createQuestion({ query }, { visitQuestion: true });
+      H.createCardWithTestQuery({
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              aggregations: [
+                {
+                  name: OFFSET_SUM_TOTAL_AGGREGATION_NAME,
+                  value: {
+                    type: "operator",
+                    operator: "offset",
+                    args: [
+                      {
+                        type: "operator",
+                        operator: "sum",
+                        args: [
+                          {
+                            type: "column",
+                            name: "TOTAL",
+                            sourceName: "ORDERS",
+                          },
+                        ],
+                      },
+                      { type: "literal", value: -1 },
+                    ],
+                  },
+                },
+              ],
+              breakouts: [
+                {
+                  type: "column",
+                  name: "CREATED_AT",
+                  sourceName: "ORDERS",
+                  unit: "month",
+                },
+              ],
+              limit: 5,
+              orderBys: [
+                {
+                  type: "column",
+                  name: OFFSET_SUM_TOTAL_AGGREGATION_NAME,
+                  direction: "desc",
+                },
+              ],
+            },
+          ],
+        },
+      }).then(H.visitCard);
 
       verifyNoQuestionError();
       verifyTableContent([
@@ -383,13 +558,48 @@ describe("scenarios > question > offset", () => {
     });
 
     it("works with multiple breakouts", () => {
-      const query: StructuredQuery = {
-        "source-table": ORDERS_ID,
-        aggregation: [OFFSET_SUM_TOTAL_AGGREGATION],
-        breakout: [ORDERS_CREATED_AT_BREAKOUT, PRODUCTS_CATEGORY_BREAKOUT],
-      };
-
-      H.createQuestion({ query }, { visitQuestion: true });
+      H.createCardWithTestQuery({
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              aggregations: [
+                {
+                  name: OFFSET_SUM_TOTAL_AGGREGATION_NAME,
+                  value: {
+                    type: "operator",
+                    operator: "offset",
+                    args: [
+                      {
+                        type: "operator",
+                        operator: "sum",
+                        args: [
+                          {
+                            type: "column",
+                            name: "TOTAL",
+                            sourceName: "ORDERS",
+                          },
+                        ],
+                      },
+                      { type: "literal", value: -1 },
+                    ],
+                  },
+                },
+              ],
+              breakouts: [
+                {
+                  type: "column",
+                  name: "CREATED_AT",
+                  sourceName: "ORDERS",
+                  unit: "month",
+                },
+                { type: "column", name: "CATEGORY", sourceName: "PRODUCTS" },
+              ],
+            },
+          ],
+        },
+      }).then(H.visitCard);
 
       verifyNoQuestionError();
       verifyTableContent([
@@ -400,14 +610,56 @@ describe("scenarios > question > offset", () => {
     });
 
     it("works with multiple aggregations and breakouts", () => {
-      const query: StructuredQuery = {
-        "source-table": ORDERS_ID,
-        aggregation: [SUM_TOTAL_AGGREGATION, OFFSET_SUM_TOTAL_AGGREGATION],
-        breakout: [ORDERS_CREATED_AT_BREAKOUT, PRODUCTS_CATEGORY_BREAKOUT],
-        limit: 9,
-      };
-
-      H.createQuestion({ query }, { visitQuestion: true });
+      H.createCardWithTestQuery({
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              aggregations: [
+                {
+                  type: "operator",
+                  operator: "sum",
+                  args: [
+                    { type: "column", name: "TOTAL", sourceName: "ORDERS" },
+                  ],
+                },
+                {
+                  name: OFFSET_SUM_TOTAL_AGGREGATION_NAME,
+                  value: {
+                    type: "operator",
+                    operator: "offset",
+                    args: [
+                      {
+                        type: "operator",
+                        operator: "sum",
+                        args: [
+                          {
+                            type: "column",
+                            name: "TOTAL",
+                            sourceName: "ORDERS",
+                          },
+                        ],
+                      },
+                      { type: "literal", value: -1 },
+                    ],
+                  },
+                },
+              ],
+              breakouts: [
+                {
+                  type: "column",
+                  name: "CREATED_AT",
+                  sourceName: "ORDERS",
+                  unit: "month",
+                },
+                { type: "column", name: "CATEGORY", sourceName: "PRODUCTS" },
+              ],
+              limit: 9,
+            },
+          ],
+        },
+      }).then(H.visitCard);
 
       verifyNoQuestionError();
       verifyTableContent([
@@ -521,11 +773,13 @@ describe("scenarios > question > offset", () => {
     it("should allow using OFFSET as a CASE argument (metabase#42377)", () => {
       const formula = "Sum(case([Total] > 0, Offset([Total], -1)))";
       const name = "Aggregation";
-      const query: StructuredQuery = {
-        "source-table": ORDERS_ID,
-      };
 
-      H.createQuestion({ query }, { visitQuestion: true });
+      H.createCardWithTestQuery({
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          stages: [{ source: { type: "table", id: ORDERS_ID } }],
+        },
+      }).then(H.visitCard);
       H.openNotebook();
       cy.button("Summarize").click();
       addCustomAggregation({ formula, name, isFirst: true });
@@ -594,25 +848,22 @@ describe("scenarios > question > offset", () => {
 
   describe("explicit joins", () => {
     it("offset expression not in the first place in aggregation", () => {
-      const query: StructuredQuery = {
-        "source-table": ORDERS_ID,
-        joins: [
-          {
-            fields: [
-              ["field", PRODUCTS.CATEGORY, { "join-alias": "Products" }],
-            ],
-            "source-table": PRODUCTS_ID,
-            condition: [
-              "=",
-              ["field", ORDERS.PRODUCT_ID, null],
-              ["field", PRODUCTS.ID, { "join-alias": "Products" }],
-            ],
-            alias: "Products",
-          },
-        ],
-      };
-
-      H.createQuestion({ query }, { visitQuestion: true });
+      H.createCardWithTestQuery({
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              joins: [
+                {
+                  source: { type: "table", id: PRODUCTS_ID },
+                  strategy: "left-join",
+                },
+              ],
+            },
+          ],
+        },
+      }).then(H.visitCard);
       H.openNotebook();
 
       H.summarize({ mode: "notebook" });
@@ -649,25 +900,22 @@ describe("scenarios > question > offset", () => {
     });
 
     it("offset expression is in the first place in aggregation", () => {
-      const query: StructuredQuery = {
-        "source-table": ORDERS_ID,
-        joins: [
-          {
-            fields: [
-              ["field", PRODUCTS.CATEGORY, { "join-alias": "Products" }],
-            ],
-            "source-table": PRODUCTS_ID,
-            condition: [
-              "=",
-              ["field", ORDERS.PRODUCT_ID, null],
-              ["field", PRODUCTS.ID, { "join-alias": "Products" }],
-            ],
-            alias: "Products",
-          },
-        ],
-      };
-
-      H.createQuestion({ query }, { visitQuestion: true });
+      H.createCardWithTestQuery({
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              joins: [
+                {
+                  source: { type: "table", id: PRODUCTS_ID },
+                  strategy: "left-join",
+                },
+              ],
+            },
+          ],
+        },
+      }).then(H.visitCard);
       H.openNotebook();
 
       H.summarize({ mode: "notebook" });
@@ -709,25 +957,22 @@ describe("scenarios > question > offset", () => {
     it("offset and avg function applied to custom column", () => {
       const customColumnName = "CC Product Rating";
 
-      const query: StructuredQuery = {
-        "source-table": ORDERS_ID,
-        joins: [
-          {
-            fields: [
-              ["field", PRODUCTS.CATEGORY, { "join-alias": "Products" }],
-            ],
-            "source-table": PRODUCTS_ID,
-            condition: [
-              "=",
-              ["field", ORDERS.PRODUCT_ID, null],
-              ["field", PRODUCTS.ID, { "join-alias": "Products" }],
-            ],
-            alias: "Products",
-          },
-        ],
-      };
-
-      H.createQuestion({ query }, { visitQuestion: true });
+      H.createCardWithTestQuery({
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              joins: [
+                {
+                  source: { type: "table", id: PRODUCTS_ID },
+                  strategy: "left-join",
+                },
+              ],
+            },
+          ],
+        },
+      }).then(H.visitCard);
 
       H.openNotebook();
       addCustomColumn({
@@ -1245,27 +1490,30 @@ describe("scenarios > question > offset", () => {
 
   it("should work with metrics (metabase#47854)", () => {
     const metricName = "Count of orders";
-    const ORDERS_SCALAR_METRIC: StructuredQuestionDetails = {
+
+    H.createCardWithTestQuery({
       name: metricName,
       type: "metric",
       description: "A metric",
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["count"]],
-        breakout: [
-          [
-            "field",
-            ORDERS.CREATED_AT,
-            { "base-type": "type/DateTime", "temporal-unit": "month" },
-          ],
+      display: "scalar",
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            aggregations: [{ type: "operator", operator: "count" }],
+            breakouts: [
+              {
+                type: "column",
+                name: "CREATED_AT",
+                sourceName: "ORDERS",
+                unit: "month",
+              },
+            ],
+          },
         ],
       },
-      display: "scalar",
-    };
-
-    H.createQuestion(ORDERS_SCALAR_METRIC).then(({ body: card }) =>
-      H.visitMetric(card.id),
-    );
+    }).then(H.visitCard);
 
     H.openNotebook();
 
@@ -1391,14 +1639,6 @@ function verifyInvalidColumnName(
     cy.findByText(`Unknown Field: ${columnName}`).should("be.visible");
     cy.button("Done").should("be.disabled");
   });
-}
-
-function createOffsetOptions(name = "offset") {
-  return {
-    "lib/uuid": uuid(),
-    name,
-    "display-name": name,
-  };
 }
 
 function addSorting({

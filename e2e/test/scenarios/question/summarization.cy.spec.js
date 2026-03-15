@@ -5,7 +5,7 @@ import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > question > summarize sidebar", () => {
   beforeEach(() => {
@@ -112,32 +112,47 @@ describe("scenarios > question > summarize sidebar", () => {
   });
 
   it("should be able to do subsequent aggregation on a custom expression (metabase#14649)", () => {
-    H.createQuestion(
-      {
-        name: "14649_min",
-        query: {
-          "source-query": {
-            "source-table": ORDERS_ID,
-            aggregation: [
-              [
-                "aggregation-options",
-                ["sum", ["field", ORDERS.SUBTOTAL, null]],
-                { name: "Revenue", "display-name": "Revenue" },
-              ],
+    H.createCardWithTestQuery({
+      name: "14649_min",
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            aggregations: [
+              {
+                name: "Revenue",
+                value: {
+                  type: "operator",
+                  operator: "sum",
+                  args: [
+                    { type: "column", name: "SUBTOTAL", sourceName: "ORDERS" },
+                  ],
+                },
+              },
             ],
-            breakout: [
-              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+            breakouts: [
+              {
+                type: "column",
+                name: "CREATED_AT",
+                sourceName: "ORDERS",
+                unit: "month",
+              },
             ],
           },
-          aggregation: [
-            ["min", ["field", "Revenue", { "base-type": "type/Float" }]],
-          ],
-        },
-
-        display: "scalar",
+          {
+            aggregations: [
+              {
+                type: "operator",
+                operator: "min",
+                args: [{ type: "column", name: "Revenue" }],
+              },
+            ],
+          },
+        ],
       },
-      { visitQuestion: true },
-    );
+      display: "scalar",
+    }).then(H.visitCard);
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("49.54");
@@ -216,45 +231,46 @@ describe("scenarios > question > summarize sidebar", () => {
   });
 
   it("should handle (removing) multiple metrics when one is sorted (metabase#12625)", () => {
-    H.createTestQuery({
-      database: SAMPLE_DB_ID,
-      stages: [
-        {
-          source: { type: "table", id: ORDERS_ID },
-          aggregations: [
-            { type: "operator", operator: "count" },
-            {
-              type: "operator",
-              operator: "sum",
-              args: [{ type: "column", name: "SUBTOTAL" }],
-            },
-            {
-              type: "operator",
-              operator: "sum",
-              args: [{ type: "column", name: "TOTAL" }],
-            },
-          ],
-          breakouts: [
-            {
-              type: "column",
-              name: "CREATED_AT",
-              sourceName: "ORDERS",
-              unit: "year",
-            },
-          ],
-          orderBys: [
-            {
-              direction: "desc",
-              type: "column",
-              name: "sum",
-              displayName: "Sum of Subtotal",
-            },
-          ],
-        },
-      ],
-    })
-      .then((dataset_query) => H.createCard({ name: "12625", dataset_query }))
-      .then((card) => H.visitQuestion(card.id));
+    H.createCardWithTestQuery({
+      name: "12625",
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            aggregations: [
+              { type: "operator", operator: "count" },
+              {
+                type: "operator",
+                operator: "sum",
+                args: [{ type: "column", name: "SUBTOTAL" }],
+              },
+              {
+                type: "operator",
+                operator: "sum",
+                args: [{ type: "column", name: "TOTAL" }],
+              },
+            ],
+            breakouts: [
+              {
+                type: "column",
+                name: "CREATED_AT",
+                sourceName: "ORDERS",
+                unit: "year",
+              },
+            ],
+            orderBys: [
+              {
+                direction: "desc",
+                type: "column",
+                name: "sum",
+                displayName: "Sum of Subtotal",
+              },
+            ],
+          },
+        ],
+      },
+    }).then(H.visitCard);
 
     H.summarize();
 
