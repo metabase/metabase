@@ -250,14 +250,16 @@ export const useDataGridInstance = <TData, TValue>({
       pinnedColumnsCount: pinnedLeftColumnsCount + utilityColumns.length,
     });
 
-  const [topRowHeights, setTopRowHeights] = useState<number[]>([]);
+  const [pinnedCandidateRowHeights, setPinnedCandidateRowHeights] = useState<
+    number[]
+  >([]);
 
   const rowPinning = useRowPinningByCount({
     top: pinnedTopRowsCount,
     data,
     getRowId,
     gridRef,
-    topRowHeights,
+    topRowHeights: pinnedCandidateRowHeights,
   });
 
   const table = useReactTable({
@@ -336,17 +338,20 @@ export const useDataGridInstance = <TData, TValue>({
   });
 
   useEffect(() => {
+    if (!gridRef.current) {
+      return;
+    }
     const heights = Array.from({ length: pinnedTopRowsCount }, (_, i) =>
       measureRowHeight(i),
     );
     if (
-      heights.length === topRowHeights.length &&
-      heights.every((height, i) => height === topRowHeights[i])
+      heights.length === pinnedCandidateRowHeights.length &&
+      heights.every((height, i) => height === pinnedCandidateRowHeights[i])
     ) {
       return;
     }
-    setTopRowHeights(heights);
-  }, [pinnedTopRowsCount, measureRowHeight, topRowHeights]);
+    setPinnedCandidateRowHeights(heights);
+  }, [pinnedTopRowsCount, measureRowHeight, pinnedCandidateRowHeights]);
 
   const measureColumnWidths = useMeasureColumnWidths(
     table,
@@ -490,8 +495,9 @@ export const useDataGridInstance = <TData, TValue>({
       table.getTopRows().map((row, index) => ({
         origin: row,
         displayIndex: index,
+        measuredHeight: pinnedCandidateRowHeights[index],
       })),
-    [table],
+    [table, pinnedCandidateRowHeights],
   );
 
   const getCenterRows = useCallback((): DataGridRowType<TData>[] => {

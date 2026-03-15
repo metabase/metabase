@@ -8,7 +8,7 @@ export const getRowPositionStyles = <TData>(
 ): React.CSSProperties => {
   if (!row.virtualItem) {
     return {
-      minHeight: `${ROW_HEIGHT}px`,
+      minHeight: `${row.measuredHeight ?? ROW_HEIGHT}px`,
     };
   }
   return {

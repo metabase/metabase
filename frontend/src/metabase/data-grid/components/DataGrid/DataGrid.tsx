@@ -140,12 +140,13 @@ export const DataGrid = function DataGrid<TData>({
     row: DataGridRowType<TData>,
     columns: DataGridColumnType<TData>[],
     key: string,
+    shouldMeasure = true,
   ) => (
     <DataGridRow
       key={key}
       row={row}
       pinnedRowsCount={pinnedRows.length}
-      rowMeasureRef={rowMeasureRef}
+      rowMeasureRef={shouldMeasure ? rowMeasureRef : undefined}
       columns={columns}
       zoomedRowIndex={zoomedRowIndex}
       selection={selection}
@@ -208,6 +209,25 @@ export const DataGrid = function DataGrid<TData>({
       </div>
     </>
   );
+
+  const renderBodyGridPanels = (
+    rows: DataGridRowType<TData>[],
+    minHeight?: string,
+  ) =>
+    renderGridPanels({
+      pinnedContent: rows.map((row, index) =>
+        renderRow(row, pinnedColumns, `pinned-${index}`),
+      ),
+      centerContent: rows.map((row, index) =>
+        renderRow(
+          row,
+          centerColumns,
+          `center-${index}`,
+          pinnedColumns.length === 0,
+        ),
+      ),
+      minHeight,
+    });
 
   return (
     <DataGridThemeProvider theme={theme}>
@@ -285,26 +305,11 @@ export const DataGrid = function DataGrid<TData>({
                       top: `${HEADER_HEIGHT}px`,
                     }}
                   >
-                    {renderGridPanels({
-                      pinnedContent: pinnedRows.map((row, index) =>
-                        renderRow(row, pinnedColumns, `pinned-${index}`),
-                      ),
-                      centerContent: pinnedRows.map((row, index) =>
-                        renderRow(row, centerColumns, `center-${index}`),
-                      ),
-                    })}
+                    {renderBodyGridPanels(pinnedRows)}
                   </div>
                 )}
                 <div className={S.centerRowsSection}>
-                  {renderGridPanels({
-                    pinnedContent: centerRows.map((row, index) =>
-                      renderRow(row, pinnedColumns, `pinned-${index}`),
-                    ),
-                    centerContent: centerRows.map((row, index) =>
-                      renderRow(row, centerColumns, `center-${index}`),
-                    ),
-                    minHeight: `${totalHeight}px`,
-                  })}
+                  {renderBodyGridPanels(centerRows, `${totalHeight}px`)}
                 </div>
               </div>
             )}
