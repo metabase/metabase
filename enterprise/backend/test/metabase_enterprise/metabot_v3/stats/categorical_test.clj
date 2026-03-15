@@ -70,7 +70,7 @@
 (deftest ^:parallel compute-series-stats-outliers-present-test
   (testing "outlier detection triggered at >= 5 valid points"
     (is (=? {:outliers [{:index 5
-                         :date "F"
+                         :label "F"
                          :value 1000
                          :modified_z_score pos?}]}
             (#'categorical/compute-series-stats

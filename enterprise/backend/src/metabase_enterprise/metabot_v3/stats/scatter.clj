@@ -51,7 +51,6 @@
                                     :intercept intercept
                                     :r_squared r-squared})
                                  (catch Exception _ nil)))
-            ;; Pass numeric xs as "dates" so each outlier map carries the x-value in :date
             scatter-outliers (when (>= n min-outlier-points)
                                (outliers/find-outliers ys xs))
             sampled-points   (sample-points (mapv vector xs ys) max-sample-points)]

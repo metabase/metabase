@@ -168,8 +168,8 @@
   (if (seq outliers)
     (str "**Outliers**: " (count outliers) " detected\n"
          (str/join "\n"
-                   (for [{:keys [date value modified_z_score]} outliers]
-                     (str "  - " (format-date date) ": " (format-number value)
+                   (for [{:keys [label value modified_z_score]} outliers]
+                     (str "  - " (format-date label) ": " (format-number value)
                           " (z-score: " (format "%.2f" (double modified_z_score)) ")"))))
     "**Outliers**: None detected"))
 
@@ -311,8 +311,8 @@
   (when (seq outliers)
     (let [total (count outliers)
           shown (take 5 outliers)
-          lines (map (fn [{:keys [date value]}]
-                       (str "- x=" (format-number date) ", y=" (format-number value)))
+          lines (map (fn [{:keys [label value]}]
+                       (str "- x=" (format-number label) ", y=" (format-number value)))
                      shown)
           more  (when (> total 5)
                   (str "... and " (- total 5) " more"))]

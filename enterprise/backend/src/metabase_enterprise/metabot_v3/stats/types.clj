@@ -128,7 +128,7 @@
   "An outlier detected in the data."
   [:map
    [:index :int]
-   [:date :any]
+   [:label :any]
    [:value number?]
    [:modified_z_score number?]])
 
@@ -136,7 +136,7 @@
   "An outlier detected in cumulative data (via period-over-period diffs)."
   [:map
    [:index :int]
-   [:date :any]
+   [:label :any]
    [:value number?]
    [:diff number?]
    [:modified_z_score number?]])

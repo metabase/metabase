@@ -9,21 +9,21 @@
 ;;; ---------------------------------------------- find-outliers tests -----------------------------------------------
 
 (deftest ^:parallel find-outliers-returns-detail-maps-test
-  (testing "outlier maps contain index, date, value, and modified z-score"
+  (testing "outlier maps contain index, label, value, and modified z-score"
     (let [values [1.0 2.0 2.1 2.2 10.0 1.9 2.3]
-          dates  ["A" "B" "C" "D" "E" "F" "G"]
-          result (outliers/find-outliers values dates)]
+          labels ["A" "B" "C" "D" "E" "F" "G"]
+          result (outliers/find-outliers values labels)]
       (is (seq result))
       (is (=? {:index 4
                :value 10.0
                :modified_z_score #(> (Math/abs (double %)) 3.0)}
-              (first (filter #(= "E" (:date %)) result)))))))
+              (first (filter #(= "E" (:label %)) result)))))))
 
 (deftest ^:parallel find-outliers-no-outliers-returns-empty-test
   (testing "tightly clustered data produces no outliers"
     (let [values [10.0 11.0 10.5 10.2 10.8]
-          dates  ["A" "B" "C" "D" "E"]
-          result (outliers/find-outliers values dates)]
+          labels ["A" "B" "C" "D" "E"]
+          result (outliers/find-outliers values labels)]
       (is (empty? result)))))
 
 (deftest ^:parallel find-outliers-empty-input-test
@@ -47,19 +47,19 @@
     ;; diffs=[1,1,7,2]; 7 is the outlier diff (modified-z ≈ 7.4 > 3.0)
     ;; destination point D (index 3) is flagged
     (let [values [1.0 2.0 3.0 10.0 12.0]
-          dates  ["A" "B" "C" "D" "E"]
-          result (outliers/find-outliers-cumulative values dates)]
+          labels ["A" "B" "C" "D" "E"]
+          result (outliers/find-outliers-cumulative values labels)]
       (is (seq result))
-      (is (some #(= "D" (:date %)) result)))))
+      (is (some #(= "D" (:label %)) result)))))
 
 (deftest ^:parallel find-outliers-cumulative-outlier-map-structure-test
-  (testing "cumulative outlier maps include :index :date :value :diff :modified_z_score"
+  (testing "cumulative outlier maps include :index :label :value :diff :modified_z_score"
     (let [values [1.0 2.0 3.0 10.0 12.0]
-          dates  ["A" "B" "C" "D" "E"]
-          result (outliers/find-outliers-cumulative values dates)]
+          labels ["A" "B" "C" "D" "E"]
+          result (outliers/find-outliers-cumulative values labels)]
       (is (seq result))
       (is (=? {:index 3
-               :date "D"
+               :label "D"
                :value 10.0
                :diff 7.0
                :modified_z_score (=?/approx [3.37 0.01])}
@@ -68,15 +68,15 @@
 (deftest ^:parallel find-outliers-cumulative-uniform-increments-test
   (testing "uniform diffs → MAD of diffs is 0 → returns nil"
     (let [values [10.0 20.0 30.0 40.0 50.0]
-          dates  ["A" "B" "C" "D" "E"]
-          result (outliers/find-outliers-cumulative values dates)]
+          labels ["A" "B" "C" "D" "E"]
+          result (outliers/find-outliers-cumulative values labels)]
       (is (nil? result)))))
 
 (deftest ^:parallel find-outliers-cumulative-destination-index-is-one-past-diff-index-test
   (testing "outlier point index is diff-index+1 (destination of unusual jump)"
     (let [values [1.0 2.0 3.0 10.0 12.0]
-          dates  ["A" "B" "C" "D" "E"]
-          result (outliers/find-outliers-cumulative values dates)]
+          labels ["A" "B" "C" "D" "E"]
+          result (outliers/find-outliers-cumulative values labels)]
       ;; diff-index is 2 (the 3→10 transition), so point index is 3
       (is (=? {:index 3 :value 10.0}
-              (first (filter #(= "D" (:date %)) result)))))))
+              (first (filter #(= "D" (:label %)) result)))))))
