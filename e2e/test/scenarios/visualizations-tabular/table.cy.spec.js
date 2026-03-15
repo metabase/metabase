@@ -151,6 +151,7 @@ describe("scenarios > visualizations > table", () => {
   it("should allow enabling row index column", () => {
     H.openOrdersTable();
     H.openVizSettingsSidebar();
+    H.sidebar().findByText("Display").click();
     H.sidebar().findByText("Show row index").click();
 
     H.openObjectDetail(5);
@@ -795,6 +796,7 @@ describe("scenarios > visualizations > table > dashboards context", () => {
       .within(() => {
         cy.findByLabelText("Show visualization options").click();
       });
+    H.modal().findByText("Display").click();
     H.modal().findByText("Show row index").click();
 
     cy.button("Done").click();
