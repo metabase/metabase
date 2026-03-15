@@ -34,11 +34,20 @@ BAD: \"The mean is 45.2 with std dev 12.8. The trend shows -15% overall change..
 
 Do not use headers (##). Do not list statistics. Do not analyze series separately.")
 
+(defn- stringify-series-keys
+  "Ensure series map keys are strings, not keywords.
+  JSON parsing keywordizes all keys, but series names (e.g. \"Revenue by Region\") should be strings."
+  [chart-config]
+  (if-let [series (:series chart-config)]
+    (assoc chart-config :series (update-keys series name))
+    chart-config))
+
 (defn- resolve-chart-config-from-memory
   "Resolve a chart-config-id from agent memory into chart configuration.
   Chart configs are seeded from viewing context during agent initialization."
   [chart-config-id]
-  (get (shared/current-chart-configs-state) chart-config-id))
+  (some-> (get (shared/current-chart-configs-state) chart-config-id)
+          stringify-series-keys))
 
 (mu/defn ^{:tool-name "analyze_chart"
            :prompt "analyze_chart"}
