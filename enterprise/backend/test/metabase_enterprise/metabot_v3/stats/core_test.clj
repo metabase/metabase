@@ -97,4 +97,3 @@
       (let [max-k @#'stats.core/max-series-for-correlations
             max-pairs (/ (* max-k (dec max-k)) 2)]
         (is (<= (count (:correlations stats)) max-pairs))))))
-

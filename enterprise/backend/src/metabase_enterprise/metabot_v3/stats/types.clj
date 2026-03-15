@@ -267,4 +267,3 @@
    [:title {:optional true} [:maybe :string]]
    [:display-type {:optional true} [:maybe :string]]
    [:timeline-events {:optional true} [:maybe [:sequential ::timeline-event]]]])
-

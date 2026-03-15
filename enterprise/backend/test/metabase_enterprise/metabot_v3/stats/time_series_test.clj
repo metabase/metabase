@@ -397,4 +397,3 @@
           result (time-series/compute-time-series-stats series-data {:deep? true})]
       (is (=? {:correlations #(= 1 (count %))}
               result)))))
-
