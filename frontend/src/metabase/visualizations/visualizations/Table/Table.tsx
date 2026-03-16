@@ -268,13 +268,13 @@ export class Table extends Component<TableProps, TableState> {
             ? "right"
             : "left";
         },
-        props: {
+        getProps: () => ({
           options: [
             { name: t`Left`, value: "left" },
             { name: t`Right`, value: "right" },
             { name: t`Middle`, value: "middle" },
           ],
-        },
+        }),
       },
     };
 
