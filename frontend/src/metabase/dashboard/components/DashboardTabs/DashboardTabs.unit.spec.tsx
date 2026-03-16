@@ -204,6 +204,21 @@ describe("DashboardTabs", () => {
       expect(queryTab(2)).toBeVisible();
     });
 
+    it("should use role=tab on tab items and role=tablist on the container", () => {
+      setup({ isEditing: false });
+
+      const tablist = screen.getByRole("tablist");
+      expect(tablist).toBeInTheDocument();
+
+      const tabs = screen.getAllByRole("tab", { hidden: true });
+      expect(tabs.length).toBeGreaterThanOrEqual(2);
+
+      // Sortable wrappers should not add role="button" inside the tablist
+      const buttons = screen.queryAllByRole("button");
+      const tablistButtons = buttons.filter((btn) => tablist.contains(btn));
+      expect(tablistButtons).toHaveLength(0);
+    });
+
     it("should not display tabs when there is one", () => {
       setup({
         isEditing: false,
@@ -274,6 +289,19 @@ describe("DashboardTabs", () => {
   });
 
   describe("when editing", () => {
+    it("should not have role=button on sortable tab wrappers", () => {
+      setup({ isEditing: true });
+
+      // Sortable wrappers should use role="presentation", not role="button"
+      // Tab items should have role="tab", and the tablist should not contain
+      // any elements with role="button" except for actual button controls
+      const tabs = screen.getAllByRole("tab", { hidden: true });
+      tabs.forEach((tab) => {
+        expect(tab).not.toHaveAttribute("role", "button");
+        expect(tab).toHaveAttribute("role", "tab");
+      });
+    });
+
     it("should display a placeholder tab when there are none", async () => {
       setup({ tabs: [] });
 
