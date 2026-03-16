@@ -96,7 +96,6 @@ export function MetricControls({
           <DimensionFilterButton
             definition={definition}
             filterDimension={projectionInfo.filterDimension}
-            filter={projectionInfo.filter}
             dimensionFilter={dimensionFilter}
             allFilterDimensions={allFilterDimensions}
             onChange={onDimensionFilterChange}
