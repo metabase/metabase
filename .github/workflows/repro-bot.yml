@@ -59,7 +59,7 @@ jobs:
         run: echo "NODE_BIN_DIR=$(dirname $(which node))" >> $GITHUB_ENV
 
       - name: Pre-install MCP server dependencies
-        run: uv sync --directory mcp
+        run: uv sync --directory repro-bot/mcp
 
       - name: Install playwright-cli
         run: |
