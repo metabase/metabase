@@ -348,7 +348,7 @@
 
            ;; Session auth (browser/cookie) — unrestricted scopes
            session-auth
-           (dispatch session-auth nil)
+           (dispatch session-auth #{::scope/unrestricted})
 
            ;; Bearer token auth — validate and extract scopes
            bearer-token
