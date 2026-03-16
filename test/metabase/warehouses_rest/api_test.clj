@@ -823,16 +823,17 @@
                         :tables)]
         (is (= () tables))))))
 
-(deftest ^:parallel fetch-database-metadata-skip-fields-test
-  (mt/with-temp [:model/Database {db-id :id} {}
-                 :model/Table    table       {:db_id db-id}
-                 :model/Field    _           {:table_id (u/the-id table)}]
-    (testing "GET /api/database/:id/metadata?skip_fields=true"
-      (let [fields (->> (mt/user-http-request :rasta :get 200 (format "database/%d/metadata?skip_fields=true" db-id))
-                        :tables
-                        first
-                        :fields)]
-        (is (= () fields))))))
+(deftest fetch-database-metadata-skip-fields-test
+  (mt/with-empty-h2-app-db!
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table table {:db_id db-id}
+                   :model/Field _ {:table_id (u/the-id table)}]
+                  (testing "GET /api/database/:id/metadata?skip_fields=true"
+                    (let [fields (->> (mt/user-http-request :rasta :get 200 (format "database/%d/metadata?skip_fields=true" db-id))
+                                      :tables
+                                      first
+                                      :fields)]
+                      (is (= () fields)))))))
 
 (deftest ^:parallel autocomplete-suggestions-test
   (let [prefix-fn (fn [db-id prefix]
@@ -1035,20 +1036,21 @@
                     :total 0}
                    (get-all :rasta "database?include_only_uploadable=true" old-ids)))))))))
 
-(deftest ^:parallel databases-list-can-upload-test
-  (testing "GET /api/database"
-    (let [old-ids (t2/select-pks-set :model/Database)]
-      (doseq [uploads-enabled? [true false]]
-        (testing (format "The database with uploads enabled for the public schema has can_upload=%s" uploads-enabled?)
-          (mt/with-temp [:model/Database _ {:engine          :postgres
-                                            :name            "The Chosen One"
-                                            :uploads_enabled uploads-enabled?
-                                            :uploads_schema_name "public"}]
-            (let [result (get-all :crowberto "database" old-ids)]
-              (is (= 1
-                     (:total result)))
-              (is (= uploads-enabled?
-                     (-> result :data first :can_upload))))))))))
+(deftest databases-list-can-upload-test
+  (mt/with-empty-h2-app-db!
+    (testing "GET /api/database"
+      (let [old-ids (t2/select-pks-set :model/Database)]
+        (doseq [uploads-enabled? [true false]]
+          (testing (format "The database with uploads enabled for the public schema has can_upload=%s" uploads-enabled?)
+            (mt/with-temp [:model/Database _ {:engine              :postgres
+                                              :name                "The Chosen One"
+                                              :uploads_enabled     uploads-enabled?
+                                              :uploads_schema_name "public"}]
+                          (let [result (get-all :crowberto "database" old-ids)]
+                            (is (= 1
+                                   (:total result)))
+                            (is (= uploads-enabled?
+                                   (-> result :data first :can_upload)))))))))))
 
 (deftest ^:parallel databases-list-include-saved-questions-test
   (testing "GET /api/database?saved=true"
