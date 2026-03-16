@@ -80,18 +80,6 @@ export type CustomVisualization<CustomVisualizationSettings> = {
   VisualizationComponent: ComponentType<
     CustomVisualizationProps<CustomVisualizationSettings>
   >;
-
-  /**
-   * Component that renders the visualization's empty state (i.e. when checkRenderable throws).
-   */
-  VisualizationEmptyStateComponent?: ComponentType<
-    CustomVisualizationProps<CustomVisualizationSettings>
-  >;
-
-  /**
-   * Component that renders the visualization settings form in visualization settings sidebar.
-   */
-  VisualizationSettingsComponent?: ComponentType<CustomVisualizationSettingsProps>;
 };
 
 export type CustomVisualizationSettingsDefinitions<
