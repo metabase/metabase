@@ -2,21 +2,17 @@ import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import {
-  Api,
-  useCreateDashboardMutation,
   useListCollectionItemsQuery,
   useListCollectionsTreeQuery,
-  useUpdateDashboardMutation,
 } from "metabase/api";
-import { listTag } from "metabase/api/tags";
 import { getErrorMessage } from "metabase/api/utils";
 import { DashboardSelector } from "metabase/common/components/DashboardSelector";
 import { useToast } from "metabase/common/hooks";
-import { useDispatch } from "metabase/lib/redux";
 import { Box, Button, Divider, Group, Stack, Text } from "metabase/ui";
 import type { DashboardId } from "metabase-types/api";
 
 import {
+  useCreateSampleDashboardInSharedCollection,
   useLastXrayDashboard,
   useMoveXrayDashboardToSharedCollection,
 } from "./hooks/use-xray-dashboards";
@@ -28,7 +24,6 @@ interface MoveDashboardStepContentProps {
 export const MoveDashboardStepContent = ({
   onCompleted,
 }: MoveDashboardStepContentProps) => {
-  const dispatch = useDispatch();
   const [sendToast] = useToast();
 
   const { data: sharedTenantCollections } = useListCollectionsTreeQuery({
@@ -51,11 +46,10 @@ export const MoveDashboardStepContent = ({
   const sharedCollectionHasDashboards =
     (sharedCollectionItems?.data?.length ?? 0) > 0;
 
-  const { lastDashboard } = useLastXrayDashboard();
+  const { lastDashboard, isLoading: isLoadingXray } = useLastXrayDashboard();
   const { moveDashboard, isMoving } = useMoveXrayDashboardToSharedCollection();
-  const [createDashboard, { isLoading: isCreating }] =
-    useCreateDashboardMutation();
-  const [updateDashboard] = useUpdateDashboardMutation();
+  const { createSampleDashboard, isCreating } =
+    useCreateSampleDashboardInSharedCollection();
 
   const [selectedDashboardId, setSelectedDashboardId] =
     useState<DashboardId | null>(null);
@@ -63,6 +57,8 @@ export const MoveDashboardStepContent = ({
   // Use the manually picked dashboard, or fall back to the last x-ray dashboard
   const effectiveDashboardId =
     selectedDashboardId ?? (lastDashboard ? lastDashboard.id : null);
+
+  const hasXrayDashboard = !isLoadingXray && lastDashboard != null;
 
   const handleMoveDashboard = useCallback(async () => {
     if (!effectiveDashboardId || !sharedCollectionId) {
@@ -96,35 +92,7 @@ export const MoveDashboardStepContent = ({
     }
 
     try {
-      const dashboard = await createDashboard({
-        name: t`Sample dashboard`,
-        collection_id: sharedCollectionId,
-      }).unwrap();
-
-      await updateDashboard({
-        id: dashboard.id,
-        dashcards: [
-          {
-            id: -1,
-            card_id: null,
-            row: 0,
-            col: 0,
-            size_x: 18,
-            size_y: 2,
-            visualization_settings: {
-              virtual_card: {
-                name: null,
-                display: "text",
-                visualization_settings: {},
-                archived: false,
-              },
-              text: "Hello, world!",
-            },
-          } as any,
-        ],
-      }).unwrap();
-
-      dispatch(Api.util.invalidateTags([listTag("embedding-hub-checklist")]));
+      await createSampleDashboard(sharedCollectionId);
       onCompleted();
     } catch (error) {
       sendToast({
@@ -133,14 +101,7 @@ export const MoveDashboardStepContent = ({
         message: getErrorMessage(error, t`Failed to create a sample dashboard`),
       });
     }
-  }, [
-    sharedCollectionId,
-    createDashboard,
-    updateDashboard,
-    dispatch,
-    sendToast,
-    onCompleted,
-  ]);
+  }, [sharedCollectionId, createSampleDashboard, sendToast, onCompleted]);
 
   if (sharedCollectionHasDashboards) {
     return (
@@ -151,6 +112,26 @@ export const MoveDashboardStepContent = ({
         <Group justify="flex-end">
           <Button variant="filled" onClick={onCompleted}>
             {t`Continue`}
+          </Button>
+        </Group>
+      </Stack>
+    );
+  }
+
+  if (!hasXrayDashboard) {
+    return (
+      <Stack gap="md">
+        <Text size="md" c="text-secondary" lh="lg">
+          {t`This will allow tenant users to see it.`}
+        </Text>
+
+        <Group justify="flex-end">
+          <Button
+            variant="filled"
+            onClick={handleCreateSampleDashboard}
+            loading={isCreating}
+          >
+            {t`Create a sample dashboard`}
           </Button>
         </Group>
       </Stack>
@@ -184,7 +165,7 @@ export const MoveDashboardStepContent = ({
 
       <Group justify="center">
         <Button
-          variant="filled"
+          variant="default"
           onClick={handleCreateSampleDashboard}
           loading={isCreating}
         >

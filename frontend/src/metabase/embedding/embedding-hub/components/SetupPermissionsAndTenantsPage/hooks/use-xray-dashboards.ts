@@ -1,7 +1,9 @@
 import { useCallback, useState } from "react";
+import { t } from "ttag";
 
 import {
   Api,
+  useCreateDashboardMutation,
   useListCollectionItemsQuery,
   useUpdateDashboardMutation,
 } from "metabase/api";
@@ -9,6 +11,8 @@ import { listTag } from "metabase/api/tags";
 import { useDispatch } from "metabase/lib/redux";
 import type { CollectionId, CollectionItem } from "metabase-types/api";
 
+// This name is hardcoded in the backend (see xrays/automagic_dashboards/populate.clj).
+// There is no special collection type — the name is the canonical identifier.
 const AUTO_GENERATED_DASHBOARDS_COLLECTION_NAME =
   "Automatically Generated Dashboards";
 
@@ -72,4 +76,55 @@ export const useMoveXrayDashboardToSharedCollection = () => {
   );
 
   return { moveDashboard, isMoving };
+};
+
+export const useCreateSampleDashboardInSharedCollection = () => {
+  const dispatch = useDispatch();
+  const [createDashboard] = useCreateDashboardMutation();
+  const [updateDashboard] = useUpdateDashboardMutation();
+  const [isCreating, setIsCreating] = useState(false);
+
+  const createSampleDashboard = useCallback(
+    async (targetCollectionId: CollectionId): Promise<void> => {
+      setIsCreating(true);
+      try {
+        const dashboard = await createDashboard({
+          name: t`Sample dashboard`,
+          collection_id: targetCollectionId,
+        }).unwrap();
+
+        await updateDashboard({
+          id: dashboard.id,
+          dashcards: [
+            // @ts-expect-error — the API accepts partial dashcards for creation (id < 0),
+            // but DashboardCard requires fields the server fills in (entity_id, created_at, etc.)
+            {
+              id: -1,
+              card_id: null,
+              row: 0,
+              col: 0,
+              size_x: 18,
+              size_y: 2,
+              visualization_settings: {
+                virtual_card: {
+                  name: null,
+                  display: "text",
+                  visualization_settings: {},
+                  archived: false,
+                },
+                text: t`Hello, world!`,
+              },
+            },
+          ],
+        }).unwrap();
+
+        dispatch(Api.util.invalidateTags([listTag("embedding-hub-checklist")]));
+      } finally {
+        setIsCreating(false);
+      }
+    },
+    [createDashboard, updateDashboard, dispatch],
+  );
+
+  return { createSampleDashboard, isCreating };
 };

@@ -23,6 +23,7 @@ import { MoveDashboardStepContent } from "./MoveDashboardStepContent";
 import type { RlsSelectionResult } from "./RlsDataSelector";
 import { RlsDataSelector } from "./RlsDataSelector";
 import S from "./SetupPermissionsAndTenantsPage.module.css";
+import { useLastXrayDashboard } from "./hooks/use-xray-dashboards";
 
 const SETUP_GUIDE_PATH = "/admin/embedding/setup-guide";
 
@@ -50,6 +51,9 @@ export const SetupPermissionsAndTenantsPage = () => {
   });
 
   const isMoveDashboardDone = checklist?.["move-dashboard-to-shared"] ?? false;
+
+  const { lastDashboard, isLoading: isLoadingXray } = useLastXrayDashboard();
+  const hasXrayDashboard = !isLoadingXray && lastDashboard != null;
 
   // Prefer in-session UI state; fall back to backend detection for reloads
   const activeStrategy =
@@ -134,7 +138,11 @@ export const SetupPermissionsAndTenantsPage = () => {
 
         <OnboardingStepper.Step
           stepId="move-dashboard"
-          title={t`Move a dashboard to the shared collection`}
+          title={
+            hasXrayDashboard
+              ? t`Move a dashboard to the shared collection`
+              : t`Create a dashboard in the shared collection`
+          }
         >
           <MoveDashboardStepContent
             onCompleted={() => stepperRef.current?.goToNextStep()}
