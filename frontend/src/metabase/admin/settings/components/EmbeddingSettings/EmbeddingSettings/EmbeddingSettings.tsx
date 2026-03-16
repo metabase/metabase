@@ -14,7 +14,7 @@ import {
   useHasTokenFeature,
   useSetting,
 } from "metabase/common/hooks";
-import { isEEBuild } from "metabase/lib/utils";
+import { isEEBuild } from "metabase/lib/utils-with-side-effects";
 import {
   PLUGIN_ADMIN_SETTINGS,
   PLUGIN_CONTENT_TRANSLATION,

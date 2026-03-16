@@ -7,6 +7,13 @@ export type OnBeforeRequestHandlerData = {
     headers?: Record<string, string>;
     hasBody: boolean;
   } & Record<string, unknown>;
+  /**
+   * Overrides for rawData URL parameters. Handlers can use this to supply
+   * an updated token (e.g. after a refresh) so that api.js URL-parameter
+   * substitution uses the fresh value instead of the stale value captured
+   * at call-time.
+   */
+  rawDataOverrides?: Record<string, unknown>;
 };
 
 export type OnBeforeRequestHandler = (

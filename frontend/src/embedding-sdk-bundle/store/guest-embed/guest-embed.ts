@@ -21,30 +21,17 @@ export const initGuestEmbed = createAsyncThunk<void, MetabaseAuthConfig>(
             getOrRefreshGuestSession(authConfig),
           ).unwrap();
 
-          // If token was refreshed (not null) and URL contains token parameters,
-          // replace them with the new token
+          // Override the token URL-parameters with the current (possibly
+          // refreshed) token. This runs *before* api.js substitutes URL
+          // placeholders, so the fresh token is used even though rawData was
+          // captured at call-time with the old token.
+          // Covers both the pre-transform names (:token) and the post-transform
+          // name (:entityIdentifier) that overrideRequestsForGuestEmbeds
+          // introduces, regardless of which handler runs first.
           if (newToken) {
-            let updatedUrl = data.url;
-
-            // Replace :token or :entityIdentifier with the actual refreshed token
-            // This ensures API calls use the refreshed token even if the component
-            // data still has the expired token
-            if (updatedUrl.includes(":token")) {
-              updatedUrl = updatedUrl.replace(
-                /:token/g,
-                encodeURIComponent(newToken),
-              );
-            }
-            if (updatedUrl.includes(":entityIdentifier")) {
-              updatedUrl = updatedUrl.replace(
-                /:entityIdentifier/g,
-                encodeURIComponent(newToken),
-              );
-            }
-
             return {
               ...data,
-              url: updatedUrl,
+              rawDataOverrides: { token: newToken, entityIdentifier: newToken },
             };
           }
         };

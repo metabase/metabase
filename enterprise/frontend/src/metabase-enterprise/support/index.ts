@@ -1,4 +1,4 @@
-import { isEEBuild } from "metabase/lib/utils";
+import { isEEBuild } from "metabase/lib/utils-with-side-effects";
 import { PLUGIN_SUPPORT } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 

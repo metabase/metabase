@@ -5,6 +5,7 @@ import type {
   EmbedAuthManagerContext,
 } from "metabase/embedding/embedding-iframe-sdk/types/auth-manager";
 import type { ComponentToAttributes } from "metabase/embedding/embedding-iframe-sdk/types/modular-embedding";
+import { decodeJwt } from "metabase/lib/utils";
 
 import { debouncedReportAnalytics } from "./analytics";
 import {
@@ -537,8 +538,17 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
 
     const entityType =
       componentName === "metabase-dashboard" ? "dashboard" : "question";
-    const entityId =
+
+    // Prefer the element attribute (dashboardId / questionId). In Mode B
+    // those attributes are absent, so fall back to decoding the token that
+    // is being refreshed — the entity ID is stored in payload.resource.
+    const attrEntityId =
       componentName === "metabase-dashboard" ? dashboardId : questionId;
+    const tokenEntityId =
+      expiredToken !== undefined
+        ? decodeJwt(expiredToken)?.resource?.[entityType]
+        : undefined;
+    const entityId = attrEntityId ?? tokenEntityId;
 
     const body =
       expiredToken !== undefined

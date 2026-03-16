@@ -1,7 +1,6 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { PLUGIN_IS_EE_BUILD } from "metabase/plugins";
 import type { EntityToken } from "metabase-types/api/entity";
 
 export function isEmpty(str: string | null) {
@@ -160,14 +159,6 @@ export function versionIsLatest({
   const result = compareVersions(currentVersion, latestVersion);
   return result != null && result >= 0;
 }
-
-/**
- * @deprecated
- * In most cases we want to use specific token features, not the type of build.
- * Use only we want to display something differently based on specifically the build,
- * ie: "Switch binary" vs "Put a valid token in the settings"
- */
-export const isEEBuild = () => PLUGIN_IS_EE_BUILD.isEEBuild();
 
 /**
  * Decodes a JWT token and returns its payload.
