@@ -371,7 +371,7 @@
                    (render-data-characteristics-note series-stats)
                    (when (seq bin_data)
                      (let [xs (mapv first bin_data)]
-                       (render-axis-range "X-axis" {:min (reduce min xs) :max (reduce max xs)})))
+                       (render-axis-range "X-axis" {:min (apply min xs) :max (apply max xs)})))
                    (render-axis-range "Y-axis" summary)
                    p-str iqr-str shape-str
                    (render-sample-data bin_data)]]
