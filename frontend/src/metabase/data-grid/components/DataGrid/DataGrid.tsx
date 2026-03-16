@@ -83,7 +83,7 @@ export const DataGrid = function DataGrid<TData>({
   } = virtualGrid;
 
   const rowMeasureRef = useCallback(
-    (element: HTMLElement | null) => centerRowMeasureRef(element),
+    (element: HTMLDivElement | null) => centerRowMeasureRef(element),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `sorting` triggers re-measurement when sorting changes
     [centerRowMeasureRef, sorting],
   );
@@ -140,7 +140,7 @@ export const DataGrid = function DataGrid<TData>({
     row: DataGridRowType<TData>,
     columns: DataGridColumnType<TData>[],
     key: string,
-    measureRef?: (element: HTMLElement | null) => void,
+    measureRef?: (element: HTMLDivElement | null) => void,
   ) => (
     <DataGridRow
       key={key}

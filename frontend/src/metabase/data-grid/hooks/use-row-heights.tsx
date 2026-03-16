@@ -13,8 +13,6 @@ import type { VirtualGrid } from "./use-virtual-grid";
 
 type UseRowHeightsProps<TData extends RowData, TValue> = {
   data: TData[];
-  tableRef: React.MutableRefObject<Table<TData> | undefined>;
-  virtualGridRef: React.MutableRefObject<VirtualGrid | undefined>;
   defaultRowHeight: number;
   wrappedColumnsOptions: ColumnOptions<TData, TValue>[];
   measureBodyCellDimensions: (
@@ -25,7 +23,9 @@ type UseRowHeightsProps<TData extends RowData, TValue> = {
   gridRef: React.RefObject<HTMLDivElement>;
 };
 
-type UseRowHeightsResult = {
+type UseRowHeightsResult<TData> = {
+  tableRef: React.MutableRefObject<Table<TData> | undefined>;
+  virtualGridRef: React.MutableRefObject<VirtualGrid | undefined>;
   measureRowHeight: (rowIndex: number) => number;
   pinnedRowMeasureRef: (element: HTMLDivElement | null) => void;
   centerRowMeasureRef: (element: HTMLDivElement | null) => void;
@@ -34,14 +34,14 @@ type UseRowHeightsResult = {
 
 export const useRowHeights = <TData extends RowData, TValue>({
   data,
-  tableRef,
   defaultRowHeight,
   wrappedColumnsOptions,
   measureBodyCellDimensions,
   pinnedTopRowsCount,
   gridRef,
-  virtualGridRef,
-}: UseRowHeightsProps<TData, TValue>): UseRowHeightsResult => {
+}: UseRowHeightsProps<TData, TValue>): UseRowHeightsResult<TData> => {
+  const tableRef = useRef<Table<TData>>();
+  const virtualGridRef = useRef<VirtualGrid>();
   const [pinnedTopRowHeights, setPinnedTopRowHeights] = useState<number[]>([]);
 
   const measureRowHeight = useCallback(
@@ -157,6 +157,8 @@ export const useRowHeights = <TData extends RowData, TValue>({
   }, [pinnedTopRowsCount, measureRowHeight, gridRef]);
 
   return {
+    tableRef,
+    virtualGridRef,
     measureRowHeight,
     pinnedRowMeasureRef,
     centerRowMeasureRef,

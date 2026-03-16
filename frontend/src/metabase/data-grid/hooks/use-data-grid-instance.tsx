@@ -3,7 +3,6 @@ import {
   type PaginationState,
   type Row,
   type RowData,
-  type Table,
   getCoreRowModel,
   getPaginationRowModel,
   getSortedRowModel,
@@ -30,10 +29,7 @@ import { useColumnResizeObserver } from "metabase/data-grid/hooks/use-column-res
 import { useColumnsReordering } from "metabase/data-grid/hooks/use-columns-reordering";
 import { useMeasureColumnWidths } from "metabase/data-grid/hooks/use-measure-column-widths";
 import { useRowHeights } from "metabase/data-grid/hooks/use-row-heights";
-import {
-  type VirtualGrid,
-  useVirtualGrid,
-} from "metabase/data-grid/hooks/use-virtual-grid";
+import { useVirtualGrid } from "metabase/data-grid/hooks/use-virtual-grid";
 import type {
   DataGridColumnType,
   DataGridInstance,
@@ -255,18 +251,15 @@ export const useDataGridInstance = <TData, TValue>({
       pinnedColumnsCount: pinnedLeftColumnsCount + utilityColumns.length,
     });
 
-  const tableRef = useRef<Table<TData>>();
-  const virtualGridRef = useRef<VirtualGrid>();
-
   const {
+    tableRef,
+    virtualGridRef,
     measureRowHeight,
     pinnedRowMeasureRef,
     centerRowMeasureRef,
     pinnedTopRowHeights,
   } = useRowHeights({
     data,
-    tableRef,
-    virtualGridRef,
     defaultRowHeight,
     wrappedColumnsOptions,
     measureBodyCellDimensions,

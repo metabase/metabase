@@ -19,7 +19,7 @@ import type { DataGridStylesProps } from "../DataGrid/types";
 export interface DataGridRowProps<TData> extends DataGridStylesProps {
   row: DataGridRowType<TData>;
   columns: DataGridColumnType<TData>[];
-  rowMeasureRef?: ((element: HTMLElement | null) => void) | undefined;
+  rowMeasureRef?: ((element: HTMLDivElement | null) => void) | undefined;
   zoomedRowIndex: number | undefined;
   pinnedRowsCount: number;
   selection: DataGridSelection;
@@ -49,7 +49,7 @@ export const DataGridRow = <TData,>({
       key={row.origin.id}
       ref={rowMeasureRef}
       data-dataset-index={row.origin.index}
-      data-index={row.displayIndex}
+      data-index={row.virtualItem?.index ?? row.origin}
       data-allow-page-break-after="true"
       data-row-selected={row.origin.getIsSelected()}
       className={cx(
