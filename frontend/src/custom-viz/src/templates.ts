@@ -172,11 +172,43 @@ const createVisualization: CreateCustomVisualization<Settings> = () => {
       },
     },
     VisualizationComponent,
+    StaticVisualizationComponent,
   };
 };
 
 const VisualizationComponent = (props: CustomVisualizationProps<Settings>) => {
   const { height, series, settings, width } = props;
+  const { threshold } = settings;
+  const value = series[0].data.rows[0][0];
+
+  if (typeof value !== "number" || typeof threshold !== "number") {
+    throw new Error("Value and threshold need to be numbers");
+  }
+
+  const emoji = value >= threshold ? "👍" : "👎";
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        width,
+        height,
+        fontSize: "10rem",
+      }}
+    >
+      {emoji}
+    </div>
+  );
+};
+
+const StaticVisualizationComponent = (
+  props: CustomStaticVisualizationProps<ThumbsVizSettings>,
+) => {
+  const width = 540;
+  const height = 360;
+  const { series, settings } = props;
   const { threshold } = settings;
   const value = series[0].data.rows[0][0];
 

@@ -1,16 +1,17 @@
 import type { ComponentType } from "react";
 
 import type { Column, DatasetData, RowValue, Series } from "./data";
+import type { TextHeightMeasurer, TextWidthMeasurer } from "./measure-text";
 import type { WidgetName, Widgets } from "./viz-settings";
 
 /**
  * Export this function to define a custom visualization.
  */
 export type CreateCustomVisualization<CustomVisualizationSettings> = (
-  props: CreateCustomVisualizationProps<CustomVisualizationSettings>,
+  props: CreateCustomVisualizationProps,
 ) => CustomVisualization<CustomVisualizationSettings>;
 
-export type CreateCustomVisualizationProps<CustomVisualizationSettings> = {
+export type CreateCustomVisualizationProps = {
   /**
    * Translates text using ttag function used in Metabase.
    */
@@ -82,16 +83,11 @@ export type CustomVisualization<CustomVisualizationSettings> = {
   >;
 
   /**
-   * Component that renders the visualization's empty state (i.e. when checkRenderable throws).
+   * Component that renders the visualization.
    */
-  VisualizationEmptyStateComponent?: ComponentType<
-    CustomVisualizationProps<CustomVisualizationSettings>
+  StaticVisualizationComponent: ComponentType<
+    CustomStaticVisualizationProps<CustomVisualizationSettings>
   >;
-
-  /**
-   * Component that renders the visualization settings form in visualization settings sidebar.
-   */
-  VisualizationSettingsComponent?: ComponentType<CustomVisualizationSettingsProps>;
 };
 
 export type CustomVisualizationSettingsDefinitions<
@@ -238,6 +234,25 @@ export type CustomVisualizationProps<CustomVisualizationSettings> = {
   ) => void;
 
   // onHoverChange: (hoverObject?: HoveredObject | null) => void;
+};
+
+export type ColorGetter = (colorName: string) => string;
+
+export interface RenderingContext {
+  getColor: ColorGetter;
+  measureText: TextWidthMeasurer;
+  measureTextHeight: TextHeightMeasurer;
+  fontFamily: string;
+  // theme: VisualizationTheme;
+}
+
+// Equivalent of StaticVisualizationProps
+export type CustomStaticVisualizationProps<CustomVisualizationSettings> = {
+  series: Series;
+  renderingContext: RenderingContext;
+  isStorybook?: boolean;
+  settings: CustomVisualizationSettings;
+  hasDevWatermark?: boolean;
 };
 
 export type CustomVisualizationSettingsProps = {};
