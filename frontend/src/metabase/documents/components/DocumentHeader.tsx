@@ -73,13 +73,11 @@ export const DocumentHeader = ({
   onArchive,
   onShowHistory,
 }: DocumentHeaderProps) => {
-  const { data: commentsData } = useListCommentsQuery(
-    getListCommentsQuery(document),
-  );
-  const hasComments =
-    !isNewDocument &&
-    !!commentsData?.comments &&
-    commentsData.comments.length > 0;
+  const { hasComments } = useListCommentsQuery(getListCommentsQuery(document), {
+    selectFromResult: ({ data }) => ({
+      hasComments: !isNewDocument && !!data?.comments?.length,
+    }),
+  });
 
   const isPublicSharingEnabled = useSetting("enable-public-sharing");
   const isAdmin = useSelector(getUserIsAdmin);
