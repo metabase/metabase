@@ -344,14 +344,14 @@ export const useDataGridInstance = <TData, TValue>({
     const heights = Array.from({ length: pinnedTopRowsCount }, (_, i) =>
       measureRowHeight(i),
     );
-    if (
-      heights.length === pinnedCandidateRowHeights.length &&
-      heights.every((height, i) => height === pinnedCandidateRowHeights[i])
-    ) {
-      return;
-    }
-    setPinnedCandidateRowHeights(heights);
-  }, [pinnedTopRowsCount, measureRowHeight, pinnedCandidateRowHeights]);
+
+    setPinnedCandidateRowHeights((prev) =>
+      heights.length === prev.length &&
+      heights.every((height, i) => height === prev[i])
+        ? prev
+        : heights,
+    );
+  }, [pinnedTopRowsCount, measureRowHeight]);
 
   const measureColumnWidths = useMeasureColumnWidths(
     table,
