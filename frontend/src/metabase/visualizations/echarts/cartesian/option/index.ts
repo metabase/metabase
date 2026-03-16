@@ -48,7 +48,7 @@ import type { EChartsSeriesOption } from "./types";
 export function getBrushStyle(renderingContext: RenderingContext) {
   const brandColor = Color(renderingContext.getColor("brand"));
   return {
-    color: brandColor.alpha(CHART_STYLE.brush.fillOpacity).string(),
+    fill: brandColor.alpha(CHART_STYLE.brush.fillOpacity).string(),
     borderColor: brandColor.alpha(CHART_STYLE.brush.borderOpacity).string(),
     borderWidth: CHART_STYLE.brush.borderWidth,
   };
@@ -70,7 +70,10 @@ export const getSharedEChartsOptions = (
     xAxisIndex: 0,
     throttleType: "debounce" as const,
     throttleDelay: 200,
-    brushStyle: getBrushStyle(renderingContext),
+    brushStyle: {
+      color: getBrushStyle(renderingContext).fill,
+      borderWidth: 0,
+    },
   },
 });
 
@@ -347,32 +350,58 @@ export function buildBrushMirrorGraphics(
   renderingContext: RenderingContext,
 ) {
   const [xStart, xEnd] = range;
-  const { color, borderColor, borderWidth } = getBrushStyle(renderingContext);
-  return grids.map((grid, index) => ({
-    type: "rect" as const,
-    id: `brush-mirror-${index}`,
-    shape: {
-      x: xStart,
-      y: Number(grid.top ?? 0),
-      width: xEnd - xStart,
-      height: Number(grid.height ?? 0),
-    },
-    style: {
-      fill: color,
-      stroke: borderColor,
-      lineWidth: borderWidth,
-    },
-    z: Z_INDEXES.brushMirror,
-    silent: true,
-  }));
+  const { fill, borderColor, borderWidth } = getBrushStyle(renderingContext);
+
+  return grids.flatMap((grid, index) => {
+    const top = Number(grid.top ?? 0);
+    const height = Number(grid.height ?? 0);
+    return [
+      {
+        type: "rect" as const,
+        id: `brush-mirror-fill-${index}`,
+        shape: { x: xStart, y: top, width: xEnd - xStart, height },
+        style: { fill, stroke: "transparent" },
+        z: Z_INDEXES.brushMirror,
+        silent: true,
+      },
+      {
+        type: "line" as const,
+        id: `brush-mirror-left-${index}`,
+        shape: { x1: xStart, y1: top, x2: xStart, y2: top + height },
+        style: { stroke: borderColor, lineWidth: borderWidth },
+        z: Z_INDEXES.brushMirror,
+        silent: true,
+      },
+      {
+        type: "line" as const,
+        id: `brush-mirror-right-${index}`,
+        shape: { x1: xEnd, y1: top, x2: xEnd, y2: top + height },
+        style: { stroke: borderColor, lineWidth: borderWidth },
+        z: Z_INDEXES.brushMirror,
+        silent: true,
+      },
+    ];
+  });
 }
 
 export function buildClearBrushMirrorGraphics(panelCount: number) {
-  return Array.from({ length: panelCount }, (_, index) => ({
-    type: "rect" as const,
-    id: `brush-mirror-${index}`,
-    $action: "remove" as const,
-  }));
+  return Array.from({ length: panelCount }, (_, index) => [
+    {
+      type: "rect" as const,
+      id: `brush-mirror-fill-${index}`,
+      $action: "remove" as const,
+    },
+    {
+      type: "line" as const,
+      id: `brush-mirror-left-${index}`,
+      $action: "remove" as const,
+    },
+    {
+      type: "line" as const,
+      id: `brush-mirror-right-${index}`,
+      $action: "remove" as const,
+    },
+  ]).flat();
 }
 
 export function buildSplitPanelGoalSeries(
@@ -504,7 +533,7 @@ export function buildPerPanelXAxes(
       nameGap: 0,
       axisLine: {
         show: true,
-        lineStyle: { color: renderingContext.getColor("border-stronger") },
+        lineStyle: { color: renderingContext.getColor("border-strong") },
       },
     };
   });
