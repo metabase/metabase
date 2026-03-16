@@ -1,3 +1,4 @@
+import { customVizRegistry } from "metabase/static-viz/custom-viz-registry";
 import { registerStaticVisualizations } from "metabase/static-viz/register";
 import { getVisualizationTransformed } from "metabase/visualizations";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
@@ -61,6 +62,26 @@ export const StaticVisualization = ({
     case "row":
       // TODO: replace with an ECharts implementation
       return <StaticRowChart {...props} />;
+  }
+
+  if (typeof display === "string" && display.startsWith("custom:")) {
+    const customViz = customVizRegistry.get(display);
+    if (customViz?.StaticVisualizationComponent) {
+      const { StaticVisualizationComponent } = customViz;
+      // Custom viz settings come from the card's visualization_settings,
+      // not from Metabase's computed settings pipeline which doesn't know
+      // about custom viz setting definitions.
+      const customSettings = rawSeries[0].card.visualization_settings ?? {};
+      return (
+        <StaticVisualizationComponent
+          series={rawSeries}
+          renderingContext={renderingContext}
+          settings={customSettings}
+          isStorybook={isStorybook}
+          hasDevWatermark={hasDevWatermark}
+        />
+      );
+    }
   }
 
   throw new Error(`Unsupported display type: ${display}`);
