@@ -51,12 +51,6 @@
 (defn- delete-session! [session-id]
   (swap! sessions dissoc session-id))
 
-(defn- valid-session? [session-id]
-  (when-let [session (get @sessions session-id)]
-    (if (< (u/since-ms (:timer session)) session-ttl-ms)
-      true
-      (do (delete-session! session-id) false))))
-
 (defn- session-for-user
   "Return session state when the session exists, is unexpired, and belongs to
    `user-id`; otherwise return nil."
