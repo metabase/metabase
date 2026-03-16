@@ -318,8 +318,8 @@ export interface DataGridInstance<TData> {
     rowIndex: number,
     columnId: string,
   ) => void;
-  pinnedRowMeasureRef: (element: HTMLElement | null) => void;
-  centerRowMeasureRef: (element: HTMLElement | null) => void;
+  pinnedRowMeasureRef: (element: HTMLDivElement | null) => void;
+  centerRowMeasureRef: (element: HTMLDivElement | null) => void;
   onAddColumnClick?: React.MouseEventHandler<HTMLButtonElement>;
   onWheel?: React.UIEventHandler<HTMLDivElement>;
 }

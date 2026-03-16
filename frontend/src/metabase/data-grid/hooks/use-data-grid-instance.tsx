@@ -262,7 +262,7 @@ export const useDataGridInstance = <TData, TValue>({
     measureRowHeight,
     pinnedRowMeasureRef,
     centerRowMeasureRef,
-    pinnedCandidateRowHeights,
+    pinnedTopRowHeights,
   } = useRowHeights({
     data,
     tableRef,
@@ -279,7 +279,7 @@ export const useDataGridInstance = <TData, TValue>({
     data,
     getRowId,
     gridRef,
-    topRowHeights: pinnedCandidateRowHeights,
+    topRowHeights: pinnedTopRowHeights,
   });
 
   const table = useReactTable({

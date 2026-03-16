@@ -7,8 +7,9 @@ import {
   useState,
 } from "react";
 
-import type { VirtualGrid } from "metabase/data-grid/hooks/use-virtual-grid";
-import type { ColumnOptions } from "metabase/data-grid/types";
+import type { ColumnOptions } from "../types";
+
+import type { VirtualGrid } from "./use-virtual-grid";
 
 type UseRowHeightsProps<TData extends RowData, TValue> = {
   data: TData[];
@@ -28,7 +29,7 @@ type UseRowHeightsResult = {
   measureRowHeight: (rowIndex: number) => number;
   pinnedRowMeasureRef: (element: HTMLDivElement | null) => void;
   centerRowMeasureRef: (element: HTMLDivElement | null) => void;
-  pinnedCandidateRowHeights: number[];
+  pinnedTopRowHeights: number[];
 };
 
 export const useRowHeights = <TData extends RowData, TValue>({
@@ -41,9 +42,7 @@ export const useRowHeights = <TData extends RowData, TValue>({
   gridRef,
   virtualGridRef,
 }: UseRowHeightsProps<TData, TValue>): UseRowHeightsResult => {
-  const [pinnedCandidateRowHeights, setPinnedCandidateRowHeights] = useState<
-    number[]
-  >([]);
+  const [pinnedTopRowHeights, setPinnedTopRowHeights] = useState<number[]>([]);
 
   const measureRowHeight = useCallback(
     (rowIndex: number) => {
@@ -149,7 +148,7 @@ export const useRowHeights = <TData extends RowData, TValue>({
       measureRowHeight(i),
     );
 
-    setPinnedCandidateRowHeights((prev) =>
+    setPinnedTopRowHeights((prev) =>
       heights.length === prev.length &&
       heights.every((height, i) => height === prev[i])
         ? prev
@@ -161,6 +160,6 @@ export const useRowHeights = <TData extends RowData, TValue>({
     measureRowHeight,
     pinnedRowMeasureRef,
     centerRowMeasureRef,
-    pinnedCandidateRowHeights,
+    pinnedTopRowHeights,
   };
 };
