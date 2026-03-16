@@ -340,13 +340,12 @@
   (mt/test-driver :clickhouse
     (mt/with-clock clock
       (testing "Field filter on a UInt64 column coerced to UNIX milliseconds->DateTime generates valid SQL (#70901)"
-        (let [;; Use timestamps around the mock clock time (2019-11-30T23:00:00Z)
-              now   (local-date-time-now)
+        (let [now   (local-date-time-now)
               ->epoch-millis (fn [^LocalDateTime ldt]
                                (.toEpochMilli (.toInstant (.atZone ldt (java.time.ZoneId/of "UTC")))))]
           (mt/dataset
-            (mt/dataset-definition "mb_vars_unix_millis"
-                                   [["test_table"
+            (mt/dataset-definition "milliseconds_db"
+                                   [["milliseconds_table"
                                      [{:field-name        "time"
                                        :base-type         {:native "UInt64"}
                                        :effective-type    :type/Instant
@@ -357,20 +356,20 @@
                                       [(->epoch-millis (.minusHours now 24)) "Event B"]
                                       [(->epoch-millis (.plusHours now 1)) "Event C"]
                                       [(->epoch-millis (.plusDays now 2)) "Event D"]]]])
-            (let [uuid  (str (java.util.UUID/randomUUID))
+            (let [uuid  (str (random-uuid))
                   query {:database   (mt/id)
                          :type       "native"
-                         :native     {:collection    "test-table"
-                                      :template-tags {:x {:id           uuid
-                                                          :name         "time"
-                                                          :display-name "Time"
-                                                          :type         "dimension"
-                                                          :dimension    ["field" (mt/id :test-table :time) nil]
-                                                          :required     true}}
-                                      :query         "SELECT * FROM `mb_vars_unix_millis`.`test_table` WHERE {{x}}"}
+                         :native     {:collection    "milliseconds-table"
+                                      :template-tags {:date_filter {:id           uuid
+                                                                    :name         "time"
+                                                                    :display-name "Time"
+                                                                    :type         "dimension"
+                                                                    :dimension    ["field" (mt/id :milliseconds-table :time) nil]
+                                                                    :required     true}}
+                                      :query "SELECT * FROM `milliseconds_db`.`milliseconds_table` WHERE {{date_filter}}"}
                          :parameters [{:type   "date/all-options"
                                        :value  "past7days"
-                                       :target ["dimension" ["template-tag" "x"]]
+                                       :target ["dimension" ["template-tag" "date_filter"]]
                                        :id     uuid}]}]
               (is (= [[1 1574982000000 "Event A"]
                       [2 1575068400000 "Event B"]]
