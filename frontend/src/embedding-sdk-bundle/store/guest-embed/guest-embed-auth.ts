@@ -35,12 +35,12 @@ export const refreshGuestSession = createAsyncThunk(
     authConfig,
     expiredToken,
   }: {
-    authConfig: MetabaseAuthConfig & { guestEmbedJwtRefreshUrl?: string };
+    authConfig: MetabaseAuthConfig & { guestEmbedProviderUri?: string };
     expiredToken: string;
   }): Promise<string> => {
-    if (!authConfig.guestEmbedJwtRefreshUrl) {
+    if (!authConfig.guestEmbedProviderUri) {
       throw new Error(
-        "guestEmbedJwtRefreshUrl is required for guest embed token refresh",
+        "guestEmbedProviderUri is required for guest embed token refresh",
       );
     }
 
@@ -63,8 +63,8 @@ export const refreshGuestSession = createAsyncThunk(
  * Prevents concurrent refresh requests.
  *
  * OPT-IN BEHAVIOR:
- * - If guestEmbedJwtRefreshUrl is NOT configured, returns current token (no refresh)
- * - If guestEmbedJwtRefreshUrl IS configured, automatically refreshes expired tokens
+ * - If guestEmbedProviderUri is NOT configured, returns current token (no refresh)
+ * - If guestEmbedProviderUri IS configured, automatically refreshes expired tokens
  * This ensures the feature is opt-in and backward compatible.
  *
  * IMPORTANT: Returns the raw JWT string (not decoded session object)
@@ -73,7 +73,7 @@ export const refreshGuestSession = createAsyncThunk(
 export const getOrRefreshGuestSession = createAsyncThunk(
   "sdk/guest-embed/GET_OR_REFRESH_TOKEN",
   async (
-    authConfig: MetabaseAuthConfig & { guestEmbedJwtRefreshUrl?: string },
+    authConfig: MetabaseAuthConfig & { guestEmbedProviderUri?: string },
     { dispatch, getState },
   ) => {
     const state = getState() as SdkStoreState;
@@ -96,7 +96,7 @@ export const getOrRefreshGuestSession = createAsyncThunk(
       (typeof session?.exp === "number" && session.exp * 1000 < Date.now());
 
     // If token is still valid or refresh URL not configured, return current token
-    if (!shouldRefreshToken || !authConfig.guestEmbedJwtRefreshUrl) {
+    if (!shouldRefreshToken || !authConfig.guestEmbedProviderUri) {
       return currentToken;
     }
 

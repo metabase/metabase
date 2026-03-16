@@ -68,12 +68,12 @@ export type MetabaseIsGuestAuthConfig = BaseMetabaseAuthConfig & {
   isGuest: true;
 
   /**
-   * Optional URL endpoint that returns new JWT tokens for guest embeds.
-   * When configured, the SDK will automatically refresh expired tokens
-   * by POSTing the expired token to this endpoint.
+   * URL endpoint for fetching and refreshing JWT tokens in guest embeds.
+   * Used for both the initial token fetch (Mode B, when no static token is provided)
+   * and token refresh on expiry (Modes A & B).
    * The endpoint should return { jwt: string } with the new token.
    */
-  guestEmbedJwtRefreshUrl?: string;
+  guestEmbedProviderUri?: string;
 
   apiKey?: never;
   preferredAuthMethod?: never;

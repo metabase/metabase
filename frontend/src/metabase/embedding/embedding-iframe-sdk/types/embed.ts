@@ -228,11 +228,12 @@ export type SdkIframeEmbedBaseSettings = {
   useExistingUserSession?: boolean;
 
   /**
-   * URL endpoint for refreshing expired JWT tokens in guest embeds (iframe only, not applicable for SDK's guest mode).
+   * URL endpoint for fetching and refreshing JWT tokens in guest embeds (iframe only, not applicable for SDK's guest mode).
+   * Used for both the initial token fetch (Mode B) and token refresh on expiry (Modes A & B).
    *
    * Expected response: { jwt: string }
    */
-  guestEmbedJwtRefreshUrl?: string;
+  guestEmbedProviderUri?: string;
 
   // Whether the embed is running on localhost. Cannot be set by the user.
   _isLocalhost?: boolean;

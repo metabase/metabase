@@ -152,6 +152,7 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
   static readonly VERSION = "1.1.0";
 
   private _isEmbedReady: boolean = false;
+  private _dynamicGuestToken: string | null = null;
   private _eventHandlers: Map<
     SdkIframeEmbedEvent["type"],
     Set<SdkIframeEmbedEventHandler>
@@ -247,6 +248,7 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
   _updateSettings(settings: Partial<SdkIframeEmbedElementSettings>) {
     const newValues = {
       ...this.properties,
+      ...(this._dynamicGuestToken ? { token: this._dynamicGuestToken } : {}),
       ...settings,
     } as SdkIframeEmbedElementSettings;
 
@@ -428,7 +430,16 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
         // this is used from tests to await the loading of the iframe
         this._iframe.setAttribute("data-iframe-loaded", "true");
       }
-      this._updateSettings(this.properties);
+
+      const { guestEmbedProviderUri, token } = this.properties;
+
+      // Mode B: no static token → fetch initial token first, then send settings
+      if (guestEmbedProviderUri && !token) {
+        await this._fetchInitialGuestToken();
+      } else {
+        this._updateSettings(this.properties);
+      }
+
       this._emitEvent({ type: "ready" });
     }
 
@@ -505,79 +516,101 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
   }
 
   /**
-   * Refreshes a guest embed JWT token by calling the configured refresh endpoint.
-   * Implements the refresh logic directly (based on enterprise runFetchRequestToken)
-   * to maintain OSS compatibility without enterprise dependencies.
+   * Unified provider call for both initial token fetch and refresh.
+   * Sends entityType/entityId always; expiredToken only on refresh.
    */
-  private async _refreshGuestToken(expiredToken: string): Promise<void> {
-    const guestEmbedJwtRefreshUrl = this.properties.guestEmbedJwtRefreshUrl;
+  private async _callGuestTokenProvider(
+    expiredToken?: string,
+  ): Promise<string> {
+    const { guestEmbedProviderUri, componentName, dashboardId, questionId } =
+      this.properties;
 
-    if (!guestEmbedJwtRefreshUrl) {
-      this.sendMessage("metabase.embed.reportAuthenticationError", {
-        error: new MetabaseError(
-          "CANNOT_FETCH_JWT_TOKEN",
-          "guestEmbedJwtRefreshUrl not configured",
-        ),
-      });
-      return;
+    if (!guestEmbedProviderUri) {
+      throw new MetabaseError(
+        "CANNOT_FETCH_JWT_TOKEN",
+        "guestEmbedProviderUri not configured",
+      );
     }
 
+    const url = new URL(guestEmbedProviderUri, window.location.origin);
+    url.searchParams.set("response", "json");
+
+    const entityType =
+      componentName === "metabase-dashboard" ? "dashboard" : "question";
+    const entityId =
+      componentName === "metabase-dashboard" ? dashboardId : questionId;
+
+    const body =
+      expiredToken !== undefined
+        ? { grant_type: "refresh_token", entityType, entityId, expiredToken }
+        : { grant_type: "token", entityType, entityId };
+
+    const response = await fetch(url.toString(), {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      throw new MetabaseError(
+        "CANNOT_FETCH_JWT_TOKEN",
+        `Provider request failed: ${response.status}`,
+      );
+    }
+
+    const data = await response.json();
+
+    if (typeof data !== "object" || typeof data.jwt !== "string") {
+      throw new MetabaseError(
+        "DEFAULT_ENDPOINT_ERROR",
+        `Expected { jwt: string }, got ${JSON.stringify(data)}`,
+      );
+    }
+
+    return data.jwt;
+  }
+
+  /**
+   * Mode B: fetch the initial guest token when no static token is provided.
+   * Stores the result and sends settings to the iframe.
+   */
+  private async _fetchInitialGuestToken(): Promise<void> {
     try {
-      // Build URL with support for relative URLs
-      const url = new URL(guestEmbedJwtRefreshUrl, window.location.origin);
-      url.searchParams.set("response", "json");
-
-      // POST request with expired token (matches enterprise implementation)
-      const response = await fetch(url.toString(), {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ expiredToken }),
-      });
-
-      if (!response.ok) {
-        throw new MetabaseError(
-          "CANNOT_FETCH_JWT_TOKEN",
-          `Token refresh failed with status ${response.status}`,
-        );
-      }
-
-      const data = await response.json();
-
-      // Validate response format
-      if (
-        typeof data !== "object" ||
-        !("jwt" in data) ||
-        typeof data.jwt !== "string"
-      ) {
-        throw new MetabaseError(
-          "DEFAULT_ENDPOINT_ERROR",
-          `Invalid refresh response: expected { jwt: string }, got ${JSON.stringify(data)}`,
-        );
-      }
-
-      const newToken = data.jwt;
-
-      // Send new token back to iframe
-      this.sendMessage("metabase.embed.submitRefreshedGuestToken", {
-        token: newToken,
-      });
+      const token = await this._callGuestTokenProvider();
+      this._dynamicGuestToken = token;
+      this._updateSettings(this.properties);
     } catch (error) {
-      // Send error back to iframe
-      if (error instanceof MetabaseError) {
-        this.sendMessage("metabase.embed.reportAuthenticationError", {
-          error,
-        });
-      } else {
-        this.sendMessage("metabase.embed.reportAuthenticationError", {
-          error: new MetabaseError(
-            "CANNOT_FETCH_JWT_TOKEN",
-            error instanceof Error ? error.message : String(error),
-          ),
-        });
-      }
+      this.sendMessage("metabase.embed.reportAuthenticationError", {
+        error:
+          error instanceof MetabaseError
+            ? error
+            : new MetabaseError(
+                "CANNOT_FETCH_JWT_TOKEN",
+                error instanceof Error ? error.message : String(error),
+              ),
+      });
+    }
+  }
+
+  /**
+   * Refresh (Modes A & B): called when the iframe requests a token refresh.
+   */
+  private async _refreshGuestToken(expiredToken: string): Promise<void> {
+    try {
+      const token = await this._callGuestTokenProvider(expiredToken);
+      this._dynamicGuestToken = token;
+      this.sendMessage("metabase.embed.submitRefreshedGuestToken", { token });
+    } catch (error) {
+      this.sendMessage("metabase.embed.reportAuthenticationError", {
+        error:
+          error instanceof MetabaseError
+            ? error
+            : new MetabaseError(
+                "CANNOT_FETCH_JWT_TOKEN",
+                error instanceof Error ? error.message : String(error),
+              ),
+      });
     }
   }
 }

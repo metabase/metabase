@@ -14,7 +14,7 @@ export const initGuestEmbed = createAsyncThunk<void, MetabaseAuthConfig>(
     overrideRequestsForGuestEmbeds();
 
     // Check `isGuest` to narrow the type.
-    if (authConfig.isGuest && authConfig.guestEmbedJwtRefreshUrl) {
+    if (authConfig.isGuest && authConfig.guestEmbedProviderUri) {
       PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.getOrRefreshGuestSessionHandler =
         async (data: OnBeforeRequestHandlerData) => {
           const newToken = await dispatch(
