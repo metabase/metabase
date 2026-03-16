@@ -32,7 +32,10 @@ export const useCreateTransform = (
       databaseId,
     );
     const transform = await createTransformMutation(request).unwrap();
-    trackTransformCreated({ transformId: transform.id });
+    trackTransformCreated({
+      transformId: transform.id,
+      isIncremental: transform.target.type === "table-incremental",
+    });
     return transform;
   };
 
