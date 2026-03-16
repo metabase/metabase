@@ -1,5 +1,7 @@
 (ns metabase-enterprise.slackbot.client
   "Slack API client functions for Metabot slackbot."
+  (:import
+   (java.io InputStream))
   (:require
    [clj-http.client :as http]
    [metabase.util.i18n :refer [tru]]
@@ -187,6 +189,7 @@
 (defn download-file-stream
   "Download a file from Slack, returning an InputStream instead of buffering in memory.
    Caller is responsible for closing the stream (e.g. via `with-open`)."
+  ^InputStream
   [client url]
   (-> (http/get url {:headers {"Authorization" (str "Bearer " (:token client))}
                      :as      :stream})

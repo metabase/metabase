@@ -49,7 +49,7 @@
       {:error size-error :filename name})
     (let [temp-file (java.io.File/createTempFile "slack-upload-" (str "-" name))]
       (try
-        (with-open [stream (slackbot.client/download-file-stream {:token (channel.settings/unobfuscated-slack-app-token)} url_private)]
+        (with-open [^java.io.InputStream stream (slackbot.client/download-file-stream {:token (channel.settings/unobfuscated-slack-app-token)} url_private)]
           (io/copy stream temp-file)
           (let [result (upload/create-csv-upload!
                         {:filename      name
