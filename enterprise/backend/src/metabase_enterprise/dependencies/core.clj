@@ -120,7 +120,11 @@
         errors    (volatile! {})]
     (doseq [[entity-type ids] overrides
             id ids
-            :let [bad-refs (check-entity provider entity-type id)]]
+            :let [bad-refs (try
+                             (deps.analysis/check-entity provider entity-type id)
+                             (catch Exception e
+                               (log/warnf e "Error checking %s %s" entity-type id)
+                               #{(lib/validation-exception-error (ex-message e))}))]]
       (when (seq bad-refs)
         (vswap! errors assoc-in [entity-type id] bad-refs)))
     @errors))
