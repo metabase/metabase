@@ -3,6 +3,7 @@ import {
   type PaginationState,
   type Row,
   type RowData,
+  type Table,
   getCoreRowModel,
   getPaginationRowModel,
   getSortedRowModel,
@@ -28,6 +29,7 @@ import { useBodyCellMeasure } from "metabase/data-grid/hooks/use-body-cell-measu
 import { useColumnResizeObserver } from "metabase/data-grid/hooks/use-column-resize-observer";
 import { useColumnsReordering } from "metabase/data-grid/hooks/use-columns-reordering";
 import { useMeasureColumnWidths } from "metabase/data-grid/hooks/use-measure-column-widths";
+import { useRowHeights } from "metabase/data-grid/hooks/use-row-heights";
 import { useVirtualGrid } from "metabase/data-grid/hooks/use-virtual-grid";
 import type {
   DataGridColumnType,
@@ -250,9 +252,20 @@ export const useDataGridInstance = <TData, TValue>({
       pinnedColumnsCount: pinnedLeftColumnsCount + utilityColumns.length,
     });
 
-  const [pinnedCandidateRowHeights, setPinnedCandidateRowHeights] = useState<
-    number[]
-  >([]);
+  const tableRef = useRef<Table<TData>>();
+  const measureGridRef = useRef<() => void>();
+
+  const { measureRowHeight, pinnedMeasureRef, pinnedCandidateRowHeights } =
+    useRowHeights({
+      data,
+      tableRef,
+      measureGridRef,
+      defaultRowHeight,
+      wrappedColumnsOptions,
+      measureBodyCellDimensions,
+      pinnedTopRowsCount,
+      gridRef,
+    });
 
   const rowPinning = useRowPinningByCount({
     top: pinnedTopRowsCount,
@@ -288,111 +301,6 @@ export const useDataGridInstance = <TData, TValue>({
     enableRowSelection,
   });
 
-  // Calculate dynamic row heights for wrapped columns
-  const measureRowHeight = useCallback(
-    (rowIndex: number) => {
-      if (wrappedColumnsOptions.length === 0) {
-        return defaultRowHeight;
-      }
-
-      const height = Math.max(
-        ...wrappedColumnsOptions.map((column) => {
-          const value = column.accessorFn(data[rowIndex]);
-          const formattedValue = column.formatter
-            ? column.formatter(value, rowIndex, column.id)
-            : String(value);
-
-          if (value == null || formattedValue === "") {
-            return defaultRowHeight;
-          }
-          const tableColumn = table.getColumn(column.id);
-
-          const cellDimensions = measureBodyCellDimensions(
-            formattedValue,
-            tableColumn?.getSize(),
-          );
-          return cellDimensions.height;
-        }),
-        defaultRowHeight,
-      );
-
-      return height;
-    },
-    [
-      data,
-      defaultRowHeight,
-      measureBodyCellDimensions,
-      table,
-      wrappedColumnsOptions,
-    ],
-  );
-
-  const pinnedSideHeights = useRef<Map<number, number>>(new Map());
-  const measureGridRef = useRef<() => void>();
-
-  const pinnedMeasureRef = useCallback((element: HTMLElement | null) => {
-    if (!element) {
-      return;
-    }
-    const indexRaw = element.getAttribute("data-dataset-index");
-    if (indexRaw == null) {
-      return;
-    }
-    const dataIndex = parseInt(indexRaw, 10);
-    const height = element.offsetHeight;
-    const prev = pinnedSideHeights.current.get(dataIndex);
-    if (prev !== height) {
-      pinnedSideHeights.current.set(dataIndex, height);
-      measureGridRef.current?.();
-    }
-  }, []);
-
-  const pinnedResizeObserverRef = useRef<ResizeObserver | null>(null);
-  const pinnedObservedElements = useRef<Set<HTMLElement>>(new Set());
-
-  useLayoutEffect(() => {
-    pinnedResizeObserverRef.current = new ResizeObserver((entries) => {
-      let changed = false;
-      for (const entry of entries) {
-        const el = entry.target;
-        if (!(el instanceof HTMLElement)) {
-          continue;
-        }
-        const indexRaw = el.getAttribute("data-dataset-index");
-        if (indexRaw == null) {
-          continue;
-        }
-        const dataIndex = parseInt(indexRaw, 10);
-        const height = el.offsetHeight;
-        const prev = pinnedSideHeights.current.get(dataIndex);
-        if (prev !== height) {
-          pinnedSideHeights.current.set(dataIndex, height);
-          changed = true;
-        }
-      }
-      if (changed) {
-        measureGridRef.current?.();
-      }
-    });
-
-    return () => {
-      pinnedResizeObserverRef.current?.disconnect();
-    };
-  }, []);
-
-  const pinnedMeasureRefWithObserver = useCallback(
-    (element: HTMLElement | null) => {
-      if (element) {
-        pinnedMeasureRef(element);
-        if (!pinnedObservedElements.current.has(element)) {
-          pinnedObservedElements.current.add(element);
-          pinnedResizeObserverRef.current?.observe(element);
-        }
-      }
-    },
-    [pinnedMeasureRef],
-  );
-
   // Enable row virtualization only when pagination is disabled
   const enableRowVirtualization = !enablePagination;
   const virtualGrid = useVirtualGrid({
@@ -403,25 +311,8 @@ export const useDataGridInstance = <TData, TValue>({
     enableRowVirtualization,
   });
 
-  useLayoutEffect(() => {
-    measureGridRef.current = virtualGrid.measureGrid;
-  }, [virtualGrid.measureGrid]);
-
-  useEffect(() => {
-    if (!gridRef.current) {
-      return;
-    }
-    const heights = Array.from({ length: pinnedTopRowsCount }, (_, i) =>
-      measureRowHeight(i),
-    );
-
-    setPinnedCandidateRowHeights((prev) =>
-      heights.length === prev.length &&
-      heights.every((height, i) => height === prev[i])
-        ? prev
-        : heights,
-    );
-  }, [pinnedTopRowsCount, measureRowHeight]);
+  tableRef.current = table;
+  measureGridRef.current = virtualGrid.measureGrid;
 
   const measureColumnWidths = useMeasureColumnWidths(
     table,
@@ -689,7 +580,7 @@ export const useDataGridInstance = <TData, TValue>({
     getCenterColumns,
     getPinnedColumns,
     getPinnedRows,
-    pinnedMeasureRef: pinnedMeasureRefWithObserver,
+    pinnedMeasureRef,
     enablePagination,
     sorting,
   };
