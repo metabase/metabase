@@ -30,7 +30,10 @@ import { useColumnResizeObserver } from "metabase/data-grid/hooks/use-column-res
 import { useColumnsReordering } from "metabase/data-grid/hooks/use-columns-reordering";
 import { useMeasureColumnWidths } from "metabase/data-grid/hooks/use-measure-column-widths";
 import { useRowHeights } from "metabase/data-grid/hooks/use-row-heights";
-import { useVirtualGrid } from "metabase/data-grid/hooks/use-virtual-grid";
+import {
+  type VirtualGrid,
+  useVirtualGrid,
+} from "metabase/data-grid/hooks/use-virtual-grid";
 import type {
   DataGridColumnType,
   DataGridInstance,
@@ -253,19 +256,23 @@ export const useDataGridInstance = <TData, TValue>({
     });
 
   const tableRef = useRef<Table<TData>>();
-  const measureGridRef = useRef<() => void>();
+  const virtualGridRef = useRef<VirtualGrid>();
 
-  const { measureRowHeight, pinnedMeasureRef, pinnedCandidateRowHeights } =
-    useRowHeights({
-      data,
-      tableRef,
-      measureGridRef,
-      defaultRowHeight,
-      wrappedColumnsOptions,
-      measureBodyCellDimensions,
-      pinnedTopRowsCount,
-      gridRef,
-    });
+  const {
+    measureRowHeight,
+    pinnedRowMeasureRef,
+    centerRowMeasureRef,
+    pinnedCandidateRowHeights,
+  } = useRowHeights({
+    data,
+    tableRef,
+    virtualGridRef,
+    defaultRowHeight,
+    wrappedColumnsOptions,
+    measureBodyCellDimensions,
+    pinnedTopRowsCount,
+    gridRef,
+  });
 
   const rowPinning = useRowPinningByCount({
     top: pinnedTopRowsCount,
@@ -312,7 +319,7 @@ export const useDataGridInstance = <TData, TValue>({
   });
 
   tableRef.current = table;
-  measureGridRef.current = virtualGrid.measureGrid;
+  virtualGridRef.current = virtualGrid;
 
   const measureColumnWidths = useMeasureColumnWidths(
     table,
@@ -580,7 +587,8 @@ export const useDataGridInstance = <TData, TValue>({
     getCenterColumns,
     getPinnedColumns,
     getPinnedRows,
-    pinnedMeasureRef,
+    centerRowMeasureRef,
+    pinnedRowMeasureRef,
     enablePagination,
     sorting,
   };

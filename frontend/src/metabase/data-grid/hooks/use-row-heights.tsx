@@ -7,11 +7,13 @@ import {
   useState,
 } from "react";
 
+import type { VirtualGrid } from "metabase/data-grid/hooks/use-virtual-grid";
 import type { ColumnOptions } from "metabase/data-grid/types";
 
 type UseRowHeightsProps<TData extends RowData, TValue> = {
   data: TData[];
   tableRef: React.MutableRefObject<Table<TData> | undefined>;
+  virtualGridRef: React.MutableRefObject<VirtualGrid | undefined>;
   defaultRowHeight: number;
   wrappedColumnsOptions: ColumnOptions<TData, TValue>[];
   measureBodyCellDimensions: (
@@ -20,12 +22,12 @@ type UseRowHeightsProps<TData extends RowData, TValue> = {
   ) => { width: number; height: number };
   pinnedTopRowsCount: number;
   gridRef: React.RefObject<HTMLDivElement>;
-  measureGridRef: React.MutableRefObject<(() => void) | undefined>;
 };
 
 type UseRowHeightsResult = {
   measureRowHeight: (rowIndex: number) => number;
-  pinnedMeasureRef: (element: HTMLElement | null) => void;
+  pinnedRowMeasureRef: (element: HTMLElement | null) => void;
+  centerRowMeasureRef: (element: HTMLElement | null) => void;
   pinnedCandidateRowHeights: number[];
 };
 
@@ -37,7 +39,7 @@ export const useRowHeights = <TData extends RowData, TValue>({
   measureBodyCellDimensions,
   pinnedTopRowsCount,
   gridRef,
-  measureGridRef,
+  virtualGridRef,
 }: UseRowHeightsProps<TData, TValue>): UseRowHeightsResult => {
   const [pinnedCandidateRowHeights, setPinnedCandidateRowHeights] = useState<
     number[]
@@ -83,70 +85,63 @@ export const useRowHeights = <TData extends RowData, TValue>({
 
   const pinnedSideHeights = useRef<Map<number, number>>(new Map());
 
-  const pinnedMeasureRef = useCallback(
-    (element: HTMLElement | null) => {
-      if (!element) {
-        return;
-      }
-      const indexRaw = element.getAttribute("data-dataset-index");
-      if (indexRaw == null) {
-        return;
-      }
-      const dataIndex = parseInt(indexRaw, 10);
-      const height = element.offsetHeight;
-      const prev = pinnedSideHeights.current.get(dataIndex);
-      if (prev !== height) {
-        pinnedSideHeights.current.set(dataIndex, height);
-        measureGridRef.current?.();
-      }
-    },
-    [measureGridRef],
-  );
-
   const pinnedResizeObserverRef = useRef<ResizeObserver | null>(null);
   const pinnedObservedElements = useRef<Set<HTMLElement>>(new Set());
+
+  const updatePinnedHeight = useCallback((el: HTMLElement) => {
+    const indexRaw = el.getAttribute("data-dataset-index");
+    if (indexRaw == null) {
+      return false;
+    }
+    const dataIndex = parseInt(indexRaw, 10);
+    const height = el.offsetHeight;
+    const prev = pinnedSideHeights.current.get(dataIndex);
+    if (prev !== height) {
+      pinnedSideHeights.current.set(dataIndex, height);
+      return true;
+    }
+    return false;
+  }, []);
 
   useLayoutEffect(() => {
     pinnedResizeObserverRef.current = new ResizeObserver((entries) => {
       let changed = false;
       for (const entry of entries) {
         const el = entry.target;
-        if (!(el instanceof HTMLElement)) {
-          continue;
-        }
-        const indexRaw = el.getAttribute("data-dataset-index");
-        if (indexRaw == null) {
-          continue;
-        }
-        const dataIndex = parseInt(indexRaw, 10);
-        const height = el.offsetHeight;
-        const prev = pinnedSideHeights.current.get(dataIndex);
-        if (prev !== height) {
-          pinnedSideHeights.current.set(dataIndex, height);
+        if (el instanceof HTMLElement && updatePinnedHeight(el)) {
           changed = true;
         }
       }
       if (changed) {
-        measureGridRef.current?.();
+        virtualGridRef.current?.measureGrid();
       }
     });
 
     return () => {
       pinnedResizeObserverRef.current?.disconnect();
     };
-  }, [measureGridRef]);
+  }, [virtualGridRef, updatePinnedHeight]);
 
-  const pinnedMeasureRefWithObserver = useCallback(
+  const pinnedRowMeasureRef = useCallback(
     (element: HTMLElement | null) => {
-      if (element) {
-        pinnedMeasureRef(element);
-        if (!pinnedObservedElements.current.has(element)) {
-          pinnedObservedElements.current.add(element);
-          pinnedResizeObserverRef.current?.observe(element);
-        }
+      if (!element) {
+        return;
+      }
+      if (updatePinnedHeight(element)) {
+        virtualGridRef.current?.measureGrid();
+      }
+      if (!pinnedObservedElements.current.has(element)) {
+        pinnedObservedElements.current.add(element);
+        pinnedResizeObserverRef.current?.observe(element);
       }
     },
-    [pinnedMeasureRef],
+    [virtualGridRef, updatePinnedHeight],
+  );
+
+  const centerRowMeasureRef = useCallback(
+    (element: HTMLElement | null) =>
+      virtualGridRef.current?.rowVirtualizer.measureElement(element),
+    [virtualGridRef],
   );
 
   useEffect(() => {
@@ -167,7 +162,8 @@ export const useRowHeights = <TData extends RowData, TValue>({
 
   return {
     measureRowHeight,
-    pinnedMeasureRef: pinnedMeasureRefWithObserver,
+    pinnedRowMeasureRef,
+    centerRowMeasureRef,
     pinnedCandidateRowHeights,
   };
 };

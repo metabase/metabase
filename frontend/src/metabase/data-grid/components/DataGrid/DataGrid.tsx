@@ -62,7 +62,8 @@ export const DataGrid = function DataGrid<TData>({
   getCenterRows,
   getPinnedColumns,
   getCenterColumns,
-  pinnedMeasureRef,
+  pinnedRowMeasureRef,
+  centerRowMeasureRef,
   emptyState,
   zoomedRowIndex,
   onBodyCellClick,
@@ -82,11 +83,9 @@ export const DataGrid = function DataGrid<TData>({
   } = virtualGrid;
 
   const rowMeasureRef = useCallback(
-    (element: HTMLElement | null) => {
-      rowVirtualizer.measureElement(element);
-    },
+    (element: HTMLElement | null) => centerRowMeasureRef(element),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `sorting` triggers re-measurement when sorting changes
-    [rowVirtualizer, sorting],
+    [centerRowMeasureRef, sorting],
   );
 
   const forceUpdate = useForceUpdate();
@@ -217,7 +216,7 @@ export const DataGrid = function DataGrid<TData>({
   ) =>
     renderGridPanels({
       pinnedContent: rows.map((row, index) =>
-        renderRow(row, pinnedColumns, `pinned-${index}`, pinnedMeasureRef),
+        renderRow(row, pinnedColumns, `pinned-${index}`, pinnedRowMeasureRef),
       ),
       centerContent: rows.map((row, index) =>
         renderRow(
