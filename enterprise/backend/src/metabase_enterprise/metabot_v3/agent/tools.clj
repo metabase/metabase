@@ -2,7 +2,6 @@
   "Tool registry for the agent loop.
   Provides a unified namespace for tool vars and state-aware wrapping."
   (:require
-   [metabase-enterprise.metabot-v3.agent.tools.analytics :as tools.analytics]
    [metabase-enterprise.metabot-v3.agent.tools.analyze-chart :as tools.analyze-chart]
    [metabase-enterprise.metabot-v3.agent.tools.autogen-dashboard :as tools.autogen-dashboard]
    [metabase-enterprise.metabot-v3.agent.tools.charts :as tools.charts]
@@ -24,8 +23,6 @@
 (set! *warn-on-reflection* true)
 
 (p/import-vars
- [tools.analytics
-  find-outliers-tool]
  [tools.analyze-chart
   analyze-chart-tool]
  [tools.search search-tool
