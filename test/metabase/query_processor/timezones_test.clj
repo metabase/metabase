@@ -252,7 +252,7 @@
   ;; Oracle doesn't have a time type
   (mt/test-drivers (filter #(isa? driver/hierarchy % :sql) (set-timezone-drivers))
     (mt/dataset attempted-murders
-      (doseq [timezone [nil "US/Pacific" "US/Eastern" "Asia/Hong_Kong"]]
+      (doseq [timezone [nil "America/Los_Angeles" "America/New_York" "Asia/Hong_Kong"]]
         (mt/with-temporary-setting-values [report-timezone timezone]
           (let [expected (expected-attempts)
                 actual   (select-keys (attempts) (keys expected))]
