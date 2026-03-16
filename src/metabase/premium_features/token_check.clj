@@ -172,6 +172,7 @@
    [:valid                          :boolean]
    [:status                         [:string {:min 1}]]
    [:error-details {:optional true} [:maybe [:string {:min 1}]]]
+   [:canonical?    {:optional true} [:maybe :boolean]]
    [:features      {:optional true} [:sequential [:string {:min 1}]]]
    [:plan-alias    {:optional true} :string]
    [:trial         {:optional true} :boolean]
@@ -198,12 +199,11 @@
   (let [{:keys [body status] :as resp} (http-fetch base-url token site-uuid)]
     (cond
       (http/success? resp) (do (analytics/inc-if-initialized! :metabase-token-check/attempt {:status :success})
-                               (some-> body json/decode+kw))
-      (<= 400 status 499) (or (some-> body json/decode+kw)
+                               (some-> body json/decode+kw (assoc :canonical? true)))
+      (<= 400 status 499) (or (some-> body json/decode+kw (assoc :canonical? true))
                               {:valid false
                                :status "Unable to validate token"
                                :error-details "Token validation provided no response"})
-
       ;; exceptions are not cached.
       :else (do (analytics/inc-if-initialized! :metabase-token-check/attempt {:status :failure})
                 (throw (ex-info "An unknown error occurred when validating token." {:status status
@@ -491,8 +491,7 @@
                (analytics/inc-if-initialized! :metabase-token-check/attempt {:status :failure}))
              {:valid         false
               :status        (tru "Unable to validate token")
-              :error-details (.getMessage e)
-              :error-type    :network})))
+              :error-details (.getMessage e)})))
     (-clear-cache! [_] (-clear-cache! token-checker))))
 
 (def ^:dynamic *customize-checker*
@@ -567,11 +566,13 @@
                         {:status-code 400, :error-details "Token should be 64 hexadecimal characters."})))
       (let [decoded (check-token new-value)]
         (when-not (:valid decoded)
-          (if (= :network (:error-type decoded))
-            (throw (ex-info (tru "Token validation failed due to a network error. Please check your internet connection and try again.")
-                            {:status-code   503
-                             :error-details (:error-details decoded)}))
-            (throw (ex-info "Invalid token" {:token (u.str/mask new-value)})))))
+          (throw (ex-info (:status decoded)
+                          {:error-details (:error-details decoded)
+                           ;; If MetaStore told us the token is invalid, use 400. If some other error occurred, a 503 is
+                           ;; probably more appropriate.
+                           :status-code (if (:canonical? decoded)
+                                          400
+                                          503)}))))
       (log/info "Token is valid."))
     (setting/set-value-of-type! :string :premium-embedding-token new-value)
     (events/publish-event! :event/set-premium-embedding-token {})
