@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { SchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
-import { Box, Group, HoverCard, Icon, Switch, Text } from "metabase/ui";
+import { Group, HoverCard, Icon, Switch, Text } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { TableId, TemplateTag } from "metabase-types/api";
 
@@ -62,11 +62,9 @@ export function TableMappingSelect({
               />
             </HoverCard.Target>
             <HoverCard.Dropdown>
-              <Box p="md" maw="24rem">
-                <Text>
-                  {t`When enabled, the table reference will include an alias matching the variable name.`}
-                </Text>
-              </Box>
+              <Text p="md" maw="24rem">
+                {t`When enabled, the table reference will include an alias matching the variable name.`}
+              </Text>
             </HoverCard.Dropdown>
           </HoverCard>
         </Group>
