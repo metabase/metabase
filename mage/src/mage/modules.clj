@@ -439,7 +439,7 @@
         driver-affected? (driver-deps-affected? updated)
         important-file-changed? (changes-important-file-for-drivers? git-ref)
         ;; For module dependency check, combine both conditions
-        effective-driver-affected? (or driver-affected? important-file-changed?)
+        effective-driver-affected? true #_(or driver-affected? important-file-changed?)
         decisions (mapv (fn [driver]
                           (assoc (driver-decision driver ctx effective-driver-affected? quarantined updated)
                                  :driver driver))
