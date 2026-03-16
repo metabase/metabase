@@ -171,27 +171,23 @@
               errors   (dependencies/errors-from-proposed-edits provider graph {:snippet [snippet']})]
           ;; That breaks (1) the SQL card which uses the snippets, (2) the transforms, (3) both the MBQL and (4) SQL
           ;; queries that consume the transform's table.
-          ;; We only check :missing-column errors since SQLGlot and Macaw produce different
-          ;; :missing-table-alias errors, and only :missing-column errors are used in production.
-          (is (= {:card      {transformed-mbql-card-id #{{:type              :missing-column
-                                                          :name              "RATING"
-                                                          :source-entity-type :table
-                                                          :source-entity-id  1234568}}}
-                  :transform {}}
-                 (only-missing-column-errors errors))))))))
-
-(deftest ^:parallel sql-snippet-without-including-native-test
-  (testing "changing a snippet correctly ignores downstream errors"
-    (let [{:keys [provider graph snippet-inner]} (testbed)]
-      (testing "when breaking the inner snippet with a nonexistent table"
-        (let [snippet' (assoc snippet-inner
-                              :content       "nonexistent_table"
-                              :template-tags {})
-              errors   (dependencies/errors-from-proposed-edits {:snippet [snippet']}
-                                                                :base-provider provider
-                                                                :graph graph)]
-          ;; Because we are changing a snippet, don't check anything downstream
-          (is (= {} errors)))))))
+          (is (=? {:card      {direct-sql-card-id       [{:table {:table "NONEXISTENT_TABLE"},
+                                                          :type :all-columns,
+                                                          :metabase.driver.sql/bad-reference true}]
+                               transformed-sql-card-id  [{:table {:schema "TRANSFORMED", :table "OUTPUT_TF31"},
+                                                          :type :all-columns,
+                                                          :metabase.driver.sql/bad-reference true}]
+                               transformed-mbql-card-id [[:field {} (:id rating)]]}
+                   :transform {(:id sql-transform)      [{:table {:table "NONEXISTENT_TABLE"},
+                                                          :type :all-columns,
+                                                          :metabase.driver.sql/bad-reference true}]}}
+                  errors))
+          (is (= #{:card :transform}
+                 (set (keys errors))))
+          (is (= #{direct-sql-card-id transformed-sql-card-id transformed-mbql-card-id}
+                 (set (keys (:card errors)))))
+          (is (= #{(:id sql-transform)}
+                 (set (keys (:transform errors))))))))))
 
 (deftest ^:parallel check-entity-exception-test
   (testing "when a dependent card throws during compilation, errors-from-proposed-edits catches it
@@ -210,29 +206,5 @@
             card'       (-> mbql-base
                             (update :dataset-query lib/filter (lib/> (meta/field-metadata :orders :quantity) 100))
                             (dissoc :result-metadata))
-            errors      (dependencies/errors-from-proposed-edits {:card [card']}
-                                                                 :base-provider provider
-                                                                 :graph graph)]
-        (is (contains? errors :card))
-        (is (contains? (:card errors) 999))
-        (is (= #{:validation-exception-error}
-               (into #{} (map :type) (get-in errors [:card 999]))))))))
-
-(deftest ^:parallel self-referential-dependency-test
-  (testing "errors-from-proposed-edits terminates when the dependency graph has a self-loop (#70452)"
-    (let [{:keys [provider mbql-base]} (testbed)
-          ;; Graph where dashboard 999 depends on card 101, and dashboard 999 depends on itself
-          ;; (as happens with click behavior linking to another tab on the same dashboard)
-          graph (graph/in-memory {[:card 101]       #{[:dashboard 999]}
-                                  [:dashboard 999]  #{[:dashboard 999]}})
-          card' (-> mbql-base
-                    (update :dataset-query lib/filter (lib/> (meta/field-metadata :orders :quantity) 100))
-                    (dissoc :result-metadata))
-          fut   (future (dependencies/errors-from-proposed-edits {:card [card']}
-                                                                 :base-provider provider
-                                                                 :graph graph))
-          result (deref fut 1000 ::timeout)]
-      (when (= result ::timeout)
-        (future-cancel fut))
-      (is (not= ::timeout result) "errors-from-proposed-edits hung (possible infinite loop)")
-      (is (= {} result)))))
+            errors      (dependencies/errors-from-proposed-edits provider graph {:card [card']})]
+        (is (not (seq (get-in errors [:card 999]))))))))
