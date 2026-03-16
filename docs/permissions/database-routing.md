@@ -40,7 +40,7 @@ Different database have different setups, so _what_ you can route between (datab
 
 Database routing **can't be used** on databases with:
 
-- [Writeable connections](../databases/writeable-connection.md)
+- [Writable connections](../databases/writable-connection.md)
 - [Editable tables](../data-modeling/editable-tables.md)
 - [Actions](../actions/introduction.md)
 - [CSV uploads](../databases/uploads.md)
