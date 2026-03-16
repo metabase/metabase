@@ -58,6 +58,11 @@
                  {"mcp-session-id" session-id})
     [session-id response]))
 
+(defmacro ^:private with-resolved-user
+  [user-id & body]
+  `(mt/with-dynamic-fn-redefs [mcp.api/resolve-user-id (constantly ~user-id)]
+     ~@body))
+
 ;;; ---------------------------------------------------- Tests -----------------------------------------------------
 
 (deftest initialize-test
@@ -91,6 +96,19 @@
       (is (= 400 (:status response)))
       (is (= -32600 (get-in response [:body :error :code]))))))
 
+(deftest session-user-binding-test
+  (testing "sessions cannot be reused by a different resolved user"
+    (let [user-a-id  (mt/user->id :crowberto)
+          user-b-id  (mt/user->id :rasta)
+          session-id (with-resolved-user user-a-id
+                       (let [[session-id _] (initialize!)]
+                         session-id))
+          response   (with-resolved-user user-b-id
+                       (mcp-request (jsonrpc-request "tools/list")
+                                    {"mcp-session-id" session-id}))]
+      (is (= 400 (:status response)))
+      (is (= -32600 (get-in response [:body :error :code]))))))
+
 (deftest session-delete-test
   (testing "DELETE removes the session"
     (let [[session-id _] (initialize!)
@@ -105,9 +123,8 @@
   (testing "expired sessions are rejected"
     (let [[session-id _] (initialize!)]
       ;; Manually expire the session by backdating the timer (nanos) to 2 hours ago
-      (swap! @#'mcp.api/sessions assoc session-id
-             {:timer (- (System/nanoTime) (long (* 2 60 60 1000 1e6)))
-              :initialized? true})
+      (swap! @#'mcp.api/sessions update session-id assoc
+             :timer (- (System/nanoTime) (long (* 2 60 60 1000 1e6))))
       (let [response (mcp-request (jsonrpc-request "tools/list")
                                   {"mcp-session-id" session-id})]
         (is (= 400 (:status response)))
