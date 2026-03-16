@@ -185,7 +185,7 @@
 
 (defmethod sql.qp/field-clause->alias :sql-mbql5
   [driver [clause-type opts id-or-name] & unique-name-fn]
-  (sql.qp/field-clause->alias* driver [clause-type id-or-name opts] unique-name-fn))
+  (sql.qp/field-clause->alias* driver [clause-type id-or-name opts]))
 
 (defmethod sql.qp/clause-value-idx :sql-mbql5 [_driver] 2)
 
@@ -222,4 +222,4 @@
 
 (defmethod sql.qp/make-clause :sql-mbql5
   [_driver tag & args]
-  (into [tag {}] args))
+  (into [tag {} #_{:lib/uuid (str (random-uuid))}] args))

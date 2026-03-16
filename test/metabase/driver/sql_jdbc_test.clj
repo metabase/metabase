@@ -233,48 +233,55 @@
         [[uuid]] (lib/ends-with col (str uuid))
         [[uuid]] (lib/contains col (str uuid))
 
-          ;; Test partial uuid values
+        ;; Test partial uuid values
         [[uuid]] (lib/contains col (subs (str uuid) 0 1))
         [[uuid]] (lib/starts-with col (subs (str uuid) 0 1))
         [[uuid]] (lib/ends-with col (subs (str uuid) (dec (count (str uuid)))))
 
-          ;; Cannot match a uuid, but should not blow up
+        ;; Cannot match a uuid, but should not blow up
         [[uuid]] (lib/!= col "q")
         []       (lib/= col "q")
         []       (lib/starts-with col "q")
         []       (lib/ends-with col "q")
         []       (lib/contains col "q")
 
-          ;; empty/null handling
+        ;; empty/null handling
         []       (lib/is-empty col)
         [[uuid]] (lib/not-empty col)
         []       (lib/is-null col)
         [[uuid]] (lib/not-null col)
 
-          ;; nil value handling
+        ;; nil value handling
         [[uuid]] (lib/!= col nil)
         []       (lib/= col nil))
-      (testing ":= uses indexable query"
-        (is (=? [:= [:metabase.util.honey-sql-2/identifier :field [(second (lib/->legacy-MBQL (lib/ref col)))]]
-                 (some-fn #(= uuid %)
-                          #(= [:metabase.util.honey-sql-2/typed
-                               [:cast (str uuid) [:raw "uuid"]]
-                               {:database-type "uuid"}]
-                              %))]
-                (sql.qp/->honeysql
-                 driver/*driver*
-                 [:=
-                  (lib/->legacy-MBQL (lib/ref col))
-                  [:value (str uuid) {:base_type :type/UUID}]])))
-        (is (=? [:= [:metabase.util.honey-sql-2/identifier :field [(second (lib/->legacy-MBQL (lib/ref col)))]]
-                 (some-fn #(= uuid %)
-                          #(= [:metabase.util.honey-sql-2/typed
-                               [:cast (str uuid) [:raw "uuid"]]
-                               {:database-type "uuid"}]
-                              %))]
-                (sql.qp/->honeysql
-                 driver/*driver*
-                 [:= (lib/->legacy-MBQL (lib/ref col)) uuid])))))))
+      (let [col-ref (cond-> (lib/ref col)
+                      (not (isa? driver/hierarchy driver/*driver* :sql-mbql5)) lib/->legacy-MBQL)
+            field (if (isa? driver/hierarchy driver/*driver* :sql-mbql5)
+                    (get col-ref 2)
+                    (second col-ref))]
+        (testing ":= uses indexable query"
+          (is (=? [:= [:metabase.util.honey-sql-2/identifier :field [field]]
+                   (some-fn #(= uuid %)
+                            #(= [:metabase.util.honey-sql-2/typed
+                                 [:cast (str uuid) [:raw "uuid"]]
+                                 {:database-type "uuid"}]
+                                %))]
+                  (sql.qp/->honeysql
+                   driver/*driver*
+                   (if (isa? driver/hierarchy driver/*driver* :sql-mbql5)
+                     [:= {} col-ref [:value {:base-type :type/UUID} (str uuid)]]
+                     [:= col-ref [:value {:base_type :type/UUID} (str uuid)]]))))
+          (is (=? [:= [:metabase.util.honey-sql-2/identifier :field [field]]
+                   (some-fn #(= uuid %)
+                            #(= [:metabase.util.honey-sql-2/typed
+                                 [:cast (str uuid) [:raw "uuid"]]
+                                 {:database-type "uuid"}]
+                                %))]
+                  (sql.qp/->honeysql
+                   driver/*driver*
+                   (if (isa? driver/hierarchy driver/*driver* :sql-mbql5)
+                     [:= {} col-ref uuid]
+                     [:= col-ref uuid])))))))))
 
 (deftest query-canceled-test?
   (testing "walks a chain of exceptions"

@@ -1756,15 +1756,17 @@
 
 (defn- uuid-field?
   [x]
-  (and (driver-api/mbql-clause? x)
-       (isa? (or (:effective-type (get x 2))
-                 (let [field-id (second x)]
+  (let [[opts field-id] (driver-api/match-lite x
+                          [:field (opts :guard :lib/uuid) field-id] [opts field-id]  ;; mbql5
+                          [:field field-id opts] [opts field-id])]
+    (and (driver-api/mbql-clause? x)
+         (isa? (or (:effective-type opts)
                    (when (pos-int? field-id)
                      (let [{:keys [base-type effective-type]}
                            (driver-api/field (driver-api/metadata-provider) field-id)]
-                       (or effective-type base-type))))
-                 (:base-type (get x 2)))
-             :type/UUID)))
+                       (or effective-type base-type)))
+                   (:base-type opts))
+               :type/UUID))))
 
 (mu/defn- maybe-cast-uuid-for-equality
   "For := and :!=. Comparing UUID fields against non-uuid values requires casting."
@@ -1777,15 +1779,15 @@
            (not (uuid? (->honeysql driver arg)))
              ;; Check for inlined values
            (not (= (:database-type (h2x/type-info (->honeysql driver arg))) "uuid")))
-    [::cast-to-text field]
+    (make-clause driver ::cast-to-text field)
     field))
 
 (mu/defn maybe-cast-uuid-for-text-compare
   "For :contains, :starts-with, and :ends-with.
    Comparing UUID fields against with these operations requires casting as the right side will have `%` for `LIKE` operations."
-  [field]
+  [driver field]
   (if (uuid-field? field)
-    [::cast-to-text field]
+    (make-clause driver ::cast-to-text field)
     field))
 
 (defmethod ->honeysql [:sql ::cast]
@@ -1813,17 +1815,17 @@
 
 (defmethod ->honeysql [:sql :starts-with]
   [driver [_ field arg options]]
-  (like-clause (->honeysql driver (maybe-cast-uuid-for-text-compare field))
+  (like-clause (->honeysql driver (maybe-cast-uuid-for-text-compare driver field))
                (generate-pattern driver nil arg "%" options) options))
 
 (defmethod ->honeysql [:sql :contains]
   [driver [_ field arg options]]
-  (like-clause (->honeysql driver (maybe-cast-uuid-for-text-compare field))
+  (like-clause (->honeysql driver (maybe-cast-uuid-for-text-compare driver field))
                (generate-pattern driver "%" arg "%" options) options))
 
 (defmethod ->honeysql [:sql :ends-with]
   [driver [_ field arg options]]
-  (like-clause (->honeysql driver (maybe-cast-uuid-for-text-compare field))
+  (like-clause (->honeysql driver (maybe-cast-uuid-for-text-compare driver field))
                (generate-pattern driver "%" arg nil options) options))
 
 (defn- parent-honeysql-col-base-type-map
