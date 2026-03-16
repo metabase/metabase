@@ -56,7 +56,7 @@
     (mt/test-drivers (set-timezone-drivers)
       (doseq [[timezone expected-rows] {"UTC"        [[12 "2014-07-03T01:30:00Z"]
                                                       [10 "2014-07-03T19:30:00Z"]]
-                                        "US/Pacific" [[10 "2014-07-03T12:30:00-07:00"]]}]
+                                        "America/Los_Angeles" [[10 "2014-07-03T12:30:00-07:00"]]}]
         (mt/with-temporary-setting-values [report-timezone timezone]
           (is (= expected-rows
                  (mt/formatted-rows
@@ -388,8 +388,8 @@
     (testing "Fixed date"
       (mt/dataset tz-test-data
         (let [expected-datetime #t "2014-07-03T01:30:00Z"]
-          (doseq [[timezone date-filter] [["US/Pacific" "2014-07-02"]
-                                          ["US/Eastern" "2014-07-02"]
+          (doseq [[timezone date-filter] [["America/Los_Angeles" "2014-07-02"]
+                                          ["America/New_York" "2014-07-02"]
                                           ["UTC" "2014-07-03"]
                                           ["Asia/Hong_Kong" "2014-07-03"]]
                   :let [expected (-> (u.date/with-time-zone-same-instant expected-datetime timezone)
