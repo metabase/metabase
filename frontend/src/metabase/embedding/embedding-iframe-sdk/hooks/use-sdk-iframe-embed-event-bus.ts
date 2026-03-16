@@ -32,6 +32,7 @@ export function useSdkIframeEmbedEventBus({
   const [usageAnalytics, setUsageAnalytics] = useState<UsageAnalytics | null>(
     null,
   );
+  const [isUnsafeApiKeyAllowed, setIsUnsafeApiKeyAllowed] = useState(false);
 
   useEffect(() => {
     const messageHandler: Handler = (event) => {
@@ -49,6 +50,9 @@ export function useSdkIframeEmbedEventBus({
             usage: data.usageAnalytics,
             embedHostUrl: data.embedHostUrl,
           });
+        })
+        .with({ type: "metabase.embed.internal.allowUnsafeApiKey" }, () => {
+          setIsUnsafeApiKeyAllowed(true);
         });
     };
 
@@ -74,7 +78,7 @@ export function useSdkIframeEmbedEventBus({
     }
   }, [embedSettings?.instanceUrl, usageAnalytics]);
 
-  return { sendMessage, embedSettings };
+  return { sendMessage, embedSettings, isUnsafeApiKeyAllowed };
 }
 
 export function isMetabaseInstance(instanceUrl: string, embedHostUrl: string) {

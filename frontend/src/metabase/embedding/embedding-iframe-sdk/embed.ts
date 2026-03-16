@@ -566,6 +566,13 @@ const MetabaseMetabotElement = createCustomElement("metabase-metabot", [
   "target-collection",
 ]);
 
+const MetabaseAdHocElement = createCustomElement("metabase-adhoc", [
+  "query",
+  "with-title",
+  "with-downloads",
+  "drills",
+]);
+
 // Expose the old API that's still used in the tests, we'll probably remove this api unless customers prefer it
 if (typeof window !== "undefined") {
   (window as any)["metabase.embed"] = {
@@ -578,4 +585,5 @@ export {
   MetabaseQuestionElement,
   MetabaseManageContentElement,
   MetabaseMetabotElement,
+  MetabaseAdHocElement,
 };

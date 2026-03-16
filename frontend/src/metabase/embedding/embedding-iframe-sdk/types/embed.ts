@@ -45,7 +45,8 @@ export type SdkIframeEmbedMessage =
   | SdkIframeEmbedSubmitSessionTokenMessage
   | SdkIframeEmbedReportAuthenticationError
   | SdkIframeEmbedReportAnalytics
-  | SdkIframeEmbedHandleLinkResponse;
+  | SdkIframeEmbedHandleLinkResponse
+  | SdkIframeEmbedAllowUnsafeApiKeyMessage;
 
 export type SdkIframeEmbedSetSettingsMessage = {
   type: "metabase.embed.setSettings";
@@ -74,6 +75,14 @@ export type SdkIframeEmbedReportAnalytics = {
 export type SdkIframeEmbedHandleLinkResponse = {
   type: "metabase.embed.handleLinkResponse";
   data: { requestId: string; handled: boolean };
+};
+
+/**
+ * Internal escape hatch for trusted consumers (e.g. MCP-UI) that need to use
+ * an API key in production. Not part of the public API.
+ */
+export type SdkIframeEmbedAllowUnsafeApiKeyMessage = {
+  type: "metabase.embed.internal.allowUnsafeApiKey";
 };
 
 // --- Embed Option Interfaces ---
@@ -171,6 +180,23 @@ export interface BrowserEmbedOptions {
   token?: never;
 }
 
+export interface AdHocEmbedOptions {
+  componentName: "metabase-adhoc";
+
+  /** Base64-encoded MBQL query */
+  query: string;
+
+  withTitle?: boolean;
+  withDownloads?: boolean;
+  drills?: boolean;
+
+  // incompatible options
+  template?: never;
+  questionId?: never;
+  dashboardId?: never;
+  token?: never;
+}
+
 export interface MetabotEmbedOptions {
   componentName: "metabase-metabot";
 
@@ -232,7 +258,8 @@ export type SdkIframeEmbedTemplateSettings =
   | QuestionEmbedOptions
   | ExplorationEmbedOptions
   | BrowserEmbedOptions
-  | MetabotEmbedOptions;
+  | MetabotEmbedOptions
+  | AdHocEmbedOptions;
 
 /** Settings used by the sdk embed route */
 export type SdkIframeEmbedSettings = Omit<
@@ -250,6 +277,7 @@ export type SdkIframeEmbedElementSettings = SdkIframeEmbedBaseSettings &
       })
     | BrowserEmbedOptions
     | MetabotEmbedOptions
+    | AdHocEmbedOptions
   );
 
 export type SdkIframeEmbedEvent = { type: "ready" };
@@ -263,4 +291,5 @@ export type SdkIframeEmbedSettingKey =
   | keyof SdkIframeQuestionEmbedSettings
   | keyof ExplorationEmbedOptions
   | keyof BrowserEmbedOptions
-  | keyof MetabotEmbedOptions;
+  | keyof MetabotEmbedOptions
+  | keyof AdHocEmbedOptions;

@@ -1,4 +1,5 @@
 import type {
+  AdHocEmbedOptions,
   BrowserEmbedOptions,
   DashboardEmbedOptions,
   ExplorationEmbedOptions,
@@ -74,6 +75,12 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
     "isSaveEnabled",
     "targetCollection",
   ] satisfies (keyof MetabotEmbedOptions)[],
+  adHoc: [
+    "query",
+    "withTitle",
+    "withDownloads",
+    "drills",
+  ] satisfies (keyof AdHocEmbedOptions)[],
 } as const;
 
 export const ALLOWED_GUEST_EMBED_SETTING_KEYS_MAP = {
@@ -113,6 +120,7 @@ export const ALLOWED_EMBED_SETTING_KEYS = uniq([
   ...ALLOWED_EMBED_SETTING_KEYS_MAP.exploration,
   ...ALLOWED_EMBED_SETTING_KEYS_MAP.browser,
   ...ALLOWED_EMBED_SETTING_KEYS_MAP.metabot,
+  ...ALLOWED_EMBED_SETTING_KEYS_MAP.adHoc,
 ]) satisfies SdkIframeEmbedSettingKey[];
 
 export const ALLOWED_GUEST_EMBED_SETTING_KEYS = uniq([
