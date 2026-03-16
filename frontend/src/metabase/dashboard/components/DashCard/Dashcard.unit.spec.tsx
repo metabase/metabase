@@ -603,5 +603,63 @@ describe("DashCard", () => {
       // DashCardMenu.shouldRender(), which returned false in this case.
       expect(screen.getByText("State")).toBeInTheDocument();
     });
+
+    it("should hide inline parameters when the card returns a 403 error (no view-data permission) (GHY-3228)", () => {
+      const parameter = createMockParameter({
+        id: "param-1",
+        name: "State",
+        type: "string/=",
+        slug: "state",
+      });
+
+      const nativeCard = createMockNativeCard({
+        name: "SQL Card",
+        can_write: false,
+      });
+
+      const dashcard = createMockDashboardCard({
+        card: nativeCard,
+        inline_parameters: [parameter.id],
+        parameter_mappings: [
+          {
+            card_id: nativeCard.id,
+            parameter_id: parameter.id,
+            target: ["variable", ["template-tag", "state"]],
+          },
+        ],
+      });
+
+      const dashboard = createMockDashboard({
+        parameters: [parameter],
+        dashcards: [dashcard],
+      });
+
+      const dashcardData: DashCardDataMap = {
+        [dashcard.id]: {
+          [nativeCard.id]: createMockDataset({
+            data: createMockDatasetData({ rows: [], cols: [] }),
+            database_id: 1,
+            context: "dashboard",
+            status: "error",
+            error: { status: 403 },
+          }),
+        },
+      };
+
+      jest
+        .spyOn(dashboardSelectors, "getDashCardInlineValuePopulatedParameters")
+        .mockReturnValue([parameter]);
+
+      setup({
+        dashboard,
+        dashcard,
+        dashcardData,
+      });
+
+      // When the user has no view-data permission (403), the inline
+      // parameter filter should be hidden — there's no point showing
+      // a filter for data the user can't access.
+      expect(screen.queryByText("State")).not.toBeInTheDocument();
+    });
   });
 });
