@@ -30,6 +30,8 @@
          metabase.app-db.query/keep-me
          metabase.app-db.query-cancelation/keep-me)
 
+; Dirt
+
 (p/import-vars
  [mdb.connection
   application-db
