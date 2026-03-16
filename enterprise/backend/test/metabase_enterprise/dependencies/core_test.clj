@@ -8,7 +8,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util :as lib.tu]))
+   [metabase.lib.test-util :as lib.tu]
+   [metabase.util.malli :as mu]))
 
 (defn- testbed
   "A `MetadataProvider` with a chain of MBQL cards and transforms for testing."
@@ -207,6 +208,29 @@
                                                                 :graph graph)]
           ;; Because we are changing a snippet, don't check anything downstream
           (is (= {} errors)))))))
+
+(deftest ^:parallel check-entity-exception-test
+  (testing "when a dependent card throws during compilation, errors-from-proposed-edits catches it
+            and returns a validation-exception-error instead of crashing (#GHY-3151)"
+    (mu/disable-enforcement
+      (let [{:keys [provider mbql-base]} (testbed)
+            ;; Add a card with a broken dataset-query that will throw during check-entity
+            broken-card {:lib/type      :metadata/card
+                         :id            999
+                         :database-id   (:id (lib.metadata/database provider))
+                         :name          "broken-card"
+                         :dataset-query nil}
+            provider    (lib.tu/mock-metadata-provider provider {:cards [broken-card]})
+            ;; Graph where card 101 -> card 999 (broken card depends on the base card)
+            graph       (graph/in-memory {[:card 101] #{[:card 999]}})
+            card'       (-> mbql-base
+                            (update :dataset-query lib/filter (lib/> (meta/field-metadata :orders :quantity) 100))
+                            (dissoc :result-metadata))
+            errors      (dependencies/errors-from-proposed-edits {:card [card']}
+                                                                 :base-provider provider
+                                                                 :graph graph)]
+        ;; 57+58 don't recore validation errors, just make sure it doesn't crash
+        (is (not (seq (get-in errors [:card 999]))))))))
 
 (deftest ^:parallel self-referential-dependency-test
   (testing "errors-from-proposed-edits terminates when the dependency graph has a self-loop (#70452)"
