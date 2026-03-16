@@ -19,7 +19,8 @@
 (deftest discovery-endpoint-with-feature-flag-test
   (testing "Discovery endpoint returns valid OIDC metadata when feature enabled"
     (mt/with-premium-features #{:metabot-v3}
-      (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (mt/with-temporary-setting-values [site-url "http://localhost:3000"
+                                         oauth-server-dynamic-registration-enabled true]
         (let [response (mt/user-http-request :crowberto :get 200
                                              ".well-known/openid-configuration")]
           (is (=? {:issuer                                "http://localhost:3000"
@@ -84,7 +85,8 @@
 (deftest dynamic-register-valid-test
   (testing "POST /oauth/register with valid metadata returns 201 with credentials"
     (mt/with-premium-features #{:metabot-v3}
-      (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (mt/with-temporary-setting-values [site-url "http://localhost:3000"
+                                         oauth-server-dynamic-registration-enabled true]
         (t2/with-transaction [_conn nil {:rollback-only true}]
           (let [response (register-client! {"redirect_uris"               ["https://example.com/callback"]
                                             "client_name"                "Test Client"
@@ -99,7 +101,8 @@
 (deftest dynamic-register-missing-redirect-uris-test
   (testing "POST /oauth/register with missing redirect_uris returns 400"
     (mt/with-premium-features #{:metabot-v3}
-      (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (mt/with-temporary-setting-values [site-url "http://localhost:3000"
+                                         oauth-server-dynamic-registration-enabled true]
         (let [response (register-client! {"client_name" "No Redirects"}
                                          :expected-status 400)]
           (is (=? {:error "invalid_client_metadata"} response)))))))
@@ -107,7 +110,8 @@
 (deftest dynamic-register-non-https-redirect-test
   (testing "POST /oauth/register with non-HTTPS redirect URI returns 400"
     (mt/with-premium-features #{:metabot-v3}
-      (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (mt/with-temporary-setting-values [site-url "http://localhost:3000"
+                                         oauth-server-dynamic-registration-enabled true]
         (let [response (register-client! {"redirect_uris" ["http://example.com/callback"]}
                                          :expected-status 400)]
           (is (=? {:error "invalid_client_metadata"} response)))))))
@@ -115,7 +119,8 @@
 (deftest dynamic-register-http-localhost-allowed-test
   (testing "POST /oauth/register with HTTP localhost redirect URI is allowed"
     (mt/with-premium-features #{:metabot-v3}
-      (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (mt/with-temporary-setting-values [site-url "http://localhost:3000"
+                                         oauth-server-dynamic-registration-enabled true]
         (t2/with-transaction [_conn nil {:rollback-only true}]
           (let [response (register-client! {"redirect_uris" ["http://localhost:8080/callback"]})]
             (is (=? {:client_id     string?
@@ -131,7 +136,8 @@
 (deftest dynamic-register-sets-registration-type-test
   (testing "Dynamically registered client has registration_type = dynamic"
     (mt/with-premium-features #{:metabot-v3}
-      (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (mt/with-temporary-setting-values [site-url "http://localhost:3000"
+                                         oauth-server-dynamic-registration-enabled true]
         (t2/with-transaction [_conn nil {:rollback-only true}]
           (let [response  (register-client! {"redirect_uris" ["https://example.com/callback"]})
                 client-id (:client_id response)
@@ -141,7 +147,8 @@
 (deftest dynamic-client-read-valid-test
   (testing "GET /oauth/register/:client-id with valid registration_access_token returns 200"
     (mt/with-premium-features #{:metabot-v3}
-      (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (mt/with-temporary-setting-values [site-url "http://localhost:3000"
+                                         oauth-server-dynamic-registration-enabled true]
         (t2/with-transaction [_conn nil {:rollback-only true}]
           (let [reg-response  (register-client! {"redirect_uris" ["https://example.com/callback"]
                                                  "client_name"   "Read Test"})
@@ -155,7 +162,8 @@
 (deftest dynamic-client-read-invalid-token-test
   (testing "GET /oauth/register/:client-id with invalid token returns 401"
     (mt/with-premium-features #{:metabot-v3}
-      (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (mt/with-temporary-setting-values [site-url "http://localhost:3000"
+                                         oauth-server-dynamic-registration-enabled true]
         (t2/with-transaction [_conn nil {:rollback-only true}]
           (let [reg-response (register-client! {"redirect_uris" ["https://example.com/callback"]})
                 client-id    (:client_id reg-response)
@@ -165,7 +173,8 @@
 (deftest dynamic-client-read-missing-token-test
   (testing "GET /oauth/register/:client-id with missing Authorization header returns 401"
     (mt/with-premium-features #{:metabot-v3}
-      (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (mt/with-temporary-setting-values [site-url "http://localhost:3000"
+                                         oauth-server-dynamic-registration-enabled true]
         (t2/with-transaction [_conn nil {:rollback-only true}]
           (let [reg-response (register-client! {"redirect_uris" ["https://example.com/callback"]})
                 client-id    (:client_id reg-response)]
@@ -177,7 +186,8 @@
 (deftest dynamic-client-read-wrong-client-id-test
   (testing "GET /oauth/register/:client-id with wrong client-id returns 401"
     (mt/with-premium-features #{:metabot-v3}
-      (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (mt/with-temporary-setting-values [site-url "http://localhost:3000"
+                                         oauth-server-dynamic-registration-enabled true]
         (t2/with-transaction [_conn nil {:rollback-only true}]
           (let [reg-response (register-client! {"redirect_uris" ["https://example.com/callback"]})
                 token        (:registration_access_token reg-response)
@@ -189,6 +199,35 @@
     (mt/with-premium-features #{}
       (mt/user-http-request :crowberto :get 404 "oauth/register/some-client-id"
                             {:request-options {:headers {"authorization" "Bearer some-token"}}}))))
+
+;;; --------------------------------- Dynamic Registration Security Tests -----------------------------------------
+
+(deftest dynamic-register-disabled-test
+  (testing "POST /oauth/register returns 403 when dynamic registration is disabled"
+    (mt/with-premium-features #{:metabot-v3}
+      (mt/with-temporary-setting-values [site-url "http://localhost:3000"
+                                         oauth-server-dynamic-registration-enabled false]
+        (let [response (register-client! {"redirect_uris" ["https://example.com/callback"]}
+                                         :expected-status 403)]
+          (is (= "registration_not_supported" (:error response))))))))
+
+(deftest discovery-registration-endpoint-disabled-test
+  (testing "Discovery document omits registration_endpoint when DCR is disabled"
+    (mt/with-premium-features #{:metabot-v3}
+      (mt/with-temporary-setting-values [site-url "http://localhost:3000"
+                                         oauth-server-dynamic-registration-enabled false]
+        (let [response (mt/user-http-request :crowberto :get 200
+                                             ".well-known/openid-configuration")]
+          (is (not (contains? response :registration_endpoint))))))))
+
+(deftest discovery-registration-endpoint-enabled-test
+  (testing "Discovery document includes registration_endpoint when DCR is enabled"
+    (mt/with-premium-features #{:metabot-v3}
+      (mt/with-temporary-setting-values [site-url "http://localhost:3000"
+                                         oauth-server-dynamic-registration-enabled true]
+        (let [response (mt/user-http-request :crowberto :get 200
+                                             ".well-known/openid-configuration")]
+          (is (= "http://localhost:3000/oauth/register" (:registration_endpoint response))))))))
 
 ;;; ----------------------------------------- Authorization Endpoint ------------------------------------------------
 

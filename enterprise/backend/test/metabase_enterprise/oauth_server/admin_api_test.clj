@@ -170,3 +170,4 @@
       (mt/with-premium-features #{:metabot-v3}
         (mt/user-http-request :rasta :delete 403
                               "ee/oauth-server/clients/1")))))
+

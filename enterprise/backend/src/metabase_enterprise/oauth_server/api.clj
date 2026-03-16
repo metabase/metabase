@@ -7,6 +7,7 @@
    [clojure.walk :as walk]
    [metabase-enterprise.oauth-server.consent-page :as consent-page]
    [metabase-enterprise.oauth-server.core :as oauth-server]
+   [metabase-enterprise.oauth-server.settings :as oauth-settings]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.system.core :as system]
    [oidc-provider.core :as oidc]
@@ -35,9 +36,12 @@
   :feature :metabot-v3
   [_request]
   (when-let [provider (oauth-server/get-provider)]
-    {:status 200
-     :headers {"Content-Type" "application/json"}
-     :body (oidc/discovery-metadata provider)}))
+    (let [metadata (oidc/discovery-metadata provider)]
+      {:status  200
+       :headers {"Content-Type" "application/json"}
+       :body    (if (oauth-settings/oauth-server-dynamic-registration-enabled)
+                  metadata
+                  (dissoc metadata :registration_endpoint "registration_endpoint"))})))
 
 (defenterprise jwks-handler
   "Returns the JWKS."
@@ -58,28 +62,33 @@
       (walk/stringify-keys body))))
 
 (defenterprise dynamic-register-handler
-  "Handles dynamic client registration (RFC 7591)."
+  "Handles dynamic client registration (RFC 7591).
+   Gated by `oauth-server-dynamic-registration-enabled` setting."
   :feature :metabot-v3
   [request]
-  (when-let [provider (oauth-server/get-provider)]
-    (let [body (extract-registration-body request)]
-      (if (nil? body)
-        {:status  400
-         :headers {"Content-Type" "application/json"}
-         :body    {"error"             "invalid_client_metadata"
-                   "error_description" "Invalid or missing JSON body"}}
-        (try
-          (let [response   (oidc/dynamic-register-client provider body)
-                client-id  (get response "client_id")]
-            ;; Mark as dynamically registered (the library doesn't know about registration_type)
-            (proto/update-client (:client-store provider) client-id {:registration-type "dynamic"})
-            {:status  201
-             :headers {"Content-Type" "application/json"}
-             :body    response})
-          (catch clojure.lang.ExceptionInfo e
-            (reg/registration-error-response
-             (ex-message e)
-             (:error_description (ex-data e)))))))))
+  (if-not (oauth-settings/oauth-server-dynamic-registration-enabled)
+    {:status  403
+     :headers {"Content-Type" "application/json"}
+     :body    {"error" "registration_not_supported"}}
+    (when-let [provider (oauth-server/get-provider)]
+      (let [body (extract-registration-body request)]
+        (if (nil? body)
+          {:status  400
+           :headers {"Content-Type" "application/json"}
+           :body    {"error"             "invalid_client_metadata"
+                     "error_description" "Invalid or missing JSON body"}}
+          (try
+            (let [response   (oidc/dynamic-register-client provider body)
+                  client-id  (get response "client_id")]
+              ;; Mark as dynamically registered (the library doesn't know about registration_type)
+              (proto/update-client (:client-store provider) client-id {:registration-type "dynamic"})
+              {:status  201
+               :headers {"Content-Type" "application/json"}
+               :body    response})
+            (catch clojure.lang.ExceptionInfo e
+              (reg/registration-error-response
+               (ex-message e)
+               (:error_description (ex-data e))))))))))
 
 (defenterprise dynamic-client-read-handler
   "Handles client configuration read (RFC 7592)."

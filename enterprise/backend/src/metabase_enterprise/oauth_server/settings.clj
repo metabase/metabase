@@ -42,3 +42,13 @@
   :doc        false
   :export?    false
   :audit      :never)
+
+(defsetting oauth-server-dynamic-registration-enabled
+  (deferred-tru "Whether dynamic client registration (RFC 7591) is enabled for the embedded OAuth server.")
+  :type       :boolean
+  :default    true
+  :visibility :internal
+  :feature    :metabot-v3
+  :doc        false
+  :export?    false
+  :audit      :getter)
