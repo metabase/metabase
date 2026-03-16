@@ -1,5 +1,6 @@
 (ns metabase-enterprise.oauth-server.core
   (:require
+   [clojure.string :as str]
    [metabase-enterprise.oauth-server.settings :as oauth-settings]
    [metabase-enterprise.oauth-server.store :as store]
    [metabase.premium-features.core :as premium-features]
@@ -90,3 +91,10 @@
   "Reset the provider atom to nil. Useful for testing."
   []
   (reset! provider nil))
+
+(defn extract-bearer-token
+  "Extract the bearer token from the Authorization header of a Ring request."
+  [request]
+  (when-let [auth (get-in request [:headers "authorization"])]
+    (when (str/starts-with? (str/lower-case auth) "bearer ")
+      (str/trim (subs auth 7)))))

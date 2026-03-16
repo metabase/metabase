@@ -3,9 +3,8 @@
   (:require
    [clojure.string :as str]
    [clojure.walk :as walk]
-   [hiccup2.core :as h]
+   [metabase-enterprise.oauth-server.consent-page :as consent-page]
    [metabase-enterprise.oauth-server.core :as oauth-server]
-   [metabase.appearance.settings :as appearance.settings]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.system.core :as system]
    [oidc-provider.core :as oidc]
@@ -42,13 +41,6 @@
     (when (map? body)
       (walk/stringify-keys body))))
 
-(defn- extract-bearer-token
-  "Extract the bearer token from the Authorization header."
-  [request]
-  (when-let [auth (get-in request [:headers "authorization"])]
-    (when (str/starts-with? (str/lower-case auth) "bearer ")
-      (str/trim (subs auth 7)))))
-
 (defenterprise dynamic-register-handler
   "Handles dynamic client registration (RFC 7591)."
   :feature :metabot-v3
@@ -78,7 +70,7 @@
   :feature :metabot-v3
   [request client-id]
   (when-let [provider (oauth-server/get-provider)]
-    (let [token (extract-bearer-token request)]
+    (let [token (oauth-server/extract-bearer-token request)]
       (if (str/blank? token)
         {:status  401
          :headers {"Content-Type" "application/json"}
@@ -113,108 +105,18 @@
        (str/join "&")))
 
 (defn- login-redirect-url
-  "Build a redirect URL to the login page that will redirect back to the given path after login."
+  "Build a redirect URL to the login page that will redirect back to the given path after login.
+   Only allows redirecting back to OAuth paths to prevent open-redirect attacks."
   [request]
   (let [site-url    (system/site-url)
         uri         (:uri request)
         query       (:query-string request)
-        return-path (if query (str uri "?" query) uri)
-        redirect    (str site-url "/auth/login?redirect=" (URLEncoder/encode return-path "UTF-8"))]
+        return-path (when (str/starts-with? uri "/oauth/")
+                      (if query (str uri "?" query) uri))
+        redirect    (if return-path
+                      (str site-url "/auth/login?redirect=" (URLEncoder/encode return-path "UTF-8"))
+                      (str site-url "/auth/login"))]
     redirect))
-
-(defn- absolute-url
-  "Resolve a potentially relative path to an absolute URL using site-url."
-  [path]
-  (if (or (str/starts-with? path "http://")
-          (str/starts-with? path "https://"))
-    path
-    (str (system/site-url) "/" path)))
-
-(defn- font-face-css
-  "Generate @font-face CSS rules for the given font, loading woff2 files from Metabase's
-   bundled font directory. Returns an empty string for custom (non-bundled) fonts since
-   they are loaded via application-font-files."
-  [font-name]
-  (let [dir-name  (str/replace font-name " " "_")
-        file-stem (str/replace font-name " " "")]
-    (if (= font-name "Lato")
-      (str "@font-face { font-family: 'Lato'; font-weight: 400; font-style: normal; font-display: swap;"
-           " src: url('/app/fonts/Lato/lato-v16-latin-regular.woff2') format('woff2'); }\n"
-           "@font-face { font-family: 'Lato'; font-weight: 700; font-style: normal; font-display: swap;"
-           " src: url('/app/fonts/Lato/lato-v16-latin-700.woff2') format('woff2'); }\n")
-      (str "@font-face { font-family: '" font-name "'; font-weight: 400; font-style: normal; font-display: swap;"
-           " src: url('/app/fonts/" dir-name "/" file-stem "-Regular.woff2') format('woff2'); }\n"
-           "@font-face { font-family: '" font-name "'; font-weight: 700; font-style: normal; font-display: swap;"
-           " src: url('/app/fonts/" dir-name "/" file-stem "-Bold.woff2') format('woff2'); }\n"))))
-
-(defn- appearance-settings
-  "Return a map of appearance settings for the consent page."
-  []
-  (let [colors (appearance.settings/application-colors)]
-    {:font-family  (appearance.settings/application-font)
-     :logo-url     (absolute-url (appearance.settings/application-logo-url))
-     :brand-color  (get colors "brand" "#509ee3")}))
-
-(defn- render-consent-page
-  "Render a server-side HTML consent page for the OAuth authorization flow."
-  [{:keys [client-name scopes oauth-params nonce]}]
-  (let [{:keys [font-family logo-url brand-color]} (appearance-settings)]
-    (str
-     "<!DOCTYPE html>"
-     (h/html
-      [:html {:lang "en"}
-       [:head
-        [:meta {:charset "UTF-8"}]
-        [:meta {:name "viewport" :content "width=device-width, initial-scale=1.0"}]
-        [:title "Authorize " client-name]
-        [:style {:nonce nonce} (h/raw
-                                (str
-                                 (font-face-css font-family)
-                                 "* { box-sizing: border-box; margin: 0; padding: 0; }
-                   html { height: 100%; }
-                   body { font-family: '" font-family "', 'Lato', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                          display: flex; justify-content: center; align-items: center;
-                          min-height: 100%; background: #f9fbfc; color: #4c5773; }
-                   .consent { background: #fff; border-radius: 8px;
-                              box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.05);
-                              padding: 2.5rem; max-width: 440px; width: 100%; margin: 1rem; }
-                   .logo { display: flex; justify-content: center; margin-bottom: 1.5rem; }
-                   h1 { font-size: 1.25rem; font-weight: 700; color: #2e353b; text-align: center; margin-bottom: 0.5rem; }
-                   .subtitle { text-align: center; font-size: 0.875rem; line-height: 1.5; color: #696e7b; margin-bottom: 1.5rem; }
-                   .scope-label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
-                                   color: #949aab; margin-bottom: 0.5rem; }
-                   .scopes { list-style: none; background: #f9fbfc; border-radius: 6px; border: 1px solid #eeecec;
-                              padding: 0; margin-bottom: 1.5rem; }
-                   .scopes li { padding: 0.625rem 0.875rem; font-size: 0.875rem; color: #4c5773;
-                                 border-bottom: 1px solid #eeecec; }
-                   .scopes li:last-child { border-bottom: none; }
-                   .actions { display: flex; gap: 0.75rem; }
-                   button { flex: 1; padding: 0.75rem 1rem; border-radius: 8px; font-size: 0.875rem; font-weight: 700;
-                            font-family: inherit; cursor: pointer;
-                            transition: background-color 0.15s ease, border-color 0.15s ease, filter 0.15s ease; }
-                   .allow { background: " brand-color "; color: #fff; border: 1px solid " brand-color "; }
-                   .allow:hover { filter: brightness(0.9); }
-                   .deny  { background: #fff; color: #4c5773; border: 1px solid #ddd; }
-                   .deny:hover  { background: #f9fbfc; border-color: #ccc; }"))]]
-       [:body
-        [:div.consent
-         [:div.logo [:img {:src logo-url :alt "Logo" :height "32"}]]
-         [:h1 "Authorize " client-name]
-         [:p.subtitle "This application is requesting permission to access your Metabase account."]
-         (when (seq scopes)
-           [:div
-            [:p.scope-label "Permissions requested"]
-            [:ul.scopes
-             (for [scope scopes]
-               [:li scope])]])
-         [:form {:method "POST" :action "/oauth/authorize/decision"}
-          (for [[k v] oauth-params
-                :when (some? v)
-                v (if (sequential? v) v [v])]
-            [:input {:type "hidden" :name (name k) :value v}])
-          [:div.actions
-           [:button.deny {:type "submit" :name "approved" :value "false"} "Deny"]
-           [:button.allow {:type "submit" :name "approved" :value "true"} "Allow"]]]]]]))))
 
 (defenterprise authorize-handler
   "Handles the authorization endpoint (GET /oauth/authorize)."
@@ -230,9 +132,11 @@
               client  (proto/get-client (:client-store provider) (:client_id parsed))]
           {:status  200
            :headers {"Content-Type" "text/html; charset=utf-8"}
-           :body    (render-consent-page
+           :body    (consent-page/render-consent-page
                      {:client-name  (or (:client-name client) "Unknown Application")
-                      :scopes       (or (:scopes client) [])
+                      :scopes       (if-let [scope (:scope parsed)]
+                                      (str/split scope #"\s+")
+                                      [])
                       :nonce        (:nonce request)
                       :oauth-params {:client_id             (:client_id parsed)
                                      :redirect_uri          (:redirect_uri parsed)

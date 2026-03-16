@@ -98,8 +98,8 @@
             [:grant_types {:optional true} [:maybe [:sequential ms/NonBlankString]]]
             [:response_types {:optional true} [:maybe [:sequential ms/NonBlankString]]]
             [:scopes {:optional true} [:maybe [:sequential ms/NonBlankString]]]]]
-  (api/check-404 (t2/select-one :model/OAuthClient :id id))
   (let [updates (into {} (filter (comp some? val)) (select-keys body [:client_name :redirect_uris :grant_types :response_types :scopes]))]
+    (api/check-404 (t2/select-one :model/OAuthClient :id id))
     (when (seq updates)
       (t2/update! :model/OAuthClient id updates))
     (-> (t2/select-one :model/OAuthClient :id id)
@@ -112,6 +112,17 @@
   (t2/delete! :model/OAuthClient :id id)
   nil)
 
+(defn- +no-cache-on-create
+  "Middleware that adds Cache-Control: no-store to POST responses (client creation returns a secret)."
+  [handler]
+  (fn [request respond raise]
+    (handler request
+             (fn [response]
+               (cond-> response
+                 (= :post (:request-method request)) (update :headers merge {"Cache-Control" "no-store"
+                                                                             "Pragma"        "no-cache"})))
+             raise)))
+
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/oauth-server` admin routes."
-  (api.macros/ns-handler *ns* api/+check-superuser +auth))
+  (api.macros/ns-handler *ns* +no-cache-on-create api/+check-superuser +auth))

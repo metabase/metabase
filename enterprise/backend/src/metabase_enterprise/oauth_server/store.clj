@@ -209,6 +209,8 @@
           (assoc :name               (str (:first_name user) " " (:last_name user))
                  :preferred_username (:email user))
           (scope-set "email")
+          ;; Metabase does not track email verification status, so we report true.
+          ;; Users are created by admins or via SSO with verified emails.
           (assoc :email          (:email user)
                  :email_verified true))))))
 
