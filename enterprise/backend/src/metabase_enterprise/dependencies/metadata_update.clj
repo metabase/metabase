@@ -2,6 +2,7 @@
   (:require
    [clojure.core.cache :as cache]
    [medley.core :as m]
+   [metabase-enterprise.dependencies.async :as async]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.metadata-provider :as deps.metadata-provider]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
@@ -197,4 +198,6 @@
   [_ {{:keys [id dataset_query]} :object :keys [previous-object]}]
   (when (and (premium-features/has-feature? :dependencies)
              (not (lib/any-native-stage? dataset_query)))
-    (update-dependent-mbql-cards-metadata! dataset_query :card id previous-object :metadata/card)))
+    (async/submit!
+     (fn []
+       (update-dependent-mbql-cards-metadata! dataset_query :card id previous-object :metadata/card)))))

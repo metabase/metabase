@@ -30,6 +30,26 @@
             (str/replace quote-quote quote)))
       (normalize-unquoted-name driver name-str))))
 
+(defn normalize-error
+  "Normalize error names using driver-specific case normalization.
+   This ensures error names match database metadata conventions."
+  [driver error]
+  (if-let [error-name (:name error)]
+    (assoc error :name (normalize-name driver error-name))
+    error))
+
+(defmulti default-schema
+  "Returns the default schema for a given database driver.
+
+  Drivers that support any of the `:transforms/...` features must implement this method."
+  {:added "0.57.0" :arglists '([driver])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod default-schema :sql
+  [_]
+  "public")
+
 (defmulti reserved-literal
   "Checks whether a particular name is actually a literal value in a given sql dialect.
 

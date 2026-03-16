@@ -346,14 +346,15 @@
          tabledef       (first (:table-definitions dbdef))
          ;; table-name should be something like test_data_venues
          table-name     (tx/db-qualified-table-name (:database-name dbdef) (:table-name tabledef))
-         ;; Use direct SQL query instead of JDBC metadata API (.getTables) because the metadata API
-         ;; can return stale/cached results on Redshift, causing flaky test failures.
-         jdbc-spec      (sql-jdbc.conn/connection-details->spec driver (tx/dbdef->connection-details driver))
-         results        (jdbc/query jdbc-spec
-                                    ["SELECT 1 FROM information_schema.tables WHERE table_schema = ? AND table_name = ? LIMIT 1"
-                                     session-schema
-                                     table-name])]
-     (seq results))))
+         ;; Probe the table directly instead of querying information_schema.tables, which can return
+         ;; stale results on Redshift due to metadata catalog propagation delays between connections.
+         jdbc-spec      (sql-jdbc.conn/connection-details->spec driver (tx/dbdef->connection-details driver))]
+     (try
+       (jdbc/query jdbc-spec
+                   [(format "SELECT 1 FROM \"%s\".\"%s\" LIMIT 0" session-schema table-name)])
+       true
+       (catch Exception _
+         false)))))
 
 (defmethod driver/database-supports? [:redshift :test/use-fake-sync]
   [_driver _feature _database]
