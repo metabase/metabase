@@ -101,11 +101,12 @@ jobs:
           jq -n \
             --arg uv "$UV_PATH" \
             --arg key "$LINEAR_API_KEY" \
+            --arg workspace "${{ github.workspace }}" \
             '{
               mcpServers: {
                 "metabase-repro": {
                   command: $uv,
-                  args: ["run", "--directory", "mcp", "--with", "fastmcp", "python", "-m", "metabase_repro"]
+                  args: ["run", "--directory", ($workspace + "/repro-bot/mcp"), "--with", "fastmcp", "python", "-m", "metabase_repro"]
                 },
                 "linear-server": {
                   url: "https://mcp.linear.app/mcp",
