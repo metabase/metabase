@@ -82,6 +82,9 @@ export const StaticVisualization = ({
         />
       );
     }
+    // Plugin registered but has no StaticVisualizationComponent.
+    // Return null so the Clojure side gets an empty string and falls back to table.
+    return null;
   }
 
   throw new Error(`Unsupported display type: ${display}`);
