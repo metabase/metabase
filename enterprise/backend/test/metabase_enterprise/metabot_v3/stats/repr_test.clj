@@ -66,7 +66,7 @@
           stats        {:chart_type   :histogram
                         :series_count 1
                         :series       {"Test Series" series-stats}}
-          rep          (#'repr/generate-histogram-representation {:stats stats})]
+          rep          (repr/generate-representation {:stats stats})]
       (is (str/includes? rep "Test Series"))
       (is (str/includes? rep "Distribution Shape")))))
 
@@ -76,7 +76,7 @@
           stats        {:chart_type   :histogram
                         :series_count 1
                         :series       {"Values" series-stats}}
-          rep          (#'repr/generate-histogram-representation {:stats stats})]
+          rep          (repr/generate-representation {:stats stats})]
       (is (str/includes? rep "Percentiles"))
       (is (str/includes? rep "P50="))
       (is (str/includes? rep "IQR")))))
@@ -89,7 +89,7 @@
           stats        {:chart_type   :scatter
                         :series_count 1
                         :series       {"Test Series" series-stats}}
-          rep          (#'repr/generate-scatter-representation {:stats stats})]
+          rep          (repr/generate-representation {:stats stats})]
       (is (str/includes? rep "Test Series"))
       (is (str/includes? rep "Relationship"))
       (is (str/includes? rep "strong positive")))))
@@ -100,7 +100,7 @@
           stats        {:chart_type   :scatter
                         :series_count 1
                         :series       {"Linear" series-stats}}
-          rep          (#'repr/generate-scatter-representation {:stats stats})]
+          rep          (repr/generate-representation {:stats stats})]
       (is (str/includes? rep "Trend Line"))
       (is (str/includes? rep "y =")))))
 
@@ -112,7 +112,7 @@
           stats        {:chart_type   :categorical
                         :series_count 1
                         :series       {"Test Series" series-stats}}
-          rep          (#'repr/generate-categorical-representation {:stats stats})]
+          rep          (repr/generate-representation {:stats stats})]
       (is (str/includes? rep "Test Series"))
       (is (str/includes? rep "Categories"))
       (is (str/includes? rep "Top Categories")))))
@@ -125,7 +125,7 @@
           stats        {:chart_type   :categorical
                         :series_count 1
                         :series       {"Many" series-stats}}
-          rep          (#'repr/generate-categorical-representation {:stats stats})]
+          rep          (repr/generate-representation {:stats stats})]
       (is (str/includes? rep "Top Categories"))
       (is (str/includes? rep "Bottom Categories"))
       ;; highest value category (Cat20) appears
@@ -141,7 +141,7 @@
           stats        {:chart_type   :categorical
                         :series_count 1
                         :series       {"Few" series-stats}}
-          rep          (#'repr/generate-categorical-representation {:stats stats})]
+          rep          (repr/generate-representation {:stats stats})]
       (is (str/includes? rep "Top Categories"))
       (is (not (str/includes? rep "Bottom Categories"))))))
 
@@ -151,7 +151,7 @@
           stats        {:chart_type   :categorical
                         :series_count 1
                         :series       {"Few" series-stats}}
-          rep          (#'repr/generate-categorical-representation {:stats stats})]
+          rep          (repr/generate-representation {:stats stats})]
       (is (str/includes? rep "limited data points")))))
 
 ;;; ----------------------------------------- Time Series Repr Tests -------------------------------------------------
@@ -175,7 +175,7 @@
           stats {:chart_type   :time-series
                  :series_count 1
                  :series       {"Revenue" series-stats}}
-          rep (#'repr/generate-time-series-representation {:stats stats})]
+          rep (repr/generate-representation {:stats stats})]
       (is (str/includes? rep "Revenue"))
       (is (str/includes? rep "Trend"))
       (is (str/includes? rep "Time Series")))))
@@ -190,7 +190,7 @@
                                                       ["d1" "d2" "d3" "d4" "d5"])
                                 "Revenue" (make-stats [20.0 40.0 60.0 80.0 100.0]
                                                       ["d1" "d2" "d3" "d4" "d5"])}}
-          rep (#'repr/generate-time-series-representation {:stats stats})]
+          rep (repr/generate-representation {:stats stats})]
       (is (str/includes? rep "Sales"))
       (is (str/includes? rep "Revenue")))))
 
@@ -202,7 +202,7 @@
           stats  {:chart_type   :time-series
                   :series_count 1
                   :series       {"Metric" series-stats}}
-          rep    (#'repr/generate-time-series-representation {:stats stats})]
+          rep    (repr/generate-representation {:stats stats})]
       (is (str/includes? rep "Volatility"))
       (is (str/includes? rep "Significant Changes"))
       (is (str/includes? rep "Most Recent Change")))))

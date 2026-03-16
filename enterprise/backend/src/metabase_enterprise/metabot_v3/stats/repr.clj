@@ -56,7 +56,7 @@
     "N/A"
     (str (if (pos? n) "+" "") (format "%.1f" (double n)) "%")))
 
-(defn- format-date
+(defn- format-label
   "Format a date value for display."
   [d]
   (cond
@@ -86,6 +86,24 @@
     :high "high"
     :extreme "extreme"
     (name level)))
+
+(defn- render-axis-range
+  "Render '**<label> Range**: min to max' from a summary map with :min/:max."
+  [label summary]
+  (when summary
+    (str "**" label " Range**: "
+         (format-number (:min summary))
+         " to "
+         (format-number (:max summary)))))
+
+(defn- render-sample-data
+  "Render sampled data pairs as 'x: y | x: y | ...'."
+  [data]
+  (when (seq data)
+    (str "**Sample Data** (" (count data) " samples):\n"
+         (str/join " | " (map (fn [[x y]]
+                                (str (format-number x) ": " (format-number y)))
+                              data)))))
 
 ;;; -------------------------------------------- Data Limits Note ---------------------------------------------------
 
@@ -143,7 +161,7 @@
   [{:keys [summary time_range data_points]}]
   (let [{:keys [min max mean median std_dev]} summary
         {:keys [start end]} time_range]
-    (str "**Data Points**: " data_points " (" (format-date start) " to " (format-date end) ")\n"
+    (str "**Data Points**: " data_points " (" (format-label start) " to " (format-label end) ")\n"
          "**Value Range**: " (format-number min) " to " (format-number max)
          " (median: " (format-number median) ")\n"
          "**Mean**: " (format-number mean) " | **Std Dev**: " (format-number std_dev))))
@@ -169,7 +187,7 @@
     (str "**Outliers**: " (count outliers) " detected\n"
          (str/join "\n"
                    (for [{:keys [label value modified_z_score]} outliers]
-                     (str "  - " (format-date label) ": " (format-number value)
+                     (str "  - " (format-label label) ": " (format-number value)
                           " (z-score: " (format "%.2f" (double modified_z_score)) ")"))))
     "**Outliers**: None detected"))
 
@@ -180,7 +198,7 @@
     (str "**Patterns**:\n"
          (str/join "\n"
                    (for [{:keys [description from_date to_date]} patterns]
-                     (str "  - " description " (" (format-date from_date) " to " (format-date to_date) ")"))))))
+                     (str "  - " description " (" (format-label from_date) " to " (format-label to_date) ")"))))))
 
 (defn- render-significant-changes
   "Render significant changes."
@@ -189,7 +207,7 @@
     (str "**Significant Changes**:\n"
          (str/join "\n"
                    (for [{:keys [from_date to_date from_value to_value change_pct]} changes]
-                     (str "  - " (format-date from_date) " → " (format-date to_date)
+                     (str "  - " (format-label from_date) " → " (format-label to_date)
                           ": " (format-number from_value) " → " (format-number to_value)
                           " (" (format-pct change_pct) ")"))))))
 
@@ -197,11 +215,11 @@
   "Render most recent change."
   [{:keys [from_date to_date from_value to_value change_pct] :as change}]
   (when change
-    (str "**Most Recent Change**: " (format-date from_date) " → " (format-date to_date)
+    (str "**Most Recent Change**: " (format-label from_date) " → " (format-label to_date)
          ": " (format-number from_value) " → " (format-number to_value)
          " (" (format-pct change_pct) ")")))
 
-(defn- render-series
+(defn- render-time-series
   "Render complete statistics for a single series."
   [series-name series-stats]
   (let [{:keys [trend is_cumulative volatility outliers patterns
@@ -273,37 +291,10 @@
                   (render-outliers outliers)]]
     (str/join "\n" (remove nil? sections))))
 
-(defn- generate-categorical-representation
-  "Generate markdown representation for categorical (bar, pie, funnel, etc.) stats."
-  [{:keys [title display-type stats timeline-events]}]
-  (let [{:keys [series_count series correlations limits]} stats
-        header              (str "# Chart Analysis\n"
-                                 (when title (str "## Chart: " title "\n"))
-                                 "**Type**: Categorical" (when display-type (str " (" display-type ")")) "\n"
-                                 "**Series Count**: " series_count)
-        limits-note         (when limits (render-limits-note limits))
-        series-sections     (str/join "\n\n"
-                                      (for [[series-name s] series]
-                                        (render-categorical-series series-name s)))
-        correlation-section (render-correlations correlations)
-        events-section      (render-timeline-events timeline-events)]
-    (str/join "\n\n"
-              (remove str/blank?
-                      [header limits-note series-sections correlation-section events-section]))))
-
 ;;; ------------------------------------------ Scatter Representation ------------------------------------------------
 
 (defn- correlation-label [{:keys [strength direction]}]
   (str (name strength) " " (name direction)))
-
-(defn- render-scatter-sample-data
-  "Render sampled points as 'x: y | x: y | ...'."
-  [sampled-points]
-  (when (seq sampled-points)
-    (str "**Sample Data** (" (count sampled-points) " points):\n"
-         (str/join " | " (map (fn [[x y]]
-                                (str (format-number x) ": " (format-number y)))
-                              sampled-points)))))
 
 (defn- render-scatter-outliers
   "Render outliers as 'x=..., y=...'"
@@ -328,12 +319,8 @@
                   (when x_name (str "**X-axis**: " x_name))
                   (when y_name (str "**Y-axis**: " y_name))
                   (render-data-characteristics-note series-stats)
-                  (when x_summary
-                    (str "**X-axis Range**: " (format-number (:min x_summary))
-                         " to " (format-number (:max x_summary))))
-                  (when y_summary
-                    (str "**Y-axis Range**: " (format-number (:min y_summary))
-                         " to " (format-number (:max y_summary))))
+                  (render-axis-range "X-axis" x_summary)
+                  (render-axis-range "Y-axis" y_summary)
                   (when correlation
                     (str "**Relationship**: " (correlation-label correlation)
                          " (r = " (format "%.2f" (double (:coefficient correlation))) ")"))
@@ -341,25 +328,9 @@
                     (str "**Trend Line**: y = "
                          (format "%.3f" (double (:slope regression))) "x + "
                          (format "%.3f" (double (:intercept regression)))))
-                  (render-scatter-sample-data sampled_points)
+                  (render-sample-data sampled_points)
                   (render-scatter-outliers outliers)]]
     (str/join "\n" (remove nil? sections))))
-
-(defn- generate-scatter-representation
-  "Generate markdown representation for scatter plot stats."
-  [{:keys [title display-type stats timeline-events]}]
-  (let [{:keys [series_count series limits]} stats
-        header          (str "# Chart Analysis\n"
-                             (when title (str "## Chart: " title "\n"))
-                             "**Type**: Scatter" (when display-type (str " (" display-type ")")) "\n"
-                             "**Series Count**: " series_count)
-        limits-note     (when limits (render-limits-note limits))
-        series-sections (str/join "\n\n"
-                                  (for [[series-name s] series]
-                                    (render-scatter-series series-name s)))
-        events-section  (render-timeline-events timeline-events)]
-    (str/join "\n\n"
-              (remove str/blank? [header limits-note series-sections events-section]))))
 
 ;;; ----------------------------------------- Histogram Representation -----------------------------------------------
 
@@ -374,15 +345,6 @@
     (> kurtosis 1)  "heavy tails (more extreme values than normal)"
     (< kurtosis -1) "light tails (fewer extreme values than normal)"
     :else           nil))
-
-(defn- render-histogram-bin-data
-  "Render bin data as 'x: y | x: y | ...'."
-  [bin_data]
-  (when (seq bin_data)
-    (str "**Sample Data** (" (count bin_data) " bins):\n"
-         (str/join " | " (map (fn [[x y]]
-                                (str (format-number x) ": " (format-number y)))
-                              bin_data)))))
 
 (defn- render-histogram-series
   "Render stats for a single histogram series."
@@ -409,66 +371,47 @@
                    (render-data-characteristics-note series-stats)
                    (when (seq bin_data)
                      (let [xs (mapv first bin_data)]
-                       (str "**X-axis range**: " (format-number (reduce min xs))
-                            " to " (format-number (reduce max xs)))))
-                   (when summary
-                     (str "**Y-axis range**: " (format-number (:min summary))
-                          " to " (format-number (:max summary))))
+                       (render-axis-range "X-axis" {:min (reduce min xs) :max (reduce max xs)})))
+                   (render-axis-range "Y-axis" summary)
                    p-str iqr-str shape-str
-                   (render-histogram-bin-data bin_data)]]
+                   (render-sample-data bin_data)]]
     (str/join "\n" (remove nil? sections))))
-
-(defn- generate-histogram-representation
-  "Generate markdown representation for histogram stats."
-  [{:keys [title display-type stats timeline-events]}]
-  (let [{:keys [series_count series limits]} stats
-        header          (str "# Chart Analysis\n"
-                             (when title (str "## Chart: " title "\n"))
-                             "**Type**: Histogram" (when display-type (str " (" display-type ")")) "\n"
-                             "**Series Count**: " series_count)
-        limits-note     (when limits (render-limits-note limits))
-        series-sections (str/join "\n\n"
-                                  (for [[series-name s] series]
-                                    (render-histogram-series series-name s)))
-        events-section  (render-timeline-events timeline-events)]
-    (str/join "\n\n"
-              (remove str/blank? [header limits-note series-sections events-section]))))
 
 ;;; ----------------------------------------- Main Representation ----------------------------------------------------
 
-(defn- generate-time-series-representation
-  "Generate comprehensive markdown representation for time series stats."
-  [{:keys [title display-type stats timeline-events]}]
+(defn- generate-chart-representation
+  "Shared generator for all chart types.
+   `type-label`       — e.g. \"Categorical\", \"Scatter\"
+   `render-series-fn` — (fn [series-name series-stats] => string)
+   `extra-sections`   — seq of additional section strings to insert after limits (may contain nils)"
+  [{:keys [title display-type stats timeline-events]} type-label render-series-fn extra-sections]
   (let [{:keys [series_count series correlations limits]} stats
-        header (str "# Chart Analysis\n"
-                    (when title (str "## Chart: " title "\n"))
-                    "**Type**: Time Series" (when display-type (str " (" display-type ")")) "\n"
-                    "**Series Count**: " series_count)
-        limits-note (when limits (render-limits-note limits))
-        temporal-context (generate-temporal-context)
+        header          (str "# Chart Analysis\n"
+                             (when title (str "## Chart: " title "\n"))
+                             "**Type**: " type-label (when display-type (str " (" display-type ")")) "\n"
+                             "**Series Count**: " series_count)
+        limits-note     (when limits (render-limits-note limits))
         series-sections (str/join "\n\n"
-                                  (for [[name s] series]
-                                    (render-series name s)))
-        correlation-section (render-correlations correlations)
-        events-section (render-timeline-events timeline-events)]
+                                  (for [[sname s] series]
+                                    (render-series-fn sname s)))]
     (str/join "\n\n"
               (remove str/blank?
-                      [header
-                       limits-note
-                       temporal-context
-                       series-sections
-                       correlation-section
-                       events-section]))))
+                      (concat [header limits-note]
+                              extra-sections
+                              [series-sections
+                               (render-correlations correlations)
+                               (render-timeline-events timeline-events)])))))
 
 (mu/defn generate-representation :- :string
   "Generate markdown representation for chart statistics.
   Dispatches based on chart type."
   [{:keys [stats] :as context} :- ::stats.types/generate-repr-context]
   (case (:chart_type stats)
-    :time-series  (generate-time-series-representation context)
-    :categorical  (generate-categorical-representation context)
-    :scatter      (generate-scatter-representation context)
-    :histogram    (generate-histogram-representation context)
+    :time-series  (generate-chart-representation context "Time Series" render-time-series
+                                                 [(generate-temporal-context)])
+    :categorical  (generate-chart-representation context "Categorical" render-categorical-series nil)
+    :scatter      (generate-chart-representation context "Scatter" render-scatter-series nil)
+    :histogram    (generate-chart-representation context "Histogram" render-histogram-series nil)
     (str "# Chart Analysis\n"
          "**Type**: " (name (:chart_type stats)) "\n"
          "Statistics computation for this chart type is not yet implemented.")))
