@@ -630,7 +630,7 @@
                            (:conditions a-join))
          home-col   (select-home-column home-cols cond-fields)
          source-name (stage-source-display-name query stage)
-         taken-names (cond-> (vec (keep :alias (:joins stage)))
+         taken-names (cond-> (into [] (keep :alias) (:joins stage))
                        source-name (conj source-name))]
      (-> (calculate-join-alias query a-join home-col)
          (generate-unique-name taken-names)))))
