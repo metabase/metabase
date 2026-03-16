@@ -39,6 +39,7 @@
 
 ;;; ------------------------------------------------ Helpers ------------------------------------------------
 
+;; TODO: this should be guarded automatically through a custom mi/to-json defmethod
 (defn- strip-token
   "Remove access_token from plugin map before returning to client."
   [plugin]
