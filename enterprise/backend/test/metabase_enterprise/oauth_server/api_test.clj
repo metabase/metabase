@@ -7,6 +7,7 @@
    [metabase.test.http-client :as client]
    [toucan2.core :as t2])
   (:import
+   (java.security MessageDigest)
    (java.util Base64)))
 
 (use-fixtures :each (fn [thunk]
@@ -21,14 +22,14 @@
       (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
         (let [response (mt/user-http-request :crowberto :get 200
                                              ".well-known/openid-configuration")]
-          (is (contains? response :issuer))
-          (is (contains? response :authorization_endpoint))
-          (is (contains? response :token_endpoint))
-          (is (contains? response :jwks_uri))
-          (is (contains? response :response_types_supported))
-          (is (contains? response :id_token_signing_alg_values_supported))
-          (is (= "http://localhost:3000" (:issuer response)))
-          (is (= "http://localhost:3000/oauth/register" (:registration_endpoint response))))))))
+          (is (=? {:issuer                                "http://localhost:3000"
+                   :authorization_endpoint                string?
+                   :token_endpoint                        string?
+                   :jwks_uri                              string?
+                   :response_types_supported              sequential?
+                   :id_token_signing_alg_values_supported sequential?
+                   :registration_endpoint                 "http://localhost:3000/oauth/register"}
+                  response)))))))
 
 (deftest protected-resource-metadata-test
   (testing "GET /.well-known/oauth-protected-resource/api/mcp returns correct metadata"
@@ -36,11 +37,11 @@
       (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
         (let [response (mt/user-http-request :crowberto :get 200
                                              ".well-known/oauth-protected-resource/api/mcp")]
-          (is (= "http://localhost:3000/api/mcp" (:resource response)))
-          (is (= ["http://localhost:3000"] (:authorization_servers response)))
-          (is (sequential? (:scopes_supported response)))
-          (is (pos? (count (:scopes_supported response))))
-          (is (= ["header"] (:bearer_methods_supported response)))))))
+          (is (=? {:resource                "http://localhost:3000/api/mcp"
+                   :authorization_servers   ["http://localhost:3000"]
+                   :scopes_supported        #(pos? (count %))
+                   :bearer_methods_supported ["header"]}
+                  response))))))
 
   (testing "GET /.well-known/oauth-protected-resource/api/mcp returns 404 without feature flag"
     (mt/with-premium-features #{}
@@ -59,11 +60,8 @@
       (mt/with-temporary-setting-values [site-url "http://localhost:3000"
                                          oauth-server-signing-key nil]
         (let [response (mt/user-http-request :crowberto :get 200 "oauth/jwks")]
-          (is (contains? response :keys))
-          (is (pos? (count (:keys response))))
-          (let [first-key (first (:keys response))]
-            (is (= "RSA" (:kty first-key)))
-            (is (= "sig" (:use first-key)))))))))
+          (is (=? {:keys #(pos? (count %))} response))
+          (is (=? {:kty "RSA" :use "sig"} (first (:keys response)))))))))
 
 (deftest jwks-endpoint-without-feature-flag-test
   (testing "JWKS endpoint returns 404 when feature disabled"
@@ -91,11 +89,12 @@
           (let [response (register-client! {"redirect_uris"               ["https://example.com/callback"]
                                             "client_name"                "Test Client"
                                             "token_endpoint_auth_method" "client_secret_basic"})]
-            (is (some? (:client_id response)))
-            (is (some? (:client_secret response)))
-            (is (some? (:registration_access_token response)))
-            (is (= ["https://example.com/callback"] (:redirect_uris response)))
-            (is (= "Test Client" (:client_name response)))))))))
+            (is (=? {:client_id                 string?
+                     :client_secret             string?
+                     :registration_access_token string?
+                     :redirect_uris             ["https://example.com/callback"]
+                     :client_name               "Test Client"}
+                    response))))))))
 
 (deftest dynamic-register-missing-redirect-uris-test
   (testing "POST /oauth/register with missing redirect_uris returns 400"
@@ -103,7 +102,7 @@
       (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
         (let [response (register-client! {"client_name" "No Redirects"}
                                          :expected-status 400)]
-          (is (= "invalid_client_metadata" (:error response))))))))
+          (is (=? {:error "invalid_client_metadata"} response)))))))
 
 (deftest dynamic-register-non-https-redirect-test
   (testing "POST /oauth/register with non-HTTPS redirect URI returns 400"
@@ -111,7 +110,7 @@
       (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
         (let [response (register-client! {"redirect_uris" ["http://example.com/callback"]}
                                          :expected-status 400)]
-          (is (= "invalid_client_metadata" (:error response))))))))
+          (is (=? {:error "invalid_client_metadata"} response)))))))
 
 (deftest dynamic-register-http-localhost-allowed-test
   (testing "POST /oauth/register with HTTP localhost redirect URI is allowed"
@@ -119,8 +118,9 @@
       (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
         (t2/with-transaction [_conn nil {:rollback-only true}]
           (let [response (register-client! {"redirect_uris" ["http://localhost:8080/callback"]})]
-            (is (some? (:client_id response)))
-            (is (= ["http://localhost:8080/callback"] (:redirect_uris response)))))))))
+            (is (=? {:client_id     string?
+                     :redirect_uris ["http://localhost:8080/callback"]}
+                    response))))))))
 
 (deftest dynamic-register-without-feature-flag-test
   (testing "POST /oauth/register returns 404 without feature flag"
@@ -148,8 +148,9 @@
                 client-id     (:client_id reg-response)
                 token         (:registration_access_token reg-response)
                 read-response (read-client-config client-id token)]
-            (is (= client-id (:client_id read-response)))
-            (is (= ["https://example.com/callback"] (:redirect_uris read-response)))))))))
+            (is (=? {:client_id     client-id
+                     :redirect_uris ["https://example.com/callback"]}
+                    read-response))))))))
 
 (deftest dynamic-client-read-invalid-token-test
   (testing "GET /oauth/register/:client-id with invalid token returns 401"
@@ -299,7 +300,7 @@
                             :state         "test-state"}
                            302)
                 location  (get-in response [:headers "Location"])]
-            (is (some? location))
+            (is (string? location) "Should have a Location header")
             (is (str/starts-with? location "https://example.com/callback?"))
             (is (str/includes? location "code="))
             (is (str/includes? location "state=test-state"))))))))
@@ -398,23 +399,24 @@
     (mt/with-premium-features #{:metabot-v3}
       (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
         (t2/with-transaction [_conn nil {:rollback-only true}]
-          (let [test-client    (create-test-client!)
-                client-id      (:client_id test-client)
-                client-secret  (:client_secret test-client)
-                code           (authorize-and-get-code! client-id)
-                _              (is (some? code) "Should get an authorization code")
-                token-response (token-request!
-                                {:grant_type   "authorization_code"
-                                 :code         code
-                                 :redirect_uri "https://example.com/callback"
-                                 :client_id    client-id
-                                 :client_secret client-secret})]
-            (is (some? (:access_token token-response)))
-            (is (= "Bearer" (:token_type token-response)))
-            (is (pos? (:expires_in token-response)))
-            (is (some? (:refresh_token token-response)))
-            (is (some? (:id_token token-response)) "Should include id_token for openid scope")
-            (is (some? (:scope token-response)))))))))
+          (let [test-client   (create-test-client!)
+                client-id     (:client_id test-client)
+                client-secret (:client_secret test-client)
+                code          (authorize-and-get-code! client-id)]
+            (is (some? code) "Should get an authorization code")
+            (is (=? {:access_token  string?
+                     :token_type    "Bearer"
+                     :expires_in    pos-int?
+                     :refresh_token string?
+                     :id_token      string?
+                     :scope         string?}
+                    (token-request!
+                     {:grant_type    "authorization_code"
+                      :code          code
+                      :redirect_uri  "https://example.com/callback"
+                      :client_id     client-id
+                      :client_secret client-secret}))
+                "Should return full token response with id_token for openid scope")))))))
 
 (deftest token-auth-code-invalid-code-test
   (testing "Authorization code grant — invalid code returns error"
@@ -431,7 +433,7 @@
                                 :client_id     client-id
                                 :client_secret client-secret}
                                :expected-status 400)]
-            (is (some? (:error response)))))))))
+            (is (=? {:error string?} response))))))))
 
 (deftest token-auth-code-wrong-client-test
   (testing "Authorization code grant — wrong client gets error"
@@ -455,7 +457,7 @@
                                 :client_id     (:client_id client-b)
                                 :client_secret (:client_secret client-b)}
                                :expected-status 400)]
-            (is (some? (:error response)))))))))
+            (is (=? {:error string?} response))))))))
 
 (deftest token-refresh-grant-test
   (testing "Refresh token grant — returns new access token"
@@ -477,9 +479,10 @@
                                    :refresh_token (:refresh_token token-response)
                                    :client_id     client-id
                                    :client_secret client-secret})]
-            (is (some? (:access_token refresh-response)))
-            (is (= "Bearer" (:token_type refresh-response)))
-            (is (pos? (:expires_in refresh-response)))))))))
+            (is (=? {:access_token string?
+                     :token_type   "Bearer"
+                     :expires_in   pos-int?}
+                    refresh-response))))))))
 
 (deftest token-client-credentials-grant-test
   (testing "Client credentials grant — returns access token"
@@ -500,9 +503,10 @@
                                {:grant_type    "client_credentials"
                                 :client_id     client-id
                                 :client_secret client-secret})]
-            (is (some? (:access_token response)))
-            (is (= "Bearer" (:token_type response)))
-            (is (pos? (:expires_in response)))))))))
+            (is (=? {:access_token string?
+                     :token_type   "Bearer"
+                     :expires_in   pos-int?}
+                    response))))))))
 
 (deftest token-invalid-client-credentials-test
   (testing "Invalid client credentials — returns 401"
@@ -518,7 +522,7 @@
                               :client_id     client-id
                               :client_secret "wrong-secret"}
                              :expected-status 400)]
-            (is (some? (:error response)))))))))
+            (is (=? {:error string?} response))))))))
 
 (deftest token-missing-grant-type-test
   (testing "Missing grant_type — returns 400"
@@ -530,7 +534,7 @@
                              {:client_id     (:client_id test-client)
                               :client_secret (:client_secret test-client)}
                              :expected-status 400)]
-            (is (some? (:error response)))))))))
+            (is (=? {:error string?} response))))))))
 
 (deftest token-without-feature-flag-test
   (testing "POST /oauth/token returns 404 without feature flag"
@@ -554,5 +558,132 @@
                                 :code         code
                                 :redirect_uri "https://example.com/callback"}
                                :authorization (basic-auth-header client-id client-secret))]
-            (is (some? (:access_token response)))
-            (is (= "Bearer" (:token_type response)))))))))
+            (is (=? {:access_token string?
+                     :token_type   "Bearer"}
+                    response))))))))
+
+;;; ----------------------------------------- PKCE Tests -------------------------------------------------------
+
+(defn- pkce-s256-challenge
+  "Compute a S256 PKCE code challenge from a code verifier."
+  [^String code-verifier]
+  (let [digest (.digest (MessageDigest/getInstance "SHA-256") (.getBytes code-verifier "US-ASCII"))]
+    (-> (Base64/getUrlEncoder)
+        .withoutPadding
+        (.encodeToString digest))))
+
+(defn- authorize-and-get-code-with-params!
+  "Complete the authorize flow with extra decision params and return the authorization code."
+  [client-id extra-params]
+  (let [response (form-post-decision!
+                  :crowberto
+                  (merge {:approved      "true"
+                          :client_id     client-id
+                          :redirect_uri  "https://example.com/callback"
+                          :response_type "code"
+                          :scope         "openid profile"
+                          :state         "test-state"}
+                         extra-params)
+                  302)
+        location (get-in response [:headers "Location"])]
+    (extract-query-param location "code")))
+
+(deftest token-auth-code-pkce-s256-test
+  (testing "Authorization code grant with S256 PKCE succeeds"
+    (mt/with-premium-features #{:metabot-v3}
+      (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+        (t2/with-transaction [_conn nil {:rollback-only true}]
+          (let [test-client    (create-test-client!)
+                client-id      (:client_id test-client)
+                client-secret  (:client_secret test-client)
+                code-verifier  "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
+                code-challenge (pkce-s256-challenge code-verifier)
+                code           (authorize-and-get-code-with-params!
+                                client-id
+                                {:code_challenge        code-challenge
+                                 :code_challenge_method "S256"})]
+            (is (string? code) "Should get an authorization code")
+            (is (=? {:access_token string?
+                     :token_type   "Bearer"
+                     :expires_in   pos-int?}
+                    (token-request!
+                     {:grant_type    "authorization_code"
+                      :code          code
+                      :redirect_uri  "https://example.com/callback"
+                      :client_id     client-id
+                      :client_secret client-secret
+                      :code_verifier code-verifier})))))))))
+
+(deftest token-auth-code-pkce-missing-verifier-test
+  (testing "Authorization code grant with PKCE but missing code_verifier returns error"
+    (mt/with-premium-features #{:metabot-v3}
+      (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+        (t2/with-transaction [_conn nil {:rollback-only true}]
+          (let [test-client    (create-test-client!)
+                client-id      (:client_id test-client)
+                client-secret  (:client_secret test-client)
+                code-verifier  "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
+                code-challenge (pkce-s256-challenge code-verifier)
+                code           (authorize-and-get-code-with-params!
+                                client-id
+                                {:code_challenge        code-challenge
+                                 :code_challenge_method "S256"})
+                response       (token-request!
+                                {:grant_type    "authorization_code"
+                                 :code          code
+                                 :redirect_uri  "https://example.com/callback"
+                                 :client_id     client-id
+                                 :client_secret client-secret}
+                                :expected-status 400)]
+            (is (=? {:error string?} response))))))))
+
+;;; ----------------------------------------- Expired / Revoked Token Tests ------------------------------------
+
+(deftest token-auth-code-expired-code-test
+  (testing "Authorization code grant with expired code returns error"
+    (mt/with-premium-features #{:metabot-v3}
+      (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+        (t2/with-transaction [_conn nil {:rollback-only true}]
+          (let [test-client   (create-test-client!)
+                client-id     (:client_id test-client)
+                client-secret (:client_secret test-client)
+                code          (authorize-and-get-code! client-id)]
+            (is (string? code) "Should get an authorization code")
+            ;; Expire the code by setting expiry to 1 hour ago (epoch millis)
+            (t2/update! :model/OAuthAuthorizationCode {:code code}
+                        {:expiry (- (System/currentTimeMillis) 3600000)})
+            (is (=? {:error string?}
+                    (token-request!
+                     {:grant_type    "authorization_code"
+                      :code          code
+                      :redirect_uri  "https://example.com/callback"
+                      :client_id     client-id
+                      :client_secret client-secret}
+                     :expected-status 400)))))))))
+
+(deftest token-refresh-revoked-token-test
+  (testing "Refresh token grant with revoked refresh token returns error"
+    (mt/with-premium-features #{:metabot-v3}
+      (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+        (t2/with-transaction [_conn nil {:rollback-only true}]
+          (let [test-client    (create-test-client!)
+                client-id      (:client_id test-client)
+                client-secret  (:client_secret test-client)
+                code           (authorize-and-get-code! client-id)
+                token-response (token-request!
+                                {:grant_type    "authorization_code"
+                                 :code          code
+                                 :redirect_uri  "https://example.com/callback"
+                                 :client_id     client-id
+                                 :client_secret client-secret})
+                refresh-token  (:refresh_token token-response)]
+            ;; Revoke the refresh token
+            (t2/update! :model/OAuthRefreshToken {:token refresh-token}
+                        {:revoked_at [:raw "now()"]})
+            (let [response (token-request!
+                            {:grant_type    "refresh_token"
+                             :refresh_token refresh-token
+                             :client_id     client-id
+                             :client_secret client-secret}
+                            :expected-status 400)]
+              (is (=? {:error string?} response)))))))))

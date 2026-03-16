@@ -23,20 +23,22 @@
         (testing "register-client returns config with client-id"
           (is (= (:client-id config) (:client-id result))))
         (testing "client secret is hashed and plaintext preserved in return value"
-          (is (some? (:client-secret-hash result)))
-          (is (= "super-secret" (:client-secret result))))
+          (is (=? {:client-secret-hash string?
+                   :client-secret      "super-secret"}
+                  result)))
         (testing "get-client returns only the hash, not plaintext secret"
           (let [fetched (proto/get-client cs (:client-id config))]
-            (is (some? (:client-secret-hash fetched)))
+            (is (=? {:client-secret-hash string?} fetched))
             (is (nil? (:client-secret fetched)))))
         (testing "get-client returns the registered client"
           (let [fetched (proto/get-client cs (:client-id config))]
-            (is (= (:client-id config) (:client-id fetched)))
-            (is (= ["https://example.com/callback"] (:redirect-uris fetched)))
-            (is (= ["authorization_code"] (:grant-types fetched)))
-            (is (= ["code"] (:response-types fetched)))
-            (is (= ["openid" "profile"] (:scopes fetched)))
-            (is (some? (:client-secret-hash fetched)))))
+            (is (=? {:client-id          (:client-id config)
+                     :redirect-uris      ["https://example.com/callback"]
+                     :grant-types        ["authorization_code"]
+                     :response-types     ["code"]
+                     :scopes             ["openid" "profile"]
+                     :client-secret-hash string?}
+                    fetched))))
         (testing "stored hash verifies against original secret"
           (let [fetched (proto/get-client cs (:client-id config))]
             (is (oidc-util/verify-client-secret "super-secret" (:client-secret-hash fetched)))))))))
@@ -117,11 +119,12 @@
                     :registration-access-token rat}
             result (proto/register-client cs config)]
         (testing "register-client returns hash and preserves plaintext for response building"
-          (is (some? (:registration-access-token-hash result)))
-          (is (= rat (:registration-access-token result))))
+          (is (=? {:registration-access-token-hash string?
+                   :registration-access-token      rat}
+                  result)))
         (testing "get-client returns only the hash, not plaintext"
           (let [fetched (proto/get-client cs (:client-id config))]
-            (is (some? (:registration-access-token-hash fetched)))
+            (is (=? {:registration-access-token-hash string?} fetched))
             (is (nil? (:registration-access-token fetched)))))
         (testing "stored hash verifies against original token"
           (let [fetched (proto/get-client cs (:client-id config))]
@@ -148,15 +151,16 @@
                                                     ["https://api.example.com"]))))
         (testing "get-authorization-code returns the saved code data"
           (let [fetched (proto/get-authorization-code acs code)]
-            (is (= (str user-id) (:user-id fetched)))
-            (is (= client-id (:client-id fetched)))
-            (is (= "https://example.com/callback" (:redirect-uri fetched)))
-            (is (= ["openid" "profile"] (:scope fetched)))
-            (is (= "test-nonce" (:nonce fetched)))
-            (is (= expiry (:expiry fetched)))
-            (is (= "challenge123" (:code-challenge fetched)))
-            (is (= "S256" (:code-challenge-method fetched)))
-            (is (= ["https://api.example.com"] (:resource fetched)))))))))
+            (is (=? {:user-id               (str user-id)
+                     :client-id             client-id
+                     :redirect-uri          "https://example.com/callback"
+                     :scope                 ["openid" "profile"]
+                     :nonce                 "test-nonce"
+                     :expiry                expiry
+                     :code-challenge        "challenge123"
+                     :code-challenge-method "S256"
+                     :resource              ["https://api.example.com"]}
+                    fetched))))))))
 
 (deftest authorization-code-store-delete-test
   (mt/with-premium-features #{:metabot-v3}
@@ -197,11 +201,12 @@
                                               ["https://api.example.com"]))))
         (testing "get-access-token returns the saved token data"
           (let [fetched (proto/get-access-token ts token)]
-            (is (= (str user-id) (:user-id fetched)))
-            (is (= client-id (:client-id fetched)))
-            (is (= ["openid" "profile"] (:scope fetched)))
-            (is (= expiry (:expiry fetched)))
-            (is (= ["https://api.example.com"] (:resource fetched)))))))))
+            (is (=? {:user-id   (str user-id)
+                     :client-id client-id
+                     :scope     ["openid" "profile"]
+                     :expiry    expiry
+                     :resource  ["https://api.example.com"]}
+                    fetched))))))))
 
 (deftest token-store-refresh-token-test
   (mt/with-premium-features #{:metabot-v3}
@@ -215,9 +220,10 @@
                                                ["openid"] nil nil))))
         (testing "get-refresh-token returns the saved token data"
           (let [fetched (proto/get-refresh-token ts token)]
-            (is (= (str user-id) (:user-id fetched)))
-            (is (= client-id (:client-id fetched)))
-            (is (= ["openid"] (:scope fetched)))))))))
+            (is (=? {:user-id   (str user-id)
+                     :client-id client-id
+                     :scope     ["openid"]}
+                    fetched))))))))
 
 (deftest token-store-revoke-test
   (mt/with-premium-features #{:metabot-v3}
@@ -263,12 +269,12 @@
     (let [cp      (store/create-claims-provider)
           user-id (mt/user->id :rasta)
           claims  (proto/get-claims cp user-id ["openid" "profile" "email"])]
-      (testing "claims contain profile fields"
-        (is (some? (:name claims)))
-        (is (some? (:preferred_username claims))))
-      (testing "claims contain email fields"
-        (is (= "rasta@metabase.com" (:email claims)))
-        (is (true? (:email_verified claims)))))))
+      (testing "claims contain profile and email fields"
+        (is (=? {:name               string?
+                 :preferred_username string?
+                 :email              "rasta@metabase.com"
+                 :email_verified     true}
+                claims))))))
 
 (deftest claims-provider-nonexistent-user-test
   (mt/with-premium-features #{:metabot-v3}
