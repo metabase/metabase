@@ -5,6 +5,7 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [compojure.response :as compojure.response]
+   [java-time.api :as t]
    [metabase-enterprise.mcp.tools :as mcp.tools]
    [metabase-enterprise.oauth-server.core :as oauth-server]
    [metabase.api.common :as api]
@@ -80,13 +81,6 @@
 
 ;;; -------------------------------------------------- Auth --------------------------------------------------------
 
-(defn- extract-bearer-token
-  "Extract the bearer token from the Authorization header."
-  [request]
-  (when-let [auth (get-in request [:headers "authorization"])]
-    (when (str/starts-with? (str/lower-case auth) "bearer ")
-      (str/trim (subs auth 7)))))
-
 (defn- validate-bearer-token
   "Look up and validate an OAuth bearer token. Returns `{:user-id <int> :scopes <set>}` on success, nil on failure."
   [token-string]
@@ -94,7 +88,7 @@
     (when-let [token-data (proto/get-access-token (:token-store provider) token-string)]
       (let [expiry (:expiry token-data)]
         (when (or (nil? expiry)
-                  (.isAfter (java.time.Instant/ofEpochSecond expiry) (java.time.Instant/now)))
+                  (t/after? (t/instant expiry) (t/instant)))
           (let [user-id (some-> (:user-id token-data) parse-long)
                 scopes  (when-let [scope-vec (:scope token-data)]
                           (into #{} scope-vec))]
@@ -322,7 +316,7 @@
   (open-api/handler-with-open-api-spec
    (fn [request respond raise]
      (let [origin-error    (validate-origin request)
-           bearer-token    (extract-bearer-token request)
+           bearer-token    (oauth-server/extract-bearer-token request)
            session-auth    api/*current-user-id*
            mcp-session-id  (get-in request [:headers "mcp-session-id"])
            ;; For non-initialize requests with a valid MCP session, inherit stored auth
