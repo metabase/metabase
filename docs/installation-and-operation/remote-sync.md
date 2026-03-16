@@ -7,8 +7,6 @@ description: Version control your dashboards, questions, and transforms. Sync yo
 
 {% include plans-blockquote.html feature="Remote sync" %}
 
-## Overview
-
 Remote Sync lets you develop analytics content in your Metabase and automatically deploy it to a read-only production Metabase through Git. Remote Sync can sync:
 
 - Top-level collections (dashboards, questions, models, metrics)
@@ -18,7 +16,7 @@ Remote Sync lets you develop analytics content in your Metabase and automaticall
 
 Metabase doesn't sync any of your data. What it stores in Git are [YAML files](./serialization.md#example-of-a-serialized-question) describing your analytics content. Your actual data stays in your databases and never leaves your Metabase.
 
-### How Remote Sync works
+## How Remote Sync works
 
 Here's a basic remote-sync workflow:
 
@@ -30,20 +28,42 @@ Here's a basic remote-sync workflow:
 
 We'll cover [setting up Remote Sync](#setting-up-remote-sync), an [example dev-to-production workflow](#an-example-dev-to-production-workflow), [branch management](#branch-management), and some other odds and ends.
 
-### Key concepts
+## Key concepts
 
-**Remote Sync has two modes for different roles**:
+### Remote Sync has two modes for different roles
 
 - **Read-write mode**: Create and edit content. You can [push](#pushing-changes-to-git) and [pull](#pulling-changes-from-git) changes to and from your repository. Multiple Metabase instances can connect in Read-write mode, each working on [different branches](#branch-management).
 - **Read-only mode**: Read-only instances only [pull](#pulling-changes-from-git) changes (typically from your main branch) and don't allow direct editing of synced content. In Read-only mode, you also can't edit transforms (even if transforms syncing wasn't enabled in read-write mode), can't edit Library content, and can't create segments or measures on published tables. You can set up [auto-sync](#pulling-changes-automatically) to automatically pull approved changes every five minutes.
 
-**You choose what to sync**: You can sync the Library, any top-level collections, and transforms. Everything inside selected collections (including sub-collections) is versioned and synchronized with your repository. If you use [Tenants](../embedding/tenants.md), you can also sync shared collections.
+### You choose what to sync
 
-**Items in synced collections must be self-contained**: Everything a dashboard or question needs must be [inside a synced collection](#items-in-synced-collections-cant-depend-on-items-outside-of-synced-collections).
+You can sync:
 
-**Content is stored as [YAML files](./serialization.md#example-of-a-serialized-question)**: Remote Sync stores your content as YAML files in your Git repository. Each dashboard, question, model, and document becomes a YAML file that can be reviewed in pull requests and versioned like code.
+- Your [Library](../data-studio/library.md)
+- [Transforms](../data-studio/transforms/transforms-overview.md) as well.
+- Any top-level collection under Our Analytics. If you use [tenants](../embedding/tenants.md), you can also choose to sync [shared collections](../embedding/tenants.md#collection-types).
 
-**Remote Sync excludes table metadata**: Column types, descriptions, and visibility settings don't sync. If you need to version table metadata, use [serialization](./serialization.md) instead.
+### Items in synced collections must be self-contained
+
+For Remote Sync to work properly, synced collections must be self-contained. Everything a dashboard or question needs must be inside one of the synced collections. This includes:
+
+- Questions that reference other questions
+- Dashboards with questions
+- Click behaviors linking to other items
+- Filters that pick values from other questions
+- @ mention of other items in documents
+
+### Content is stored as YAML files
+
+Remote Sync stores your content as [YAML files]( [YAML files](./serialization.md#example-of-a-serialized-question) in your Git repository. Each dashboard, question, model, and document becomes a YAML file that can be reviewed in pull requests and versioned like code.
+
+### Remote Sync excludes table metadata
+
+Column types, descriptions, and visibility settings don't sync. If you need to version table metadata, use [serialization](./serialization.md) instead.
+
+### One branch at a time per Metabase
+
+You can only have [one branch at a time per Metabase](#branching-limitations).
 
 ## Setting up Remote Sync
 
@@ -104,13 +124,7 @@ In the Metabase instance that you use for development:
 
 ### 4. Select what to sync
 
-You can select:
-
-- Your [Library](/docs/data-studio/library.md)
-- [Transforms](../data-studio/transforms/transforms-overview.md) as well.
-- Any top-level collection under Our Analytics. If you use [tenants](../embedding/tenants.md), you can also choose to sync [shared collections](../embedding/tenants.md#collection-types).
-
-Collections you select for syncing _must_ pass referential integrity checks. Collections need to be self-contained, which means that all dependencies (like questions referenced by other questions) must also be in one of the synced collections.
+Select what you [want to sync](#you-choose-what-to-sync).
 
 ### 5. Push your changes to your repository
 
@@ -211,7 +225,7 @@ On your production Metabase instance:
 
 - [Synced collections in the UI](#synced-collections-in-the-ui)
 - [Moving and deleting content in synced collections](#moving-and-deleting-content-in-synced-collections)
-- [Items in synced collections can't depend on items outside of synced collections](#items-in-synced-collections-cant-depend-on-items-outside-of-synced-collections)
+- [Items in synced collections must be self-contained](#items-in-synced-collections-must-be-self-contained)
 
 ### Synced collections in the UI
 
@@ -228,16 +242,6 @@ When transforms syncing is enabled, you'll find your transforms in the Transform
 When you remove content from a synced collection in Read-write mode and push that change, the content will also be removed from your production instance when it syncs. This applies to moving content out of a synced collection or deleting it entirely.
 
 Content in other Metabases that depended on this item may break since the dependency will no longer be in a synced collection.
-
-### Items in synced collections can't depend on items outside of synced collections
-
-For Remote Sync to work properly, synced collections must be self-contained. Everything a dashboard or question needs must be inside one of the synced collections. This includes:
-
-- Questions that reference models
-- Dashboards with questions
-- Click behaviors linking to other items
-- Filters that pick values from other questions
-- @ mentions in documents
 
 ### Making sub-collections appear at the top level
 
@@ -269,10 +273,6 @@ Collections
 ├── Mammoth Statistics
 └── Giant Sloth Statistics
 ```
-
-## Remote Sync uses serialization
-
-Remote Sync serializes your Metabase content as YAML files in your repo. YAML files use Metabase [serialization format](./serialization.md). See [Serialization docs](./serialization.md) for more information on the format.
 
 ## What Metabase syncs
 
