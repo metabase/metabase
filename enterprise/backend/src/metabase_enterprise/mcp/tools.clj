@@ -85,16 +85,15 @@
   "Invoke an Agent API endpoint with a synthetic Ring request.
    Returns MCP content (text-content on success, error-content on failure).
 
-   NOTE: The synthetic request sets :metabase-user-id which causes enforce-authentication
-   to grant unrestricted token scopes. This is correct for session-based auth (always
-   unrestricted), but if JWT-based MCP auth is added later, :token-scopes should be
-   propagated from the original request to preserve scope restrictions."
-  [method path & [body]]
+   Propagates `token-scopes` from the original MCP request so that scope restrictions
+   are preserved through the synthetic request."
+  [method path token-scopes & [body]]
   (let [result (promise)]
     (agent-api/routes
      (cond-> {:request-method   method
               :uri              path
-              :metabase-user-id api/*current-user-id*}
+              :metabase-user-id api/*current-user-id*
+              :token-scopes     token-scopes}
        body (assoc :body body))
      (fn [response] (deliver result response))
      (fn [error] (deliver result {:status 500 :body {:message (ex-message error)}})))
@@ -136,34 +135,36 @@
 (defn- invoke-agent-api-with-params
   "Invoke an Agent API endpoint with query parameters for GET/DELETE requests.
    Appends `params` as a query string to `path`."
-  [method path params]
+  [method path token-scopes params]
   (if (and (seq params) (not= :post method))
     (let [query-string (->> params
                             (map (fn [[k v]] (str (name k) "=" (URLEncoder/encode (str v) "UTF-8"))))
                             (str/join "&"))]
-      (invoke-agent-api method (str path "?" query-string)))
-    (invoke-agent-api method path (when (= :post method) params))))
+      (invoke-agent-api method (str path "?" query-string) token-scopes))
+    (invoke-agent-api method path token-scopes (when (= :post method) params))))
 
 (defn- dispatch-via-agent-api
   "Generic dispatch for tools whose responseFormat is \"json\".
    Looks up method/path from the tool definition, interpolates path params,
    and calls `invoke-agent-api`. For POST requests, remaining args are sent as the
    request body. For GET/DELETE requests, remaining args are sent as query params."
-  [tool-def arguments]
+  [tool-def arguments token-scopes]
   (let [{:keys [method path]} (:endpoint tool-def)
         method                (keyword (u/lower-case-en method))
         [resolved-path
          remaining-args]      (interpolate-path path arguments)
         api-path              (strip-api-prefix resolved-path)]
-    (invoke-agent-api-with-params method api-path remaining-args)))
+    (invoke-agent-api-with-params method api-path token-scopes remaining-args)))
 
 (defn call-tool
   "Dispatch an MCP `tools/call` request to the appropriate handler.
+   `token-scopes` are propagated to the synthetic agent-api request so that
+   scope restrictions from the original MCP session are preserved.
    Returns MCP content on success, or error content on failure."
-  [tool-name arguments]
+  [token-scopes tool-name arguments]
   (if-let [tool-def (get (tool-index) tool-name)]
     (try
-      (dispatch-via-agent-api tool-def arguments)
+      (dispatch-via-agent-api tool-def arguments token-scopes)
       (catch Exception e
         (error-content (or (ex-message e) "Internal error"))))
     (error-content (str "Unknown tool: " tool-name))))

@@ -101,10 +101,10 @@
 (defn- handle-tools-list [id _params]
   (jsonrpc-response id {:tools (mcp.tools/list-tools)}))
 
-(defn- handle-tools-call [id params]
+(defn- handle-tools-call [id params token-scopes]
   (let [tool-name (:name params)
         arguments (or (:arguments params) {})]
-    (jsonrpc-response id (mcp.tools/call-tool tool-name arguments))))
+    (jsonrpc-response id (mcp.tools/call-tool token-scopes tool-name arguments))))
 
 (defn- handle-ping [id _params]
   (jsonrpc-response id {}))
@@ -118,7 +118,7 @@
 
 (defn- dispatch-request
   "Dispatch a single JSON-RPC request. Returns a response map or nil for notifications."
-  [msg session-id]
+  [msg session-id token-scopes]
   (let [id     (:id msg)
         method (:method msg)
         params (:params msg)]
@@ -126,7 +126,7 @@
       (case method
         "notifications/initialized" (do (mark-session-initialized! session-id) nil)
         "tools/list"                (when-initialized id session-id (handle-tools-list id params))
-        "tools/call"                (when-initialized id session-id (handle-tools-call id params))
+        "tools/call"                (when-initialized id session-id (handle-tools-call id params token-scopes))
         "ping"                      (when-initialized id session-id (handle-ping id params))
         (if id
           (jsonrpc-error id -32601 (str "Method not found: " method))
@@ -233,7 +233,7 @@
 
       :else
       (let [messages  (if batch? body [body])
-            results   (mapv #(dispatch-request % session-id) messages)
+            results   (mapv #(dispatch-request % session-id (:token-scopes request)) messages)
             responses (filterv some? results)]
         (cond
           (empty? responses)
