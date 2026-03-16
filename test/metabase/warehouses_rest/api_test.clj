@@ -828,12 +828,12 @@
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table table {:db_id db-id}
                    :model/Field _ {:table_id (u/the-id table)}]
-                  (testing "GET /api/database/:id/metadata?skip_fields=true"
-                    (let [fields (->> (mt/user-http-request :rasta :get 200 (format "database/%d/metadata?skip_fields=true" db-id))
-                                      :tables
-                                      first
-                                      :fields)]
-                      (is (= () fields)))))))
+      (testing "GET /api/database/:id/metadata?skip_fields=true"
+        (let [fields (->> (mt/user-http-request :rasta :get 200 (format "database/%d/metadata?skip_fields=true" db-id))
+                          :tables
+                          first
+                          :fields)]
+          (is (= () fields)))))))
 
 (deftest ^:parallel autocomplete-suggestions-test
   (let [prefix-fn (fn [db-id prefix]
@@ -1046,11 +1046,11 @@
                                               :name                "The Chosen One"
                                               :uploads_enabled     uploads-enabled?
                                               :uploads_schema_name "public"}]
-                          (let [result (get-all :crowberto "database" old-ids)]
-                            (is (= 1
-                                   (:total result)))
-                            (is (= uploads-enabled?
-                                   (-> result :data first :can_upload)))))))))))
+              (let [result (get-all :crowberto "database" old-ids)]
+                (is (= 1
+                       (:total result)))
+                (is (= uploads-enabled?
+                       (-> result :data first :can_upload)))))))))))
 
 (deftest ^:parallel databases-list-include-saved-questions-test
   (testing "GET /api/database?saved=true"
