@@ -174,6 +174,23 @@ describe("DataGrid", () => {
     expect(screen.getByTestId("table-body")).toBeInTheDocument();
   });
 
+  it("renders body cells with role='gridcell' and aria-selected attributes", () => {
+    renderWithProviders(<TestDataGrid enableSelection />);
+    act(() => {
+      jest.runAllTimers();
+    });
+
+    const bodyCells = screen
+      .getByTestId("table-body")
+      .querySelectorAll('[role="gridcell"]');
+
+    expect(bodyCells.length).toBeGreaterThan(0);
+
+    bodyCells.forEach((cell) => {
+      expect(cell).toHaveAttribute("aria-selected");
+    });
+  });
+
   it("calls onBodyCellClick when clicking a cell", () => {
     const onBodyCellClick = jest.fn();
     renderWithProviders(<TestDataGrid onBodyCellClick={onBodyCellClick} />);
@@ -237,7 +254,7 @@ describe("DataGrid", () => {
 
     const firstRow = rows[0];
     const cellsInRow = within(firstRow).getAllByRole("gridcell");
-    expect(cellsInRow.length).toBe(4); // 3 data columns + 1 row ID column
+    expect(cellsInRow.length).toBe(5); // 4 data columns + 1 row ID column
   });
 
   it("displays proper sort indicators for sortable columns", () => {

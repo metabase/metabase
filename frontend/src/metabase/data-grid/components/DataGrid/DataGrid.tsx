@@ -348,6 +348,7 @@ export const DataGrid = function DataGrid<TData>({
                       return (
                         <div
                           key={cell.id}
+                          role="gridcell"
                           aria-selected={selection.isCellSelected(cell)}
                           data-column-id={cell.column.id}
                           data-selectable-cell={isSelectable ? "" : undefined}

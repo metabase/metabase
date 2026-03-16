@@ -64,7 +64,6 @@ export const BodyCell = memo(function BodyCell<TValue>({
 
   return (
     <BaseCell
-      role="gridcell"
       align={align}
       isSelected={isSelected}
       className={cx(S.root, className, {
