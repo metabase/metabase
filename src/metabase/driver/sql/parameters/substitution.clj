@@ -412,9 +412,14 @@
     (replace-alias driver field alias replacement-snippet-info)))
 
 (defmethod ->replacement-snippet-info [:sql ReferencedTableQuery]
-  [driver {:keys [table-id source-filters]}]
-  (let [mp       (driver-api/metadata-provider)
-        table-hsql (sql.qp/->honeysql driver (driver-api/table mp table-id))]
+  [driver {:keys [table-id source-filters alias]}]
+  (let [mp         (driver-api/metadata-provider)
+        table-hsql (sql.qp/->honeysql driver (driver-api/table mp table-id))
+        add-alias  (fn [result]
+                     (if alias
+                       (let [alias-sql (first (sql.qp/format-honeysql driver (h2x/identifier :table-alias alias)))]
+                         (update result :replacement-snippet str " AS " alias-sql))
+                       result))]
     (if (seq source-filters)
       (let [prepared     (mapv (fn [{:keys [field-id op value]}]
                                  (let [field (driver-api/field mp field-id)]
@@ -429,8 +434,8 @@
             hsql         {:select [:*] :from [[table-hsql]] :where where-clause}
             [sql]        (sql.qp/format-honeysql driver hsql)
             args         (into [] (mapcat (comp :param-values :sub)) prepared)]
-        {:replacement-snippet     (str "(" sql ")")
-         :prepared-statement-args args})
+        (add-alias {:replacement-snippet     (str "(" sql ")")
+                    :prepared-statement-args args}))
       (let [[sql] (sql.qp/format-honeysql driver table-hsql)]
-        {:prepared-statement-args []
-         :replacement-snippet     sql}))))
+        (add-alias {:prepared-statement-args []
+                    :replacement-snippet     sql})))))

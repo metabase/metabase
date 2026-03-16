@@ -138,7 +138,16 @@
              (sql.params.substitution/->replacement-snippet-info
               :h2
               (params/map->ReferencedTableQuery
-               {:table-id (meta/id :orders)})))))))
+               {:table-id (meta/id :orders)}))))))
+  (testing "Basic table reference with alias"
+    (mt/with-metadata-provider meta/metadata-provider
+      (is (= {:replacement-snippet     "\"PUBLIC\".\"ORDERS\" AS \"my_orders\""
+              :prepared-statement-args []}
+             (sql.params.substitution/->replacement-snippet-info
+              :h2
+              (params/map->ReferencedTableQuery
+               {:table-id (meta/id :orders)
+                :alias    "my_orders"})))))))
 
 (deftest ^:parallel table-query-with-source-filters->replacement-snippet-test
   (testing "Table reference with a single source-filter produces a filtered subquery"
@@ -178,4 +187,16 @@
                    {:table-id       (meta/id :orders)
                     :source-filters [{:field-id (meta/id :orders :created-at)
                                       :op       :>
-                                      :value    ts}]})))))))))
+                                      :value    ts}]}))))))))
+  (testing "Table reference with source-filters and alias"
+    (mt/with-metadata-provider meta/metadata-provider
+      (is (= {:replacement-snippet     "(SELECT * FROM \"PUBLIC\".\"ORDERS\" WHERE (\"TOTAL\" > 100)) AS \"src\""
+              :prepared-statement-args []}
+             (sql.params.substitution/->replacement-snippet-info
+              :h2
+              (params/map->ReferencedTableQuery
+               {:table-id       (meta/id :orders)
+                :alias          "src"
+                :source-filters [{:field-id (meta/id :orders :total)
+                                  :op       :>
+                                  :value    100}]})))))))

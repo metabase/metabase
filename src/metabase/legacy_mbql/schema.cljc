@@ -1558,6 +1558,7 @@
    [:map
     [:type                  [:= {:decode/normalize helpers/normalize-keyword} :table]]
     [:table-id              ::lib.schema.id/table]
+    [:emit-alias            {:optional true} :boolean]
     [:source-filters        {:optional true} [:sequential [:ref ::TemplateTag.SourceFilter]]]]])
 
 (mr/def ::TemplateTag.Value.Common
