@@ -91,6 +91,7 @@ export function ObjectDetailView({
   viewNextObjectDetail,
   closeObjectDetail,
   className,
+  isDashboard,
 }: ObjectDetailProps): JSX.Element | null {
   const [hasNotFoundError, setHasNotFoundError] = useState(false);
   const [maybeLoading, setMaybeLoading] = useState(false);
@@ -372,6 +373,7 @@ export function ObjectDetailView({
               tableForeignKeys={tableForeignKeys}
               tableForeignKeyReferences={tableForeignKeyReferences}
               followForeignKey={onFollowForeignKey}
+              isDashboard={isDashboard}
             />
           </ObjectDetailWrapperDiv>
         )}
