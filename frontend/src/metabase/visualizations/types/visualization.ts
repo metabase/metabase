@@ -1,5 +1,9 @@
 import type { ComponentType, ReactNode } from "react";
 
+import type {
+  ColorRangeSelectorAttributes,
+  ColorRangeSelectorProps,
+} from "metabase/common/components/ColorRangeSelector/ColorRangeSelector";
 import type { OptionsType } from "metabase/lib/formatting/types";
 import type { IconName, IconProps } from "metabase/ui";
 import type {
@@ -506,6 +510,17 @@ export type VisualizationSettingsDefinitions<
   "line.missing"?: SingleSeriesSettingDefinition<Value, Props>;
   "line.size"?: SingleSeriesSettingDefinition<Value, Props>;
   "line.style"?: SingleSeriesSettingDefinition<Value, Props>;
+  "map.pin_type"?: SeriesSettingDefinition<Value, Props>;
+  "map.type"?: SeriesSettingDefinition<Value, Props>;
+  "map.region"?: SeriesSettingDefinition<Value, Props>;
+  "map.colors"?: SeriesSettingDefinition<
+    Value,
+    Omit<ColorRangeSelectorProps, keyof ColorRangeSelectorAttributes>
+  >;
+  "map.heat.radius"?: SeriesSettingDefinition<Value, Props>;
+  "map.heat.blur"?: SeriesSettingDefinition<Value, Props>;
+  "map.heat.min-opacity"?: SeriesSettingDefinition<Value, Props>;
+  "map.heat.max-zoom"?: SeriesSettingDefinition<Value, Props>;
   markdown_template?: DatasetColumnSettingDefinition<Value, Props>;
   number_separators?: DatasetColumnSettingDefinition<Value, Props>;
   number_style?: DatasetColumnSettingDefinition<Value, Props>;
