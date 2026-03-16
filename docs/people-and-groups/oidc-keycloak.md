@@ -50,7 +50,7 @@ Here's a basic user setup to help you test a connection.
 
 ## Configure OIDC in Metabase
 
-If you're self-hosting Metabase, make sure you've set `MB_ENCRYPTION_SECRET_KEY` before enabling OIDC. See [OIDC-based authentication](./authenticating-with-oidc.md#if-youre-self-hosting-metabase-you-must-encrypt-your-database-credentials) for details.
+If you're self-hosting Metabase, make sure you've set `MB_ENCRYPTION_SECRET_KEY` before enabling OIDC. See [OIDC-based authentication](./authenticating-with-oidc.md#self-hosted-metabases-must-encrypt-database-credentials) for details.
 
 Go to **Admin settings** > **Authentication** > **OIDC** and enter:
 
