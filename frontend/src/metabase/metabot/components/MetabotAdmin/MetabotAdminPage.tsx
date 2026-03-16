@@ -8,10 +8,11 @@ import {
   AdminNavWrapper,
 } from "metabase/admin/components/AdminNav";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
-import { Box, Flex, Text, Title } from "metabase/ui";
+import { Flex, Text } from "metabase/ui";
 
 import { MetabotAISetup } from "./MetabotAISetup";
 import { MetabotAnalyticsPage } from "./MetabotAnalyticsPage";
+import { MetabotPermissionsPage } from "./MetabotPermissionsPage";
 import { MetabotSettingsPage } from "./MetabotSettingsPage";
 
 export type MetabotTab = "analytics" | "settings" | "permissions";
@@ -37,7 +38,7 @@ function MetabotAdminPage() {
     );
   }
 
-  const useFullWidth = activeTab === "analytics";
+  const useFullWidth = activeTab === "analytics" || activeTab === "permissions";
 
   return (
     <AdminSettingsLayout
@@ -77,7 +78,7 @@ function MetabotNavPane({
         />
         <AdminNavItem
           icon="lock"
-          label={t`Permissions`}
+          label={t`Usage controls`}
           active={activeTab === "permissions"}
           onClick={() => onTabChange("permissions")}
         />
@@ -93,17 +94,6 @@ function MetabotTabContent({ tab }: { tab: MetabotTab }) {
     case "settings":
       return <MetabotSettingsPage />;
     case "permissions":
-      return <MetabotPermissionsPlaceholder />;
+      return <MetabotPermissionsPage />;
   }
-}
-
-function MetabotPermissionsPlaceholder() {
-  return (
-    <Box p="2rem">
-      <Title order={2}>{t`Permissions`}</Title>
-      <Text c="text-secondary" mt="sm">
-        {t`Per-user and per-group controls, limits, and overrides will appear here.`}
-      </Text>
-    </Box>
-  );
 }

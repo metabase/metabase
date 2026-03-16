@@ -8,24 +8,33 @@ import { SettingHeader } from "metabase/admin/settings/components/SettingHeader"
 import {
   Box,
   Button,
-  Divider,
   Flex,
+  PasswordInput,
+  Select,
   Stack,
   Switch,
   Text,
 } from "metabase/ui";
 
+const PROVIDER_OPTIONS = [
+  { value: "anthropic", label: "Anthropic" },
+  { value: "google", label: "Google" },
+  { value: "meta", label: "Meta" },
+  { value: "openai", label: "OpenAI" },
+  { value: "metabase", label: "Metabase AI" },
+];
+
 export function MetabotSettingsPage() {
   return (
     <Stack gap="xl">
+      <AIProviderSection />
+
       <MetabotSection
         title={t`Metabot`}
         description={t`Configure the default Metabot available to all users in the main Metabase interface.`}
         enabledLabel={t`Metabot is enabled`}
         disabledLabel={t`Metabot is disabled`}
       />
-
-      <Divider />
 
       <MetabotSection
         title={t`Embedded Metabot`}
@@ -34,6 +43,40 @@ export function MetabotSettingsPage() {
         disabledLabel={t`Embedded Metabot is disabled`}
       />
     </Stack>
+  );
+}
+
+function AIProviderSection() {
+  const [provider, setProvider] = useState<string | null>("anthropic");
+  const [apiKey, setApiKey] = useState("sk-ant-****************************");
+
+  const needsApiKey = provider && provider !== "metabase";
+
+  return (
+    <SettingsSection
+      title={t`AI provider`}
+      description={t`The AI service powering Metabot's features.`}
+    >
+      <Flex gap="md" align="flex-end" wrap="wrap">
+        <Select
+          label={t`Provider`}
+          data={PROVIDER_OPTIONS}
+          value={provider}
+          onChange={setProvider}
+          w={200}
+          size="sm"
+        />
+        {needsApiKey && (
+          <PasswordInput
+            label={t`API Key`}
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+            w={320}
+            size="sm"
+          />
+        )}
+      </Flex>
+    </SettingsSection>
   );
 }
 
