@@ -60,11 +60,13 @@
 
 (def ^:private explicit-display-types
   "Display types that map directly to chart types."
-  {"scatter"   :scatter
-   "scalar"    :unknown
-   "waterfall" :unknown
-   "funnel"    :categorical
-   "pie"       :categorical})
+  {"scatter"     :scatter
+   "scalar"      :unknown
+   "smartscalar" :unknown
+   "waterfall"   :categorical
+   "funnel"      :categorical
+   "pie"         :categorical
+   "row"         :categorical})
 
 (defn- temporal-column-type?
   "Check if column type indicates temporal data."

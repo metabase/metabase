@@ -272,21 +272,28 @@
    [:series_count :int]
    [:series [:map-of :string ::histogram-series-stats]]])
 
+(mr/def ::unknown-stats
+  "Fallback stats for chart types that don't have dedicated analysis (e.g. scalar)."
+  [:map
+   [:chart_type [:= :unknown]]
+   [:series_count :int]
+   [:message :string]])
+
 (mr/def ::chart-stats
   "Union of all chart statistics types."
   [:or
    ::time-series-stats
    ::categorical-stats
    ::scatter-stats
-   ::histogram-stats])
+   ::histogram-stats
+   ::unknown-stats])
 
 ;;; ------------------------------------------ Representation Schema ------------------------------------------------
 
 (mr/def ::generate-repr-context
-  "Context map for generating chart statistics representation.
-  Accepts either a valid ::chart-stats or a map with :chart_type :unknown for the fallback branch."
+  "Context map for generating chart statistics representation."
   [:map
-   [:stats [:or ::chart-stats [:map [:chart_type [:= :unknown]]]]]
+   [:stats ::chart-stats]
    [:title {:optional true} [:maybe :string]]
    [:display-type {:optional true} [:maybe :string]]
    [:timeline-events {:optional true} [:maybe [:sequential ::timeline-event]]]])
