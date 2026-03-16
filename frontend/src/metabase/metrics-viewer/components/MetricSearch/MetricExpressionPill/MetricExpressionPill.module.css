@@ -1,9 +1,9 @@
 .metricExpressionPill {
   background-color: var(--mb-color-background-primary);
+  border: 1px solid var(--mb-color-border);
   border-radius: var(--mantine-radius-md);
   cursor: pointer;
   transition: background-color 150ms ease;
-  box-shadow: var(--mantine-shadow-xs);
   max-width: 100%;
 }
 

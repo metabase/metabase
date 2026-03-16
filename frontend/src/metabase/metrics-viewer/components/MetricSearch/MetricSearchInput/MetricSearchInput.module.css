@@ -8,6 +8,7 @@
   padding: 0;
   height: auto;
   min-height: unset;
+  font-family: Monaco, monospace;
 }
 
 .inputField::placeholder {
