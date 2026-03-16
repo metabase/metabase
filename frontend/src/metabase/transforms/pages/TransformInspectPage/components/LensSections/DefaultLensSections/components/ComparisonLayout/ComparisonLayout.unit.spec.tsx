@@ -236,22 +236,14 @@ function setup({
 }
 
 describe("ComparisonLayout", () => {
-  it("displays 3rd and 4th card when first group has 2 cards and second has 3 (chunkSize 4 causes 2nd group to never become visible)", async () => {
+  it("loads cards if part of a group is visible (metabase#GDGT-2002)", async () => {
     setup();
 
-    // First group (2 cards) renders; 2nd group (3 cards) is excluded because
-    // getVisibleGroups requires ALL cards in a group to be in visibleCards.
-    // With chunkSize 4, visibleCards = first 4 cards. The 5th card (g2-out-0)
-    // is in chunk 2, so group 2 is never visible. Cards 3 and 4 (g2-in-0,
-    // g2-in-1) are in visibleCards but their group isn't rendered, so they
-    // never mount and never call markCardLoaded. Chunk 1 never completes.
     await screen.findByText("Group 1 Input");
     await screen.findByText("Group 1 Output");
 
-    // These should eventually display but never do: 2nd group never becomes
-    // visible because its 5th card is in the next chunk, and cards 3–4
-    // never load since their group is hidden.
     expect(screen.getByText("Group 2 Input 1")).toBeInTheDocument();
     expect(screen.getByText("Group 2 Input 2")).toBeInTheDocument();
+    expect(screen.getByText("Group 2 Output")).toBeInTheDocument();
   });
 });
