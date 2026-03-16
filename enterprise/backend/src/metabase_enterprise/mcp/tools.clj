@@ -17,9 +17,19 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- manifest []
+(defn- generate-manifest []
   (tools-manifest/generate-tools-manifest
    {'metabase-enterprise.agent-api.api "/api/agent"}))
+
+(def ^:private manifest-delay
+  (delay (generate-manifest)))
+
+(defn- manifest
+  "Return the tools manifest. Cached in prod, recomputed each call in dev."
+  []
+  (if config/is-dev?
+    (generate-manifest)
+    @manifest-delay))
 
 (defn list-tools
   "Return the tool definitions suitable for MCP `tools/list` responses."
@@ -57,7 +67,13 @@
 
 (defn- capture-streaming-response
   "Execute a StreamingResponse in-process by writing to a ByteArrayOutputStream,
-   then parse the JSON output and return it as MCP text content."
+   then parse the JSON output and return it as MCP text content.
+
+   NOTE: This intentionally bypasses the normal StreamingResponse lifecycle (thread pool,
+   gzip, donechan delivery) because the agent-api streaming functions only write JSON to
+   the output stream and don't depend on `streaming-response/*response*` or other
+   infrastructure bindings. BOT-1120 tracks streaming MCP responses without buffering
+   in memory, which will replace this approach."
   [^StreamingResponse response]
   (let [baos (ByteArrayOutputStream.)
         canceled-chan (a/promise-chan)
@@ -67,7 +83,12 @@
 
 (defn- invoke-agent-api
   "Invoke an Agent API endpoint with a synthetic Ring request.
-   Returns MCP content (text-content on success, error-content on failure)."
+   Returns MCP content (text-content on success, error-content on failure).
+
+   NOTE: The synthetic request sets :metabase-user-id which causes enforce-authentication
+   to grant unrestricted token scopes. This is correct for session-based auth (always
+   unrestricted), but if JWT-based MCP auth is added later, :token-scopes should be
+   propagated from the original request to preserve scope restrictions."
   [method path & [body]]
   (let [result (promise)]
     (agent-api/routes
@@ -100,7 +121,7 @@
                               (when (nil? v)
                                 (throw (ex-info (str "Missing required path parameter: " k)
                                                 {:parameter k :path path})))
-                              (str/replace p placeholder (str v))))
+                              (str/replace p placeholder (URLEncoder/encode (str v) "UTF-8"))))
                           path
                           params)
         path-keys (set (map (comp keyword second) params))]
