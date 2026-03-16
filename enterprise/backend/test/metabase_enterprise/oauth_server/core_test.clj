@@ -1,6 +1,9 @@
 (ns metabase-enterprise.oauth-server.core-test
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
+   ;; Ensure agent API namespaces are loaded so ns-routes can find their endpoints.
+   [metabase-enterprise.agent-api.api]
+   [metabase-enterprise.agent-api.workspace]
    [metabase-enterprise.oauth-server.core :as oauth-server]
    [metabase-enterprise.oauth-server.settings :as oauth-settings]
    [metabase.test :as mt]))
@@ -9,6 +12,18 @@
                       (oauth-server/reset-provider!)
                       (thunk)
                       (oauth-server/reset-provider!)))
+
+(deftest all-agent-scopes-test
+  (testing "all-agent-scopes returns a non-empty collection of agent:* scope strings"
+    (let [scopes (oauth-server/all-agent-scopes)]
+      (is (seq scopes) "should return at least one scope")
+      (is (every? string? scopes) "every scope should be a string")
+      (is (every? #(re-matches #"agent:.+" %) scopes) "every scope should match agent:*")))
+  (testing "all-agent-scopes contains the expected scopes"
+    (let [scopes (set (oauth-server/all-agent-scopes))]
+      (is (contains? scopes "agent:table:read"))
+      (is (contains? scopes "agent:workspace:read"))
+      (is (contains? scopes "agent:query:execute")))))
 
 (deftest get-provider-with-feature-flag-test
   (testing "get-provider returns a Provider instance when :metabot-v3 feature is active"

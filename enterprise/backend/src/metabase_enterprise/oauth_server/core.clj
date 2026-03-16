@@ -1,6 +1,7 @@
 (ns metabase-enterprise.oauth-server.core
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.mcp.tools :as mcp.tools]
    [metabase-enterprise.oauth-server.settings :as oauth-settings]
    [metabase-enterprise.oauth-server.store :as store]
    [metabase.premium-features.core :as premium-features]
@@ -34,21 +35,10 @@
       (oauth-settings/oauth-server-signing-key! (serialize-key k))
       k)))
 
-;; TODO(edpaget): these should be replaced by dynamic scope discovery
-(def base-scopes
-  "Base oidc scopes"
-  ["openid" "profile" "email"])
-
-(def all-agent-scopes
-  "All supported OAuth scopes for the MCP/agent API."
-  ["agent:table:read"
-   "agent:metric:read"
-   "agent:search"
-   "agent:query:construct"
-   "agent:query:execute"
-   "agent:workspace:read"
-   "agent:workspace:write"
-   "agent:workspace:execute"])
+(defn all-agent-scopes
+  "All supported OAuth scopes for the MCP/agent API, derived from endpoint metadata."
+  []
+  (vec (mcp.tools/all-tool-scopes)))
 
 (defn- build-provider-config
   "Build the configuration map for the OIDC provider from Metabase settings."
@@ -66,7 +56,7 @@
      :client-store                   (store/create-client-store)
      :code-store                     (store/create-authorization-code-store)
      :token-store                    (store/create-token-store)
-     :scopes-supported               (into base-scopes all-agent-scopes)
+     :scopes-supported               (all-agent-scopes)
      :claims-provider                (store/create-claims-provider)}))
 
 (defn create-provider!

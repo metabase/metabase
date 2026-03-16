@@ -3,7 +3,9 @@
    when the :agent-api premium feature is available."
   (:require
    [metabase-enterprise.agent-api.api :as agent-api]
+   [metabase-enterprise.agent-api.workspace :as agent-api.workspace]
    [metabase.api.common :as api]
+   [metabase.api.macros :as api.macros]
    [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
    [metabase.premium-features.core :refer [defenterprise]]))
 
@@ -20,9 +22,27 @@
    (fn [response] (deliver result response))
    (fn [error] (deliver result {:status 500 :body {:message (ex-message error)}}))))
 
+(comment agent-api.workspace/keep-me)
+
 (defenterprise generate-manifest
   "EE impl: generate tools manifest from agent API endpoint metadata."
   :feature :agent-api
   []
   (tools-manifest/generate-tools-manifest
    {'metabase-enterprise.agent-api.api "/api/agent"}))
+
+(def ^:private agent-api-namespaces
+  "Namespaces containing agent API endpoints with OAuth scope metadata."
+  ['metabase-enterprise.agent-api.api
+   'metabase-enterprise.agent-api.workspace])
+
+(defn all-tool-scopes
+  "Return a sorted set of all unique OAuth scope strings from agent API endpoints."
+  []
+  (into (sorted-set)
+        (comp (mapcat (fn [ns-sym]
+                        (map (fn [[_k endpoint]]
+                               (get-in endpoint [:form :metadata :scope]))
+                             (api.macros/ns-routes ns-sym))))
+              (filter string?))
+        agent-api-namespaces))
