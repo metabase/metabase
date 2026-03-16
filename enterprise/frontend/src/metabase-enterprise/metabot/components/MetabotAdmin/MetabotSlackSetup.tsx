@@ -144,6 +144,7 @@ export function MetabotSlackSetup() {
 
   const [shouldPollAppInfo, setShouldPollAppInfo] = useState(false);
   const { data: manifest } = useGetSlackManifestQuery();
+
   const { data: appInfo } = useGetSlackAppInfoQuery(undefined, {
     skip: !isSlackTokenValid,
     pollingInterval: shouldPollAppInfo ? 10 * 1000 : 0,
@@ -154,6 +155,7 @@ export function MetabotSlackSetup() {
     .with({ isEncryptionEnabled: false }, () => "encryption" as const)
     .with({ hasMissingScopes: true }, () => "scopes" as const)
     .otherwise(() => null);
+
   useEffect(() => {
     setShouldPollAppInfo(notification === "scopes");
   }, [notification]);
