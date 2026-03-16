@@ -128,7 +128,7 @@ By default, you're pushing to your repository's main branch. However, you can ch
 
 ### 6. Create a personal access token for your read-only Metabase
 
-Create a personal access token with read-only repository access. Copy the token immediately after generating it; you won't be able to see it again.
+Create a personal access token with read-only repository access. Copy the token immediately; you won't be able to see the token again.
 
 - **GitHub**: Create a [fine-grained personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) with **Contents: Read-only** and **Metadata: Read-only** permissions.
 - **GitLab**: In **User Settings** > **Personal access tokens**, [create a token](https://docs.gitlab.com/user/profile/personal_access_tokens/) with **read_repository** scope only.
