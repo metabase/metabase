@@ -70,11 +70,18 @@ describe("scenarios > data studio > library > metrics", () => {
       cy.findByText("Sum of all order totals across the store").should(
         "be.visible",
       );
+    });
+
+    H.DataStudio.Metrics.overviewPageDescriptionSidebar().within(() => {
+      cy.findByText("Last edited by Bobby Tables").should("be.visible");
+
       cy.findByText("Sample Database").should("be.visible");
-      cy.findByText("PUBLIC").should("be.visible");
+
       cy.findByText("Orders").should("be.visible");
-      cy.findByText("Creator and last editor").should("be.visible");
-      cy.findAllByText(/by Bobby Tables/).should("be.visible");
+      cy.findByText("Source table").should("be.visible");
+
+      cy.findByText("Dependencies").should("be.visible");
+      cy.findByText("Dependents").should("be.visible");
     });
 
     cy.log("Ensure chart is visible");

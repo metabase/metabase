@@ -7,8 +7,8 @@ import {
   useRef,
   useState,
 } from "react";
-import { Link } from "react-router";
 
+import { ForwardRefLink } from "metabase/common/components/Link";
 import * as Urls from "metabase/lib/urls";
 import { Box, Flex, Icon, Skeleton, rem } from "metabase/ui";
 
@@ -194,7 +194,7 @@ export function Results({
 
           return (
             <Flex
-              component={Link}
+              component={ForwardRefLink}
               key={key}
               aria-selected={isActive}
               align="center"
@@ -229,6 +229,7 @@ export function Results({
                 handleItemSelect();
               }}
               onFocus={() => onSelectedIndexChange?.(index)}
+              ref={virtual.measureElement}
             >
               <Flex align="center" mih={ITEM_MIN_HEIGHT} py="xs" w="100%">
                 <Flex align="flex-start" gap="xs" w="100%">

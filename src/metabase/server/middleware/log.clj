@@ -19,6 +19,7 @@
    (clojure.core.async.impl.channels ManyToManyChannel)
    (com.mchange.v2.c3p0 PoolBackedDataSource)
    (metabase.server.streaming_response StreamingResponse)
+   (org.apache.logging.log4j ThreadContext)
    (org.eclipse.jetty.util.thread QueuedThreadPool)))
 
 (set! *warn-on-reflection* true)
@@ -159,29 +160,42 @@
 
 (defn- log-core-async-response
   "For async responses that return a `core.async` channel, wait for the channel to return a response before logging the
-  API request info."
-  [{{chan :body, :as _response} :response, :as info}]
+  API request info. `mdc-ctx` is the MDC snapshot from the request thread — restored before logging
+  so trace_id/span_id appear in async log lines."
+  [{{chan :body, :as _response} :response, :as info} mdc-ctx]
   {:pre [(async.u/promise-chan? chan)]}
   ;; [async] wait for the pipe to close the canceled/finished channel and log the API response
   (a/go
     (let [result (a/<! chan)]
-      (log-info (assoc info :async-status (if (nil? result) "canceled" "completed"))))))
+      (try
+        (ThreadContext/putAll mdc-ctx)
+        (log-info (assoc info :async-status (if (nil? result) "canceled" "completed")))
+        (finally
+          (ThreadContext/removeAll (keys mdc-ctx)))))))
 
-(defn- log-streaming-response [{{streaming-response :body, :as _response} :response, :as info}]
+(defn- log-streaming-response
+  "Log a streaming response after it completes. `mdc-ctx` is the MDC snapshot from the request thread."
+  [{{streaming-response :body, :as _response} :response, :as info} mdc-ctx]
   ;; [async] wait for the streaming response to be canceled/finished channel and log the API response
   (let [finished-chan (streaming-response/finished-chan streaming-response)]
     (a/go
       (let [result (a/<! finished-chan)]
-        (log-info (assoc info :async-status (name result)))))))
+        (try
+          (ThreadContext/putAll mdc-ctx)
+          (log-info (assoc info :async-status (name result)))
+          (finally
+            (ThreadContext/removeAll (keys mdc-ctx))))))))
 
 (defn- logged-response
   "Log an API response. Returns response, possibly modified (i.e., core.async channels will be wrapped); this value
-  should be passed to the normal `respond` function."
+  should be passed to the normal `respond` function.
+  Captures MDC context from the request thread so that async log lines include trace_id/span_id."
   [{{:keys [body], :as response} :response, :as info}]
-  (condp instance? body
-    ManyToManyChannel (log-core-async-response info)
-    StreamingResponse (log-streaming-response info)
-    (log-info info))
+  (let [mdc-ctx (ThreadContext/getImmutableContext)]
+    (condp instance? body
+      ManyToManyChannel (log-core-async-response info mdc-ctx)
+      StreamingResponse (log-streaming-response info mdc-ctx)
+      (log-info info)))
   response)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

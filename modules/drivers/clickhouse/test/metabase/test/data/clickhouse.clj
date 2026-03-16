@@ -53,6 +53,7 @@
    :product_name                   (format "metabase/%s" (:tag config/mb-version-info))
    :jdbc_ignore_unsupported_values "true"
    :jdbc_schema_term               "schema",
+   :ignore_unknown_config_key      true
    :max_open_connections           100
    :remember_last_set_roles        true
    :http_connection_provider       "HTTP_URL_CONNECTION"

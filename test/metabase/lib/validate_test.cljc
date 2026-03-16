@@ -248,8 +248,8 @@
               :name "missingcol"}
              (first errors))))))
 
-(deftest ^:parallel find-bad-refs-with-source-soft-refs-test-1-main-fields
-  (testing "invalid field refs in top-level `:fields` clauses are marked :soft?"
+(deftest ^:parallel find-bad-refs-with-source-missing-field-in-fields-not-soft-test-1-main-fields
+  (testing "missing (not inactive) field refs in top-level `:fields` clauses are NOT marked :soft?"
     (let [mp           meta/metadata-provider
           base         (lib/query mp (meta/table-metadata :orders))
           removing     (->> (lib/fieldable-columns base)
@@ -265,9 +265,57 @@
       (is (= {:type               :missing-column
               :source-entity-type :table
               :source-entity-id   (meta/id :orders)
-              :name               "missingcol"
+              :name               "missingcol"}
+             (first errors))))))
+
+(deftest ^:parallel find-bad-refs-with-source-inactive-field-in-fields-is-soft-test
+  (testing "inactive field refs in top-level `:fields` clauses are marked :soft?"
+    (let [mp           meta/metadata-provider
+          base         (lib/query mp (meta/table-metadata :orders))
+          fieldable    (->> (lib/fieldable-columns base)
+                            (filter :selected?))
+          last-col     (last fieldable)
+          ;; Create a provider where this field is inactive
+          mp           (lib.tu/mock-metadata-provider
+                        mp
+                        {:fields [(assoc last-col :active false)]})
+          query        (lib/query mp (meta/table-metadata :orders))
+          fields       (mapv lib/ref fieldable)
+          bad-query    (lib/with-fields query fields)
+          errors       (lib/find-bad-refs-with-source bad-query)]
+      (is (= 1 (count errors)))
+      (is (= {:type               :missing-column
+              :source-entity-type :table
+              :source-entity-id   (meta/id :orders)
+              :name               (:name last-col)
               :soft?              true}
              (first errors))))))
+
+(deftest ^:parallel find-bad-refs-with-source-missing-field-in-fields-not-soft-test
+  (testing "missing field refs in `:fields` (not just inactive) should NOT be marked :soft? (GHY-3157)"
+    (let [mp           meta/metadata-provider
+          ;; Q1: query on orders with explicit fields
+          q1           (lib/query mp (meta/table-metadata :orders))
+          q1-cols      (lib/returned-columns q1)
+          ;; Create card 101 from Q1, but with one column removed from result-metadata
+          ;; This simulates Q1 dropping a field (e.g., removing ID from :fields)
+          removed-col  (m/find-first #(= (:name %) "ID") q1-cols)
+          mp           (lib.tu/metadata-provider-with-card-from-query
+                        mp 101 q1
+                        {:result-metadata (vec (remove #(= (:name %) "ID") q1-cols))})
+          ;; Q2: query based on card 101, with :fields that include the now-missing ID
+          q2           (lib/query mp {:lib/type :metadata/card :id 101})
+          q2-cols      (lib/returned-columns q2)
+          ;; Add a :fields clause that includes a ref to the removed column
+          q2-with-fields (lib/with-fields q2 (concat q2-cols [(lib/ref removed-col)]))
+          errors       (lib/find-bad-refs-with-source q2-with-fields)]
+      (is (= 1 (count errors)))
+      ;; The key assertion: this should NOT be soft, because the field is missing, not just inactive
+      (is (not (:soft? (first errors))))
+      (is (= {:type               :missing-column
+              :source-entity-type :card
+              :source-entity-id   101}
+             (select-keys (first errors) [:type :source-entity-type :source-entity-id]))))))
 
 ;; TODO: (bshepherdson, 2026-02-05) This doesn't pass right now, because refs in join clauses are ignored by
 ;; find-bad-refs-with-source. Restore this test as part of QUE-3081.

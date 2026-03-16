@@ -8,6 +8,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.core :as lib]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -103,7 +104,8 @@
       (ws.common/add-to-changeset! (mt/user->id :crowberto) workspace
                                    :transform nil
                                    {:name   "Transform A"
-                                    :source {:type "query" :query (mt/mbql-query orders {:limit 1})}
+                                    :source {:type  "query"
+                                             :query (-> (ws.tu/q :orders) (lib/limit 1))}
                                     :target {:database (mt/id)
                                              :schema   "analytics"
                                              :name     "table_a"}})

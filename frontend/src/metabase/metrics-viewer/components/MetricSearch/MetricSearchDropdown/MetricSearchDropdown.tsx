@@ -10,14 +10,9 @@ import {
 } from "../../../hooks/use-metric-measure-search";
 import type { SelectedMetric } from "../../../types/viewer-state";
 import { MetricSearchResults } from "../MetricSearchResults";
-import { filterSearchResults } from "../utils";
+import { type ExcludeMetric, filterSearchResults } from "../utils";
 
 import S from "./MetricSearchDropdown.module.css";
-
-type ExcludeMetric = {
-  id: number;
-  sourceType: "metric" | "measure";
-};
 
 type MetricSearchDropdownProps = {
   selectedMetricIds: Set<number>;

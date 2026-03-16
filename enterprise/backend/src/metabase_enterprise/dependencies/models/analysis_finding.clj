@@ -25,8 +25,9 @@
   - 3: Initial version
   - 4: Disable naive sql validation
   - 5: Added source entity tracking in analysis_finding_error table
-  - 6: Removed validate prefix from error_type in analysis_finding_error"
-  6)
+  - 6: Removed validate prefix from error_type in analysis_finding_error
+  - 7: Only mark inactive (not missing) field refs in :fields as soft (GHY-3157)"
+  7)
 
 (defn- error->finding-error-row
   "Convert an error from lib/find-bad-refs-with-source to a row for analysis_finding_error table.

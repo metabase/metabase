@@ -380,8 +380,7 @@
             [:name :string]
             [:description {:optional true} [:maybe :string]]
             [:source TransformSource]
-            ;; Not sure why this schema is giving trouble
-            #_[:target TransformTarget]]]
+            [:target TransformTarget]]]
   (ws.api.common/create-workspace-transform! ws-id body))
 
 (api.macros/defendpoint :get "/:ws-id/transform" :- [:map [:transforms [:sequential WorkspaceTransformListing]]]

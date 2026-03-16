@@ -1,0 +1,67 @@
+.gridLabelInput {
+  .label {
+    font-weight: normal;
+    color: var(--mb-color-text-secondary);
+  }
+
+  .input {
+    width: 11rem;
+    border-radius: 1.25rem;
+
+    &.unset {
+      color: var(--mb-color-text-secondary);
+    }
+  }
+
+  .sectionLabel {
+    &[data-position="right"] {
+      color: var(--mb-color-text-primary);
+    }
+
+    &[data-position="left"] {
+      color: var(--mb-color-brand);
+    }
+  }
+}
+
+.textStyleWrapper {
+  flex-grow: 1;
+}
+
+.textStyleInput {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  height: 1rem;
+  min-height: 1rem;
+  cursor: pointer;
+
+  &[data-expanded="true"] {
+    cursor: text;
+  }
+}
+
+.selectedInput {
+  font-weight: bold;
+}
+
+.textStyleSection {
+  width: 1rem;
+  height: 1rem;
+  cursor: pointer;
+
+  &[data-position="left"] {
+    display: none;
+  }
+
+  svg {
+    width: 0.75rem !important;
+    height: 0.75rem !important;
+  }
+}
+
+.metricLink {
+  :hover {
+    color: var(--mb-color-brand);
+  }
+}

@@ -20,6 +20,7 @@ export const ExternalLink = forwardRef(function ExternalLink(
   return (
     <a
       ref={ref}
+      role="link"
       href={href}
       className={`${S.LinkRoot} ${className || CS.link}`}
       target={target}

@@ -10,7 +10,6 @@ import {
 } from "./__tests__/test-helpers";
 import type { DimensionFilterValue } from "./dimension-filters";
 import {
-  applyDimensionFilter,
   buildDimensionFilterClause,
   extractDefinitionFilters,
   parseFilter,
@@ -235,124 +234,6 @@ describe("buildDimensionFilterClause", () => {
 
       const parts = LibMetric.booleanFilterParts(definition, clause);
       expect(parts).toMatchObject({ operator: "=", values: [true] });
-    });
-  });
-});
-
-describe("applyDimensionFilter", () => {
-  describe("metric", () => {
-    it("adds filter to definition with no existing filters", () => {
-      const definition = setupDefinition(metadata, REVENUE_METRIC.id);
-      const dimension = getFilterableDimension(definition, "Category");
-
-      const result = applyDimensionFilter(definition, dimension, {
-        type: "string",
-        operator: "=",
-        values: ["Gadget"],
-        options: {},
-      });
-
-      const resultFilters = LibMetric.filters(result);
-      expect(resultFilters).toHaveLength(1);
-    });
-
-    it("replaces existing filter on same dimension when dimension has sources", () => {
-      const definition = setupDefinition(metadata, REVENUE_METRIC.id);
-      const dimension = getFilterableDimension(definition, "Amount");
-
-      const withFirst = applyDimensionFilter(definition, dimension, {
-        type: "number",
-        operator: "between",
-        values: [10, 100],
-      });
-
-      const existingFilters = LibMetric.filters(withFirst);
-      const parsedFirst = parseFilter(withFirst, existingFilters[0]);
-
-      const withReplaced = applyDimensionFilter(
-        withFirst,
-        parsedFirst!.dimension,
-        {
-          type: "number",
-          operator: "between",
-          values: [50, 200],
-        },
-      );
-
-      const resultFilters = LibMetric.filters(withReplaced);
-      expect(resultFilters).toHaveLength(1);
-
-      const parsed = parseFilter(withReplaced, resultFilters[0]);
-      expect(parsed!.value).toMatchObject({
-        type: "number",
-        operator: "between",
-        values: [50, 200],
-      });
-    });
-
-    it("preserves filters on other dimensions", () => {
-      const definition = setupDefinition(metadata, REVENUE_METRIC.id);
-      const categoryDimension = getFilterableDimension(definition, "Category");
-      const amountDimension = getFilterableDimension(definition, "Amount");
-
-      const withCategory = applyDimensionFilter(definition, categoryDimension, {
-        type: "string",
-        operator: "=",
-        values: ["Gadget"],
-        options: {},
-      });
-
-      const withBoth = applyDimensionFilter(withCategory, amountDimension, {
-        type: "number",
-        operator: "between",
-        values: [10, 100],
-      });
-
-      const resultFilters = LibMetric.filters(withBoth);
-      expect(resultFilters).toHaveLength(2);
-    });
-  });
-
-  describe("measure", () => {
-    it("adds filter to definition with no existing filters", () => {
-      const definition = setupMeasureDefinition(
-        measureMetadata,
-        TOTAL_MEASURE.id,
-      );
-      const dimension = getFilterableDimension(definition, "Quantity");
-
-      const result = applyDimensionFilter(definition, dimension, {
-        type: "number",
-        operator: "between",
-        values: [1, 50],
-      });
-
-      const resultFilters = LibMetric.filters(result);
-      expect(resultFilters).toHaveLength(1);
-    });
-
-    it("preserves filters on other dimensions", () => {
-      const definition = setupMeasureDefinition(
-        measureMetadata,
-        TOTAL_MEASURE.id,
-      );
-      const quantityDimension = getFilterableDimension(definition, "Quantity");
-      const totalDimension = getFilterableDimension(definition, "Total");
-
-      const withQuantity = applyDimensionFilter(definition, quantityDimension, {
-        type: "number",
-        operator: "between",
-        values: [1, 50],
-      });
-
-      const withBoth = applyDimensionFilter(withQuantity, totalDimension, {
-        type: "number",
-        operator: ">",
-        values: [100],
-      });
-
-      const resultFilters = LibMetric.filters(withBoth);
-      expect(resultFilters).toHaveLength(2);
     });
   });
 });

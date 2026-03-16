@@ -331,11 +331,10 @@ describe("scenarios > metrics > explorer", () => {
       cy.wait("@dataset");
       H.MetricsViewer.breakoutLegend().within(() => {
         cy.findByRole("heading", { name: "Created At" }).should("be.visible");
-        cy.findByText("2022").should("be.visible");
-        cy.findByText("2023").should("be.visible");
-        cy.findByText("2024").should("be.visible");
-        cy.findByText("2025").should("be.visible");
-        cy.findByText("2026").should("be.visible");
+        const currentYear = new Date().getFullYear();
+        for (let year = 2022; year <= currentYear; year++) {
+          cy.findByText(String(year)).should("be.visible");
+        }
       });
 
       H.MetricsViewer.searchBarPills()
@@ -644,7 +643,7 @@ describe("scenarios > metrics > explorer", () => {
 
       H.popover().findByText("Doohickey").click();
 
-      H.popover().findByRole("button", { name: "Update filter" }).click();
+      H.popover().findByRole("button", { name: "Add filter" }).click();
       H.MetricsViewer.getMetricVisualization().should(
         "not.contain.text",
         "Doohickey",

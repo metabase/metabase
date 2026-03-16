@@ -29,7 +29,12 @@
   color: var(--mb-color-text-secondary);
 }
 
+.notificationListItem:hover .actionButtonContainer {
+  display: block;
+}
+
 .actionButtonContainer {
+  display: none;
   position: absolute;
 
   /* 1rem - 0.6875rem (small icon button paddings) */

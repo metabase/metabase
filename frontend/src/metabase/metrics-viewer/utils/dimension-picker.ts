@@ -76,16 +76,16 @@ function collectAllDimensionEntries(
 
 function groupBySource(entries: DimensionEntry[]): DimensionEntry[][] {
   const groups: DimensionEntry[][] = [];
+  const groupKeys: DimensionEntry[] = [];
 
   for (const entry of entries) {
-    const match = groups.find((group) =>
-      group.some((existing) =>
-        LibMetric.isSameSource(existing.dimension, entry.dimension),
-      ),
+    const groupIndex = groupKeys.findIndex((key) =>
+      LibMetric.isSameSource(key.dimension, entry.dimension),
     );
-    if (match) {
-      match.push(entry);
+    if (groupIndex !== -1) {
+      groups[groupIndex].push(entry);
     } else {
+      groupKeys.push(entry);
       groups.push([entry]);
     }
   }
@@ -159,13 +159,6 @@ export function getAvailableDimensionsForPicker(
 export interface SourceDisplayInfo {
   type: "metric" | "measure";
   name: string;
-}
-
-export function getSourceDisplayName(
-  sourceId: MetricSourceId,
-  sourceDataById: Record<MetricSourceId, SourceDisplayInfo>,
-): string {
-  return sourceDataById[sourceId]?.name ?? sourceId;
 }
 
 // ── Dimension picker sections ──
@@ -242,7 +235,7 @@ export function buildDimensionPickerSections({
     }
 
     if (hasMultipleSources) {
-      const sourceName = getSourceDisplayName(sourceId, sourceDataById);
+      const sourceName = sourceDataById[sourceId]?.name ?? sourceId;
       splitByGroup(sourceDimensions, sourceName);
     } else {
       splitByGroup(sourceDimensions);

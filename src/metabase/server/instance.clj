@@ -65,6 +65,13 @@
   ^Server []
   @instance*)
 
+(defn server-port
+  "Return the actual port the running Jetty server is listening on. Useful when the server was started with port 0
+  (OS-assigned random port). Returns `nil` if no server is running."
+  []
+  (when-let [^Server server (instance)]
+    (.. server getURI getPort)))
+
 (defn- async-proxy-handler ^ServletHandler [handler timeout]
   (proxy [ServletHandler] []
     (doHandle [_ ^Request base-request ^HttpServletRequest request ^HttpServletResponse response]

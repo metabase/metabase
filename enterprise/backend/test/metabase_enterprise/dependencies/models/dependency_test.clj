@@ -180,41 +180,42 @@
 
 (deftest dependency-analysis-version-test
   (testing "dependency_analysis_version is updated when entities are created or updated"
-    (testing "cards"
-      (mt/with-model-cleanup [:model/Dependency]
-        (mt/with-temp [:model/Card card {:dependency_analysis_version 0}]
-          (is (zero? (t2/select-one-fn :dependency_analysis_version :model/Card (:id card))))
-          (mt/with-premium-features #{:dependencies}
-            (card/update-card! {:card-before-update card
-                                :card-updates {:dataset_query (mt/mbql-query orders)}}))
-          (is (= deps.graph/current-dependency-analysis-version
-                 (t2/select-one-fn :dependency_analysis_version :model/Card (:id card)))))))
-    (testing "transforms create"
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/Transform transform]
-          (is (= deps.graph/current-dependency-analysis-version
-                 (t2/select-one-fn :dependency_analysis_version :model/Transform (:id transform)))))))
-    (testing "transforms update"
-      (mt/with-premium-features #{}
-        (mt/with-temp [:model/Transform transform]
-          (is (zero? (t2/select-one-fn :dependency_analysis_version :model/Transform (:id transform))))
-          (mt/with-premium-features #{:dependencies}
-            (t2/update! :model/Transform (:id transform) {:source {:type "query" :query (mt/mbql-query products)}}))
-          (is (= deps.graph/current-dependency-analysis-version
-                 (t2/select-one-fn :dependency_analysis_version :model/Transform (:id transform)))))))
-    (testing "snippets create"
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/NativeQuerySnippet snippet]
-          (is (= deps.graph/current-dependency-analysis-version
-                 (t2/select-one-fn :dependency_analysis_version :model/NativeQuerySnippet (:id snippet)))))))
-    (testing "snippets update"
-      (mt/with-premium-features #{}
-        (mt/with-temp [:model/NativeQuerySnippet snippet]
-          (is (zero? (t2/select-one-fn :dependency_analysis_version :model/NativeQuerySnippet (:id snippet))))
-          (mt/with-premium-features #{:dependencies}
-            (t2/update! :model/NativeQuerySnippet (:id snippet) {:content "new content"}))
-          (is (= deps.graph/current-dependency-analysis-version
-                 (t2/select-one-fn :dependency_analysis_version :model/NativeQuerySnippet (:id snippet)))))))))
+    (mt/with-empty-h2-app-db!
+      (testing "cards"
+        (mt/with-model-cleanup [:model/Dependency]
+          (mt/with-temp [:model/Card card {:dependency_analysis_version 0}]
+            (is (zero? (t2/select-one-fn :dependency_analysis_version :model/Card (:id card))))
+            (mt/with-premium-features #{:dependencies}
+              (card/update-card! {:card-before-update card
+                                  :card-updates {:dataset_query (mt/mbql-query orders)}}))
+            (is (= deps.graph/current-dependency-analysis-version
+                   (t2/select-one-fn :dependency_analysis_version :model/Card (:id card)))))))
+      (testing "transforms create"
+        (mt/with-premium-features #{:dependencies}
+          (mt/with-temp [:model/Transform transform]
+            (is (= deps.graph/current-dependency-analysis-version
+                   (t2/select-one-fn :dependency_analysis_version :model/Transform (:id transform)))))))
+      (testing "transforms update"
+        (mt/with-premium-features #{}
+          (mt/with-temp [:model/Transform transform]
+            (is (zero? (t2/select-one-fn :dependency_analysis_version :model/Transform (:id transform))))
+            (mt/with-premium-features #{:dependencies}
+              (t2/update! :model/Transform (:id transform) {:source {:type "query" :query (mt/mbql-query products)}}))
+            (is (= deps.graph/current-dependency-analysis-version
+                   (t2/select-one-fn :dependency_analysis_version :model/Transform (:id transform)))))))
+      (testing "snippets create"
+        (mt/with-premium-features #{:dependencies}
+          (mt/with-temp [:model/NativeQuerySnippet snippet]
+            (is (= deps.graph/current-dependency-analysis-version
+                   (t2/select-one-fn :dependency_analysis_version :model/NativeQuerySnippet (:id snippet)))))))
+      (testing "snippets update"
+        (mt/with-premium-features #{}
+          (mt/with-temp [:model/NativeQuerySnippet snippet]
+            (is (zero? (t2/select-one-fn :dependency_analysis_version :model/NativeQuerySnippet (:id snippet))))
+            (mt/with-premium-features #{:dependencies}
+              (t2/update! :model/NativeQuerySnippet (:id snippet) {:content "new content"}))
+            (is (= deps.graph/current-dependency-analysis-version
+                   (t2/select-one-fn :dependency_analysis_version :model/NativeQuerySnippet (:id snippet))))))))))
 
 (deftest dependency-analysis-version-create-card-test
   (testing "dependency_analysis_version is updated when a card is created"
@@ -227,37 +228,38 @@
 
 (deftest filtered-graph-dependencies-test
   (testing "filtered-graph-dependencies respects filter clause"
-    (mt/with-temp [:model/User user {:email "me@wherever.com"}]
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-model-cleanup [:model/Card :model/Dependency]
-          (let [{id1 :id :as card1} (card/create-card! (basic-orders) user)
-                {id2 :id :as card2} (card/create-card! (wrap-card card1) user)
-                {id3 :id :as _card3} (card/create-card! (wrap-card card2) user)]
-            (testing "without filter, returns all dependencies"
-              (let [graph (deps.graph/graph-dependencies)
-                    deps (graph/transitive graph [[:card id3]])]
-                (is (= #{[:card id2] [:card id1] [:table (mt/id :orders)]}
-                       (set deps)))))
-            (testing "with filter excluding card1, omits card1 and its dependencies"
-              (let [filter-fn (fn [entity-type-field entity-id-field]
-                                [:and
-                                 [:= entity-type-field "card"]
-                                 [:in entity-id-field [id2 id3]]])
-                    graph (deps.graph/filtered-graph-dependencies filter-fn)
-                    deps (graph/transitive graph [[:card id3]])]
-                (is (= #{[:card id2]}
-                       (set deps))
-                    "Should only include card2, not card1 or table")))
-            (testing "with filter excluding card2, breaks the chain"
-              (let [filter-fn (fn [entity-type-field entity-id-field]
-                                [:and
-                                 [:= entity-type-field "card"]
-                                 [:in entity-id-field [id1 id3]]])
-                    graph (deps.graph/filtered-graph-dependencies filter-fn)
-                    deps (graph/transitive graph [[:card id3]])]
-                (is (= #{}
-                       (set deps))
-                    "Should be empty, chain is broken at card2")))))))))
+    (mt/with-empty-h2-app-db!
+      (mt/with-temp [:model/User user {:email "me@wherever.com"}]
+        (mt/with-premium-features #{:dependencies}
+          (mt/with-model-cleanup [:model/Card :model/Dependency]
+            (let [{id1 :id :as card1} (card/create-card! (basic-orders) user)
+                  {id2 :id :as card2} (card/create-card! (wrap-card card1) user)
+                  {id3 :id :as _card3} (card/create-card! (wrap-card card2) user)]
+              (testing "without filter, returns all dependencies"
+                (let [graph (deps.graph/graph-dependencies)
+                      deps (graph/transitive graph [[:card id3]])]
+                  (is (= #{[:card id2] [:card id1] [:table (mt/id :orders)]}
+                         (set deps)))))
+              (testing "with filter excluding card1, omits card1 and its dependencies"
+                (let [filter-fn (fn [entity-type-field entity-id-field]
+                                  [:and
+                                   [:= entity-type-field "card"]
+                                   [:in entity-id-field [id2 id3]]])
+                      graph (deps.graph/filtered-graph-dependencies filter-fn)
+                      deps (graph/transitive graph [[:card id3]])]
+                  (is (= #{[:card id2]}
+                         (set deps))
+                      "Should only include card2, not card1 or table")))
+              (testing "with filter excluding card2, breaks the chain"
+                (let [filter-fn (fn [entity-type-field entity-id-field]
+                                  [:and
+                                   [:= entity-type-field "card"]
+                                   [:in entity-id-field [id1 id3]]])
+                      graph (deps.graph/filtered-graph-dependencies filter-fn)
+                      deps (graph/transitive graph [[:card id3]])]
+                  (is (= #{}
+                         (set deps))
+                      "Should be empty, chain is broken at card2"))))))))))
 
 (deftest filtered-graph-dependents-test
   (testing "filtered-graph-dependents respects filter clause"

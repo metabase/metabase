@@ -5,6 +5,7 @@ import type { TableDataSource } from "metabase-types/api";
 
 interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
   showMetabaseTransform?: boolean;
+  showUnknown?: boolean;
   value: TableDataSource | "unknown" | null;
   onChange: (value: TableDataSource | "unknown" | null) => void;
 }
@@ -12,6 +13,7 @@ interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
 export const DataSourceInput = ({
   comboboxProps,
   showMetabaseTransform,
+  showUnknown = true,
   value,
   onChange,
   onFocus,
@@ -29,7 +31,11 @@ export const DataSourceInput = ({
         position: "bottom-start",
         ...comboboxProps,
       }}
-      data={getData(showMetabaseTransform || value === "metabase-transform")}
+      data={getData({
+        showUnknown,
+        showMetabaseTransform:
+          showMetabaseTransform || value === "metabase-transform",
+      })}
       label={t`Source`}
       placeholder={t`Select a data source`}
       value={value}
@@ -39,9 +45,17 @@ export const DataSourceInput = ({
   );
 };
 
-function getData(showMetabaseTransform?: boolean) {
+function getData({
+  showUnknown,
+  showMetabaseTransform,
+}: {
+  showUnknown?: boolean;
+  showMetabaseTransform?: boolean;
+}) {
   return [
-    { value: "unknown" as const, label: t`Unspecified` },
+    showUnknown
+      ? { value: "unknown" as const, label: t`Unspecified` }
+      : undefined,
     { value: "ingested" as const, label: t`Ingested` },
     showMetabaseTransform
       ? // eslint-disable-next-line metabase/no-literal-metabase-strings -- shown in Data Studio only

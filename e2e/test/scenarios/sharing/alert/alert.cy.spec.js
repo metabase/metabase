@@ -162,7 +162,8 @@ describe("scenarios > alert", () => {
       const adminSubscriptionError = `You're only allowed to email subscriptions to addresses ending in ${allowedDomain}`;
 
       function addEmailRecipient(email) {
-        cy.findByRole("textbox").click().type(`${email}`).blur();
+        // Mantine Select has the role `textbox` 🤦
+        cy.findAllByRole("textbox").first().click().type(`${email}`).blur();
       }
 
       function setAllowedDomains() {

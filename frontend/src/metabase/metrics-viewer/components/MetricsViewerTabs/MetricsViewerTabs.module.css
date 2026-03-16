@@ -4,10 +4,6 @@
   }
 }
 
-.allTab :global(.Icon) {
-  display: block;
-}
-
 .closeButton {
   visibility: hidden;
 }

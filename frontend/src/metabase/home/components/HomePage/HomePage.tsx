@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useLayoutEffect } from "react";
 import { replace } from "react-router-redux";
 import { t } from "ttag";
 
@@ -30,7 +30,9 @@ const useDashboardRedirect = () => {
   const hasDismissedToast = useSelector(getHasDismissedCustomHomePageToast);
   const dispatch = useDispatch();
 
-  useEffect(() => {
+  // This redirect must live inside a useLayoutEffect to prevent the browser from painting a frame of <HomeContent>
+  // before firing the redirect (metabase#69917)
+  useLayoutEffect(() => {
     if (dashboardId && !isLoading && !dashboard?.archived) {
       dispatch(
         replace({

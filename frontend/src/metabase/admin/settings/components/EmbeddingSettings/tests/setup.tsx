@@ -6,6 +6,7 @@ import {
   setupTokenStatusEndpoint,
   setupUpdateSettingEndpoint,
   setupUpdateSettingsEndpoint,
+  setupUpsellEndpoints,
   setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
@@ -64,6 +65,7 @@ export async function setup({
   setupSettingsEndpoints([]);
   setupUpdateSettingEndpoint();
   setupUpdateSettingsEndpoint();
+  setupUpsellEndpoints();
   setupUserKeyValueEndpoints({
     namespace: "user_acknowledgement",
     key: "upsell-dev_instances",

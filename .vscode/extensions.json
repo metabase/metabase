@@ -9,6 +9,7 @@
     "github.vscode-pull-request-github",
     "limejuly.vscode-yaml-block-highlight",
     "streetsidesoftware.code-spell-checker",
-    "styled-components.vscode-styled-components"
+    "styled-components.vscode-styled-components",
+    "vunguyentuan.vscode-css-variables"
   ]
 }

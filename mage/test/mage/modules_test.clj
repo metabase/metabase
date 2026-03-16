@@ -142,12 +142,12 @@
         (is (= "master/release branch" (:reason result)))))))
 
 ;;; =============================================================================
-;;; Priority 9: Driver deps affected (self-hosted only)
+;;; Priority 10: Driver deps affected (self-hosted only)
 ;;; =============================================================================
 
 (deftest driver-deps-affected-runs-self-hosted-drivers
   (testing "Self-hosted drivers run when driver module is affected"
-    ;; H2/Postgres hit priority 2 first, others hit priority 8
+    ;; H2/Postgres hit priority 2 first, others hit priority 10
     (doseq [driver [:mysql :mongo :oracle :sqlserver]]
       (let [result (mage.modules/driver-decision driver
                                                  (make-ctx {})
@@ -159,7 +159,7 @@
         (is (= "driver module affected by shared code changes" (:reason result)))))))
 
 ;;; =============================================================================
-;;; Priority 5-8: Cloud driver special rules
+;;; Priority 5-9: Cloud driver special rules
 ;;; =============================================================================
 
 (deftest cloud-driver-with-label-runs
@@ -199,6 +199,18 @@
         (is (= "Module updated which explicitly triggers cloud drivers"
                (:reason result)))))))
 
+(deftest cloud-driver-runs-when-driver-deps-affected
+  (testing "Cloud driver runs when driver deps are affected (e.g., deps.edn changed)"
+    (doseq [driver [:athena :bigquery :databricks :redshift :snowflake]]
+      (let [result (mage.modules/driver-decision driver
+                                                 (make-ctx {})
+                                                 true  ; driver-deps-affected
+                                                 #{}   ; quarantined
+                                                 #{})] ; updated
+        (is (true? (:should-run result))
+            (str driver " should run when driver deps affected"))
+        (is (= "driver module affected by shared code changes" (:reason result)))))))
+
 (deftest cloud-driver-without-changes-skips
   (testing "Cloud driver skips when no relevant changes"
     (doseq [driver [:athena :bigquery :databricks :redshift :snowflake]]
@@ -212,7 +224,7 @@
         (is (= "no relevant changes for cloud driver" (:reason result)))))))
 
 ;;; =============================================================================
-;;; Priority 10: Self-hosted drivers
+;;; Priority 11: Self-hosted drivers
 ;;; =============================================================================
 
 (deftest self-hosted-driver-not-affected-skips

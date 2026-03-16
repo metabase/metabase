@@ -5,9 +5,9 @@
    to avoid circular dependencies between test namespaces."
   (:require
    [clojure.string :as str]
-   [metabase.config.core :as config]
    [metabase.premium-features.token-check :as token-check]
    [metabase.request.core :as request]
+   [metabase.server.instance :as server.instance]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.random :as u.random]
@@ -100,7 +100,7 @@
         [jwt-enabled              true
          jwt-identity-provider-uri default-jwt-idp-uri
          jwt-shared-secret        default-jwt-secret
-         site-url                 (format "http://localhost:%s" (config/config-str :mb-jetty-port))]
+         site-url                 (format "http://localhost:%s" (server.instance/server-port))]
         (mt/with-premium-features current-features
           (f))))))
 
@@ -136,7 +136,7 @@
          slack-connect-client-secret            default-slack-client-secret
          slack-connect-authentication-mode      "sso"
          slack-connect-user-provisioning-enabled true
-         site-url                               (format "http://localhost:%s" (config/config-str :mb-jetty-port))]
+         site-url                               (format "http://localhost:%s" (server.instance/server-port))]
         (mt/with-premium-features current-features
           (f))))))
 
@@ -158,7 +158,7 @@
     (mt/with-additional-premium-features #{:sso-oidc}
       (mt/with-temporary-setting-values
         [oidc-providers [default-oidc-provider]
-         site-url       (format "http://localhost:%s" (config/config-str :mb-jetty-port))]
+         site-url       (format "http://localhost:%s" (server.instance/server-port))]
         (mt/with-premium-features current-features
           (f))))))
 

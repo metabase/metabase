@@ -51,3 +51,10 @@ export function setupScimEndpoints(
   fetchMock.get("path:/api/ee/scim/api_key", payload);
   fetchMock.post("path:/api/ee/scim/api_key", payload);
 }
+
+export function setupUpsellEndpoints() {
+  fetchMock.get(
+    "path:/api/user-key-value/namespace/user_acknowledgement/key/upsell-embedding-methods",
+    { status: 204 },
+  );
+}

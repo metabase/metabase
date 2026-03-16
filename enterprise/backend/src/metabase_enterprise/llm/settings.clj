@@ -22,6 +22,7 @@
 (defsetting ee-openai-api-key
   (deferred-tru "The OpenAI API Key used in Metabase Enterprise.")
   :encryption :when-encryption-key-set
+  :sensitive? true
   :visibility :settings-manager
   :export? false
   :doc false)
@@ -29,6 +30,7 @@
 (defsetting ee-anthropic-api-key
   (deferred-tru "The Anthropic API Key used in Metabase Enterprise.")
   :encryption :when-encryption-key-set
+  :sensitive? true
   :visibility :settings-manager
   :export? false
   :doc false)

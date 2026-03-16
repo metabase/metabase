@@ -11,6 +11,7 @@
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.config.core :as config]
+   [metabase.server.instance :as server.instance]
    [metabase.server.middleware.session :as mw.session]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.server.test-handler :as server.test-handler]
@@ -58,14 +59,17 @@
                               [(encode-key-value k value-or-values)]))))))
 
 (defn build-url
-  "Build an API URL for `localhost` and `MB_JETTY_PORT` with `query-parameters`.
+  "Build an API URL for `localhost` with `query-parameters`. Uses the actual port from the running Jetty server
+  (supporting port 0 / OS-assigned random ports), falling back to `MB_JETTY_PORT` config if the server isn't started.
 
     (build-url \"db/1\" {:x true}) -> \"http://localhost:3000/api/db/1?x=true\""
   [url query-parameters]
   {:pre [(string? url) (u/maybe? map? query-parameters)]}
-  (let [url (if (= (first url) \/) url (str "/" url))]
+  (let [url  (if (= (first url) \/) url (str "/" url))
+        port (or (server.instance/server-port)
+                 (config/config-str :mb-jetty-port))]
     (str "http://localhost:"
-         (config/config-str :mb-jetty-port)
+         port
          *url-prefix*
          url
          (when (seq query-parameters)

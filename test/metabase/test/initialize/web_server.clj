@@ -12,7 +12,7 @@
 (defn init! []
   (try
     (server/start-web-server! (server.test-handler/test-handler))
-    (log/infof "Started test server on port %d" (config/config-int :mb-jetty-port))
+    (log/infof "Started test server on port %d" (server/server-port))
     (catch Throwable e
       (log/fatal e "Web server failed to start")
       (when config/is-test?
