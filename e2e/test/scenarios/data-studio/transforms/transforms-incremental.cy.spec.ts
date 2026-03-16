@@ -276,7 +276,8 @@ def transform(animals):
       },
     );
 
-    it.skip("should be able to create and run a native SQL incremental transform", () => {
+    it("should be able to create and run a native SQL incremental transform", () => {
+      const SCHEMA_B = "Schema B";
       cy.log("create a new transform");
       visitTransformListPage();
       cy.button("Create a transform").click();
@@ -298,7 +299,7 @@ def transform(animals):
         .click();
       editorSidebar().findByLabelText("Variable type").click();
       H.popover().findByText("Table").click();
-      H.popover().findByText("Schema B").click();
+      H.popover().findByText(SCHEMA_B).click();
       H.popover().findByText(SOURCE_TABLE).click();
 
       getQueryEditor().button("Save").click();
@@ -335,7 +336,7 @@ def transform(animals):
         "add one element to the source table and run incremental transform again",
       );
       H.queryWritableDB(
-        'INSERT INTO "Schema A"."Animals" (name, score) VALUES (\'NewRow\', 31)',
+        `INSERT INTO "${SCHEMA_B}"."Animals" (name, score) VALUES (\'NewRow\', 31)`,
       );
 
       cy.go("back");
