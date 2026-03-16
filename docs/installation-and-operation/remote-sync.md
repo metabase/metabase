@@ -16,7 +16,7 @@ Remote Sync lets you develop analytics content in your Metabase and automaticall
 - Snippets
 - Transforms
 
-Metabase doesn't sync any of your data. What it stores in Git are [YAML files](./serialization.md#example-of-a-serialized-question) describing your analytics content. Your actual data stays in your databases and never goes to GitHub.
+Metabase doesn't sync any of your data. What it stores in Git are [YAML files](./serialization.md#example-of-a-serialized-question) describing your analytics content. Your actual data stays in your databases and never leaves your Metabase.
 
 ### How Remote Sync works
 
@@ -54,22 +54,27 @@ You'll need to be an admin to set up Remote Sync.
 3. [Connect your development Metabase to your repository](#3-connect-your-development-metabase-to-your-repository)
 4. [Select collections to sync](#4-select-collections-to-sync)
 5. [Push your changes to your repository](#5-push-your-changes-to-your-repository)
-6. [Create a personal access token for production](#6-create-a-personal-access-token-for-production)
+6. [Create a personal access token for your read-only Metabase](#6-create-a-personal-access-token-for-your-read-only-metabase)
 7. [Connect your production Metabase to your repository](#7-connect-your-production-metabase-to-your-repository)
 8. [Configure transforms syncing (optional)](#8-configure-transforms-syncing-optional)
 
 ### 1. Set up a repository to store your content
 
-Before you connect Metabase to your Git repository, create a [new GitHub repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-new-repository). Initialize the repo with a README.md.
+Before you connect Metabase to your Git repository, create a new repository. Supported providers include:
+
+- [GitHub](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-new-repository)
+- [GitLab](https://docs.gitlab.com/user/project/index.html#create-a-blank-project)
+- [Bitbucket](https://support.atlassian.com/bitbucket-cloud/docs/create-a-repository/).
+
+Initialize the repo with a README.md.
 
 ### 2. Create a personal access token for development
 
-Create a [GitHub fine-grained personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) for your repository with these permissions:
+Create a personal access token with read and write repository access. Copy the token immediately; you won't be able to see the token again.
 
-- **Contents:** Read and write
-- **Metadata:** Read-only (required)
-
-Copy the token immediately after generating it.
+- **GitHub**: Create a [fine-grained personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) with **Contents: Read and write** and **Metadata: Read-only** permissions.
+- **GitLab**: In **User Settings** > **Personal access tokens**, [create a token](https://docs.gitlab.com/user/profile/personal_access_tokens/) with **read_repository** and **write_repository** scopes. Tokens have an expiration date (your admin may set a maximum lifetime).
+- **Bitbucket**: In your [Atlassian account settings](https://id.atlassian.com/manage-profile/security) under **Security**, click **Create API token with scopes**. Select Bitbucket, search for "repos", and grant **read:repository:bitbucket** and **write:repository:bitbucket** (write does not include read). Tokens expire and can't be modified after creation.
 
 ### 3. Connect your development Metabase to your repository
 
@@ -83,7 +88,7 @@ In the Metabase instance that you use for development:
 
 2. Enter your repository URL:
 
-   - For example, `https://github.com/your-org/your-repo`. The repository must already exist and be initialized with at least one commit.
+   - For example, `https://github.com/your-org/your-repo` (note the `https`). The repository must already exist and be initialized with at least one commit.
 
 3. Select **Read-write mode**.
 
@@ -121,14 +126,13 @@ Check your repository; you should see the collection.
 
 By default, you're pushing to your repository's main branch. However, you can choose (or create) a different branch so you can open pull requests for review. See [Branch management](#branch-management) for details on creating and switching branches.
 
-### 6. Create a personal access token for production
+### 6. Create a personal access token for your read-only Metabase
 
-Create a [GitHub fine-grained personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) for your repository with these permissions:
+Create a personal access token with read-only repository access. Copy the token immediately after generating it; you won't be able to see it again.
 
-- **Contents:** Read-only
-- **Metadata:** Read-only (required)
-
-Copy the token immediately after generating it — you'll need to paste it into your production Metabase.
+- **GitHub**: Create a [fine-grained personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) with **Contents: Read-only** and **Metadata: Read-only** permissions.
+- **GitLab**: In **User Settings** > **Personal access tokens**, [create a token](https://docs.gitlab.com/user/profile/personal_access_tokens/) with **read_repository** scope only.
+- **Bitbucket**: In your [Atlassian account settings](https://id.atlassian.com/manage-profile/security) under **Security**, click **Create API token with scopes**. Select Bitbucket and grant **read:repository:bitbucket** only.
 
 ### 7. Connect your production Metabase to your repository
 
@@ -140,7 +144,7 @@ In your production Metabase instance:
 
 2. Enter your repository URL:
 
-   - Use the same repository as your development Metabase, for example, `https://github.com/your-org/your-repo`.
+   - Use the same repository as your development Metabase, for example, `https://github.com/your-org/your-repo` (note the `https`).
 
 3. Select **Read-only mode**.
 
