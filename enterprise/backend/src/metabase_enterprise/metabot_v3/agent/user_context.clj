@@ -123,11 +123,64 @@
   (log/warn "Unknown viewing context type:" (:type entity))
   "")
 
-(defmethod format-entity "table" [entity] (format-simple-entity entity))
-(defmethod format-entity "model" [entity] (format-simple-entity entity))
-(defmethod format-entity "question" [entity] (if (native-query-item? entity) (format-entity "native" entity) (format-simple-entity entity)))
-(defmethod format-entity "metric" [entity] (format-simple-entity entity))
-(defmethod format-entity "dashboard" [entity] (format-simple-entity entity))
+;; For saved entities (table, model, question, metric, dashboard), the frontend only sends
+;; type + id. We fetch full details from the DB using entity-details and render them via
+;; llm-representations, mirroring what the Python AI service did via HTTP callbacks.
+
+(defn- fetch-and-format
+  "Fetch entity details and format with llm-rep. Falls back to format-simple-entity on failure."
+  [entity preamble details-fn format-fn]
+  (try
+    (let [{:keys [structured-output]} (details-fn)]
+      (if structured-output
+        (te/lines preamble (format-fn structured-output))
+        (format-simple-entity entity)))
+    (catch Exception e
+      (log/error e "Error fetching entity details for viewing context" {:type (:type entity) :id (:id entity)})
+      (format-simple-entity entity))))
+
+(defmethod format-entity "table"
+  [entity]
+  (fetch-and-format entity
+                    "The user is currently looking at the rows of a table:"
+                    #(entity-details/get-table-details {:table-id (:id entity)
+                                                        :with-field-values? false
+                                                        :with-metrics? false})
+                    llm-rep/table->xml))
+
+(defmethod format-entity "model"
+  [entity]
+  (fetch-and-format entity
+                    "The user is currently looking at the rows of a model:"
+                    #(entity-details/get-table-details {:model-id (:id entity)
+                                                        :with-field-values? false
+                                                        :with-metrics? false})
+                    llm-rep/model->xml))
+
+(defmethod format-entity "question"
+  [entity]
+  (if (native-query-item? entity)
+    (format-entity "native" entity)
+    (fetch-and-format entity
+                      "The user is currently looking at the results of a report:"
+                      #(entity-details/get-report-details {:report-id (:id entity)
+                                                           :with-field-values? false})
+                      llm-rep/question->xml)))
+
+(defmethod format-entity "metric"
+  [entity]
+  (fetch-and-format entity
+                    "The user is currently looking at the details of a metric:"
+                    #(entity-details/get-metric-details {:metric-id (:id entity)
+                                                         :with-field-values? false})
+                    llm-rep/metric->xml))
+
+(defmethod format-entity "dashboard"
+  [entity]
+  (fetch-and-format entity
+                    "The user is currently looking at the details of a dashboard:"
+                    #(entity-details/get-dashboard-details {:dashboard-id (:id entity)})
+                    llm-rep/dashboard->xml))
 
 ;;; Viewing Context Formatting
 
