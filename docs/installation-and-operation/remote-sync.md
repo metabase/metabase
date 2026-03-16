@@ -50,11 +50,11 @@ We'll cover [setting up Remote Sync](#setting-up-remote-sync), an [example dev-t
 You'll need to be an admin to set up Remote Sync.
 
 1. [Set up a repository to store your content](#1-set-up-a-repository-to-store-your-content)
-2. [Create a personal access token for development](#2-create-a-personal-access-token-for-development)
+2. [Create a token for read-and-write Metabase ](#2-create-a-token-for-your-read-and-write-metabase)
 3. [Connect your development Metabase to your repository](#3-connect-your-development-metabase-to-your-repository)
 4. [Select collections to sync](#4-select-collections-to-sync)
 5. [Push your changes to your repository](#5-push-your-changes-to-your-repository)
-6. [Create a personal access token for your read-only Metabase](#6-create-a-personal-access-token-for-your-read-only-metabase)
+6. [Create a personal access token for your read-only Metabase](#6-create-a-token-for-your-read-only-metabase)
 7. [Connect your production Metabase to your repository](#7-connect-your-production-metabase-to-your-repository)
 8. [Configure transforms syncing (optional)](#8-configure-transforms-syncing-optional)
 
@@ -68,7 +68,7 @@ Before you connect Metabase to your Git repository, create a new repository. Sup
 
 Initialize the repo with a README.md.
 
-### 2. Create a personal access token for development
+### 2. Create a token for your read-and-write Metabase
 
 Create a personal access token with read and write repository access. Copy the token immediately; you won't be able to see the token again.
 
@@ -94,7 +94,7 @@ In the Metabase instance that you use for development:
 
 4. Add your access token:
 
-   - Paste the personal access token (PAT) you created earlier. Make sure the token has [read and write permissions](#2-create-a-personal-access-token-for-development). Metabase encrypts your token before storing it.
+   - Paste the personal access token (PAT) you created earlier. Make sure the token has [read and write permissions](#2-create-a-token-for-your-read-and-write-metabase). Metabase encrypts your token before storing it.
 
 5. Save and test the connection:
 
@@ -126,7 +126,7 @@ Check your repository; you should see the collection.
 
 By default, you're pushing to your repository's main branch. However, you can choose (or create) a different branch so you can open pull requests for review. See [Branch management](#branch-management) for details on creating and switching branches.
 
-### 6. Create a personal access token for your read-only Metabase
+### 6. Create a token for your read-only Metabase
 
 Create a personal access token with read-only repository access. Copy the token immediately; you won't be able to see the token again.
 
