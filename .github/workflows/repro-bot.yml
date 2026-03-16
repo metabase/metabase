@@ -41,6 +41,8 @@ jobs:
           echo "Issue: https://github.com/${{ github.repository }}/issues/$ISSUE_NUMBER"
 
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: ./.github/actions/prepare-backend
       - uses: ./.github/actions/prepare-frontend
 
@@ -139,7 +141,10 @@ jobs:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY_REPRO_BOT }}
           github_token: ${{ steps.claude-app-token.outputs.token }}
           prompt: |
-            Read and follow the instructions in .claude/commands/repro.md to investigate this GitHub issue:
+            IMPORTANT: Your working directory is the repo root, but repro-bot lives in the `repro-bot/` subdirectory.
+            First, run `cd ${{ github.workspace }}/repro-bot` to change into the repro-bot directory before doing anything else.
+
+            Then read and follow the instructions in .claude/commands/repro.md to investigate this GitHub issue:
             https://github.com/${{ github.repository }}/issues/${{ steps.issue.outputs.number }}
 
             ## CI Environment Notes
