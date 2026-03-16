@@ -41,8 +41,6 @@ jobs:
           echo "Issue: https://github.com/${{ github.repository }}/issues/$ISSUE_NUMBER"
 
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - uses: ./.github/actions/prepare-backend
       - uses: ./.github/actions/prepare-frontend
 
@@ -55,7 +53,7 @@ jobs:
           path: repro-bot
 
       - name: Pre-clone metabase bare git repo
-        run: git clone --bare .git repro-bot/git/metabase
+        run: git clone --bare "https://github.com/${{ github.repository }}.git" repro-bot/git/metabase
 
       - name: Capture Node.js path for MCP subprocesses
         run: echo "NODE_BIN_DIR=$(dirname $(which node))" >> $GITHUB_ENV
@@ -267,8 +265,8 @@ jobs:
           name: repro-bot-${{ steps.issue.outputs.number }}
           if-no-files-found: ignore
           path: |
-            repro/*/SUGGESTIONS.md
-            repro/*/*.log
-            repro/*/*.patch
-            repro/*/playwright/**
+            repro-bot/repro/*/SUGGESTIONS.md
+            repro-bot/repro/*/*.log
+            repro-bot/repro/*/*.patch
+            repro-bot/repro/*/playwright/**
             ${{ steps.claude.outputs.execution_file }}
