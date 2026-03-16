@@ -226,6 +226,7 @@
 
 (def ^:private sample-categorical-series
   {"s1" {:summary        sample-summary
+         :data_points    5
          :category_count 3
          :top_categories [{:name "A" :value 10.0 :percentage 50.0}]
          :outliers       []}})
@@ -249,10 +250,12 @@
     (let [corrs [{:series_a "a" :series_b "b" :coefficient 0.9
                   :strength :strong :direction :positive}]
           series {"a" {:summary        sample-summary
+                       :data_points    2
                        :category_count 2
                        :top_categories []
                        :outliers       []}
                   "b" {:summary        sample-summary
+                       :data_points    2
                        :category_count 2
                        :top_categories []
                        :outliers       []}}

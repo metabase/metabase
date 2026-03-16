@@ -277,12 +277,12 @@
 
 (defn- render-categorical-series
   "Render stats for a single categorical series."
-  [series-name {:keys [x_name y_name summary category_count
+  [series-name {:keys [x_name y_name summary data_points category_count
                        top_categories bottom_categories outliers] :as series-stats}]
   (let [sections [(str "## Series: " series-name)
                   (when x_name (str "**X-axis**: " x_name))
                   (when y_name (str "**Y-axis**: " y_name))
-                  (str "**Data Points**: " category_count)
+                  (str "**Data Points**: " data_points)
                   (str "**Categories**: " category_count)
                   (render-data-characteristics-note series-stats)
                   (when summary

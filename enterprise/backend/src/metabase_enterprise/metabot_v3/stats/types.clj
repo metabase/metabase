@@ -184,6 +184,7 @@
   "Statistics for a single categorical series."
   [:map
    [:summary [:maybe ::series-summary]]
+   [:data_points :int]
    [:category_count :int]
    [:top_categories [:sequential ::category-stat]]
    [:bottom_categories {:optional true} [:maybe [:sequential ::category-stat]]]
