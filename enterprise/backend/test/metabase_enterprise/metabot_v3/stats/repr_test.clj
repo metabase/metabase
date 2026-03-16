@@ -61,8 +61,10 @@
 ;;; ------------------------------------------- Histogram Repr Tests -------------------------------------------------
 
 (deftest ^:parallel repr-histogram-shows-shape-test
-  (testing "representation includes Distribution Shape when enough data"
-    (let [series-stats (#'histogram/compute-series-stats (range 1 101))
+  (testing "representation includes Distribution Shape when enough bins"
+    (let [xs           (range 0 100 10)
+          ys           [1 3 8 15 25 25 15 8 3 1]
+          series-stats (#'histogram/compute-series-stats xs ys)
           stats        {:chart_type   :histogram
                         :series_count 1
                         :series       {"Test Series" series-stats}}
@@ -71,15 +73,28 @@
       (is (str/includes? rep "Distribution Shape")))))
 
 (deftest ^:parallel repr-histogram-shows-percentiles-and-iqr-test
-  (testing "histogram representation includes percentiles and IQR for sufficient data"
-    (let [series-stats (#'histogram/compute-series-stats (range 1 101))
+  (testing "histogram representation includes estimated percentiles and IQR"
+    (let [xs           (range 0 100 10)
+          ys           [1 3 8 15 25 25 15 8 3 1]
+          series-stats (#'histogram/compute-series-stats xs ys)
           stats        {:chart_type   :histogram
                         :series_count 1
                         :series       {"Values" series-stats}}
           rep          (repr/generate-representation {:stats stats})]
-      (is (str/includes? rep "Percentiles"))
-      (is (str/includes? rep "P50="))
-      (is (str/includes? rep "IQR")))))
+      (is (str/includes? rep "Estimated Percentiles"))
+      (is (str/includes? rep "P50≈"))
+      (is (str/includes? rep "Estimated IQR")))))
+
+(deftest ^:parallel repr-histogram-shows-structure-test
+  (testing "histogram representation includes structural metrics"
+    (let [series-stats (#'histogram/compute-series-stats [0 10 20 30 40] [5 10 20 10 5])
+          stats        {:chart_type   :histogram
+                        :series_count 1
+                        :series       {"Bins" series-stats}}
+          rep          (repr/generate-representation {:stats stats})]
+      (is (str/includes? rep "Structure"))
+      (is (str/includes? rep "mode bin"))
+      (is (str/includes? rep "top 3 bins contain")))))
 
 ;;; -------------------------------------------- Scatter Repr Tests --------------------------------------------------
 

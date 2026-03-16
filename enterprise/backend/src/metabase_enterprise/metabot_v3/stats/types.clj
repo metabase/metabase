@@ -226,25 +226,44 @@
    [:series_count :int]
    [:series [:map-of :string ::scatter-series-stats]]])
 
-(mr/def ::distribution-stats
-  "Distribution statistics for histogram data."
+(mr/def ::histogram-summary
+  "Weighted summary statistics estimated from binned histogram data."
   [:map
-   [:percentiles [:map-of :int number?]]
-   [:quartiles [:map
-                [:q1 number?]
-                [:median number?]
-                [:q3 number?]
-                [:iqr number?]]]
-   [:skewness {:optional true} [:maybe number?]]
-   [:kurtosis {:optional true} [:maybe number?]]])
+   [:weighted_mean number?]
+   [:weighted_std_dev number?]
+   [:data_range number?]])
+
+(mr/def ::estimated-distribution-stats
+  "Distribution statistics estimated from binned histogram data using weighted approximations."
+  [:map
+   [:estimated_percentiles [:map-of :int number?]]
+   [:estimated_quartiles [:map
+                          [:q1 number?]
+                          [:median number?]
+                          [:q3 number?]
+                          [:iqr number?]]]
+   [:weighted_skewness {:optional true} [:maybe number?]]
+   [:weighted_kurtosis {:optional true} [:maybe number?]]])
+
+(mr/def ::histogram-structure
+  "Structural properties of histogram bin distribution."
+  [:map
+   [:mode_bin [:maybe [:sequential :any]]]
+   [:peak_count :int]
+   [:concentration_top3 number?]
+   [:gap_count :int]
+   [:empty_bin_ratio number?]
+   [:bin_count :int]])
 
 (mr/def ::histogram-series-stats
   "Statistics for a single histogram series."
   [:map
-   [:summary ::series-summary]
+   [:estimated_summary ::histogram-summary]
+   [:total_count :int]
    [:data_points :int]
    [:bin_data [:sequential [:sequential :any]]]
-   [:distribution ::distribution-stats]])
+   [:distribution ::estimated-distribution-stats]
+   [:structure ::histogram-structure]])
 
 (mr/def ::histogram-stats
   "Statistics for histogram charts."

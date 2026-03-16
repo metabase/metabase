@@ -232,10 +232,20 @@
          :outliers       []}})
 
 (def ^:private sample-histogram-series
-  {"s1" {:summary      sample-summary
-         :data_points  10
-         :distribution {:percentiles {25 2.0 50 5.0 75 8.0 90 9.0 95 9.5 99 9.9}
-                        :quartiles   {:q1 2.0 :median 5.0 :q3 8.0 :iqr 6.0}}}})
+  {"s1" {:estimated_summary {:weighted_mean    5.0
+                             :weighted_std_dev 2.0
+                             :data_range       9.0}
+         :total_count       50
+         :data_points       10
+         :bin_data          [[1.0 5.0] [2.0 10.0]]
+         :distribution      {:estimated_percentiles {25 2.0 50 5.0 75 8.0 90 9.0 95 9.5 99 9.9}
+                             :estimated_quartiles   {:q1 2.0 :median 5.0 :q3 8.0 :iqr 6.0}}
+         :structure         {:mode_bin           [2.0 10.0]
+                             :peak_count         1
+                             :concentration_top3 1.0
+                             :gap_count          0
+                             :empty_bin_ratio    0.0
+                             :bin_count          2}}})
 
 (deftest ^:parallel make-chart-result-basic-test
   (testing "builds standard chart result with valid schema"

@@ -350,33 +350,46 @@
 
 (defn- render-histogram-series
   "Render stats for a single histogram series."
-  [series-name {:keys [x_name y_name summary data_points bin_data distribution] :as series-stats}]
-  (let [{:keys [skewness kurtosis percentiles quartiles]} distribution
-        p-str     (when (seq percentiles)
-                    (str "**Percentiles**: "
-                         "P25=" (format-number (get percentiles 25))
-                         ", P50=" (format-number (get percentiles 50))
-                         ", P75=" (format-number (get percentiles 75))
-                         ", P90=" (format-number (get percentiles 90))))
-        iqr-str   (when quartiles
-                    (str "**IQR**: " (format-number (:iqr quartiles))
-                         " (Q1=" (format-number (:q1 quartiles))
-                         " to Q3=" (format-number (:q3 quartiles)) ")"))
-        shape-str (when skewness
-                    (let [k-desc (when kurtosis (kurtosis-description kurtosis))]
-                      (str "**Distribution Shape**: " (skewness-description skewness)
-                           (when k-desc (str ", " k-desc)))))
-        sections  [(str "## Series: " series-name)
-                   (when x_name (str "**X-axis**: " x_name))
-                   (when y_name (str "**Y-axis**: " y_name))
-                   (str "**Data Points**: " data_points)
-                   (render-data-characteristics-note series-stats)
-                   (when (seq bin_data)
-                     (let [xs (mapv first bin_data)]
-                       (render-axis-range "X-axis" {:min (apply min xs) :max (apply max xs)})))
-                   (render-axis-range "Y-axis" summary)
-                   p-str iqr-str shape-str
-                   (render-sample-data bin_data)]]
+  [series-name {:keys [x_name y_name estimated_summary total_count data_points
+                       bin_data distribution structure] :as series-stats}]
+  (let [{:keys [weighted_skewness weighted_kurtosis estimated_percentiles estimated_quartiles]} distribution
+        {:keys [weighted_mean weighted_std_dev data_range]} estimated_summary
+        {:keys [mode_bin peak_count concentration_top3 gap_count empty_bin_ratio bin_count]} structure
+        summary-str (str "**Estimated Distribution** (from " bin_count " bins, " total_count " total observations): "
+                         "mean≈" (format-number weighted_mean)
+                         ", std_dev≈" (format-number weighted_std_dev)
+                         ", range=" (format-number data_range))
+        p-str       (when (seq estimated_percentiles)
+                      (str "**Estimated Percentiles**: "
+                           "P25≈" (format-number (get estimated_percentiles 25))
+                           ", P50≈" (format-number (get estimated_percentiles 50))
+                           ", P75≈" (format-number (get estimated_percentiles 75))
+                           ", P90≈" (format-number (get estimated_percentiles 90))))
+        iqr-str     (when estimated_quartiles
+                      (str "**Estimated IQR**: " (format-number (:iqr estimated_quartiles))
+                           " (Q1≈" (format-number (:q1 estimated_quartiles))
+                           " to Q3≈" (format-number (:q3 estimated_quartiles)) ")"))
+        shape-str   (when weighted_skewness
+                      (let [k-desc (when weighted_kurtosis (kurtosis-description weighted_kurtosis))]
+                        (str "**Distribution Shape**: " (skewness-description weighted_skewness)
+                             (when k-desc (str ", " k-desc)))))
+        struct-str  (str "**Structure**: "
+                         (when mode_bin (str "mode bin at " (format-number (first mode_bin))
+                                             " (count=" (format-number (second mode_bin)) ")"))
+                         (when (> peak_count 1) (str ", " peak_count " peaks (multimodal)"))
+                         ", top 3 bins contain " (format "%.0f%%" (* 100.0 concentration_top3)) " of data"
+                         (when (pos? gap_count) (str ", " gap_count " gap(s)"))
+                         (when (pos? empty_bin_ratio) (str ", " (format "%.0f%%" (* 100.0 empty_bin_ratio)) " empty bins")))
+        sections    [(str "## Series: " series-name)
+                     (when x_name (str "**X-axis**: " x_name))
+                     (when y_name (str "**Y-axis**: " y_name))
+                     (str "**Bins**: " data_points)
+                     (render-data-characteristics-note series-stats)
+                     (when (seq bin_data)
+                       (let [xs (mapv first bin_data)]
+                         (render-axis-range "X-axis" {:min (apply min xs) :max (apply max xs)})))
+                     summary-str p-str iqr-str shape-str struct-str
+                     (render-sample-data bin_data)]]
     (str/join "\n" (remove nil? sections))))
 
 ;;; ----------------------------------------- Main Representation ----------------------------------------------------
