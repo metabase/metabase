@@ -133,7 +133,7 @@
   {:scope "agent:workspace:read"
    :tool  {:name "get_workspace"
            :description "Get details for a workspace by ID."}}
-  [{:keys [ws-id]} :- [:map [:ws-id ms/PositiveInt]]
+  [{:keys [ws-id]} :- [:map [:ws-id {:tool/description "The workspace ID."} ms/PositiveInt]]
    _query-params]
   (ws.api.common/get-workspace ws-id))
 
@@ -145,7 +145,7 @@
   {:scope "agent:workspace:read"
    :tool  {:name "get_workspace_tables"
            :description "Get the input and output tables for a workspace."}}
-  [{:keys [ws-id]} :- [:map [:ws-id ms/PositiveInt]]
+  [{:keys [ws-id]} :- [:map [:ws-id {:tool/description "The workspace ID."} ms/PositiveInt]]
    _query-params]
   (ws.api.common/get-workspace-tables ws-id))
 
@@ -168,7 +168,7 @@
   {:scope "agent:workspace:read"
    :tool  {:name "get_workspace_log"
            :description "Get the creation status and recent log entries for a workspace."}}
-  [{:keys [ws-id]} :- [:map [:ws-id ms/PositiveInt]]
+  [{:keys [ws-id]} :- [:map [:ws-id {:tool/description "The workspace ID."} ms/PositiveInt]]
    _query-params]
   (ws.api.common/get-workspace-log ws-id))
 
@@ -177,7 +177,7 @@
   {:scope "agent:workspace:read"
    :tool  {:name "get_workspace_graph"
            :description "Get the dependency graph for a workspace showing transforms and their relationships."}}
-  [{:keys [ws-id]} :- [:map [:ws-id ms/PositiveInt]]
+  [{:keys [ws-id]} :- [:map [:ws-id {:tool/description "The workspace ID."} ms/PositiveInt]]
    _query-params]
   (ws.api.common/get-workspace-graph ws-id))
 
@@ -186,7 +186,7 @@
   {:scope "agent:workspace:read"
    :tool  {:name "get_workspace_problems"
            :description "Detect problems in a workspace such as missing inputs or stale targets."}}
-  [{:keys [ws-id]} :- [:map [:ws-id ms/PositiveInt]]
+  [{:keys [ws-id]} :- [:map [:ws-id {:tool/description "The workspace ID."} ms/PositiveInt]]
    _query-params]
   (ws.api.common/get-workspace-problems ws-id))
 
@@ -195,8 +195,8 @@
   {:scope "agent:workspace:read"
    :tool  {:name "list_external_transforms"
            :description "List transforms not yet checked out into this workspace."}}
-  [{:keys [ws-id]} :- [:map [:ws-id ::ws.t/appdb-id]]
-   {:keys [database-id]} :- [:map [:database-id {:optional true} ::ws.t/appdb-id]]]
+  [{:keys [ws-id]} :- [:map [:ws-id {:tool/description "The workspace ID."} ::ws.t/appdb-id]]
+   {:keys [database-id]} :- [:map [:database-id {:optional true :tool/description "Filter by database ID."} ::ws.t/appdb-id]]]
   (ws.api.common/get-external-transforms ws-id database-id))
 
 (api.macros/defendpoint :get "/:ws-id/input/pending"
@@ -205,7 +205,7 @@
   {:scope "agent:workspace:read"
    :tool  {:name "list_pending_inputs"
            :description "List input tables that have not yet been granted access."}}
-  [{:keys [ws-id]} :- [:map [:ws-id ::ws.t/appdb-id]]]
+  [{:keys [ws-id]} :- [:map [:ws-id {:tool/description "The workspace ID."} ::ws.t/appdb-id]]]
   (ws.api.common/get-pending-inputs ws-id))
 
 ;;; ------------------------------------------ Transform CRUD ---------------------------------------------------------
@@ -215,7 +215,7 @@
   {:scope "agent:workspace:read"
    :tool  {:name "list_workspace_transforms"
            :description "List all transforms in a workspace."}}
-  [{:keys [ws-id]} :- [:map [:ws-id ::ws.t/appdb-id]]]
+  [{:keys [ws-id]} :- [:map [:ws-id {:tool/description "The workspace ID."} ::ws.t/appdb-id]]]
   (ws.api.common/list-transforms ws-id))
 
 (api.macros/defendpoint :get "/:ws-id/transform/:tx-id" :- WorkspaceTransform
@@ -223,7 +223,9 @@
   {:scope "agent:workspace:read"
    :tool  {:name "get_workspace_transform"
            :description "Get details for a specific transform in a workspace."}}
-  [{:keys [ws-id tx-id]} :- [:map [:ws-id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]]
+  [{:keys [ws-id tx-id]} :- [:map
+                             [:ws-id {:tool/description "The workspace ID."} ::ws.t/appdb-id]
+                             [:tx-id {:tool/description "The transform's ref ID within this workspace."} ::ws.t/ref-id]]]
   (ws.api.common/fetch-ws-transform ws-id tx-id))
 
 (api.macros/defendpoint :post "/:ws-id/archive" :- Workspace
@@ -231,7 +233,7 @@
   {:scope "agent:workspace:write"
    :tool  {:name "archive_workspace"
            :description "Archive a workspace."}}
-  [{:keys [ws-id]} :- [:map [:ws-id ms/PositiveInt]]
+  [{:keys [ws-id]} :- [:map [:ws-id {:tool/description "The workspace ID."} ms/PositiveInt]]
    _query-params
    _body-params]
   (ws.api.common/archive-workspace! ws-id))
@@ -242,13 +244,13 @@
   {:scope "agent:workspace:write"
    :tool  {:name "create_workspace_transform"
            :description "Create a new transform in a workspace."}}
-  [{:keys [ws-id]} :- [:map [:ws-id ::ws.t/appdb-id]]
+  [{:keys [ws-id]} :- [:map [:ws-id {:tool/description "The workspace ID."} ::ws.t/appdb-id]]
    _query-params
    body :- [:map #_{:closed true}
-            [:name :string]
-            [:description {:optional true} [:maybe :string]]
-            [:source TransformSource]
-            [:target TransformTarget]]]
+            [:name {:tool/description "Display name for the transform."} :string]
+            [:description {:optional true :tool/description "Human-readable description of what the transform does."} [:maybe :string]]
+            [:source {:tool/description "The transform source definition (type 'query' with an MBQL query, or type 'python' with a Python script)."} TransformSource]
+            [:target {:tool/description "The target table where transform output is written."} TransformTarget]]]
   (ws.api.common/create-workspace-transform! ws-id body))
 
 (api.macros/defendpoint :post "/:ws-id/transform/:tx-id/archive" :- :nil
@@ -256,7 +258,9 @@
   {:scope "agent:workspace:write"
    :tool  {:name "archive_workspace_transform"
            :description "Mark a transform for archival."}}
-  [{:keys [ws-id tx-id]} :- [:map [:ws-id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]]
+  [{:keys [ws-id tx-id]} :- [:map
+                             [:ws-id {:tool/description "The workspace ID."} ::ws.t/appdb-id]
+                             [:tx-id {:tool/description "The transform's ref ID within this workspace."} ::ws.t/ref-id]]]
   (ws.api.common/archive-transform! ws-id tx-id))
 
 (api.macros/defendpoint :post "/:ws-id/transform/:tx-id/unarchive" :- :nil
@@ -264,7 +268,9 @@
   {:scope "agent:workspace:write"
    :tool  {:name "unarchive_workspace_transform"
            :description "Unmark a transform for archival."}}
-  [{:keys [ws-id tx-id]} :- [:map [:ws-id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]]
+  [{:keys [ws-id tx-id]} :- [:map
+                             [:ws-id {:tool/description "The workspace ID."} ::ws.t/appdb-id]
+                             [:tx-id {:tool/description "The transform's ref ID within this workspace."} ::ws.t/ref-id]]]
   (ws.api.common/unarchive-transform! ws-id tx-id))
 
 (api.macros/defendpoint :post "/:ws-id/transform/validate/target"
@@ -274,15 +280,16 @@
    :tool  {:name "validate_transform_target"
            :description "Validate the target table for a workspace transform."
            :annotations {:read-only? true :idempotent? true}}}
-  [{:keys [ws-id]} :- [:map [:ws-id ::ws.t/appdb-id]]
-   {:keys [transform-id]} :- [:map [:transform-id {:optional true} ::ws.t/ref-id]]
+  [{:keys [ws-id]} :- [:map [:ws-id {:tool/description "The workspace ID."} ::ws.t/appdb-id]]
+   {:keys [transform-id]} :- [:map [:transform-id {:optional true :tool/description "Ref ID of an existing transform to exclude from conflict checks."} ::ws.t/ref-id]]
    {:keys [db_id target]} :- [:map
-                              [:db_id {:optional true} ::ws.t/appdb-id]
-                              [:target [:map
-                                        [:database {:optional true} ::ws.t/appdb-id]
-                                        [:type :string]
-                                        [:schema [:maybe :string]]
-                                        [:name :string]]]]]
+                              [:db_id {:optional true :tool/description "Database ID to validate the target against."} ::ws.t/appdb-id]
+                              [:target {:tool/description "The target table specification to validate."}
+                               [:map
+                                [:database {:optional true} ::ws.t/appdb-id]
+                                [:type :string]
+                                [:schema [:maybe :string]]
+                                [:name :string]]]]]
   (ws.api.common/validate-target ws-id transform-id db_id target))
 
 ;;; ---------------------------------------- Run / Query Endpoints ----------------------------------------------------
@@ -296,9 +303,9 @@
   {:scope "agent:workspace:execute"
    :tool  {:name "run_workspace"
            :description "Execute all transforms in a workspace in dependency order."}}
-  [{:keys [ws-id]} :- [:map [:ws-id ::ws.t/appdb-id]]
+  [{:keys [ws-id]} :- [:map [:ws-id {:tool/description "The workspace ID."} ::ws.t/appdb-id]]
    _query-params
-   {:keys [stale_only]} :- [:map [:stale_only {:optional true} ::ws.t/flag]]]
+   {:keys [stale_only]} :- [:map [:stale_only {:optional true :tool/description "When true, only run transforms whose targets are stale."} ::ws.t/flag]]]
   (ws.api.common/run-workspace! ws-id stale_only))
 
 (api.macros/defendpoint :post "/:ws-id/transform/:tx-id/run"
@@ -307,9 +314,11 @@
   {:scope "agent:workspace:execute"
    :tool  {:name "run_workspace_transform"
            :description "Run a single transform in a workspace."}}
-  [{:keys [ws-id tx-id]} :- [:map [:ws-id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]
+  [{:keys [ws-id tx-id]} :- [:map
+                             [:ws-id {:tool/description "The workspace ID."} ::ws.t/appdb-id]
+                             [:tx-id {:tool/description "The transform's ref ID within this workspace."} ::ws.t/ref-id]]
    _query-params
-   {:keys [run_stale_ancestors]} :- [:map [:run_stale_ancestors {:optional true} ::ws.t/flag]]]
+   {:keys [run_stale_ancestors]} :- [:map [:run_stale_ancestors {:optional true :tool/description "When true, also run stale ancestor transforms first."} ::ws.t/flag]]]
   (ws.api.common/run-transform! ws-id tx-id run_stale_ancestors))
 
 (api.macros/defendpoint :post "/:ws-id/transform/:tx-id/dry-run"
@@ -319,9 +328,11 @@
    :tool  {:name "dry_run_workspace_transform"
            :description "Dry-run a transform without persisting results to the target table."
            :annotations {:read-only? true}}}
-  [{:keys [ws-id tx-id]} :- [:map [:ws-id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]
+  [{:keys [ws-id tx-id]} :- [:map
+                             [:ws-id {:tool/description "The workspace ID."} ::ws.t/appdb-id]
+                             [:tx-id {:tool/description "The transform's ref ID within this workspace."} ::ws.t/ref-id]]
    _query-params
-   {:keys [run_stale_ancestors]} :- [:map [:run_stale_ancestors {:optional true} ::ws.t/flag]]]
+   {:keys [run_stale_ancestors]} :- [:map [:run_stale_ancestors {:optional true :tool/description "When true, also run stale ancestor transforms first."} ::ws.t/flag]]]
   (ws.api.common/dry-run-transform! ws-id tx-id run_stale_ancestors))
 
 (api.macros/defendpoint :post "/:ws-id/query"
@@ -330,9 +341,9 @@
   {:scope "agent:workspace:execute"
    :tool  {:name "execute_workspace_query"
            :description "Execute a SQL query in the workspace's isolated database context."}}
-  [{:keys [ws-id]} :- [:map [:ws-id ::ws.t/appdb-id]]
+  [{:keys [ws-id]} :- [:map [:ws-id {:tool/description "The workspace ID."} ::ws.t/appdb-id]]
    _query-params
-   {:keys [sql]} :- [:map [:sql [:string {:min 1}]]]]
+   {:keys [sql]} :- [:map [:sql {:tool/description "The SQL query to execute against the workspace's isolated database."} [:string {:min 1}]]]]
   (ws.api.common/execute-query! ws-id sql))
 
 ;;; ------------------------------------------ Update / Delete --------------------------------------------------------
@@ -342,13 +353,15 @@
   {:scope "agent:workspace:write"
    :tool  {:name "update_workspace_transform"
            :description "Update an existing transform in a workspace."}}
-  [{:keys [ws-id tx-id]} :- [:map [:ws-id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]
+  [{:keys [ws-id tx-id]} :- [:map
+                             [:ws-id {:tool/description "The workspace ID."} ::ws.t/appdb-id]
+                             [:tx-id {:tool/description "The transform's ref ID within this workspace."} ::ws.t/ref-id]]
    _query-params
    body :- [:map
-            [:name {:optional true} :string]
-            [:description {:optional true} [:maybe :string]]
-            [:source {:optional true} TransformSource]
-            [:target {:optional true} TransformTarget]]]
+            [:name {:optional true :tool/description "New display name for the transform."} :string]
+            [:description {:optional true :tool/description "New description of what the transform does."} [:maybe :string]]
+            [:source {:optional true :tool/description "Updated transform source definition (type 'query' with an MBQL query, or type 'python' with a Python script)."} TransformSource]
+            [:target {:optional true :tool/description "Updated target table where transform output is written."} TransformTarget]]]
   (ws.api.common/update-transform! ws-id tx-id body))
 
 (api.macros/defendpoint :delete "/:ws-id/transform/:tx-id" :- :nil
@@ -356,7 +369,9 @@
   {:scope "agent:workspace:write"
    :tool  {:name "delete_workspace_transform"
            :description "Delete a transform from a workspace."}}
-  [{:keys [ws-id tx-id]} :- [:map [:ws-id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]]
+  [{:keys [ws-id tx-id]} :- [:map
+                             [:ws-id {:tool/description "The workspace ID."} ::ws.t/appdb-id]
+                             [:tx-id {:tool/description "The transform's ref ID within this workspace."} ::ws.t/ref-id]]]
   (ws.api.common/delete-transform! ws-id tx-id))
 
 ;;; ------------------------------------------------ Handler ----------------------------------------------------------
