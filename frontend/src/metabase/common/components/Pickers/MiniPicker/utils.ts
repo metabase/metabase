@@ -22,8 +22,8 @@ export const getOurAnalytics = (): MiniPickerFolderItem => ({
   model: "collection",
   id: "root" as any, // cmon typescript
   name: t`Our analytics`,
-  here: ["card"],
-  below: ["card"],
+  here: ["card", "dataset", "metric"],
+  below: ["card", "dataset", "metric"],
 });
 
 export function useGetPathFromValue({
