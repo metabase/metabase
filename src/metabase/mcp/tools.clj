@@ -24,7 +24,8 @@
   "Generate tools manifest from agent API endpoint metadata."
   []
   (tools-manifest/generate-tools-manifest
-   {'metabase.agent-api.api "/api/agent"}))
+   {'metabase.agent-api.api                    "/api/agent"
+    'metabase-enterprise.agent-api.workspace "/api/agent/v1/workspace"}))
 
 (def ^:private manifest-delay
   (delay (generate-manifest)))
@@ -90,22 +91,23 @@
 
 (defn- deliver-agent-api-response
   "Dispatch to agent API routes and deliver response to promise.
-   For POST requests, `params` is sent as the request body.
-   For GET/DELETE requests, `params` is sent as parsed query params.
+   For GET/HEAD/DELETE requests, `params` are sent as parsed query params.
+   For PUT/POST/PATCH/etc requests, `params` are sent as the request body.
    Materializes StreamingResponse bodies in-process before delivering."
   [result method path token-scopes params]
-  (agent-api/routes
-   (cond-> {:request-method   method
-            :uri              path
-            :metabase-user-id api/*current-user-id*
-            :token-scopes     token-scopes}
-     (and (seq params) (= :post method))    (assoc :body params)
-     (and (seq params) (not= :post method)) (assoc :query-params params))
-   (fn [{resp-body :body :as response}]
-     (deliver result (if (instance? StreamingResponse resp-body)
-                       (capture-streaming-response resp-body)
-                       response)))
-   (fn [error] (deliver result {:status 500 :body {:message (ex-message error)}}))))
+  (let [use-params? (#{:get :head :delete})]
+    (agent-api/routes
+     (cond-> {:request-method   method
+              :uri              path
+              :metabase-user-id api/*current-user-id*
+              :token-scopes     token-scopes}
+       (and (seq params) use-params?)        (assoc :query-params params)
+       (and (seq params) (not use-params?))  (assoc :body params))
+     (fn [{resp-body :body :as response}]
+       (deliver result (if (instance? StreamingResponse resp-body)
+                         (capture-streaming-response resp-body)
+                         response)))
+     (fn [error] (deliver result {:status 500 :body {:message (ex-message error)}})))))
 
 (defn- invoke-agent-api
   "Invoke an Agent API endpoint with a synthetic Ring request.
@@ -157,7 +159,7 @@
   "Generic dispatch for tools whose responseFormat is \"json\".
    Looks up method/path from the tool definition, interpolates path params,
    and calls `invoke-agent-api`. For POST requests, remaining args are sent as the
-   request body. For GET/DELETE requests, remaining args are sent as query params."
+   request body. For GET/HEAD/DELETE requests, they are sent as query params."
   [tool-def arguments token-scopes]
   (let [{:keys [method path]} (:endpoint tool-def)
         method                (keyword (u/lower-case-en method))
