@@ -2309,6 +2309,7 @@
   {:team "Metabot"
    :api  #{metabase-enterprise.mcp.api}
    :uses #{api
+           config
            request
            server
            util
