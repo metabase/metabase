@@ -526,7 +526,7 @@
     (cond
       ;; Already authenticated via X-Metabase-Session (standard middleware handled it)
       metabase-user-id
-      (handler (assoc request :token-scopes #{::scope/unrestricted}) respond raise)
+      (handler request respond raise)
 
       ;; Not authenticated via session - check for Bearer JWT
       :else

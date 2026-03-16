@@ -158,8 +158,8 @@
 
 (defn call-tool
   "Dispatch an MCP `tools/call` request to the appropriate handler.
-   `token-scopes` are propagated to the synthetic agent-api request so that
-   scope restrictions from the original MCP session are preserved.
+   `token-scopes` from the original MCP session are propagated to the synthetic
+   agent-api request so that scope restrictions are preserved.
    Returns MCP content on success, or error content on failure."
   [token-scopes tool-name arguments]
   (if-let [tool-def (get (tool-index) tool-name)]
