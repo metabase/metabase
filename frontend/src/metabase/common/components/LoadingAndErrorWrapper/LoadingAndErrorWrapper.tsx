@@ -32,7 +32,7 @@ export interface LoadingAndErrorWrapperProps {
 export const LoadingAndErrorWrapper = forwardRef<
   HTMLDivElement,
   LoadingAndErrorWrapperProps
->(function _LoadingAndErrorWrapper(
+>(function LoadingAndErrorWrapperInner(
   {
     loading = false,
     error,

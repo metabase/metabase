@@ -49,6 +49,7 @@ import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settin
 import { getCardKey, isSameSeries } from "metabase/visualizations/lib/utils";
 import {
   type ClickActionModeGetter,
+  type ClickActionsMode,
   type ClickObject,
   type HoveredObject,
   type QueryClickActionsMode,
@@ -56,6 +57,7 @@ import {
   type VisualizationGridSize,
   type VisualizationPassThroughProps,
   type Visualization as VisualizationType,
+  isClickActionsMode,
   isRegularClickAction,
 } from "metabase/visualizations/types";
 import {
@@ -147,7 +149,7 @@ type VisualizationOwnProps = {
   isVisualizer?: boolean;
   renderLoadingView?: (props: LoadingViewProps) => JSX.Element | null;
   metadata?: Metadata;
-  mode?: ClickActionModeGetter | Mode | QueryClickActionsMode;
+  mode?: ClickActionModeGetter | ClickActionsMode | QueryClickActionsMode;
   onEditSummary?: () => void;
   rawSeries?: (
     | SingleSeries
@@ -159,17 +161,20 @@ type VisualizationOwnProps = {
   replacementContent?: JSX.Element | null;
   selectedTimelineEventIds?: number[];
   settings?: VisualizationSettings;
+  autoAdjustSettings?: boolean;
   showTitle?: boolean;
   showWarnings?: boolean;
+  hideLegend?: boolean;
   style?: CSSProperties;
   timelineEvents?: TimelineEvent[];
   tc?: ContentTranslationFunction;
   zoomedRowIndex?: number;
   onOpenChartSettings?: (data: {
-    initialChartSettings: { section: string };
+    initialChartSettings?: { section: string };
     showSidebarTitle?: boolean;
   }) => void;
   onChangeCardAndRun?: ((opts: OnChangeCardAndRunOpts) => void) | null;
+  onBrush?: ((range: { start: number; end: number }) => void) | null;
   onHeaderColumnReorder?: (columnName: string) => void;
   onChangeLocation?: (location: Location) => void;
   onUpdateQuestion?: () => void;
@@ -179,6 +184,8 @@ type VisualizationOwnProps = {
   ) => void;
   onUpdateWarnings?: (warnings: string[]) => void;
   onVisualizationRendered?: (series: Series) => void;
+  /** When true, internal click behaviors (dashboard/question links) are preserved */
+  enableEntityNavigation?: boolean;
 } & VisualizationPassThroughProps;
 
 type VisualizationProps = StateDispatchProps &
@@ -238,7 +245,9 @@ const deriveStateFromProps = (props: VisualizationProps) => {
   const series = transformed?.series ?? null;
 
   const computedSettings = !isLoading(series)
-    ? getComputedSettingsForSeries(series)
+    ? getComputedSettingsForSeries(series, {
+        enableEntityNavigation: props.enableEntityNavigation,
+      })
     : {};
 
   return {
@@ -304,7 +313,8 @@ class Visualization extends PureComponent<
       !equals(
         props.selectedTimelineEventIds,
         state._lastProps?.selectedTimelineEventIds,
-      )
+      ) ||
+      props.enableEntityNavigation !== state._lastProps?.enableEntityNavigation
     ) {
       return {
         ...deriveStateFromProps(props),
@@ -321,6 +331,7 @@ class Visualization extends PureComponent<
           "settings",
           "timelineEvents",
           "selectedTimelineEventIds",
+          "enableEntityNavigation",
         ]),
       };
     }
@@ -407,7 +418,11 @@ class Visualization extends PureComponent<
 
   _getClickActionsCached(
     clickedObject: ClickObject | null | undefined,
-    mode: ClickActionModeGetter | Mode | QueryClickActionsMode | undefined,
+    mode:
+      | ClickActionModeGetter
+      | ClickActionsMode
+      | QueryClickActionsMode
+      | undefined,
     computedSettings: Record<string, string>,
     dashcard?: DashboardCard,
     metadata?: Metadata,
@@ -461,7 +476,7 @@ class Visualization extends PureComponent<
   private static getMode(
     modeOrModeGetter:
       | ClickActionModeGetter
-      | Mode
+      | ClickActionsMode
       | QueryClickActionsMode
       | undefined,
     question: Question | undefined,
@@ -473,7 +488,7 @@ class Visualization extends PureComponent<
           : null
         : modeOrModeGetter;
 
-    if (modeOrQueryMode instanceof Mode) {
+    if (isClickActionsMode(modeOrQueryMode)) {
       return modeOrQueryMode;
     }
 
@@ -632,6 +647,7 @@ class Visualization extends PureComponent<
   render() {
     const {
       actionButtons,
+      autoAdjustSettings,
       canToggleSeriesVisibility,
       className,
       dashboard,
@@ -682,6 +698,7 @@ class Visualization extends PureComponent<
       scrollToLastColumn,
       selectedTimelineEventIds,
       showAllLegendItems,
+      hideLegend,
       showTitle,
       style,
       tableHeaderHeight,
@@ -940,7 +957,9 @@ class Visualization extends PureComponent<
                     selectedTimelineEventIds={selectedTimelineEventIds}
                     series={series}
                     settings={settings}
+                    autoAdjustSettings={!!autoAdjustSettings}
                     showAllLegendItems={showAllLegendItems}
+                    hideLegend={hideLegend}
                     showTitle={!!showTitle}
                     tableHeaderHeight={tableHeaderHeight}
                     timelineEvents={timelineEvents}
@@ -954,6 +973,7 @@ class Visualization extends PureComponent<
                         ? this.handleOnChangeCardAndRun
                         : null
                     }
+                    onBrush={this.props.onBrush}
                     onDeselectTimelineEvents={onDeselectTimelineEvents}
                     onHoverChange={this.handleHoverChange}
                     onOpenTimelines={onOpenTimelines}

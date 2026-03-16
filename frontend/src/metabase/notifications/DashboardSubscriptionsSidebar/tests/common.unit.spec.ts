@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { screen, within } from "__support__/ui";
-import type { Pulse } from "metabase-types/api";
+import type { DashboardSubscription } from "metabase-types/api";
 
 import { dashcard, hasBasicFilterOptions, setup, user } from "./setup";
 
@@ -116,7 +116,7 @@ describe("DashboardSubscriptionsSidebar", () => {
           id: 11,
           cards: [],
         },
-      ] satisfies (Pulse & { id: number })[];
+      ] satisfies (Partial<DashboardSubscription> & { id: number })[];
 
       // Dynamically modify `pulses` so that we get the new updated list of pulses after archiving
       fetchMock.put({

@@ -8,6 +8,7 @@ import Field from "metabase-lib/v1/metadata/Field";
 import ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
 import Measure from "metabase-lib/v1/metadata/Measure";
 import Metadata from "metabase-lib/v1/metadata/Metadata";
+import Metric from "metabase-lib/v1/metadata/Metric";
 import Schema from "metabase-lib/v1/metadata/Schema";
 import Segment from "metabase-lib/v1/metadata/Segment";
 import Table from "metabase-lib/v1/metadata/Table";
@@ -22,13 +23,12 @@ import type {
   NormalizedField,
   NormalizedForeignKey,
   NormalizedMeasure,
+  NormalizedMetric,
   NormalizedSchema,
   NormalizedSegment,
   NormalizedTable,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-
-import type { EntitiesState } from "../../metabase-types/store/entities";
 
 import { getSettings } from "./settings";
 
@@ -42,18 +42,13 @@ type FieldSelectorOpts = {
 
 export type MetadataSelectorOpts = TableSelectorOpts & FieldSelectorOpts;
 
-const getNormalizedDatabases = (state: StateWithEntities) =>
-  state.entities.databases;
-const getNormalizedSchemas = (state: StateWithEntities) =>
-  state.entities.schemas;
+const getNormalizedDatabases = (state: State) => state.entities.databases;
+const getNormalizedSchemas = (state: State) => state.entities.schemas;
 
-const getNormalizedTablesUnfiltered = (state: StateWithEntities) =>
-  state.entities.tables;
+const getNormalizedTablesUnfiltered = (state: State) => state.entities.tables;
 
-const getIncludeHiddenTables = (
-  _state: StateWithEntities,
-  props?: TableSelectorOpts,
-) => !!props?.includeHiddenTables;
+const getIncludeHiddenTables = (_state: State, props?: TableSelectorOpts) =>
+  !!props?.includeHiddenTables;
 
 const getNormalizedTables = createSelector(
   [getNormalizedTablesUnfiltered, getIncludeHiddenTables],
@@ -67,12 +62,9 @@ const getNormalizedTables = createSelector(
         ),
 );
 
-const getNormalizedFieldsUnfiltered = (state: StateWithEntities) =>
-  state.entities.fields;
-const getIncludeSensitiveFields = (
-  _state: StateWithEntities,
-  props?: FieldSelectorOpts,
-) => !!props?.includeSensitiveFields;
+const getNormalizedFieldsUnfiltered = (state: State) => state.entities.fields;
+const getIncludeSensitiveFields = (_state: State, props?: FieldSelectorOpts) =>
+  !!props?.includeSensitiveFields;
 
 const getNormalizedFields = createSelector(
   [
@@ -97,27 +89,21 @@ const getNormalizedFields = createSelector(
     ),
 );
 
-const getNormalizedSegments = (state: StateWithEntities) =>
-  state.entities.segments;
-const getNormalizedMeasures = (state: StateWithEntities) =>
-  state.entities.measures ?? {};
-const getNormalizedQuestions = (state: StateWithEntities) =>
-  state.entities.questions;
-const getNormalizedSnippets = (state: StateWithEntities) =>
-  state.entities.snippets;
+const getNormalizedSegments = (state: State) => state.entities.segments;
+const getNormalizedMeasures = (state: State) => state.entities.measures ?? {};
+const getNormalizedMetrics = (state: State) => state.entities.metrics ?? {};
+const getNormalizedQuestions = (state: State) => state.entities.questions;
+const getNormalizedSnippets = (state: State) => state.entities.snippets;
 
 export const getShallowDatabases = getNormalizedDatabases;
 export const getShallowTables = getNormalizedTables;
 export const getShallowFields = getNormalizedFields;
 export const getShallowSegments = getNormalizedSegments;
 export const getShallowMeasures = getNormalizedMeasures;
+export const getShallowMetrics = getNormalizedMetrics;
 
-type StateWithEntities = {
-  entities: EntitiesState;
-};
-
-export const getMetadataWithoutSettings: (
-  state: StateWithEntities,
+export const getMetadata: (
+  state: State,
   props?: MetadataSelectorOpts,
 ) => Metadata = createSelector(
   [
@@ -127,8 +113,10 @@ export const getMetadataWithoutSettings: (
     getNormalizedFields,
     getNormalizedSegments,
     getNormalizedMeasures,
+    getNormalizedMetrics,
     getNormalizedQuestions,
     getNormalizedSnippets,
+    getSettings,
   ],
   (
     databases,
@@ -137,10 +125,12 @@ export const getMetadataWithoutSettings: (
     fields,
     segments,
     measures,
+    metrics,
     questions,
     snippets,
+    settings,
   ) => {
-    const metadata = new Metadata({});
+    const metadata = new Metadata({ settings });
 
     metadata.databases = Object.fromEntries(
       Object.values(databases).map((d) => [d.id, createDatabase(d, metadata)]),
@@ -161,6 +151,9 @@ export const getMetadataWithoutSettings: (
     );
     metadata.measures = Object.fromEntries(
       Object.values(measures).map((m) => [m.id, createMeasure(m, metadata)]),
+    );
+    metadata.metrics = Object.fromEntries(
+      Object.values(metrics).map((m) => [m.id, createMetric(m, metadata)]),
     );
     metadata.questions = Object.fromEntries(
       Object.values(questions).map((c) => [c.id, createQuestion(c, metadata)]),
@@ -203,17 +196,6 @@ export const getMetadataWithoutSettings: (
       table.fields?.forEach((field) => hydrateField(field, metadata));
     });
 
-    return metadata;
-  },
-);
-
-export const getMetadata: (
-  state: State,
-  props?: MetadataSelectorOpts,
-) => Metadata = createSelector(
-  [getMetadataWithoutSettings, getSettings],
-  (metadata, settings) => {
-    metadata.settings = settings;
     return metadata;
   },
 );
@@ -293,6 +275,12 @@ function createMeasure(
   metadata: Metadata,
 ): Measure {
   const instance = new Measure(measure);
+  instance.metadata = metadata;
+  return instance;
+}
+
+function createMetric(metric: NormalizedMetric, metadata: Metadata): Metric {
+  const instance = new Metric(metric);
   instance.metadata = metadata;
   return instance;
 }

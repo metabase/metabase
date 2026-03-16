@@ -49,6 +49,7 @@
 (def ^:private FieldFilter            (lib.schema.common/instance-of-class metabase.driver.common.parameters.FieldFilter))
 (def ^:private ReferencedQuerySnippet (lib.schema.common/instance-of-class metabase.driver.common.parameters.ReferencedQuerySnippet))
 (def ^:private ReferencedCardQuery    (lib.schema.common/instance-of-class metabase.driver.common.parameters.ReferencedCardQuery))
+(def ^:private ReferencedTableQuery    (lib.schema.common/instance-of-class metabase.driver.common.parameters.ReferencedTableQuery))
 
 (defmulti ^:private parse-tag
   "Parse a tag by its `:type`, returning an appropriate record type such as
@@ -255,6 +256,15 @@
                  :tag               tag
                  :type              qp.error-type/invalid-parameter}
                 e))))))
+
+(mu/defmethod parse-tag :table :- ReferencedTableQuery
+  [{:keys [table-id source-filters emit-alias name]} :- ::mbql.s/TemplateTag _params]
+  (when (seq source-filters)
+    (when-let [op (some #(when-not (lib.schema.template-tag/allowed-source-filter-ops (:op %)) %) source-filters)]
+      (throw (ex-info (tru "Invalid source-filter operator: {0}. Allowed operators: {1}"
+                           (pr-str op) (pr-str lib.schema.template-tag/allowed-source-filter-ops))
+                      {:op op :allowed-ops lib.schema.template-tag/allowed-source-filter-ops}))))
+  (params/->ReferencedTableQuery table-id (not-empty source-filters) (when emit-alias name)))
 
 (mu/defmethod parse-tag :snippet :- ReferencedQuerySnippet
   [{:keys [snippet-name snippet-id], :as tag} :- ::mbql.s/TemplateTag

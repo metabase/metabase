@@ -17,7 +17,7 @@ interface LeaveRouteConfirmModalProps {
   onOpenChange?: (opened: boolean) => void;
 }
 
-const _LeaveRouteConfirmModal = ({
+const LeaveRouteConfirmModalInner = ({
   isEnabled,
   isLocationAllowed,
   route,
@@ -53,4 +53,4 @@ const _LeaveRouteConfirmModal = ({
   );
 };
 
-export const LeaveRouteConfirmModal = withRouter(_LeaveRouteConfirmModal);
+export const LeaveRouteConfirmModal = withRouter(LeaveRouteConfirmModalInner);

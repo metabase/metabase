@@ -1,7 +1,7 @@
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { UpsellEmbedHomepage } from "metabase/admin/upsells";
+import { UpsellEmbedHomepage } from "metabase/common/components/upsells/UpsellEmbedHomepage";
 import { Box, Card, Flex, Stack, Text, Title } from "metabase/ui";
 import type { EmbeddingHomepageDismissReason } from "metabase-types/api";
 
@@ -13,7 +13,7 @@ import { StaticEmbedContent } from "./StaticEmbedContent";
 
 export type EmbedHomepageViewProps = {
   exampleDashboardId: number | null;
-  variant: "oss/starter" | "ee";
+  variant: "oss" | "ee";
   hasEmbeddingFeature: boolean;
   onDismiss: (reason: EmbeddingHomepageDismissReason) => void;
   // links
@@ -45,7 +45,7 @@ export const EmbedHomepageView = (props: EmbedHomepageViewProps) => {
     : undefined;
 
   const content = match(variant)
-    .with("oss/starter", () => {
+    .with("oss", () => {
       return (
         <>
           <StaticEmbedContent
@@ -116,7 +116,7 @@ export const EmbedHomepageView = (props: EmbedHomepageViewProps) => {
         />
       </Stack>
 
-      {variant === "oss/starter" && (
+      {variant === "oss" && (
         <Box mt="2.5rem">
           <UpsellEmbedHomepage location="embedding-homepage" />
         </Box>

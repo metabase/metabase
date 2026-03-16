@@ -37,9 +37,7 @@ describe("scenarios > admin > permissions", () => {
     cy.visit("/");
 
     // Go to the admin settings
-    cy.icon("gear").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Admin settings").click();
+    H.goToAdmin();
 
     // Assert the Data Model page state
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
@@ -86,9 +84,7 @@ describe("scenarios > admin > permissions", () => {
     cy.visit("/");
 
     // Go to the admin settings
-    cy.icon("gear").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Admin settings").click();
+    H.goToAdmin();
 
     // Assert the Data Model page state
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage

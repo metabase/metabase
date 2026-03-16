@@ -146,11 +146,11 @@ const RadioItem = <TValue,>({
   const { RadioLabel, RadioContainer } = VARIANTS[variant];
 
   const handleChange = useCallback(() => {
-    onChange && onChange(value);
+    onChange?.(value);
   }, [value, onChange]);
 
   const handleClick = useCallback(() => {
-    onOptionClick && onOptionClick(value);
+    onOptionClick?.(value);
   }, [value, onOptionClick]);
 
   return (

@@ -4,7 +4,10 @@ import userEvent from "@testing-library/user-event";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
-import type { MetabotTransformInfo } from "metabase-types/api";
+import type {
+  MetabotSuggestedTransform,
+  MetabotTransformInfo,
+} from "metabase-types/api";
 import {
   createMockNativeDatasetQuery,
   createMockUser,
@@ -15,10 +18,7 @@ import {
 } from "metabase-types/api/mocks/transform";
 import { createMockState } from "metabase-types/store/mocks";
 
-import type {
-  MetabotAgentEditSuggestionChatMessage,
-  MetabotSuggestedTransform,
-} from "../../state/types";
+import type { MetabotAgentEditSuggestionChatMessage } from "../../state/types";
 
 import { AgentSuggestionMessage } from "./MetabotAgentSuggestionMessage";
 

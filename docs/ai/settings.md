@@ -7,7 +7,7 @@ summary: Configure Metabot settings, including which collections Metabot can acc
 
 > Metabot is only available as an add-on on Metabase Cloud.
 
-_Settings > Admin settings > AI_
+_Admin > AI_
 
 This page covers admin settings for Metabase's AI assistant, [Metabot](./metabot.md).
 
@@ -28,7 +28,30 @@ For now, Metabot is only available for Metabase Cloud. Before you can set up Met
 
 5. Read through the [terms of service](https://www.metabase.com/license/hosting) and click **Add Metabot AI**.
 
-Once you've added Metabot AI in the Metabase store, you can log into your Metabase and configure it in _Admin settings > AI_.
+Once you've added Metabot AI in the Metabase store, you can log into your Metabase and configure it in _Admin > AI_.
+
+## Metabot options
+
+You can set options for Metabot, both for your internal Metabase, and (separately) for embedded Metabase contexts. That way you can, say, use Metabot in your Metabase, while not giving access to Metabot in your embedded Metabase.
+
+- [Enable Metabot](#enable-metabot)
+- [Verified content](#verified-content)
+- [Collection Metabot can use](#collection-metabot-can-use)
+
+## Enable Metabot
+
+Toggle [Metabot](./metabot.md) on or off for your Metabase or embedded contexts. Both Metabot and Embedded Metabot are enabled by default.
+
+### Internal Metabot
+
+When enabled, Metabot is available to help people create questions, analyze data, and answer questions about your data. When disabled, the Metabot icon and keyboard shortcuts are hidden.
+
+### Embedded Metabot
+
+The toggle will turn embedded Metabot on or off. The toggle affects both full-app embeds and modular embeds.
+
+- [Full-app embedding](../embedding/full-app-embedding.md): The Metabot icon and keyboard shortcuts are only available when Metabot is enabled. Turning off Embedded Metabot will hide these icons and disable the keyboard shortcuts.
+- [Modular embedding](../embedding/modular-embedding.md) The toggle doesn't add Metabot anywhere; you have to explicitly include a chat component (like the SDK's [`MetabotQuestion`](../embedding/sdk/ai-chat.md)) in your application. If, however, you've added a component, and you turn off the Embedded Metabot toggle, your chat component will stop working, so you should also remove or hide the component in your application.
 
 ## Verified content
 
@@ -36,25 +59,13 @@ Admins on Pro and Enterprise plans can tell Metabot to only work with [models](.
 
 Restricting Metabot to verified models and metrics (and only models and metrics) helps Metabot produce more reliable answers, since you know someone has at least vetted the data Metabot can use.
 
-## Collection for natural language querying
+## Collection Metabot can use
 
 Select a collection (including its subcollections) to limit which collections Metabot searches during [AI exploration](../ai/metabot.md#ai-exploration).
 
 This setting only affects conversations started from **+ New → AI exploration**.
 
 People can still @-mention items outside of this collection when prompting in AI exploration. Metabot can also see the person's current context (for example, Metabot will know about the dashboard they're currently viewing, even if the dashboard is outside the selected collection).
-
-## When embedding Metabot, you can pick a collection for Metabot to have access to
-
-When embedding Metabot in your app, you can select a collection for Metabot:
-
-2. Click **Embedded Metabot**.
-3. In the **Collection Embedded Metabot can use** section, click **Pick a collection**.
-4. Select the collection that contains the models and metrics you want Metabot to use.
-
-Metabot will use the models and metrics in that collection to help answer questions and generate queries. You can change this collection at any time. To give Metabot access to all collections, you can set the collection to the root collection, called "Our Analytics" (the default).
-
-Alternatively (or additionally), you can restrict Metabot to [verified content](#verified-content).
 
 ## Tips for making the most of Metabot
 
@@ -105,7 +116,7 @@ In other words, to restrict what data Metabot can see for each person, simply ap
 
 ## Viewing Metabot usage
 
-You can see how many Metabot requests people have made this month by going to **Admin settings > Settings > License**.
+You can see how many Metabot requests people have made this month by going to **Admin > Settings > License**.
 
 If you aren't logged into the [Metabase Store](../cloud/accounts-and-billing.md).(, you'll need to log in to the store before you can view the usage. Once logged in to the store, go back to your Metabase and view the license page.
 

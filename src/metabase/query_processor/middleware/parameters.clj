@@ -4,6 +4,7 @@
    [clojure.data :as data]
    [clojure.set :as set]
    [metabase.lib.core :as lib]
+   [metabase.lib.parameters :as lib.parameters]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -55,12 +56,8 @@
   the [[num-stages-prepended-by-preprocessing]])."
   [query     :- ::lib.schema/query
    parameter :- ::lib.schema.parameter/parameter]
-  (let [stage-number (or (-> parameter
-                             :target
-                             lib/->pMBQL
-                             lib/options
-                             :stage-number)
-                         0)]
+  (let [stage-number (lib.parameters/parameter-target-stage-number
+                      (:target parameter))]
     (if (not (neg? stage-number))
       ;; for a non-negative stage number add the offset to it as mentioned above
       (+ stage-number (num-stages-prepended-by-preprocessing query))

@@ -112,7 +112,7 @@ const mapDispatchToProps = {
     PersistedModels.objectActions.refreshCache(job),
 };
 
-function _ModelCacheRefreshJobs({ onRefresh }: Props) {
+function ModelCacheRefreshJobsInner({ onRefresh }: Props) {
   const { page, handleNextPage, handlePreviousPage } = usePagination();
   const { data, error, isFetching } = useListPersistedInfoQuery({
     limit: PAGE_SIZE,
@@ -188,7 +188,7 @@ function _ModelCacheRefreshJobs({ onRefresh }: Props) {
 export const ModelCacheRefreshJobs = connect(
   null,
   mapDispatchToProps,
-)(_ModelCacheRefreshJobs);
+)(ModelCacheRefreshJobsInner);
 
 export function ModelCachePage({ children }: { children?: React.ReactNode }) {
   return (

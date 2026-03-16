@@ -1,8 +1,6 @@
-import {
-  entityPickerModal,
-  modal,
-  popover,
-} from "e2e/support/helpers/e2e-ui-elements-helpers";
+import { modal, popover } from "e2e/support/helpers/e2e-ui-elements-helpers";
+
+import { pickEntity } from "./e2e-collection-helpers";
 
 export function saveInteractiveQuestionAsNewQuestion(options: {
   questionName: string;
@@ -29,15 +27,7 @@ export function saveInteractiveQuestionAsNewQuestion(options: {
   if (collectionPickerPath) {
     cy.findByTestId("dashboard-and-collection-picker-button").click();
 
-    entityPickerModal().within(() => {
-      cy.findByText("Browse").click();
-
-      collectionPickerPath.forEach((collectionName) =>
-        cy.findByText(collectionName).click(),
-      );
-
-      cy.findByRole("button", { name: "Select this collection" }).click();
-    });
+    pickEntity({ path: collectionPickerPath, select: true });
   }
 
   modal().within(() => {

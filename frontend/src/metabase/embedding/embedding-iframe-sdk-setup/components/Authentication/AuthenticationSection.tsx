@@ -11,6 +11,10 @@ import { isQuestionOrDashboardExperience } from "metabase/embedding/embedding-if
 import { isStepWithResource } from "metabase/embedding/embedding-iframe-sdk-setup/utils/is-step-with-resource";
 import { Card, Radio, Stack, Text } from "metabase/ui";
 
+import { getResourceTypeFromExperience } from "../../utils/get-resource-type-from-experience";
+
+import { DatabaseRoutingWarning } from "./DatabaseRoutingWarning";
+
 export const AuthenticationSection = () => {
   const {
     experience,
@@ -19,8 +23,11 @@ export const AuthenticationSection = () => {
     currentStep,
     settings,
     updateSettings,
+    resource,
   } = useSdkIframeEmbedSetupContext();
   const handleEmbedExperienceChange = useHandleExperienceChange();
+
+  const resourceType = getResourceTypeFromExperience(experience);
 
   if (!isFirstStep) {
     return null;
@@ -69,6 +76,13 @@ export const AuthenticationSection = () => {
             />
           </Stack>
         </Radio.Group>
+
+        {authType === "guest-embed" && resource && resourceType && (
+          <DatabaseRoutingWarning
+            resource={resource}
+            resourceType={resourceType}
+          />
+        )}
 
         <SdkIframeStepEnableEmbeddingSection />
       </Stack>

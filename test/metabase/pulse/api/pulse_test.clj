@@ -7,18 +7,16 @@
    [metabase.api.response :as api.response]
    [metabase.channel.api.channel-test :as api.channel-test]
    [metabase.channel.impl.http-test :as channel.http-test]
-   [metabase.channel.render.style :as style]
    [metabase.channel.settings :as channel.settings]
    [metabase.driver :as driver]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   ^{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.pulse.api.pulse :as api.pulse]
    [metabase.pulse.models.pulse-channel :as pulse-channel]
    [metabase.pulse.models.pulse-test :as pulse-test]
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.queries-rest.api.card-test :as api.card-test]
+   [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.http-client :as client]
@@ -1231,12 +1229,17 @@
 
 (deftest ^:parallel pulse-card-query-results-test
   (testing "viz-settings saved in the DB for a Card should be loaded"
-    (is (some? (get-in (#'api.pulse/pulse-card-query-results
-                        {:id            1
-                         :dataset_query {:database (mt/id)
-                                         :type     :query
-                                         :query    {:source-table (mt/id :venues)
-                                                    :limit        1}}})
+    (is (some? (get-in (qp/process-query
+                        (qp/userland-query
+                         {:database (mt/id)
+                          :type     :query
+                          :query    {:source-table (mt/id :venues)
+                                     :limit        1}
+                          :middleware {:process-viz-settings? true
+                                       :js-int-to-string?     false}}
+                         {:executed-by (mt/user->id :rasta)
+                          :context     :pulse
+                          :card-id     1}))
                        [:data :viz-settings])))))
 
 (deftest form-input-test
@@ -1301,43 +1304,6 @@
                  (get-in [:channels :slack :fields])
                  (first)
                  (:options))))))))
-
-(deftest preview-pulse-test
-  (testing "GET /api/pulse/preview_card/:id"
-    (mt/with-temp [:model/Collection _ {}
-                   :model/Card       card {:dataset_query (mt/mbql-query checkins {:limit 5})}]
-      (letfn [(preview [expected-status-code & [width]]
-                (let [url (str "pulse/preview_card_png/" (u/the-id card)
-                               (when width (str "?width=" width)))]
-                  (client/client-full-response (mt/user->credentials :rasta)
-                                               :get expected-status-code url)))]
-        (testing "Should be able to preview a Pulse"
-          (let [{{:strs [Content-Type]} :headers, :keys [body]} (preview 200)]
-            (is (= "image/png"
-                   Content-Type))
-            (is (some? body))))
-
-        (testing "Should respect the width query parameter"
-          (let [width 600
-                resp1 (preview 200)
-                resp2 (preview 200 width)]
-            (is (= "image/png" (get-in resp2 [:headers "Content-Type"])))
-            (is (not= (:body resp1) (:body resp2))) ;; crude check: different width should yield different PNG bytes
-            (is (some? (:body resp2)))))
-
-        (testing "If rendering a Pulse fails (e.g. because font registration failed) the endpoint should return the error message"
-          (with-redefs [style/register-fonts-if-needed! (fn []
-                                                          (throw (ex-info "Can't register fonts!"
-                                                                          {}
-                                                                          (NullPointerException.))))]
-            (let [{{:strs [Content-Type]} :headers, :keys [body]} (preview 500)]
-              (is (= "application/json; charset=utf-8"
-                     Content-Type))
-              (is (malli= [:map
-                           [:message  [:= "Can't register fonts!"]]
-                           [:trace    :any]
-                           [:via      :any]]
-                          body)))))))))
 
 (deftest delete-subscription-test
   (testing "DELETE /api/pulse/:id/subscription"

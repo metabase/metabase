@@ -161,7 +161,7 @@
 (deftest ^:parallel ignore-nonsense-when-hashing-queries-test
   ;; these two queries differ in a few ways:
   ;;
-  ;; - `q1` has `:metabase.lib.query/transformation-added-base-type` while `q2` does not
+  ;; - `q1` has `:lib/transformation-added-base-type` while `q2` does not
   ;; - `q1` has empty `:constraints`
   ;; - the order or parameters is flipped between the two queries
   ;; - the order of parameter :value is filled for parameter "A"
@@ -169,13 +169,13 @@
             :stages                 [{:lib/type     :mbql.stage/mbql
                                       :fields       [[:field
                                                       {:lib/uuid                                          "40dfd708-6c4e-4ff1-ae9e-c3863ae2fe46"
-                                                       :metabase.lib.query/transformation-added-base-type true
+                                                       :lib/transformation-added-base-type true
                                                        :base-type                                         :type/BigInteger
                                                        :effective-type                                    :type/BigInteger}
                                                       89952]
                                                      [:field
                                                       {:lib/uuid                                          "719f9e44-eb66-4488-be9b-62078f2a677c"
-                                                       :metabase.lib.query/transformation-added-base-type true
+                                                       :lib/transformation-added-base-type true
                                                        :base-type                                         :type/Text
                                                        :effective-type                                    :type/Text}
                                                       89953]]

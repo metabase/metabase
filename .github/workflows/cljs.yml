@@ -39,4 +39,4 @@ jobs:
     - name: Prepare back-end environment
       uses: ./.github/actions/prepare-backend
     - name: Run Cljs tests
-      run: yarn run test-cljs
+      run: bun run test-cljs

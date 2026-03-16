@@ -673,17 +673,13 @@
      :values (mapv (fn [[k v]] {:group k :value v}) eid-translations-24h)
      :tags ["embedding"]}]))
 
-(defn- ee-transform-metrics'
-  "OSS fallback for transform metrics. Returns zeros since transforms are an enterprise feature."
-  []
-  {:transforms               0
-   :transform_runs_last_24h  0})
-
-(defenterprise ee-transform-metrics
+(defn- transform-metrics
   "Returns transform usage metrics for the Snowplow stats ping."
-  metabase-enterprise.analytics.stats
   []
-  (ee-transform-metrics'))
+  (let [one-day-ago (->one-day-ago)]
+    {:transforms               (t2/count :model/Transform)
+     :transform_runs_last_24h  (t2/count :model/TransformRun
+                                         :start_time [:>= one-day-ago])}))
 
 (defn- ->snowplow-metric-info
   "Collects Snowplow metrics data that is not in the legacy stats format. Also clears entity id translation count."
@@ -705,7 +701,7 @@
       :scim_users_last_24h             (t2/count :model/User :sso_source :scim
                                                  :is_active true
                                                  :date_joined [:>= one-day-ago])}
-     (ee-transform-metrics))))
+     (transform-metrics))))
 
 (mu/defn- snowplow-metrics
   [stats metric-info :- [:map
@@ -938,9 +934,9 @@
    {:name      :table-data-editing
     :available (premium-features/table-data-editing?)
     :enabled   (premium-features/table-data-editing?)}
-   {:name      :transforms
-    :available (premium-features/enable-transforms?)
-    :enabled   (premium-features/enable-transforms?)}
+   {:name      :transforms-basic
+    :available (premium-features/enable-basic-transforms?)
+    :enabled   (premium-features/enable-basic-transforms?)}
    {:name      :transforms-python
     :available (premium-features/enable-python-transforms?)
     :enabled   (premium-features/enable-python-transforms?)}
@@ -949,7 +945,13 @@
     :enabled   (premium-features/enable-dependencies?)}
    {:name      :support-users
     :available (premium-features/enable-support-users?)
-    :enabled   (premium-features/enable-support-users?)}])
+    :enabled   (premium-features/enable-support-users?)}
+   {:name      :workspaces
+    :available (premium-features/enable-workspaces?)
+    :enabled   (premium-features/enable-workspaces?)}
+   {:name      :writable-connection
+    :available (premium-features/enable-writable-connection?)
+    :enabled   (premium-features/enable-writable-connection?)}])
 
 (defn- snowplow-features
   []

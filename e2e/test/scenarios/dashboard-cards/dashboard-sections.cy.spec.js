@@ -58,12 +58,12 @@ describe("scenarios > dashboard cards > sections", () => {
     selectQuestion("Orders, Count, Grouped by Created At (year)");
 
     overwriteDashCardTitle(
-      1,
+      2,
       "Orders, Count, Grouped by Created At (year)",
       "Line chart",
     );
     // TODO: if the mapping is done before the title is changed, the mapping is lost
-    mapDashCardToFilter(H.getDashboardCard(1), "Category");
+    mapDashCardToFilter(H.getDashboardCard(2), "Category");
 
     H.goToTab("Tab 1");
     H.saveDashboard();
@@ -101,7 +101,7 @@ describe("scenarios > dashboard cards > sections", () => {
     // Ensure parameter mapping is persisted
     H.editDashboard();
     filterPanel().findByText("Category").click();
-    H.getDashboardCard(1).findByText("Product.Category").should("exist");
+    H.getDashboardCard(2).findByText("Product.Category").should("exist");
   });
 });
 
@@ -109,9 +109,10 @@ describe("scenarios > dashboard cards > sections > read only collections", () =>
   beforeEach(() => {
     H.restore();
     cy.signIn("readonly");
+    cy.intercept("GET", "/api/collection/*/items*").as("getCollectionItems");
   });
 
-  it("Should allow you to select entites in collections you have read access to (metabase#50602)", () => {
+  it("Should allow you to select entities in collections you have read access to (metabase#50602)", () => {
     H.createDashboard({ collection_id: READ_ONLY_PERSONAL_COLLECTION_ID }).then(
       ({ body }) => {
         H.visitDashboard(body.id);
@@ -124,11 +125,8 @@ describe("scenarios > dashboard cards > sections > read only collections", () =>
       .findAllByText("Select question")
       .first()
       .click({ force: true });
-    H.entityPickerModal()
-      .findByRole("tab", { name: /Questions/ })
-      .click();
-    H.entityPickerModalItem(0, "Our analytics").click();
-    H.entityPickerModalItem(1, "Orders, Count").click();
+    cy.wait(["@getCollectionItems", "@getCollectionItems"]);
+    H.pickEntity({ path: ["Our analytics", "Orders, Count"] });
     H.dashboardGrid().findByText("Orders, Count").should("exist");
   });
 });
@@ -143,10 +141,7 @@ function selectQuestion(question) {
     .findAllByText("Select question")
     .first()
     .click({ force: true });
-  H.entityPickerModal()
-    .findByRole("tab", { name: /Questions/ })
-    .click();
-  H.entityPickerModal().findByText(question).click();
+  H.pickEntity({ path: ["Our analytics", question] });
   cy.wait("@cardQuery");
   H.dashboardGrid().findByText(question).should("exist");
 }

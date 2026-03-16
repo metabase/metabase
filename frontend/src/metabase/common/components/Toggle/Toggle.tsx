@@ -19,7 +19,7 @@ export const Toggle = forwardRef(function Toggle(
 ): JSX.Element {
   const handleChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
-      onChange && onChange(event.currentTarget.checked);
+      onChange?.(event.currentTarget.checked);
     },
     [onChange],
   );

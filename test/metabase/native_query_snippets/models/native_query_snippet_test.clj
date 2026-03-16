@@ -145,3 +145,36 @@
                            :name "id"
                            :display-name "ID"}}
                     (:template_tags extracted)))))))))
+
+;;; ------------------------------------------------ Batched Hydration Tests ------------------------------------------
+
+(deftest ^:parallel batched-hydrate-can-write-test
+  (testing "batched-hydrate :can_write returns correct values for multiple snippets"
+    (mt/with-temp [:model/Collection {coll-id :id} {:namespace "snippets"}
+                   :model/NativeQuerySnippet snippet1 {:name "snippet1" :content "SELECT 1" :collection_id coll-id}
+                   :model/NativeQuerySnippet snippet2 {:name "snippet2" :content "SELECT 2" :collection_id coll-id}
+                   :model/NativeQuerySnippet snippet3 {:name "snippet3" :content "SELECT 3" :collection_id coll-id}]
+      (mt/with-test-user :crowberto
+        (let [snippets (t2/select :model/NativeQuerySnippet :id [:in [(:id snippet1) (:id snippet2) (:id snippet3)]])
+              hydrated (t2/hydrate snippets :can_write)]
+          (testing "all snippets have :can_write hydrated"
+            (is (every? #(contains? % :can_write) hydrated)))
+          (testing "all snippets are writable in OSS"
+            (is (every? :can_write hydrated))))))))
+
+(deftest ^:parallel batched-hydrate-can-write-empty-list-test
+  (testing "batched-hydrate :can_write handles empty list"
+    (mt/with-test-user :crowberto
+      (is (= [] (t2/hydrate [] :can_write))))))
+
+(deftest ^:parallel batched-hydrate-can-write-nil-in-list-test
+  (testing "batched-hydrate :can_write handles nil in list"
+    (mt/with-temp [:model/Collection {coll-id :id} {:namespace "snippets"}
+                   :model/NativeQuerySnippet snippet {:name "snippet" :content "SELECT 1" :collection_id coll-id}]
+      (mt/with-test-user :crowberto
+        (let [snippets [(t2/select-one :model/NativeQuerySnippet :id (:id snippet)) nil]
+              hydrated (t2/hydrate snippets :can_write)]
+          (is (nil? (second hydrated))
+              "nil should remain nil")
+          (is (contains? (first hydrated) :can_write)
+              "non-nil snippet should be hydrated"))))))

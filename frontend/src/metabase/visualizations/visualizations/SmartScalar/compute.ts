@@ -5,6 +5,7 @@ import _ from "underscore";
 import { formatValue } from "metabase/lib/formatting";
 import { formatDateTimeRangeWithUnit } from "metabase/lib/formatting/date";
 import type { OptionsType } from "metabase/lib/formatting/types";
+import { isNumber } from "metabase/lib/types";
 import { isEmpty } from "metabase/lib/validate";
 import { computeChange } from "metabase/visualizations/lib/numeric";
 import type {
@@ -44,9 +45,27 @@ export type ComparisonResult = {
   comparisonValue: RowValue | undefined;
   display: {
     percentChange: string;
-    comparisonValue: string | number | JSX.Element | null;
+    comparisonValue: SmartScalarDisplayValue;
   };
   percentChange: number | undefined;
+};
+
+export type SmartScalarDisplayValue = string | number | JSX.Element | null;
+
+export type Trend = {
+  value: RowValue;
+  clicked: ClickObject;
+  formatOptions: ColumnSettings;
+  display: {
+    value: SmartScalarDisplayValue;
+    date: SmartScalarDisplayValue;
+  };
+  comparisons: ComparisonResult[];
+};
+
+export type ComputeTrendResult = {
+  trend?: Trend;
+  error?: Error;
 };
 
 interface DateUnitSettings {
@@ -74,7 +93,7 @@ export function computeTrend(
   insights: Insight[] | null | undefined,
   settings: VisualizationSettings,
   { getColor }: { getColor: ColorGetter },
-) {
+): ComputeTrendResult {
   try {
     const comparisons = settings["scalar.comparisons"] || [];
     const currentMetricData = getCurrentMetricData({
@@ -138,9 +157,10 @@ function buildComparisonObject({
       series,
     }) || {};
 
-  const percentChange = !isEmpty(comparisonValue)
-    ? computeChange(comparisonValue, value)
-    : undefined;
+  const percentChange =
+    isNumber(comparisonValue) && isNumber(value)
+      ? computeChange(comparisonValue, value)
+      : undefined;
 
   const {
     changeType,

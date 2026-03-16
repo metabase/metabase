@@ -18,7 +18,6 @@ import {
   isDefaultGroup,
 } from "metabase/lib/groups";
 import { KEYCODE_ENTER } from "metabase/lib/keyboard";
-import { regexpEscape } from "metabase/lib/string";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import {
   Box,
@@ -269,7 +268,7 @@ function GroupRow({
           gap="md"
         >
           <UserAvatar
-            user={{ first_name: getGroupNameLocalized(group) }}
+            user={{ name: getGroupNameLocalized(group) }}
             bg={backgroundColor}
           />
           <Box component="span" fw={700} c="brand">
@@ -497,8 +496,11 @@ export const GroupsListing = (props: GroupsListingProps) => {
 
   const { groups, isAdmin } = props;
 
-  const groupNameFilter = new RegExp(`\\b${regexpEscape(searchText)}`, "i");
-  const filteredGroups = groups.filter((g) => groupNameFilter.test(g.name));
+  const filteredGroups = searchText
+    ? groups.filter((g) =>
+        g.name.toLowerCase().includes(searchText.toLowerCase()),
+      )
+    : groups;
 
   return (
     <AdminPaneLayout

@@ -4,12 +4,14 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.collections.models.collection :as collection]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.search.core :as search]
    [metabase.test :as mt]
    [metabase.util.random :refer [random-name]]))
 
 (deftest published-table-collection-filter-test
-  (mt/with-premium-features #{:data-studio}
+  (mt/with-premium-features #{:library}
     (testing "Published tables are included in collection-filtered search"
       (mt/with-temp
         [:model/Collection {parent-coll :id} {:name "Parent Collection" :location "/"}
@@ -115,20 +117,44 @@
                           :collection {:id nil}
                           :database_name "Context Test DB"}]
                         our-result))))))))
-    (testing "Collection does not matter for permissions for unpublished tables"
+    (testing "Users without query permissions cannot discover tables in search"
       (let [search-term (random-name)
             name-1 (str search-term " 1")
             name-2 (str search-term " 2")]
-        (mt/with-temp [:model/Table {unpub-table :id} {:collection_id nil :is_published false :name name-1}
-                       :model/Table {pub-table :id} {:collection_id nil :is_published true :name name-2}]
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-temp [:model/Table {unpub-table :id} {:collection_id nil :is_published false :name name-1}
+                         :model/Table {pub-table :id} {:collection_id nil :is_published true :name name-2}]
+            ;; Explicitly deny both view and query perms so this assertion doesn't depend on global defaults.
+            (data-perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :blocked)
+            (data-perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :no)
+            (doseq [engine ["in-place" "appdb"]]
+              (search/reindex! {:async? false :in-place? true})
+              (mt/with-non-admin-groups-no-root-collection-perms
+                (let [results (mt/user-http-request :rasta :get 200 "search"
+                                                    :q search-term :models "table" :search_engine engine)
+                      our-result (->> (filter (comp #{pub-table unpub-table} :id) (:data results))
+                                      (sort-by :id)
+                                      (map #(select-keys % [:id])))]
+                  (testing "no tables appear"
+                    (is (= []
+                           our-result))))))))))))
+
+(deftest unpublished-table-visible-with-data-perms-test
+  (testing "Unpublished tables are discoverable when the user has data/query permissions"
+    (let [search-term (random-name)
+          table-name  (str search-term " unpublished")]
+      (mt/with-no-data-perms-for-all-users!
+        (mt/with-temp [:model/Table {unpub-table :id} {:collection_id nil :is_published false :name table-name}]
+          ;; Explicitly grant data/query perms so this does not rely on global test defaults.
+          (data-perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+          (data-perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder)
           (doseq [engine ["in-place" "appdb"]]
             (search/reindex! {:async? false :in-place? true})
             (mt/with-non-admin-groups-no-root-collection-perms
-              (let [results (mt/user-http-request :rasta :get 200 "search"
-                                                  :q search-term :models "table" :search_engine engine)
-                    our-result (->> (filter (comp #{pub-table unpub-table} :id) (:data results))
-                                    (sort-by :id)
-                                    (map #(select-keys % [:id])))]
-                (testing "only the unpublished table appears"
-                  (is (= [{:id unpub-table}]
-                         our-result)))))))))))
+              (let [result-ids (->> (mt/user-http-request :rasta :get 200 "search"
+                                                          :q search-term :models "table" :search_engine engine)
+                                    :data
+                                    (map :id)
+                                    (into #{}))]
+                (is (contains? result-ids unpub-table)
+                    (format "Unpublished table should be visible with data permissions (engine=%s)" engine))))))))))

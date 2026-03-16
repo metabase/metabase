@@ -59,7 +59,7 @@ import type {
   QueryClickActionsMode,
   VisualizationProps,
 } from "metabase/visualizations/types";
-import type { ClickObject, OrderByDirection } from "metabase-lib/types";
+import type { ClickObject, OrderByDirection } from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { isFK, isID, isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
@@ -658,7 +658,11 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     }
 
     return {
-      variant: shouldShowRowIndex ? "indexExpand" : "expandButton",
+      variant: shouldShowRowIndex
+        ? hasObjectDetail
+          ? "indexExpand"
+          : "index"
+        : "expandButton",
       getBackgroundColor,
       expandedIndex: zoomedRowIndex,
     };
@@ -703,8 +707,8 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   }, [height, settings]);
 
   const minGridWidth = useMemo(() => {
-    return isDashcardViewTable ? width : undefined;
-  }, [isDashcardViewTable, width]);
+    return isDashcardViewTable || isEmbeddingSdk ? width : undefined;
+  }, [isDashcardViewTable, isEmbeddingSdk, width]);
 
   const tableProps = useDataGridInstance({
     data: rows,
@@ -807,7 +811,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
 
 export const TableInteractive = _.compose(
   withMantineTheme,
-  ExplicitSize({
+  ExplicitSize<TableProps>({
     refreshMode: "throttle",
   }),
 )(TableInteractiveInner);

@@ -1,7 +1,7 @@
 import type { ResizableBoxProps } from "react-resizable";
 
 import { useSelector } from "metabase/lib/redux";
-import { PLUGIN_METABOT } from "metabase/plugins";
+import { useInlineSQLPrompt } from "metabase/metabot/components/MetabotInlineSQLPrompt";
 import { NativeQueryEditor } from "metabase/query_builder/components/NativeQueryEditor";
 import type {
   SelectionRange,
@@ -87,7 +87,7 @@ export const ViewNativeQueryEditor = (props: ViewNativeQueryEditorProps) => {
     getHighlightedNativeQueryLineNumbers,
   );
 
-  const inlineSQLPrompt = PLUGIN_METABOT.useInlineSQLPrompt(question, "qb");
+  const inlineSQLPrompt = useInlineSQLPrompt(question, "qb");
 
   // Normally, when users open native models,
   // they open an ad-hoc GUI question using the model as a data source

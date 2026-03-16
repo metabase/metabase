@@ -218,7 +218,9 @@ const SupportingTextComponent = ({
           className={S.handle}
           onClick={() => {
             const pos = getPos();
-            pos && editor.commands.setNodeSelection(pos);
+            if (pos) {
+              editor.commands.setNodeSelection(pos);
+            }
           }}
           onKeyDown={(e) => {
             if (e.key === "Backspace" || e.key === "Delete") {

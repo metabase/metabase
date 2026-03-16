@@ -13,8 +13,8 @@ import type {
   DependencyGraph,
   DocumentDependencyNode,
   DocumentDependencyNodeData,
-  ListBrokenGraphNodesRequest,
-  ListBrokenGraphNodesResponse,
+  ListBreakingGraphNodesRequest,
+  ListBreakingGraphNodesResponse,
   ListUnreferencedGraphNodesRequest,
   ListUnreferencedGraphNodesResponse,
   MeasureDependencyNode,
@@ -156,7 +156,7 @@ export function createMockDependencyEdge(
 }
 
 export function createMockDependencyGraph(
-  opts?: Partial<DependencyGraph>,
+  opts: Partial<DependencyGraph> = {},
 ): DependencyGraph {
   return {
     nodes: [],
@@ -334,16 +334,16 @@ export function createMockMeasureDependencyNode(
 }
 
 export function createMockListBrokenGraphNodesRequest(
-  opts?: Partial<ListBrokenGraphNodesRequest>,
-): ListBrokenGraphNodesRequest {
+  opts?: Partial<ListBreakingGraphNodesRequest>,
+): ListBreakingGraphNodesRequest {
   return {
     ...opts,
   };
 }
 
 export function createMockListBrokenGraphNodesResponse(
-  opts?: Partial<ListBrokenGraphNodesResponse>,
-): ListBrokenGraphNodesResponse {
+  opts?: Partial<ListBreakingGraphNodesResponse>,
+): ListBreakingGraphNodesResponse {
   return {
     data: [],
     total: 0,

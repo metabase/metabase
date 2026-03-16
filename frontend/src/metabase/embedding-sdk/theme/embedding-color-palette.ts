@@ -27,8 +27,8 @@ export const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<
   ColorName[]
 > = {
   brand: ["brand"],
-  "brand-hover": ["brand-light"],
-  "brand-hover-light": ["brand-lighter"],
+  "brand-hover": ["background-hover"],
+  "brand-hover-light": ["background-hover"],
   border: ["border"],
   filter: ["filter"],
   summarize: ["summarize"],
@@ -37,7 +37,7 @@ export const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<
   "text-tertiary": ["text-tertiary"],
   background: ["background-primary"],
   "background-secondary": ["background-secondary", "background-tertiary"],
-  "background-hover": ["background-secondary"],
+  "background-hover": [],
   "background-disabled": ["background-disabled"],
   "background-light": ["background-secondary"],
   shadow: ["shadow"],

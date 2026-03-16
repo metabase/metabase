@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type * as React from "react";
 import { useState } from "react";
 import { useAsyncFn } from "react-use";
 import { c, jt, t } from "ttag";
@@ -25,7 +24,6 @@ import type {
 } from "metabase-enterprise/sandboxes/types";
 import { getRawDataQuestionForTable } from "metabase-enterprise/sandboxes/utils";
 import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
 import type {
   GroupTableAccessPolicy,
   Table,
@@ -36,8 +34,6 @@ import {
   AttributeOptionsEmptyState,
   DataAttributeMappingEditor,
 } from "../AttributeMappingEditor";
-
-import { shouldDisableItem } from "./utils";
 
 // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
 const ERROR_MESSAGE = t`An error occurred.`;
@@ -221,7 +217,14 @@ const EditSandboxingModal = ({
                   hideModal();
                 }}
                 onClose={hideModal}
-                shouldDisableItem={shouldDisableItem}
+                models={["card", "dataset"]}
+                namespaces={[null]}
+                options={{
+                  hasLibrary: false,
+                  hasRootCollection: true,
+                  hasPersonalCollections: true,
+                  hasConfirmButtons: true,
+                }}
               />
             )}
           </div>
@@ -421,7 +424,7 @@ const TargetName = ({ policy, policyTable, target }: TargetNameProps) => {
           }
           includeSensitiveFields
         >
-          {({ question }: { question: Question }) => {
+          {({ question }) => {
             if (!question) {
               return null;
             }

@@ -3,7 +3,6 @@ import { useEffect } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { DataPermissionValue } from "metabase/admin/permissions/types";
 import {
   type ScheduleChangeProp,
@@ -16,31 +15,29 @@ import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { dashboardPulseIsValid } from "metabase/lib/pulse";
 import { useSelector } from "metabase/lib/redux";
-import EmailAttachmentPicker from "metabase/notifications/EmailAttachmentPicker";
+import { EmailAttachmentPicker } from "metabase/notifications/EmailAttachmentPicker";
 import { RecipientPicker } from "metabase/notifications/channels/RecipientPicker";
 import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
-import { canAccessSettings } from "metabase/selectors/user";
-import { Icon } from "metabase/ui";
+import { canAccessSettings, getUser } from "metabase/selectors/user";
+import { Icon, Title } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Channel,
   ChannelApiResponse,
   ChannelSpec,
   Dashboard,
-  DashboardSubscription,
-  Pulse,
   ScheduleSettings,
   User,
 } from "metabase-types/api";
+import type { DraftDashboardSubscription } from "metabase-types/store";
 
 import { CaveatMessage } from "./CaveatMessage";
 import DefaultParametersSection from "./DefaultParametersSection";
 import { DeleteSubscriptionAction } from "./DeleteSubscriptionAction";
-import Heading from "./Heading";
 import { CHANNEL_NOUN_PLURAL } from "./constants";
 
 interface AddEditEmailSidebarProps {
-  pulse: DashboardSubscription;
+  pulse: DraftDashboardSubscription;
   formInput: ChannelApiResponse;
   channel: Channel;
   channelSpec: ChannelSpec;
@@ -55,9 +52,9 @@ interface AddEditEmailSidebarProps {
     schedule: ScheduleSettings,
     changedProp: ScheduleChangeProp,
   ) => void;
-  testPulse: () => void;
+  testPulse: (pulse: DraftDashboardSubscription) => Promise<unknown>;
   toggleSkipIfEmpty: () => void;
-  setPulse: (pulse: Pulse) => void;
+  setPulse: (pulse: DraftDashboardSubscription) => void;
   handleArchive: () => void;
   setPulseParameters: (parameters: UiParameter[]) => void;
 }
@@ -85,7 +82,7 @@ export const AddEditEmailSidebar = ({
 }: AddEditEmailSidebarProps) => {
   const isValid = dashboardPulseIsValid(pulse, formInput.channels);
   const userCanAccessSettings = useSelector(canAccessSettings);
-  const currentUser = useSelector(getCurrentUser);
+  const currentUser = useSelector(getUser);
 
   // Return true if the results of all cards can be downloaded
   const allowDownload = pulse.cards?.every(
@@ -106,7 +103,7 @@ export const AddEditEmailSidebar = ({
     >
       <div className={cx(CS.pt3, CS.px4, CS.flex, CS.alignCenter)}>
         <Icon name="mail" className={CS.mr1} size={21} />
-        <Heading>{t`Email this dashboard`}</Heading>
+        <Title order={4}>{t`Email this dashboard`}</Title>
       </div>
       {isEmbeddingSdk() ? null : <CaveatMessage />}
       <div
@@ -184,7 +181,7 @@ export const AddEditEmailSidebar = ({
             CS.borderTop,
           )}
         >
-          <Heading>{t`Don't send if there aren't results`}</Heading>
+          <Title order={4}>{t`Don't send if there aren't results`}</Title>
           <Toggle
             value={pulse.skip_if_empty || false}
             onChange={toggleSkipIfEmpty}

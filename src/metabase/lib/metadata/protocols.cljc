@@ -48,6 +48,19 @@
     {:error/message "All metadata types except for :metadata/table and :metadata/transform must include at least one filter"}
     (some-fn :id :name :table-id :card-id #(= (:lib/type %) :metadata/table) #(= (:lib/type %) :metadata/transform))]])
 
+(defn active-column-pred
+  "Returns a predicate that filters out columns that should not be visible based on `:active` status and
+  `:visibility-type` (e.g., `:sensitive`, `:retired`). Used by [[default-spec-filter-xform]] and by
+  [[metabase.lib.metadata/active-column-filter-xform]]."
+  ([]
+   (active-column-pred nil))
+  ([{:keys [include-sensitive?]}]
+   (let [excluded-visibility-types (cond-> #{:retired}
+                                     (not include-sensitive?) (conj :sensitive))]
+     #(and
+       (not (false? (:active %)))
+       (not (excluded-visibility-types (:visibility-type %)))))))
+
 (mu/defn default-spec-filter-xform
   "Create a `filter` transducer to a sequence of objects according to `metadata-spec`. Assumes objects are all the
   correct type already (i.e., does not filter by `:lib/type`). This powers the implementation of [[metadatas]] for
@@ -79,11 +92,7 @@
                             (not (#{:hidden :technical :cruft} (:visibility-type %))))
 
                           :metadata/column
-                          (let [excluded-visibility-types (cond-> #{:retired}
-                                                            (not include-sensitive?) (conj :sensitive))]
-                            #(and
-                              (not (false? (:active %)))
-                              (not (excluded-visibility-types (:visibility-type %)))))
+                          (active-column-pred {:include-sensitive? include-sensitive?})
 
                           (:metadata/card :metadata/measure :metadata/metric :metadata/segment)
                           #(not (:archived %))

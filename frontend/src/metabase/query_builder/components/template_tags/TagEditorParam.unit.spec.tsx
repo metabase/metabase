@@ -19,6 +19,7 @@ import {
 import {
   ORDERS,
   PEOPLE,
+  PRODUCTS_ID,
   REVIEWS,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
@@ -145,6 +146,36 @@ describe("TagEditorParam", () => {
         "widget-type": undefined,
       });
     });
+
+    it("should reset type-specific properties when the type is changed", async () => {
+      const tag = createMockTemplateTag({
+        type: "table",
+        "table-id": 1,
+      });
+      const { setTemplateTag } = setup({ tag });
+
+      await userEvent.click(screen.getByTestId("variable-type-select"));
+      await userEvent.click(screen.getByText("Number"));
+
+      expect(setTemplateTag).toHaveBeenCalledWith({
+        ...tag,
+        type: "number",
+        "table-id": undefined,
+      });
+
+      expect(
+        screen.getByRole("switch", { name: /emit table alias/i }),
+      ).toBeChecked();
+
+      await userEvent.click(
+        screen.getByRole("switch", { name: /emit table alias/i }),
+      );
+      expect(setTemplateTag).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          "emit-alias": false,
+        }),
+      );
+    });
   });
 
   describe("tag dimension", () => {
@@ -252,6 +283,21 @@ describe("TagEditorParam", () => {
     }, 40000);
   });
 
+  describe("table id", () => {
+    it("should be able to set the table id", async () => {
+      const tag = createMockTemplateTag({
+        type: "table",
+        "table-id": undefined,
+      });
+      const { setTemplateTag } = setup({ tag });
+      await userEvent.click(await screen.findByText("Products"));
+      expect(setTemplateTag).toHaveBeenCalledWith({
+        ...tag,
+        "table-id": PRODUCTS_ID,
+      });
+    });
+  });
+
   describe("field alias", () => {
     it.each<TemplateTagType>(["dimension", "temporal-unit"])(
       "should be possible to set a field alias for %s variables",
@@ -312,7 +358,7 @@ describe("TagEditorParam", () => {
     );
 
     it.each<TemplateTagType>(["text", "number", "date"])(
-      "should not show the field alias input for % variables",
+      "should not show the field alias input for %% variables",
       (type) => {
         const tag = createMockTemplateTag({ type });
         setup({ tag });

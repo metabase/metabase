@@ -70,6 +70,10 @@ export default {
         },
       },
     },
+    dataPicker: {
+      control: { type: "select" },
+      options: ["flat", "staged"],
+    },
   },
 };
 
@@ -89,7 +93,6 @@ export const Default = {
     isSaveEnabled: true,
     targetCollection: undefined,
     title: true,
-    withResetButton: true,
   },
 };
 
@@ -204,5 +207,6 @@ export const CreateQuestion = {
   args: {
     questionId: "new",
     entityTypes: ["model"],
+    dataPicker: "flat",
   },
 };

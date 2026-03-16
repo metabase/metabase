@@ -1,7 +1,10 @@
 import { screen } from "@testing-library/react";
 
 import { renderWithTheme } from "__support__/ui";
-import { createMockAlert, createMockUser } from "metabase-types/api/mocks";
+import {
+  createMockDashboardSubscription,
+  createMockUser,
+} from "metabase-types/api/mocks";
 
 import { NotificationList } from "./NotificationList";
 
@@ -9,7 +12,7 @@ const mockUser = createMockUser({ common_name: "John Doe" });
 
 describe("NotificationList", () => {
   it("should render items", () => {
-    const pulse = createMockAlert();
+    const pulse = createMockDashboardSubscription();
 
     renderWithTheme(
       <NotificationList

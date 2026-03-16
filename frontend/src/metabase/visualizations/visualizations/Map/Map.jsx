@@ -21,6 +21,7 @@ import {
 import {
   hasLatitudeAndLongitudeColumns,
   isCountry,
+  isDimension,
   isLatitude,
   isLongitude,
   isMetric,
@@ -80,8 +81,6 @@ export class Map extends Component {
             },
             value: "pin",
           },
-          // NOTE tlrobinson 4/13/18: Heat maps disabled until we can compute leaflet-heat options better
-          // { name: "Heat map", value: "heat" },
           { name: "Grid map", value: "grid" },
         ],
       },
@@ -107,9 +106,6 @@ export class Map extends Component {
                 longitudeColumn.binning_info
               ) {
                 return "grid";
-                // NOTE tlrobinson 4/13/18: Heat maps disabled until we can compute leaflet-heat options better
-                // } else if (settings["map.metric_column"]) {
-                //   return "heat";
               } else {
                 return "pin";
               }
@@ -143,8 +139,6 @@ export class Map extends Component {
             },
             value: "markers",
           },
-          // NOTE tlrobinson 4/13/18: Heat maps disabled until we can compute leaflet-heat options better
-          // { name: "Heat", value: "heat" },
           { name: "Grid", value: "grid" },
         ],
       },
@@ -216,11 +210,27 @@ export class Map extends Component {
       get title() {
         return t`Metric field`;
       },
+      getDefault: ([
+        {
+          data: { cols },
+        },
+      ]) => cols.find(isMetric)?.name,
       getHidden: (series, vizSettings) => vizSettings["map.type"] !== "region",
     }),
     ...dimensionSetting("map.dimension", {
       get title() {
         return t`Region field`;
+      },
+      getDefault: ([
+        {
+          data: { cols },
+        },
+      ]) => {
+        const geoDimension = cols.find((col) => isCountry(col) || isState(col));
+        if (geoDimension) {
+          return geoDimension.name;
+        }
+        return cols.find(isDimension)?.name;
       },
       getHidden: (series, vizSettings) => vizSettings["map.type"] !== "region",
     }),

@@ -35,8 +35,6 @@ import {
 
 export interface SegmentFormProps {
   segment?: Segment;
-  previewSummary?: string;
-  updatePreviewSummary: (previewSummary: string) => void;
   onIsDirtyChange: (isDirty: boolean) => void;
   onSubmit: (values: Partial<Segment>) => void;
 }

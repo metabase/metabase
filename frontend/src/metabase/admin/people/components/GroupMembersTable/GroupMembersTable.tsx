@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { AdminContentTable } from "metabase/common/components/AdminContentTable";
 import { Link } from "metabase/common/components/Link";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
@@ -11,6 +10,7 @@ import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
 import { useSelector } from "metabase/lib/redux";
 import { getFullName } from "metabase/lib/user";
 import { PLUGIN_GROUP_MANAGERS, PLUGIN_TENANTS } from "metabase/plugins";
+import { getUser } from "metabase/selectors/user";
 import { Box, Flex, Icon, Text, Tooltip, UnstyledButton } from "metabase/ui";
 import type { Group, Member, Membership } from "metabase-types/api";
 
@@ -117,8 +117,8 @@ const UserMemberRow = ({
   onMembershipUpdate,
 }: UserRowProps) => {
   // you can't remove people from Default and you can't remove the last user from Admin
-  const currentUser = useSelector(getCurrentUser);
-  const isCurrentUser = member.user_id === currentUser.id;
+  const currentUser = useSelector(getUser);
+  const isCurrentUser = member.user_id === currentUser?.id;
   const canRemove =
     !isDefaultGroup(group) &&
     !PLUGIN_TENANTS.isExternalUsersGroup(group) &&

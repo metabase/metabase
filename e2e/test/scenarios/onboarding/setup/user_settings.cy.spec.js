@@ -81,9 +81,8 @@ describe("user > settings", () => {
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Success");
 
-    cy.findByLabelText("gear icon").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Sign out").click();
+    H.getProfileLink().click();
+    H.popover().findByText("Sign out").click();
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sign in to Metabase");
   });
@@ -131,8 +130,8 @@ describe("user > settings", () => {
     // Assert that the page reloaded with the new language
     cy.findByLabelText("Nama depan").should("exist");
 
-    // We need some UI element other than a string
-    cy.icon("gear").should("exist");
+    // We need some UI element other than a string, and cannot get by labels as they could be translated
+    H.getProfileLink().should("exist");
   });
 
   it("should be able to open the app with every locale from the available locales (metabase#22192)", () => {
@@ -146,7 +145,7 @@ describe("user > settings", () => {
             cy.request("PUT", `/api/user/${user.id}`, { locale });
             cy.visit("/");
             cy.wait("@getUser");
-            cy.icon("gear").should("exist");
+            H.getProfileLink().should("exist");
           });
         },
       );
@@ -166,7 +165,7 @@ describe("user > settings", () => {
     // should be redirected to new question page
     cy.wait("@getUser");
     H.miniPicker().findByText("Parcourir tout").click();
-    H.entityPickerModal().findByText("Orders Model").click();
+    H.pickEntity({ path: ["Nos analyses", "Orders Model"] });
     cy.findByTestId("step-summarize-0-0")
       .findByText("Summarize")
       .should("not.exist");
@@ -248,7 +247,6 @@ describe("user > settings", () => {
 
   describe("dark mode", () => {
     const isMac = Cypress.platform === "darwin";
-    const metaKey = isMac ? "Meta" : "Control";
 
     it("should toggle through light and dark mode when clicking on the label or icon", () => {
       cy.visit("/account/profile");
@@ -261,9 +259,22 @@ describe("user > settings", () => {
       H.popover().findByText("Light").click();
       assertLightMode();
 
-      //Need to take focus off the inpout
+      //Need to take focus off the input
       H.navigationSidebar().findByRole("link", { name: /Home/ }).click();
-      cy.realPress([metaKey, "Shift", "L"]);
+      // Wait for navigation to complete so kbar shortcut handlers are re-registered
+      cy.location("pathname").should("eq", "/");
+      // Use eventConstructor: "KeyboardEvent" so tinykeys' instanceof check
+      // passes. cy.trigger() defaults to generic Event which kbar rejects.
+      // Chrome v123+ headless also intercepts cy.realPress() CDP keyboard
+      // events before they reach the page.
+      cy.get("body").trigger("keydown", {
+        eventConstructor: "KeyboardEvent",
+        key: "L",
+        code: "KeyL",
+        metaKey: isMac,
+        ctrlKey: !isMac,
+        shiftKey: true,
+      });
       assertDarkMode();
     });
 
@@ -302,8 +313,8 @@ describe("user > settings", () => {
       cy.findByTestId("table-body").should("be.visible"); // wait for table to be rendered
 
       cy.window().then((win) => {
-        H.appBar()
-          .findByLabelText("Settings")
+        H.getProfileLink()
+          .findByText("RT")
           .should("exist")
           .then(($button) => {
             cy.wrap(win.getComputedStyle($button[0]).color).should(
@@ -314,7 +325,7 @@ describe("user > settings", () => {
 
         cy.findByTestId("viz-type-button").click();
         cy.findByTestId("sidebar-left")
-          .findByText("Other charts")
+          .findByText("More charts")
           .then(($text) => {
             cy.wrap(win.getComputedStyle($text[0]).color).should(
               "eq",
@@ -323,8 +334,7 @@ describe("user > settings", () => {
           });
       });
 
-      H.appBar().findByLabelText("Settings").click();
-      H.popover().findByText("Account settings").click();
+      H.goToProfile();
       cy.findByDisplayValue("Light").click();
       H.popover().findByText("Dark").click();
 
@@ -335,8 +345,8 @@ describe("user > settings", () => {
       cy.findByTestId("table-body").should("be.visible"); // wait for table to be rendered
 
       cy.window().then((win) => {
-        H.appBar()
-          .findByLabelText("Settings")
+        H.getProfileLink()
+          .findByText("RT")
           .should("exist")
           .then(($button) => {
             cy.wrap(win.getComputedStyle($button[0]).color).should(
@@ -347,7 +357,7 @@ describe("user > settings", () => {
 
         cy.findByTestId("viz-type-button").click();
         cy.findByTestId("sidebar-left")
-          .findByText("Other charts")
+          .findByText("More charts")
           .then(($text) => {
             cy.wrap(win.getComputedStyle($text[0]).color).should(
               "eq",

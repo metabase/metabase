@@ -316,6 +316,15 @@ Identify when new versions of Metabase are available.
 Whether to (asynchronously) sync newly created Databases during config-from-file initialization. By default, true,
   but you can disable this behavior if you want to sync it manually or use SerDes to populate its data model.
 
+### `MB_CSV_FIELD_SEPARATOR`
+
+- Type: string
+- Default: `,`
+- [Exported as](../installation-and-operation/serialization.md): `csv-field-separator`.
+- [Configuration file name](./config-file.md): `csv-field-separator`
+
+Character to use as field separator in CSV exports. Defaults to comma (,). Common alternatives include semicolon (;) for European locales and tab (\t).
+
 ### `MB_CUSTOM_FORMATTING`
 
 - Type: json
@@ -388,9 +397,12 @@ Timeout in milliseconds for connecting to databases, both Metabase application d
 
 By default, this is 20 minutes.
 
-Timeout in minutes for databases query execution, both Metabase application database and data connections.
-  If you have long-running queries, you might consider increasing this value.
-  Adjusting the timeout does not impact Metabase’s frontend.
+Timeout in minutes for the database's query execution, both for the Metabase application database and any data connections.
+  If you have long-running queries, you might consider increasing this value. Adjusting the timeout does not impact Metabase’s frontend.
+
+  This setting also applies to individual queries executed within transforms, so make sure the duration is long enough
+  that it doesn't timeout any long-running queries in your transforms.
+
   Please be aware that other services (like Nginx) may still drop long-running queries.
 
 ### `MB_DEFAULT_MAPS_ENABLED`
@@ -672,14 +684,6 @@ Enable pivoted exports and pivoted subscriptions.
 
 Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards?
 
-### `MB_ENABLE_QUERY_CACHING`
-
-- Type: boolean
-- Default: `true`
-- [Configuration file name](./config-file.md): `enable-query-caching`
-
-Allow caching results of queries that take a long time to run.
-
 ### `MB_ENABLE_XRAYS`
 
 - Type: boolean
@@ -880,6 +884,16 @@ Key to retrieve the JWT user's last name.
 
 Key to retrieve the JWT user's tenant.
 
+### `MB_JWT_ATTRIBUTE_TENANT_ATTRIBUTES`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: string
+- Default: `@tenant.attributes`
+- [Configuration file name](./config-file.md): `jwt-attribute-tenant-attributes`
+
+Key to retrieve the JWT user's tenant attributes.
+
 ### `MB_JWT_ENABLED`
 
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
@@ -943,7 +957,9 @@ String used to seed the private key used to validate JWT messages. A hexadecimal
 - Default: `true`
 - [Configuration file name](./config-file.md): `jwt-user-provisioning-enabled`
 
-When a user logs in via JWT, create a Metabase account for them automatically if they don't have one.
+Determines what happens when a user logs in via JWT and doesn't have a Metabase account.
+
+When set to `true`, users who log in via JWT will automatically get a Metabase account if they don't have one, or get their existing account reactivated. When set to `false`, only users with active Metabase accounts can log in via JWT.
 
 ### `MB_LANDING_PAGE`
 
@@ -1126,8 +1142,9 @@ User lookup filter. The placeholder '{login}' will be replaced by the user suppl
 - Default: `true`
 - [Configuration file name](./config-file.md): `ldap-user-provisioning-enabled`
 
-When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who
-don't have one.
+Determines what happens when a user logs in via LDAP and doesn't have a Metabase account.
+
+When set to `true`, users who log in via LDAP will automatically get a Metabase account if they don't have one, or get their existing account reactivated. When set to `false`, only users with active Metabase accounts can log in via LDAP.
 
 ### `MB_LICENSE_TOKEN_MISSING_BANNER_DISMISSAL_TIMESTAMP`
 
@@ -1303,6 +1320,36 @@ The size of the thread pool used to send notifications.
 If Metabase stops sending notifications like alerts, it may be because long-running
   queries are clogging the notification queue. You may be able to unclog the queue by
   increasing the size of the thread pool dedicated to notifications.
+
+### `MB_OIDC_ALLOWED_NETWORKS`
+
+- Type: keyword
+- Default: `allow-all`
+- [Configuration file name](./config-file.md): `oidc-allowed-networks`
+
+What networks are OIDC requests allowed to? Possible values: 'allow-all' (default), 'allow-private', or 'external-only'.
+
+### `MB_OIDC_PROVIDERS`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: json
+- Default: `[]`
+- [Configuration file name](./config-file.md): `oidc-providers`
+
+JSON containing OIDC provider configurations.
+
+### `MB_OIDC_USER_PROVISIONING_ENABLED`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: boolean
+- Default: `true`
+- [Configuration file name](./config-file.md): `oidc-user-provisioning-enabled`
+
+Determines what happens when a user logs in via OIDC and doesn't have a Metabase account.
+
+When set to `true`, users who log in via OIDC will automatically get a Metabase account if they don't have one, or get their existing account reactivated. When set to `false`, only users with active Metabase accounts can log in via OIDC.
 
 ### `MB_PERSISTED_MODEL_REFRESH_CRON_SCHEDULE`
 
@@ -1631,8 +1678,9 @@ Is SAML Single Log Out enabled?
 - Default: `true`
 - [Configuration file name](./config-file.md): `saml-user-provisioning-enabled`
 
-When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who
-don't have one.
+Determines what happens when a user logs in via SAML and doesn't have a Metabase account.
+
+When set to `true`, users who log in via SAML will automatically get a Metabase account if they don't have one, or get their existing account reactivated. When set to `false`, only users with active Metabase accounts can log in via SAML.
 
 ### `MB_SCIM_ENABLED`
 
@@ -1936,6 +1984,13 @@ Identify the source of HTTP requests by this header's value, instead of its remo
 Fetch size for result sets. We want to ensure that the jdbc ResultSet objects are not realizing the entire results
   in memory.
 
+### `MB_SQL_TOOLS_PARSER_BACKEND`
+
+- Type: keyword
+- Default: `sqlglot`
+
+Parser backend of `sql-tools` module.
+
 ### `MB_SSH_HEARTBEAT_INTERVAL_SEC`
 
 - Type: integer
@@ -1987,6 +2042,36 @@ Maximum number of leaf fields synced per collection of document database. Curren
 - [Configuration file name](./config-file.md): `synchronous-batch-updates`
 
 Process batches updates synchronously. If true, all `submit!` calls will be processed immediately. Default is false.
+
+### `MB_THREAD_INTERRUPT_ESCALATION_TIMEOUT_MS`
+
+- Type: integer
+- Default: `0`
+
+By default, this is 0 and the thread interrupt escalation does not run.
+
+Timeout in milliseconds to wait after query cancellation before escalating to thread interruption.
+        This is used to free up threads that are stuck waiting for a DB response after a query has been cancelled.
+
+### `MB_TRANSFORM_TIMEOUT`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: integer
+- Default: `240`
+
+The timeout for a transform job, in minutes.
+
+Each query executed by a transform is also subject to the MB_DB_QUERY_TIMEOUT_MINUTES timeout,
+  so make sure that value isn't lower, or it will timeout your transform.
+
+### `MB_TRANSFORMS_ENABLED`
+
+- Type: boolean
+- Default: `false`
+- [Configuration file name](./config-file.md): `transforms-enabled`
+
+Enable transforms for instances that have not explicitly purchased the transform add-on.
 
 ### `MB_UNAGGREGATED_QUERY_ROW_LIMIT`
 
@@ -2119,6 +2204,8 @@ Type: string<br>
 Default: `null`
 
 A JDBC-style connection URI that can be used instead of most of `MB_DB_*` like [MB_DB_HOST](#mb_db_host). Also used when certain Connection String parameters are required for the connection. The connection type requirement is the same as [MB_DB_TYPE](#mb_db_type).
+
+Note that the `currentSchema` JDBC parameter has no effect. [The schema used for PostgreSQL application databases must be `public`](https://github.com/metabase/metabase/issues/37836).
 
 Examples:
 
@@ -2374,6 +2461,33 @@ Type: Boolean<br>
 Default: True
 
 Whether to include the Sample Database in your Metabase. To exclude the Sample Database, set `MB_LOAD_SAMPLE_CONTENT=false`.
+
+### `MB_MONITOR_PERFORMANCE`
+
+Type: string<br>
+Default: `""`
+
+When set, starts a Java Flight Recorder (JFR) recording at startup that can be analyzed with JDK Mission Control or other JFR tools.
+
+- `"true"` generates a timestamped output file like `metabase-20260115_143000.jfr`
+- A value ending in `.jfr` is used as the output filename
+- Any other non-empty value is treated as a directory path. A new timestamped JFR file is written to that directory every 30 minutes (e.g., `metabase-20260115_143000.jfr`). Data is only written at the end of each 30-minute interval.
+- `""` or `"false"` disables monitoring (the default)
+
+The performance recording stores only method signature calls and other code execution metrics.
+It does not store any sensitive information such as environment variables, system properties, or other machine information.
+
+### `MB_MONITOR_PERFORMANCE_SAVE_RATE`
+
+Type: integer<br>
+Default: mode-specific (5 minutes for single-file mode, 30 minutes for rolling mode)
+
+Override the interval (in minutes) at which JFR recording data is saved to disk. Only applies when [MB_MONITOR_PERFORMANCE](#mb_monitor_performance) is enabled.
+
+- In single-file mode, the default is `5` minutes.
+- In rolling directory mode, the default is `30` minutes.
+
+Setting this value overrides the default for whichever mode is active.
 
 ### `MB_NO_SURVEYS`
 

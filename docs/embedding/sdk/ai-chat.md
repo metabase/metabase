@@ -40,8 +40,8 @@ You can check out a [demo of the AI chat component](https://embedded-analytics-s
 
 To configure your embedded AI chat in your Metabase:
 
-1. Click the **gear** icon in the upper right.
-2. Select **Admin settings**.
+1. Click the **grid** icon in the upper right.
+2. Select **Admin**.
 3. Click the **AI** tab.
 4. In the left sidebar, click **Embedded Metabot**.
 

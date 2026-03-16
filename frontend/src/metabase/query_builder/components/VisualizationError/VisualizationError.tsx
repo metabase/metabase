@@ -113,10 +113,10 @@ export function VisualizationError({
 
   if (isNative) {
     // always show errors for native queries
-    let processedError = String(error);
+    let processedError = typeof error === "string" ? error : error.data;
     const origSql = getIn(via, [(via || "").length - 1, "ex-data", "sql"]);
-    if (typeof origSql === "string") {
-      processedError = adjustPositions(error, origSql);
+    if (typeof origSql === "string" && processedError) {
+      processedError = adjustPositions(processedError, origSql);
     }
     processedError = stripRemarks(processedError);
     const database = question.database();

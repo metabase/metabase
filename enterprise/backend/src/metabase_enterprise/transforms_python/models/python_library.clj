@@ -1,8 +1,11 @@
 (ns metabase-enterprise.transforms-python.models.python-library
   (:require
+   [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
    [metabase.events.core :as events]
+   [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.permissions.core :as perms]
    [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -31,9 +34,26 @@
 (doseq [trait [:metabase/model :hook/timestamped? :hook/entity-id]]
   (derive :model/PythonLibrary trait))
 
+(defmethod mi/can-read? :model/PythonLibrary
+  ([_instance]
+   (perms/has-any-transforms-permission? api/*current-user-id*))
+  ([_model _pk]
+   (perms/has-any-transforms-permission? api/*current-user-id*)))
+
+(defmethod mi/can-write? :model/PythonLibrary
+  ([_instance]
+   (perms/has-any-transforms-permission? api/*current-user-id*))
+  ([_model _pk]
+   (perms/has-any-transforms-permission? api/*current-user-id*)))
+
 (def ^:private allowed-paths
   "Set of allowed library paths. Currently only 'common' is supported."
   #{"common.py"})
+
+(def builtin-entity-id
+  "The entity_id of the built-in common.py PythonLibrary created by migration.
+   Used to protect it from deletion during remote-sync import."
+  "cWWH9qJPvHNB3rP2vLZrK")
 
 (defn- validate-path!
   "Validates that the given path is allowed. Throws an exception if not."

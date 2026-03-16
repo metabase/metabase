@@ -10,6 +10,7 @@
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -150,23 +151,22 @@
         (merge
          {:name                       column-name
           :database-type              (.getString rs "TYPE_NAME")
+          :jdbc-type                  (.getInt rs "DATA_TYPE")
           :database-is-auto-increment auto-increment?
           :database-required          required?}
-
          ;; in the same way drivers are free to not return these attributes, and leave them undefined
          ;; we should treat unknown values accordingly
          (u/remove-nils
           {;; COLUMN_DEF = "" observed with clickhouse, druid, "" is never a valid SQL expression, so treat as undefined
            ;; we should probably not-empty for the purposes of required, but trying to retain existing behaviour for now
-           :database-default           (not-empty default)
-           :database-is-generated      generated
-           :database-is-nullable       nullable})
-
+           :database-default      (not-empty default)
+           :database-is-generated generated
+           :database-is-nullable  nullable})
          (when-let [remarks (.getString rs "REMARKS")]
            (when-not (str/blank? remarks)
              {:field-comment remarks})))))))
 
-(defn ^:private fields-metadata
+(defn- fields-metadata
   [driver ^Connection conn {schema :schema, table-name :name} ^String db-name-or-nil]
   {:pre [(instance? Connection conn) (string? table-name)]}
   (reify clojure.lang.IReduceInit
@@ -229,7 +229,8 @@
                                          :database-required
                                          :database-is-auto-increment
                                          :database-is-generated
-                                         :database-is-nullable])
+                                         :database-is-nullable
+                                         :jdbc-type])
              {:table-schema      (:table-schema col) ;; can be nil
               :base-type         base-type
               ;; json-unfolding is true by default for JSON fields, but this can be overridden at the DB level
@@ -370,7 +371,7 @@
   (if (or (and schema-names (empty? schema-names))
           (and table-names (empty? table-names)))
     []
-    (let [sql (describe-fields-sql driver (assoc args :details (:details db)))]
+    (let [sql (describe-fields-sql driver (assoc args :details (driver.conn/effective-details db)))]
       (try
         (log/debugf "`describe-fields` sql query:\n```\n%s\n```\n`describe-fields` args:\n```\n%s\n```"
                     (driver/prettify-native-form driver (first sql))
@@ -400,7 +401,7 @@
     []
     (eduction
      (map (fn [col] (select-keys col [:table-schema :table-name :field-name])))
-     (sql-jdbc.execute/reducible-query db (describe-indexes-sql driver (assoc args :details (:details db)))))))
+     (sql-jdbc.execute/reducible-query db (describe-indexes-sql driver (assoc args :details (driver.conn/effective-details db)))))))
 
 (defn- describe-table-fks*
   [_driver ^Connection conn {^String schema :schema, ^String table-name :name} & [^String db-name-or-nil]]
@@ -438,7 +439,7 @@
   (if (or (and schema-names (empty? schema-names))
           (and table-names (empty? table-names)))
     []
-    (sql-jdbc.execute/reducible-query db (describe-fks-sql driver (assoc args :details (:details db))))))
+    (sql-jdbc.execute/reducible-query db (describe-fks-sql driver (assoc args :details (driver.conn/effective-details db))))))
 
 (defn describe-table-indexes
   "Default implementation of [[metabase.driver/describe-table-indexes]] for SQL JDBC drivers. Uses JDBC DatabaseMetaData."

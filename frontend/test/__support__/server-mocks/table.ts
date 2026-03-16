@@ -80,17 +80,17 @@ export function setupTableSearchEndpoint(tables: Table[]) {
 
 export function setupTablesBulkEndpoints() {
   fetchMock.post(
-    "path:/api/ee/data-studio/table/rescan-values",
+    "path:/api/data-studio/table/rescan-values",
     {},
     { name: "tables-rescan-values" },
   );
   fetchMock.post(
-    "path:/api/ee/data-studio/table/sync-schema",
+    "path:/api/data-studio/table/sync-schema",
     {},
     { name: "tables-sync-schema" },
   );
   fetchMock.post(
-    "path:/api/ee/data-studio/table/discard-values",
+    "path:/api/data-studio/table/discard-values",
     {},
     { name: "tables-discard-values" },
   );

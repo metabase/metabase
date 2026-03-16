@@ -17,7 +17,7 @@ import CS from "metabase/css/core/index.css";
 import { getIsXrayEnabled } from "metabase/home/selectors";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { useHelpLink } from "metabase/nav/components/ProfileLink/useHelpLink";
+import { useHelpLink } from "metabase/nav/components/AppSwitcher/useHelpLink";
 import {
   getDocsUrl,
   getIsPaidPlan,

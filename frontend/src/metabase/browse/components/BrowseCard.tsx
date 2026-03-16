@@ -58,7 +58,7 @@ export const BrowseCard = ({
       p="1.5rem"
       classNames={{
         root: cx(
-          CS.bgBrandLighterHover,
+          CS.bgBrandHover,
           CS.hoverParent,
           CS.hoverDisplay,
           CS.textBrandHover,

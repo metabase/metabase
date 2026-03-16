@@ -262,7 +262,9 @@ const openCreatedAt = (tab) => {
   H.popover().within(() => {
     cy.findByText("Filter by this column").click();
     cy.findByText("Relative date range…").click();
-    tab && cy.findByText(tab).click();
+    if (tab) {
+      cy.findByText(tab).click();
+    }
   });
 };
 

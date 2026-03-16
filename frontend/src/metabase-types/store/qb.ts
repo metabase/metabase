@@ -1,6 +1,6 @@
 import type { Deferred } from "metabase/lib/promise";
 import type { QueryModalType } from "metabase/query_builder/constants";
-import type { Widget } from "metabase/visualizations/components/ChartSettings/types";
+import type { Widget } from "metabase/visualizations/types";
 import type {
   Card,
   CollectionItemModel,

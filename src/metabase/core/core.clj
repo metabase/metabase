@@ -13,6 +13,7 @@
    [metabase.config.core :as config]
    [metabase.core.config-from-file :as config-from-file]
    [metabase.core.init]
+   [metabase.core.perf :as perf]
    [metabase.driver.h2]
    [metabase.driver.mysql]
    [metabase.driver.postgres]
@@ -31,6 +32,7 @@
    [metabase.startup.core :as startup]
    [metabase.system.core :as system]
    [metabase.task.core :as task]
+   [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.queue :as queue]
@@ -105,11 +107,13 @@
   (queue/stop-listeners!)
   (task/stop-scheduler!)
   (server/stop-web-server!)
+  (tracing/shutdown!)
   (analytics/shutdown!)
   (notification/shutdown!)
   ;; This timeout was chosen based on a 30s default termination grace period in Kubernetes.
   (let [timeout-seconds 20]
     (mdb/release-migration-locks! timeout-seconds))
+  (perf/stop-monitoring!)
   (log/info "Metabase Shutdown COMPLETE"))
 
 (defenterprise ensure-audit-db-installed!
@@ -157,6 +161,7 @@
   []
   (log/infof "Starting Metabase version %s ..." config/mb-version-string)
   (log/infof "System info:\n %s" (u/pprint-to-str (u.system-info/system-info)))
+  (perf/maybe-enable-monitoring!)
   (init-signal-logging!)
   (init-status/set-progress! 0.1)
   ;; First of all, lets register a shutdown hook that will tidy things up for us on app exit
@@ -164,6 +169,8 @@
   (init-status/set-progress! 0.2)
   ;; Ensure the classloader is installed as soon as possible.
   (classloader/the-classloader)
+  ;; Initialize OpenTelemetry tracing early (before plugins, no DB dependency)
+  (tracing/init!)
   ;; load any plugins as needed
   (plugins/load-plugins!)
   (init-status/set-progress! 0.3)

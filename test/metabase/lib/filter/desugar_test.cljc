@@ -194,6 +194,44 @@
              [:if (opts :default 3)
               [[[:< (opts) [:field (opts) 1] 1] 2]]])))))
 
+(deftest ^:parallel desugar-nested-if-test
+  (testing "Desugaring if produces expected [:case ..] expression"
+    (is (=? [:case {}
+             [[[:case {}
+                [[[:< {}
+                   [:field {} 1]
+                   1]
+                  [:< {}
+                   [:field {} 2]
+                   2]]]
+                [:< {}
+                 [:field {} 3]
+                 3]]
+               [:case {}
+                [[[:< {}
+                   [:field {} 4]
+                   4]
+                  5]]]]]
+             [:case {}
+              [[[:< {}
+                 [:field {} 6]
+                 6]
+                7]]]]
+            (lib.filter.desugar/desugar-filter-clause
+             [:if (opts)
+              [[[:if (opts)
+                 [[[:< (opts) [:field (opts) 1] 1]
+                   [:< (opts) [:field (opts) 2] 2]]]
+                 [:< (opts) [:field (opts) 3] 3]]
+                [:if (opts)
+                 [[[:< (opts) [:field (opts) 4] 4]
+                   5]]]]]
+              [:if (opts)
+               [[[:< (opts)
+                  [:field (opts) 6]
+                  6]
+                 7]]]])))))
+
 (deftest ^:parallel desugar-if-with-default-value-test
   (is (= [:case {:lib/uuid "00000000-0000-0000-0000-000000000000", :lib/expression-name "If"}
           [[[:= {:lib/uuid "00000000-0000-0000-0000-000000000001"}

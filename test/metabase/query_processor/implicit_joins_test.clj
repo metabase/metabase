@@ -231,7 +231,7 @@
                         :aggregation  [[:count]]
                         :limit        1})))))))))))
 
-(mt/defdataset long-col-name-dataset
+(mt/defdataset long-column-name-dataset
   [["long_col_name" [{:field-name "fk"
                       :base-type :type/Integer}
                      {:field-name "abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_"
@@ -249,7 +249,7 @@
 
 (deftest long-col-name-repro-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
-    (mt/dataset long-col-name-dataset
+    (mt/dataset long-column-name-dataset
       (let [mp (mt/metadata-provider)
             table (lib.metadata/table mp (mt/id :long_col_name))
             query (lib/query mp table)
@@ -279,7 +279,7 @@
                 query (lib/join query join-clause)
                 breakoutable-cols (lib/breakoutable-columns query)
                 big-col (m/find-first (fn [col]
-                                        (and (:metabase.lib.join/join-alias col)
+                                        (and (:lib/join-alias col)
                                              (str/starts-with? (u/lower-case-en (:name col)) "abcdefg")))
                                       breakoutable-cols)
                 query (-> query
@@ -360,9 +360,9 @@
               query           (-> (lib/query mp logs-table)
                                   (lib/join join-clause))
               ;; Find the event_timestamp column from the explicit join.
-              ;; Columns from explicit joins have :metabase.lib.join/join-alias.
+              ;; Columns from explicit joins have :lib/join-alias.
               event-timestamp (->> (lib/filterable-columns query)
-                                   (filter :metabase.lib.join/join-alias)
+                                   (filter :lib/join-alias)
                                    (m/find-first (comp #{"event_timestamp"} u/lower-case-en :name)))
               _               (is (some? event-timestamp) "Should find event_timestamp via explicit join")]
           (testing "Filter on coerced field via explicit join"

@@ -18,7 +18,7 @@ export function parseRouteParams(params: RouteParams): ParsedRouteParams {
 }
 
 export function getTableMetadataQuery(
-  tableId: TableId | undefined,
+  tableId: TableId | undefined | null,
 ): GetTableQueryMetadataRequest | typeof skipToken {
   if (tableId == null) {
     return skipToken;

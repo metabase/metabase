@@ -1,11 +1,15 @@
 (ns metabase-enterprise.dependencies.findings-test
   (:require
    [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase-enterprise.dependencies.analysis :as deps.analysis]
    [metabase-enterprise.dependencies.findings :as deps.findings]
    [metabase-enterprise.dependencies.models.analysis-finding :as models.analysis-finding]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -59,18 +63,63 @@
         (binding [models.analysis-finding/*current-analysis-finding-version* (inc models.analysis-finding/*current-analysis-finding-version*)]
           (is (= 2 (deps.findings/analyze-batch! :card 2))))))))
 
-(deftest ^:sequential does-not-analyze-native-entities-test
-  (testing "assumes native queries are always fine"
+(deftest ^:sequential does-analyze-native-entities-test
+  (testing "failed analysis result is appropriately stored in the appdb"
     (backfill-all-entity-analyses!)
     (let [mp (mt/metadata-provider)]
       (mt/with-premium-features #{:dependencies}
         (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/native-query mp "utter nonsense")}]
           (is (= 1 (deps.findings/analyze-batch! :card 1)))
-          (is (= [models.analysis-finding/*current-analysis-finding-version* true]
+          (is (= [models.analysis-finding/*current-analysis-finding-version* false]
                  (t2/select-one-fn (juxt :analysis_version :result)
                                    :model/AnalysisFinding
                                    :analyzed_entity_id card-id
                                    :analyzed_entity_type :card))))))))
+
+(deftest ^:sequential does-report-errors-for-missing-refs-in-fields-test
+  (testing "missing (not inactive) field refs in :fields are reported as findings (GHY-3157)"
+    (backfill-all-entity-analyses!)
+    (let [mp      (mt/metadata-provider)
+          orders  (lib.metadata/table mp (mt/id :orders))
+          base    (lib/query mp orders)
+          cols    (vec (take 5 (lib/returned-columns base orders)))
+          bad-col (-> (first cols)
+                      lib/ref
+                      (assoc 2 "bad_column"))
+          query   (lib/with-fields base (conj cols bad-col))]
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/Card {card-id :id} {:dataset_query query}]
+          (is (= 1 (deps.findings/analyze-batch! :card 1)))
+          (is (= [models.analysis-finding/*current-analysis-finding-version* false]
+                 (t2/select-one-fn (juxt :analysis_version :result)
+                                   :model/AnalysisFinding
+                                   :analyzed_entity_id card-id
+                                   :analyzed_entity_type :card))))))))
+
+;; TODO: (bshepherdson, 2026-02-05) Add a test like does-not-report-errors-in-removable-refs-test-1-stage-fields for
+;; join clause :fields as well. See QUE-3081 and QUE-3044.
+
+(deftest ^:parallel reports-missing-field-in-downstream-card-fields-test
+  (testing "Q2 based on Q1 with :fields referencing a column Q1 no longer returns should be reported (GHY-3157)"
+    (let [mp          meta/metadata-provider
+          q1          (lib/query mp (meta/table-metadata :orders))
+          q1-cols     (lib/returned-columns q1)
+          removed-col (m/find-first #(= (:name %) "ID") q1-cols)
+          ;; Card 101 = Q1 with ID removed from result-metadata (simulates Q1 dropping that field)
+          mp          (lib.tu/metadata-provider-with-card-from-query
+                       mp 101 q1
+                       {:result-metadata (vec (remove #(= (:name %) "ID") q1-cols))})
+          ;; Q2: query based on card 101, with :fields including the now-missing ID
+          q2-base     (lib/query mp {:lib/type :metadata/card :id 101})
+          q2-cols     (lib/returned-columns q2-base)
+          q2          (lib/with-fields q2-base (conj (vec q2-cols) (lib/ref removed-col)))
+          ;; Card 102 = Q2 (provide result-metadata explicitly since q2 has a bad ref)
+          mp          (lib.tu/metadata-provider-with-card-from-query
+                       mp 102 q2
+                       {:result-metadata (vec q2-cols)})
+          results     (deps.analysis/check-entity mp :card 102)]
+      (is (seq results)
+          "Q2 should have findings for the missing ID column from Q1"))))
 
 (defn- stale-map
   "Returns a map of {entity-id stale?} for the given card IDs."

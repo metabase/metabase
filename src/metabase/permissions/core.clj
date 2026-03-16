@@ -43,6 +43,8 @@
   full-db-permission-for-user
   full-schema-permission-for-user
   groups-have-permission-for-table?
+  is-superuser?
+  is-data-analyst?
   most-permissive-database-permission-for-user
   native-download-permission-for-user
   permissions-for-user
@@ -62,7 +64,9 @@
   user-has-permission-for-schema?
   user-has-permission-for-table?
   with-additional-table-permission
-  with-relevant-permissions-for-user]
+  with-relevant-permissions-for-user
+  has-any-transforms-permission?
+  has-db-transforms-permission?]
  [metabase.permissions.models.data-permissions.sql
   UserInfo
   PermissionMapping
@@ -97,6 +101,8 @@
   fail-to-remove-last-admin-msg
   remove-user-from-group!
   remove-user-from-groups!
+  remove-all-users-from-group!
+  remove-user-from-all-groups!
   throw-if-last-admin!
   without-is-superuser-sync-on-add-to-admin-group]
  [metabase.permissions.path
@@ -129,7 +135,8 @@
   can-access-via-collection?
   user-published-table-permission
   user-has-any-published-table-permission?
-  user-has-published-table-permission-for-database?])
+  user-has-published-table-permission-for-database?
+  published-table-visible-clause])
 
 (p/import-vars [metabase.permissions.settings use-tenants])
 

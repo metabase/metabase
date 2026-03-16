@@ -5,9 +5,9 @@
    to avoid circular dependencies between test namespaces."
   (:require
    [clojure.string :as str]
-   [metabase.config.core :as config]
    [metabase.premium-features.token-check :as token-check]
    [metabase.request.core :as request]
+   [metabase.server.instance :as server.instance]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.random :as u.random]
@@ -100,7 +100,7 @@
         [jwt-enabled              true
          jwt-identity-provider-uri default-jwt-idp-uri
          jwt-shared-secret        default-jwt-secret
-         site-url                 (format "http://localhost:%s" (config/config-str :mb-jetty-port))]
+         site-url                 (format "http://localhost:%s" (server.instance/server-port))]
         (mt/with-premium-features current-features
           (f))))))
 
@@ -136,9 +136,45 @@
          slack-connect-client-secret            default-slack-client-secret
          slack-connect-authentication-mode      "sso"
          slack-connect-user-provisioning-enabled true
-         site-url                               (format "http://localhost:%s" (config/config-str :mb-jetty-port))]
+         site-url                               (format "http://localhost:%s" (server.instance/server-port))]
         (mt/with-premium-features current-features
           (f))))))
+
+;;; -------------------------------------------------- OIDC (Generic) Setup --------------------------------------------------
+
+(def ^:private default-oidc-provider
+  {:key            "test-idp"
+   :login-prompt   "Test IdP"
+   :issuer-uri     "https://test.idp.example.com"
+   :client-id      "test-client-id"
+   :client-secret  "test-client-secret"
+   :scopes         ["openid" "email" "profile"]
+   :enabled        true})
+
+(defn call-with-default-oidc-config!
+  "Execute `f` with default OIDC configuration set up."
+  [f]
+  (let [current-features (token-check/*token-features*)]
+    (mt/with-additional-premium-features #{:sso-oidc}
+      (mt/with-temporary-setting-values
+        [oidc-providers [default-oidc-provider]
+         site-url       (format "http://localhost:%s" (server.instance/server-port))]
+        (mt/with-premium-features current-features
+          (f))))))
+
+(defmacro with-oidc-default-setup!
+  "Set up default OIDC configuration for tests."
+  [& body]
+  `(mt/test-helpers-set-global-values!
+     (mt/with-premium-features #{:audit-app}
+       (do-with-other-sso-types-disabled!
+        (fn []
+          (mt/with-additional-premium-features #{:sso-oidc}
+            (call-with-login-attributes-cleared!
+             (fn []
+               (call-with-default-oidc-config!
+                (fn []
+                  ~@body))))))))))
 
 (defmacro with-slack-default-setup!
   "Set up default Slack Connect configuration for tests.

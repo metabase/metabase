@@ -4,8 +4,6 @@
   "jake.autoDetect": "off",
   "gulp.autoDetect": "off",
   "npm.autoDetect": "off",
-  "eslint.options": {
-    "rulePaths": ["frontend/lint/eslint-rules/"]
-  },
-  "typescript.tsdk": "node_modules/typescript/lib"
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "cssVariables.lookupFiles": ["**/*.d.css", "node_modules/@mantine/core/*.css"]
 }

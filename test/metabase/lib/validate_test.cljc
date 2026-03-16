@@ -8,7 +8,7 @@
    [metabase.lib.test-util :as lib.tu]))
 
 (deftest ^:parallel find-bad-refs-with-source-table-test
-  (testing "invalidl query of a table returns error with table as source"
+  (testing "invalid query of a table returns error with table as source"
     (let [mp meta/metadata-provider
           query (-> (lib/query mp (meta/table-metadata :orders))
                     (lib/filter (lib/= (meta/field-metadata :orders :user-id) 1)))
@@ -93,6 +93,35 @@
               :name "missingcol"}
              (first errors))))))
 
+(deftest ^:parallel find-bad-refs-with-source-join-with-inlined-query-test
+  (testing "invalid ref in the stages of an inlined joined card returns error with refs target as source"
+    (let [mp             meta/metadata-provider
+          card-query     (-> (lib/query mp (meta/table-metadata :products))
+                             (lib/filter (lib/= (meta/field-metadata :products :category) "Doohickey")))
+          mp             (lib.tu/metadata-provider-with-card-from-query mp 101 card-query)
+          orders         (meta/table-metadata :orders)
+          base-query     (lib/query mp orders)
+          card-metadata  (lib.metadata/card mp 101)
+          join-clause    (-> (lib/join-clause card-metadata)
+                             (lib/with-join-conditions
+                              [(lib/= (meta/field-metadata :orders :product-id)
+                                      (m/find-first #(= (:name %) "ID")
+                                                    (lib/returned-columns (lib/query mp card-metadata))))])
+                             (lib/with-join-fields :all))
+          query          (lib/join base-query join-clause)
+          joined-cols    (filter #(= (:lib/source %) :source/joins)
+                                 (lib/returned-columns query))
+          joined-col     (m/find-first #(= (:name %) "CATEGORY") joined-cols)
+          filter-query   (lib/filter query (lib/= joined-col "Widget"))
+          bad-query      (assoc-in filter-query [:stages 0 :filters 0 2 2] "missingcol")
+          errors         (lib/find-bad-refs-with-source bad-query)]
+      (is (= 1 (count errors)))
+      (is (= {:type :missing-column
+              :source-entity-type :card
+              :source-entity-id 101
+              :name "missingcol"}
+             (first errors))))))
+
 (deftest ^:parallel find-bad-refs-with-source-multiple-joins-test
   (testing "invalid query with joins to both table and card returns errors with both source types"
     (let [mp meta/metadata-provider
@@ -162,6 +191,47 @@
               :name "missingcol"}
              (first errors))))))
 
+(deftest ^:parallel find-bad-refs-with-source-in-expression-test
+  (testing "invalid ref embedded in expression returns error with the ref's target table/card"
+    (let [mp        meta/metadata-provider
+          query     (-> (lib/query mp (meta/table-metadata :orders))
+                        (lib/expression "tax rate" (lib// (meta/field-metadata :orders :tax)
+                                                          (meta/field-metadata :orders :subtotal))))
+          bad-query (assoc-in query [:stages 0 :expressions 0 2 2] "missingcol")
+          errors    (lib/find-bad-refs-with-source bad-query)]
+      (is (= 1 (count errors)))
+      (is (= {:type               :missing-column
+              :source-entity-type :table
+              :source-entity-id   (meta/id :orders)
+              :name               "missingcol"}
+             (first errors))))))
+
+;; TODO: (bshepherdson, 2026-02-05) This doesn't pass right now, because refs in join clauses are ignored by
+;; find-bad-refs-with-source. Restore this test as part of QUE-3081.
+#_(deftest ^:parallel find-bad-refs-with-source-in-join-condition-test
+    (testing "invalid ref embedded in a"
+      (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                      (lib/join (lib/join-clause (meta/table-metadata :products))))]
+        (is (empty? (lib/find-bad-refs-with-source query)))
+        (testing "join condition's LHS returns errors on the source table"
+          (let [bad-lhs (assoc-in query [:stages 0 :joins 0 :conditions 0 2 2] "missingcol")
+                errors  (lib/find-bad-refs-with-source bad-lhs)]
+            (is (= 1 (count errors)))
+            (is (= {:type               :missing-column
+                    :source-entity-type :table
+                    :source-entity-id   (meta/id :orders)
+                    :name               "missingcol"}
+                   (first errors)))))
+        (testing "join condition's RHS returns errors on the joined table"
+          (let [bad-rhs (assoc-in query [:stages 0 :joins 0 :conditions 0 3 2] "missingcol")
+                errors  (lib/find-bad-refs-with-source bad-rhs)]
+            (is (= 1 (count errors)))
+            (is (= {:type               :missing-column
+                    :source-entity-type :table
+                    :source-entity-id   (meta/id :orders)
+                    :name               "missingcol"}
+                   (first errors))))))))
+
 (deftest ^:parallel find-bad-refs-with-source-implicit-join-test
   (testing "invalid query with implicit join via :source-field returns error with FK field's table as source"
     (let [mp meta/metadata-provider
@@ -177,3 +247,91 @@
               :source-entity-id (meta/id :orders)
               :name "missingcol"}
              (first errors))))))
+
+(deftest ^:parallel find-bad-refs-with-source-missing-field-in-fields-not-soft-test-1-main-fields
+  (testing "missing (not inactive) field refs in top-level `:fields` clauses are NOT marked :soft?"
+    (let [mp           meta/metadata-provider
+          base         (lib/query mp (meta/table-metadata :orders))
+          removing     (->> (lib/fieldable-columns base)
+                            (filter :selected?)
+                            last)
+          query        (lib/remove-field base -1 removing)
+          fields       (vec (lib/fields query))
+          bad-fields   (assoc-in fields [6 2] "missingcol")
+          bad-query    (lib/with-fields query bad-fields)
+          errors       (lib/find-bad-refs-with-source bad-query)]
+      (is (empty? (lib/find-bad-refs-with-source query)))
+      (is (= 1 (count errors)))
+      (is (= {:type               :missing-column
+              :source-entity-type :table
+              :source-entity-id   (meta/id :orders)
+              :name               "missingcol"}
+             (first errors))))))
+
+(deftest ^:parallel find-bad-refs-with-source-inactive-field-in-fields-is-soft-test
+  (testing "inactive field refs in top-level `:fields` clauses are marked :soft?"
+    (let [mp           meta/metadata-provider
+          base         (lib/query mp (meta/table-metadata :orders))
+          fieldable    (->> (lib/fieldable-columns base)
+                            (filter :selected?))
+          last-col     (last fieldable)
+          ;; Create a provider where this field is inactive
+          mp           (lib.tu/mock-metadata-provider
+                        mp
+                        {:fields [(assoc last-col :active false)]})
+          query        (lib/query mp (meta/table-metadata :orders))
+          fields       (mapv lib/ref fieldable)
+          bad-query    (lib/with-fields query fields)
+          errors       (lib/find-bad-refs-with-source bad-query)]
+      (is (= 1 (count errors)))
+      (is (= {:type               :missing-column
+              :source-entity-type :table
+              :source-entity-id   (meta/id :orders)
+              :name               (:name last-col)
+              :soft?              true}
+             (first errors))))))
+
+(deftest ^:parallel find-bad-refs-with-source-missing-field-in-fields-not-soft-test
+  (testing "missing field refs in `:fields` (not just inactive) should NOT be marked :soft? (GHY-3157)"
+    (let [mp           meta/metadata-provider
+          ;; Q1: query on orders with explicit fields
+          q1           (lib/query mp (meta/table-metadata :orders))
+          q1-cols      (lib/returned-columns q1)
+          ;; Create card 101 from Q1, but with one column removed from result-metadata
+          ;; This simulates Q1 dropping a field (e.g., removing ID from :fields)
+          removed-col  (m/find-first #(= (:name %) "ID") q1-cols)
+          mp           (lib.tu/metadata-provider-with-card-from-query
+                        mp 101 q1
+                        {:result-metadata (vec (remove #(= (:name %) "ID") q1-cols))})
+          ;; Q2: query based on card 101, with :fields that include the now-missing ID
+          q2           (lib/query mp {:lib/type :metadata/card :id 101})
+          q2-cols      (lib/returned-columns q2)
+          ;; Add a :fields clause that includes a ref to the removed column
+          q2-with-fields (lib/with-fields q2 (concat q2-cols [(lib/ref removed-col)]))
+          errors       (lib/find-bad-refs-with-source q2-with-fields)]
+      (is (= 1 (count errors)))
+      ;; The key assertion: this should NOT be soft, because the field is missing, not just inactive
+      (is (not (:soft? (first errors))))
+      (is (= {:type               :missing-column
+              :source-entity-type :card
+              :source-entity-id   101}
+             (select-keys (first errors) [:type :source-entity-type :source-entity-id]))))))
+
+;; TODO: (bshepherdson, 2026-02-05) This doesn't pass right now, because refs in join clauses are ignored by
+;; find-bad-refs-with-source. Restore this test as part of QUE-3081.
+#_(deftest ^:parallel find-bad-refs-with-source-soft-refs-test-2-join-fields
+    (testing "invalid field refs in a join's `:fields` clauses are marked :soft?"
+      (let [mp           meta/metadata-provider
+            query        (-> (lib/query mp (meta/table-metadata :orders))
+                             (lib/join (-> (lib/join-clause (meta/table-metadata :products))
+                                           (lib/with-join-fields [(meta/field-metadata :products :category)]))))
+            bad-query    (assoc-in query [:stages 0 :joins 0 :fields 0 2] "missingcol")
+            errors       (lib/find-bad-refs-with-source bad-query)]
+        (is (empty? (lib/find-bad-refs-with-source query)))
+        (is (= 1 (count errors)))
+        (is (= {:type               :missing-column
+                :source-entity-type :table
+                :source-entity-id   (meta/id :orders)
+                :name               "missingcol"
+                :soft?              true}
+               (first errors))))))

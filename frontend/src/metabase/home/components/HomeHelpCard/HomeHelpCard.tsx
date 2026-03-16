@@ -32,7 +32,7 @@ export const HomeHelpCard = (): JSX.Element | null => {
       px="lg"
       classNames={{
         root: cx(
-          CS.bgBrandLighterHover,
+          CS.bgBrandHover,
           CS.hoverParent,
           CS.hoverDisplay,
           CS.textBrandHover,

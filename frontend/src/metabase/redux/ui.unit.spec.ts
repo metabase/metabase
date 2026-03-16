@@ -91,13 +91,13 @@ describe("metabase/redux/ui", () => {
           isProduction: true,
         }));
 
-        /* eslint-disable @typescript-eslint/no-var-requires */
+        /* eslint-disable @typescript-eslint/no-require-imports -- require after jest.doMock */
         const { configureStore } = require("@reduxjs/toolkit");
         const {
           modal: productionModal,
           setOpenModalWithProps: productionSetOpenModalWithProps,
         } = require("./ui");
-        /* eslint-enable @typescript-eslint/no-var-requires */
+        /* eslint-enable @typescript-eslint/no-require-imports */
 
         const store = configureStore({
           reducer: { modal: productionModal },

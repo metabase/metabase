@@ -17,6 +17,7 @@ import {
   useGetDocumentQuery,
   useGetSegmentQuery,
   useGetTableQuery,
+  useGetTransformQuery,
   useListMentionsQuery,
 } from "metabase/api";
 import { Link } from "metabase/common/components/Link";
@@ -344,7 +345,7 @@ export const useEntityData = (
     },
   );
 
-  const transformQuery = PLUGIN_TRANSFORMS.useGetTransformQuery(entityId!, {
+  const transformQuery = useGetTransformQuery(entityId!, {
     skip: !PLUGIN_TRANSFORMS.isEnabled || !entityId || model !== "transform",
   });
 
@@ -429,6 +430,7 @@ export const useEntityData = (
       };
     }
     case "indexed-entity":
+    case "measure":
     case null:
       return { entity: null, isLoading: false, error: null };
     default:
@@ -438,7 +440,7 @@ export const useEntityData = (
 };
 
 export const SmartLinkComponent = memo(
-  ({ node }: NodeViewProps) => {
+  ({ node, updateAttributes }: NodeViewProps) => {
     const { entityId, model, label } = node.attrs;
 
     const {
@@ -454,9 +456,10 @@ export const SmartLinkComponent = memo(
       if (entity) {
         const name =
           "display_name" in entity ? entity.display_name : entity?.name;
+        updateAttributes({ label: name });
         dispatch(updateMentionsCache({ entityId, model, name }));
       }
-    }, [dispatch, entity, entityId, model]);
+    }, [updateAttributes, dispatch, entity, entityId, model]);
 
     const showLoading = isLoading && !entity;
     if (showLoading) {

@@ -10,20 +10,24 @@
 
 ## Get started
 
-The easiest way to get started with Metabase is to sign up for a free trial of [Metabase Cloud](https://store.metabase.com/checkout). You get support, backups, upgrades, an SMTP server, SSL certificate, SoC2 Type 2 security auditing, and more (plus your money goes toward improving Metabase). Check out our quick overview of [cloud vs self-hosting](https://www.metabase.com/docs/latest/cloud/cloud-vs-self-hosting). If you need to, you can always switch to [self-hosting](https://www.metabase.com/docs/latest/installation-and-operation/installing-metabase) Metabase at any time (or vice versa).
+The easiest way to get started with Metabase is to sign up for a free trial of [Metabase Cloud](https://store.metabase.com/checkout).
+
+You get expert support, backups, upgrades, an SMTP server, SSL certificate, SoC2 Type 2 security auditing, and more (plus your money goes toward improving a major open-source project). Check out our quick overview of [cloud vs self-hosting](https://www.metabase.com/docs/latest/cloud/cloud-vs-self-hosting). If you need to, you can always switch to [self-hosting](https://www.metabase.com/docs/latest/installation-and-operation/installing-metabase) Metabase at any time (or vice versa).
 
 ## Key Features
 
-- [Set up in five minutes](https://www.metabase.com/docs/latest/configuring-metabase/setting-up-metabase) (we're not kidding).
+- [Set up in five minutes](https://www.metabase.com/docs/latest/configuring-metabase/setting-up-metabase) (we're not kidding), or have us [host Metabase for you](https://www.metabase.com/cloud/) so you don't even need to think about it.
 - Let anyone on your team [ask questions](https://www.metabase.com/docs/latest/questions/introduction) without knowing SQL.
 - Use the [SQL editor](https://www.metabase.com/docs/latest/questions/native-editor/writing-sql) for more complex queries.
-- Build handsome, interactive [dashboards](https://www.metabase.com/docs/latest/dashboards/introduction) with filters, auto-refresh, fullscreen, and custom click behavior.
-- Create [models](https://www.metabase.com/learn/metabase-basics/getting-started/models) that clean up, annotate, and/or combine raw tables.
-- Define canonical [segments and metrics](https://www.metabase.com/docs/latest/data-modeling/metrics) for your team to use.
-- Send data to Slack or email on a schedule with [dashboard subscriptions](https://www.metabase.com/docs/latest/dashboards/subscriptions).
-- Set up [alerts](https://www.metabase.com/docs/latest/questions/alerts) to have Metabase notify you when your data changes.
-- [Embed charts and dashboards](https://www.metabase.com/docs/latest/embedding/introduction) in your app, or even [your entire Metabase](https://www.metabase.com/docs/latest/embedding/interactive-embedding).
-- Build with the [Embedded Analytics SDK for React](https://www.metabase.com/docs/latest/embedding/sdk/introduction) to embed standalone components with custom styling that matches your app's design.
+- Ask AI: [Metabot](https://www.metabase.com/docs/latest/ai/metabot) gives you answers you can trust, helps you write queries, and more. Or build your own [AI agent](https://www.metabase.com/docs/latest/ai/agent-api) to query your data.
+- Build handsome, interactive [dashboards](https://www.metabase.com/docs/latest/dashboards/introduction) with filters, auto-refresh, fullscreen, custom click behavior, and more.
+- Use [documents](https://www.metabase.com/docs/latest/documents/introduction) for long-form data analysis, and invite people to comment.
+- [Transform](https://www.metabase.com/docs/latest/data-studio/transforms/transforms-overview) raw data into analytics-ready tables, track down broken dependencies, and define canonical metrics in Metabase's [Data Studio](https://www.metabase.com/docs/latest/data-studio/overview).
+- Set up [alerts on your data](https://www.metabase.com/docs/latest/questions/alerts), or schedule [dashboard subscriptions](https://www.metabase.com/docs/latest/dashboards/subscriptions) to email, Slack, or even a webhook.
+- Curate content in a [Library](https://www.metabase.com/docs/latest/data-studio/library), and [version your work with Git](https://www.metabase.com/docs/latest/installation-and-operation/remote-sync).
+- [Embed Metabase in your app](https://www.metabase.com/docs/latest/embedding/introduction), with components for charts, dashboards, data browser, AI chat, and more. You can even put [an entire Metabase](https://www.metabase.com/docs/latest/embedding/interactive-embedding) in your app.
+- Set granular [permissions](https://www.metabase.com/docs/latest/permissions/introduction) that work for both internal teams and embedded analytics, whether you co-locate your customer data, or give each customer their own database.
+- Dark mode, content translations, and way more stuff than we can list here.
 
 Take a [tour of Metabase](https://www.metabase.com/learn/metabase-basics/overview/tour-of-metabase).
 
@@ -36,56 +40,21 @@ Take a [tour of Metabase](https://www.metabase.com/learn/metabase-basics/overvie
 
 Metabase can be run just about anywhere. Check out our [Installation Guides](https://www.metabase.com/docs/latest/installation-and-operation/installing-metabase).
 
+## Documentation
+
+The [Metabase handbook](https://www.metabase.com/docs/latest/).
+
 ## Contributing
 
-## Quick Setup: Dev environment
+To contribute to Metabase, see our [Developer docs](./docs/developers-guide/start.md).
 
-In order to spin up a development environment, you need to start the front end and the backend as follows:
+## Extending Metabase
 
-### Frontend quick setup
-
-The following command will install the JavaScript dependencies:
-
-```bash
-yarn install
-```
-
-To build and run without watching changes:
-
-```bash
-yarn build
-```
-
-To build and run with hot-reload:
-
-```bash
-yarn build-hot
-```
-
-### Backend  quick setup
-
-To run the backend, you'll need to build the drivers first, and then start the backend:
-
-```bash
-./bin/build-drivers.sh
-clojure -M:run
-```
-
-For a more detailed setup of a dev environment for Metabase, check out our [Developers Guide](./docs/developers-guide/start.md).
+Hit our API to integrate analytics. Check out our guide, [Working with the Metabase API](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-api).
 
 ## Internationalization
 
 We want Metabase to be available in as many languages as possible. See which translations are available and help contribute to internationalization using our project over at [Crowdin](https://crowdin.com/project/metabase-i18n). You can also check out our [policies on translations](https://www.metabase.com/docs/latest/administration-guide/localization.html).
-
-## Extending Metabase
-
-Hit our Query API from JavaScript to integrate analytics. Metabase enables your application to:
-
-- Build moderation interfaces.
-- Export subsets of your users to third party marketing automation software.
-- Provide a custom customer lookup application for the people in your company.
-
-Check out our guide, [Working with the Metabase API](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-api).
 
 ## Security Disclosure
 

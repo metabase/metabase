@@ -7,6 +7,7 @@ import { useLocation } from "react-use";
 import ActionCreator from "metabase/actions/containers/ActionCreator";
 import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
 import { Modal } from "metabase/common/components/Modal";
+import { UpgradeModal } from "metabase/common/components/upsells/components/UpgradeModal";
 import { CreateDashboardModal } from "metabase/dashboard/containers/CreateDashboardModal";
 import { STATIC_LEGACY_EMBEDDING_TYPE } from "metabase/embedding/constants";
 import {
@@ -116,6 +117,8 @@ export const NewModals = withRouter((props: WithRouterProps) => {
         />
       );
     }
+    case "upgrade":
+      return <UpgradeModal opened onClose={handleModalClose} />;
     default:
       return (
         <PaletteShortcutsModal

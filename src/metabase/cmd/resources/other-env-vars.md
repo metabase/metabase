@@ -65,6 +65,8 @@ Default: `null`
 
 A JDBC-style connection URI that can be used instead of most of `MB_DB_*` like [MB_DB_HOST](#mb_db_host). Also used when certain Connection String parameters are required for the connection. The connection type requirement is the same as [MB_DB_TYPE](#mb_db_type).
 
+Note that the `currentSchema` JDBC parameter has no effect. [The schema used for PostgreSQL application databases must be `public`](https://github.com/metabase/metabase/issues/37836).
+
 Examples:
 
 ```
@@ -319,6 +321,33 @@ Type: Boolean<br>
 Default: True
 
 Whether to include the Sample Database in your Metabase. To exclude the Sample Database, set `MB_LOAD_SAMPLE_CONTENT=false`.
+
+### `MB_MONITOR_PERFORMANCE`
+
+Type: string<br>
+Default: `""`
+
+When set, starts a Java Flight Recorder (JFR) recording at startup that can be analyzed with JDK Mission Control or other JFR tools.
+
+- `"true"` generates a timestamped output file like `metabase-20260115_143000.jfr`
+- A value ending in `.jfr` is used as the output filename
+- Any other non-empty value is treated as a directory path. A new timestamped JFR file is written to that directory every 30 minutes (e.g., `metabase-20260115_143000.jfr`). Data is only written at the end of each 30-minute interval.
+- `""` or `"false"` disables monitoring (the default)
+
+The performance recording stores only method signature calls and other code execution metrics.
+It does not store any sensitive information such as environment variables, system properties, or other machine information.
+
+### `MB_MONITOR_PERFORMANCE_SAVE_RATE`
+
+Type: integer<br>
+Default: mode-specific (5 minutes for single-file mode, 30 minutes for rolling mode)
+
+Override the interval (in minutes) at which JFR recording data is saved to disk. Only applies when [MB_MONITOR_PERFORMANCE](#mb_monitor_performance) is enabled.
+
+- In single-file mode, the default is `5` minutes.
+- In rolling directory mode, the default is `30` minutes.
+
+Setting this value overrides the default for whichever mode is active.
 
 ### `MB_NO_SURVEYS`
 

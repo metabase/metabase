@@ -220,10 +220,11 @@
 (defn- unique-converted-group-name
   "Generate a unique name for the converted Data Analysts group.
   Returns \"Data Analysts (converted)\", or \"Data Analysts (converted) (2)\", etc."
-  []
-  (let [existing-names (t2/select-fn-set :name :model/PermissionsGroup
-                                         :name [:like "Data Analysts (converted)%"])
-        base-name      "Data Analysts (converted)"]
+  [group-name]
+  (let [base-name (format "%s (converted)" group-name)
+        like-pattern (str base-name "%")
+        existing-names (t2/select-fn-set :name :model/PermissionsGroup
+                                         :name [:like like-pattern])]
     (if-not (contains? existing-names base-name)
       base-name
       (loop [n 2]
@@ -252,7 +253,7 @@
 
   This is idempotent: if the magic group has no members, nothing happens."
   []
-  (when-not (premium-features/enable-data-studio?)
+  (when-not (premium-features/enable-advanced-permissions?)
     (when-let [existing-group (t2/select-one :model/PermissionsGroup :magic_group_type data-analyst-magic-group-type)]
       (when (pos? (t2/count :model/PermissionsGroupMembership :group_id (:id existing-group)))
         (log/info "Converting Data Analysts group to normal group for OSS")
@@ -260,11 +261,11 @@
           (t2/with-transaction [_conn]
             ;; Rename and demote the existing group to a normal visible group
             (t2/update! :model/PermissionsGroup (:id existing-group)
-                        {:name             (unique-converted-group-name)
+                        {:name             (unique-converted-group-name (:name existing-group))
                          :magic_group_type nil})
-            ;; Create new empty magic group with default library permissions
+            ;; Create new empty magic group with default library permissions, reusing the old name
             (let [{new-group-id :id} (t2/insert-returning-instance! :model/PermissionsGroup
-                                                                    {:name             "Data Analysts"
+                                                                    {:name             (:name existing-group)
                                                                      :magic_group_type data-analyst-magic-group-type})]
               (grant-library-permissions! new-group-id))
             (t2/update! :model/User {:is_data_analyst true} {:is_data_analyst false})))))))

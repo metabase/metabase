@@ -43,7 +43,7 @@
 
 (defn- remove-irrelevant-keys [col]
   (as-> col col
-    (dissoc col :field_ref)
+    (dissoc col :field_ref :source)
     (m/filter-keys simple-keyword? col)))
 
 (defn- default-result-with-inner-query

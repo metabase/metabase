@@ -1,5 +1,5 @@
+import type { Location } from "history";
 import { useEffect, useMemo, useState } from "react";
-import { withRouter } from "react-router";
 import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
@@ -12,7 +12,7 @@ import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Flex, Modal } from "metabase/ui";
 import { useListStaleCollectionItemsQuery } from "metabase-enterprise/api/collection";
-import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
+import type { SortingOptions } from "metabase-types/api/sorting";
 
 import { trackStaleItemsArchived } from "../analytics";
 import type {
@@ -36,15 +36,16 @@ import {
 
 interface CleanupCollectionModalProps {
   onClose: () => void;
-  params: { slug: string };
+  params: { slug?: string };
+  location: Location;
 }
 
-const _CleanupCollectionModal = ({
+export const CleanupCollectionModal = ({
   onClose: handleClose,
-  params: { slug },
+  params,
 }: CleanupCollectionModalProps) => {
   const dispatch = useDispatch();
-  const collectionId = Urls.extractCollectionId(slug);
+  const collectionId = Urls.extractCollectionId(params.slug ?? "");
 
   // selection
   const selection = useListSelect(itemKeyFn);
@@ -57,7 +58,7 @@ const _CleanupCollectionModal = ({
     SortingOptions<ListStaleCollectionItemsSortColumn>
   >({
     sort_column: "name",
-    sort_direction: SortDirection.Asc,
+    sort_direction: "asc",
   });
 
   const handleSortingChange = (
@@ -223,5 +224,3 @@ const _CleanupCollectionModal = ({
     </Modal.Root>
   );
 };
-
-export const CleanupCollectionModal = withRouter(_CleanupCollectionModal);

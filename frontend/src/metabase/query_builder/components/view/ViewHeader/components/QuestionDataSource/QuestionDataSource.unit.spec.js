@@ -1,4 +1,4 @@
-/* eslint-disable react/display-name, react/prop-types */
+/* eslint-disable react/prop-types */
 import { Component } from "react";
 
 import { createMockMetadata } from "__support__/metadata";
@@ -254,9 +254,9 @@ function setup({
   return { onError, question };
 }
 
-jest.mock("metabase/common/components/Link", () => ({ to: href, ...props }) => (
-  <a href={href} {...props} />
-));
+jest.mock("metabase/common/components/Link", () => ({
+  Link: ({ to: href, ...props }) => <a href={href} {...props} />,
+}));
 
 function getQuestionFromUrl(relativeUrl) {
   const url = new URL(relativeUrl, document.location.href);

@@ -8,6 +8,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.measure :as lib.schema.measure]
+   [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
@@ -42,7 +43,9 @@
    :out mi/json-out-with-keywordization})
 
 (t2/deftransforms :model/Measure
-  {:definition transform-measure-definition})
+  {:definition         transform-measure-definition
+   :dimensions         metrics/transform-dimensions
+   :dimension_mappings metrics/transform-dimension-mappings})
 
 (doto :model/Measure
   (derive :metabase/model)
@@ -51,23 +54,26 @@
 
 (defmethod mi/can-read? :model/Measure
   ([instance]
-   (let [table (:table (t2/hydrate instance :table))]
-     (perms/user-has-permission-for-table?
-      api/*current-user-id*
-      :perms/manage-table-metadata
-      :yes
-      (:db_id table)
-      (u/the-id table))))
+   (let [table (or (:table instance)
+                   (t2/select-one :model/Table :id (:table_id instance)))]
+     (mi/can-read? table)))
   ([model pk]
    (mi/can-read? (t2/select-one model pk))))
 
-;; Measures can be written by superusers, but only if the parent table is editable
-;; (not in a remote-synced collection in read-only mode).
+;; Measures can be written by superusers or data analysts with unrestricted view data permissions,
+;; but only if the parent table is editable (not in a remote-synced collection in read-only mode).
 (defmethod mi/can-write? :model/Measure
   ([instance]
    (let [table (or (:table instance)
                    (t2/select-one :model/Table :id (:table_id instance)))]
-     (and (mi/superuser?)
+     (and (or api/*is-superuser?*
+              (and api/*is-data-analyst?*
+                   (perms/user-has-permission-for-table?
+                    api/*current-user-id*
+                    :perms/view-data
+                    :unrestricted
+                    (:db_id table)
+                    (u/the-id table))))
           (remote-sync/table-editable? table))))
   ([model pk]
    (mi/can-write? (t2/select-one model pk))))
@@ -78,7 +84,14 @@
   [_model instance]
   (let [table (or (:table instance)
                   (t2/select-one :model/Table :id (:table_id instance)))]
-    (and (mi/superuser?)
+    (and (or api/*is-superuser?*
+             (and api/*is-data-analyst?*
+                  (perms/user-has-permission-for-table?
+                   api/*current-user-id*
+                   :perms/view-data
+                   :unrestricted
+                   (:db_id table)
+                   (u/the-id table))))
          (remote-sync/table-editable? table))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Measure :can_write]
@@ -194,7 +207,9 @@
 
 (defmethod serdes/make-spec "Measure" [_model-name _opts]
   {:copy [:name :archived :description :entity_id]
-   :skip [:dependency_analysis_version]
+   :skip [:dependency_analysis_version
+          ;; dimensions are computed from the query and reconciled on read, not serialized
+          :dimensions :dimension_mappings]
    :transform {:created_at (serdes/date)
                :table_id (serdes/fk :model/Table)
                :creator_id (serdes/fk :model/User)
@@ -206,9 +221,9 @@
   {:model :model/Measure
    :attrs {:archived true
            :collection-id false
-           :creator-id false
+           :creator-id true
            :database-id :table.db_id
-           :created-at false
+           :created-at true
            :updated-at true}
    :search-terms [:name :description]
    :render-terms {:table-id :table_id
@@ -216,3 +231,12 @@
                   :table_name :table.name
                   :table_schema :table.schema}
    :joins {:table [:model/Table [:= :table.id :this.table_id]]}})
+
+;;; ------------------------------------------------- Dimension Persistence --------------------------------------------------
+
+(defmethod metrics/save-dimensions! :metadata/measure
+  [measure dimensions dimension-mappings]
+  (when-let [measure-id (:id measure)]
+    (t2/update! :model/Measure measure-id
+                {:dimensions         dimensions
+                 :dimension_mappings dimension-mappings})))

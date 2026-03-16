@@ -1,6 +1,7 @@
 import type {
   DependencyNode,
-  ListBrokenGraphNodesResponse,
+  ListBreakingGraphNodesResponse,
+  ListUnreferencedGraphNodesResponse,
 } from "metabase-types/api";
 
 export const DependencyGraph = {
@@ -14,8 +15,14 @@ export const DependencyGraph = {
 export const DependencyDiagnostics = {
   visitBrokenDependencies: () =>
     cy.visit("/data-studio/dependency-diagnostics/broken"),
-  visitUnreferencedEntities: () =>
-    cy.visit("/data-studio/dependency-diagnostics/unreferenced"),
+  visitUnreferencedEntities: () => {
+    cy.intercept("GET", "/api/ee/dependencies/graph/unreferenced*").as(
+      "unreferencedEntities",
+    );
+    cy.visit("/data-studio/dependency-diagnostics/unreferenced");
+    cy.wait("@unreferencedEntities");
+    DependencyDiagnostics.list().should("be.visible");
+  },
   list: () => cy.findByTestId("dependency-list"),
   searchInput: () => cy.findByTestId("dependency-list-search-input"),
   filterButton: () => cy.findByTestId("dependency-filter-button"),
@@ -25,11 +32,11 @@ export const DependencyDiagnostics = {
     get: () => cy.findByTestId("dependency-list-sidebar"),
     header: () => cy.findByTestId("dependency-list-sidebar-header"),
     locationSection: () => cy.findByRole("region", { name: "Location" }),
-    transformSection: () => cy.findByRole("region", { name: "Transform" }),
+    infoSection: () => cy.findByRole("region", { name: "Info" }),
+    errorsSection: (name: string) => cy.findByRole("region", { name }),
     missingColumnsSection: () =>
       cy.findByRole("region", { name: "Missing columns" }),
-    creationSection: () =>
-      cy.findByRole("region", { name: "Creator and last editor" }),
+    fieldsSection: () => cy.findByRole("region", { name: "Fields" }),
     brokenDependentsSection: () =>
       cy.findByRole("region", { name: "Broken dependents" }),
   },
@@ -38,21 +45,42 @@ export const DependencyDiagnostics = {
 const WAIT_TIMEOUT = 10000;
 const WAIT_INTERVAL = 100;
 
-export function waitForBrokenDependencies(
+export function waitForUnreferencedEntities(
   filter: (nodes: DependencyNode[]) => boolean,
   timeout = WAIT_TIMEOUT,
 ): Cypress.Chainable {
   return cy
-    .request<ListBrokenGraphNodesResponse>(
+    .request<ListUnreferencedGraphNodesResponse>(
       "GET",
-      "/api/ee/dependencies/graph/broken",
+      "/api/ee/dependencies/graph/unreferenced?include-personal-collections=true",
     )
     .then((response) => {
       if (filter(response.body.data)) {
         return cy.wrap(response);
       } else if (timeout > 0) {
         cy.wait(WAIT_INTERVAL);
-        return waitForBrokenDependencies(filter, timeout - WAIT_INTERVAL);
+        return waitForUnreferencedEntities(filter, timeout - WAIT_INTERVAL);
+      } else {
+        throw new Error("Unreferenced entities analysis retry timeout");
+      }
+    });
+}
+
+export function waitForBreakingDependencies(
+  filter: (nodes: DependencyNode[]) => boolean,
+  timeout = WAIT_TIMEOUT,
+): Cypress.Chainable {
+  return cy
+    .request<ListBreakingGraphNodesResponse>(
+      "GET",
+      "/api/ee/dependencies/graph/breaking",
+    )
+    .then((response) => {
+      if (filter(response.body.data)) {
+        return cy.wrap(response);
+      } else if (timeout > 0) {
+        cy.wait(WAIT_INTERVAL);
+        return waitForBreakingDependencies(filter, timeout - WAIT_INTERVAL);
       } else {
         throw new Error("Dependency analysis retry timeout");
       }

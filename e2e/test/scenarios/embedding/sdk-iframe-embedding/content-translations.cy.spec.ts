@@ -126,33 +126,10 @@ describe("scenarios > embedding > sdk iframe embedding > content-translations", 
           .click();
 
         H.getSimpleEmbedIframeContent().within(() => {
-          H.modal().within(() => {
-            cy.findByText("Test Sammlung").should("be.visible");
-            cy.findByText("Test Sammlung").click();
-          });
-
-          H.modal()
-            .should("have.length", 2)
-            .last()
-            .within(() => {
-              cy.findAllByTestId("result-item").first().should("be.visible");
-
-              cy.findAllByTestId("result-item")
-                .first()
-                .within(() => {
-                  cy.icon("info").click();
-                });
-            });
-
-          H.tooltip().should("contain", "Testbeschreibung");
-
-          H.modal()
-            .should("have.length", 2)
-            .last()
-            .within(() => {
-              cy.findByText("Sammlungen").click();
-              cy.findByText("Test Sammlung").should("be.visible");
-            });
+          H.modal().findByText("Test Sammlung").should("be.visible").click();
+          H.entityPickerModal()
+            .findByText("Test Sammlung")
+            .should("be.visible");
         });
       });
     });

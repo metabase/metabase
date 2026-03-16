@@ -77,7 +77,7 @@ export const EmbedHomepage = () => {
     }
   };
 
-  const variant = isEEBuild() ? "ee" : "oss/starter";
+  const variant = isEEBuild() ? "ee" : "oss";
 
   return (
     <>
