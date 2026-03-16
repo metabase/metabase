@@ -51,7 +51,7 @@
   "Submit a function for async execution on the bounded event handler thread pool."
   [f]
   (.submit ^ExecutorService @event-handler-executor
-           ^Runnable (bound-fn* (f))))
+           ^Runnable (bound-fn* f)))
 
 (defenterprise clear-slack-bot-settings!
   "Clears all slackbot-related settings when Slack token is cleared.
