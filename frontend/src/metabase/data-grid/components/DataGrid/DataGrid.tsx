@@ -180,6 +180,7 @@ export const DataGrid = function DataGrid<TData>({
           >
             <div
               data-testid="table-header"
+              role="rowgroup"
               className={cx(S.headerContainer, classNames?.headerContainer)}
               style={{
                 backgroundColor: stickyElementsBackgroundColor,
@@ -189,6 +190,7 @@ export const DataGrid = function DataGrid<TData>({
               {table.getHeaderGroups().map((headerGroup) => (
                 <div
                   key={headerGroup.id}
+                  role="row"
                   className={cx(S.row, classNames?.row)}
                   style={{
                     height: `${HEADER_HEIGHT}px`,
@@ -245,6 +247,7 @@ export const DataGrid = function DataGrid<TData>({
                       return (
                         <div
                           key={header.id}
+                          role="columnheader"
                           style={style}
                           data-header-id={header.id}
                         >
@@ -265,6 +268,7 @@ export const DataGrid = function DataGrid<TData>({
 
             <div
               data-testid="table-body"
+              role="rowgroup"
               className={cx(S.bodyContainer, classNames?.bodyContainer, {
                 [S.selectableBody]: selection.isEnabled,
               })}
@@ -348,6 +352,7 @@ export const DataGrid = function DataGrid<TData>({
                       return (
                         <div
                           key={cell.id}
+                          role="gridcell"
                           aria-selected={selection.isCellSelected(cell)}
                           data-column-id={cell.column.id}
                           data-selectable-cell={isSelectable ? "" : undefined}
