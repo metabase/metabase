@@ -5,6 +5,7 @@
    [metabase-enterprise.mcp.api :as mcp.api]
    [metabase-enterprise.mcp.tools :as mcp.tools]
    [metabase.test :as mt]
+   [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
    [metabase.util.json :as json]))
@@ -16,20 +17,24 @@
 ;;; --------------------------------------------------- Helpers ----------------------------------------------------
 
 (defn- mcp-request
-  "Make a POST request to /api/mcp with the given JSON-RPC body and optional extra headers."
+  "Make a POST request to /api/mcp with the given JSON-RPC body and optional extra headers.
+   Authenticates as :crowberto (superuser) by default."
   ([body]
    (mcp-request body {}))
   ([body extra-headers]
    (mt/with-additional-premium-features #{:agent-api}
-     (client/client-full-response :post "mcp"
+     (client/client-full-response (test.users/username->token :crowberto)
+                                  :post "mcp"
                                   {:request-options {:headers extra-headers}}
                                   body))))
 
 (defn- mcp-delete
-  "Make a DELETE request to /api/mcp with optional headers."
+  "Make a DELETE request to /api/mcp with optional headers.
+   Authenticates as :crowberto (superuser) by default."
   [extra-headers]
   (mt/with-additional-premium-features #{:agent-api}
-    (client/client-full-response :delete "mcp"
+    (client/client-full-response (test.users/username->token :crowberto)
+                                 :delete "mcp"
                                  {:request-options {:headers extra-headers}})))
 
 (defn- jsonrpc-request
@@ -73,12 +78,24 @@
     (when-not (:isError result)
       (json/decode+kw (:text (first (:content result)))))))
 
-(defmacro ^:private with-resolved-user
-  [user-id & body]
-  `(mt/with-dynamic-fn-redefs [mcp.api/resolve-user-id (constantly ~user-id)]
-     ~@body))
+(defn- mcp-request-as
+  "Make a POST request to /api/mcp authenticated as the given test user."
+  [username body extra-headers]
+  (mt/with-additional-premium-features #{:agent-api}
+    (client/client-full-response (test.users/username->token username)
+                                 :post "mcp"
+                                 {:request-options {:headers extra-headers}}
+                                 body)))
 
 ;;; ---------------------------------------------------- Tests -----------------------------------------------------
+
+(deftest authentication-required-test
+  (testing "unauthenticated requests return 401"
+    (let [response (mt/with-additional-premium-features #{:agent-api}
+                     (client/client-full-response :post 401 "mcp"
+                                                  (jsonrpc-request "initialize")))]
+      (is (= 401 (:status response)))
+      (is (= -32603 (get-in response [:body :error :code]))))))
 
 (deftest initialize-test
   (testing "initialize returns protocol version, capabilities, and server info"
@@ -112,15 +129,13 @@
       (is (= -32600 (get-in response [:body :error :code]))))))
 
 (deftest session-user-binding-test
-  (testing "sessions cannot be reused by a different resolved user"
-    (let [user-a-id  (mt/user->id :crowberto)
-          user-b-id  (mt/user->id :rasta)
-          session-id (with-resolved-user user-a-id
-                       (let [[session-id _] (initialize!)]
-                         session-id))
-          response   (with-resolved-user user-b-id
-                       (mcp-request (jsonrpc-request "tools/list")
-                                    {"mcp-session-id" session-id}))]
+  (testing "sessions cannot be reused by a different authenticated user"
+    (let [;; Initialize a session as crowberto
+          [session-id _] (initialize!)
+          ;; Try to use that session as rasta
+          response (mcp-request-as :rasta
+                                   (jsonrpc-request "tools/list")
+                                   {"mcp-session-id" session-id})]
       (is (= 400 (:status response)))
       (is (= -32600 (get-in response [:body :error :code]))))))
 
@@ -258,7 +273,8 @@
 (deftest get-without-session-test
   (testing "GET without session returns 400"
     (let [response (mt/with-additional-premium-features #{:agent-api}
-                     (client/client-full-response :get "mcp"))]
+                     (client/client-full-response (test.users/username->token :crowberto)
+                                                  :get "mcp"))]
       (is (= 400 (:status response)))
       (is (= -32600 (get-in response [:body :error :code]))))))
 
