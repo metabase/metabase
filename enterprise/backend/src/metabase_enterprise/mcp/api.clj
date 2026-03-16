@@ -39,10 +39,13 @@
                                        (>= (u/since-ms timer) session-ttl-ms)))
                           m))))
 
-(defn- create-session! []
+(defn- create-session!
+  [user-id]
   (sweep-expired-sessions!)
   (let [session-id (str (UUID/randomUUID))]
-    (swap! sessions assoc session-id {:timer (u/start-timer) :initialized? false})
+    (swap! sessions assoc session-id {:timer        (u/start-timer)
+                                      :user-id      user-id
+                                      :initialized? false})
     session-id))
 
 (defn- delete-session! [session-id]
@@ -54,6 +57,15 @@
       true
       (do (delete-session! session-id) false))))
 
+(defn- session-for-user
+  "Return session state when the session exists, is unexpired, and belongs to
+   `user-id`; otherwise return nil."
+  [session-id user-id]
+  (when (valid-session? session-id)
+    (let [session (get @sessions session-id)]
+      (when (= user-id (:user-id session))
+        session))))
+
 (defn- session-initialized? [session-id]
   (get-in @sessions [session-id :initialized?]))
 
@@ -62,11 +74,12 @@
 
 ;;; -------------------------------------------------- Auth --------------------------------------------------------
 
-;; TODO: Remove this fallback once MCP authentication is fully implemented.
-;; This is a temporary measure so that unauthenticated MCP clients (e.g. local
-;; dev tools) can still function.  Once we support proper token/session auth on
-;; the MCP endpoint, every request should already carry a user identity and this
-;; superuser fallback should be deleted.
+;; TODO (BOT-1122): Remove this superuser fallback once MCP authentication is
+;; wired to the OAuth flow. This is a temporary measure so that unauthenticated
+;; MCP clients (e.g. local dev tools) can exercise the transport before the auth
+;; integration lands. Once every request carries a user identity via proper
+;; token/session auth, this fallback should be deleted. Do not ship it to public
+;; environments — it is intended only for private staging/dev use.
 (defn- first-superuser-id
   "Return the ID of the first active superuser.
    Temporary fallback for when no authenticated user is present on the request."
@@ -176,7 +189,7 @@
 
 (defn- handle-post
   "Handle a POST request containing one or more JSON-RPC messages."
-  [request]
+  [user-id request]
   (let [body       (:body request)
         session-id (get-in request [:headers "mcp-session-id"])
         batch?     (sequential? body)]
@@ -197,14 +210,14 @@
 
       ;; Initialize: create session and return response with session header
       (and (not batch?) (= "initialize" (:method body)))
-      (let [session-id    (create-session!)
+      (let [session-id    (create-session! user-id)
             init-response (handle-initialize (:id body) (:params body))]
         (if (accepts-sse? request)
           (sse-response [init-response] {"Mcp-Session-Id" session-id})
           (json-response 200 init-response {"Mcp-Session-Id" session-id})))
 
       ;; All other requests require a valid session
-      (not (valid-session? session-id))
+      (nil? (session-for-user session-id user-id))
       (json-response 400 (jsonrpc-error nil -32600 "Invalid or missing Mcp-Session-Id"))
 
       :else
@@ -226,9 +239,9 @@
 
 (defn- handle-get
   "Handle a GET request for SSE stream (keepalive for server-initiated notifications)."
-  [request respond raise]
+  [user-id request respond raise]
   (let [session-id (get-in request [:headers "mcp-session-id"])]
-    (if (and (valid-session? session-id)
+    (if (and (session-for-user session-id user-id)
              (session-initialized? session-id))
       (let [resp (streaming-response/streaming-response
                   {:content-type "text/event-stream"
@@ -247,9 +260,9 @@
 
 (defn- handle-delete
   "Handle a DELETE request to tear down a session."
-  [request]
+  [user-id request]
   (let [session-id (get-in request [:headers "mcp-session-id"])]
-    (if (valid-session? session-id)
+    (if (session-for-user session-id user-id)
       (do (delete-session! session-id)
           {:status 200 :headers {"Content-Type" "application/json"} :body ""})
       (json-response 400 (jsonrpc-error nil -32600 "Invalid or missing Mcp-Session-Id")))))
@@ -267,9 +280,9 @@
          (request/with-current-user user-id
            (try
              (case (:request-method request)
-               :post   (respond (handle-post request))
-               :get    (handle-get request respond raise)
-               :delete (respond (handle-delete request))
+               :post   (respond (handle-post user-id request))
+               :get    (handle-get user-id request respond raise)
+               :delete (respond (handle-delete user-id request))
                (respond {:status  405
                          :headers {"Content-Type" "application/json"}
                          :body    (json/encode {:error "Method not allowed"})}))
