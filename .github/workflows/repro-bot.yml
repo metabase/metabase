@@ -134,6 +134,7 @@ jobs:
           CLAUDE_WORKING_DIR: ${{ github.workspace }}/repro-bot
           MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.PR_ENV_MB_PREMIUM_EMBEDDING_TOKEN }}
           GITHUB_ACTIONS_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          REPRO_NODE_MODULES_DIR: ${{ github.workspace }}/node_modules
         timeout-minutes: 30
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY_REPRO_BOT }}
@@ -233,7 +234,6 @@ jobs:
             mcp__linear-server__get_issue,
             mcp__linear-server__list_comments,
             mcp__linear-server__list_issues,
-            mcp__linear-server__list_issue_labels,
             mcp__linear-server__save_comment"
             --disallowedTools "Bash(git push*),Bash(rm -rf /*)"
 
