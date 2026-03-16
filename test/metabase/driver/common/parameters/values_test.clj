@@ -624,20 +624,37 @@
                             :display-name "Table tag test"
                             :type         :table
                             :table-id     1}
+                           []))))
+  (testing "Table template tag with emit-alias resolves alias from name"
+    (is (=? {:table-id 1
+             :alias    "my_table"}
+            (value-for-tag {:name         "my_table"
+                            :display-name "My Table"
+                            :type         :table
+                            :table-id     1
+                            :emit-alias   true}
+                           []))))
+  (testing "Table template tag without emit-alias has nil alias"
+    (is (=? {:table-id 1
+             :alias    nil}
+            (value-for-tag {:name         "my_table"
+                            :display-name "My Table"
+                            :type         :table
+                            :table-id     1}
                            [])))))
 
 (deftest ^:parallel table-tag-with-source-filters-test
   (testing "Table template tag with source-filters passes them through"
     (let [filters [{:field-id 100 :op :> :value 10}
                    {:field-id 100 :op :<= :value 50}]]
-      (is (= {:table-id       1
-              :source-filters filters}
-             (value-for-tag {:name           "table-tag-test"
-                             :display-name   "Table tag test"
-                             :type           :table
-                             :table-id       1
-                             :source-filters filters}
-                            [])))))
+      (is (=? {:table-id       1
+               :source-filters filters}
+              (value-for-tag {:name           "table-tag-test"
+                              :display-name   "Table tag test"
+                              :type           :table
+                              :table-id       1
+                              :source-filters filters}
+                             [])))))
   (testing "Table template tag with invalid source-filter op throws"
     (is (thrown-with-msg?
          ExceptionInfo

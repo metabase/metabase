@@ -69,8 +69,12 @@
 ;;   :value     - the value to compare against
 ;; When present, the table reference is rendered as a filtered subquery:
 ;;   (SELECT * FROM "table" WHERE "col" > ? AND "col" <= ?)
-;; This was introduced to support incremental transforms, unused by the frontend.
-(p.types/defrecord+ ReferencedTableQuery [table-id source-filters]
+;; source-filters was introduced to support incremental transforms, unused by the frontend.
+;;
+;; `alias` is an optional string alias for the table reference. When present, the expansion includes
+;; an AS clause: "table" AS "alias" or (SELECT ...) AS "alias".
+;; Resolved from the template tag's `:emit-alias` boolean and `:name` during parsing.
+(p.types/defrecord+ ReferencedTableQuery [table-id source-filters alias]
   pretty/PrettyPrintable
   (pretty [this]
     (list (pretty/qualify-symbol-for-*ns* `map->ReferencedTableQuery) (into {} this))))
