@@ -275,16 +275,106 @@
 
 ;;; ----------------------------------------- Authorization Decision ------------------------------------------------
 
+(defn- get-consent-page!
+  "GET the consent page and return the full response (including CSRF cookie)."
+  [user client-id]
+  (mt/user-http-request-full-response
+   user :get 200 "oauth/authorize"
+   :client_id     client-id
+   :redirect_uri  "https://example.com/callback"
+   :response_type "code"
+   :scope         "openid profile"
+   :state         "test-state"))
+
+(defn- extract-csrf-token-from-consent
+  "Extract the CSRF token from the consent page HTML body."
+  [body]
+  (second (re-find #"name=\"csrf_token\"[^>]*value=\"([a-f0-9]+)\"" body)))
+
+(defn- extract-csrf-cookie
+  "Extract the CSRF cookie value from the response.
+   Checks both the :cookies map and the Set-Cookie header (which may be a string or vector of strings)."
+  [response]
+  (or
+   ;; Try :cookies map first (set by ring.util.response/set-cookie, before wrap-cookies processing)
+   (get-in response [:cookies "metabase.OAUTH_CSRF" :value])
+   ;; Fall back to parsing Set-Cookie header
+   (let [set-cookie (get-in response [:headers "Set-Cookie"])
+         cookies    (cond
+                      (string? set-cookie)     [set-cookie]
+                      (sequential? set-cookie) (vec set-cookie)
+                      :else                    [])]
+     (some #(when (string? %) (second (re-find #"metabase\.OAUTH_CSRF=([a-f0-9]+)" %))) cookies))))
+
 (defn- form-post-decision!
   "POST form-encoded params to /oauth/authorize/decision as an authenticated user."
-  [user params expected-status]
+  [user params expected-status & {:keys [csrf-cookie]}]
   (mt/user-http-request-full-response
    user :post expected-status "oauth/authorize/decision"
-   {:request-options {:headers {"content-type" "application/x-www-form-urlencoded"}}}
+   {:request-options {:headers {"content-type" "application/x-www-form-urlencoded"
+                                "cookie"       (when csrf-cookie
+                                                 (str "metabase.OAUTH_CSRF=" csrf-cookie))}}}
    params))
 
 (deftest authorize-decision-approve-test
   (testing "POST /oauth/authorize/decision with approved=true returns 302 redirect with code"
+    (mt/with-premium-features #{:metabot-v3}
+      (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+        (t2/with-transaction [_conn nil {:rollback-only true}]
+          (let [client       (create-test-client!)
+                client-id    (:client_id client)
+                consent-resp (get-consent-page! :crowberto client-id)
+                csrf-token   (extract-csrf-token-from-consent (:body consent-resp))
+                csrf-cookie  (extract-csrf-cookie consent-resp)
+                response     (form-post-decision!
+                              :crowberto
+                              {:approved      "true"
+                               :csrf_token    csrf-token
+                               :client_id     client-id
+                               :redirect_uri  "https://example.com/callback"
+                               :response_type "code"
+                               :scope         "openid profile"
+                               :state         "test-state"}
+                              302
+                              :csrf-cookie csrf-cookie)
+                location     (get-in response [:headers "Location"])]
+            (is (string? csrf-token) "Consent page should contain a CSRF token")
+            (is (string? csrf-cookie) "Response should contain a CSRF cookie")
+            (is (= csrf-token csrf-cookie) "Cookie and form token should match")
+            (is (string? location) "Should have a Location header")
+            (is (str/starts-with? location "https://example.com/callback?"))
+            (is (str/includes? location "code="))
+            (is (str/includes? location "state=test-state"))))))))
+
+(deftest authorize-decision-deny-test
+  (testing "POST /oauth/authorize/decision with approved=false returns 302 redirect with error"
+    (mt/with-premium-features #{:metabot-v3}
+      (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+        (t2/with-transaction [_conn nil {:rollback-only true}]
+          (let [client       (create-test-client!)
+                client-id    (:client_id client)
+                consent-resp (get-consent-page! :crowberto client-id)
+                csrf-token   (extract-csrf-token-from-consent (:body consent-resp))
+                csrf-cookie  (extract-csrf-cookie consent-resp)
+                response     (form-post-decision!
+                              :crowberto
+                              {:approved      "false"
+                               :csrf_token    csrf-token
+                               :client_id     client-id
+                               :redirect_uri  "https://example.com/callback"
+                               :response_type "code"
+                               :scope         "openid profile"
+                               :state         "test-state"}
+                              302
+                              :csrf-cookie csrf-cookie)
+                location     (get-in response [:headers "Location"])]
+            (is (some? location))
+            (is (str/starts-with? location "https://example.com/callback?"))
+            (is (str/includes? location "error=access_denied"))
+            (is (str/includes? location "state=test-state"))))))))
+
+(deftest authorize-decision-csrf-missing-test
+  (testing "POST /oauth/authorize/decision without CSRF token returns 403"
     (mt/with-premium-features #{:metabot-v3}
       (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
         (t2/with-transaction [_conn nil {:rollback-only true}]
@@ -298,34 +388,30 @@
                             :response_type "code"
                             :scope         "openid profile"
                             :state         "test-state"}
-                           302)
-                location  (get-in response [:headers "Location"])]
-            (is (string? location) "Should have a Location header")
-            (is (str/starts-with? location "https://example.com/callback?"))
-            (is (str/includes? location "code="))
-            (is (str/includes? location "state=test-state"))))))))
+                           403)]
+            (is (= "csrf_validation_failed" (:error (:body response))))))))))
 
-(deftest authorize-decision-deny-test
-  (testing "POST /oauth/authorize/decision with approved=false returns 302 redirect with error"
+(deftest authorize-decision-csrf-mismatch-test
+  (testing "POST /oauth/authorize/decision with mismatched CSRF token returns 403"
     (mt/with-premium-features #{:metabot-v3}
       (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
         (t2/with-transaction [_conn nil {:rollback-only true}]
-          (let [client    (create-test-client!)
-                client-id (:client_id client)
-                response  (form-post-decision!
-                           :crowberto
-                           {:approved      "false"
-                            :client_id     client-id
-                            :redirect_uri  "https://example.com/callback"
-                            :response_type "code"
-                            :scope         "openid profile"
-                            :state         "test-state"}
-                           302)
-                location  (get-in response [:headers "Location"])]
-            (is (some? location))
-            (is (str/starts-with? location "https://example.com/callback?"))
-            (is (str/includes? location "error=access_denied"))
-            (is (str/includes? location "state=test-state"))))))))
+          (let [client       (create-test-client!)
+                client-id    (:client_id client)
+                consent-resp (get-consent-page! :crowberto client-id)
+                csrf-cookie  (extract-csrf-cookie consent-resp)
+                response     (form-post-decision!
+                              :crowberto
+                              {:approved      "true"
+                               :csrf_token    "00000000000000000000000000000000"
+                               :client_id     client-id
+                               :redirect_uri  "https://example.com/callback"
+                               :response_type "code"
+                               :scope         "openid profile"
+                               :state         "test-state"}
+                              403
+                              :csrf-cookie csrf-cookie)]
+            (is (= "csrf_validation_failed" (:error (:body response))))))))))
 
 (deftest authorize-decision-unauthenticated-test
   (testing "POST /oauth/authorize/decision without session returns 401"
@@ -366,16 +452,21 @@
   "Complete the authorize flow and return the authorization code.
    Creates a client, authorizes, and extracts the code from the redirect."
   [client-id]
-  (let [response (form-post-decision!
-                  :crowberto
-                  {:approved      "true"
-                   :client_id     client-id
-                   :redirect_uri  "https://example.com/callback"
-                   :response_type "code"
-                   :scope         "openid profile"
-                   :state         "test-state"}
-                  302)
-        location (get-in response [:headers "Location"])]
+  (let [consent-resp (get-consent-page! :crowberto client-id)
+        csrf-token   (extract-csrf-token-from-consent (:body consent-resp))
+        csrf-cookie  (extract-csrf-cookie consent-resp)
+        response     (form-post-decision!
+                      :crowberto
+                      {:approved      "true"
+                       :csrf_token    csrf-token
+                       :client_id     client-id
+                       :redirect_uri  "https://example.com/callback"
+                       :response_type "code"
+                       :scope         "openid profile"
+                       :state         "test-state"}
+                      302
+                      :csrf-cookie csrf-cookie)
+        location     (get-in response [:headers "Location"])]
     (extract-query-param location "code")))
 
 (defn- token-request!
@@ -575,17 +666,22 @@
 (defn- authorize-and-get-code-with-params!
   "Complete the authorize flow with extra decision params and return the authorization code."
   [client-id extra-params]
-  (let [response (form-post-decision!
-                  :crowberto
-                  (merge {:approved      "true"
-                          :client_id     client-id
-                          :redirect_uri  "https://example.com/callback"
-                          :response_type "code"
-                          :scope         "openid profile"
-                          :state         "test-state"}
-                         extra-params)
-                  302)
-        location (get-in response [:headers "Location"])]
+  (let [consent-resp (get-consent-page! :crowberto client-id)
+        csrf-token   (extract-csrf-token-from-consent (:body consent-resp))
+        csrf-cookie  (extract-csrf-cookie consent-resp)
+        response     (form-post-decision!
+                      :crowberto
+                      (merge {:approved      "true"
+                              :csrf_token    csrf-token
+                              :client_id     client-id
+                              :redirect_uri  "https://example.com/callback"
+                              :response_type "code"
+                              :scope         "openid profile"
+                              :state         "test-state"}
+                             extra-params)
+                      302
+                      :csrf-cookie csrf-cookie)
+        location     (get-in response [:headers "Location"])]
     (extract-query-param location "code")))
 
 (deftest token-auth-code-pkce-s256-test

@@ -49,7 +49,7 @@
 
 (defn render-consent-page
   "Render a server-side HTML consent page for the OAuth authorization flow."
-  [{:keys [client-name scopes oauth-params nonce]}]
+  [{:keys [client-name scopes oauth-params nonce csrf-token]}]
   (let [{:keys [font-family logo-url brand-color]} (appearance-settings)
         css-font-family (css-escape-font-name font-family)]
     (str
@@ -101,6 +101,7 @@
              (for [scope scopes]
                [:li scope])]])
          [:form {:method "POST" :action "/oauth/authorize/decision"}
+          [:input {:type "hidden" :name "csrf_token" :value csrf-token}]
           (for [[k v] oauth-params
                 :when (some? v)
                 v (if (sequential? v) v [v])]

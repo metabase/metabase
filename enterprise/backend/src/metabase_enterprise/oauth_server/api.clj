@@ -1,6 +1,8 @@
 (ns metabase-enterprise.oauth-server.api
   "EE implementations of OAuth/OIDC endpoint handlers."
   (:require
+   [buddy.core.codecs :as codecs]
+   [buddy.core.nonce :as nonce]
    [clojure.string :as str]
    [clojure.walk :as walk]
    [metabase-enterprise.oauth-server.consent-page :as consent-page]
@@ -10,9 +12,23 @@
    [oidc-provider.core :as oidc]
    [oidc-provider.protocol :as proto]
    [oidc-provider.registration :as reg]
-   [oidc-provider.util :as oidc-util])
+   [oidc-provider.util :as oidc-util]
+   [ring.util.response :as response])
   (:import
-   (java.net URLEncoder)))
+   (java.net URLEncoder)
+   (java.security MessageDigest)))
+
+(def ^:private csrf-cookie-name "metabase.OAUTH_CSRF")
+
+(defn- generate-csrf-token
+  "Generate a random 32-hex-char CSRF token."
+  []
+  (codecs/bytes->hex (nonce/random-bytes 16)))
+
+(defn- constant-time-equals?
+  "Constant-time string comparison to prevent timing attacks."
+  [^String a ^String b]
+  (MessageDigest/isEqual (.getBytes a "UTF-8") (.getBytes b "UTF-8")))
 
 (defenterprise openid-discovery-handler
   "Returns the OIDC discovery document."
@@ -128,25 +144,32 @@
      :body    ""}
     (when-let [provider (oauth-server/get-provider)]
       (try
-        (let [parsed  (oidc/parse-authorization-request provider (:query-string request))
-              client  (proto/get-client (:client-store provider) (:client_id parsed))]
-          {:status  200
-           :headers {"Content-Type" "text/html; charset=utf-8"}
-           :body    (consent-page/render-consent-page
-                     {:client-name  (or (:client-name client) "Unknown Application")
-                      :scopes       (if-let [scope (:scope parsed)]
-                                      (str/split scope #"\s+")
-                                      [])
-                      :nonce        (:nonce request)
-                      :oauth-params {:client_id             (:client_id parsed)
-                                     :redirect_uri          (:redirect_uri parsed)
-                                     :response_type         (:response_type parsed)
-                                     :scope                 (:scope parsed)
-                                     :state                 (:state parsed)
-                                     :nonce                 (:nonce parsed)
-                                     :code_challenge        (:code_challenge parsed)
-                                     :code_challenge_method (:code_challenge_method parsed)
-                                     :resource              (:resource parsed)}})})
+        (let [parsed     (oidc/parse-authorization-request provider (:query-string request))
+              client     (proto/get-client (:client-store provider) (:client_id parsed))
+              csrf-token (generate-csrf-token)]
+          (-> {:status  200
+               :headers {"Content-Type" "text/html; charset=utf-8"}
+               :body    (consent-page/render-consent-page
+                         {:client-name  (or (:client-name client) "Unknown Application")
+                          :scopes       (if-let [scope (:scope parsed)]
+                                          (str/split scope #"\s+")
+                                          [])
+                          :nonce        (:nonce request)
+                          :csrf-token   csrf-token
+                          :oauth-params {:client_id             (:client_id parsed)
+                                         :redirect_uri          (:redirect_uri parsed)
+                                         :response_type         (:response_type parsed)
+                                         :scope                 (:scope parsed)
+                                         :state                 (:state parsed)
+                                         :nonce                 (:nonce parsed)
+                                         :code_challenge        (:code_challenge parsed)
+                                         :code_challenge_method (:code_challenge_method parsed)
+                                         :resource              (:resource parsed)}})}
+              (response/set-cookie csrf-cookie-name csrf-token
+                                   {:http-only true
+                                    :same-site :strict
+                                    :path      "/oauth/authorize"
+                                    :max-age   600})))
         (catch clojure.lang.ExceptionInfo e
           {:status  400
            :headers {"Content-Type" "application/json"}
@@ -163,28 +186,44 @@
      :headers {"Content-Type" "application/json"}
      :body    {:error "unauthorized"}}
     (when-let [provider (oauth-server/get-provider)]
-      (let [params   (:params request)
-            approved (= "true" (str (:approved params)))
-            ;; Rebuild query string from the forwarded authorization params to re-validate
-            auth-params  (select-keys params [:client_id :redirect_uri :response_type :scope :state :nonce
-                                              :code_challenge :code_challenge_method :resource])
-            query-string (build-query-string auth-params)]
-        (try
-          (let [parsed (oidc/parse-authorization-request provider query-string)]
-            (if approved
-              (let [url (oidc/authorize provider parsed (str (:metabase-user-id request)))]
-                {:status  302
-                 :headers {"Location" url}
-                 :body    ""})
-              (let [url (oidc/deny-authorization provider parsed "access_denied" "User denied the request")]
-                {:status  302
-                 :headers {"Location" url}
-                 :body    ""})))
-          (catch clojure.lang.ExceptionInfo e
-            {:status  400
-             :headers {"Content-Type" "application/json"}
-             :body    {:error             "invalid_request"
-                       :error_description (ex-message e)}}))))))
+      (let [params         (:params request)
+            cookie-token   (get-in request [:cookies csrf-cookie-name :value])
+            form-token     (str (:csrf_token params))]
+        (if (or (str/blank? cookie-token)
+                (str/blank? form-token)
+                (not (constant-time-equals? cookie-token form-token)))
+          {:status  403
+           :headers {"Content-Type" "application/json"}
+           :body    {:error "csrf_validation_failed"}}
+          (let [approved     (= "true" (str (:approved params)))
+                ;; Rebuild query string from the forwarded authorization params to re-validate
+                auth-params  (select-keys params [:client_id :redirect_uri :response_type :scope :state :nonce
+                                                  :code_challenge :code_challenge_method :resource])
+                query-string (build-query-string auth-params)]
+            (try
+              (let [parsed (oidc/parse-authorization-request provider query-string)]
+                (if approved
+                  (let [url (oidc/authorize provider parsed (str (:metabase-user-id request)))]
+                    (-> {:status  302
+                         :headers {"Location" url}
+                         :body    ""}
+                        (response/set-cookie csrf-cookie-name "" {:http-only true
+                                                                  :same-site :strict
+                                                                  :path      "/oauth/authorize"
+                                                                  :max-age   0})))
+                  (let [url (oidc/deny-authorization provider parsed "access_denied" "User denied the request")]
+                    (-> {:status  302
+                         :headers {"Location" url}
+                         :body    ""}
+                        (response/set-cookie csrf-cookie-name "" {:http-only true
+                                                                  :same-site :strict
+                                                                  :path      "/oauth/authorize"
+                                                                  :max-age   0})))))
+              (catch clojure.lang.ExceptionInfo e
+                {:status  400
+                 :headers {"Content-Type" "application/json"}
+                 :body    {:error             "invalid_request"
+                           :error_description (ex-message e)}}))))))))
 
 (defenterprise protected-resource-metadata-handler
   "Returns OAuth Protected Resource Metadata (RFC 9728)."
