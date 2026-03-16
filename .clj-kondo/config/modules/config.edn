@@ -2025,13 +2025,6 @@
            util
            enterprise/metabot-v3}}
 
-  enterprise/ai-sql-generation
-  {:team "Metabot"
-   :api  #{metabase-enterprise.ai-sql-generation.api}
-   :uses #{api
-           driver
-           util
-           enterprise/metabot-v3}}
 
   enterprise/analytics
   {:team "UX West"

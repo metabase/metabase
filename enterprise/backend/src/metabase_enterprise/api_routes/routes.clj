@@ -10,7 +10,7 @@
    [metabase-enterprise.advanced-permissions.api.routes]
    [metabase-enterprise.agent-api.api]
    [metabase-enterprise.ai-entity-analysis.api]
-   [metabase-enterprise.ai-sql-generation.api]
+
    [metabase-enterprise.api.core :as ee.api]
    [metabase-enterprise.audit-app.api.routes]
    [metabase-enterprise.billing.api.routes]
@@ -53,7 +53,7 @@
 (def ^:private required-feature->message
   {:advanced-permissions       (deferred-tru "Advanced Permissions")
    :agent-api                  (deferred-tru "Agent API")
-   :ai-sql-generation          (deferred-tru "AI SQL Generation")
+
    :ai-entity-analysis         (deferred-tru "AI Entity Analysis")
    :attached-dwh               (deferred-tru "Attached DWH")
    :audit-app                  (deferred-tru "Audit app")
@@ -103,7 +103,7 @@
   {"/action-v2"                    (premium-handler metabase-enterprise.action-v2.api/routes :table-data-editing)
    "/advanced-permissions"         (premium-handler metabase-enterprise.advanced-permissions.api.routes/routes :advanced-permissions)
    "/ai-entity-analysis"           (premium-handler metabase-enterprise.ai-entity-analysis.api/routes :ai-entity-analysis)
-   "/ai-sql-generation"            (premium-handler metabase-enterprise.ai-sql-generation.api/routes :ai-sql-generation)
+
    "/audit-app"                    (premium-handler metabase-enterprise.audit-app.api.routes/routes :audit-app)
    "/autodescribe"                 (premium-handler 'metabase-enterprise.llm.api :llm-autodescription)
    "/billing"                      metabase-enterprise.billing.api.routes/routes

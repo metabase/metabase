@@ -252,10 +252,6 @@
   "Enable the newest LLM-based MetaBot? (The one that lives in [[metabase-enterprise.metabot-v3.core]].)"
   :metabot-v3)
 
-(define-premium-feature ^{:added "0.54.0"} enable-ai-sql-generation?
-  "Should Metabase generate SQL queries?"
-  :ai-sql-generation)
-
 ; the "-feature" suffix avoids name collision with the setting getter
 (define-premium-feature ^{:added "0.55.0"} enable-embedding-simple-feature?
   "Should we enable modular embedding?"
@@ -327,7 +323,7 @@
 
 (defn- -token-features []
   {:advanced_permissions           (enable-advanced-permissions?)
-   :ai_sql_generation              (enable-ai-sql-generation?)
+
    :ai_entity_analysis             (enable-ai-entity-analysis?)
    :attached_dwh                   (has-attached-dwh?)
    :audit_app                      (enable-audit-app?)

@@ -915,9 +915,7 @@
    {:name      :ai-entity-analysis
     :available (premium-features/enable-ai-entity-analysis?)
     :enabled   (premium-features/enable-ai-entity-analysis?)}
-   {:name      :ai-sql-generation
-    :available (premium-features/enable-ai-sql-generation?)
-    :enabled   (premium-features/enable-ai-sql-generation?)}
+
    {:name      :remote-sync
     :available (premium-features/enable-remote-sync?)
     :enabled   (premium-features/enable-remote-sync?)}

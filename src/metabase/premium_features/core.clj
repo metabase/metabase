@@ -43,7 +43,7 @@
   enable-tenants?
   enable-advanced-permissions?
   enable-ai-entity-analysis?
-  enable-ai-sql-generation?
+
   enable-any-sso?
   enable-audit-app?
   enable-cache-granular-controls?

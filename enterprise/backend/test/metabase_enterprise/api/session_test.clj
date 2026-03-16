@@ -31,7 +31,7 @@
                               :llm-autodescription
                               :metabot-v3
                               :ai-entity-analysis
-                              :ai-sql-generation
+
                               :no-upsell
                               :official-collections
                               :query-reference-validation
@@ -81,7 +81,7 @@
             :llm_autodescription            true
             :metabot_v3                     true
             :ai_entity_analysis             true
-            :ai_sql_generation              true
+
             :official_collections           true
             :query_reference_validation     true
             :remote_sync                    true
