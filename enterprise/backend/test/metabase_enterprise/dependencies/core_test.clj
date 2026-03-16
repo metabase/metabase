@@ -229,10 +229,8 @@
             errors      (dependencies/errors-from-proposed-edits {:card [card']}
                                                                  :base-provider provider
                                                                  :graph graph)]
-        (is (contains? errors :card))
-        (is (contains? (:card errors) 999))
-        (is (= #{:validation-exception-error}
-               (into #{} (map :type) (get-in errors [:card 999]))))))))
+        ;; 57+58 don't recore validation errors, just make sure it doesn't crash
+        (is (not (seq (get-in errors [:card 999]))))))))
 
 (deftest ^:parallel self-referential-dependency-test
   (testing "errors-from-proposed-edits terminates when the dependency graph has a self-loop (#70452)"
