@@ -218,32 +218,33 @@
   (if (transforms.job-run/running-run-for-job-id job-id)
     (log/info "Not executing transform job" (pr-str job-id) "because it is already running")
     (let [transforms (job-transform-ids job-id)]
-      (log/info "Executing transform job" (pr-str job-id) "with transforms" (pr-str transforms))
-      (let [{run-id :id} (transforms.job-run/start-run! job-id run-method)]
-        (transforms.instrumentation/with-job-timing [job-id run-method]
-          (try ;; catch any catastrophic problems
-            (let [result (run-transforms! run-id transforms opts)]
-              (case (::status result)
-                :succeeded (transforms.job-run/succeed-started-run! run-id)
-                :failed (try
-                          (transforms.job-run/fail-started-run! run-id {:message (compile-transform-failure-messages (::failures result))})
-                          (when (= :cron run-method)
-                            (notify-transform-failures job-id (::failures result)))
-                          (catch Exception e
-                            (log/error e "Error when failing a transform run.")))))
-            (catch Throwable t
-              ;; We don't expect a catastrophic failure, but neither did the Titanic.
-              ;; We should clean up in this case and notify the admin users.
-              (try
-                (transforms.job-run/fail-started-run! run-id {:message (.getMessage t)})
-                (when (= :cron run-method)
-                  (if (::transform-failure (ex-data t))
-                    (notify-transform-failures job-id (::failures (ex-data t)))
-                    (notify-job-failure job-id (.getMessage t))))
-                (catch Exception e
-                  (log/error e "Error when failing a transform job run.")))
-              (throw t))))
-        run-id))))
+      (if (empty? transforms)
+        (log/info "Skipping transform job" (pr-str job-id) "because it has no transforms to run")
+        (let [{run-id :id} (transforms.job-run/start-run! job-id run-method)]
+          (transforms.instrumentation/with-job-timing [job-id run-method]
+            (try ;; catch any catastrophic problems
+              (let [result (run-transforms! run-id transforms opts)]
+                (case (::status result)
+                  :succeeded (transforms.job-run/succeed-started-run! run-id)
+                  :failed (try
+                            (transforms.job-run/fail-started-run! run-id {:message (compile-transform-failure-messages (::failures result))})
+                            (when (= :cron run-method)
+                              (notify-transform-failures job-id (::failures result)))
+                            (catch Exception e
+                              (log/error e "Error when failing a transform run.")))))
+              (catch Throwable t
+                ;; We don't expect a catastrophic failure, but neither did the Titanic.
+                ;; We should clean up in this case and notify the admin users.
+                (try
+                  (transforms.job-run/fail-started-run! run-id {:message (.getMessage t)})
+                  (when (= :cron run-method)
+                    (if (::transform-failure (ex-data t))
+                      (notify-transform-failures job-id (::failures (ex-data t)))
+                      (notify-job-failure job-id (.getMessage t))))
+                  (catch Exception e
+                    (log/error e "Error when failing a transform job run.")))
+                (throw t))))
+          run-id)))))
 
 (def ^:private job-key "metabase.transforms.jobs.timeout-job")
 
