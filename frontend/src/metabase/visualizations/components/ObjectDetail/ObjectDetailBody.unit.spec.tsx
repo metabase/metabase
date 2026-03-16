@@ -19,6 +19,7 @@ describe("ObjectDetailBody", () => {
         tableForeignKeys={[]}
         tableForeignKeyReferences={{}}
         followForeignKey={() => null}
+        isDashboard={false}
       />,
     );
 
