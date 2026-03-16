@@ -20,7 +20,6 @@ jobs:
       issues: read
       id-token: write
     if: |
-      (github.event_name == 'push') ||
       (github.event_name == 'issues' && github.event.label.name == 'repro-bot' && github.event.issue.state == 'open') ||
       (github.event_name == 'workflow_dispatch')
 
@@ -29,12 +28,12 @@ jobs:
         id: issue
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "number=${{ github.event.inputs.issue_number }}" >> $GITHUB_OUTPUT
-          elif [ "${{ github.event_name }}" = "push" ]; then
-            echo "number=70292" >> $GITHUB_OUTPUT
+            ISSUE_NUMBER="${{ github.event.inputs.issue_number }}"
           else
-            echo "number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
+            ISSUE_NUMBER="${{ github.event.issue.number }}"
           fi
+          echo "number=$ISSUE_NUMBER" >> $GITHUB_OUTPUT
+          echo "Issue: https://github.com/${{ github.repository }}/issues/$ISSUE_NUMBER"
 
       - name: Checkout repro-bot
         uses: actions/checkout@v4
@@ -54,6 +53,9 @@ jobs:
 
       - name: Set up Python (uv)
         uses: astral-sh/setup-uv@v4
+
+      - name: Pre-install MCP server dependencies
+        run: uv sync --directory mcp
 
       - name: Install playwright-cli
         run: |
@@ -88,7 +90,7 @@ jobs:
             - Docker is available for appdb (Postgres/MySQL/MariaDB) if needed.
             - Java 21 and Python/uv are pre-installed.
           claude_args: |
-            --allowedTools "Bash(playwright-cli*),Bash(gh *),Bash(jq*),Bash(find*),Bash(ls*),Bash(grep*),Bash(cat*),Bash(base64*),Bash(git*),Bash(npx*),Bash(docker*),Bash(kill*),Bash(curl*),Write,Read,Glob,Grep,Edit,MultiEdit,WebFetch,mcp__metabase_repro__*,mcp__plugin_productivity_linear__*"
+            --allowedTools "Bash(playwright-cli*),Bash(gh *),Bash(jq*),Bash(find*),Bash(ls*),Bash(grep*),Bash(cat*),Bash(base64*),Bash(git*),Bash(npx*),Bash(docker*),Bash(kill*),Bash(curl*),Write,Read,Glob,Grep,Edit,MultiEdit,WebFetch,mcp__metabase-repro__*,mcp__linear-server__*"
             --disallowedTools "Bash(git push*),Bash(rm -rf /*)"
 
       - name: Upload SUGGESTIONS.md artifact
