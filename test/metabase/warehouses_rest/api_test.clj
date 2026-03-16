@@ -1189,22 +1189,22 @@
           (check-tables-included response (virtual-table-for-card ok-card))
           (check-tables-not-included response (virtual-table-for-card cambiguous-card)))))))
 
-(deftest ^:parallel databases-list-include-saved-questions-tables-test-5
+(deftest databases-list-include-saved-questions-tables-test-5
   (testing "GET /api/database?saved=true&include=tables"
     (testing "should remove Cards that belong to a driver that doesn't support nested queries"
-      (mt/with-temp [:model/Database bad-db   {:engine ::no-nested-query-support, :details {}}
-                     :model/Card     bad-card {:name            "Bad Card"
-                                               :dataset_query   {:database (u/the-id bad-db)
-                                                                 :type     :native
-                                                                 :native   {:query "[QUERY GOES HERE]"}}
-                                               :result_metadata [{:name         "sparrows"
-                                                                  :display_name "Sparrows"
-                                                                  :base_type    :type/Integer}]
-                                               :database_id     (u/the-id bad-db)}
-                     :model/Card     ok-card  (assoc (card-with-native-query "OK Card")
-                                                     :result_metadata [{:name         "finches"
-                                                                        :display_name "Finches"
-                                                                        :base_type    :type/Integer}])]
+      (mt/with-temp [:model/Database bad-db {:engine ::no-nested-query-support, :details {}}
+                     :model/Card bad-card {:name            "Bad Card"
+                                           :dataset_query   {:database (u/the-id bad-db)
+                                                             :type     :native
+                                                             :native   {:query "[QUERY GOES HERE]"}}
+                                           :result_metadata [{:name         "sparrows"
+                                                              :display_name "Sparrows"
+                                                              :base_type    :type/Integer}]
+                                           :database_id     (u/the-id bad-db)}
+                     :model/Card ok-card (assoc (card-with-native-query "OK Card")
+                                                :result_metadata [{:name         "finches"
+                                                                   :display_name "Finches"
+                                                                   :base_type    :type/Integer}])]
         (let [response (fetch-virtual-database)]
           (is (malli= SavedQuestionsDB
                       response))
