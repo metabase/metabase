@@ -50,11 +50,11 @@ We'll cover [setting up Remote Sync](#setting-up-remote-sync), an [example dev-t
 You'll need to be an admin to set up Remote Sync.
 
 1. [Set up a repository to store your content](#1-set-up-a-repository-to-store-your-content)
-2. [Create a token for read-and-write Metabase ](#2-create-a-token-for-your-read-and-write-metabase)
+2. [Create a token for your read-and-write Metabase](#2-create-a-token-for-your-read-and-write-metabase)
 3. [Connect your development Metabase to your repository](#3-connect-your-development-metabase-to-your-repository)
 4. [Select collections to sync](#4-select-collections-to-sync)
 5. [Push your changes to your repository](#5-push-your-changes-to-your-repository)
-6. [Create a personal access token for your read-only Metabase](#6-create-a-token-for-your-read-only-metabase)
+6. [Create a token for your read-only Metabase](#6-create-a-token-for-your-read-only-metabase)
 7. [Connect your production Metabase to your repository](#7-connect-your-production-metabase-to-your-repository)
 8. [Configure transforms syncing (optional)](#8-configure-transforms-syncing-optional)
 
@@ -64,7 +64,7 @@ Before you connect Metabase to your Git repository, create a new repository. Sup
 
 - [GitHub](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-new-repository)
 - [GitLab](https://docs.gitlab.com/user/project/index.html#create-a-blank-project)
-- [Bitbucket](https://support.atlassian.com/bitbucket-cloud/docs/create-a-repository/).
+- [Bitbucket](https://support.atlassian.com/bitbucket-cloud/docs/create-a-repository/)
 
 Initialize the repo with a README.md.
 
