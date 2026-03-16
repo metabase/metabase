@@ -15,31 +15,34 @@
 
 (defn- compute-series-stats
   "Compute categorical stats for a single series.
-  x-values are category names (strings), y-values are numeric values."
+  x-values are category names (strings), y-values are numeric values.
+  Duplicate category names are merged by summing their values."
   [x-values y-values]
-  (let [pairs (map vector x-values y-values)
-        valid (filter (fn [[_ v]] (some? v)) pairs)
-        n     (count valid)
-        ys    (mapv second valid)
-        xs    (mapv first valid)]
+  (let [pairs   (map vector x-values y-values)
+        valid   (filter (fn [[k v]] (and (some? k) (some? v))) pairs)
+        grouped (reduce (fn [acc [k v]] (update acc k (fnil + 0) v)) {} valid)
+        agg     (vec grouped)
+        n       (count agg)]
     (if (zero? n)
       {:summary        nil
        :category_count 0
        :top_categories []
        :outliers       []}
-      (let [summary  (stats.u/compute-summary ys)
+      (let [ys       (mapv second agg)
+            xs       (mapv first agg)
+            summary  (stats.u/compute-summary ys)
             outliers (when (>= n min-outlier-points)
                        (outliers/find-outliers ys (mapv str xs)))
             total    (reduce + 0.0 ys)
-            sorted   (sort-by (fn [[_ v]] (- v)) valid)
+            sorted   (sort-by (fn [[_ v]] (- v)) agg)
             make-cat (fn [[cat-name value]]
                        {:name       (str cat-name)
                         :value      value
                         :percentage (if (pos? total) (* 100.0 (/ value total)) 0.0)})
-            bottom   (when (> (count sorted) many-categories-threshold)
+            bottom   (when (> n many-categories-threshold)
                        (mapv make-cat (take-last bottom-n-categories sorted)))]
         (cond-> {:summary        summary
-                 :category_count (count (distinct (remove nil? xs)))
+                 :category_count n
                  :top_categories (mapv make-cat (take top-n-categories sorted))
                  :outliers       (or outliers [])}
           bottom (assoc :bottom_categories bottom))))))

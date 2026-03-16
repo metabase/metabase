@@ -166,14 +166,14 @@
               (categorical/compute-categorical-stats series-data {:deep? false}))))))
 
 (deftest ^:parallel compute-series-stats-duplicate-categories-test
-  (testing "duplicate x-values: category_count counts unique dimensions only"
+  (testing "duplicate x-values are merged by summing their values"
     (let [result (#'categorical/compute-series-stats
                   ["A" "A" "B"]
                   [100 150 200])]
-      ;; data_point_count includes all valid pairs including duplicates
-      (is (= 3 (count (:top_categories result))))
-      ;; category_count is unique dimensions
-      (is (=? {:category_count 2} result)))))
+      (is (= 2 (:category_count result)))
+      (is (= 2 (count (:top_categories result))))
+      (let [by-name (into {} (map (juxt :name :value) (:top_categories result)))]
+        (is (= {"A" 250 "B" 200} by-name))))))
 
 (deftest ^:parallel compute-series-stats-nil-dimensions-excluded-test
   (testing "nil x-values are excluded from category_count"
