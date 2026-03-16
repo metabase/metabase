@@ -10,6 +10,7 @@
    [metabase.channel.settings :as channel.settings]
    [metabase.config.core :as config]
    [metabase.core.core :as mbc]
+   [metabase.lib.core :as lib]
    [metabase.premium-features.settings :as premium-features.settings]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
@@ -706,7 +707,26 @@
                (#'stats/library-stats)))))))
 
 (deftest transform-metrics-test
-  (testing "ee-transform-metrics should return zeros for OSS"
-    (mt/with-empty-h2-app-db!
-      (is (= {:transforms 0, :transform_runs_last_24h 0}
-             (stats/ee-transform-metrics))))))
+  (mt/with-empty-h2-app-db!
+    (testing "with no transforms"
+      (is (=? {:transforms 0 :transform_runs_last_24h 0}
+              (#'stats/transform-metrics))))
+    (testing "with transforms and recent runs"
+      (mt/with-temp [:model/Transform transform {:target {:database (mt/id)
+                                                          :table "test_table"}
+                                                 :name "Test SQL transform"
+                                                 :source {:type "query"
+                                                          :query (lib/native-query (mt/metadata-provider) "SELECT 1")}}
+                     :model/TransformRun _ {:start_time (t/minus (t/offset-date-time) (t/hours 1))
+                                            :transform_id (:id transform)}]
+        (is (=? {:transforms 1 :transform_runs_last_24h 1}
+                (#'stats/transform-metrics)))))
+    (testing "with old transform runs"
+      (mt/with-temp [:model/Transform transform {:target {:database (mt/id)
+                                                          :table "test_table"}
+                                                 :name "Test SQL transform"
+                                                 :source {:type "query"
+                                                          :query (lib/native-query (mt/metadata-provider) "SELECT 1")}}
+                     :model/TransformRun _ {:start_time (t/minus (t/offset-date-time) (t/hours 25))
+                                            :transform_id (:id transform)}]
+        (is (zero? (:transform_runs_last_24h (#'stats/transform-metrics))))))))
