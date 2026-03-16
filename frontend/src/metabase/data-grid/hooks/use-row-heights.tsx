@@ -26,8 +26,8 @@ type UseRowHeightsProps<TData extends RowData, TValue> = {
 
 type UseRowHeightsResult = {
   measureRowHeight: (rowIndex: number) => number;
-  pinnedRowMeasureRef: (element: HTMLElement | null) => void;
-  centerRowMeasureRef: (element: HTMLElement | null) => void;
+  pinnedRowMeasureRef: (element: HTMLDivElement | null) => void;
+  centerRowMeasureRef: (element: HTMLDivElement | null) => void;
   pinnedCandidateRowHeights: number[];
 };
 
@@ -81,8 +81,7 @@ export const useRowHeights = <TData extends RowData, TValue>({
     ],
   );
 
-  const pinnedSideHeights = useRef<Map<number, number>>(new Map());
-
+  const pinnedRowsHeightsCache = useRef<Map<number, number>>(new Map());
   const pinnedResizeObserverRef = useRef<ResizeObserver | null>(null);
   const pinnedObservedElements = useRef<Set<HTMLElement>>(new Set());
 
@@ -93,9 +92,9 @@ export const useRowHeights = <TData extends RowData, TValue>({
     }
     const dataIndex = parseInt(indexRaw, 10);
     const height = el.offsetHeight;
-    const prev = pinnedSideHeights.current.get(dataIndex);
+    const prev = pinnedRowsHeightsCache.current.get(dataIndex);
     if (prev !== height) {
-      pinnedSideHeights.current.set(dataIndex, height);
+      pinnedRowsHeightsCache.current.set(dataIndex, height);
       return true;
     }
     return false;
@@ -121,7 +120,7 @@ export const useRowHeights = <TData extends RowData, TValue>({
   }, [virtualGridRef, updatePinnedHeight]);
 
   const pinnedRowMeasureRef = useCallback(
-    (element: HTMLElement | null) => {
+    (element: HTMLDivElement | null | undefined) => {
       if (!element) {
         return;
       }
@@ -137,8 +136,8 @@ export const useRowHeights = <TData extends RowData, TValue>({
   );
 
   const centerRowMeasureRef = useCallback(
-    (element: HTMLElement | null) =>
-      virtualGridRef.current?.rowVirtualizer.measureElement(element),
+    (element: HTMLDivElement | null | undefined) =>
+      virtualGridRef.current?.measureRow(element),
     [virtualGridRef],
   );
 

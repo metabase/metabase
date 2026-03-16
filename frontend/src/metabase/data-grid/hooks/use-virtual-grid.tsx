@@ -23,6 +23,7 @@ export interface VirtualGrid {
   rowVirtualizer: Virtualizer<HTMLDivElement, Element>;
   columnVirtualizer: Virtualizer<HTMLDivElement, Element>;
   measureGrid: () => void;
+  measureRow: (element: HTMLDivElement | null | undefined) => void;
   scrollTo: (options: { rowIndex?: number; columnIndex?: number }) => void;
 }
 
@@ -80,12 +81,18 @@ export const useVirtualGrid = <TData,>({
     },
   });
 
+  const measureRow = useCallback(
+    (element: Element | null | undefined) =>
+      rowVirtualizer.measureElement(element),
+    [rowVirtualizer],
+  );
+
   const measureGrid = useCallback(() => {
     Array.from(rowVirtualizer.elementsCache.values()).forEach((el) =>
-      rowVirtualizer.measureElement(el),
+      measureRow(el),
     );
     columnVirtualizer.measure();
-  }, [rowVirtualizer, columnVirtualizer]);
+  }, [rowVirtualizer, measureRow, columnVirtualizer]);
 
   const pinnedColumnsCount = table.getLeftLeafColumns().length;
   const scrollTo = useCallback(
@@ -121,6 +128,7 @@ export const useVirtualGrid = <TData,>({
     rowVirtualizer,
     columnVirtualizer,
     measureGrid,
+    measureRow,
     scrollTo,
   };
 };
