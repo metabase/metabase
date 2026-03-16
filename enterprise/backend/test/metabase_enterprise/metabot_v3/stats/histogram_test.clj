@@ -82,7 +82,7 @@
           p50    (get-in result [:distribution :estimated_percentiles 50])
           wmean  (get-in result [:estimated_summary :weighted_mean])]
       ;; For symmetric binned data, P50 should be reasonably close to the mean
-      (is (< (Math/abs (- p50 wmean)) 10.0)))))
+      (is (< (Math/abs (double (- p50 wmean))) 10.0)))))
 
 (deftest ^:parallel estimated-quartiles-iqr-test
   (testing "IQR = Q3 - Q1"
