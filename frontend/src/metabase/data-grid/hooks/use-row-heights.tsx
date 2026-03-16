@@ -51,7 +51,7 @@ export const useRowHeights = <TData extends RowData, TValue>({
         return defaultRowHeight;
       }
 
-      const height = Math.max(
+      return Math.max(
         ...wrappedColumnsOptions.map((column) => {
           const value = column.accessorFn(data[rowIndex]);
           const formattedValue = column.formatter
@@ -71,8 +71,6 @@ export const useRowHeights = <TData extends RowData, TValue>({
         }),
         defaultRowHeight,
       );
-
-      return height;
     },
     [
       data,
