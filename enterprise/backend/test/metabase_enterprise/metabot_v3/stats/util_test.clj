@@ -127,6 +127,17 @@
       (is (= 10 (count uncapped)))
       (is (= 3 (count capped))))))
 
+;;; ----------------------------------------- correlation-direction --------------------------------------------------
+
+(deftest ^:parallel correlation-direction-test
+  (testing "classifies correlation direction correctly"
+    (is (= :positive (stats.u/correlation-direction 0.5)))
+    (is (= :positive (stats.u/correlation-direction 0.01)))
+    (is (= :negative (stats.u/correlation-direction -0.5)))
+    (is (= :negative (stats.u/correlation-direction -0.01)))
+    (is (= :none (stats.u/correlation-direction 0.0)))
+    (is (= :none (stats.u/correlation-direction 0)))))
+
 ;;; ------------------------------------------ correlation-strength --------------------------------------------------
 
 (deftest ^:parallel correlation-strength-test

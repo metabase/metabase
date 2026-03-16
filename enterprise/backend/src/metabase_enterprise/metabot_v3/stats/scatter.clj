@@ -40,7 +40,7 @@
             correlation      (when coef
                                {:coefficient coef
                                 :strength    (stats.u/correlation-strength coef)
-                                :direction   (if (neg? coef) :negative :positive)})
+                                :direction   (stats.u/correlation-direction coef)})
             regression       (when (>= n min-regression-points)
                                (try
                                  (let [regressor (dfn/linear-regressor xs ys)

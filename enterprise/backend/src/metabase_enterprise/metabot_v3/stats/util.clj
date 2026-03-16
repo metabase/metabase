@@ -25,6 +25,14 @@
      :std_dev (dfn/standard-deviation values)
      :range (- max-val min-val)}))
 
+(mu/defn correlation-direction :- ::stats.types/correlation-direction
+  "Classify correlation coefficient direction as :positive/:negative/:none."
+  [coef :- number?]
+  (cond
+    (neg? coef) :negative
+    (pos? coef) :positive
+    :else       :none))
+
 (mu/defn correlation-strength :- ::stats.types/correlation-strength
   "Classify correlation coefficient into :strong/:moderate/:weak/:none."
   [coef :- number?]
@@ -73,7 +81,7 @@
         :series_b name-b
         :coefficient coef
         :strength (correlation-strength coef)
-        :direction (if (neg? coef) :negative :positive)
+        :direction (correlation-direction coef)
         :aligned_sample_size n}))))
 
 (mu/defn maybe-compute-correlations :- [:maybe [:sequential ::stats.types/correlation]]

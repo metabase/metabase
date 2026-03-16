@@ -237,15 +237,20 @@
 
 ;;; ----------------------------------------- Correlation Representation ---------------------------------------------
 
+(defn- correlation-label [{:keys [strength direction]}]
+  (if (= :none strength)
+    "no correlation"
+    (str (name strength) " " (name direction))))
+
 (defn- render-correlations
   "Render cross-series correlations."
   [correlations]
   (when (seq correlations)
     (str "## Cross-Series Correlations\n"
          (str/join "\n"
-                   (for [{:keys [series_a series_b coefficient strength direction]} correlations]
+                   (for [{:keys [series_a series_b coefficient] :as corr} correlations]
                      (str "- " series_a " vs " series_b ": "
-                          (name strength) " " (name direction)
+                          (correlation-label corr)
                           " (r=" (format "%.3f" (double coefficient)) ")"))))))
 
 ;;; ----------------------------------------- Timeline Events --------------------------------------------------------
@@ -292,9 +297,6 @@
     (str/join "\n" (remove nil? sections))))
 
 ;;; ------------------------------------------ Scatter Representation ------------------------------------------------
-
-(defn- correlation-label [{:keys [strength direction]}]
-  (str (name strength) " " (name direction)))
 
 (defn- render-scatter-outliers
   "Render outliers as 'x=..., y=...'"

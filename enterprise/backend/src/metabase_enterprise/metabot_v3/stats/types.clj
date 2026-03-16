@@ -113,7 +113,7 @@
 
 (mr/def ::correlation-direction
   "Direction of correlation."
-  [:enum :positive :negative])
+  [:enum :positive :negative :none])
 
 (mr/def ::correlation
   "Correlation between two series."
