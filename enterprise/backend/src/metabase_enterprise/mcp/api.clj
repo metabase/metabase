@@ -15,6 +15,7 @@
    [metabase.util.log :as log])
   (:import
    (java.io BufferedWriter OutputStreamWriter)
+   (java.net URI)
    (java.nio.charset StandardCharsets)
    (java.util UUID)))
 
@@ -88,7 +89,9 @@
 (defn- jsonrpc-error [id code message]
   {:jsonrpc "2.0" :id id :error {:code code :message message}})
 
-(defn- handle-initialize [id _params]
+(defn- handle-initialize [id params]
+  (when-let [client-info (:clientInfo params)]
+    (log/infof "MCP client connected: %s %s" (:name client-info) (:version client-info)))
   (jsonrpc-response
    id
    {:protocolVersion protocol-version
@@ -166,12 +169,42 @@
                     extra-headers)
     :body    (sse-body messages)}))
 
+;;; ------------------------------------------------- Validation --------------------------------------------------
+
+(defn- validate-origin
+  "Validate the Origin header to prevent DNS rebinding attacks (MCP spec requirement).
+   Returns a 403 response if Origin is present and doesn't match the request's Host header.
+   Non-browser clients that omit the Origin header are allowed through."
+  [request]
+  (when-let [origin (get-in request [:headers "origin"])]
+    (let [host (get-in request [:headers "host"])]
+      (when-not (try
+                  (let [origin-host (.getHost (URI. origin))
+                        request-host (first (str/split (str host) #":"))]
+                    (= origin-host request-host))
+                  (catch Exception _ false))
+        (json-response 403 (jsonrpc-error nil -32600 "Origin not allowed"))))))
+
+(defn- session-error-response
+  "Return an HTTP error response when the session is invalid, or nil if valid.
+   Returns 400 for a missing session header, 404 for an invalid/expired session (MCP spec)."
+  [session-id user-id]
+  (cond
+    (str/blank? session-id)
+    (json-response 400 (jsonrpc-error nil -32600 "Missing Mcp-Session-Id header"))
+
+    (nil? (session-for-user session-id user-id))
+    (json-response 404 (jsonrpc-error nil -32600 "Session not found or expired"))))
+
+;;; -------------------------------------------------- Handlers ---------------------------------------------------
+
 (defn- handle-post
   "Handle a POST request containing one or more JSON-RPC messages."
   [user-id request]
-  (let [body       (:body request)
-        session-id (get-in request [:headers "mcp-session-id"])
-        batch?     (sequential? body)]
+  (let [body        (:body request)
+        session-id  (get-in request [:headers "mcp-session-id"])
+        batch?      (sequential? body)
+        session-err (delay (session-error-response session-id user-id))]
     (cond
       (nil? body)
       (json-response 400 (jsonrpc-error nil -32700 "Parse error: empty body"))
@@ -195,9 +228,8 @@
           (sse-response [init-response] {"Mcp-Session-Id" session-id})
           (json-response 200 init-response {"Mcp-Session-Id" session-id})))
 
-      ;; All other requests require a valid session
-      (nil? (session-for-user session-id user-id))
-      (json-response 400 (jsonrpc-error nil -32600 "Invalid or missing Mcp-Session-Id"))
+      ;; All other requests require a valid session (400 for missing header, 404 for invalid)
+      (some? @session-err) @session-err
 
       :else
       (let [messages  (if batch? body [body])
@@ -205,7 +237,7 @@
             responses (filterv some? results)]
         (cond
           (empty? responses)
-          {:status 202 :headers {"Content-Type" "application/json"} :body ""}
+          {:status 202 :headers {} :body ""}
 
           (accepts-sse? request)
           (sse-response responses)
@@ -219,9 +251,16 @@
 (defn- handle-get
   "Handle a GET request for SSE stream (keepalive for server-initiated notifications)."
   [user-id request respond raise]
-  (let [session-id (get-in request [:headers "mcp-session-id"])]
-    (if (and (session-for-user session-id user-id)
-             (session-initialized? session-id))
+  (let [session-id (get-in request [:headers "mcp-session-id"])
+        session-err (session-error-response session-id user-id)]
+    (cond
+      (some? session-err)
+      (respond session-err)
+
+      (not (session-initialized? session-id))
+      (respond (json-response 400 (jsonrpc-error nil -32600 "Session not initialized")))
+
+      :else
       (let [resp (streaming-response/streaming-response
                   {:content-type "text/event-stream"
                    :headers      {"Cache-Control" "no-cache"}
@@ -234,17 +273,16 @@
                          (.flush writer)
                          (Thread/sleep 30000)
                          (recur)))))]
-        (compojure.response/send* resp request respond raise))
-      (respond (json-response 400 (jsonrpc-error nil -32600 "Invalid or missing Mcp-Session-Id"))))))
+        (compojure.response/send* resp request respond raise)))))
 
 (defn- handle-delete
   "Handle a DELETE request to tear down a session."
   [user-id request]
-  (let [session-id (get-in request [:headers "mcp-session-id"])]
-    (if (session-for-user session-id user-id)
-      (do (delete-session! session-id)
-          {:status 200 :headers {"Content-Type" "application/json"} :body ""})
-      (json-response 400 (jsonrpc-error nil -32600 "Invalid or missing Mcp-Session-Id")))))
+  (let [session-id (get-in request [:headers "mcp-session-id"])
+        session-err (session-error-response session-id user-id)]
+    (or session-err
+        (do (delete-session! session-id)
+            {:status 200 :headers {"Content-Type" "application/json"} :body ""}))))
 
 ;;; ---------------------------------------------------- Handler ---------------------------------------------------
 
@@ -253,18 +291,23 @@
    Uses JSON-RPC 2.0 over HTTP rather than REST, so the OpenAPI spec is empty."
   (open-api/handler-with-open-api-spec
    (fn [request respond raise]
-     (let [user-id (resolve-user-id)]
-       (if (nil? user-id)
+     (let [user-id      (resolve-user-id)
+           origin-error (validate-origin request)]
+       (cond
+         (nil? user-id)
          (respond (json-response 401 (jsonrpc-error nil -32603 "Authentication required")))
+
+         (some? origin-error)
+         (respond origin-error)
+
+         :else
          (request/with-current-user user-id
            (try
              (case (:request-method request)
                :post   (respond (handle-post user-id request))
                :get    (handle-get user-id request respond raise)
                :delete (respond (handle-delete user-id request))
-               (respond {:status  405
-                         :headers {"Content-Type" "application/json"}
-                         :body    (json/encode {:error "Method not allowed"})}))
+               (respond (json-response 405 (jsonrpc-error nil -32600 "Method not allowed"))))
              (catch Throwable e
                (raise e)))))))
    (constantly nil)))
