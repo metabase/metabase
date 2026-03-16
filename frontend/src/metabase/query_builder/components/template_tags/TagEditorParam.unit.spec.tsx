@@ -162,6 +162,19 @@ describe("TagEditorParam", () => {
         type: "number",
         "table-id": undefined,
       });
+
+      expect(
+        screen.getByRole("switch", { name: /emit table alias/i }),
+      ).toBeChecked();
+
+      await userEvent.click(
+        screen.getByRole("switch", { name: /emit table alias/i }),
+      );
+      expect(setTemplateTag).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          "emit-alias": false,
+        }),
+      );
     });
   });
 
