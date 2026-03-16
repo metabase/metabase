@@ -5,6 +5,30 @@ const { H } = cy;
 
 const { STATIC_ORDERS_ID, STATIC_PEOPLE_ID } = SAMPLE_DB_TABLES;
 
+/**
+ * When the backend marks the move-dashboard step as completed,
+ * the stepper auto-opens the data-segregation step and radios are visible.
+ * When the backend doesn't have the checklist key yet (local dev),
+ * the move-dashboard step opens showing a "Continue" button.
+ * This helper waits for either case and clicks Continue if needed.
+ */
+function completeMoveMoveDashboardStepIfOpen() {
+  cy.log("complete the move-dashboard step if it's open");
+
+  const isContinueBtn = (_i: number, el: HTMLElement) =>
+    el.textContent?.trim() === "Continue";
+
+  H.main().then(($main) => {
+    const continueBtn = $main
+      .find("button")
+      .filter(":visible")
+      .filter(isContinueBtn);
+    if (continueBtn.length > 0) {
+      cy.wrap(continueBtn.first()).click();
+    }
+  });
+}
+
 describe("scenarios - embedding hub", () => {
   describe("checklist", () => {
     beforeEach(() => {
@@ -424,9 +448,7 @@ describe("scenarios - embedding hub", () => {
         "dashboard picker should appear with the x-ray dashboard pre-selected",
       );
       H.main()
-        .findByText(
-          "Move a dashboard to the shared collection so tenant users can see it.",
-        )
+        .findByText("This will allow tenant users to see it.")
         .should("be.visible");
 
       cy.log("x-ray dashboard should be pre-selected, move it");
@@ -473,7 +495,7 @@ describe("scenarios - embedding hub", () => {
       cy.log("move-dashboard step should be marked as completed");
       H.main()
         .findByRole("listitem", {
-          name: "Move a dashboard to the shared collection",
+          name: "Create a dashboard in the shared collection",
           timeout: 10_000,
         })
         .should("have.attr", "data-completed", "true");
@@ -547,6 +569,11 @@ describe("scenarios - embedding hub", () => {
           name: "Enable tenants and create shared collection",
         })
         .should("be.enabled")
+        .click();
+
+      cy.log("complete the move-dashboard step");
+      H.main()
+        .findByRole("button", { name: "Create a sample dashboard" })
         .click();
 
       cy.log("select database routing strategy");
@@ -800,6 +827,11 @@ describe("scenarios - embedding hub", () => {
           .icon("check")
           .should("exist");
 
+        cy.log("complete the move-dashboard step");
+        H.main()
+          .findByRole("button", { name: "Create a sample dashboard" })
+          .click();
+
         cy.log("use row and column level security");
         H.main()
           .findByRole("radio", { name: /Row and column level security/ })
@@ -857,6 +889,11 @@ describe("scenarios - embedding hub", () => {
         })
         .icon("check")
         .should("exist");
+
+      cy.log("complete the move-dashboard step");
+      H.main()
+        .findByRole("button", { name: "Create a sample dashboard" })
+        .click();
 
       cy.log("use row and column level security");
       H.main()
@@ -953,6 +990,11 @@ describe("scenarios - embedding hub", () => {
         })
         .icon("check")
         .should("exist");
+
+      cy.log("complete the move-dashboard step");
+      H.main()
+        .findByRole("button", { name: "Create a sample dashboard" })
+        .click();
 
       H.main()
         .findByRole("radio", { name: /Row and column level security/ })
@@ -1082,11 +1124,16 @@ describe("scenarios - embedding hub", () => {
       cy.log("enable tenants to create the all-external-users");
       H.updateSetting("use-tenants", true);
 
-      cy.log("create shared collection");
+      cy.log("create shared collection with a dashboard");
       cy.request("POST", "/api/collection", {
         name: "Shared collection",
         parent_id: null,
         namespace: "shared-tenant-collection",
+      }).then(({ body: collection }) => {
+        H.createDashboard({
+          name: "Test Dashboard",
+          collection_id: collection.id,
+        });
       });
 
       cy.log("create an existing sandbox for Orders table via API");
@@ -1108,11 +1155,9 @@ describe("scenarios - embedding hub", () => {
 
       cy.visit("/admin/embedding/setup-guide/permissions");
 
-      cy.log("wait for create tenants step to be active and unlocked");
-      H.main()
-        .findByRole("listitem", { name: "Create tenants" })
-        .should("have.attr", "data-active", "true");
+      completeMoveMoveDashboardStepIfOpen();
 
+      cy.log("open the data segregation strategy step");
       H.main()
         .findByText("Which data segregation strategy does your database use?")
         .scrollIntoView()
@@ -1210,6 +1255,11 @@ describe("scenarios - embedding hub", () => {
           })
           .icon("check")
           .should("exist");
+
+        cy.log("complete the move-dashboard step");
+        H.main()
+          .findByRole("button", { name: "Create a sample dashboard" })
+          .click();
 
         cy.log("select RLS strategy");
         H.main()
@@ -1326,6 +1376,11 @@ describe("scenarios - embedding hub", () => {
       cy.request("POST", "/api/collection", {
         name: "Shared collection",
         namespace: "shared-tenant-collection",
+      }).then(({ body: collection }) => {
+        H.createDashboard({
+          name: "Test Dashboard",
+          collection_id: collection.id,
+        });
       });
     });
 
@@ -1334,6 +1389,8 @@ describe("scenarios - embedding hub", () => {
 
       cy.get<number>("@postgresID").then((postgresId) => {
         cy.visit("/admin/embedding/setup-guide/permissions");
+
+        completeMoveMoveDashboardStepIfOpen();
 
         H.main()
           .findByRole("radio", { name: /Connection impersonation/ })
@@ -1400,6 +1457,8 @@ describe("scenarios - embedding hub", () => {
     it("should show 'no compatible databases' message when only Sample Database exists", () => {
       cy.visit("/admin/embedding/setup-guide/permissions");
 
+      completeMoveMoveDashboardStepIfOpen();
+
       cy.log("select connection impersonation strategy");
       H.main()
         .findByRole("radio", { name: /Connection impersonation/ })
@@ -1427,6 +1486,8 @@ describe("scenarios - embedding hub", () => {
       H.addPostgresDatabase("QA Postgres12");
 
       cy.visit("/admin/embedding/setup-guide/permissions");
+
+      completeMoveMoveDashboardStepIfOpen();
 
       H.main()
         .findByRole("radio", { name: /Connection impersonation/ })
@@ -1481,6 +1542,8 @@ describe("scenarios - embedding hub", () => {
 
     it("creates a tenant with database_role attribute when using connection impersonation", () => {
       cy.visit("/admin/embedding/setup-guide/permissions");
+
+      completeMoveMoveDashboardStepIfOpen();
 
       cy.log("select connection impersonation strategy");
       H.main()
@@ -1541,11 +1604,18 @@ describe("scenarios - embedding hub", () => {
       cy.request("POST", "/api/collection", {
         name: "Shared collection",
         namespace: "shared-tenant-collection",
+      }).then(({ body: collection }) => {
+        H.createDashboard({
+          name: "Test Dashboard",
+          collection_id: collection.id,
+        });
       });
     });
 
     it("creates a tenant with database_slug attribute when using database routing", () => {
       cy.visit("/admin/embedding/setup-guide/permissions");
+
+      completeMoveMoveDashboardStepIfOpen();
 
       cy.log("select database routing strategy");
       H.main()
