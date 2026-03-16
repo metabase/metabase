@@ -267,8 +267,8 @@
   [categories]
   (str/join "\n"
             (for [{:keys [name value percentage]} categories]
-              (str "  - " name ": " (format-number value)
-                   " (" (format "%.1f" (double percentage)) "%)"))))
+              (cond-> (str "  - " name ": " (format-number value))
+                percentage (str " (" (format "%.1f" (double percentage)) "%)")))))
 
 (defn- render-categorical-series
   "Render stats for a single categorical series."

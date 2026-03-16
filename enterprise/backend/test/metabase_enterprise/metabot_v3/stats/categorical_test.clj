@@ -191,6 +191,14 @@
              ["North" "South" "East" "West"]
              [100 200 150 80])))))
 
+(deftest ^:parallel compute-series-stats-negative-values-no-percentage-test
+  (testing "percentage is omitted when any value is negative"
+    (let [result (#'categorical/compute-series-stats
+                  ["A" "B" "C"]
+                  [100 -20 50])]
+      (is (= 3 (:category_count result)))
+      (is (every? #(not (contains? % :percentage)) (:top_categories result))))))
+
 (deftest ^:parallel compute-series-stats-exact-percentages-test
   (testing "percentages in top_categories match expected values"
     ;; enabled=112, disabled=103, invited=85 → total=300

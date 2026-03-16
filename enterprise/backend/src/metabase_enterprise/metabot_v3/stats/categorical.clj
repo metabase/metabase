@@ -33,12 +33,13 @@
             summary  (stats.u/compute-summary ys)
             outliers (when (>= n min-outlier-points)
                        (outliers/find-outliers ys (mapv str xs)))
-            total    (reduce + 0.0 ys)
-            sorted   (sort-by (fn [[_ v]] (- v)) agg)
-            make-cat (fn [[cat-name value]]
-                       {:name       (str cat-name)
-                        :value      value
-                        :percentage (if (pos? total) (* 100.0 (/ value total)) 0.0)})
+            all-non-negative? (every? #(not (neg? %)) ys)
+            total             (when all-non-negative? (reduce + 0.0 ys))
+            sorted            (sort-by (fn [[_ v]] (- v)) agg)
+            make-cat          (fn [[cat-name value]]
+                                (cond-> {:name  (str cat-name)
+                                         :value value}
+                                  total (assoc :percentage (* 100.0 (/ value total)))))
             bottom   (when (> n many-categories-threshold)
                        (mapv make-cat (take-last bottom-n-categories sorted)))]
         (cond-> {:summary        summary

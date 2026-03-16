@@ -178,7 +178,7 @@
   [:map
    [:name :string]
    [:value number?]
-   [:percentage number?]])
+   [:percentage {:optional true} number?]])
 
 (mr/def ::categorical-series-stats
   "Statistics for a single categorical series."
