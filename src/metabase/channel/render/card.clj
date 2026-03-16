@@ -1,5 +1,6 @@
 (ns metabase.channel.render.card
   (:require
+   [clojure.string :as str]
    [hiccup.core :refer [h]]
    [metabase.channel.render.body :as body]
    [metabase.channel.render.image-bundle :as image-bundle]
@@ -132,6 +133,9 @@
            :bar
            :combo} display-type)
         (chart-type :javascript_visualization "display-type is javascript_visualization")
+
+        (str/starts-with? (name display-type) "custom:")
+        (chart-type :javascript_visualization "display-type is a custom visualization")
 
         :else
         (chart-type :table "no other chart types match")))))
