@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.mcp.api :as mcp.api]
+   [metabase-enterprise.mcp.tools :as mcp.tools]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
@@ -57,6 +58,20 @@
     (mcp-request (jsonrpc-notification "notifications/initialized")
                  {"mcp-session-id" session-id})
     [session-id response]))
+
+(defn- call-tool
+  "Call an MCP tool within an initialized session. Returns the parsed MCP result
+   content (the JSON-decoded text from the first content block)."
+  [session-id tool-name arguments]
+  (let [response (mcp-request (jsonrpc-request "tools/call"
+                                               {:name tool-name :arguments arguments})
+                              {"mcp-session-id" session-id})
+        result   (get-in response [:body :result])]
+    (when-not (= 200 (:status response))
+      (throw (ex-info (str "Expected 200 from tools/call " tool-name ", got " (:status response))
+                      {:response response})))
+    (when-not (:isError result)
+      (json/decode+kw (:text (first (:content result)))))))
 
 (defmacro ^:private with-resolved-user
   [user-id & body]
@@ -335,3 +350,21 @@
       (is (= 200 (:status response)))
       (is (true? (:isError result)))
       (is (str/includes? (:text (first (:content result))) "Missing required path parameter")))))
+
+(deftest tools-call-execute-query-test
+  (testing "execute_query returns a streaming response captured as MCP text content"
+    (let [streamed? (atom false)
+          original-fn       (mt/original-fn #'mcp.tools/capture-streaming-response)]
+      (mt/with-dynamic-fn-redefs [mcp.tools/capture-streaming-response
+                                  (fn [response]
+                                    (reset! streamed? true)
+                                    (original-fn response))]
+        (let [[session-id _] (initialize!)
+              construct-data (call-tool session-id "construct_query" {:table_id (mt/id :orders) :limit 5})
+              execute-data   (call-tool session-id "execute_query"   {:query (:query construct-data)})]
+          (is (true? @streamed?) "execute_query should use the streaming response path")
+          (is (=? {:status    "completed"
+                   :row_count 5
+                   :data      {:cols sequential?
+                               :rows (fn [rows] (= 5 (count rows)))}}
+                  execute-data)))))))
