@@ -819,50 +819,51 @@
   (testing "GET /api/ee/dependencies/graph includes upstream nodes if ANY path to them is readable"
     (mt/dataset test-data
       (mt/with-premium-features #{:dependencies}
-        (mt/with-non-admin-groups-no-root-collection-perms
-          (mt/with-temp [:model/Collection readable-collection {}
-                         :model/Collection unreadable-collection {}
-                         :model/User user {:email "test@test.com"}]
-            (mt/with-model-cleanup [:model/Card :model/Dependency]
-              (let [base-card (card/create-card! (assoc (basic-card) :collection_id (:id readable-collection)) user)
-                    unreadable-middle (card/create-card! (assoc (wrap-card base-card)
-                                                                :collection_id (:id unreadable-collection))
-                                                         user)
-                    readable-alternate (card/create-card! (assoc (wrap-card base-card)
-                                                                 :collection_id (:id readable-collection))
-                                                          user)
-                    end-card (card/create-card! (assoc (wrap-two-cards unreadable-middle readable-alternate)
-                                                       :collection_id (:id readable-collection))
-                                                user)]
-                (perms/grant-collection-read-permissions! (perms/all-users-group) readable-collection)
-                (testing "Diamond pattern: complete upstream graph via readable path"
-                  (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph"
-                                                       :id (:id end-card)
-                                                       :type "card")
-                        nodes (set (map (juxt :type :id) (:nodes response)))
-                        expected-nodes #{["card" (:id end-card)] ["card" (:id readable-alternate)]
-                                         ["card" (:id base-card)] ["table" (mt/id :orders)]}]
-                    (is (= expected-nodes nodes)
-                        "Should see end-card, readable-alternate, base-card, and :orders table")))
-                (testing "Edges show complete readable dependency chain"
-                  (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph"
-                                                       :id (:id end-card)
-                                                       :type "card")
-                        edges (set (:edges response))
-                        expected-edges #{{:from_entity_id (:id end-card)
-                                          :from_entity_type "card"
-                                          :to_entity_id (:id readable-alternate)
-                                          :to_entity_type "card"}
-                                         {:from_entity_id (:id readable-alternate)
-                                          :from_entity_type "card"
-                                          :to_entity_id (:id base-card)
-                                          :to_entity_type "card"}
-                                         {:from_entity_id (:id base-card)
-                                          :from_entity_type "card"
-                                          :to_entity_id (mt/id :orders)
-                                          :to_entity_type "table"}}]
-                    (is (= expected-edges edges)
-                        "Should have edges through readable path only")))))))))))
+        (mt/with-empty-h2-app-db!
+          (mt/with-non-admin-groups-no-root-collection-perms
+            (mt/with-temp [:model/Collection readable-collection {}
+                           :model/Collection unreadable-collection {}
+                           :model/User user {:email "test@test.com"}]
+              (mt/with-model-cleanup [:model/Card :model/Dependency]
+                (let [base-card (card/create-card! (assoc (basic-card) :collection_id (:id readable-collection)) user)
+                      unreadable-middle (card/create-card! (assoc (wrap-card base-card)
+                                                                  :collection_id (:id unreadable-collection))
+                                                           user)
+                      readable-alternate (card/create-card! (assoc (wrap-card base-card)
+                                                                   :collection_id (:id readable-collection))
+                                                            user)
+                      end-card (card/create-card! (assoc (wrap-two-cards unreadable-middle readable-alternate)
+                                                         :collection_id (:id readable-collection))
+                                                  user)]
+                  (perms/grant-collection-read-permissions! (perms/all-users-group) readable-collection)
+                  (testing "Diamond pattern: complete upstream graph via readable path"
+                    (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph"
+                                                         :id (:id end-card)
+                                                         :type "card")
+                          nodes (set (map (juxt :type :id) (:nodes response)))
+                          expected-nodes #{["card" (:id end-card)] ["card" (:id readable-alternate)]
+                                           ["card" (:id base-card)] ["table" (mt/id :orders)]}]
+                      (is (= expected-nodes nodes)
+                          "Should see end-card, readable-alternate, base-card, and :orders table")))
+                  (testing "Edges show complete readable dependency chain"
+                    (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph"
+                                                         :id (:id end-card)
+                                                         :type "card")
+                          edges (set (:edges response))
+                          expected-edges #{{:from_entity_id (:id end-card)
+                                            :from_entity_type "card"
+                                            :to_entity_id (:id readable-alternate)
+                                            :to_entity_type "card"}
+                                           {:from_entity_id (:id readable-alternate)
+                                            :from_entity_type "card"
+                                            :to_entity_id (:id base-card)
+                                            :to_entity_type "card"}
+                                           {:from_entity_id (:id base-card)
+                                            :from_entity_type "card"
+                                            :to_entity_id (mt/id :orders)
+                                            :to_entity_type "table"}}]
+                      (is (= expected-edges edges)
+                          "Should have edges through readable path only"))))))))))))
 
 (deftest graph-filtering-all-unreadable-test
   (testing "GET /api/ee/dependencies/graph returns only root node when all upstream dependencies are unreadable"
@@ -1616,11 +1617,12 @@
 (deftest ^:sequential unreferenced-sample-db-test
   (testing "GET /api/ee/dependencies/unreferenced - should not return tables from the sample database"
     (mt/with-premium-features #{:dependencies}
-      (mt/with-temp [:model/Database {db-id :id} {:is_sample true}
-                     :model/Table    _           {:db_id db-id :name "Sample DB table - unreftest"}]
-        (is (=? {:data   []
-                 :total  0}
-                (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=table&query=unreftest")))))))
+      (mt/with-empty-h2-app-db!
+        (mt/with-temp [:model/Database {db-id :id} {:is_sample true}
+                       :model/Table    _           {:db_id db-id :name "Sample DB table - unreftest"}]
+          (is (=? {:data   []
+                   :total  0}
+                  (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=table&query=unreftest"))))))))
 
 (deftest ^:sequential unreferenced-audit-db-test
   (testing "GET /api/ee/dependencies/unreferenced - should not return tables from the audit database"

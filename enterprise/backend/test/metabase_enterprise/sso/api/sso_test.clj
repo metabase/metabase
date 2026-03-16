@@ -3,8 +3,8 @@
    [buddy.sign.jwt :as jwt]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.config.core :as config]
    [metabase.request.core :as request]
+   [metabase.server.instance :as server.instance]
    [metabase.session.core :as session]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -62,7 +62,7 @@
       [jwt-enabled true
        jwt-identity-provider-uri "http://test.idp.metabase.com"
        jwt-shared-secret default-jwt-secret
-       site-url (format "http://localhost:%s" (config/config-str :mb-jetty-port))]
+       site-url (format "http://localhost:%s" (server.instance/server-port))]
       (f))))
 
 (defn- create-valid-jwt-token

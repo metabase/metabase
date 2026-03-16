@@ -71,4 +71,4 @@ init:
   - step: load-namespace
     namespace: metabase.driver.snowflake
   - step: register-jdbc-driver
-    class: net.snowflake.client.jdbc.SnowflakeDriver
+    class: net.snowflake.client.api.driver.SnowflakeDriver
