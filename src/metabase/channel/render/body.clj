@@ -11,6 +11,7 @@
    [metabase.channel.render.table :as table]
    [metabase.channel.render.util :as render.util]
    [metabase.channel.settings :as channel.settings]
+   [metabase.custom-viz-plugin.cache]
    [metabase.formatter.core :as formatter]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor.streaming :as qp.streaming]
@@ -21,7 +22,8 @@
    [metabase.util.i18n :refer [deferred-trs trs tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2])
   (:import
    (java.net URL)
    (java.text DecimalFormat DecimalFormatSymbols)))
@@ -405,6 +407,19 @@
        (map add-dashcard-timeline-events)
        (m/distinct-by #(get-in % [:card :id]))))
 
+(defn- custom-viz-bundles
+  "If the card has a custom:* display type, resolve the plugin's IIFE bundle for static rendering."
+  [card]
+  (let [display-type (some-> card :display name)]
+    (when (and display-type (str/starts-with? display-type "custom:"))
+      (let [identifier (subs display-type (count "custom:"))
+            plugin     (t2/select-one :model/CustomVizPlugin :identifier identifier :enabled true)]
+        (when-let [iife-content (some-> plugin :id
+                                        (metabase.custom-viz-plugin.cache/get-bundle)
+                                        :iife-content)]
+          (when iife-content
+            [{:identifier identifier :source iife-content}]))))))
+
 ;; the `:javascript_visualization` render method
 ;; is and will continue to handle more and more 'isomorphic' chart types.
 ;; Isomorphic in this context just means the frontend Code is mostly shared between the app and the static-viz
@@ -416,7 +431,8 @@
   (let [cards-with-data  (series-cards-with-data dashcard card data)
         viz-settings     (or (get dashcard :visualization_settings)
                              (get card :visualization_settings))
-        {rendered-type :type content :content} (js.svg/*javascript-visualization* cards-with-data viz-settings)]
+        {rendered-type :type content :content} (js.svg/*javascript-visualization* cards-with-data viz-settings
+                                                                                  (custom-viz-bundles card))]
     (case rendered-type
       :svg
       (let [image-bundle (image-bundle/make-image-bundle
