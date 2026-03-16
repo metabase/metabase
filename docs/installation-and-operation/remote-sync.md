@@ -52,7 +52,7 @@ You'll need to be an admin to set up Remote Sync.
 1. [Set up a repository to store your content](#1-set-up-a-repository-to-store-your-content)
 2. [Create a token for your read-and-write Metabase](#2-create-a-token-for-your-read-and-write-metabase)
 3. [Connect your development Metabase to your repository](#3-connect-your-development-metabase-to-your-repository)
-4. [Select collections to sync](#4-select-collections-to-sync)
+4. [Select what to sync](#4-select-what-to-sync)
 5. [Push your changes to your repository](#5-push-your-changes-to-your-repository)
 6. [Create a token for your read-only Metabase](#6-create-a-token-for-your-read-only-metabase)
 7. [Connect your production Metabase to your repository](#7-connect-your-production-metabase-to-your-repository)
@@ -88,7 +88,7 @@ In the Metabase instance that you use for development:
 
 2. Enter your repository URL:
 
-   - For example, `https://github.com/your-org/your-repo` (note the `https`). The repository must already exist and be initialized with at least one commit.
+   - For example, `https://github.com/your-org/your-repo` or `https://bitbucket.org/your-workspace/your-repo` (note the `https`). The repository must already exist and be initialized with at least one commit.
 
 3. Select **Read-write mode**.
 
@@ -102,13 +102,15 @@ In the Metabase instance that you use for development:
 
 6. (Optional) If you have [multi-tenant user strategy enabled](../embedding/tenants.md#enable-multi-tenant-strategy), you can also choose which [shared collection](../embedding/tenants.md#changing-tenant-strategy) to sync.
 
-### 4. Select collections to sync
+### 4. Select what to sync
 
-You can select any top-level collection under Our Analytics to sync with Git. In the Remote Sync settings, choose which collections you want to track.
+You can select:
 
-Collections you select for syncing must pass referential integrity checks—they need to be self-contained, meaning all dependencies (like models referenced by questions) must also be in synced collections.
+- Your [Library](/docs/data-studio/library.md)
+- [Transforms](../data-studio/transforms/transforms-overview.md) as well.
+- Any top-level collection under Our Analytics. If you use [tenants](../embedding/tenants.md), you can also choose to sync [shared collections](../embedding/tenants.md#collection-types).
 
-If you use [tenants](../embedding/tenants.md), you can also choose to sync [shared collections](../embedding/tenants.md#collection-types).
+Collections you select for syncing _must_ pass referential integrity checks. Collections need to be self-contained, which means that all dependencies (like questions referenced by other questions) must also be in one of the synced collections.
 
 ### 5. Push your changes to your repository
 
