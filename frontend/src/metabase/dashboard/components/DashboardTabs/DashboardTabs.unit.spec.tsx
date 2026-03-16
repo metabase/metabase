@@ -204,7 +204,7 @@ describe("DashboardTabs", () => {
       expect(queryTab(2)).toBeVisible();
     });
 
-    it("should use role=tab on tab items and role=tablist on the container", () => {
+    it("should use role=tab on tab items and role=tablist on the container (#70546)", () => {
       setup({ isEditing: false });
 
       const tablist = screen.getByRole("tablist");
@@ -289,7 +289,7 @@ describe("DashboardTabs", () => {
   });
 
   describe("when editing", () => {
-    it("should not have role=button on sortable tab wrappers", () => {
+    it("should not have role=button on sortable tab wrappers (#70546)", () => {
       setup({ isEditing: true });
 
       // Sortable wrappers should use role="presentation", not role="button"
