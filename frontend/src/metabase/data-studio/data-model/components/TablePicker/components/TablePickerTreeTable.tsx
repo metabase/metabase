@@ -14,6 +14,7 @@ import { useNumberFormatter } from "metabase/common/hooks/use-number-formatter";
 import type { SelectionState, TreeTableColumnDef } from "metabase/ui";
 import {
   Box,
+  Center,
   EntityNameCell,
   Icon,
   TreeTable,
@@ -265,13 +266,13 @@ export function TablePickerTreeTable({
             return null;
           }
           return row.original.table.is_published ? (
-            <Box w="100%" ta="center" data-testid="table-published">
+            <Center w="100%" data-testid="table-published">
               <Icon
                 name="verified_round"
                 c="success"
                 aria-label={t`Published`}
               />
-            </Box>
+            </Center>
           ) : null;
         },
       });

@@ -35,7 +35,7 @@ interface TablePickerProps {
   path: TreePath;
   className?: string;
   onChange: (path: TreePath, options?: ChangeOptions) => void;
-  setOnUpdateCallback: (callback: (() => void) | null) => void;
+  setOnUpdateCallback: (callback: ((path?: TreePath) => void) | null) => void;
 }
 
 export function TablePicker({

@@ -75,10 +75,16 @@ describe("Table editing", () => {
       TablePicker.getTable("Orders").click();
 
       cy.log("publish the table and verify it's published");
+      TablePicker.getTable("Orders")
+        .findByTestId("table-published")
+        .should("not.exist");
       cy.findByRole("button", { name: /Publish/ }).click();
       H.modal().findByText("Create my Library").click();
       H.modal().findByText("Publish this table").click();
       cy.wait("@publishTables");
+      TablePicker.getTable("Orders")
+        .findByTestId("table-published")
+        .should("be.visible");
       H.undoToastListContainer().within(() => {
         cy.findByText("Published").should("be.visible");
         cy.findByRole("button", { name: /Go to Data/ }).click();
@@ -93,6 +99,9 @@ describe("Table editing", () => {
       cy.findByRole("button", { name: /Unpublish/ }).click();
       H.modal().findByText("Unpublish this table").click();
       cy.wait("@unpublishTables");
+      TablePicker.getTable("Orders")
+        .findByTestId("table-published")
+        .should("not.exist");
       H.DataStudio.nav().findByLabelText("Library").click();
       H.DataStudio.Library.allTableItems().should("have.length", 0);
     },
@@ -104,6 +113,14 @@ describe("Table editing", () => {
     H.DataModel.visitDataStudio();
     TablePicker.getDatabase("QA Postgres12").click();
     TablePicker.getTable("Orders").click();
+
+    cy.log("rename the table and verify the name is updated in the picker");
+    H.DataModel.TableSection.getNameInput()
+      .clear()
+      .type("Renamed Orders")
+      .blur();
+    cy.wait("@updateTable");
+    TablePicker.getTable("Renamed Orders").should("be.visible");
 
     H.selectHasValue("Owner", "No owner").click();
     H.selectDropdown().contains("Bobby Tables").click();
@@ -131,7 +148,7 @@ describe("Table editing", () => {
 
     // navigate away and back
     TablePicker.getTable("Products").click();
-    TablePicker.getTable("Orders").click();
+    TablePicker.getTable("Renamed Orders").click();
 
     H.selectHasValue("Owner", "Bobby Tables");
     H.selectHasValue("Visibility layer", "Final");
