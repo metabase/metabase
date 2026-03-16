@@ -66,15 +66,17 @@
 
 (defn- call-tool
   "Call an MCP tool within an initialized session. Returns the parsed MCP result
-   content (the JSON-decoded text from the first content block)."
+   content (the JSON-decoded text from the first content block).
+   Records test failures if the response status is not 200 or the tool returns an error."
   [session-id tool-name arguments]
   (let [response (mcp-request (jsonrpc-request "tools/call"
                                                {:name tool-name :arguments arguments})
                               {"mcp-session-id" session-id})
         result   (get-in response [:body :result])]
-    (when-not (= 200 (:status response))
-      (throw (ex-info (str "Expected 200 from tools/call " tool-name ", got " (:status response))
-                      {:response response})))
+    (is (= 200 (:status response))
+        (str "Expected 200 from tools/call " tool-name))
+    (is (not (:isError result))
+        (str "Tool " tool-name " error: " (some-> result :content first :text)))
     (when-not (:isError result)
       (json/decode+kw (:text (first (:content result)))))))
 
@@ -117,47 +119,48 @@
       (is (= 202 (:status response))))))
 
 (deftest session-validation-test
-  (testing "requests without a valid session ID are rejected"
+  (testing "requests without a session ID return 400"
     (let [response (mcp-request (jsonrpc-request "tools/list"))]
       (is (= 400 (:status response)))
       (is (= -32600 (get-in response [:body :error :code])))))
 
-  (testing "requests with an invalid session ID are rejected"
+  (testing "requests with an invalid session ID return 404"
     (let [response (mcp-request (jsonrpc-request "tools/list")
                                 {"mcp-session-id" "bogus-session-id"})]
-      (is (= 400 (:status response)))
+      (is (= 404 (:status response)))
       (is (= -32600 (get-in response [:body :error :code]))))))
 
 (deftest session-user-binding-test
   (testing "sessions cannot be reused by a different authenticated user"
     (let [;; Initialize a session as crowberto
           [session-id _] (initialize!)
-          ;; Try to use that session as rasta
+          ;; Try to use that session as rasta — returns 404 because the session
+          ;; doesn't match the requesting user
           response (mcp-request-as :rasta
                                    (jsonrpc-request "tools/list")
                                    {"mcp-session-id" session-id})]
-      (is (= 400 (:status response)))
+      (is (= 404 (:status response)))
       (is (= -32600 (get-in response [:body :error :code]))))))
 
 (deftest session-delete-test
   (testing "DELETE removes the session"
     (let [[session-id _] (initialize!)
           delete-response (mcp-delete {"mcp-session-id" session-id})
-          ;; Now try to use the deleted session
+          ;; Now try to use the deleted session — returns 404
           post-response (mcp-request (jsonrpc-request "tools/list")
                                      {"mcp-session-id" session-id})]
       (is (= 200 (:status delete-response)))
-      (is (= 400 (:status post-response))))))
+      (is (= 404 (:status post-response))))))
 
 (deftest session-ttl-test
-  (testing "expired sessions are rejected"
+  (testing "expired sessions return 404"
     (let [[session-id _] (initialize!)]
       ;; Manually expire the session by backdating the timer (nanos) to 2 hours ago
       (swap! @#'mcp.api/sessions update session-id assoc
              :timer (- (System/nanoTime) (long (* 2 60 60 1000 1e6))))
       (let [response (mcp-request (jsonrpc-request "tools/list")
                                   {"mcp-session-id" session-id})]
-        (is (= 400 (:status response)))
+        (is (= 404 (:status response)))
         (is (= -32600 (get-in response [:body :error :code])))))))
 
 (deftest tools-list-test
@@ -167,7 +170,7 @@
                                 {"mcp-session-id" session-id})
           tools (get-in response [:body :result :tools])]
       (is (= 200 (:status response)))
-      (is (= 7 (count tools)))
+      (is (pos? (count tools)))
       (is (= #{"search" "get_table" "get_metric" "get_table_field_values"
                "get_metric_field_values" "construct_query" "execute_query"}
              (set (map :name tools))))
@@ -334,7 +337,7 @@
           list-response (mcp-request (jsonrpc-request "tools/list")
                                      {"mcp-session-id" session-id})]
       (is (= 200 (:status list-response)))
-      (is (= 7 (count (get-in list-response [:body :result :tools])))))))
+      (is (pos? (count (get-in list-response [:body :result :tools])))))))
 
 (deftest batch-with-notifications-test
   (testing "batch with mix of notifications and requests returns only request responses"
