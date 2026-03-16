@@ -1066,14 +1066,19 @@
     (when-not role-name
       (throw (ex-info "Workspace isolation is not properly initialized - missing role name"
                       {:workspace-id (:id workspace) :step :grant})))
-    ;; Grant USAGE on each unique schema first (required to access tables within)
-    (doseq [schema (distinct (map :schema tables))]
-      (jdbc/execute! conn-spec [(format "GRANT USAGE ON SCHEMA \"%s\".\"%s\" TO ROLE \"%s\""
-                                        db-name schema role-name)]))
-    ;; Grant SELECT on each specific table
-    (doseq [table tables]
-      (jdbc/execute! conn-spec [(format "GRANT SELECT ON TABLE \"%s\".\"%s\".\"%s\" TO ROLE \"%s\""
-                                        db-name (:schema table) (:name table) role-name)]))))
+    (let [qdb (sql.u/quote-name :snowflake :schema db-name)
+          qr  (sql.u/quote-name :snowflake :field role-name)]
+      ;; Grant USAGE on each unique schema first (required to access tables within)
+      (doseq [schema (distinct (map :schema tables))]
+        (jdbc/execute! conn-spec [(format "GRANT USAGE ON SCHEMA %s.%s TO ROLE %s"
+                                          qdb (sql.u/quote-name :snowflake :schema schema) qr)]))
+      ;; Grant SELECT on each specific table
+      (doseq [table tables]
+        (jdbc/execute! conn-spec [(format "GRANT SELECT ON TABLE %s.%s.%s TO ROLE %s"
+                                          qdb
+                                          (sql.u/quote-name :snowflake :schema (:schema table))
+                                          (sql.u/quote-name :snowflake :table (:name table))
+                                          qr)])))))
 
 (defmethod driver/llm-sql-dialect-resource :snowflake [_]
   "llm/prompts/dialects/snowflake.md")

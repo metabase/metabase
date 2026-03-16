@@ -1163,9 +1163,12 @@
       (throw (ex-info "Workspace isolation is not properly initialized - missing read user name"
                       {:workspace-id (:id workspace) :step :grant})))
     ;; Grant SELECT on each specific table only - no schema-level grants
-    (doseq [table tables]
-      (jdbc/execute! conn-spec [(format "GRANT SELECT ON [%s].[%s] TO [%s]"
-                                        (:schema table) (:name table) username)]))))
+    (let [qu (sql.u/quote-name :sqlserver :field username)]
+      (doseq [table tables]
+        (jdbc/execute! conn-spec [(format "GRANT SELECT ON %s.%s TO %s"
+                                          (sql.u/quote-name :sqlserver :schema (:schema table))
+                                          (sql.u/quote-name :sqlserver :table (:name table))
+                                          qu)])))))
 
 (defmethod driver/llm-sql-dialect-resource :sqlserver [_]
   "llm/prompts/dialects/sqlserver.md")
