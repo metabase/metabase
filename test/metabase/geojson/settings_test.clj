@@ -77,10 +77,10 @@
   (testing "When MB_ALLOW_CLASSPATH_GEOJSON is true"
     (mt/with-temp-env-var-value! [mb-allow-classpath-geojson "true"]
       (testing "classpath resources are accepted"
-        (let [geojson {:deadb33f {:name "Test" :url "app/assets/geojson/world.json" :region_key nil :region_name nil}}]
+        (let [geojson {:deadb33f {:name "Test" :url "app/assets/geojson/us-states.json" :region_key nil :region_name nil}}]
           (is (#'geojson.settings/validate-geojson geojson geojson))))))
   (testing "When MB_ALLOW_CLASSPATH_GEOJSON is not set, classpath resources are rejected"
-    (let [geojson {:deadb33f {:name "Test" :url "app/assets/geojson/world.json" :region_key nil :region_name nil}}]
+    (let [geojson {:deadb33f {:name "Test" :url "app/assets/geojson/us-states.json" :region_key nil :region_name nil}}]
       (is (thrown? clojure.lang.ExceptionInfo (#'geojson.settings/validate-geojson geojson geojson))))))
 
 (deftest custom-geojson-disallow-overriding-builtins-test
