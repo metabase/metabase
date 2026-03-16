@@ -45,13 +45,12 @@
                           m))))
 
 (defn- create-session!
-  [user-id token-scopes]
+  [user-id]
   (sweep-expired-sessions!)
   (let [session-id (str (UUID/randomUUID))]
     (swap! sessions assoc session-id {:timer        (u/start-timer)
                                       :initialized? false
-                                      :user-id      user-id
-                                      :token-scopes token-scopes})
+                                      :user-id      user-id})
     session-id))
 
 (defn- delete-session! [session-id]
@@ -72,12 +71,6 @@
 
 (defn- mark-session-initialized! [session-id]
   (swap! sessions assoc-in [session-id :initialized?] true))
-
-(defn- session-token-scopes [session-id]
-  (get-in @sessions [session-id :token-scopes]))
-
-(defn- session-user-id [session-id]
-  (get-in @sessions [session-id :user-id]))
 
 ;;; -------------------------------------------------- Auth --------------------------------------------------------
 
@@ -243,7 +236,7 @@
 
       ;; Initialize: create session and return response with session header
       (and (not batch?) (= "initialize" (:method body)))
-      (let [session-id    (create-session! user-id (:token-scopes request))
+      (let [session-id    (create-session! user-id)
             init-response (handle-initialize (:id body) (:params body))]
         (if (accepts-sse? request)
           (sse-response [init-response] {"Mcp-Session-Id" session-id})
@@ -317,13 +310,7 @@
    (fn [request respond raise]
      (let [origin-error    (validate-origin request)
            bearer-token    (oauth-server/extract-bearer-token request)
-           session-auth    api/*current-user-id*
-           mcp-session-id  (get-in request [:headers "mcp-session-id"])
-           ;; For non-initialize requests with a valid MCP session, inherit stored auth
-           stored-user-id  (when (and (not bearer-token) (not session-auth) mcp-session-id)
-                             (session-user-id mcp-session-id))
-           stored-scopes   (when stored-user-id
-                             (session-token-scopes mcp-session-id))]
+           session-auth    api/*current-user-id*]
        (letfn [(dispatch [user-id token-scopes]
                  (request/with-current-user user-id
                    (try
@@ -349,10 +336,6 @@
              (dispatch user-id scopes)
              (respond (json-response 401 (jsonrpc-error nil -32603 "Invalid bearer token")
                                      {"WWW-Authenticate" "Bearer error=\"invalid_token\""})))
-
-           ;; Stored session auth (bearer token was sent on initialize)
-           stored-user-id
-           (dispatch stored-user-id (or stored-scopes #{}))
 
            ;; No auth at all — return 401 with discovery
            :else
