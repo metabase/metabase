@@ -1,6 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import type { ReactNode } from "react";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { IndexRoute, Route } from "react-router";
 import { push } from "react-router-redux";
 import { P, match } from "ts-pattern";
@@ -49,6 +49,7 @@ import type {
   MetabotInfo,
 } from "metabase-types/api";
 
+import { MetabotAISetup } from "./MetabotAISetup";
 import { MetabotPromptSuggestionPane } from "./MetabotAdminSuggestedPrompts";
 import { useMetabotIdPath } from "./utils";
 
@@ -60,6 +61,22 @@ export function getAdminRoutes() {
 }
 
 export function MetabotAdminPage() {
+  const [isConfigured, setIsConfigured] = useState(false);
+
+  if (!isConfigured) {
+    return (
+      <AdminSettingsLayout>
+        <ErrorBoundary>
+          <MetabotAISetup onComplete={() => setIsConfigured(true)} />
+        </ErrorBoundary>
+      </AdminSettingsLayout>
+    );
+  }
+
+  return <MetabotConfiguredPage />;
+}
+
+function MetabotConfiguredPage() {
   const metabotId = useMetabotIdPath() ?? FIXED_METABOT_IDS.DEFAULT;
   const { data, isLoading, error } = useListMetabotsQuery();
 
