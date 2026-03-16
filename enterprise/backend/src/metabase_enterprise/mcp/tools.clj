@@ -7,6 +7,7 @@
    [metabase-enterprise.agent-api.api :as agent-api]
    [metabase.api.common :as api]
    [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
+   [metabase.config.core :as config]
    [metabase.util :as u]
    [metabase.util.json :as json])
   (:import
@@ -16,9 +17,9 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private manifest
-  (delay (tools-manifest/generate-tools-manifest
-          {'metabase-enterprise.agent-api.api "/api/agent"})))
+(defn- manifest []
+  (tools-manifest/generate-tools-manifest
+   {'metabase-enterprise.agent-api.api "/api/agent"}))
 
 (defn list-tools
   "Return the tool definitions suitable for MCP `tools/list` responses."
@@ -27,11 +28,20 @@
           {:name        (:name tool)
            :description (:description tool)
            :inputSchema (:inputSchema tool)})
-        (:tools @manifest)))
+        (:tools (manifest))))
 
-(def ^:private tool-index
-  "Lookup from tool name to its full manifest definition."
-  (delay (into {} (map (juxt :name identity)) (:tools @manifest))))
+(defn- build-tool-index []
+  (into {} (map (juxt :name identity)) (:tools (manifest))))
+
+(def ^:private tool-index-delay
+  (delay (build-tool-index)))
+
+(defn- tool-index
+  "Lookup from tool name to its full manifest definition. Cached in prod, recomputed each call in dev."
+  []
+  (if config/is-dev?
+    (build-tool-index)
+    @tool-index-delay))
 
 ;;; ------------------------------------------------- Tool Dispatch -------------------------------------------------
 
@@ -130,7 +140,7 @@
   "Dispatch an MCP `tools/call` request to the appropriate handler.
    Returns MCP content on success, or error content on failure."
   [tool-name arguments]
-  (if-let [tool-def (get @tool-index tool-name)]
+  (if-let [tool-def (get (tool-index) tool-name)]
     (try
       (dispatch-via-agent-api tool-def arguments)
       (catch Exception e
