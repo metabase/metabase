@@ -2,11 +2,16 @@ import { Route } from "react-router";
 
 import type { MetabotContext as MetabotContextType } from "metabase/metabot";
 import { useMetabotEnabledEmbeddingAware } from "metabase/metabot/hooks";
-import { PLUGIN_METABOT, PLUGIN_REDUCERS } from "metabase/plugins";
+import {
+  PLUGIN_AI_SQL_FIXER,
+  PLUGIN_METABOT,
+  PLUGIN_REDUCERS,
+} from "metabase/plugins";
 import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
 import { useLazyMetabotGenerateContentQuery } from "metabase-enterprise/api";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
+import { FixSqlQueryButton } from "./components/FixSqlQueryButton";
 import { Metabot } from "./components/Metabot";
 import { getAdminRoutes } from "./components/MetabotAdmin/MetabotAdminPage";
 import { getAdminRoutes as getAdminUpsellRoutes } from "./components/MetabotAdmin/MetabotPurchasePage";
@@ -59,6 +64,8 @@ PLUGIN_REDUCERS.metabotPlugin = metabotReducer;
  */
 export function initializePlugin() {
   if (hasPremiumFeature("metabot_v3")) {
+    PLUGIN_AI_SQL_FIXER.FixSqlQueryButton = FixSqlQueryButton;
+
     Object.assign(PLUGIN_METABOT, {
       // helpers
       getNewMenuItemAIExploration,

@@ -14,3 +14,9 @@ export const trackMetabotRequestSent = () => {
     event: "metabot_request_sent",
   });
 };
+
+export const trackQueryFixClicked = () => {
+  trackSimpleEvent({
+    event: "metabot_fix_query_clicked",
+  });
+};

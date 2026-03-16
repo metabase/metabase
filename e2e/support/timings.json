@@ -1085,10 +1085,6 @@
       "duration": 161285
     },
     {
-      "spec": "../test/scenarios/native/ai-sql-fixer.cy.spec.ts",
-      "duration": 5263
-    },
-    {
       "spec": "../test/scenarios/native/native_subquery.cy.spec.js",
       "duration": 44711
     },

@@ -915,9 +915,6 @@
    {:name      :ai-entity-analysis
     :available (premium-features/enable-ai-entity-analysis?)
     :enabled   (premium-features/enable-ai-entity-analysis?)}
-   {:name      :ai-sql-fixer
-    :available (premium-features/enable-ai-sql-fixer?)
-    :enabled   (premium-features/enable-ai-sql-fixer?)}
    {:name      :ai-sql-generation
     :available (premium-features/enable-ai-sql-generation?)
     :enabled   (premium-features/enable-ai-sql-generation?)}

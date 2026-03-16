@@ -252,10 +252,6 @@
   "Enable the newest LLM-based MetaBot? (The one that lives in [[metabase-enterprise.metabot-v3.core]].)"
   :metabot-v3)
 
-(define-premium-feature ^{:added "0.54.0"} enable-ai-sql-fixer?
-  "Should Metabase suggest SQL fixes?"
-  :ai-sql-fixer)
-
 (define-premium-feature ^{:added "0.54.0"} enable-ai-sql-generation?
   "Should Metabase generate SQL queries?"
   :ai-sql-generation)
@@ -331,7 +327,6 @@
 
 (defn- -token-features []
   {:advanced_permissions           (enable-advanced-permissions?)
-   :ai_sql_fixer                   (enable-ai-sql-fixer?)
    :ai_sql_generation              (enable-ai-sql-generation?)
    :ai_entity_analysis             (enable-ai-entity-analysis?)
    :attached_dwh                   (has-attached-dwh?)

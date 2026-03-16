@@ -346,7 +346,6 @@ export const tokenFeatures = [
   "collection_cleanup",
   "cache_preemptive",
   "metabot_v3",
-  "ai_sql_fixer",
   "ai_sql_generation",
   "ai_entity_analysis",
   "database_routing",

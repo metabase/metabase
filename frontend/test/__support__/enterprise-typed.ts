@@ -19,7 +19,6 @@ export const ENTERPRISE_PLUGIN_NAME_MAPPING = {
   application_permissions: "metabase-enterprise/application_permissions",
   auth: "metabase-enterprise/auth",
   "smtp-override": "metabase-enterprise/smtp-override",
-  "ai-sql-fixer": "metabase-enterprise/ai-sql-fixer",
   embedding: "metabase-enterprise/embedding",
   admin: "metabase-enterprise/admin",
   dependencies: "metabase-enterprise/dependencies",

@@ -13,7 +13,7 @@ import {
   createMockUserPermissions,
 } from "metabase-types/api/mocks";
 
-import { FixSqlQueryButton } from "../../ai-sql-fixer/components/FixSqlQueryButton/FixSqlQueryButton";
+import { FixSqlQueryButton } from "../components/FixSqlQueryButton/FixSqlQueryButton";
 import { Metabot } from "../components/Metabot";
 import { METABOT_PROFILE_OVERRIDES } from "../constants";
 
