@@ -174,6 +174,29 @@ describe("DataGrid", () => {
     expect(screen.getByTestId("table-body")).toBeInTheDocument();
   });
 
+  it("uses correct ARIA roles for grid structure (#70548)", () => {
+    renderWithProviders(<TestDataGrid />);
+    act(() => {
+      jest.runAllTimers();
+    });
+
+    const grid = screen.getByRole("grid");
+    expect(grid).toBeInTheDocument();
+
+    const rows = screen.getAllByRole("row");
+    expect(rows.length).toBeGreaterThan(1);
+
+    const headerRow = rows[0];
+    const columnHeaders = within(headerRow).getAllByRole("columnheader");
+    expect(columnHeaders.length).toBeGreaterThan(0);
+
+    const bodyRows = rows.slice(1);
+    bodyRows.forEach((row) => {
+      const cells = within(row).getAllByRole("gridcell");
+      expect(cells.length).toBeGreaterThan(0);
+    });
+  });
+
   it("calls onBodyCellClick when clicking a cell", () => {
     const onBodyCellClick = jest.fn();
     renderWithProviders(<TestDataGrid onBodyCellClick={onBodyCellClick} />);
@@ -232,7 +255,7 @@ describe("DataGrid", () => {
 
     rows.forEach((row, index) => {
       const cells = within(row).getAllByRole("gridcell");
-      expect(cells[0]).toHaveTextContent(String(index + 2));
+      expect(cells[0]).toHaveTextContent(String(index + 1));
     });
 
     const firstRow = rows[0];

@@ -188,6 +188,7 @@ export const DataGrid = function DataGrid<TData>({
             >
               {table.getHeaderGroups().map((headerGroup) => (
                 <div
+                  role="row"
                   key={headerGroup.id}
                   className={cx(S.row, classNames?.row)}
                   style={{
