@@ -11,6 +11,7 @@
    [metabase.util.json :as json])
   (:import
    (java.io ByteArrayOutputStream)
+   (java.net URLEncoder)
    (metabase.server.streaming_response StreamingResponse)))
 
 (set! *warn-on-reflection* true)
@@ -101,26 +102,29 @@
   [path]
   (str/replace-first path #"^/api/agent" ""))
 
+(defn- invoke-agent-api-with-params
+  "Invoke an Agent API endpoint with query parameters for GET/DELETE requests.
+   Appends `params` as a query string to `path`."
+  [method path params]
+  (if (and (seq params) (not= :post method))
+    (let [query-string (->> params
+                            (map (fn [[k v]] (str (name k) "=" (URLEncoder/encode (str v) "UTF-8"))))
+                            (str/join "&"))]
+      (invoke-agent-api method (str path "?" query-string)))
+    (invoke-agent-api method path (when (= :post method) params))))
+
 (defn- dispatch-via-agent-api
   "Generic dispatch for tools whose responseFormat is \"json\".
    Looks up method/path from the tool definition, interpolates path params,
-   and calls `invoke-agent-api`."
+   and calls `invoke-agent-api`. For POST requests, remaining args are sent as the
+   request body. For GET/DELETE requests, remaining args are sent as query params."
   [tool-def arguments]
   (let [{:keys [method path]} (:endpoint tool-def)
         method                (keyword (u/lower-case-en method))
         [resolved-path
          remaining-args]      (interpolate-path path arguments)
         api-path              (strip-api-prefix resolved-path)]
-    (if (= :post method)
-      (invoke-agent-api method api-path remaining-args)
-      (invoke-agent-api method api-path))))
-
-(defn- execute-query
-  "Handler for execute_query — delegates to the Agent API's `/v1/execute` endpoint.
-   The endpoint returns a StreamingResponse which `invoke-agent-api` captures
-   in-process via `capture-streaming-response`."
-  [arguments]
-  (invoke-agent-api :post "/v1/execute" {:query (:query arguments)}))
+    (invoke-agent-api-with-params method api-path remaining-args)))
 
 (defn call-tool
   "Dispatch an MCP `tools/call` request to the appropriate handler.
@@ -128,10 +132,7 @@
   [tool-name arguments]
   (if-let [tool-def (get @tool-index tool-name)]
     (try
-      (if (:streaming tool-def)
-        ;; TODO (Chris 2026-03-26) Stop cheating :-)
-        (execute-query arguments)
-        (dispatch-via-agent-api tool-def arguments))
+      (dispatch-via-agent-api tool-def arguments)
       (catch Exception e
         (error-content (or (ex-message e) "Internal error"))))
     (error-content (str "Unknown tool: " tool-name))))
