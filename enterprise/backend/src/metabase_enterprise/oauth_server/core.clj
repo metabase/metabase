@@ -85,7 +85,9 @@
    Returns nil if the :metabot-v3 feature flag is not enabled."
   []
   (or @provider
-      (create-provider!)))
+      (locking provider
+        (or @provider
+            (create-provider!)))))
 
 (defn reset-provider!
   "Reset the provider atom to nil. Useful for testing."
