@@ -174,7 +174,7 @@ describe("DataGrid", () => {
     expect(screen.getByTestId("table-body")).toBeInTheDocument();
   });
 
-  it("renders body cells with role='gridcell' and aria-selected attributes", () => {
+  it("renders body cells with role='gridcell' and aria-selected attributes (#70549)", () => {
     renderWithProviders(<TestDataGrid enableSelection />);
     act(() => {
       jest.runAllTimers();
