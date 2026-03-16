@@ -3,6 +3,7 @@ import type {
   Collection,
   CollectionId,
   PythonTransformTableAliases,
+  TemplateTags,
   TransformId,
   TransformRun,
   TransformRunStatus,
@@ -128,6 +129,11 @@ export function createSqlTransform({
   visitTransform,
   sourceCheckpointStrategy,
   name = "SQL transform",
+  wrapId = true,
+  templateTags,
+  tableVariableTable,
+  tableVariableSchema,
+  databaseId = WRITABLE_DB_ID,
 }: {
   name?: string;
   sourceQuery: string;
@@ -136,31 +142,68 @@ export function createSqlTransform({
   tagIds?: TransformTagId[];
   visitTransform?: boolean;
   sourceCheckpointStrategy?: TransformSourceCheckpointStrategy;
+  wrapId?: boolean;
+  templateTags?: TemplateTags;
+  /** When set, adds a template variable of type "table" named "table" for the given table */
+  tableVariableTable?: string;
+  tableVariableSchema?: string;
+  databaseId?: number;
 }) {
-  return createTransform(
-    {
-      name,
-      source: {
-        type: "query",
-        query: {
-          database: WRITABLE_DB_ID,
-          type: "native",
-          native: {
-            query: sourceQuery,
+  const create = (native: {
+    query: string;
+    "template-tags"?: TemplateTags;
+  }) => {
+    return createTransform(
+      {
+        name,
+        source: {
+          type: "query",
+          query: {
+            database: WRITABLE_DB_ID,
+            type: "native",
+            native,
           },
+          "source-incremental-strategy": sourceCheckpointStrategy,
         },
-        "source-incremental-strategy": sourceCheckpointStrategy,
+        target: {
+          type: "table",
+          database: WRITABLE_DB_ID,
+          name: targetTable,
+          schema: targetSchema,
+        },
+        tag_ids: tagIds,
       },
-      target: {
-        type: "table",
-        database: WRITABLE_DB_ID,
-        name: targetTable,
-        schema: targetSchema,
-      },
-      tag_ids: tagIds,
-    },
-    { wrapId: true, visitTransform },
-  );
+      { wrapId, visitTransform },
+    );
+  };
+
+  if (tableVariableTable) {
+    return getTableId({
+      databaseId,
+      name: tableVariableTable,
+      schema: tableVariableSchema,
+    }).then((tableId) => {
+      const resolvedTemplateTags: TemplateTags = {
+        ...(templateTags ?? {}),
+        table: {
+          id: "table-tag-id",
+          name: "table",
+          "display-name": "Table",
+          type: "table",
+          "table-id": tableId,
+        },
+      };
+      return create({
+        query: sourceQuery,
+        "template-tags": resolvedTemplateTags,
+      });
+    });
+  }
+
+  return create({
+    query: sourceQuery,
+    ...(templateTags && { "template-tags": templateTags }),
+  });
 }
 
 export function createPythonTransform({

@@ -3389,6 +3389,98 @@ databaseChangeLog:
               );
       rollback: # nothing to undo - these rows should not exist in v59
 
+  - changeSet:
+      id: v59.2026-03-12T12:00:00
+      author: wotbrew
+      comment: Add last_checkpoint_value to transform table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: transform
+                columnName: last_checkpoint_value
+      changes:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: last_checkpoint_value
+                  type: ${text.type}
+                  remarks: Serialized checkpoint watermark value for incremental transforms, temporal as ISO8601
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v59.2026-03-13T00:00:00
+      author: bronsa
+      comment: Remove legacy incremental transform strategies that use checkpoint-filter instead of checkpoint-filter-field-id
+      changes:
+        - customChange:
+            class: "metabase.app_db.custom_migrations.RemoveLegacyIncrementalStrategies"
+
+  - changeSet:
+      id: v59.2026-03-13T00:00:01
+      author: bronsa
+      comment: Add checkpoint_filter_field_id column to transform_run
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: transform_run
+                columnName: checkpoint_filter_field_id
+      changes:
+        - addColumn:
+            tableName: transform_run
+            columns:
+              - column:
+                  name: checkpoint_filter_field_id
+                  type: int
+                  remarks: The field ID used for incremental checkpoint filtering
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v59.2026-03-13T00:00:02
+      author: bronsa
+      comment: Add checkpoint_lo_value column to transform_run
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: transform_run
+                columnName: checkpoint_lo_value
+      changes:
+        - addColumn:
+            tableName: transform_run
+            columns:
+              - column:
+                  name: checkpoint_lo_value
+                  type: ${text.type}
+                  remarks: The low checkpoint value for this run (exclusive lower bound)
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v59.2026-03-13T00:00:03
+      author: bronsa
+      comment: Add checkpoint_hi_value column to transform_run
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: transform_run
+                columnName: checkpoint_hi_value
+      changes:
+        - addColumn:
+            tableName: transform_run
+            columns:
+              - column:
+                  name: checkpoint_hi_value
+                  type: ${text.type}
+                  remarks: The high checkpoint value for this run (inclusive upper bound)
+                  constraints:
+                    nullable: true
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

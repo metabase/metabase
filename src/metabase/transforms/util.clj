@@ -1,13 +1,10 @@
 (ns metabase.transforms.util
   (:require
-   [buddy.core.codecs :as codecs]
-   [buddy.core.hash :as buddy-hash]
    [clojure.core.async :as a]
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
-   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
@@ -15,6 +12,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.util :as lib.util]
    [metabase.models.interface :as mi]
    [metabase.models.transforms.transform-run :as transform-run]
    [metabase.query-processor :as qp]
@@ -33,7 +31,7 @@
    [metabase.transforms.settings :as transforms.settings]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -43,6 +41,8 @@
    (java.util Date)))
 
 (set! *warn-on-reflection* true)
+
+(declare get-source-range-params save-run-checkpoint-range!)
 
 (defn qualified-table-name
   "Return the name of the target table of a transform as a possibly qualified symbol."
@@ -178,20 +178,25 @@
 (defn run-cancelable-transform!
   "Execute a transform with cancellation support and proper error handling.
 
+  Computes `source-range-params` once upfront, saves them to the run record, and passes them
+  to `run-transform!` which receives `cancel-chan` and `source-range-params` as arguments.
+
   Options:
   - `:ex-message-fn` change how caught exceptions are presented to the user in run logs, by default the same as clojure.core/ex-message"
-  [run-id driver {:keys [db-id conn-spec output-schema]} run-transform! & {:keys [ex-message-fn] :or {ex-message-fn ex-message}}]
+  [run-id transform driver {:keys [db-id conn-spec output-schema]} run-transform! & {:keys [ex-message-fn] :or {ex-message-fn ex-message}}]
   ;; local run is responsible for status, using canceling lifecycle
   (try
     (when-not (driver/schema-exists? driver db-id output-schema)
       (driver/create-schema-if-needed! driver conn-spec output-schema))
-    (canceling/chan-start-timeout-vthread! run-id (transforms.settings/transform-timeout))
-    (let [cancel-chan (a/promise-chan)
-          ret (binding [qp.pipeline/*canceled-chan* cancel-chan]
-                (canceling/chan-start-run! run-id cancel-chan)
-                (run-transform! cancel-chan))]
-      (transform-run/succeed-started-run! run-id)
-      ret)
+    (let [source-range-params (get-source-range-params transform)]
+      (save-run-checkpoint-range! run-id source-range-params)
+      (canceling/chan-start-timeout-vthread! run-id (transforms.settings/transform-timeout))
+      (let [cancel-chan (a/promise-chan)
+            ret (binding [qp.pipeline/*canceled-chan* cancel-chan]
+                  (canceling/chan-start-run! run-id cancel-chan)
+                  (run-transform! cancel-chan source-range-params))]
+        (transform-run/succeed-started-run! run-id)
+        (assoc ret :source-range-params source-range-params)))
     (catch Throwable t
       (transform-run/fail-started-run! run-id {:message (ex-message-fn t)})
       (throw t))
@@ -229,7 +234,7 @@
   ([database target {:keys [create?]}]
    (when-let [table (or (target-table (:id database) target)
                         (when create?
-                          (sync/create-table! database (select-keys target [:schema :name :data_source :data_authority]))))]
+                          (sync/create-table! database (select-keys target [:schema :name :data_source :data_authority :is_writable]))))]
      (sync/sync-table! table)
      table)))
 
@@ -238,7 +243,8 @@
   [database target]
   (when-let [table (sync-table! database (assoc target
                                                 :data_authority :computed
-                                                :data_source :metabase-transform)
+                                                :data_source :metabase-transform
+                                                :is_writable false)
                                 {:create? true})]
     (when-not (:active table)
       (t2/update! :model/Table (:id table) {:active true}))
@@ -278,11 +284,6 @@
       remap/disable-remaps
       lib/disable-default-limit))
 
-(defn- checkpoint-incremental?
-  "Returns true if `source` uses checkpoint-based incremental strategy."
-  [source]
-  (= :checkpoint (some-> source :source-incremental-strategy :type keyword)))
-
 (defn supported-incremental-filter-type?
   "Returns true if the given base-type is supported for incremental filtering.
 
@@ -291,115 +292,143 @@
   (or (isa? base-type :type/Temporal)
       (isa? base-type :type/Number)))
 
-(defn- source->checkpoint-filter-unique-key
-  "Extract the checkpoint filter column from `query` using the unique key specified in `source-incremental-strategy`."
-  [query source-incremental-strategy]
-  (some->> source-incremental-strategy :checkpoint-filter-unique-key (lib/column-with-unique-key query)))
+(defn- encode-checkpoint-value [v]
+  (if (number? v)
+    (str v)
+    (u.date/format v)))
 
-(defn- source->checkpoint-filter-column
-  "Resolve the checkpoint filter column for an incremental transform.
+(defn save-watermark!
+  "Commits the incremental transforms :hi watermark value to the appdb."
+  [transform-id source-range-params]
+  (t2/update! :model/Transform
+              transform-id
+              {:last_checkpoint_value (some-> source-range-params :hi :value encode-checkpoint-value)}))
 
-  Tries to resolve the column using the unique key first.
-  Falls back to looking up the column by name from the target table if a `:checkpoint-filter` is specified.
+(defn save-run-checkpoint-range!
+  "Persist the checkpoint range (lo/hi) on a transform run record.
+  This is called early in execution so the range is recorded even if the run fails."
+  [run-id source-range-params]
+  (when (and run-id source-range-params)
+    (let [{:keys [checkpoint-filter-field-id lo hi]} source-range-params]
+      (t2/update! :model/TransformRun run-id
+                  (cond-> {:checkpoint_filter_field_id checkpoint-filter-field-id}
+                    lo (assoc :checkpoint_lo_value (encode-checkpoint-value (:value lo)))
+                    hi (assoc :checkpoint_hi_value (encode-checkpoint-value (:value hi))))))))
 
-  Validates that the resolved column has a supported type for checkpoint filtering (numeric or temporal).
-  Throws an exception if the column type is not supported."
-  [query source-incremental-strategy table metadata-provider]
-  (let [{:keys [checkpoint-filter checkpoint-filter-unique-key]} source-incremental-strategy]
-    (when-some [{column-name :name
-                 :keys [base-type]
-                 :as column}
-                (cond
-                  checkpoint-filter-unique-key
-                  (source->checkpoint-filter-unique-key query source-incremental-strategy)
-                  checkpoint-filter
-                  (when-some [field-id (t2/select-one-pk :model/Field
-                                                         :table_id (:id table)
-                                                         :name checkpoint-filter)]
-                    (lib.metadata/field metadata-provider field-id)))]
-      (when-not (supported-incremental-filter-type? base-type)
-        (throw (ex-info (str "Checkpoint column '" column-name "' has unsupported type " (pr-str base-type) ". "
-                             "Only numeric and temporal columns are supported for incremental filtering.")
-                        {:column-name column-name
-                         :base-type   base-type})))
-      column)))
+(defn- parse-checkpoint-value
+  "Parse a serialized checkpoint value string according to its base-type keyword."
+  [base-type s]
+  (cond
+    (not (string? s)) s
+    (isa? base-type :type/Float)    (bigdec s)
+    (isa? base-type :type/Number)   (biginteger s)
+    (isa? base-type :type/Temporal) (u.date/parse s)
+    :else (throw (ex-info (str "Unsupported checkpoint type: " (pr-str base-type))
+                          {:base-type base-type}))))
 
-(defn next-checkpoint
-  "Build a query to compute the MAX of the checkpoint column from the target table.
+(defn- tag-checkpoint-value
+  "Wrap a raw checkpoint value from the QP into a map `{:value parsed}`."
+  [base-type raw-value]
+  {:value (parse-checkpoint-value base-type raw-value)})
 
-  Returns a map with `:query` (MBQL query selecting the max) and `:filter-column` (column metadata),
-  or `nil` if the transform doesn't use checkpoint-based incremental strategy or the target table doesn't exist."
+(defn- inject-filters-into-table-tag
+  "Inject `:source-filters` into the table template tag matching the checkpoint field's table.
+
+   Instead of manually expanding {{tag}} to a subquery SQL string, this adds filter metadata
+   to the template tag so the QP's existing pipeline handles substitution. The filters specify
+   field-id-based comparisons (e.g. :> lo, :<= hi) that get rendered as a filtered subquery
+   in `->replacement-snippet-info`."
+  [query source-range-params]
+  (let [{:keys [checkpoint-filter-field-id lo hi column]} source-range-params
+        table-id  (:table-id column)
+        tags      (lib/template-tags query)
+        tag-name  (some (fn [[k v]]
+                          (when (and (#{:table "table"} (:type v))
+                                     (= table-id (:table-id v)))
+                            k))
+                        tags)
+        _         (when-not tag-name
+                    (throw (ex-info "No table variable found for checkpoint field's table"
+                                    {:checkpoint-table-id table-id
+                                     :template-tags       tags})))
+        filters   (cond-> []
+                    lo (conj {:field-id checkpoint-filter-field-id :op :> :value (:value lo)})
+                    hi (conj {:field-id checkpoint-filter-field-id :op :<= :value (:value hi)}))]
+    (lib.util/update-query-stage
+     query 0
+     #(assoc-in % [:template-tags tag-name :source-filters] filters))))
+
+(mu/defn get-source-range-params :- [:maybe ::transforms.schema/source-range-params]
+  "Returns information on the incremental range filters that ought to be applied to a source query.
+
+  Returns a map:
+   :column                     (the lib column value of the incremental filter column)
+   :checkpoint-filter-field-id (the field ID of the checkpoint column)
+   Range predicate terms (maps :type, :value), can be nil (in which case the filter clause should be omitted):
+   :lo                         values in the source table must be > this :value.
+   :hi                         values in the source table must be <= this :value."
   [{:keys [source target] :as transform}]
-  (let [db-id (transforms.i/target-db-id transform)]
-    (when (checkpoint-incremental? source)
-      (when-let [table (target-table db-id target)]
-        (let [metadata-provider (lib-be/application-database-metadata-provider db-id)
-              table-metadata (lib.metadata/table metadata-provider (:id table))
-              query (lib/query metadata-provider table-metadata)]
-          (when-let [filter-column (source->checkpoint-filter-column query
-                                                                     (:source-incremental-strategy source)
-                                                                     table metadata-provider)]
-            {:query (-> query (lib/aggregate (lib/max filter-column)))
-             :filter-column filter-column}))))))
+  (let [{:keys [source-incremental-strategy]} source
+        {:keys [checkpoint-filter-field-id]} source-incremental-strategy]
+    (when (and (= "table-incremental" (:type target))
+               (native-query-transform? transform)
+               (not (some (fn [[_k v]] (#{:table "table"} (:type v)))
+                          (lib/template-tags (:query source)))))
+      (let [msg (i18n/tru (str "Incremental transform with a native query requires a table variable."
+                               "Please add a table variable to the query and update the checkpoint field."))]
+        (throw (ex-info msg {:transform-message msg}))))
+    (when (and (= "table-incremental" (:type target))
+               (not checkpoint-filter-field-id))
+      (let [msg (i18n/tru (str "Incremental transform is enabled but no checkpoint field is selected."
+                               "Please select a checkpoint field in the transform settings."))]
+        (throw (ex-info msg {:transform-message msg}))))
+    (when checkpoint-filter-field-id
+      (let [{:keys [last_checkpoint_value]} transform
+            db-id             (transforms.i/target-db-id transform)
+            metadata-provider (lib-be/application-database-metadata-provider db-id)
+            column            (lib.metadata/field metadata-provider checkpoint-filter-field-id)
+            _                   (when (or (nil? column) (not (:active column)))
+                                  (throw (ex-info "Checkpoint field does not exist or is not active"
+                                                  {:checkpoint-filter-field-id checkpoint-filter-field-id})))
+            _ (when-not (supported-incremental-filter-type? (:base-type column))
+                (throw (ex-info (str "Checkpoint column '" (:name column) "' has unsupported type " (pr-str (:base-type column)) ". "
+                                     "Only numeric and temporal columns are supported for incremental filtering.")
+                                {:column column})))
+            base-type         (:base-type column)
+            lo                (when last_checkpoint_value (parse-checkpoint-value base-type last_checkpoint_value))
 
-(defn- next-checkpoint-value
-  "Execute the checkpoint query and normalize the result for database insertion.
-  Returns `nil` if the target table is empty."
-  [{:keys [query filter-column]}]
-  (let [{:keys [base-type]} filter-column
-        v (some-> query qp/process-query :data :rows first first)]
-    ;; QP return values are lossy, we do a bit of parsing to ensure they're of the right
-    ;; shape for reinsertion
-    (cond
-      (nil? v)
-      nil
-
-      (isa? base-type :type/Integer)
-      (bigint v)
-
-      ;; any other number that's not an integer, should be a decimal/float
-      (number? v)
-      (bigdec v)
-
-      :else v)))
+            max-value
+            (let [table-id          (:table-id column)
+                  table-metadata    (lib.metadata/table metadata-provider table-id)
+                  base-query        (lib/query metadata-provider table-metadata)
+                  filtered-query    (if lo (lib/filter base-query (lib/> column lo)) base-query)
+                  query             (lib/aggregate (lib/append-stage filtered-query) (lib/max column))
+                  query-result      (qp/process-query query)]
+              (ffirst (get-in query-result [:data :rows])))]
+        {:column                     column
+         :checkpoint-filter-field-id checkpoint-filter-field-id
+         :lo                         (when lo {:value lo})
+         :hi                         (cond (some? max-value) (tag-checkpoint-value base-type max-value)
+                                           lo {:value lo})}))))
 
 (defn preprocess-incremental-query
-  "Add checkpoint checkpoint filtering to a query for incremental execution.
+  "Add checkpoint filtering to a query for incremental execution.
 
-  For native queries with a `checkpoint` template tag, adds the checkpoint as a parameter.
-  For MBQL queries, adds a filter clause `WHERE checkpoint_column > checkpoint`.
-  Returns the query unchanged on first run (no checkpoint) or for native queries without the checkpoint tag."
-  [query source-incremental-strategy checkpoint]
-  (if-let [checkpoint-value (next-checkpoint-value checkpoint)]
+   For native queries, injects `:source-filters` into the table template tag matching the checkpoint
+   field's table. The QP's substitution pipeline renders these as a filtered subquery.
+   For MBQL queries, adds filter clauses `WHERE checkpoint_column > lo AND checkpoint_column <= hi`.
+   Returns the query unchanged when source-range-params is nil."
+  [query source-range-params]
+  (if source-range-params
     (if (lib.query/native? query)
-      ;; native query with explicit checkpoint filter
-      (if (get-in query [:stages 0 :template-tags "checkpoint"])
-        (update query :parameters conj
-                {:type (if (number? checkpoint-value) :number :text)
-                 :target [:variable [:template-tag "checkpoint"]]
-                 :value checkpoint-value})
-        query)
-      ;; mbql query
-      (lib/filter query (lib/> (source->checkpoint-filter-unique-key query source-incremental-strategy) checkpoint-value)))
+      ;; Native: inject source-filters into the table template tag — QP handles the rest
+      (inject-filters-into-table-tag query source-range-params)
+      ;; MBQL: add filter clauses
+      (cond-> query
+        (:lo source-range-params) (lib/filter 0 (lib/>  (:column source-range-params) (:value (:lo source-range-params))))
+        (:hi source-range-params) (lib/filter 0 (lib/<= (:column source-range-params) (:value (:hi source-range-params))))))
+    ;; No range params - return unchanged
     query))
-
-(defn- post-process-incremental-query
-  "Wrap a compiled native query with checkpoint filtering for native queries without explicit checkpoint tags.
-
-  Generates SQL that wraps the original query as a subquery and filters by `checkpoint_filter > (checkpoint_query)`. "
-  [outer-query driver {:keys [source-incremental-strategy] :as source} {checkpoint-query :query :as checkpoint}]
-  (let [{:keys [checkpoint-filter]} source-incremental-strategy]
-    (if (and (lib.query/native? (:query source))
-             (not (get-in (:query source) [:stages 0 :template-tags "checkpoint"]))
-             (next-checkpoint-value checkpoint))
-      (let [wrap-query (fn [query]
-                         (let [honeysql-query {:select [:*]
-                                               :from [[[:raw (str "(" query ")")] :subquery]]
-                                               :where [:> (h2x/identifier :field checkpoint-filter)
-                                                       [:raw (str "(" (:query (qp.compile/compile checkpoint-query)) ")")]]}]
-                           (first (sql.qp/format-honeysql driver honeysql-query))))]
-        (update outer-query :query wrap-query))
-      outer-query)))
 
 (mu/defn validate-transform-query :- [:maybe [:map [:error :string]]]
   "Verifies that a query transform's query can actually be run as is.  Returns nil on success and an error map on failure."
@@ -414,21 +443,18 @@
 
 (defn compile-source
   "Compile the source query of a transform to SQL, applying incremental filtering if required."
-  [{:keys [source] :as transform}]
-  (let [{:keys [source-incremental-strategy] query-type :type} source]
-    (case (keyword query-type)
-      :query
-      (let [checkpoint (next-checkpoint transform)
-            query (:query source)
-            driver (some->> query :database (t2/select-one :model/Database) :engine keyword)]
-        (binding [driver/*compile-with-inline-parameters*
-                  (or (= :clickhouse driver)
-                      driver/*compile-with-inline-parameters*)]
-          (-> query
-              (preprocess-incremental-query source-incremental-strategy checkpoint)
-              massage-sql-query
-              qp.compile/compile
-              (post-process-incremental-query driver source checkpoint)))))))
+  [{:keys [source]} source-range-params]
+  (let [{query-type :type} source]
+    (assert (= :query (keyword query-type)))
+    (let [query  (:query source)
+          driver (some->> query :database (t2/select-one :model/Database) :engine keyword)]
+      (binding [driver/*compile-with-inline-parameters*
+                (or (= :clickhouse driver)
+                    driver/*compile-with-inline-parameters*)]
+        (-> query
+            (preprocess-incremental-query source-range-params)
+            massage-sql-query
+            qp.compile/compile)))))
 
 (defn required-database-features
   "Returns the database features necessary to execute `transform`."
@@ -637,101 +663,22 @@
     (filter #(some tag-ids (get-in % field-path)))
     identity))
 
-(def ^:private metabase-index-prefix "mb_transform_idx_")
-
-(defn- incremental-filter-index-name [schema table-name filter-column-name]
-  (let [prefix metabase-index-prefix
-        suffix (codecs/bytes->hex (buddy-hash/md5 (str/join "|" [schema table-name filter-column-name])))]
-    (str prefix suffix)))
-
-(defn- should-index-incremental-filter-column? [driver database]
-  (and (driver.u/supports? driver :describe-indexes database)
-       (driver.u/supports? driver :transforms/index-ddl database)))
-
-(defn- metabase-owned-index? [index]
-  (str/starts-with? (:index-name index) metabase-index-prefix))
-
-(defn- metabase-incremental-filter-index [filter-column target]
-  (let [table-name  (:name target)
-        schema      (:schema target)
-        filter-name (:name filter-column)]
-    ;; match the schema used by describe-table-indexes (:value denotes the column name, assumed leading column if a composite index)
-    {:index-name (incremental-filter-index-name schema table-name filter-name)
-     :value      filter-name}))
-
-(defn- decide-secondary-index-ddl
-  "Decides which indexes should be dropped/created on the target table.
-
-  e.g. Indexing the incremental :filter-column to accelerate MAX(target.checkpoint) queries on OLTP databases.
-
-  Indexes are represented as maps with at least the keys :index-name, :value.
-  This matches the form used by [[metabase.driver/describe-table-indexes]].
-
-  Returns a map:
-  :drop   - a vector of indexes that are redundant and should be dropped.
-  :create - a vector of desirable indexes that do not exist and that should be created.
-
-  Notes:
-  - If user covering indexes exist they should be reused.
-  - Will never drop user indexes.
-  - Indexes we previously created and are no longer required are dropped."
-  [{:keys [filter-column indexes target database]}]
-  (let [[mb-indexes user-indexes] ((juxt filter remove) metabase-owned-index? indexes)
-        default-mb-index    (when filter-column (metabase-incremental-filter-index filter-column target))
-        column-name         (:name filter-column)
-        existing-user-index (first (filter #(= (:value %) column-name) user-indexes))
-        existing-mb-index   (first (filter #(= (:index-name %) (:index-name default-mb-index)) mb-indexes))
-        driver              (:engine database)
-        intended-index      (when (should-index-incremental-filter-column? driver database)
-                              ;; Prefer reuse to not create redundant indexes
-                              (or existing-user-index default-mb-index))
-        drop                (if intended-index
-                              (remove #(= (:index-name intended-index) (:index-name %)) mb-indexes)
-                              mb-indexes)
-        create              (when (and intended-index
-                                       (not= (:index-name intended-index) (:index-name existing-user-index))
-                                       (not= (:index-name intended-index) (:index-name existing-mb-index)))
-                              [intended-index])]
-    {:drop   (vec drop)
-     :create (vec create)}))
-
-(defn execute-secondary-index-ddl-if-required!
-  "If target table index modifications are required, executes those CREATE/DROP commands.
-  See [[metabase.transforms-util/decide-secondary-index-ddl]] for details."
-  [transform run-id database target]
-  (when (driver.u/supports? (:engine database) :describe-indexes database)
-    (let [driver     (:engine database)
-          indexes    (driver/describe-table-indexes driver database target)
-          checkpoint (next-checkpoint transform)
-          {:keys [drop create]}
-          (decide-secondary-index-ddl
-           {:filter-column (:filter-column checkpoint)
-            :database      database
-            :target        target
-            :indexes       indexes})]
-      (doseq [{:keys [index-name value]} drop]
-        (transforms.instrumentation/with-stage-timing [run-id [:import :drop-incremental-filter-index]]
-          (log/infof "Dropping secondary index %s(%s) for target %s" index-name value (pr-str target))
-          (driver/drop-index! driver (:id database) (:schema target) (:name target) index-name)))
-      (doseq [{:keys [index-name value]} create]
-        (transforms.instrumentation/with-stage-timing [run-id [:import :create-incremental-filter-index]]
-          (log/infof "Creating secondary index %s(%s) for target %s" index-name value (pr-str target))
-          (driver/create-index! driver (:id database) (:schema target) (:name target) index-name [value]))))))
-
 (mu/defn handle-transform-complete!
   "Handles followup tasks for when a transform has completed.
 
-  Specifically, this syncs the target db, publishes a `:event/transform-run-complete` event, and potentially updates
-  the target table's index.
-
-  See [[metabase.transforms-util/decide-secondary-index-ddl]] for details on the index handling."
-  [& {:keys [run-id transform db]}
+  Specifically, this syncs the target db, publishes a `:event/transform-run-complete` event,
+  and saves the watermark for incremental transforms."
+  [& {:keys [run-id transform source-range-params db]}
    :- [:map
        [:run-id ::transforms.schema/run-id]
        [:transform ::transforms.schema/transform]
+       [:source-range-params {:optional true} [:maybe ::transforms.schema/source-range-params]]
        [:db [:fn {:error/message "Must a t2 database object"} #(= (t2/model %) :model/Database)]]]]
   (let [target (:target transform)]
     (transforms.instrumentation/with-stage-timing [run-id [:import :table-sync]]
+      ;; Save watermark if source-range-params available
+      (when source-range-params
+        (save-watermark! (:id transform) source-range-params))
       (when-let [table (sync-target! target db)]
         (t2/update! :model/Table (:id table) {:transform_id (:id transform)}))
       ;; This event must be published only after the sync is complete - the new table needs to be in AppDB.
@@ -740,7 +687,4 @@
                                        :transform-id (:id transform)
                                        :transform-type (keyword (:type target))
                                        :output-schema (:schema target)
-                                       :output-table (qualified-table-name (:engine db) target)}})
-      ;; Creating an index after sync means the filter column is known in the appdb.
-      ;; The index would be synced the next time sync runs, but at time of writing, index sync is disabled.
-      (execute-secondary-index-ddl-if-required! transform run-id db target))))
+                                       :output-table (qualified-table-name (:engine db) target)}}))))

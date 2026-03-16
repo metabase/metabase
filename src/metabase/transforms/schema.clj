@@ -1,7 +1,8 @@
 (ns metabase.transforms.schema
   (:require
-   [metabase.lib.metadata.column :as lib.metadata.column]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.queries.schema :as queries.schema]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -22,11 +23,7 @@
 (mr/def ::checkpoint-strategy
   [:map
    [:type [:= "checkpoint"]]
-   ;; for native
-   [:checkpoint-filter {:optional true} :string]
-   ;; for mbql and python
-   [:checkpoint-filter-unique-key {:optional true}
-    ::lib.metadata.column/column-unique-key]])
+   [:checkpoint-filter-field-id {:optional true} ::lib.schema.id/field]])
 
 (mr/def ::source-incremental-strategy
   [:multi {:dispatch :type}
@@ -86,3 +83,19 @@
    [:name :string]
    [:source [:ref ::transform-source]]
    [:target [:ref ::transform-target]]])
+
+;;; ----------------------------------------- Source Range Params -----------------------------------------------
+
+(mr/def ::checkpoint-bound
+  "A bound (lo or hi) for incremental checkpoint filtering."
+  [:map
+   [:value :any]])
+
+(mr/def ::source-range-params
+  "Parameters for incremental range filtering on a source query.
+   Returned by get-source-range-params."
+  [:map
+   [:column ::lib.schema.metadata/column]
+   [:checkpoint-filter-field-id ::lib.schema.id/field]
+   [:lo {:optional true} [:maybe ::checkpoint-bound]]
+   [:hi {:optional true} [:maybe ::checkpoint-bound]]])
