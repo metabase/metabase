@@ -423,47 +423,47 @@
                 result))]
       (reify TokenChecker
         (-check-token [_ token]
-          (let [token-hash  (hash-token token)
-                local-entry (get @local-cache token-hash)
-                db-row      (read-cache-from-db token-hash)
-                now         (t/instant)]
-            (if (and local-entry
-                     db-row
-                     (= (:result-hash local-entry) (:token_status_hash db-row)))
-              ;; Local cache matches DB hash — check TTLs
-              (let [age-start (:updated-at local-entry)]
-                (cond
-                  ;; Fresh (< soft-ttl): return local value
-                  (t/before? now (t/plus age-start soft-ttl))
-                  (:result local-entry)
+          (if-not (app-db/db-is-set-up?)
+            (-check-token token-checker token)
+            (let [token-hash  (hash-token token)
+                  local-entry (get @local-cache token-hash)
+                  db-row      (read-cache-from-db token-hash)
+                  now         (t/instant)]
+              (if (and local-entry
+                       db-row
+                       (= (:result-hash local-entry) (:token_status_hash db-row)))
+                ;; Local cache matches DB hash — check TTLs
+                (let [age-start (:updated-at local-entry)]
+                  (cond
+                    ;; Fresh (< soft-ttl): return local value
+                    (t/before? now (t/plus age-start soft-ttl))
+                    (:result local-entry)
 
-                  ;; Stale (soft..hard): return local + async refresh
-                  (t/before? now (t/plus age-start hard-ttl))
-                  (do
-                    (when (compare-and-set! refresh-in-progress? false true)
-                      (future
-                        (try
-                          (do-refresh! token token-hash)
-                          (catch Exception e
-                            (log/error e "Background premium features refresh failed"))
-                          (finally
-                            (reset! refresh-in-progress? false)
-                            (when-let [after *testing-only-call-after-refresh*]
-                              (after))))))
-                    (:result local-entry))
+                    ;; Stale (soft..hard): return local + async refresh
+                    (t/before? now (t/plus age-start hard-ttl))
+                    (do
+                      (when (compare-and-set! refresh-in-progress? false true)
+                        (future
+                          (try
+                            (do-refresh! token token-hash)
+                            (catch Exception e
+                              (log/error e "Background premium features refresh failed"))
+                            (finally
+                              (reset! refresh-in-progress? false)
+                              (when-let [after *testing-only-call-after-refresh*]
+                                (after))))))
+                      (:result local-entry))
 
-                  ;; Expired (> hard-ttl): synchronous refresh
-                  :else
-                  (do-refresh! token token-hash)))
+                    ;; Expired (> hard-ttl): synchronous refresh
+                    :else
+                    (do-refresh! token token-hash)))
 
-              ;; No local cache, no DB row, or hash mismatch: synchronous fetch
-              (do-refresh! token token-hash))))
+                ;; No local cache, no DB row, or hash mismatch: synchronous fetch
+                (do-refresh! token token-hash)))))
         (-clear-cache! [_]
           (reset! local-cache {})
-          (try
-            (clear-db-cache!)
-            (catch Exception e
-              (log/warn e "Failed to clear premium features cache table")))
+          (when (app-db/db-is-set-up?)
+            (clear-db-cache!))
           (-clear-cache! token-checker))))))
 
 (defn local-cached-token-checker
