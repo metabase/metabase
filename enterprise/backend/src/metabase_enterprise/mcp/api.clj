@@ -44,15 +44,14 @@
                           m))))
 
 (defn- create-session!
-  ([user-id]
-   (create-session! user-id nil))
-  ([user-id token-scopes]
-   (sweep-expired-sessions!)
-   (let [session-id (str (UUID/randomUUID))]
-     (swap! sessions assoc session-id (cond-> {:timer (u/start-timer) :initialized? false}
-                                        user-id      (assoc :user-id user-id)
-                                        token-scopes (assoc :token-scopes token-scopes)))
-     session-id)))
+  [user-id token-scopes]
+  (sweep-expired-sessions!)
+  (let [session-id (str (UUID/randomUUID))]
+    (swap! sessions assoc session-id {:timer        (u/start-timer)
+                                      :initialized? false
+                                      :user-id      user-id
+                                      :token-scopes token-scopes})
+    session-id))
 
 (defn- delete-session! [session-id]
   (swap! sessions dissoc session-id))
