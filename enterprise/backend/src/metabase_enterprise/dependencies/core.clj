@@ -109,7 +109,10 @@
         errors    (volatile! {})]
     (doseq [[entity-type ids] overrides
             id ids
-            :let [bad-refs (check-entity provider entity-type id)]]
+            :let [bad-refs (try
+                             (check-entity provider entity-type id)
+                             (catch Exception _
+                               nil))]]
       (when (seq bad-refs)
         (vswap! errors assoc-in [entity-type id] bad-refs)))
     @errors))
