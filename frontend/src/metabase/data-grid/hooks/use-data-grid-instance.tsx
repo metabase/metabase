@@ -327,6 +327,72 @@ export const useDataGridInstance = <TData, TValue>({
     ],
   );
 
+  const pinnedSideHeights = useRef<Map<number, number>>(new Map());
+  const measureGridRef = useRef<() => void>();
+
+  const pinnedMeasureRef = useCallback((element: HTMLElement | null) => {
+    if (!element) {
+      return;
+    }
+    const indexRaw = element.getAttribute("data-dataset-index");
+    if (indexRaw == null) {
+      return;
+    }
+    const dataIndex = parseInt(indexRaw, 10);
+    const height = element.offsetHeight;
+    const prev = pinnedSideHeights.current.get(dataIndex);
+    if (prev !== height) {
+      pinnedSideHeights.current.set(dataIndex, height);
+      measureGridRef.current?.();
+    }
+  }, []);
+
+  const pinnedResizeObserverRef = useRef<ResizeObserver | null>(null);
+  const pinnedObservedElements = useRef<Set<HTMLElement>>(new Set());
+
+  useLayoutEffect(() => {
+    pinnedResizeObserverRef.current = new ResizeObserver((entries) => {
+      let changed = false;
+      for (const entry of entries) {
+        const el = entry.target;
+        if (!(el instanceof HTMLElement)) {
+          continue;
+        }
+        const indexRaw = el.getAttribute("data-dataset-index");
+        if (indexRaw == null) {
+          continue;
+        }
+        const dataIndex = parseInt(indexRaw, 10);
+        const height = el.offsetHeight;
+        const prev = pinnedSideHeights.current.get(dataIndex);
+        if (prev !== height) {
+          pinnedSideHeights.current.set(dataIndex, height);
+          changed = true;
+        }
+      }
+      if (changed) {
+        measureGridRef.current?.();
+      }
+    });
+
+    return () => {
+      pinnedResizeObserverRef.current?.disconnect();
+    };
+  }, []);
+
+  const pinnedMeasureRefWithObserver = useCallback(
+    (element: HTMLElement | null) => {
+      if (element) {
+        pinnedMeasureRef(element);
+        if (!pinnedObservedElements.current.has(element)) {
+          pinnedObservedElements.current.add(element);
+          pinnedResizeObserverRef.current?.observe(element);
+        }
+      }
+    },
+    [pinnedMeasureRef],
+  );
+
   // Enable row virtualization only when pagination is disabled
   const enableRowVirtualization = !enablePagination;
   const virtualGrid = useVirtualGrid({
@@ -336,6 +402,10 @@ export const useDataGridInstance = <TData, TValue>({
     measureRowHeight,
     enableRowVirtualization,
   });
+
+  useLayoutEffect(() => {
+    measureGridRef.current = virtualGrid.measureGrid;
+  }, [virtualGrid.measureGrid]);
 
   useEffect(() => {
     if (!gridRef.current) {
@@ -495,8 +565,9 @@ export const useDataGridInstance = <TData, TValue>({
       table.getTopRows().map((row, index) => ({
         origin: row,
         displayIndex: index,
+        height: measureRowHeight(row.index),
       })),
-    [table],
+    [table, measureRowHeight],
   );
 
   const getCenterRows = useCallback((): DataGridRowType<TData>[] => {
@@ -506,14 +577,21 @@ export const useDataGridInstance = <TData, TValue>({
       return centerRows.map((row, index) => ({
         origin: row,
         displayIndex: index + pinnedRowsCount,
+        height: measureRowHeight(row.index),
       }));
     }
     return virtualGrid.virtualRows.map((virtualRow) => ({
       origin: centerRows[virtualRow.index],
       virtualItem: virtualRow,
       displayIndex: virtualRow.index + pinnedRowsCount,
+      height: virtualRow.size,
     }));
-  }, [enableRowVirtualization, table, virtualGrid.virtualRows]);
+  }, [
+    enableRowVirtualization,
+    measureRowHeight,
+    table,
+    virtualGrid.virtualRows,
+  ]);
 
   const getPinnedColumns = useCallback(
     (): DataGridColumnType<TData>[] =>
@@ -611,6 +689,7 @@ export const useDataGridInstance = <TData, TValue>({
     getCenterColumns,
     getPinnedColumns,
     getPinnedRows,
+    pinnedMeasureRef: pinnedMeasureRefWithObserver,
     enablePagination,
     sorting,
   };

@@ -72,16 +72,11 @@ export const useVirtualGrid = <TData,>({
       if (!element) {
         return defaultRowHeight;
       }
-      let contentHeight = defaultRowHeight;
       const rowIndexRaw = element.getAttribute("data-dataset-index");
       if (rowIndexRaw) {
-        const rowIndex = parseInt(rowIndexRaw, 10);
-        contentHeight = measureRowHeight(rowIndex);
+        return measureRowHeight(parseInt(rowIndexRaw, 10));
       }
-      if (element instanceof HTMLElement) {
-        return Math.max(contentHeight, element.offsetHeight);
-      }
-      return contentHeight;
+      return defaultRowHeight;
     },
   });
 

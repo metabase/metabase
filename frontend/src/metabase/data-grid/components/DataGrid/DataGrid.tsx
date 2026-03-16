@@ -62,6 +62,7 @@ export const DataGrid = function DataGrid<TData>({
   getCenterRows,
   getPinnedColumns,
   getCenterColumns,
+  pinnedMeasureRef,
   emptyState,
   zoomedRowIndex,
   onBodyCellClick,
@@ -140,12 +141,13 @@ export const DataGrid = function DataGrid<TData>({
     row: DataGridRowType<TData>,
     columns: DataGridColumnType<TData>[],
     key: string,
+    measureRef?: (element: HTMLElement | null) => void,
   ) => (
     <DataGridRow
       key={key}
       row={row}
       pinnedRowsCount={pinnedRows.length}
-      rowMeasureRef={rowMeasureRef}
+      rowMeasureRef={measureRef}
       columns={columns}
       zoomedRowIndex={zoomedRowIndex}
       selection={selection}
@@ -215,10 +217,15 @@ export const DataGrid = function DataGrid<TData>({
   ) =>
     renderGridPanels({
       pinnedContent: rows.map((row, index) =>
-        renderRow(row, pinnedColumns, `pinned-${index}`),
+        renderRow(row, pinnedColumns, `pinned-${index}`, pinnedMeasureRef),
       ),
       centerContent: rows.map((row, index) =>
-        renderRow(row, centerColumns, `center-${index}`),
+        renderRow(
+          row,
+          centerColumns,
+          `center-${index}`,
+          row.virtualItem ? rowMeasureRef : undefined,
+        ),
       ),
       minHeight,
     });
