@@ -1,16 +1,17 @@
 import type { ComponentType } from "react";
 
 import type { Column, DatasetData, RowValue, Series } from "./data";
+import type { TextHeightMeasurer, TextWidthMeasurer } from "./measure-text";
 import type { WidgetName, Widgets } from "./viz-settings";
 
 /**
  * Export this function to define a custom visualization.
  */
 export type CreateCustomVisualization<CustomVisualizationSettings> = (
-  props: CreateCustomVisualizationProps<CustomVisualizationSettings>,
+  props: CreateCustomVisualizationProps,
 ) => CustomVisualization<CustomVisualizationSettings>;
 
-export type CreateCustomVisualizationProps<CustomVisualizationSettings> = {
+export type CreateCustomVisualizationProps = {
   /**
    * Translates text using ttag function used in Metabase.
    */
@@ -79,6 +80,13 @@ export type CustomVisualization<CustomVisualizationSettings> = {
    */
   VisualizationComponent: ComponentType<
     CustomVisualizationProps<CustomVisualizationSettings>
+  >;
+
+  /**
+   * Component that renders the visualization.
+   */
+  StaticVisualizationComponent: ComponentType<
+    CustomStaticVisualizationProps<CustomVisualizationSettings>
   >;
 };
 
@@ -226,6 +234,25 @@ export type CustomVisualizationProps<CustomVisualizationSettings> = {
   ) => void;
 
   // onHoverChange: (hoverObject?: HoveredObject | null) => void;
+};
+
+export type ColorGetter = (colorName: string) => string;
+
+export interface RenderingContext {
+  getColor: ColorGetter;
+  measureText: TextWidthMeasurer;
+  measureTextHeight: TextHeightMeasurer;
+  fontFamily: string;
+  // theme: VisualizationTheme;
+}
+
+// Equivalent of StaticVisualizationProps
+export type CustomStaticVisualizationProps<CustomVisualizationSettings> = {
+  series: Series;
+  renderingContext: RenderingContext;
+  isStorybook?: boolean;
+  settings: CustomVisualizationSettings;
+  hasDevWatermark?: boolean;
 };
 
 export type CustomVisualizationSettingsProps = {};
