@@ -609,8 +609,8 @@ function CustomizeMetabot() {
           <Textarea
             value={toneGuide}
             onChange={(e) => setToneGuide(e.target.value)}
-            minRows={3}
-            autosize
+            minRows={12}
+            maxRows={12}
             size="sm"
           />
         </Box>
@@ -624,8 +624,8 @@ function CustomizeMetabot() {
           <Textarea
             value={globalMd}
             onChange={(e) => setGlobalMd(e.target.value)}
-            minRows={6}
-            autosize
+            minRows={12}
+            maxRows={12}
             size="sm"
             styles={{
               input: {
@@ -646,8 +646,8 @@ function CustomizeMetabot() {
             placeholder={t`e.g., Focus on {user_group} metrics and KPIs when answering questions.`}
             value={perUserMd}
             onChange={(e) => setPerUserMd(e.target.value)}
-            minRows={4}
-            autosize
+            minRows={12}
+            maxRows={12}
             size="sm"
             styles={{
               input: {

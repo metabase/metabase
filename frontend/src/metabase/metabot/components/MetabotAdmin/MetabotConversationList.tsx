@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { SortableHeaderPill } from "metabase/ui/components/data-display/SortableHeaderPill";
 import {
   Badge,
   Box,
@@ -98,23 +99,24 @@ const FAKE_CONVERSATIONS: ConversationRow[] = Array.from(
   },
 );
 
-const thStyle: React.CSSProperties = {
+type SortKey = keyof ConversationRow;
+type SortDir = "asc" | "desc";
+
+const thBase: React.CSSProperties = {
   padding: "0.5rem 0.75rem",
   textAlign: "left",
-  fontSize: "0.75rem",
-  fontWeight: 600,
-  color: "var(--mb-color-text-secondary)",
   borderBottom: "1px solid var(--mb-color-border)",
   whiteSpace: "nowrap",
 };
 
-const thRight: React.CSSProperties = { ...thStyle, textAlign: "right" };
+const thBaseRight: React.CSSProperties = { ...thBase, textAlign: "right" };
 
 const tdStyle: React.CSSProperties = {
   padding: "0.5rem 0.75rem",
   fontSize: "0.875rem",
   borderBottom: "1px solid var(--mb-color-border)",
   whiteSpace: "nowrap",
+  height: 40,
 };
 
 const tdRight: React.CSSProperties = { ...tdStyle, textAlign: "right" };
@@ -142,6 +144,17 @@ export function MetabotConversationList({
   const [failedOnly, setFailedOnly] = useState(
     filters?.failedOnly === "true" || false,
   );
+  const [sortKey, setSortKey] = useState<SortKey>("date");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  };
 
   const availableDates = useMemo(() => {
     const dates = [...new Set(FAKE_CONVERSATIONS.map((r) => r.date))].sort();
@@ -172,8 +185,21 @@ export function MetabotConversationList({
     if (failedOnly) {
       rows = rows.filter((r) => r.failures > 0);
     }
-    return rows;
-  }, [dayFilter, userFilter, groupFilter, profileFilter, tableSearch, failedOnly]);
+
+    const sorted = [...rows].sort((a, b) => {
+      const aVal = a[sortKey];
+      const bVal = b[sortKey];
+      let cmp = 0;
+      if (typeof aVal === "number" && typeof bVal === "number") {
+        cmp = aVal - bVal;
+      } else {
+        cmp = String(aVal ?? "").localeCompare(String(bVal ?? ""));
+      }
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+
+    return sorted;
+  }, [dayFilter, userFilter, groupFilter, profileFilter, tableSearch, failedOnly, sortKey, sortDir]);
 
   return (
     <Stack gap="md">
@@ -245,17 +271,17 @@ export function MetabotConversationList({
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr>
-              <th style={thStyle}>{t`User`}</th>
-              <th style={thStyle}>{t`Group`}</th>
-              <th style={thStyle}>{t`Profile`}</th>
-              <th style={thStyle}>{t`Date`}</th>
-              <th style={thRight}>{t`Msgs`}</th>
-              <th style={thRight}>{t`Tokens`}</th>
-              <th style={thRight}>{t`Queries`}</th>
-              <th style={thRight}>{t`Searches`}</th>
-              <th style={thStyle}>{t`IP`}</th>
-              <th style={thStyle}>{t`Embed URL`}</th>
-              <th style={thRight}>{t`Fails`}</th>
+              <th style={thBase}><SortableHeaderPill name={t`User`} sort={sortKey === "user" ? sortDir : undefined} onClick={() => handleSort("user")} style={{ width: "fit-content" }} /></th>
+              <th style={thBase}><SortableHeaderPill name={t`Group`} sort={sortKey === "group" ? sortDir : undefined} onClick={() => handleSort("group")} style={{ width: "fit-content" }} /></th>
+              <th style={thBase}><SortableHeaderPill name={t`Profile`} sort={sortKey === "profile" ? sortDir : undefined} onClick={() => handleSort("profile")} style={{ width: "fit-content" }} /></th>
+              <th style={thBase}><SortableHeaderPill name={t`Date`} sort={sortKey === "date" ? sortDir : undefined} onClick={() => handleSort("date")} style={{ width: "fit-content" }} /></th>
+              <th style={thBaseRight}><SortableHeaderPill name={t`Msgs`} sort={sortKey === "messages" ? sortDir : undefined} align="right" onClick={() => handleSort("messages")} style={{ width: "fit-content" }} /></th>
+              <th style={thBaseRight}><SortableHeaderPill name={t`Tokens`} sort={sortKey === "tokens" ? sortDir : undefined} align="right" onClick={() => handleSort("tokens")} style={{ width: "fit-content" }} /></th>
+              <th style={thBaseRight}><SortableHeaderPill name={t`Queries`} sort={sortKey === "queries" ? sortDir : undefined} align="right" onClick={() => handleSort("queries")} style={{ width: "fit-content" }} /></th>
+              <th style={thBaseRight}><SortableHeaderPill name={t`Searches`} sort={sortKey === "searches" ? sortDir : undefined} align="right" onClick={() => handleSort("searches")} style={{ width: "fit-content" }} /></th>
+              <th style={thBase}><SortableHeaderPill name={t`IP`} sort={sortKey === "ip" ? sortDir : undefined} onClick={() => handleSort("ip")} style={{ width: "fit-content" }} /></th>
+              <th style={thBase}><SortableHeaderPill name={t`Embed URL`} sort={sortKey === "embeddedUrl" ? sortDir : undefined} onClick={() => handleSort("embeddedUrl")} style={{ width: "fit-content" }} /></th>
+              <th style={thBaseRight}><SortableHeaderPill name={t`Fails`} sort={sortKey === "failures" ? sortDir : undefined} align="right" onClick={() => handleSort("failures")} style={{ width: "fit-content" }} /></th>
             </tr>
           </thead>
           <tbody>
