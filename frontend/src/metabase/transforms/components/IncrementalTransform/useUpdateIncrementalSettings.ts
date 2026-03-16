@@ -10,7 +10,7 @@ import {
   getIncrementalSettingsFromTransform,
 } from "./form";
 
-export const useUpdateIncrementalSettings = (transform: Transform) => {
+export function useUpdateIncrementalSettings(transform: Transform) {
   const [updateTransform] = useUpdateTransformMutation();
   const initialValues = useMemo(
     () => getIncrementalSettingsFromTransform(transform),
@@ -29,4 +29,4 @@ export const useUpdateIncrementalSettings = (transform: Transform) => {
     validationSchema: VALIDATION_SCHEMA,
     updateIncrementalSettings,
   };
-};
+}
