@@ -1113,7 +1113,7 @@
         (mt/with-native-query-testing-context query
           (is (= (with-test-db-name
                    {:query      ["SELECT"
-                                 "  `source`.`count` AS `count`,"
+                                 "  `__mb_source`.`count` AS `count`,"
                                  "  COUNT(*) AS `count_2`"
                                  "FROM"
                                  "  ("
@@ -1130,7 +1130,7 @@
                                  "      `date`"
                                  "    ORDER BY"
                                  "      `date` ASC"
-                                 "  ) AS `source`"
+                                 "  ) AS `__mb_source`"
                                  "GROUP BY"
                                  "  `count`"
                                  "ORDER BY"
@@ -1138,7 +1138,7 @@
                                  "LIMIT"
                                  "  2"]
                     :params     nil
-                    :table-name "source"
+                    :table-name "__mb_source"
                     :mbql?      true})
                  (-> (qp.compile/compile query)
                      (update :query #(str/split-lines (driver/prettify-native-form :bigquery-cloud-sdk %))))))

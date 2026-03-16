@@ -562,7 +562,7 @@
                              (str joined-name " - " home-name))
                         joined-name
                         home-name
-                        "source")]
+                        "__mb_source")]
     join-alias))
 
 (defn- add-alias-to-join-refs [query stage-number form join-alias join-cols]

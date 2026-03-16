@@ -829,7 +829,7 @@
 
 (defmethod nested-convert-timezone-test-6-native-query :default
   [_driver card-tag]
-  (format "select * from {{%s}} as source" card-tag))
+  (format "select * from {{%s}} as __mb_source" card-tag))
 
 (defmethod nested-convert-timezone-test-6-native-query :oracle
   [_driver card-tag]

@@ -341,6 +341,26 @@
                      :native
                      (update :query #(str/split-lines (driver/prettify-native-form :athena %)))))))))))
 
+(deftest ^:parallel source-column-name-conflict-test
+  (testing "A column named `source` should not conflict with the subquery alias (#70224)"
+    ;; When a nested query has a column named "source", it conflicts with the subquery alias "source",
+    ;; generating SQL like `"source"."source"` which Athena/Trino/Presto interpret as accessing a field
+    ;; within a ROW type rather than table.column, causing TYPE_MISMATCH errors.
+    (mt/test-driver :athena
+      (let [query (mt/mbql-query checkins
+                    {:aggregation  [[:count]]
+                     :breakout     [[:field "source" {:base-type :type/Text}]]
+                     :source-query {:native "select 1 as \"val\", '2' as \"source\""}})
+            compiled (-> (qp/compile query)
+                         (update :query #(str/split-lines (driver/prettify-native-form :athena %))))]
+        ;; The generated SQL must NOT contain `"source"."source"` — this is ambiguous and fails on Athena.
+        ;; The column reference should be unambiguous, e.g. by qualifying with a different subquery alias
+        ;; or by avoiding the table qualifier when it would collide with the column name.
+        (is (not (some #(re-find #"\"source\"\.\"source\"" %) (:query compiled)))
+            (str "Generated SQL should not contain ambiguous \"source\".\"source\" reference.\n"
+                 "Got:\n"
+                 (str/join "\n" (:query compiled))))))))
+
 ;;; Athena version of [[metabase.query-processor.date-time-zone-functions-test/datetime-diff-mixed-types-test]]
 (deftest datetime-diff-mixed-types-test
   (mt/test-driver :athena

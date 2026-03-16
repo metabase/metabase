@@ -528,8 +528,8 @@
                        :type     :query
                        :query    {:source-table "card__123"}})]
           (is (= ["SELECT"
-                  "  \"source\".\"json_alias_test\" AS \"json_alias_test\","
-                  "  \"source\".\"count\" AS \"count\""
+                  "  \"__mb_source\".\"json_alias_test\" AS \"json_alias_test\","
+                  "  \"__mb_source\".\"count\" AS \"count\""
                   "FROM"
                   "  ("
                   "    SELECT"
@@ -541,7 +541,7 @@
                   "      \"json_alias_test\""
                   "    ORDER BY"
                   "      \"json_alias_test\" ASC"
-                  "  ) AS \"source\""
+                  "  ) AS \"__mb_source\""
                   "LIMIT"
                   "  1048575"]
                  (str/split-lines (driver/prettify-native-form :postgres (:query nested))))))))))
