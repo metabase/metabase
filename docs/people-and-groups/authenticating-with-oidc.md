@@ -13,7 +13,7 @@ By integrating your Open ID Connect (OIDC) provider with Metabase, you can:
 - Let people access Metabase without re-authenticating.
 - Automatically pass user attributes (name, email) from your IdP to Metabase.
 
-## If you're self-hosting Metabase, you must encrypt your database credentials
+## Self-hosted Metabases must encrypt database credentials
 
 > Metabase Cloud encrypts credentials by default, so this section only applies to self-hosted Metabases.
 
