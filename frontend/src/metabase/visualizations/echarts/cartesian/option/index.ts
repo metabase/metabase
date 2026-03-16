@@ -1,3 +1,4 @@
+import Color from "color";
 import type { EChartsCoreOption } from "echarts/core";
 import type {
   GridOption,
@@ -35,7 +36,7 @@ import type {
 } from "metabase/visualizations/types";
 import type { TimelineEventId } from "metabase-types/api";
 
-import { CHART_STYLE } from "../constants/style";
+import { CHART_STYLE, Z_INDEXES } from "../constants/style";
 import type { ChartLayout } from "../layout/types";
 import { getDisplaySeriesSettingsByDataKey } from "../model/series";
 import { getBarSeriesDataLabelKey } from "../model/util";
@@ -44,7 +45,19 @@ import { getGoalLineParams, getGoalLineSeriesOption } from "./goal-line";
 import { getTrendLinesOption } from "./trend-line";
 import type { EChartsSeriesOption } from "./types";
 
-export const getSharedEChartsOptions = (isAnimated: boolean) => ({
+export function getBrushStyle(renderingContext: RenderingContext) {
+  const brandColor = Color(renderingContext.getColor("brand"));
+  return {
+    color: brandColor.alpha(CHART_STYLE.brush.fillOpacity).string(),
+    borderColor: brandColor.alpha(CHART_STYLE.brush.borderOpacity).string(),
+    borderWidth: CHART_STYLE.brush.borderWidth,
+  };
+}
+
+export const getSharedEChartsOptions = (
+  isAnimated: boolean,
+  renderingContext: RenderingContext,
+) => ({
   useUTC: true,
   animation: isAnimated,
   animationDuration: 0,
@@ -57,6 +70,7 @@ export const getSharedEChartsOptions = (isAnimated: boolean) => ({
     xAxisIndex: 0,
     throttleType: "debounce" as const,
     throttleDelay: 200,
+    brushStyle: getBrushStyle(renderingContext),
   },
 });
 
@@ -154,7 +168,7 @@ export const getCartesianChartOption = (
     (series) => series.visible,
   );
   const panelCount = visibleSeries.length;
-  const isSplitPanels = chartLayout.panelHeight != null && panelCount > 1;
+  const isSplitPanels = chartLayout.panelHeight != null;
   const hasTimelineEvents = timelineEventsModel != null;
 
   // Series (shared — buildEChartsSeries handles split panels via chartLayout)
@@ -264,24 +278,16 @@ export const getCartesianChartOption = (
   }
 
   const splitPanelOverrides = isSplitPanels
-    ? {
-        ...buildSplitPanelOverrides(
-          chartModel,
-          chartLayout,
-          panelCount,
-          renderingContext,
-        ),
-        brush: {
-          toolbox: ["lineX" as const],
-          xAxisIndex: visibleSeries.map((_, index) => index),
-          throttleType: "debounce" as const,
-          throttleDelay: 200,
-        },
-      }
+    ? buildSplitPanelOverrides(
+        chartModel,
+        chartLayout,
+        panelCount,
+        renderingContext,
+      )
     : {};
 
   return {
-    ...getSharedEChartsOptions(isAnimated),
+    ...getSharedEChartsOptions(isAnimated, renderingContext),
     ...splitPanelOverrides,
     grid,
     xAxis,
@@ -315,6 +321,17 @@ export function buildSplitPanelOverrides(
     axisPointer: {
       link: [{ xAxisIndex: "all" as unknown as number }],
     },
+    brush: {
+      toolbox: ["lineX" as const],
+      xAxisIndex: Array.from({ length: panelCount }, (_, index) => index),
+      throttleType: "debounce" as const,
+      throttleDelay: 200,
+      brushStyle: {
+        color: "transparent",
+        borderColor: "transparent",
+        borderWidth: 0,
+      },
+    },
     graphic: buildSplitPanelYAxisLabel(
       chartModel,
       chartLayout,
@@ -322,6 +339,40 @@ export function buildSplitPanelOverrides(
       renderingContext,
     ),
   };
+}
+
+export function buildBrushMirrorGraphics(
+  grids: GridOption[],
+  range: number[],
+  renderingContext: RenderingContext,
+) {
+  const [xStart, xEnd] = range;
+  const { color, borderColor, borderWidth } = getBrushStyle(renderingContext);
+  return grids.map((grid, index) => ({
+    type: "rect" as const,
+    id: `brush-mirror-${index}`,
+    shape: {
+      x: xStart,
+      y: Number(grid.top ?? 0),
+      width: xEnd - xStart,
+      height: Number(grid.height ?? 0),
+    },
+    style: {
+      fill: color,
+      stroke: borderColor,
+      lineWidth: borderWidth,
+    },
+    z: Z_INDEXES.brushMirror,
+    silent: true,
+  }));
+}
+
+export function buildClearBrushMirrorGraphics(panelCount: number) {
+  return Array.from({ length: panelCount }, (_, index) => ({
+    type: "rect" as const,
+    id: `brush-mirror-${index}`,
+    $action: "remove" as const,
+  }));
 }
 
 export function buildSplitPanelGoalSeries(
@@ -453,7 +504,7 @@ export function buildPerPanelXAxes(
       nameGap: 0,
       axisLine: {
         show: true,
-        lineStyle: { color: renderingContext.getColor("border") },
+        lineStyle: { color: renderingContext.getColor("border-stronger") },
       },
     };
   });

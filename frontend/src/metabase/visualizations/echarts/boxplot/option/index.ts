@@ -220,7 +220,7 @@ export const getBoxPlotOption = (
   }
 
   return {
-    ...getSharedEChartsOptions(isAnimated),
+    ...getSharedEChartsOptions(isAnimated, renderingContext),
     grid: {
       ...adjustedPadding,
       outerBoundsMode: "none",

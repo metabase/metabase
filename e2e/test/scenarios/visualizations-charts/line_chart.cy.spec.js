@@ -739,7 +739,7 @@ describe("scenarios > visualizations > line chart", () => {
     });
   });
 
-  it("should split into panels and render each series in its own panel", () => {
+  it("should split series into panels and render each series in its own panel", () => {
     H.visitQuestionAdhoc({
       dataset_query: {
         type: "query",
@@ -763,7 +763,7 @@ describe("scenarios > visualizations > line chart", () => {
     H.openVizSettingsSidebar();
     H.leftSidebar().within(() => {
       cy.findByText("Display").click();
-      cy.findByText("Split into panels").click();
+      cy.findByText("Split series into panels").click();
     });
 
     H.echartsContainer().within(() => {

@@ -84,6 +84,7 @@ export const METABASE_LIGHT_THEME: MetabaseThemeV2 = {
     border: baseColors.orion[20],
     "border-brand": baseColors.brand[10],
     "border-strong": baseColors.orionAlpha[50],
+    "border-stronger": baseColors.orionAlpha[30],
     "border-subtle": baseColors.orionAlpha[10],
     "border-filter": baseColors.filter[20],
     copper: "#B87333",

@@ -243,7 +243,7 @@ export const getWaterfallChartOption = (
   const echartsDataset = [{ source: chartModel.transformedDataset }];
 
   return {
-    ...getSharedEChartsOptions(isAnimated),
+    ...getSharedEChartsOptions(isAnimated, renderingContext),
     grid: {
       ...chartLayout.padding,
       outerBoundsMode: "none",

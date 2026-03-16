@@ -53,7 +53,7 @@ export function getScatterPlotOption(
     (series) => series.visible,
   );
   const panelCount = visibleSeries.length;
-  const isSplitPanels = chartLayout.panelHeight != null && panelCount > 1;
+  const isSplitPanels = chartLayout.panelHeight != null;
 
   const dataSeriesOptions: EChartsSeriesOption[] = visibleSeries.map(
     (seriesModel, index) =>
@@ -129,8 +129,9 @@ export function getScatterPlotOption(
       source: chartModel.trendLinesModel?.dataset as OptionSourceData,
       dimensions: [
         X_AXIS_DATA_KEY,
-        ...(chartModel.trendLinesModel?.seriesModels.map((s) => s.dataKey) ??
-          []),
+        ...(chartModel.trendLinesModel?.seriesModels.map(
+          (series) => series.dataKey,
+        ) ?? []),
       ],
     });
   }
@@ -183,7 +184,7 @@ export function getScatterPlotOption(
     : {};
 
   return {
-    ...getSharedEChartsOptions(isAnimated),
+    ...getSharedEChartsOptions(isAnimated, renderingContext),
     ...splitPanelOverrides,
     grid,
     xAxis,

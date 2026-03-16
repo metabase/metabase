@@ -85,6 +85,7 @@ export const METABASE_DARK_THEME: MetabaseThemeV2 = {
     "border-brand": baseColors.brand[80],
     "border-filter": baseColors.filter[80],
     "border-strong": baseColors.orionAlphaInverse[50],
+    "border-stronger": baseColors.orionAlphaInverse[30],
     "border-subtle": baseColors.orionAlphaInverse[10],
     copper: "#B87333",
     bronze: "#CD7F32",

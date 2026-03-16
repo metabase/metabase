@@ -162,6 +162,7 @@ const getCommonDimensionAxisOptions = (
 ) => {
   const nameGap = getAxisNameGap(chartLayout.ticksDimensions.xTicksHeight);
   const { getColor } = renderingContext;
+  const isSplitPanels = chartLayout.panelHeight != null;
   return {
     ...getAxisNameDefaultOption(
       renderingContext,
@@ -181,7 +182,7 @@ const getCommonDimensionAxisOptions = (
     axisLine: {
       show: !!settings["graph.x_axis.axis_enabled"],
       lineStyle: {
-        color: getColor("border"),
+        color: getColor(isSplitPanels ? "border-stronger" : "border"),
       },
     },
   };

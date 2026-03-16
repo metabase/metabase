@@ -213,5 +213,5 @@ export function useModelsAndOption(
     renderingContext,
   ]);
 
-  return { chartModel, timelineEventsModel, option };
+  return { chartModel, timelineEventsModel, option, renderingContext };
 }
