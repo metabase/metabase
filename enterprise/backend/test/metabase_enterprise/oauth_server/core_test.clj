@@ -42,7 +42,7 @@
         ;; First call generates the key
         (oauth-server/get-provider)
         (let [stored-key-1 (oauth-settings/oauth-server-signing-key)]
-          (is (some? stored-key-1))
+          (is (string? stored-key-1))
           ;; Reset provider to force re-creation, but key should be read from settings
           (oauth-server/reset-provider!)
           (oauth-server/get-provider)

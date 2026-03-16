@@ -4,12 +4,14 @@
    [clojure.test :refer :all]
    [metabase-enterprise.mcp.api :as mcp.api]
    [metabase-enterprise.mcp.tools :as mcp.tools]
+   [metabase-enterprise.oauth-server.core :as oauth-server]
    [metabase.api.macros.scope :as scope]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -414,18 +416,24 @@
   (testing "POST without any auth returns 401 with WWW-Authenticate discovery header"
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (let [response (mcp-request-unauthenticated (jsonrpc-request "initialize"))]
-        (is (= 401 (:status response)))
-        (is (str/includes? (get-in response [:headers "WWW-Authenticate"])
-                           "oauth-protected-resource"))))))
+        (is (=? {:status  401
+                 :headers {"WWW-Authenticate" #(str/includes? % "oauth-protected-resource")}}
+                response))))))
 
 (deftest invalid-bearer-token-returns-401-test
   (testing "POST with invalid bearer token returns 401 with invalid_token error"
-    (let [response (mcp-request-with-bearer "totally-bogus-token" 401
-                                            (jsonrpc-request "initialize")
-                                            {})]
-      (is (= 401 (:status response)))
-      (is (str/includes? (get-in response [:headers "WWW-Authenticate"])
-                         "invalid_token")))))
+    (mt/with-premium-features #{:metabot-v3}
+      (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+        (oauth-server/reset-provider!)
+        (try
+          (let [response (mcp-request-with-bearer "totally-bogus-token" 401
+                                                  (jsonrpc-request "initialize")
+                                                  {})]
+            (is (=? {:status  401
+                     :headers {"WWW-Authenticate" #(str/includes? % "invalid_token")}}
+                    response)))
+          (finally
+            (oauth-server/reset-provider!)))))))
 
 ;;; --------------------------------------------- Scope Filtering ---------------------------------------------------
 
@@ -450,3 +458,46 @@
   (testing "tools/list with nil scopes returns all tools"
     (let [tools (mcp.tools/list-tools nil)]
       (is (= 7 (count tools))))))
+
+(defn- insert-expired-oauth-token!
+  "Insert an OAuth access token into the DB with an expiry in the past.
+   Returns the token string."
+  [user-id client-id]
+  (let [token   (str (random-uuid))
+        expired (- (quot (System/currentTimeMillis) 1000) 3600)]
+    (t2/insert! :model/OAuthAccessToken
+                {:token     token
+                 :user_id   user-id
+                 :client_id client-id
+                 :scope     ["openid"]
+                 :expiry    expired})
+    token))
+
+(deftest expired-oauth-bearer-token-returns-401-test
+  (testing "POST with expired OAuth bearer token returns 401"
+    (mt/with-premium-features #{:metabot-v3}
+      (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+        (t2/with-transaction [_conn nil {:rollback-only true}]
+          (oauth-server/reset-provider!)
+          (let [user-id  (mt/user->id :crowberto)
+                token    (insert-expired-oauth-token! user-id (str (random-uuid)))
+                response (mcp-request-with-bearer token 401
+                                                  (jsonrpc-request "initialize")
+                                                  {})]
+            (is (=? {:status  401
+                     :headers {"WWW-Authenticate" #(str/includes? % "invalid_token")}}
+                    response))))))))
+
+(deftest tools-call-scope-enforcement-test
+  (testing "tool call is rejected when token scopes don't include the required scope"
+    (mt/with-premium-features #{:agent-api}
+      (let [result (mt/with-current-user (mt/user->id :crowberto)
+                     (mcp.tools/call-tool #{"agent:search"} "get_table" {:id (mt/id :orders)}))]
+        (is (=? {:isError true} result))
+        (is (str/includes? (-> result :content first :text) "scope")
+            "Error should mention scope"))))
+  (testing "tool call with matching scope is not rejected by scope enforcement"
+    (mt/with-premium-features #{:agent-api}
+      (let [result (mt/with-current-user (mt/user->id :crowberto)
+                     (mcp.tools/call-tool #{"agent:table:read"} "get_table" {:id (mt/id :orders)}))]
+        (is (not (:isError result)))))))

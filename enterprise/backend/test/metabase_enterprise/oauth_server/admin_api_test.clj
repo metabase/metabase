@@ -17,12 +17,14 @@
                                                 :client_name   "My Test App"
                                                 :grant_types   ["authorization_code"]
                                                 :scopes        ["openid" "profile"]})]
-            (is (pos-int? (:id response)))
-            (is (string? (:client_id response)))
-            (is (string? (:client_secret response)) "client_secret should be returned on creation")
-            (is (= ["https://example.com/callback"] (:redirect_uris response)))
-            (is (= "My Test App" (:client_name response)))
-            (is (= "static" (:registration_type response)))))))
+            (is (=? {:id                pos-int?
+                     :client_id         string?
+                     :client_secret     string?
+                     :redirect_uris     ["https://example.com/callback"]
+                     :client_name       "My Test App"
+                     :registration_type "static"}
+                    response)
+                "client_secret should be returned on creation")))))
 
     (testing "returns 400 when redirect_uris is missing"
       (mt/with-premium-features #{:metabot-v3}
@@ -56,9 +58,12 @@
                 clients (mt/user-http-request :crowberto :get 200
                                               "ee/oauth-server/clients")]
             (is (sequential? clients))
-            (is (some #(= (:id created) (:id %)) clients))
-            (is (every? #(nil? (:client_secret %)) clients) "secrets must not be returned")
-            (is (every? #(nil? (:client_secret_hash %)) clients) "secret hashes must not be returned")))))
+            (is (some (fn [c] (= (:id created) (:id c))) clients)
+                "created client should appear in list")
+            (is (every? (fn [c] (and (nil? (:client_secret c))
+                                     (nil? (:client_secret_hash c))))
+                        clients)
+                "secrets and hashes must not be returned")))))
 
     (testing "supports registration_type filter"
       (mt/with-premium-features #{:metabot-v3}
