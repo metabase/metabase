@@ -495,9 +495,8 @@ export const useDataGridInstance = <TData, TValue>({
       table.getTopRows().map((row, index) => ({
         origin: row,
         displayIndex: index,
-        measuredHeight: pinnedCandidateRowHeights[index],
       })),
-    [table, pinnedCandidateRowHeights],
+    [table],
   );
 
   const getCenterRows = useCallback((): DataGridRowType<TData>[] => {

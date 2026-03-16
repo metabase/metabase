@@ -140,13 +140,12 @@ export const DataGrid = function DataGrid<TData>({
     row: DataGridRowType<TData>,
     columns: DataGridColumnType<TData>[],
     key: string,
-    shouldMeasure = true,
   ) => (
     <DataGridRow
       key={key}
       row={row}
       pinnedRowsCount={pinnedRows.length}
-      rowMeasureRef={shouldMeasure ? rowMeasureRef : undefined}
+      rowMeasureRef={rowMeasureRef}
       columns={columns}
       zoomedRowIndex={zoomedRowIndex}
       selection={selection}
@@ -219,12 +218,7 @@ export const DataGrid = function DataGrid<TData>({
         renderRow(row, pinnedColumns, `pinned-${index}`),
       ),
       centerContent: rows.map((row, index) =>
-        renderRow(
-          row,
-          centerColumns,
-          `center-${index}`,
-          pinnedColumns.length === 0,
-        ),
+        renderRow(row, centerColumns, `center-${index}`),
       ),
       minHeight,
     });

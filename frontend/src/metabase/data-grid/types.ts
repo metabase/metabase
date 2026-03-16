@@ -326,7 +326,6 @@ export type DataGridRowType<TData> = {
   origin: Row<TData>;
   virtualItem?: VirtualItem;
   displayIndex: number;
-  measuredHeight?: number;
 };
 
 export type DataGridColumnType<TData, TValue = unknown> = {
