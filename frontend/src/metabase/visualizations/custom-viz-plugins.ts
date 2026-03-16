@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import * as jsxRuntime from "react/jsx-runtime";
 
 import { useListCustomVizPluginsQuery } from "metabase/api";
-import { useEmbeddingEntityContext } from "metabase/embedding/context";
 import type { IconName } from "metabase/ui";
 import type {
   CustomVizPluginRuntime,
@@ -55,11 +54,8 @@ export function isCustomVizDisplay(display: string | undefined): boolean {
 export function useCustomVizPlugins({
   enabled = true,
 }: { enabled?: boolean } = {}) {
-  const { token, uuid } = useEmbeddingEntityContext();
-  const isPublicOrStaticEmbed = Boolean(token || uuid);
-  const shouldLoad = enabled && !isPublicOrStaticEmbed;
   const { data: plugins } = useListCustomVizPluginsQuery(undefined, {
-    skip: !shouldLoad,
+    skip: !enabled,
   });
 
   return plugins;
