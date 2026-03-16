@@ -11,6 +11,7 @@ import {
   screen,
   within,
 } from "__support__/ui";
+import * as dashboardSelectors from "metabase/dashboard/selectors";
 import {
   MockDashboardContext,
   type MockDashboardContextProps,
@@ -28,6 +29,8 @@ import {
   createMockHeadingDashboardCard,
   createMockIFrameDashboardCard,
   createMockLinkDashboardCard,
+  createMockNativeCard,
+  createMockParameter,
   createMockPlaceholderDashboardCard,
   createMockTable,
   createMockTextDashboardCard,
@@ -105,7 +108,17 @@ function setup({
   } = {}) {
   const onReplaceCard = jest.fn();
 
+  const dashcardIds = (dashboard.dashcards ?? []).map(
+    (dc: { id: number } | number) => (typeof dc === "number" ? dc : dc.id),
+  );
   const baseDashboardState = createMockDashboardState({
+    dashboardId: dashboard.id,
+    dashboards: {
+      [dashboard.id]: {
+        ...dashboard,
+        dashcards: dashcardIds.length > 0 ? dashcardIds : [dashcard.id],
+      },
+    },
     dashcardData,
     dashcards: {
       [dashcard.id]: dashcard,
@@ -528,6 +541,67 @@ describe("DashCard", () => {
         });
         expect(screen.queryByLabelText("Add a filter")).not.toBeInTheDocument();
       });
+    });
+  });
+
+  describe("inline parameters", () => {
+    it("should show inline parameters even when the card has an error and user cannot edit (GHY-3228)", () => {
+      const parameter = createMockParameter({
+        id: "param-1",
+        name: "State",
+        type: "string/=",
+        slug: "state",
+      });
+
+      const nativeCard = createMockNativeCard({
+        name: "SQL Card",
+        can_write: false,
+      });
+
+      const dashcard = createMockDashboardCard({
+        card: nativeCard,
+        inline_parameters: [parameter.id],
+        parameter_mappings: [
+          {
+            card_id: nativeCard.id,
+            parameter_id: parameter.id,
+            target: ["variable", ["template-tag", "state"]],
+          },
+        ],
+      });
+
+      const dashboard = createMockDashboard({
+        parameters: [parameter],
+        dashcards: [dashcard],
+      });
+
+      const dashcardData: DashCardDataMap = {
+        [dashcard.id]: {
+          [nativeCard.id]: createMockDataset({
+            data: createMockDatasetData({ rows: [], cols: [] }),
+            database_id: 1,
+            context: "dashboard",
+            status: "error",
+            error: { status: 400 },
+          }),
+        },
+      };
+
+      jest
+        .spyOn(dashboardSelectors, "getDashCardInlineValuePopulatedParameters")
+        .mockReturnValue([parameter]);
+
+      setup({
+        dashboard,
+        dashcard,
+        dashcardData,
+      });
+
+      // The inline parameter filter should be visible even when the card
+      // errors and the user cannot edit the question. Before the fix,
+      // both inline parameters and the download button were gated behind
+      // DashCardMenu.shouldRender(), which returned false in this case.
+      expect(screen.getByText("State")).toBeInTheDocument();
     });
   });
 });

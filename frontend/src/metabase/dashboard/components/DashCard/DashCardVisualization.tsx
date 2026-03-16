@@ -516,21 +516,24 @@ export function DashCardVisualization({
   const actionButtons = useMemo(() => {
     const result = series[0] as unknown as Dataset;
 
-    if (
-      !question ||
-      !DashCardMenu.shouldRender({
+    const showMenu =
+      question &&
+      DashCardMenu.shouldRender({
         question,
         dashboard,
         dashcardMenu,
         result,
-      })
-    ) {
+      });
+
+    const showInlineParams = inlineParameters.length > 0;
+
+    if (!showMenu && !showInlineParams) {
       return null;
     }
 
     return (
       <Group>
-        {inlineParameters.length > 0 && (
+        {showInlineParams && (
           <CollapsibleDashboardParameterList
             className={S.InlineParametersList}
             triggerClassName={S.InlineParametersMenuTrigger}
@@ -541,7 +544,7 @@ export function DashCardVisualization({
             ref={parameterListRef}
           />
         )}
-        {!isEditing && (
+        {showMenu && !isEditing && (
           <DashCardMenu
             question={question}
             result={result}
