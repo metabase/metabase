@@ -62,7 +62,15 @@
 ;; specific column.
 ;;
 ;; `table-id` is the id of the table being referenced
-(p.types/defrecord+ ReferencedTableQuery [table-id]
+;;
+;; `source-filters` is an optional sequence of filter maps applied to the table reference. Each filter map has:
+;;   :field-id  - the ID of the field to filter on
+;;   :op        - the comparison operator, one of :>, :>=, :<, :<=, :=, :!=
+;;   :value     - the value to compare against
+;; When present, the table reference is rendered as a filtered subquery:
+;;   (SELECT * FROM "table" WHERE "col" > ? AND "col" <= ?)
+;; This was introduced to support incremental transforms, unused by the frontend.
+(p.types/defrecord+ ReferencedTableQuery [table-id source-filters]
   pretty/PrettyPrintable
   (pretty [this]
     (list (pretty/qualify-symbol-for-*ns* `map->ReferencedTableQuery) (into {} this))))
