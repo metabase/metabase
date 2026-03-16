@@ -210,11 +210,13 @@
    [:x_summary [:maybe ::series-summary]]
    [:y_summary [:maybe ::series-summary]]
    [:data_points :int]
+   [:sampled_points {:optional true} [:maybe [:sequential [:sequential :any]]]]
    [:correlation {:optional true} [:maybe [:map
                                            [:coefficient number?]
                                            [:strength ::correlation-strength]
                                            [:direction ::correlation-direction]]]]
-   [:regression {:optional true} [:maybe ::regression-stats]]])
+   [:regression {:optional true} [:maybe ::regression-stats]]
+   [:outliers {:optional true} [:maybe [:sequential ::outlier]]]])
 
 (mr/def ::scatter-stats
   "Statistics for scatter plots."
@@ -240,6 +242,7 @@
   [:map
    [:summary ::series-summary]
    [:data_points :int]
+   [:bin_data [:sequential [:sequential :any]]]
    [:distribution ::distribution-stats]])
 
 (mr/def ::histogram-stats
