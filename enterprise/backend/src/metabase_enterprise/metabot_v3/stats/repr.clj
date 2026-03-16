@@ -379,7 +379,7 @@
   "Render bin data as 'x: y | x: y | ...'."
   [bin_data]
   (when (seq bin_data)
-    (str "**Bin Data** (" (count bin_data) " bins):\n"
+    (str "**Sample Data** (" (count bin_data) " bins):\n"
          (str/join " | " (map (fn [[x y]]
                                 (str (format-number x) ": " (format-number y)))
                               bin_data)))))
@@ -407,10 +407,13 @@
                    (when y_name (str "**Y-axis**: " y_name))
                    (str "**Data Points**: " data_points)
                    (render-data-characteristics-note series-stats)
+                   (when (seq bin_data)
+                     (let [xs (mapv first bin_data)]
+                       (str "**X-axis range**: " (format-number (reduce min xs))
+                            " to " (format-number (reduce max xs)))))
                    (when summary
-                     (str "**Value Range**: " (format-number (:min summary))
-                          " to " (format-number (:max summary))
-                          " (median: " (format-number (:median summary)) ")"))
+                     (str "**Y-axis range**: " (format-number (:min summary))
+                          " to " (format-number (:max summary))))
                    p-str iqr-str shape-str
                    (render-histogram-bin-data bin_data)]]
     (str/join "\n" (remove nil? sections))))
