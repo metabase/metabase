@@ -480,6 +480,8 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
                             newWidth,
                           )
                         }
+                        settings={settings}
+                        columns={columnsWithoutPivotGroup}
                       />
                     )}
                     cellSizeAndPositionGetter={({ index }) =>
@@ -515,6 +517,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
                               }
                               settings={settings}
                               getCellClickHandler={getCellClickHandler}
+                              columns={columnsWithoutPivotGroup}
                             />
                           )}
                           cellSizeAndPositionGetter={({ index }) =>
@@ -576,6 +579,8 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
                                   valueIndexes,
                                   columnIndex,
                                 )}
+                                settings={settings}
+                                columns={columnsWithoutPivotGroup}
                               />
                             );
                           }}

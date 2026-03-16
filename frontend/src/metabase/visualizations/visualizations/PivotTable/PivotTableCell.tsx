@@ -5,6 +5,7 @@ import { useEffect, useId, useRef } from "react";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
 import { useTranslateContent } from "metabase/i18n/hooks";
+import { formatUrl } from "metabase/lib/formatting/url";
 import type { VisualizationSettings } from "metabase-types/api";
 
 import { PivotTableCell, ResizeHandle } from "./PivotTable.styled";
@@ -26,6 +27,7 @@ interface CellProps {
   onClick?: ((e: React.MouseEvent) => void) | undefined;
   onResize?: (newWidth: number) => void;
   showTooltip?: boolean;
+  isDashboardLink?: boolean;
 }
 
 interface ResizableHandleProps {
@@ -88,8 +90,22 @@ export function Cell({
   onClick,
   onResize,
   showTooltip = true,
+  isDashboardLink = false,
 }: CellProps) {
   const cellId = useId();
+
+  const displayValue = isDashboardLink ? (
+    <span
+      className={cx(CS.textBrand)}
+      style={{ cursor: "pointer", textDecoration: "none" }}
+      onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")}
+      onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}
+    >
+      {value}
+    </span>
+  ) : (
+    value
+  );
 
   return (
     <PivotTableCell
@@ -116,7 +132,7 @@ export function Cell({
             [CS.justifyEnd]: isBody,
           })}
         >
-          <Ellipsified showTooltip={showTooltip}>{value}</Ellipsified>
+          <Ellipsified showTooltip={showTooltip}>{displayValue}</Ellipsified>
           {icon && <div className={CS.pl1}>{icon}</div>}
         </div>
         {!!onResize && (
@@ -135,11 +151,89 @@ type CellClickHandler = (
   clicked: PivotTableClicked,
 ) => ((e: React.MouseEvent) => void) | undefined;
 
+function hydrateClicked(clicked: any, columns: any[]) {
+  if (!clicked || !columns) {
+    return clicked;
+  }
+  const hydrated = { ...clicked };
+
+  if (typeof hydrated.colIdx === "number") {
+    hydrated.column = columns[hydrated.colIdx];
+    if (!hydrated.data) {
+      hydrated.data = [
+        { value: hydrated.value, col: columns[hydrated.colIdx] },
+      ];
+    }
+  }
+
+  if (hydrated.data) {
+    hydrated.data = hydrated.data.map((item: any) => ({
+      ...item,
+      col: item.colIdx !== undefined ? columns[item.colIdx] : item.col,
+    }));
+  }
+
+  if (hydrated.dimensions) {
+    hydrated.dimensions = hydrated.dimensions.map((item: any) => ({
+      ...item,
+      col: item.colIdx !== undefined ? columns[item.colIdx] : item.col,
+    }));
+  }
+
+  return hydrated;
+}
+
+function getCellLinkData(hydratedClicked: any, settings: any) {
+  try {
+    if (!hydratedClicked || !settings) {
+      return {
+        colSettings: null,
+        isExplicitLink: false,
+        hasClickBehavior: false,
+        col: null,
+      };
+    }
+
+    const col = hydratedClicked.column;
+
+    if (!col) {
+      return {
+        colSettings: null,
+        isExplicitLink: false,
+        hasClickBehavior: false,
+        col: null,
+      };
+    }
+
+    const colSettings = settings.column(col) || {};
+
+    const hasClickBehavior =
+      colSettings.click_behavior &&
+      colSettings.click_behavior.type &&
+      colSettings.click_behavior.type !== "none";
+    const isExplicitLink =
+      (colSettings.view_as === "link" ||
+        colSettings.view_as === "email_link") &&
+      (colSettings.link_url || colSettings.link_text);
+
+    return { colSettings, isExplicitLink, hasClickBehavior, col };
+  } catch (e) {
+    return {
+      colSettings: null,
+      isExplicitLink: false,
+      hasClickBehavior: false,
+      col: null,
+    };
+  }
+}
+
 interface TopHeaderCellProps {
   item: HeaderItem;
   style: React.CSSProperties;
   getCellClickHandler: CellClickHandler;
   onResize?: (newWidth: number) => void;
+  settings?: VisualizationSettings;
+  columns?: any[];
 }
 
 export const TopHeaderCell = ({
@@ -147,22 +241,45 @@ export const TopHeaderCell = ({
   style,
   getCellClickHandler,
   onResize,
+  settings,
+  columns = [],
 }: TopHeaderCellProps) => {
   const { value, hasChildren, clicked, isSubtotal, maxDepthBelow, span } = item;
 
   const tc = useTranslateContent();
+
+  const hydratedClicked = hydrateClicked(clicked, columns);
+  const { colSettings, isExplicitLink, hasClickBehavior, col } =
+    getCellLinkData(hydratedClicked, settings);
+
+  let finalValue: React.ReactNode = tc(value);
+  let finalOnClick = getCellClickHandler(clicked);
+
+  if (isExplicitLink && value !== null && value !== undefined) {
+    finalValue = formatUrl(String(value), {
+      jsx: true,
+      rich: true,
+      view_as: colSettings.view_as,
+      link_url: colSettings.link_url,
+      link_text: colSettings.link_text,
+      column: col,
+      clicked: hydratedClicked,
+    });
+    finalOnClick = undefined;
+  }
 
   return (
     <Cell
       style={{
         ...style,
       }}
-      value={tc(value)}
+      value={finalValue}
       isBorderedHeader={maxDepthBelow === 0}
       isEmphasized={hasChildren}
       isBold={isSubtotal}
-      onClick={getCellClickHandler(clicked)}
+      onClick={finalOnClick}
       onResize={span < 2 ? onResize : undefined}
+      isDashboardLink={hasClickBehavior && !isExplicitLink}
     />
   );
 };
@@ -181,8 +298,29 @@ export const LeftHeaderCell = ({
   settings,
   onUpdateVisualizationSettings,
   onResize,
+  columns = [],
 }: LeftHeaderCellProps) => {
   const { value, isSubtotal, hasSubtotal, depth, path, clicked } = item;
+
+  const hydratedClicked = hydrateClicked(clicked, columns);
+  const { colSettings, isExplicitLink, hasClickBehavior, col } =
+    getCellLinkData(hydratedClicked, settings);
+
+  let finalValue: React.ReactNode = value;
+  let finalOnClick = getCellClickHandler(clicked);
+
+  if (isExplicitLink && value !== null && value !== undefined) {
+    finalValue = formatUrl(String(value), {
+      jsx: true,
+      rich: true,
+      view_as: colSettings.view_as,
+      link_url: colSettings.link_url,
+      link_text: colSettings.link_text,
+      column: col,
+      clicked: hydratedClicked,
+    });
+    finalOnClick = undefined;
+  }
 
   return (
     <Cell
@@ -190,11 +328,12 @@ export const LeftHeaderCell = ({
         ...style,
         ...(depth === 0 ? { paddingLeft: LEFT_HEADER_LEFT_SPACING } : {}),
       }}
-      value={value}
+      value={finalValue}
       isEmphasized={isSubtotal}
       isBold={isSubtotal}
-      onClick={getCellClickHandler(clicked)}
+      onClick={finalOnClick}
       onResize={onResize}
+      isDashboardLink={hasClickBehavior && !isExplicitLink}
       icon={
         (isSubtotal || hasSubtotal) && (
           <RowToggleIcon
@@ -217,6 +356,8 @@ interface BodyCellProps {
   getCellClickHandler: CellClickHandler;
   cellWidths: number[];
   showTooltip?: boolean;
+  settings?: VisualizationSettings;
+  columns?: any[];
 }
 
 export const BodyCell = ({
@@ -225,24 +366,47 @@ export const BodyCell = ({
   getCellClickHandler,
   cellWidths,
   showTooltip = true,
+  settings,
+  columns = [],
 }: BodyCellProps) => {
   return (
     <div style={style} className={CS.flex}>
       {rowSection.map(
         ({ value, isSubtotal, clicked, backgroundColor }, index) => {
+          const hydratedClicked = hydrateClicked(clicked, columns);
+          const { colSettings, isExplicitLink, hasClickBehavior, col } =
+            getCellLinkData(hydratedClicked, settings);
+
+          let finalValue: React.ReactNode = value;
+          let finalOnClick = getCellClickHandler(clicked);
+
+          if (isExplicitLink && value !== null && value !== undefined) {
+            finalValue = formatUrl(String(value), {
+              jsx: true,
+              rich: true,
+              view_as: colSettings.view_as,
+              link_url: colSettings.link_url,
+              link_text: colSettings.link_text,
+              column: col,
+              clicked: hydratedClicked,
+            });
+            finalOnClick = undefined;
+          }
+
           return (
             <Cell
               key={index}
               style={{
                 flexBasis: cellWidths[index],
               }}
-              value={value}
+              value={finalValue}
               isEmphasized={isSubtotal}
               isBold={isSubtotal}
               showTooltip={showTooltip}
               isBody
-              onClick={getCellClickHandler(clicked)}
+              onClick={finalOnClick}
               backgroundColor={backgroundColor}
+              isDashboardLink={hasClickBehavior && !isExplicitLink}
             />
           );
         },

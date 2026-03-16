@@ -14,6 +14,7 @@ import {
 } from "metabase/lib/data_grid";
 import { displayNameForColumn } from "metabase/lib/formatting";
 import { ChartSettingIconRadio } from "metabase/visualizations/components/settings/ChartSettingIconRadio";
+import ChartSettingLinkUrlInput from "metabase/visualizations/components/settings/ChartSettingLinkUrlInput";
 import { ChartSettingsTableFormatting } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
@@ -22,7 +23,13 @@ import {
   getDimensionReferenceWithoutBaseType,
   isDimensionReferenceWithOptions,
 } from "metabase-lib/v1/references";
-import { isDimension } from "metabase-lib/v1/types/utils/isa";
+import {
+  isAvatarURL,
+  isDimension,
+  isEmail,
+  isImageURL,
+  isURL,
+} from "metabase-lib/v1/types/utils/isa";
 import type {
   Card,
   DatasetColumn,
@@ -263,79 +270,178 @@ export const settings = {
   },
 };
 
-export const _columnSettings = {
-  [COLUMN_SORT_ORDER]: {
-    get title() {
-      return t`Sort order`;
-    },
-    widget: ChartSettingIconRadio,
-    inline: true,
-    borderBottom: true,
-    props: {
-      options: [
-        {
-          iconName: "arrow_up",
-          value: COLUMN_SORT_ORDER_ASC,
-        },
-        {
-          iconName: "arrow_down",
-          value: COLUMN_SORT_ORDER_DESC,
-        },
-      ],
-    },
-    getHidden: ({ source }: { source: DatasetColumn["source"] }) =>
-      source === "aggregation",
-  },
-  [COLUMN_SHOW_TOTALS]: {
-    get title() {
-      return t`Show totals`;
-    },
-    widget: "toggle",
-    inline: true,
-    getDefault: (
-      column: DatasetColumn,
-      columnSettings: DatasetColumn,
-      { settings }: { settings: VisualizationSettings },
-    ) => {
-      // Default to showing totals if appropriate
-      const rows = settings[COLUMN_SPLIT_SETTING]?.rows || [];
+export const _columnSettings = (column: DatasetColumn) => {
+  let defaultValue = !column.semantic_type || isURL(column) ? "link" : null;
 
-      // `rows` can be either in a legacy format where it's a field ref, or in a new format where it's a column name.
-      // All new questions visualized as pivot tables will have column name settings only. We migrate
-      // `COLUMN_SPLIT_SETTING` for existing questions only on an explicit change from the user; therefore we need to
-      // support both column names and field refs for now.
-      return rows
-        .slice(0, -1)
-        .some(
-          (row) =>
-            _.isEqual(row, column.name) ||
-            (Array.isArray(row) &&
-              column.field_ref != null &&
-              _.isEqual(
-                getFieldRefForComparison(row),
-                getFieldRefForComparison(column.field_ref),
-              )),
-        );
+  const options = [
+    { name: t`Text`, value: null },
+    { name: t`Link`, value: "link" },
+  ];
+
+  if (!column.semantic_type || isEmail(column)) {
+    defaultValue = "email_link";
+    options.push({ name: t`Email link`, value: "email_link" });
+  }
+  if (!column.semantic_type || isImageURL(column) || isAvatarURL(column)) {
+    defaultValue = isAvatarURL(column) ? "image" : "link";
+    options.push({ name: t`Image`, value: "image" });
+  }
+  if (!column.semantic_type) {
+    defaultValue = "auto";
+    options.push({ name: t`Automatic`, value: "auto" });
+  }
+
+  const viewAsSetting: Record<string, any> = {};
+  if (options.length > 1) {
+    viewAsSetting["view_as"] = {
+      get title() {
+        return t`Display as`;
+      },
+      widget: options.length === 2 ? "radio" : "select",
+      default: defaultValue,
+      props: {
+        options,
+      },
+    };
+  }
+
+  const linkFieldsHint = t`You can use the value of any column here like this: {{COLUMN}}`;
+
+  return {
+    [COLUMN_SORT_ORDER]: {
+      get title() {
+        return t`Sort order`;
+      },
+      widget: ChartSettingIconRadio,
+      inline: true,
+      borderBottom: true,
+      props: {
+        options: [
+          {
+            iconName: "arrow_up",
+            value: COLUMN_SORT_ORDER_ASC,
+          },
+          {
+            iconName: "arrow_down",
+            value: COLUMN_SORT_ORDER_DESC,
+          },
+        ],
+      },
+      getHidden: ({ source }: { source: DatasetColumn["source"] }) =>
+        source === "aggregation",
     },
-    getHidden: (
-      column: DatasetColumn,
-      columnSettings: DatasetColumn,
-      { settings }: { settings: VisualizationSettings },
-    ) => {
-      const rows = settings[COLUMN_SPLIT_SETTING]?.rows || [];
-      // to show totals a column needs to be:
-      //  - in the left header ("rows" in COLUMN_SPLIT_SETTING)
-      //  - not the last column
-      return !rows.slice(0, -1).some((row) => _.isEqual(row, column.name));
+    [COLUMN_SHOW_TOTALS]: {
+      get title() {
+        return t`Show totals`;
+      },
+      widget: "toggle",
+      inline: true,
+      getDefault: (
+        column: DatasetColumn,
+        columnSettings: DatasetColumn,
+        { settings }: { settings: VisualizationSettings },
+      ) => {
+        // Default to showing totals if appropriate
+        const rows = settings[COLUMN_SPLIT_SETTING]?.rows || [];
+
+        // `rows` can be either in a legacy format where it's a field ref, or in a new format where it's a column name.
+        // All new questions visualized as pivot tables will have column name settings only. We migrate
+        // `COLUMN_SPLIT_SETTING` for existing questions only on an explicit change from the user; therefore we need to
+        // support both column names and field refs for now.
+        return rows
+          .slice(0, -1)
+          .some(
+            (row) =>
+              _.isEqual(row, column.name) ||
+              (Array.isArray(row) &&
+                column.field_ref != null &&
+                _.isEqual(
+                  getFieldRefForComparison(row),
+                  getFieldRefForComparison(column.field_ref),
+                )),
+          );
+      },
+      getHidden: (
+        column: DatasetColumn,
+        columnSettings: DatasetColumn,
+        { settings }: { settings: VisualizationSettings },
+      ) => {
+        const rows = settings[COLUMN_SPLIT_SETTING]?.rows || [];
+        // to show totals a column needs to be:
+        //  - in the left header ("rows" in COLUMN_SPLIT_SETTING)
+        //  - not the last column
+        return !rows.slice(0, -1).some((row) => _.isEqual(row, column.name));
+      },
     },
-  },
-  column_title: {
-    get title() {
-      return t`Column title`;
+    column_title: {
+      get title() {
+        return t`Column title`;
+      },
+      widget: "input",
+      getDefault: displayNameForColumn,
     },
-    widget: "input",
-    getDefault: displayNameForColumn,
-  },
+    click_behavior: {},
+    ...viewAsSetting,
+    link_text: {
+      get title() {
+        return t`Link text`;
+      },
+      widget: ChartSettingLinkUrlInput,
+      get hint() {
+        return linkFieldsHint;
+      },
+      default: null,
+      getHidden: (_: any, settings: any) =>
+        settings["view_as"] !== "link" && settings["view_as"] !== "email_link",
+      readDependencies: ["view_as"],
+      getProps: (
+        column: any,
+        settings: any,
+        onChange: any,
+        {
+          series: [
+            {
+              data: { cols },
+            },
+          ],
+        }: any,
+      ) => {
+        return {
+          options: cols.map((column: any) => column.name),
+          placeholder: t`Link to {{bird_id}}`,
+        };
+      },
+    },
+    link_url: {
+      get title() {
+        return t`Link URL`;
+      },
+      widget: ChartSettingLinkUrlInput,
+      get hint() {
+        return linkFieldsHint;
+      },
+      default: null,
+      getHidden: (_: any, settings: any) => settings["view_as"] !== "link",
+      readDependencies: ["view_as"],
+      getProps: (
+        column: any,
+        settings: any,
+        onChange: any,
+        {
+          series: [
+            {
+              data: { cols },
+            },
+          ],
+        }: any,
+      ) => {
+        return {
+          options: cols.map((column: any) => column.name),
+          placeholder: t`http://toucan.example/{{bird_id}}`,
+        };
+      },
+    },
+  };
 };
 
 /*
