@@ -211,7 +211,8 @@
             (Thread/sleep 60) ;; expire local-cached-token-checker
             (is (= {:valid         false
                     :status        "Unable to validate token"
-                    :error-details "network failure!"}
+                    :error-details "network failure!"
+                    :error-type    :network}
                    (token-check/check-token checker token)))))
         (finally
           (token-check/-clear-cache! checker))))))
@@ -558,7 +559,8 @@
       ;; error-catching wraps it, so we get the error-details response
       (is (= {:valid false
               :status "Unable to validate token"
-              :error-details "MetaStore unreachable"}
+              :error-details "MetaStore unreachable"
+              :error-type :network}
              (token-check/-check-token checker token))))))
 
 (deftest db-hash-aware-token-checker-tamper-resistance-test

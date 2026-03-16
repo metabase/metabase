@@ -40,8 +40,12 @@ export const useLicense = (onActivated?: () => void) => {
         window.location.href += LICENSE_ACCEPTED_URL_HASH;
       }
       reload();
-    } catch {
-      setError(INVALID_TOKEN_ERROR);
+    } catch (e) {
+      if ((e as any).status === 503) {
+        setError(UNABLE_TO_VALIDATE_TOKEN);
+      } else {
+        setError(INVALID_TOKEN_ERROR);
+      }
     } finally {
       setIsUpdating(false);
     }

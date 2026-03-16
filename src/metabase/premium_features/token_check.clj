@@ -491,7 +491,8 @@
                (analytics/inc-if-initialized! :metabase-token-check/attempt {:status :failure}))
              {:valid         false
               :status        (tru "Unable to validate token")
-              :error-details (.getMessage e)})))
+              :error-details (.getMessage e)
+              :error-type    :network})))
     (-clear-cache! [_] (-clear-cache! token-checker))))
 
 (def ^:dynamic *customize-checker*
@@ -566,7 +567,11 @@
                         {:status-code 400, :error-details "Token should be 64 hexadecimal characters."})))
       (let [decoded (check-token new-value)]
         (when-not (:valid decoded)
-          (throw (ex-info "Invalid token" {:token (u.str/mask new-value)}))))
+          (if (= :network (:error-type decoded))
+            (throw (ex-info (tru "Token validation failed due to a network error. Please check your internet connection and try again.")
+                            {:status-code   503
+                             :error-details (:error-details decoded)}))
+            (throw (ex-info "Invalid token" {:token (u.str/mask new-value)})))))
       (log/info "Token is valid."))
     (setting/set-value-of-type! :string :premium-embedding-token new-value)
     (events/publish-event! :event/set-premium-embedding-token {})
