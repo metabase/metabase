@@ -155,6 +155,7 @@ const createVisualization: CreateCustomVisualization<Settings> = () => {
     settings: {
       threshold: {
         id: "1",
+        title: "Threshold",
         widget: "number",
         getDefault() {
           return 0;
