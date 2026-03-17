@@ -1,10 +1,5 @@
 import cx from "classnames";
-import {
-  type HTMLAttributes,
-  type ReactNode,
-  type Ref,
-  forwardRef,
-} from "react";
+import { type ReactNode, type Ref, forwardRef } from "react";
 
 import { Box, Flex, UnstyledButton } from "metabase/ui";
 
@@ -14,15 +9,6 @@ export const ParameterValueWidgetTrigger = forwardRef(
   ParameterValueWidgetTriggerInner,
 );
 
-type ParameterValueWidgetTriggerProps = {
-  children: ReactNode;
-  hasValue: boolean;
-  ariaLabel?: string;
-  className?: string;
-  mimicMantine?: boolean;
-  hasPopover?: boolean;
-} & Omit<HTMLAttributes<HTMLElement>, "children">;
-
 function ParameterValueWidgetTriggerInner(
   {
     children,
@@ -31,8 +17,14 @@ function ParameterValueWidgetTriggerInner(
     className,
     mimicMantine = false,
     hasPopover = false,
-    ...htmlProps
-  }: ParameterValueWidgetTriggerProps,
+  }: {
+    children: ReactNode;
+    hasValue: boolean;
+    ariaLabel?: string;
+    className?: string;
+    mimicMantine?: boolean;
+    hasPopover?: boolean;
+  },
   ref: Ref<HTMLButtonElement | HTMLButtonElement>,
 ) {
   const attributes = hasPopover
@@ -60,7 +52,6 @@ function ParameterValueWidgetTriggerInner(
           [S.hasValue]: hasValue,
         })}
         aria-label={ariaLabel}
-        {...htmlProps}
         {...attributes}
       >
         {children}
@@ -75,7 +66,6 @@ function ParameterValueWidgetTriggerInner(
       })}
       aria-label={ariaLabel}
       maw="100%"
-      {...htmlProps}
       {...attributes}
     >
       {children}
