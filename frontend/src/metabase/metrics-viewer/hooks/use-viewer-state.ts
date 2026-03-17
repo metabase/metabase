@@ -21,7 +21,10 @@ import type {
   MetricsViewerTabState,
   StoredMetricsViewerTab,
 } from "../types/viewer-state";
-import { getInitialMetricsViewerPageState } from "../types/viewer-state";
+import {
+  getInitialMetricsViewerPageState,
+  isMetricEntry,
+} from "../types/viewer-state";
 import { buildBinnedBreakoutDefinition } from "../utils/definition-builder";
 import {
   createMeasureSourceId,
@@ -84,6 +87,7 @@ function addDefinitionToTabs(
 ): MetricsViewerTabState[] {
   const existingDefinitions = objectFromEntries(
     definitionEntries
+      .filter(isMetricEntry)
       .filter((entry) => entry.id !== newDefId)
       .map((entry) => [entry.id, entry.definition] as const),
   );
@@ -182,10 +186,7 @@ export function useViewerState(): UseViewerStateResult {
   const loadingRef = useRef<Set<MetricSourceId>>(new Set());
   const [loadingIds, setLoadingIds] = useState<Set<MetricSourceId>>(new Set());
 
-  const initialize = useCallback(
-    (newState: MetricsViewerPageState) => setState(newState),
-    [],
-  );
+  const initialize: (newState: MetricsViewerPageState) => void = setState;
 
   const addDefinition = useCallback(
     (entry: MetricsViewerDefinitionEntry) =>
@@ -196,7 +197,11 @@ export function useViewerState(): UseViewerStateResult {
 
         const newDefinitions = [...prev.definitions, entry];
 
-        if (prev.tabs.length === 0 || !entry.definition) {
+        if (
+          prev.tabs.length === 0 ||
+          !isMetricEntry(entry) ||
+          !entry.definition
+        ) {
           return { ...prev, definitions: newDefinitions };
         }
 
@@ -352,7 +357,8 @@ export function useViewerState(): UseViewerStateResult {
         const entry = prev.definitions.find(
           (defEntry) => defEntry.id === definitionId,
         );
-        const def = entry?.definition;
+        const def =
+          entry && isMetricEntry(entry) ? entry.definition : undefined;
         const dimId = def
           ? LibMetric.dimensionValuesInfo(def, dimension).id
           : undefined;
@@ -414,7 +420,7 @@ export function useViewerState(): UseViewerStateResult {
       setState((prev) => ({
         ...prev,
         definitions: prev.definitions.map((entry) => {
-          if (entry.id !== id || !entry.definition) {
+          if (entry.id !== id || !isMetricEntry(entry) || !entry.definition) {
             return entry;
           }
 
@@ -458,7 +464,7 @@ export function useViewerState(): UseViewerStateResult {
 
       loadingRef.current.add(id);
       setLoadingIds((prev) => new Set(prev).add(id));
-      addDefinition({ id, definition: null });
+      addDefinition({ id, type: "metric", definition: null });
 
       try {
         const rawDefinition = await loader();
@@ -504,7 +510,11 @@ export function useViewerState(): UseViewerStateResult {
 
       loadingRef.current.add(newId);
       setLoadingIds((prev) => new Set(prev).add(newId));
-      replaceDefinition(oldSourceId, { id: newId, definition: null });
+      replaceDefinition(oldSourceId, {
+        id: newId,
+        type: "metric",
+        definition: null,
+      });
 
       try {
         const definition = await loader();

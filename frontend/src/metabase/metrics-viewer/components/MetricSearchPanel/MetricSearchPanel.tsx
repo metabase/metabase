@@ -12,6 +12,7 @@ import type {
   SelectedMetric,
   SourceColorMap,
 } from "../../types/viewer-state";
+import { isMetricEntry } from "../../types/viewer-state";
 import { FilterPopover } from "../FilterPopover";
 import type { DefinitionSource } from "../FilterPopover/FilterPopoverContent";
 import { MetricSearch } from "../MetricSearch";
@@ -52,11 +53,12 @@ export function MetricSearchPanel({
 }: MetricSearchPanelProps) {
   const [isFilterPillsExpanded, setIsFilterPillsExpanded] = useState(true);
 
-  const readyDefinitions = useMemo(
+  const readyDefinitions: DefinitionSource[] = useMemo(
     () =>
-      definitions.filter(
-        (definition): definition is DefinitionSource =>
-          definition.definition != null,
+      definitions.flatMap((definition) =>
+        isMetricEntry(definition) && definition.definition != null
+          ? [{ id: definition.id, definition: definition.definition }]
+          : [],
       ),
     [definitions],
   );

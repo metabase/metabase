@@ -9,7 +9,7 @@ import type {
 import * as LibMetric from "metabase-lib/metric";
 import type { Dataset, MetricBreakoutValuesResponse } from "metabase-types/api";
 
-import { buildExpressionText } from "../components/MetricSearch/utils";
+import { buildExpressionTextLegacy } from "../components/MetricSearch/utils";
 import type { MetricsViewerPageProps } from "../pages/MetricsViewerPage/MetricsViewerPage";
 import type { ExpressionToken } from "../types/operators";
 import type {
@@ -19,6 +19,7 @@ import type {
   SelectedMetric,
   SourceColorMap,
 } from "../types/viewer-state";
+import { isMetricEntry } from "../types/viewer-state";
 import {
   applyProjection,
   buildBinnedBreakoutDefinition,
@@ -248,7 +249,7 @@ export function useMetricsViewer(
     () =>
       rawExpressionItems.map(
         ({ itemTokens, result, isExecuting: itemExec, error }) => ({
-          name: buildExpressionText(itemTokens, selectedMetrics),
+          name: buildExpressionTextLegacy(itemTokens, selectedMetrics),
           result,
           isExecuting: itemExec,
           error,
@@ -265,13 +266,15 @@ export function useMetricsViewer(
   const definitionsBySourceId = useMemo(
     () =>
       objectFromEntries(
-        state.definitions.map((entry) => [entry.id, entry.definition] as const),
+        state.definitions
+          .filter(isMetricEntry)
+          .map((entry) => [entry.id, entry.definition] as const),
       ),
     [state.definitions],
   );
 
   const sourceOrder = useMemo(
-    () => state.definitions.map((entry) => entry.id),
+    () => state.definitions.filter(isMetricEntry).map((entry) => entry.id),
     [state.definitions],
   );
 
@@ -281,6 +284,9 @@ export function useMetricsViewer(
   > => {
     const result: Record<MetricSourceId, SourceDisplayInfo> = {};
     for (const entry of state.definitions) {
+      if (!isMetricEntry(entry)) {
+        continue;
+      }
       const { definition } = entry;
       if (!definition) {
         continue;
@@ -306,6 +312,7 @@ export function useMetricsViewer(
   const effectiveTabs = useMemo(() => {
     const dimsBySource = new Map(
       state.definitions
+        .filter(isMetricEntry)
         .filter((entry) => entry.definition != null)
         .map(
           (entry) =>

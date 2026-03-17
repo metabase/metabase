@@ -7,14 +7,14 @@ import S from "./MetricExpressionPill.module.css";
 
 type MetricExpressionPillProps = {
   expressionText: string;
-  color?: string;
+  colors?: string[];
   onClick: (e: React.MouseEvent) => void;
   onRemove: () => void;
 };
 
 export function MetricExpressionPill({
   expressionText,
-  color,
+  colors,
   onClick,
   onRemove,
 }: MetricExpressionPillProps) {
@@ -35,10 +35,7 @@ export function MetricExpressionPill({
       onClick={onClick}
     >
       <Flex align="center" gap="xs">
-        <SourceColorIndicator
-          colors={color !== undefined ? [color] : undefined}
-          fallbackIcon="metric"
-        />
+        <SourceColorIndicator colors={colors} fallbackIcon="metric" />
         <span>{expressionText}</span>
       </Flex>
     </Pill>

@@ -16,6 +16,7 @@ import type {
   MetricsViewerTabState,
   SourceColorMap,
 } from "../../../types/viewer-state";
+import { isMetricEntry } from "../../../types/viewer-state";
 import { getProjectionInfo } from "../../../utils/definition-builder";
 import type { DimensionFilterValue } from "../../../utils/dimension-filters";
 import {
@@ -75,12 +76,17 @@ export function MetricsViewerTabContent({
   onDimensionRemove,
 }: MetricsViewerTabContentProps) {
   // Definitions that are plain single-metric items (or all, in pure individual mode).
+  const metricDefs = useMemo(
+    () => definitions.filter(isMetricEntry),
+    [definitions],
+  );
+
   const standaloneDefs = useMemo(
     () =>
       standaloneSourceIds === null
-        ? definitions
-        : definitions.filter((d) => standaloneSourceIds.has(d.id)),
-    [definitions, standaloneSourceIds],
+        ? metricDefs
+        : metricDefs.filter((d) => standaloneSourceIds.has(d.id)),
+    [metricDefs, standaloneSourceIds],
   );
 
   const isLoading = useMemo(() => {
@@ -168,12 +174,7 @@ export function MetricsViewerTabContent({
 
   const definitionForControls = useMemo((): MetricDefinition | null => {
     for (const sourceId of getObjectKeys(tab.dimensionMapping)) {
-      const entry = definitions.find((d) => d.id === sourceId);
-      if (!entry) {
-        continue;
-      }
-
-      const modDef = modifiedDefinitions.get(entry.id);
+      const modDef = modifiedDefinitions.get(sourceId);
       if (!modDef) {
         continue;
       }
@@ -184,7 +185,7 @@ export function MetricsViewerTabContent({
       }
     }
     return null;
-  }, [definitions, tab.dimensionMapping, modifiedDefinitions]);
+  }, [tab.dimensionMapping, modifiedDefinitions]);
 
   const allFilterDimensions = useMemo(() => {
     const filterDimensions: DimensionMetadata[] = [];

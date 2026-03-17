@@ -12,6 +12,7 @@ import type {
   MetricsViewerTabState,
   MetricsViewerTabType,
 } from "../types/viewer-state";
+import { isMetricEntry } from "../types/viewer-state";
 
 import { defineCompactSchema } from "./compact-schema";
 import { getEntryBreakout } from "./definition-entries";
@@ -202,7 +203,7 @@ export function stateToSerializedState(
   return {
     expression: tokens.map(serializeToken),
     sources: state.definitions.flatMap((entry) => {
-      if (!entry.definition) {
+      if (!isMetricEntry(entry) || !entry.definition) {
         return [];
       }
       const source = definitionToSource(entry.definition);

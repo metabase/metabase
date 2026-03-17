@@ -88,7 +88,7 @@ function makeEntry(metric: SelectedMetric): MetricsViewerDefinitionEntry {
     metric.sourceType === "metric"
       ? createMetricSourceId(metric.id)
       : (`measure:${metric.id}` as const);
-  return { id: sid, definition: null };
+  return { id: sid, type: "metric" as const, definition: null };
 }
 
 type SetupOptions = {
@@ -348,11 +348,11 @@ describe("blur behavior", () => {
 
     await user.tab();
 
-    // Invalid formula — should stay in focused mode
+    // Invalid formula — should stay in focused mode with error state
     expect(screen.getByRole("textbox")).toBeInTheDocument();
-    expect(
-      screen.getByTestId("expression-validation-icon"),
-    ).toBeInTheDocument();
+    expect(screen.getByTestId("metrics-formula-input")).toHaveAttribute(
+      "data-has-error",
+    );
   });
 
   it("collapses and commits on blur when formula is valid (even if changed)", async () => {
@@ -467,10 +467,10 @@ describe("run button and validation", () => {
 
     await user.click(screen.getByTestId("run-expression-button"));
 
-    // Should display validation error and NOT collapse
-    expect(
-      screen.getByTestId("expression-validation-icon"),
-    ).toBeInTheDocument();
+    // Should set error state and NOT collapse
+    expect(screen.getByTestId("metrics-formula-input")).toHaveAttribute(
+      "data-has-error",
+    );
     expect(screen.getByRole("textbox")).toBeInTheDocument();
   });
 
@@ -486,9 +486,9 @@ describe("run button and validation", () => {
 
     await user.click(screen.getByTestId("run-expression-button"));
 
-    expect(
-      screen.getByTestId("expression-validation-icon"),
-    ).toBeInTheDocument();
+    expect(screen.getByTestId("metrics-formula-input")).toHaveAttribute(
+      "data-has-error",
+    );
     expect(screen.getByRole("textbox")).toBeInTheDocument();
   });
 
@@ -504,16 +504,16 @@ describe("run button and validation", () => {
 
     await user.click(screen.getByTestId("run-expression-button"));
 
-    expect(
-      screen.getByTestId("expression-validation-icon"),
-    ).toBeInTheDocument();
+    expect(screen.getByTestId("metrics-formula-input")).toHaveAttribute(
+      "data-has-error",
+    );
 
     // Type more to fix the expression
     await user.type(input, " Costs");
 
-    expect(
-      screen.queryByTestId("expression-validation-icon"),
-    ).not.toBeInTheDocument();
+    expect(screen.getByTestId("metrics-formula-input")).not.toHaveAttribute(
+      "data-has-error",
+    );
   });
 });
 

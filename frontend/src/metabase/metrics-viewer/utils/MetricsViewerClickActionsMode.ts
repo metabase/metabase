@@ -13,6 +13,7 @@ import type {
   MetricsViewerDefinitionEntry,
   MetricsViewerTabState,
 } from "../types/viewer-state";
+import { isMetricEntry } from "../types/viewer-state";
 
 import type { DimensionFilterValue } from "./dimension-filters";
 import { findDimensionById } from "./dimension-lookup";
@@ -75,7 +76,7 @@ function getZoomInTimeSeriesAction({
   onTabUpdate,
   clickObject,
 }: GetActionParams): ClickAction | undefined {
-  if (!definition || !definition.definition) {
+  if (!definition || !isMetricEntry(definition) || !definition.definition) {
     return;
   }
   const dimension = clickObject.dimensions?.[0];
@@ -167,6 +168,9 @@ function getNextTemporalUnit(
   tab: MetricsViewerTabState,
   currentUnit: TemporalUnit,
 ): TemporalUnit | undefined {
+  if (!isMetricEntry(entry)) {
+    return undefined;
+  }
   const definition = entry.definition;
   const dimensionId = tab.dimensionMapping[entry.id];
   if (!definition || !dimensionId) {

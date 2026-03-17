@@ -20,6 +20,7 @@ describe("getEntryBreakout", () => {
   it("returns undefined when entry.definition is null", () => {
     const entry: MetricsViewerDefinitionEntry = {
       id: "metric:1",
+      type: "metric",
       definition: null,
     };
     expect(getEntryBreakout(entry)).toBeUndefined();
@@ -30,6 +31,7 @@ describe("getEntryBreakout", () => {
       const definition = setupDefinition(metricMeta, REVENUE_METRIC.id);
       const entry: MetricsViewerDefinitionEntry = {
         id: "metric:1",
+        type: "metric",
         definition,
       };
       expect(getEntryBreakout(entry)).toBeUndefined();
@@ -43,6 +45,7 @@ describe("getEntryBreakout", () => {
       );
       const entry: MetricsViewerDefinitionEntry = {
         id: "metric:1",
+        type: "metric",
         definition,
       };
       const breakout = getEntryBreakout(entry)!;
@@ -64,6 +67,7 @@ describe("getEntryBreakout", () => {
       );
       const entry: MetricsViewerDefinitionEntry = {
         id: "measure:100",
+        type: "metric",
         definition,
       };
       expect(getEntryBreakout(entry)).toBeUndefined();
@@ -77,6 +81,7 @@ describe("getEntryBreakout", () => {
       );
       const entry: MetricsViewerDefinitionEntry = {
         id: "measure:100",
+        type: "metric",
         definition,
       };
       const breakout = getEntryBreakout(entry)!;
@@ -97,6 +102,7 @@ describe("entryHasBreakout", () => {
       const definition = setupDefinition(metricMeta, REVENUE_METRIC.id);
       const entry: MetricsViewerDefinitionEntry = {
         id: "metric:1",
+        type: "metric",
         definition,
       };
       expect(entryHasBreakout(entry)).toBe(false);
@@ -110,6 +116,7 @@ describe("entryHasBreakout", () => {
       );
       const entry: MetricsViewerDefinitionEntry = {
         id: "metric:1",
+        type: "metric",
         definition,
       };
       expect(entryHasBreakout(entry)).toBe(true);
@@ -124,6 +131,7 @@ describe("entryHasBreakout", () => {
       );
       const entry: MetricsViewerDefinitionEntry = {
         id: "measure:100",
+        type: "metric",
         definition,
       };
       expect(entryHasBreakout(entry)).toBe(false);
@@ -137,6 +145,7 @@ describe("entryHasBreakout", () => {
       );
       const entry: MetricsViewerDefinitionEntry = {
         id: "measure:100",
+        type: "metric",
         definition,
       };
       expect(entryHasBreakout(entry)).toBe(true);

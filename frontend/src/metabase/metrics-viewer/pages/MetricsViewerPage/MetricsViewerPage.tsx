@@ -15,6 +15,7 @@ import {
 } from "../../components/MetricsViewerTabs";
 import { useMetricsViewer } from "../../hooks/use-metrics-viewer";
 import type { ExpressionToken } from "../../types/operators";
+import { isMetricEntry } from "../../types/viewer-state";
 
 import S from "./MetricsViewerPage.module.css";
 
@@ -57,7 +58,7 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
 
   const hasDefinitions = definitions.length > 0;
   const hasLoadedDefinitions = definitions.some(
-    (entry) => entry.definition != null,
+    (entry) => isMetricEntry(entry) && entry.definition != null,
   );
 
   return (

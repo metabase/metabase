@@ -9,6 +9,7 @@ import type {
   MetricsViewerDefinitionEntry,
   SourceColorMap,
 } from "../types/viewer-state";
+import { isMetricEntry } from "../types/viewer-state";
 
 import { getDefinitionName } from "./definition-builder";
 import { entryHasBreakout, getEntryBreakout } from "./definition-entries";
@@ -37,7 +38,7 @@ export function buildLegendGroups(
   const groups: LegendGroup[] = [];
 
   for (const entry of definitions) {
-    if (!entry.definition) {
+    if (!isMetricEntry(entry) || !entry.definition) {
       continue;
     }
 

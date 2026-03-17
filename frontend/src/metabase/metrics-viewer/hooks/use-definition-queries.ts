@@ -20,6 +20,7 @@ import type {
   MetricsViewerDefinitionEntry,
   MetricsViewerTabState,
 } from "../types/viewer-state";
+import { isMetricEntry } from "../types/viewer-state";
 import {
   getModifiedDefinition,
   toJsDefinition,
@@ -231,6 +232,9 @@ export function useDefinitionQueries(
     }
 
     return definitions.flatMap((entry) => {
+      if (!isMetricEntry(entry)) {
+        return [];
+      }
       const dimensionId = tab.dimensionMapping[entry.id];
       if (!dimensionId || !entry.definition) {
         return [];
@@ -260,7 +264,11 @@ export function useDefinitionQueries(
 
   const breakoutRequests = useMemo(() => {
     return definitions.flatMap((entry) => {
-      if (!entry.definition || !entryHasBreakout(entry)) {
+      if (
+        !isMetricEntry(entry) ||
+        !entry.definition ||
+        !entryHasBreakout(entry)
+      ) {
         return [];
       }
 
@@ -329,7 +337,7 @@ export function useDefinitionQueries(
       for (const token of itemTokens) {
         if (token.type === "metric") {
           const entry = definitions[token.metricIndex];
-          if (entry) {
+          if (entry && isMetricEntry(entry)) {
             ids.add(entry.id);
           }
         }

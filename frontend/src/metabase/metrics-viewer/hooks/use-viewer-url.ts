@@ -13,6 +13,7 @@ import type {
   MetricsViewerPageState,
   MetricsViewerTabState,
 } from "../types/viewer-state";
+import { isMetricEntry } from "../types/viewer-state";
 import type { SourceFilter } from "../utils/dimension-filters";
 import { createSourceId } from "../utils/source-ids";
 import {
@@ -153,7 +154,9 @@ export function useViewerUrl(
   useEffect(() => {
     if (
       state.definitions.length === 0 ||
-      state.definitions.some((entry) => entry.definition === null)
+      state.definitions.some(
+        (entry) => isMetricEntry(entry) && entry.definition === null,
+      )
     ) {
       return;
     }

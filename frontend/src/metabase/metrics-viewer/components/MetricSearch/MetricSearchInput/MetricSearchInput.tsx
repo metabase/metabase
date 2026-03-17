@@ -5,11 +5,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { CodeMirror } from "metabase/common/components/CodeMirror";
-import { Button, Flex, Icon, Popover, Tooltip } from "metabase/ui";
+import { Flex, Popover } from "metabase/ui";
 import type { ProjectionClause } from "metabase-lib/metric";
 
 import type { ExpressionToken } from "../../../types/operators";
 import type {
+  ExpressionSubToken,
   MetricSourceId,
   MetricsViewerDefinitionEntry,
   SelectedMetric,
@@ -23,20 +24,22 @@ import { MetricExpressionPill } from "../MetricExpressionPill";
 import { MetricPill } from "../MetricPill";
 import { MetricSearchDropdown } from "../MetricSearchDropdown";
 import {
-  buildExpressionText,
-  buildFullText,
+  buildExpressionTextLegacy,
+  buildFullTextLegacy,
   cleanupParens,
   cleanupSeparators,
+  findInvalidRangesLegacy,
   getSelectedMeasureIds,
   getSelectedMetricIds,
   getWordAtCursor,
-  parseFullText,
+  parseFullTextLegacy,
   removeUnmatchedParens,
   splitByItems,
-  validateExpression,
+  validateExpressionLegacy,
 } from "../utils";
 
 import S from "./MetricSearchInput.module.css";
+import { errorHighlight, setErrorDecoration } from "./errorHighlight";
 import { operatorHighlight } from "./operatorHighlight";
 
 // Metrics in the expression input can be used multiple times, so nothing is filtered out
@@ -75,6 +78,12 @@ export function MetricSearchInput({
   const [isOpen, setIsOpen] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
+  // Pixel position (viewport-relative) of the current word's left edge and
+  // line bottom — used to anchor the search dropdown at the cursor word.
+  const [anchorRect, setAnchorRect] = useState<{ left: number; top: number }>({
+    left: 0,
+    top: 0,
+  });
 
   const editorRef = useRef<ReactCodeMirrorRef>(null);
   const pendingFocusRef = useRef(false);
@@ -96,7 +105,7 @@ export function MetricSearchInput({
   const handleRunRef = useRef<() => void>(() => {});
 
   // Dirty when the current edit text differs from the last committed text
-  const isDirty = editText !== lastCommittedText;
+  // const isDirty = editText !== lastCommittedText;
 
   // Remove unnecessary parentheses per item (only when not actively editing)
   useEffect(() => {
@@ -104,8 +113,13 @@ export function MetricSearchInput({
       return;
     }
     const allItems = splitByItems(tokens);
-    const cleanedItems = allItems.map((item) =>
-      cleanupParens(removeUnmatchedParens(item)),
+    // cleanupParens / removeUnmatchedParens only inspect paren/operator/constant
+    // types, so the cast is safe — the metric payload shape is irrelevant here.
+    const cleanedItems = allItems.map(
+      (item) =>
+        cleanupParens(
+          removeUnmatchedParens(item as unknown as ExpressionSubToken[]),
+        ) as unknown as ExpressionToken[],
     );
     if (cleanedItems.some((item, i) => item !== allItems[i])) {
       const newTokens = cleanedItems.flatMap((item, i) =>
@@ -175,16 +189,25 @@ export function MetricSearchInput({
       return;
     }
     isEditingSessionActiveRef.current = true;
-    const fullText = buildFullText(tokens, selectedMetrics);
+    const fullText = buildFullTextLegacy(tokens, selectedMetrics);
     setIsFocused(true);
     setEditText(fullText);
     setLastCommittedText(fullText);
     setValidationError(null);
+    // After CodeMirror renders the initial text, move the caret to the end.
+    setTimeout(() => {
+      const view = editorRef.current?.view;
+      if (view) {
+        view.dispatch({
+          selection: EditorSelection.cursor(view.state.doc.length),
+        });
+      }
+    }, 0);
   }, [tokens, selectedMetrics]);
 
   /** Commits the current text: parses tokens, removes unreferenced metrics, and collapses. */
   const commitAndCollapse = useCallback(() => {
-    const finalTokens = parseFullText(
+    const finalTokens = parseFullTextLegacy(
       editTextRef.current,
       selectedMetricsRef.current,
     );
@@ -228,11 +251,11 @@ export function MetricSearchInput({
   }, [onRemoveMetric, onTokensChange]);
 
   const handleInputBlur = useCallback(() => {
-    const currentTokens = parseFullText(
+    const currentTokens = parseFullTextLegacy(
       editTextRef.current,
       selectedMetricsRef.current,
     );
-    const error = validateExpression(currentTokens);
+    const error = validateExpressionLegacy(currentTokens);
     if (error) {
       // Invalid formula — stay in focused/editing mode and show the error.
       // Do NOT close the dropdown here: if blur was caused by the user clicking
@@ -250,13 +273,20 @@ export function MetricSearchInput({
       setValidationError(null);
 
       // Re-parse tokens from the updated text
-      const newTokens = parseFullText(newText, selectedMetrics);
+      const newTokens = parseFullTextLegacy(newText, selectedMetrics);
       onTokensChange(newTokens);
 
       // Extract the word at the cursor for the dropdown search
-      const cursorPos =
-        editorRef.current?.view?.state.selection.main.head ?? newText.length;
-      const { word } = getWordAtCursor(newText, cursorPos);
+      const view = editorRef.current?.view;
+      const cursorPos = view?.state.selection.main.head ?? newText.length;
+      const { word, start: wordStart } = getWordAtCursor(newText, cursorPos);
+      // Anchor the dropdown at the word's left edge / line bottom in the viewport
+      if (view) {
+        const coords = view.coordsAtPos(wordStart);
+        if (coords) {
+          setAnchorRect({ left: coords.left, top: coords.bottom });
+        }
+      }
       setCurrentWord(word);
       setIsOpen(true);
     },
@@ -299,7 +329,7 @@ export function MetricSearchInput({
       const updatedMetrics =
         existingIndex !== -1 ? selectedMetrics : [...selectedMetrics, metric];
 
-      const newTokens = parseFullText(newText, updatedMetrics);
+      const newTokens = parseFullTextLegacy(newText, updatedMetrics);
       onTokensChange(newTokens);
 
       setCurrentWord("");
@@ -397,11 +427,11 @@ export function MetricSearchInput({
 
   /** Validate the expression and either show an error or commit + run the query. */
   const handleRun = useCallback(() => {
-    const currentTokens = parseFullText(
+    const currentTokens = parseFullTextLegacy(
       editTextRef.current,
       selectedMetricsRef.current,
     );
-    const error = validateExpression(currentTokens);
+    const error = validateExpressionLegacy(currentTokens);
     if (error) {
       setValidationError(error);
       return;
@@ -411,10 +441,27 @@ export function MetricSearchInput({
   }, [commitAndCollapse]);
   handleRunRef.current = handleRun;
 
+  // Sync validation error into the CodeMirror decoration field
+  useEffect(() => {
+    const view = editorRef.current?.view;
+    if (!view) {
+      return;
+    }
+    const ranges =
+      validationError !== null
+        ? findInvalidRangesLegacy(
+            editTextRef.current,
+            selectedMetricsRef.current,
+          )
+        : [];
+    view.dispatch({ effects: setErrorDecoration.of(ranges) });
+  }, [validationError]);
+
   // CodeMirror extensions for the formula editor
   const editorExtensions = useMemo(
     () => [
       operatorHighlight,
+      errorHighlight,
       placeholder(tokens.length === 0 ? t`Search for metrics...` : ""),
       // Prevent Enter from creating newlines; trigger run when dirty
       keymap.of([
@@ -442,12 +489,16 @@ export function MetricSearchInput({
       py="xs"
       onClick={handleContainerClick}
       data-has-error={validationError ? true : undefined}
+      data-testid="metrics-formula-input"
     >
       <Flex align="center" gap="sm" flex={1} wrap="wrap" mih="2.375rem">
         {isCollapsed ? (
           // Unfocused: each item rendered as MetricPill or MetricExpressionPill
           <>
             {items.map((itemTokens, itemIndex) => {
+              // TODO: get rid of ExpressionToken type
+              // TODO: iterate over MetricsViewerPageState.definitions instead and render pill component based on item.type
+
               const isSingleMetric =
                 itemTokens.length === 1 && itemTokens[0].type === "metric";
 
@@ -466,7 +517,7 @@ export function MetricSearchInput({
                         ? createMetricSourceId(metric.id)
                         : createMeasureSourceId(metric.id);
                     const entry = definitionsBySourceId.get(sid);
-                    if (!entry) {
+                    if (!entry || entry.type !== "metric") {
                       return null;
                     }
                     return (
@@ -487,32 +538,42 @@ export function MetricSearchInput({
                     );
                   })()
                 : (() => {
-                    // Use the first color of the first metric as the single
-                    // series color (the expression result is one chart series)
-                    const firstMetricToken = itemTokens.find(
-                      (t): t is { type: "metric"; metricIndex: number } =>
-                        t.type === "metric",
-                    );
-                    const firstMetric =
-                      firstMetricToken !== undefined
-                        ? selectedMetrics[firstMetricToken.metricIndex]
-                        : undefined;
-                    const expressionColor =
-                      firstMetric !== undefined
-                        ? metricColors[
-                            firstMetric.sourceType === "metric"
-                              ? createMetricSourceId(firstMetric.id)
-                              : createMeasureSourceId(firstMetric.id)
-                          ]?.[0]
-                        : undefined;
+                    // One primary color per unique metric in the expression,
+                    // matching the same logic used in DimensionPillBar.
+                    const expressionColors = (() => {
+                      const seen = new Set<string>();
+                      const result: string[] = [];
+                      for (const tok of itemTokens) {
+                        if (tok.type !== "metric") {
+                          continue;
+                        }
+                        const m = selectedMetrics[tok.metricIndex];
+                        if (!m) {
+                          continue;
+                        }
+                        const sid =
+                          m.sourceType === "metric"
+                            ? createMetricSourceId(m.id)
+                            : createMeasureSourceId(m.id);
+                        const key = String(sid);
+                        if (!seen.has(key)) {
+                          seen.add(key);
+                          const color = metricColors[sid]?.[0];
+                          if (color !== undefined) {
+                            result.push(color);
+                          }
+                        }
+                      }
+                      return result.length > 0 ? result : undefined;
+                    })();
 
                     return (
                       <MetricExpressionPill
-                        expressionText={buildExpressionText(
+                        expressionText={buildExpressionTextLegacy(
                           itemTokens,
                           selectedMetrics,
                         )}
-                        color={expressionColor}
+                        colors={expressionColors}
                         onClick={(e: React.MouseEvent) => {
                           e.stopPropagation();
                           pendingFocusRef.current = true;
@@ -527,66 +588,77 @@ export function MetricSearchInput({
             })}
           </>
         ) : (
-          // Focused: CodeMirror editor with syntax highlighting
-          <Popover
-            opened={isOpen}
-            onChange={setIsOpen}
-            position="bottom-start"
-            shadow="md"
-            withinPortal
-          >
-            <Popover.Target>
-              <div
-                className={S.codeEditor}
-                onFocus={handleInputFocus}
-                onBlur={handleInputBlur}
-                onClick={handleEditorClick}
+          // Focused: CodeMirror editor with syntax highlighting.
+          // The Popover is anchored to a zero-size fixed span that tracks the
+          // viewport position of the word under the cursor, so the dropdown
+          // appears directly below the current word rather than the full input.
+          <>
+            <div
+              className={S.codeEditor}
+              onFocus={handleInputFocus}
+              onBlur={handleInputBlur}
+              onClick={handleEditorClick}
+            >
+              <CodeMirror
+                ref={editorRef}
+                basicSetup={false}
+                autoFocus
+                value={editText}
+                onChange={handleChange}
+                extensions={editorExtensions}
+                data-testid="metrics-viewer-search-input"
+              />
+            </div>
+            <Popover
+              opened={isOpen}
+              onChange={setIsOpen}
+              position="bottom-start"
+              shadow="md"
+              withinPortal
+            >
+              <Popover.Target>
+                <span
+                  aria-hidden
+                  style={{
+                    position: "fixed",
+                    left: anchorRect.left,
+                    top: anchorRect.top,
+                    width: 0,
+                    height: 0,
+                    pointerEvents: "none",
+                  }}
+                />
+              </Popover.Target>
+              <Popover.Dropdown
+                p={0}
+                miw="19rem"
+                maw="25rem"
+                onMouseDown={(e) => e.preventDefault()}
               >
-                <CodeMirror
-                  ref={editorRef}
-                  basicSetup={false}
-                  autoFocus
-                  value={editText}
-                  onChange={handleChange}
-                  extensions={editorExtensions}
-                  data-testid="metrics-viewer-search-input"
-                />
-              </div>
-            </Popover.Target>
-            <Popover.Dropdown p={0} miw="19rem" maw="25rem">
-              {isOpen && (
-                <MetricSearchDropdown
-                  selectedMetricIds={EMPTY_SET}
-                  selectedMeasureIds={EMPTY_SET}
-                  onSelect={handleSelect}
-                  externalSearchText={currentWord}
-                />
-              )}
-            </Popover.Dropdown>
-          </Popover>
+                {isOpen && (
+                  <MetricSearchDropdown
+                    selectedMetricIds={EMPTY_SET}
+                    selectedMeasureIds={EMPTY_SET}
+                    onSelect={handleSelect}
+                    externalSearchText={currentWord}
+                  />
+                )}
+              </Popover.Dropdown>
+            </Popover>
+          </>
         )}
       </Flex>
-      {validationError && (
-        <Tooltip label={validationError} withinPortal>
-          <Icon
-            name="warning"
-            color="error"
-            aria-label={validationError}
-            data-testid="expression-validation-icon"
-          />
-        </Tooltip>
-      )}
-      {isDirty && (
-        <Button
-          variant="filled"
-          size="xs"
-          data-testid="run-expression-button"
-          onClick={(e: React.MouseEvent) => {
-            e.stopPropagation();
-            handleRun();
-          }}
-        >{t`Run`}</Button>
-      )}
+      {/*{isDirty && (*/}
+      {/*  <Button*/}
+      {/*    variant="filled"*/}
+      {/*    size="xs"*/}
+      {/*    data-testid="run-expression-button"*/}
+      {/*    onClick={(e: React.MouseEvent) => {*/}
+      {/*      e.stopPropagation();*/}
+      {/*      handleRun();*/}
+      {/*    }}*/}
+      {/*  >{t`Run`}</Button>*/}
+      {/*)}*/}
     </Flex>
   );
 }

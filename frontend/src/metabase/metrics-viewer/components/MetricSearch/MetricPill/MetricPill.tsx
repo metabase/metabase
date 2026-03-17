@@ -15,7 +15,7 @@ import type { ProjectionClause } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 
 import type {
-  MetricsViewerDefinitionEntry,
+  MetricDefinitionEntry,
   SelectedMetric,
 } from "../../../types/viewer-state";
 import { getEntryBreakout } from "../../../utils/definition-entries";
@@ -30,7 +30,7 @@ type PillPopoverState = "closed" | "swap" | "context-menu" | "breakout-picker";
 type MetricPillProps = {
   metric: SelectedMetric;
   colors?: string[];
-  definitionEntry: MetricsViewerDefinitionEntry;
+  definitionEntry: MetricDefinitionEntry;
   selectedMetricIds: Set<number>;
   selectedMeasureIds: Set<number>;
   onSwap: (oldMetric: SelectedMetric, newMetric: SelectedMetric) => void;
@@ -53,15 +53,12 @@ export function MetricPill({
   const [popoverState, setPopoverState] = useState<PillPopoverState>("closed");
   const hasDataStudioAccess = useSelector(canAccessDataStudio);
 
-  const dimensions = useMemo(
-    () =>
-      definitionEntry.definition
-        ? getDimensionsByType(definitionEntry.definition)
-        : new Map(),
-    [definitionEntry.definition],
-  );
+  const definition = definitionEntry.definition;
 
-  const { definition } = definitionEntry;
+  const dimensions = useMemo(
+    () => (definition ? getDimensionsByType(definition) : new Map()),
+    [definition],
+  );
 
   const breakoutDimension = useMemo(
     () => getEntryBreakout(definitionEntry),

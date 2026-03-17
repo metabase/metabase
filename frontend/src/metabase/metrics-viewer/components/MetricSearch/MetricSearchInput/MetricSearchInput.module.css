@@ -53,6 +53,24 @@
   color: var(--mb-color-syntax-parameters);
 }
 
+.cmErrorUnderline {
+  text-decoration: underline wavy;
+  text-decoration-color: var(--mb-color-error);
+  text-decoration-skip-ink: none;
+}
+
+.cmErrorTooltip {
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  color: var(--mb-color-error);
+  background: var(--mb-color-background-primary);
+  border: 1px solid var(--mb-color-error);
+  border-radius: var(--mantine-radius-sm, 4px);
+  max-width: 20rem;
+  white-space: normal;
+  pointer-events: none;
+}
+
 .codeEditor {
   flex: 1;
   min-width: 7.5rem;

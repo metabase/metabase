@@ -1,13 +1,17 @@
 import type { ExpressionToken } from "../../types/operators";
-import type { SelectedMetric } from "../../types/viewer-state";
+import type {
+  ExpressionSubToken,
+  MetricSourceId,
+  SelectedMetric,
+} from "../../types/viewer-state";
 
 import {
-  buildExpressionText,
+  buildExpressionTextLegacy,
   cleanupParens,
   filterSearchResults,
   getSelectedMeasureIds,
   getSelectedMetricIds,
-  parseFullText,
+  parseFullTextLegacy,
 } from "./utils";
 
 function makeSelectedMetric(
@@ -129,23 +133,27 @@ describe("filterSearchResults", () => {
 });
 
 describe("cleanupParens", () => {
-  const m = (metricIndex: number): ExpressionToken => ({
+  const m = (sourceId: MetricSourceId): ExpressionSubToken => ({
     type: "metric",
-    metricIndex,
+    sourceId,
   });
-  const op = (o: "+" | "-" | "*" | "/"): ExpressionToken => ({
+  const op = (o: "+" | "-" | "*" | "/"): ExpressionSubToken => ({
     type: "operator",
     op: o,
   });
-  const open: ExpressionToken = { type: "open-paren" };
-  const close: ExpressionToken = { type: "close-paren" };
+  const open: ExpressionSubToken = { type: "open-paren" };
+  const close: ExpressionSubToken = { type: "close-paren" };
 
   it("returns empty array unchanged", () => {
     expect(cleanupParens([])).toEqual([]);
   });
 
   it("returns same reference when no cleanup needed", () => {
-    const tokens: ExpressionToken[] = [m(0), op("+"), m(1)];
+    const tokens: ExpressionSubToken[] = [
+      m("metric:1"),
+      op("+"),
+      m("metric:2"),
+    ];
     expect(cleanupParens(tokens)).toBe(tokens);
   });
 
@@ -154,56 +162,76 @@ describe("cleanupParens", () => {
   });
 
   it("removes parentheses around a single metric", () => {
-    expect(cleanupParens([open, m(0), close])).toEqual([m(0)]);
+    expect(cleanupParens([open, m("metric:1"), close])).toEqual([
+      m("metric:1"),
+    ]);
   });
 
   it("keeps parentheses around multiple metrics", () => {
-    const tokens = [open, m(0), op("+"), m(1), close];
+    const tokens = [open, m("metric:1"), op("+"), m("metric:2"), close];
     expect(cleanupParens(tokens)).toEqual(tokens);
   });
 
   it("removes nested single-metric parens", () => {
     // ((A)) → A
-    expect(cleanupParens([open, open, m(0), close, close])).toEqual([m(0)]);
+    expect(cleanupParens([open, open, m("metric:1"), close, close])).toEqual([
+      m("metric:1"),
+    ]);
   });
 
   it("removes inner single-metric parens but keeps outer multi-metric parens", () => {
     // (A + (B)) → (A + B)
     expect(
-      cleanupParens([open, m(0), op("+"), open, m(1), close, close]),
-    ).toEqual([open, m(0), op("+"), m(1), close]);
+      cleanupParens([
+        open,
+        m("metric:1"),
+        op("+"),
+        open,
+        m("metric:2"),
+        close,
+        close,
+      ]),
+    ).toEqual([open, m("metric:1"), op("+"), m("metric:2"), close]);
   });
 
   it("removes single-metric parens in a larger expression", () => {
     // (A) + B → A + B
-    expect(cleanupParens([open, m(0), close, op("+"), m(1)])).toEqual([
-      m(0),
-      op("+"),
-      m(1),
-    ]);
+    expect(
+      cleanupParens([open, m("metric:1"), close, op("+"), m("metric:2")]),
+    ).toEqual([m("metric:1"), op("+"), m("metric:2")]);
   });
 
   it("removes multiple independent single-metric paren groups", () => {
     // (A) + (B) → A + B
     expect(
-      cleanupParens([open, m(0), close, op("+"), open, m(1), close]),
-    ).toEqual([m(0), op("+"), m(1)]);
+      cleanupParens([
+        open,
+        m("metric:1"),
+        close,
+        op("+"),
+        open,
+        m("metric:2"),
+        close,
+      ]),
+    ).toEqual([m("metric:1"), op("+"), m("metric:2")]);
   });
 
   it("keeps parentheses around a metric and a constant (two operands)", () => {
     // (A * 0.85) stays — two operands inside
-    const k = (v: number): ExpressionToken => ({ type: "constant", value: v });
-    expect(cleanupParens([open, m(0), op("*"), k(0.85), close])).toEqual([
-      open,
-      m(0),
-      op("*"),
-      k(0.85),
-      close,
-    ]);
+    const k = (v: number): ExpressionSubToken => ({
+      type: "constant",
+      value: v,
+    });
+    expect(
+      cleanupParens([open, m("metric:1"), op("*"), k(0.85), close]),
+    ).toEqual([open, m("metric:1"), op("*"), k(0.85), close]);
   });
 
   it("removes parentheses around a lone constant (one operand)", () => {
-    const k = (v: number): ExpressionToken => ({ type: "constant", value: v });
+    const k = (v: number): ExpressionSubToken => ({
+      type: "constant",
+      value: v,
+    });
     expect(cleanupParens([open, k(1), close])).toEqual([k(1)]);
   });
 });
@@ -212,7 +240,7 @@ describe("cleanupParens", () => {
 // buildExpressionText — constants
 // ---------------------------------------------------------------------------
 
-describe("buildExpressionText", () => {
+describe("buildExpressionTextLegacy", () => {
   const revenue: SelectedMetric = {
     id: 1,
     name: "Revenue",
@@ -234,13 +262,13 @@ describe("buildExpressionText", () => {
   const close: ExpressionToken = { type: "close-paren" };
 
   it("renders a metric scaled by a decimal constant", () => {
-    expect(buildExpressionText([m(0), op("*"), k(0.85)], metrics)).toBe(
+    expect(buildExpressionTextLegacy([m(0), op("*"), k(0.85)], metrics)).toBe(
       "Revenue * 0.85",
     );
   });
 
   it("renders an integer constant", () => {
-    expect(buildExpressionText([m(0), op("*"), k(100)], metrics)).toBe(
+    expect(buildExpressionTextLegacy([m(0), op("*"), k(100)], metrics)).toBe(
       "Revenue * 100",
     );
   });
@@ -248,7 +276,7 @@ describe("buildExpressionText", () => {
   it("renders constants inside parentheses", () => {
     // (Revenue + Costs) * 0.85
     expect(
-      buildExpressionText(
+      buildExpressionTextLegacy(
         [open, m(0), op("+"), m(1), close, op("*"), k(0.85)],
         metrics,
       ),
@@ -256,7 +284,7 @@ describe("buildExpressionText", () => {
   });
 
   it("renders a constant divided by a metric", () => {
-    expect(buildExpressionText([k(1), op("/"), m(0)], metrics)).toBe(
+    expect(buildExpressionTextLegacy([k(1), op("/"), m(0)], metrics)).toBe(
       "1 / Revenue",
     );
   });
@@ -266,7 +294,7 @@ describe("buildExpressionText", () => {
 // parseFullText — numeric literals
 // ---------------------------------------------------------------------------
 
-describe("parseFullText — numeric literal parsing", () => {
+describe("parseFullTextLegacy — numeric literal parsing", () => {
   const revenue: SelectedMetric = {
     id: 1,
     name: "Revenue",
@@ -286,7 +314,7 @@ describe("parseFullText — numeric literal parsing", () => {
   const k = (v: number): ExpressionToken => ({ type: "constant", value: v });
 
   it("parses a metric multiplied by a decimal constant", () => {
-    expect(parseFullText("Revenue * 0.85", metrics)).toEqual([
+    expect(parseFullTextLegacy("Revenue * 0.85", metrics)).toEqual([
       m(0),
       op("*"),
       k(0.85),
@@ -294,7 +322,7 @@ describe("parseFullText — numeric literal parsing", () => {
   });
 
   it("parses a metric multiplied by an integer constant", () => {
-    expect(parseFullText("Revenue * 100", metrics)).toEqual([
+    expect(parseFullTextLegacy("Revenue * 100", metrics)).toEqual([
       m(0),
       op("*"),
       k(100),
@@ -302,7 +330,7 @@ describe("parseFullText — numeric literal parsing", () => {
   });
 
   it("parses a constant on the left side", () => {
-    expect(parseFullText("0.5 * Revenue", metrics)).toEqual([
+    expect(parseFullTextLegacy("0.5 * Revenue", metrics)).toEqual([
       k(0.5),
       op("*"),
       m(0),
@@ -310,7 +338,7 @@ describe("parseFullText — numeric literal parsing", () => {
   });
 
   it("parses a constant inside parentheses — (Revenue + Costs) * 0.85", () => {
-    expect(parseFullText("(Revenue + Costs) * 0.85", metrics)).toEqual([
+    expect(parseFullTextLegacy("(Revenue + Costs) * 0.85", metrics)).toEqual([
       { type: "open-paren" },
       m(0),
       op("+"),
@@ -323,20 +351,14 @@ describe("parseFullText — numeric literal parsing", () => {
 
   it("parses multiple constants in one expression", () => {
     // 0.5 * Revenue + 0.5 * Costs
-    expect(parseFullText("0.5 * Revenue + 0.5 * Costs", metrics)).toEqual([
-      k(0.5),
-      op("*"),
-      m(0),
-      op("+"),
-      k(0.5),
-      op("*"),
-      m(1),
-    ]);
+    expect(parseFullTextLegacy("0.5 * Revenue + 0.5 * Costs", metrics)).toEqual(
+      [k(0.5), op("*"), m(0), op("+"), k(0.5), op("*"), m(1)],
+    );
   });
 
   it("handles an integer that looks like it could start a decimal (no dot follows)", () => {
     // "1 + Revenue" — "1" is an integer with no fractional part
-    expect(parseFullText("1 + Revenue", metrics)).toEqual([
+    expect(parseFullTextLegacy("1 + Revenue", metrics)).toEqual([
       k(1),
       op("+"),
       m(0),
@@ -345,12 +367,12 @@ describe("parseFullText — numeric literal parsing", () => {
 
   it("does not parse a trailing dot as part of the number", () => {
     // "1." — trailing dot with no digit after it; "1" is the constant, "." is skipped
-    expect(parseFullText("1.", metrics)).toEqual([k(1)]);
+    expect(parseFullTextLegacy("1.", metrics)).toEqual([k(1)]);
   });
 
   it("parses constants and metrics as separate items separated by a comma", () => {
     // "Revenue * 0.85, Costs"
-    expect(parseFullText("Revenue * 0.85, Costs", metrics)).toEqual([
+    expect(parseFullTextLegacy("Revenue * 0.85, Costs", metrics)).toEqual([
       m(0),
       op("*"),
       k(0.85),
@@ -359,11 +381,13 @@ describe("parseFullText — numeric literal parsing", () => {
     ]);
   });
 
-  it("round-trips through buildExpressionText", () => {
+  it("round-trips through buildExpressionTextLegacy", () => {
     const text = "(Revenue + Costs) * 0.85";
-    const tokens = parseFullText(text, metrics);
+    const tokens = parseFullTextLegacy(text, metrics);
     // Remove the separator-less single item and rebuild
     const [item] = [tokens]; // only one item (no separators)
-    expect(buildExpressionText(item as ExpressionToken[], metrics)).toBe(text);
+    expect(buildExpressionTextLegacy(item as ExpressionToken[], metrics)).toBe(
+      text,
+    );
   });
 });

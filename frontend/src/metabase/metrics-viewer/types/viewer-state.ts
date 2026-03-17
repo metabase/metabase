@@ -8,6 +8,8 @@ import type {
 
 import type { DimensionFilterValue } from "../utils/dimension-filters";
 
+import type { MathOperator } from "./operators";
+
 // ── Core types ──
 
 export type MetricsViewerDisplayType = Extract<
@@ -31,6 +33,19 @@ export interface StoredMetricsViewerTab {
   dimensionsBySource: Record<MetricSourceId, DimensionId>;
 }
 
+// ── Expression sub-tokens ──
+
+/**
+ * Tokens that appear inside a single expression formula.
+ * These are the building blocks of an expression definition entry.
+ */
+export type ExpressionSubToken =
+  | { type: "metric"; sourceId: MetricSourceId }
+  | { type: "constant"; value: number }
+  | { type: "operator"; op: MathOperator }
+  | { type: "open-paren" }
+  | { type: "close-paren" };
+
 // ── Definition types ──
 
 /**
@@ -43,9 +58,39 @@ export interface StoredMetricsViewerTab {
  * This is different from the computed/modified definition (from getModifiedDefinition)
  * which adds the tab's dimension as an additional projection.
  */
-export interface MetricsViewerDefinitionEntry {
-  id: MetricSourceId;
-  definition: MetricDefinition | null;
+export type MetricsViewerDefinitionEntry =
+  | {
+      id: MetricSourceId;
+      type: "metric";
+      definition: MetricDefinition | null;
+    }
+  | {
+      id: string; // "expression:<name>"
+      type: "expression";
+      name: string;
+      tokens: ExpressionSubToken[];
+    };
+
+export type MetricDefinitionEntry = Extract<
+  MetricsViewerDefinitionEntry,
+  { type: "metric" }
+>;
+
+export type ExpressionDefinitionEntry = Extract<
+  MetricsViewerDefinitionEntry,
+  { type: "expression" }
+>;
+
+export function isMetricEntry(
+  entry: MetricsViewerDefinitionEntry,
+): entry is MetricDefinitionEntry {
+  return entry.type === "metric";
+}
+
+export function isExpressionEntry(
+  entry: MetricsViewerDefinitionEntry,
+): entry is ExpressionDefinitionEntry {
+  return entry.type === "expression";
 }
 
 // ── Tab state ──
