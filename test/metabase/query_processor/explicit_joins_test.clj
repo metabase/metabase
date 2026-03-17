@@ -1580,14 +1580,15 @@
                                          [{:field-name "foo" :base-type :type/Integer}]
                                          [[1] [2]]]])
       (let [mp    (mt/metadata-provider)
-            table-a   (lib.metadata/table mp (mt/id :TableA))
-            id   (lib.metadata/field mp (mt/id :TableA :id))
+            table-kw (try (mt/id :TableA) :TableA (catch Exception _ :tablea))
+            table-a   (lib.metadata/table mp (mt/id table-kw))
+            id   (lib.metadata/field mp (mt/id table-kw :id))
             query (-> (lib/query mp table-a)
                       (lib/join (lib/join-clause table-a [(lib/= id id)]))
                       (lib/order-by id :asc))]
-        (tap> (sql.qp-test-util/query->sql query))
         (is (= [[1 1 1 1] [2 2 2 2]]
-               (mt/rows (qp/process-query query))))))))
+               (mt/formatted-rows [int int int int]
+                                  (qp/process-query query))))))))
 
 (deftest ^:parallel dangling-join-condition-lhs-errors-if-fuzzy-matched-to-rhs-test
   (testing (str "When upstream changes leave a dangling ref in a join condition LHS, QP throws if it is fuzzy-matched"
