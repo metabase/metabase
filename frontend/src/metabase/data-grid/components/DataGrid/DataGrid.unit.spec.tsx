@@ -267,6 +267,24 @@ describe("DataGrid", () => {
     expect(nameSortIcon).toBeDefined();
   });
 
+  it("uses correct ARIA roles for grid structure (#70547)", () => {
+    renderWithProviders(<TestDataGrid />);
+
+    const rows = within(screen.getByRole("grid")).getAllByRole("row");
+    expect(rows.length).toBeGreaterThan(1);
+
+    const headerRow = rows[0];
+    const bodyRows = rows.slice(1);
+
+    const columnHeaders = within(headerRow).getAllByRole("columnheader");
+    expect(columnHeaders.length).toBeGreaterThan(0);
+
+    bodyRows.forEach((row) => {
+      const cells = within(row).getAllByRole("gridcell");
+      expect(cells.length).toBeGreaterThan(0);
+    });
+  });
+
   it("can copy selected cells with headers included", async () => {
     const writeTextMock = jest.fn().mockResolvedValue(undefined);
     Object.assign(navigator, {
