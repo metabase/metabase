@@ -1226,25 +1226,6 @@ databaseChangeLog:
             constraintName: unique_python_library_entity_id
 
   - changeSet:
-      id: v59.2026-01-27T13:00:00
-      author: wotbrew
-      validCheckSum: ANY
-      comment: Drop medallion names for data_layer enum use (hidden, internal instead)
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            changeSetExecuted:
-              id: v58.2026-01-27T13:00:00
-              author: wotbrew
-              changeLogFile: migrations/058_update_migrations.yaml
-      changes:
-        - customChange:
-            class: "metabase.app_db.custom_migrations.DropMedallionNamesForDataLayer"
-      rollback:
-        - customChange:
-            class: "metabase.app_db.custom_migrations.DropMedallionNamesForDataLayer"
-
-  - changeSet:
       id: v59.2026-01-28T10:00:00
       author: metamben
       comment: Add stale column to analysis_finding for asynchronous dependent updates
@@ -3466,6 +3447,30 @@ databaseChangeLog:
                   remarks: The high checkpoint value for this run (inclusive upper bound)
                   constraints:
                     nullable: true
+
+  - changeSet:
+      id: v59.2026-03-17T13:00:00
+      author: bronsa
+      comment: Drop medallion names for data_layer enum use (hidden, internal instead)
+      preConditions:
+        - onFail: MARK_RAN
+        - and:
+            - not:
+                changeSetExecuted:
+                  id: v58.2026-01-27T13:00:00
+                  author: wotbrew
+                  changeLogFile: migrations/058_update_migrations.yaml
+            - not:
+                changeSetExecuted:
+                  id: v59.2026-01-27T13:00:00
+                  author: wotbrew
+                  changeLogFile: migrations/059_update_migrations.yaml
+      changes:
+        - customChange:
+            class: "metabase.app_db.custom_migrations.DropMedallionNamesForDataLayer"
+      rollback:
+        - customChange:
+            class: "metabase.app_db.custom_migrations.DropMedallionNamesForDataLayer"
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
