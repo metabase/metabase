@@ -2,7 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
+   [metabase-enterprise.metabot-v3.agent.core :as agent]
    [metabase-enterprise.metabot-v3.feedback :as metabot-v3.feedback]
    [metabase-enterprise.slackbot.api :as slackbot]
    [metabase-enterprise.slackbot.client :as slackbot.client]
@@ -229,18 +229,21 @@
                   (is (= 0 (count @stop-stream-calls))))))))))))
 
 (deftest ai-request-error-stops-stream-test
-  (testing "When the AI request throws after the stream has started, the stream is stopped"
+  (testing "When the agent loop throws after the stream has started, the stream is stopped"
     (tu/with-slackbot-setup
       (let [event-body tu/base-dm-event]
         (tu/with-slackbot-mocks
           {:ai-text "unused"}
           (fn [{:keys [stop-stream-calls stream-calls append-text-calls]}]
             (mt/with-dynamic-fn-redefs
-              [metabot-v3.client/streaming-request-with-callback
-               (fn [opts]
-                 (when-let [on-line (:on-line opts)]
-                   (on-line (str "0:" (json/encode (apply str (repeat (inc @#'slackbot.streaming/min-text-batch-size) "x"))))))
-                 (throw (ex-info "AI service unavailable" {})))]
+              [agent/run-agent-loop
+               (fn [_opts]
+                 (reify clojure.lang.IReduceInit
+                   (reduce [_ rf init]
+                     ;; Emit some text first (to force stream start), then throw
+                     (let [big-text (apply str (repeat (inc @#'slackbot.streaming/min-text-batch-size) "x"))]
+                       (rf init {:type :text :text big-text}))
+                     (throw (ex-info "Agent loop error" {})))))]
               (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
                                         (tu/slack-request-options event-body)
                                         event-body)]
@@ -257,7 +260,7 @@
                   (is (= 1 (count @stop-stream-calls))))))))))))
 
 (deftest streaming-request-args-test
-  (testing "POST /events passes correct arguments to streaming-request-with-callback"
+  (testing "POST /events passes correct arguments to agent/run-agent-loop"
     (tu/with-slackbot-setup
       (doseq [[desc event-body]
               [["DM message"            (assoc-in tu/base-dm-event [:event :channel] "D-MY-DM-CHANNEL")]
@@ -275,19 +278,20 @@
                        :timeout-ms 5000})
               (is (= 1 (count @ai-request-calls)))
               (let [opts (first @ai-request-calls)]
-                (is (re-matches #"[0-9a-f-]{36}" (:conversation-id opts)))
+                (is (= :slackbot (:profile-id opts)))
                 (is (map? (:context opts)))
                 (is (= (get-in event-body [:event :channel])
                        (get-in opts [:context :slack_channel_id])))
-                (if (= "im" (get-in event-body [:event :channel_type]))
-                  (is (= (get-in event-body [:event :text])
-                         (get-in opts [:message :content])))
-                  (let [content (get-in opts [:message :content])]
-                    (is (str/includes? content "Hello!") "user message is included in prompt")
-                    (is (str/includes? content "Do not narrate the steps you took")
-                        "channel response-style suffix is appended")))
-                (is (vector? (:history opts)))
-                (is (fn? (:on-line opts)))))))))))
+                (is (sequential? (:messages opts)))
+                ;; Last message should be the user's request
+                (let [last-msg (last (:messages opts))]
+                  (if (= "im" (get-in event-body [:event :channel_type]))
+                    (is (= (get-in event-body [:event :text])
+                           (:content last-msg)))
+                    (let [content (:content last-msg)]
+                      (is (str/includes? content "Hello!") "user message is included in prompt")
+                      (is (str/includes? content "Do not narrate the steps you took")
+                          "channel response-style suffix is appended"))))))))))))
 
 (deftest slack-msg-id-stored-test
   (testing "User and bot messages are stored with their Slack ts as slack_msg_id"

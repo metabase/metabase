@@ -130,13 +130,43 @@
           part (streaming/transform-suggestion-part suggestion)]
       (is (= suggestion (:data part))))))
 
+(deftest adhoc-viz-part-test
+  (testing "creates adhoc_viz data part with correct structure"
+    (let [value {:query {:database 1 :type :query :query {:source-table 1}}
+                 :link "/question#abc123"
+                 :title "My Query"
+                 :display "bar"}
+          part (streaming/adhoc-viz-part value)]
+      (is (= :data (:type part)))
+      (is (= "adhoc_viz" (:data-type part)))
+      (is (= 1 (:version part)))
+      (is (= value (:data part)))))
+
+  (testing "handles minimal value without title/display"
+    (let [value {:query {:database 1} :link "/question#xyz"}
+          part (streaming/adhoc-viz-part value)]
+      (is (= :data (:type part)))
+      (is (= "adhoc_viz" (:data-type part)))
+      (is (= value (:data part))))))
+
+(deftest static-viz-part-test
+  (testing "creates static_viz data part with correct structure"
+    (let [value {:entity_id 42}
+          part (streaming/static-viz-part value)]
+      (is (= :data (:type part)))
+      (is (= "static_viz" (:data-type part)))
+      (is (= 1 (:version part)))
+      (is (= value (:data part))))))
+
 (deftest data-type-constants-test
   (testing "data type constants are defined correctly"
     (is (= "navigate_to" streaming/navigate-to-type))
     (is (= "state" streaming/state-type))
     (is (= "todo_list" streaming/todo-list-type))
     (is (= "code_edit" streaming/code-edit-type))
-    (is (= "transform_suggestion" streaming/transform-suggestion-type))))
+    (is (= "transform_suggestion" streaming/transform-suggestion-type))
+    (is (= "adhoc_viz" streaming/adhoc-viz-type))
+    (is (= "static_viz" streaming/static-viz-type))))
 
 ;;; Transducer Tests
 
