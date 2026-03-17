@@ -180,6 +180,12 @@
     ;; [[qp.card/process-query-for-card]]
     (api/read-check :model/Dashboard dashboard-id)
     (check-card-and-dashcard-are-in-dashboard dashboard-id card-id dashcard-id)
+    ;; Early view-data permission check so that blocked users get a 403 *before* parameter
+    ;; resolution. Without this, a missing required parameter would produce a 400, and the
+    ;; frontend couldn't distinguish "no permission" (hide inline filters) from "missing
+    ;; params" (show inline filters). The QP middleware's check-block-permissions does a
+    ;; thorough check later on the resolved query; this is intentionally just the card's
+    ;; database_id since we don't have the resolved query yet.
     (api/check-403
      (not= :blocked
            (perms/most-permissive-database-permission-for-user
