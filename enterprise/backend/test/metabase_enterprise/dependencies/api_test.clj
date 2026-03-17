@@ -18,7 +18,6 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.queries.models.card :as card]
-   [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -1557,7 +1556,6 @@
 (deftest ^:sequential unreferenced-archived-segment-test
   (testing "GET /api/ee/dependencies/graph/unreferenced with archived parameter for segments"
     (mt/with-premium-features #{:dependencies}
-      (while (#'dependencies.backfill/backfill-dependencies!))
       (let [products-id (mt/id :products)
             price-field-id (mt/id :products :price)]
         (mt/with-temp [:model/Segment {unreffed-segment-id :id :as unreffed-segment} {:name "Unreferenced Segment - archivedtest"
@@ -1569,6 +1567,7 @@
                                                                                       :archived true}]
           (events/publish-event! :event/segment-create {:object unreffed-segment :user-id (mt/user->id :crowberto)})
           (events/publish-event! :event/segment-create {:object archived-segment :user-id (mt/user->id :crowberto)})
+          (while (#'dependencies.backfill/backfill-dependencies!))
           (testing "archived=false (default) excludes archived segment"
             (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=segment&query=archivedtest")
                   segment-ids (set (map :id (:data response)))]
@@ -1639,8 +1638,7 @@
   (testing "GET /api/ee/dependencies/unreferenced - should not return tables from the audit database"
     (mt/with-premium-features #{:dependencies}
       (mt/with-empty-h2-app-db!
-        (binding [search.ingestion/*disable-updates* true]
-          (mbc/ensure-audit-db-installed!))
+        (mbc/ensure-audit-db-installed!)
         (is (=? {:data   []
                  :total  0}
                 (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=table&query=notification")))))))
