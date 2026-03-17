@@ -438,14 +438,54 @@ describe("Remote Sync", () => {
     });
   });
 
-  describe("remote sync admin settings page", () => {
-    beforeEach(() => {
-      H.restore();
-      H.activateToken("bleeding-edge");
-      H.setupGitSync();
-      cy.signInAsAdmin();
-    });
+  describe("read-only mode", () => {
+    it("can change branches", () => {
+      const UPDATED_REMOTE_QUESTION_NAME = "New Name";
 
+      H.copySyncedCollectionFixture();
+      H.commitToRepo();
+      H.configureGit("read-only");
+
+      cy.visit("/");
+
+      H.navigationSidebar()
+        .findByRole("treeitem", { name: /Synced Collection/ })
+        .click();
+      H.collectionTable().findByText(REMOTE_QUESTION_NAME);
+
+      // Make a change, and commit it to the branch
+      H.checkoutSyncedCollectionBranch("test");
+      H.updateRemoteQuestion((doc) => {
+        doc.name = UPDATED_REMOTE_QUESTION_NAME;
+        return doc;
+      });
+
+      cy.visit("/admin/settings/remote-sync");
+      cy.findByLabelText("Sync branch").scrollIntoView().clear().type("test");
+      cy.findByTestId("remote-sync-submit-button").click();
+
+      cy.findByTestId("admin-layout-content")
+        .findByText("Success")
+        .should("exist");
+
+      cy.findByRole("dialog", { name: "Switch branches?" })
+        .button("Continue")
+        .click();
+
+      H.waitForTask({ taskName: "import" });
+
+      cy.findByTestId("remote-sync-submit-button").should("be.disabled");
+
+      cy.visit("/");
+
+      H.navigationSidebar()
+        .findByRole("treeitem", { name: /Synced Collection/ })
+        .click();
+      H.collectionTable().findByText(UPDATED_REMOTE_QUESTION_NAME);
+    });
+  });
+
+  describe("remote sync admin settings page", () => {
     it("can set up read-write mode", () => {
       cy.visit("/admin/settings/remote-sync");
       cy.findByLabelText(/repository url/i)
@@ -587,74 +627,10 @@ describe("Remote Sync", () => {
     });
   });
 
-  describe("read-only mode", () => {
-    beforeEach(() => {
-      H.restore();
-      cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
-      H.setupGitSync();
-    });
-
-    it("can change branches", () => {
-      const UPDATED_REMOTE_QUESTION_NAME = "New Name";
-
-      H.copySyncedCollectionFixture();
-      H.commitToRepo();
-      H.configureGit("read-only");
-
-      cy.visit("/");
-
-      H.navigationSidebar()
-        .findByRole("treeitem", { name: /Synced Collection/ })
-        .click();
-      H.collectionTable().findByText(REMOTE_QUESTION_NAME);
-
-      // Make a change, and commit it to the branch
-      H.checkoutSyncedCollectionBranch("test");
-      H.updateRemoteQuestion((doc) => {
-        doc.name = UPDATED_REMOTE_QUESTION_NAME;
-        return doc;
-      });
-
-      cy.visit("/admin/settings/remote-sync");
-      cy.findByLabelText("Sync branch").scrollIntoView().clear().type("test");
-      cy.findByTestId("remote-sync-submit-button").click();
-
-      cy.findByTestId("admin-layout-content")
-        .findByText("Success")
-        .should("exist");
-
-      cy.findByRole("dialog", { name: "Switch branches?" })
-        .button("Continue")
-        .click();
-
-      H.waitForTask({ taskName: "import" });
-
-      cy.findByTestId("remote-sync-submit-button").should("be.disabled");
-
-      cy.visit("/");
-
-      H.navigationSidebar()
-        .findByRole("treeitem", { name: /Synced Collection/ })
-        .click();
-      H.collectionTable().findByText(UPDATED_REMOTE_QUESTION_NAME);
-    });
-  });
-
   describe("shared tenant collections", () => {
     beforeEach(() => {
-      H.restore();
-      cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
-      H.setupGitSync();
-      H.interceptTask();
-
       // Enable tenants feature
       H.enableTenants();
-    });
-
-    afterEach(() => {
-      H.expectNoBadSnowplowEvents();
     });
 
     describe("admin settings", () => {
