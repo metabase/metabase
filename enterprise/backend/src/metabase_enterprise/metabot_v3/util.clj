@@ -1,9 +1,13 @@
 (ns metabase-enterprise.metabot-v3.util
   (:require
+   [clojure.data.xml :as xml]
    [clojure.set :as set]
+   [clojure.string :as str]
    [clojure.walk :as walk]
    [metabase.util :as u]
    [metabase.util.json :as json]))
+
+(set! *warn-on-reflection* true)
 
 (defn- safe-case-updater
   [f]
@@ -73,5 +77,19 @@
                                                   :finish_reason (:finishReason v)
                                                   :usage         (-> (:usage v)
                                                                      (dissoc :promptTokens :completionTokens))})
-                                               block))))))
+                                               block)
+                          ;; START_STEP and FINISH_STEP are metadata, not stored as messages
+                          (:START_STEP
+                           :FINISH_STEP)  [])))))
         lines))
+
+(defn xml
+  "Format hiccup-like data structure to an XML string"
+  [& bits]
+  (let [fmt (fn [v]
+              (let [res ^String (xml/indent-str (xml/sexp-as-element v))]
+                (cond-> res
+                  ;; strip preamble
+                  (str/starts-with? res "<?xml") (subs (inc (.indexOf res "\n"))))))]
+    (->> (map fmt bits)
+         (str/join "\n"))))
