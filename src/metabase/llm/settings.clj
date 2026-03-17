@@ -7,7 +7,7 @@
 
 (defsetting llm-anthropic-api-key
   (deferred-tru "Anthropic API key for AI-assisted SQL generation.")
-  :encryption :when-encryption-key-set
+  :sensitive? true
   :visibility :settings-manager
   :export? false
   :setter     (fn [new-value]

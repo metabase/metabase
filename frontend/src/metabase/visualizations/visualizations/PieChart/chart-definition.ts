@@ -231,7 +231,7 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
       },
       widget: "radio",
       getDefault: getDefaultPercentVisibility,
-      props: {
+      getProps: () => ({
         options: [
           {
             get name() {
@@ -258,7 +258,7 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
             value: "both",
           },
         ],
-      },
+      }),
     },
     "pie.decimal_places": {
       get section() {
@@ -268,12 +268,12 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
         return t`Number of decimal places`;
       },
       widget: "number",
-      props: {
+      getProps: () => ({
         get placeholder() {
           return t`Auto`;
         },
         options: { isInteger: true, isNonNegative: true },
-      },
+      }),
       getHidden: (_, settings) =>
         settings["pie.percent_visibility"] == null ||
         settings["pie.percent_visibility"] === "off",
