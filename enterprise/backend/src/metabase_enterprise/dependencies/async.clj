@@ -30,11 +30,9 @@
 
 (defmethod ig/init-key ::executor [_key _args]
   (locking executor
-    (let [old-executor @@executor]
-      (reset! executor (delay (do (when old-executor
-                                    (stop old-executor))
-                                  (start))))
-      @@executor)))
+    (swap! executor #(delay (do (when @%
+                                  (stop @%))
+                                (start))))))
 
 (defmethod ig/halt-key! ::executor [_key _this]
   (locking executor
