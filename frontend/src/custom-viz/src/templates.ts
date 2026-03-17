@@ -263,7 +263,7 @@ const StaticVisualizationComponent = (
   const width = 540;
   const height = 360;
   const { series, settings } = props;
-  const { threshold } = settings;
+  const { threshold = 0 } = settings;
   const value = series[0].data.rows[0][0];
 
   if (typeof value !== "number" || typeof threshold !== "number") {
