@@ -162,6 +162,7 @@ export function generateIndexTsx(name: string): string {
   return `\
 import type {
   CreateCustomVisualization,
+  CustomStaticVisualizationProps,
   CustomVisualizationProps,
 } from "@metabase/custom-viz";
 
