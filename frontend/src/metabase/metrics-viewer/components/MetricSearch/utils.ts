@@ -360,7 +360,7 @@ export function cleanupParens(
   return current;
 }
 
-type ExcludeMetric = {
+export type ExcludeMetric = {
   id: number;
   sourceType: "metric" | "measure";
 };

@@ -13,12 +13,12 @@ import { addUndo } from "metabase/redux/undo";
 import { getIsWorkspace } from "metabase/selectors/routing";
 import { getUser } from "metabase/selectors/user";
 import {
-  type JSONValue,
   aiStreamingQuery,
   findMatchingInflightAiStreamingRequests,
 } from "metabase-enterprise/api/ai-streaming";
 import type { ProcessedChatResponse } from "metabase-enterprise/api/ai-streaming/process-stream";
 import type {
+  JSONValue,
   MetabotAgentRequest,
   MetabotAgentResponse,
   MetabotChatContext,
@@ -103,17 +103,13 @@ const handleResponseError = (error: unknown): PromptErrorOutcome => {
         shouldRetry: true,
       }),
     )
-    .with(
-      { message: P.string.startsWith("Response status: 5") },
-      { status: 500 },
-      () => ({
-        errorMessage: {
-          type: "alert" as const,
-          message: METABOT_ERR_MSG.agentOffline,
-        },
-        shouldRetry: true,
-      }),
-    )
+    .with(P.string, (err) => ({
+      errorMessage: {
+        type: "message" as const,
+        message: METABOT_ERR_MSG.format(err),
+      },
+      shouldRetry: true,
+    }))
     .otherwise(() => ({
       errorMessage: {
         type: "message" as const,
