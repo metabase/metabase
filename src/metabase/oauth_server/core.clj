@@ -40,6 +40,12 @@
   [_request]
   nil)
 
+(defenterprise revocation-handler
+  "Handles the token revocation endpoint (POST /oauth/revoke), or returns nil if unavailable."
+  metabase-enterprise.oauth-server.api
+  [_request]
+  nil)
+
 (defenterprise token-handler
   "Handles the token endpoint (POST /oauth/token), or returns nil if unavailable."
   metabase-enterprise.oauth-server.api

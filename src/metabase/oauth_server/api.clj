@@ -43,4 +43,7 @@
            not-found-response))
      (POST "/token" request
        (or (oauth-server/token-handler request)
+           not-found-response))
+     (POST "/revoke" request
+       (or (oauth-server/revocation-handler request)
            not-found-response)))))

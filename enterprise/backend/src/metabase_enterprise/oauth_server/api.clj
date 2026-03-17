@@ -16,8 +16,7 @@
    [oidc-provider.util :as oidc-util]
    [ring.util.response :as response])
   (:import
-   (java.net URLEncoder)
-   (java.security MessageDigest)))
+   (java.net URLEncoder)))
 
 (def ^:private csrf-cookie-name "metabase.OAUTH_CSRF")
 
@@ -25,11 +24,6 @@
   "Generate a random 32-hex-char CSRF token."
   []
   (codecs/bytes->hex (nonce/random-bytes 16)))
-
-(defn- constant-time-equals?
-  "Constant-time string comparison to prevent timing attacks."
-  [^String a ^String b]
-  (MessageDigest/isEqual (.getBytes a "UTF-8") (.getBytes b "UTF-8")))
 
 (defenterprise openid-discovery-handler
   "Returns the OIDC discovery document."
@@ -100,22 +94,10 @@
         {:status  401
          :headers {"Content-Type" "application/json"}
          :body    {"error" "invalid_token"}}
-        (let [client (proto/get-client (:client-store provider) client-id)]
-          (if (and client
-                   (:registration-access-token-hash client)
-                   (oidc-util/verify-client-secret token (:registration-access-token-hash client)))
-            {:status  200
-             :headers {"Content-Type" "application/json"}
-             :body    {"client_id"                  (:client-id client)
-                       "redirect_uris"              (:redirect-uris client)
-                       "grant_types"                (:grant-types client)
-                       "response_types"             (:response-types client)
-                       "token_endpoint_auth_method" (or (:token-endpoint-auth-method client) "none")
-                       "scope"                      (when (seq (:scopes client))
-                                                      (str/join " " (:scopes client)))}}
-            {:status  401
-             :headers {"Content-Type" "application/json"}
-             :body    {"error" "invalid_token"}}))))))
+        (let [{:keys [status body]} (oidc/dynamic-read-client provider client-id token)]
+          {:status  status
+           :headers {"Content-Type" "application/json"}
+           :body    body})))))
 
 (defn- build-query-string
   "Build a URL query string from a map of parameters.
@@ -200,7 +182,7 @@
             form-token     (str (:csrf_token params))]
         (if (or (str/blank? cookie-token)
                 (str/blank? form-token)
-                (not (constant-time-equals? cookie-token form-token)))
+                (not (oidc-util/constant-time-eq? cookie-token form-token)))
           {:status  403
            :headers {"Content-Type" "application/json"}
            :body    {:error "csrf_validation_failed"}}
@@ -245,6 +227,13 @@
                :authorization_servers     [site-url]
                :scopes_supported          (oauth-server/all-agent-scopes)
                :bearer_methods_supported  ["header"]}}))
+
+(defenterprise revocation-handler
+  "Handles the token revocation endpoint (POST /oauth/revoke) per RFC 7009."
+  :feature :metabot-v3
+  [request]
+  (when-let [provider (oauth-server/get-provider)]
+    ((oidc/revocation-handler provider) request)))
 
 (defenterprise token-handler
   "Handles the token endpoint (POST /oauth/token)."

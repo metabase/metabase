@@ -41,10 +41,15 @@
   (update-keys m u/->snake_case_en))
 
 (defn- db-row->client-config
-  "Convert a DB row from :model/OAuthClient to the protocol's ClientConfig shape."
+  "Convert a DB row from :model/OAuthClient to the protocol's ClientConfig shape.
+   Aliases :registration-access-token-hash as :registration-access-token so that
+   the oidc-provider library can find the hash where it expects it."
   [row]
   (when row
-    (select-and-kebab-keys row client-db-columns)))
+    (let [m (select-and-kebab-keys row client-db-columns)]
+      (cond-> m
+        (:registration-access-token-hash m)
+        (assoc :registration-access-token (:registration-access-token-hash m))))))
 
 (defn- client-config->db-row
   "Convert a protocol ClientConfig map to DB column format for insert/update."
@@ -107,17 +112,17 @@
           secret       (:client-secret client-config)
           rat          (:registration-access-token client-config)
           secret-hash  (when secret (oidc-util/hash-client-secret secret))
-          rat-hash     (when rat (oidc-util/hash-client-secret rat))
           config       (-> client-config
                            (assoc :client-id client-id)
                            (cond-> secret-hash (assoc :client-secret-hash secret-hash)
-                                   rat-hash    (assoc :registration-access-token-hash rat-hash))
+                                   ;; The library pre-hashes the registration-access-token
+                                   ;; before calling register-client, so store it as-is.
+                                   rat (assoc :registration-access-token-hash rat))
                            (dissoc :client-secret :registration-access-token))
           row          (client-config->db-row config)]
       (t2/insert! :model/OAuthClient row)
-      ;; Return config with plaintext values preserved for response building
+      ;; Return config with the original values preserved for response building
       ;; (e.g. handle-registration-request needs them for the wire response).
-      ;; These are NOT stored in the DB — only hashes are persisted.
       (cond-> config
         secret (assoc :client-secret secret)
         rat    (assoc :registration-access-token rat))))
@@ -156,7 +161,13 @@
 
   (delete-authorization-code [_ code]
     (t2/delete! :model/OAuthAuthorizationCode :code code)
-    true))
+    true)
+
+  (consume-authorization-code [_ code]
+    (t2/with-transaction [_conn]
+      (when-let [row (t2/select-one :model/OAuthAuthorizationCode :code code)]
+        (t2/delete! :model/OAuthAuthorizationCode :code code)
+        (db-row->auth-code row)))))
 
 ;;; ------------------------------------------------ TokenStore --------------------------------------------------------
 

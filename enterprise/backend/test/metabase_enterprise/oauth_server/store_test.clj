@@ -106,29 +106,33 @@
             (is (nil? (:client-secret-hash fetched)))
             (is (= "none" (:token-endpoint-auth-method fetched)))))))))
 
-(deftest client-store-registration-access-token-hashing-test
+(deftest client-store-registration-access-token-test
   (mt/with-premium-features #{:metabot-v3}
     (t2/with-transaction [_conn nil {:rollback-only true}]
-      (let [cs     (store/create-client-store)
-            rat    "my-registration-access-token"
-            config {:client-id                 (str (random-uuid))
-                    :redirect-uris             ["https://example.com/callback"]
-                    :grant-types               ["authorization_code"]
-                    :response-types            ["code"]
-                    :scopes                    ["openid"]
-                    :registration-access-token rat}
-            result (proto/register-client cs config)]
-        (testing "register-client returns hash and preserves plaintext for response building"
+      (let [cs       (store/create-client-store)
+            rat      "my-registration-access-token"
+            rat-hash (oidc-util/hash-client-secret rat)
+            config   {:client-id                 (str (random-uuid))
+                      :redirect-uris             ["https://example.com/callback"]
+                      :grant-types               ["authorization_code"]
+                      :response-types            ["code"]
+                      :scopes                    ["openid"]
+                      ;; The library pre-hashes before calling register-client
+                      :registration-access-token rat-hash}
+            result   (proto/register-client cs config)]
+        (testing "register-client stores the hash and preserves it in the return value"
           (is (=? {:registration-access-token-hash string?
-                   :registration-access-token      rat}
+                   :registration-access-token      rat-hash}
                   result)))
-        (testing "get-client returns only the hash, not plaintext"
+        (testing "get-client returns hash under both :registration-access-token-hash and :registration-access-token"
           (let [fetched (proto/get-client cs (:client-id config))]
-            (is (=? {:registration-access-token-hash string?} fetched))
-            (is (nil? (:registration-access-token fetched)))))
-        (testing "stored hash verifies against original token"
+            (is (=? {:registration-access-token-hash string?
+                     :registration-access-token      string?} fetched))
+            (is (= (:registration-access-token-hash fetched)
+                   (:registration-access-token fetched)))))
+        (testing "stored hash verifies against original plaintext token"
           (let [fetched (proto/get-client cs (:client-id config))]
-            (is (oidc-util/verify-client-secret rat (:registration-access-token-hash fetched)))))))))
+            (is (oidc-util/verify-client-secret rat (:registration-access-token fetched)))))))))
 
 ;;; ----------------------------------------- AuthorizationCodeStore ---------------------------------------------------
 
@@ -184,6 +188,39 @@
     (let [acs (store/create-authorization-code-store)]
       (testing "get-authorization-code returns nil for nonexistent code"
         (is (nil? (proto/get-authorization-code acs "nonexistent-code")))))))
+
+(deftest authorization-code-store-consume-test
+  (mt/with-premium-features #{:metabot-v3}
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (let [acs       (store/create-authorization-code-store)
+            code      (str (random-uuid))
+            user-id   (mt/user->id :rasta)
+            client-id (str (random-uuid))
+            expiry    (+ (System/currentTimeMillis) 600000)]
+        (proto/save-authorization-code acs code user-id client-id
+                                       "https://example.com/callback"
+                                       ["openid" "profile"]
+                                       "test-nonce"
+                                       expiry
+                                       "challenge123"
+                                       "S256"
+                                       ["https://api.example.com"])
+        (testing "consume returns the saved code data"
+          (let [consumed (proto/consume-authorization-code acs code)]
+            (is (=? {:user-id               (str user-id)
+                     :client-id             client-id
+                     :redirect-uri          "https://example.com/callback"
+                     :scope                 ["openid" "profile"]
+                     :nonce                 "test-nonce"
+                     :expiry                expiry
+                     :code-challenge        "challenge123"
+                     :code-challenge-method "S256"
+                     :resource              ["https://api.example.com"]}
+                    consumed))))
+        (testing "get returns nil after consume"
+          (is (nil? (proto/get-authorization-code acs code))))
+        (testing "consuming again returns nil"
+          (is (nil? (proto/consume-authorization-code acs code))))))))
 
 ;;; ------------------------------------------------ TokenStore --------------------------------------------------------
 

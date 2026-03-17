@@ -822,3 +822,60 @@
                              :client_secret client-secret}
                             :expected-status 400)]
               (is (=? {:error string?} response)))))))))
+
+;;; ------------------------------------------ Revocation Endpoint -----------------------------------------------
+
+(defn- revoke-request!
+  "POST to /oauth/revoke with form-encoded params."
+  [params & {:keys [expected-status authorization]
+             :or   {expected-status 200}}]
+  (let [request-options (cond-> {:headers {"content-type" "application/x-www-form-urlencoded"}}
+                          authorization (assoc-in [:headers "authorization"] authorization))]
+    (client/client :post expected-status "oauth/revoke"
+                   {:request-options request-options}
+                   params)))
+
+(deftest revocation-valid-token-test
+  (testing "Revocation returns 200 for a valid access token"
+    (mt/with-premium-features #{:metabot-v3}
+      (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+        (t2/with-transaction [_conn nil {:rollback-only true}]
+          (let [test-client   (create-test-client!)
+                client-id     (:client_id test-client)
+                client-secret (:client_secret test-client)
+                code          (authorize-and-get-code! client-id)
+                token-resp    (token-request!
+                               {:grant_type    "authorization_code"
+                                :code          code
+                                :redirect_uri  "https://example.com/callback"
+                                :client_id     client-id
+                                :client_secret client-secret})
+                access-token  (:access_token token-resp)]
+            (is (some? access-token))
+            (revoke-request!
+             {:token         access-token
+              :client_id     client-id
+              :client_secret client-secret})))))))
+
+(deftest revocation-unknown-token-test
+  (testing "Revocation returns 200 for an unknown token (RFC 7009 §2.2)"
+    (mt/with-premium-features #{:metabot-v3}
+      (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+        (t2/with-transaction [_conn nil {:rollback-only true}]
+          (let [test-client   (create-test-client!)
+                client-id     (:client_id test-client)
+                client-secret (:client_secret test-client)]
+            (revoke-request!
+             {:token         "nonexistent-token"
+              :client_id     client-id
+              :client_secret client-secret})))))))
+
+(deftest discovery-includes-revocation-endpoint-test
+  (testing "Discovery document includes revocation_endpoint"
+    (mt/with-premium-features #{:metabot-v3}
+      (mt/with-temporary-setting-values [site-url "http://localhost:3000"
+                                         oauth-server-dynamic-registration-enabled true]
+        (let [response (mt/user-http-request :crowberto :get 200
+                                             ".well-known/openid-configuration")]
+          (is (= "http://localhost:3000/oauth/revoke"
+                 (:revocation_endpoint response))))))))

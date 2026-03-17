@@ -49,6 +49,7 @@
      :token-endpoint                 (str base-url "/oauth/token")
      :jwks-uri                       (str base-url "/oauth/jwks")
      :registration-endpoint          (str base-url "/oauth/register")
+     :revocation-endpoint            (str base-url "/oauth/revoke")
      :signing-key                    signing-key
      :access-token-ttl-seconds       (oauth-settings/oauth-server-access-token-ttl)
      :id-token-ttl-seconds           (oauth-settings/oauth-server-id-token-ttl)
