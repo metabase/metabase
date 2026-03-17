@@ -403,8 +403,11 @@ class Question {
    * The `visualization_settings` in card object doesn't contain default settings,
    * so you can provide the complete visualization settings object to `alertType`
    * for taking those into account
+   *
    */
-  alertType(visualizationSettings): NotificationTriggerType | null {
+  alertType(
+    visualizationSettings?: VisualizationSettings,
+  ): NotificationTriggerType | null {
     const display = this.display();
 
     if (!this.canRun()) {

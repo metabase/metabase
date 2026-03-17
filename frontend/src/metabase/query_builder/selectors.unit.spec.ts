@@ -12,6 +12,7 @@ import {
 import registerVisualizations from "metabase/visualizations/register";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
+import type { Card, StructuredDatasetQuery } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
@@ -31,6 +32,10 @@ import {
   SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+import type {
+  QueryBuilderState,
+  QueryBuilderUIControls,
+} from "metabase-types/store";
 import {
   createMockQueryBuilderState,
   createMockQueryBuilderUIControlsState,
@@ -39,7 +44,14 @@ import {
 
 registerVisualizations();
 
-function getBaseState({ uiControls = {}, ...state } = {}) {
+type BaseQueryBuilderState = Omit<Partial<QueryBuilderState>, "uiControls"> & {
+  uiControls?: Partial<QueryBuilderUIControls>;
+};
+
+function getBaseState({
+  uiControls = {},
+  ...state
+}: BaseQueryBuilderState = {}) {
   return createMockState({
     entities: createMockEntitiesState({
       databases: [createSampleDatabase()],
@@ -55,7 +67,11 @@ function getBaseState({ uiControls = {}, ...state } = {}) {
   });
 }
 
-function getBaseCard(opts) {
+type BaseCardOpts = Omit<Partial<Card>, "dataset_query"> & {
+  dataset_query?: Partial<StructuredDatasetQuery>;
+};
+
+function getBaseCard(opts: BaseCardOpts) {
   return {
     ...opts,
     dataset_query: {
@@ -353,7 +369,7 @@ describe("getIsResultDirty", () => {
       });
     }
 
-    function getState(state) {
+    function getState(state: Partial<QueryBuilderState>) {
       return getBaseState(state);
     }
 

@@ -212,9 +212,9 @@ export const queryCompleted = (question: Question, queryResults: Dataset[]) => {
     if (isDirty) {
       const series = [{ card: question.card(), data, error }];
       const previousSeries =
-        prevCard && (prevData || prevError)
+        prevCard && prevData
           ? [{ card: prevCard, data: prevData, error: prevError }]
-          : null;
+          : undefined;
       if (series && previousSeries) {
         question = question.setSettings(
           syncVizSettingsWithSeries(

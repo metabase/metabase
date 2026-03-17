@@ -536,16 +536,16 @@ export const getIsResultDirty = createSelector(
     const isEditable =
       !!currentQuestion &&
       Lib.queryDisplayInfo(currentQuestion.query()).isEditable;
-    return (
+    return Boolean(
       haveParametersChanged ||
-      (isEditable &&
-        tableMetadata &&
-        !areQueriesEquivalent({
-          originalQuestion,
-          lastRunQuestion,
-          currentQuestion,
-          tableMetadata,
-        }))
+        (isEditable &&
+          tableMetadata &&
+          !areQueriesEquivalent({
+            originalQuestion,
+            lastRunQuestion,
+            currentQuestion,
+            tableMetadata,
+          })),
     );
   },
 );

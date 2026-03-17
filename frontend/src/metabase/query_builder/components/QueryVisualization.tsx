@@ -1,10 +1,10 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { useTimeout } from "react-use";
 import { c, t } from "ttag";
 
 import EmptyCodeResult from "assets/img/empty-states/code.svg";
+import type { NavigateToNewCardParams } from "embedding-sdk-bundle/types";
 import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
@@ -13,8 +13,16 @@ import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import { useSelector } from "metabase/lib/redux";
 import { getWhiteLabeledLoadingMessageFactory } from "metabase/selectors/whitelabel";
 import { Box, Flex, Stack, Text, Title } from "metabase/ui";
+import type {
+  ClickActionsMode,
+  QueryClickActionsMode,
+} from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
+import type { Dataset, DatasetColumn, RawSeries } from "metabase-types/api";
+import type { EntityToken } from "metabase-types/api/entity";
+import type { QueryBuilderMode } from "metabase-types/store";
 
 import { RunButtonWithTooltip } from "./RunButtonWithTooltip";
 import { VisualizationError } from "./VisualizationError";
@@ -23,7 +31,47 @@ import { Warnings } from "./Warnings";
 
 const SLOW_MESSAGE_TIMEOUT = 4000;
 
-export function QueryVisualization(props) {
+type QueryVisualizationProps = {
+  className?: string;
+  question: Question;
+  isRunnable?: boolean;
+  isRunning?: boolean;
+  isObjectDetail?: boolean;
+  isDirty?: boolean;
+  isResultDirty?: boolean;
+  isNativeEditorOpen?: boolean;
+  isDirtyStateShownForError?: boolean;
+  runQuestionQuery?: () => void;
+  cancelQuery?: () => void;
+  queryBuilderMode?: QueryBuilderMode;
+  result?: Dataset | Pick<Dataset, "error" | "error_type"> | null;
+  rawSeries?: RawSeries | null;
+  maxTableRows?: number;
+  navigateToNewCardInsideQB?:
+    | ((params: NavigateToNewCardParams) => Promise<void>)
+    | null;
+  onNavigateBack?: () => void;
+  onHeaderColumnReorder?: (colIndex: number) => void;
+  onUpdateQuestion?: () => void;
+  isShowingDetailsOnlyColumns?: boolean;
+  hasMetadataPopovers?: boolean;
+  handleVisualizationClick?: (clicked: {
+    element: unknown;
+    column: DatasetColumn;
+  }) => void;
+  tableHeaderHeight?: number;
+  renderTableHeader?: (
+    column: DatasetColumn,
+    columnIndex: number,
+  ) => JSX.Element;
+  noHeader?: boolean;
+  mode?: QueryClickActionsMode | ClickActionsMode | null | undefined;
+  token?: EntityToken | null | undefined;
+  scrollToColumn?: number;
+  renderEmptyMessage?: boolean;
+};
+
+export function QueryVisualization(props: QueryVisualizationProps) {
   const {
     className,
     question,
@@ -38,7 +86,7 @@ export function QueryVisualization(props) {
   } = props;
 
   const canRun = Lib.canRun(question.query(), question.type());
-  const [warnings, setWarnings] = useState([]);
+  const [warnings, setWarnings] = useState<string[]>([]);
   const isDirtyStateShown =
     canRun &&
     isResultDirty &&
@@ -91,12 +139,14 @@ export function QueryVisualization(props) {
         ) : result?.data ? (
           <VisualizationResult
             {...props}
+            result={result as Dataset}
+            rawSeries={props.rawSeries ?? undefined}
             maxTableRows={maxTableRows}
             className={CS.spread}
             onUpdateWarnings={setWarnings}
           />
         ) : !isRunning && !isDirtyStateShown ? (
-          <VisualizationEmptyState className={CS.spread}>
+          <VisualizationEmptyState>
             {t`Here's where your results will appear`}
           </VisualizationEmptyState>
         ) : null}
@@ -105,7 +155,7 @@ export function QueryVisualization(props) {
   );
 }
 
-const VisualizationEmptyState = ({ children }) => {
+const VisualizationEmptyState = ({ children }: { children: ReactNode }) => {
   const keyboardShortcut = getRunQueryShortcut();
 
   return (
@@ -133,7 +183,7 @@ export function VisualizationRunningState({ className = "" }) {
 
   // show the slower loading message only when the loadingMessage is
   // not customized
-  const message = getLoadingMessage(isSlow());
+  const message = getLoadingMessage(isSlow() ?? false);
 
   return (
     <Flex
@@ -153,12 +203,18 @@ export function VisualizationRunningState({ className = "" }) {
 
 export const VisualizationDirtyState = ({
   className,
-  result,
   isRunning,
   isResultDirty,
   runQuestionQuery,
   cancelQuery,
   hidden,
+}: {
+  className?: string;
+  isRunning?: boolean;
+  isResultDirty?: boolean;
+  runQuestionQuery: () => void;
+  cancelQuery: () => void;
+  hidden?: boolean;
 }) => {
   const keyboardShortcut = getRunQueryShortcut();
 

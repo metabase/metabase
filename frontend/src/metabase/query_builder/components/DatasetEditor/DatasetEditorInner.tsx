@@ -74,7 +74,11 @@ import type {
   VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
-import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
+import type {
+  DatasetEditorTab,
+  QueryBuilderMode,
+  State,
+} from "metabase-types/store";
 
 import type { DataReferenceItem } from "../dataref/types";
 
@@ -97,11 +101,11 @@ export type DatasetEditorInnerProps = {
   metadata?: Metadata;
   metadataDiff: MetadataDiff;
   resultsMetadata?: ResultsMetadata | null;
-  isMetadataDirty: boolean;
+  isMetadataDirty?: boolean;
   result?: { error?: unknown } | null;
   height?: number;
   isDirty: boolean;
-  isResultDirty: boolean;
+  isResultDirty?: boolean;
   isRunning: boolean;
   setQueryBuilderMode: (
     mode: QueryBuilderMode,
@@ -140,7 +144,7 @@ export type DatasetEditorInnerProps = {
 const INITIAL_NOTEBOOK_EDITOR_HEIGHT = 500;
 const TABLE_HEADER_HEIGHT = 45;
 
-function mapStateToProps(state: any) {
+function mapStateToProps(state: State) {
   return {
     metadata: getMetadata(state),
     metadataDiff: getMetadataDiff(state),
@@ -759,7 +763,9 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
                 isShowingDetailsOnlyColumns={datasetEditorTab !== "metadata"}
                 hasMetadataPopovers={false}
                 handleVisualizationClick={handleTableElementClick}
-                tableHeaderHeight={isEditingColumns && TABLE_HEADER_HEIGHT}
+                tableHeaderHeight={
+                  isEditingColumns ? TABLE_HEADER_HEIGHT : undefined
+                }
                 renderTableHeader={renderTableHeader}
                 scrollToColumn={focusedFieldIndex + scrollToColumnModifier}
                 renderEmptyMessage={isEditingColumns}

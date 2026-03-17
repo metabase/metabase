@@ -82,6 +82,7 @@ import type {
 import type { Dispatch, State } from "metabase-types/store";
 
 import { EmptyVizState } from "../EmptyVizState";
+import type { ObjectId } from "../ObjectDetail/types";
 
 import ChartSettingsErrorButton from "./ChartSettingsErrorButton";
 import { ErrorView } from "./ErrorView";
@@ -116,7 +117,7 @@ type ForwardedRefProps = {
 type OnChangeCardAndRunOpts = {
   nextCard: Card;
   previousCard: Card;
-  objectId?: number;
+  objectId: ObjectId;
 };
 
 type VisualizationOwnProps = {

@@ -121,7 +121,7 @@ export const getIdValue = ({
 };
 
 export function getSingleResultsRow(data: DatasetData) {
-  return data.rows.length === 1 ? data.rows[0] : null;
+  return data.rows.length === 1 ? data.rows[0] : undefined;
 }
 
 export const getSinglePKIndex = (cols: DatasetColumn[]) => {

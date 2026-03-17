@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { FixedSizeIcon, Flex, Tooltip } from "metabase/ui";
+import type { Dataset } from "metabase-types/api";
 
 import { formatDuration } from "./utils";
 
@@ -34,5 +35,5 @@ export const ExecutionTime = ({ time }: Props) => {
   );
 };
 
-ExecutionTime.shouldRender = ({ result }: { result: any }) =>
-  result && !result.cached && result.running_time !== undefined;
+ExecutionTime.shouldRender = ({ result }: { result: Dataset | null }) =>
+  Boolean(result && !result.cached && result.running_time !== undefined);
