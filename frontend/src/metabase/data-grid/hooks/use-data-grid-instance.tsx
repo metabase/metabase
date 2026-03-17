@@ -262,7 +262,6 @@ export const useDataGridInstance = <TData, TValue>({
     defaultRowHeight,
     wrappedColumnsOptions,
     measureBodyCellDimensions,
-    pinnedTopRowsCount,
   });
 
   const rowPinning = useRowPinningByCount({

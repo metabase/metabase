@@ -4,7 +4,8 @@ import { useCallback, useLayoutEffect, useRef } from "react";
 import type { ColumnOptions } from "../../types";
 import type { VirtualGrid } from "../use-virtual-grid";
 
-import { getRowIndex } from "./utils";
+import type { RowIndices, UseRowHeightsResult } from "./types";
+import { getRowIndices } from "./utils";
 
 type UseRowHeightsProps<TData extends RowData, TValue> = {
   data: TData[];
@@ -14,15 +15,6 @@ type UseRowHeightsProps<TData extends RowData, TValue> = {
     text: React.ReactNode,
     width?: number,
   ) => { width: number; height: number };
-  pinnedTopRowsCount: number;
-};
-
-type UseRowHeightsResult<TData> = {
-  tableRef: React.MutableRefObject<Table<TData> | undefined>;
-  virtualGridRef: React.MutableRefObject<VirtualGrid | undefined>;
-  rowMeasureRef: (element: HTMLDivElement | null) => void;
-  getRowHeight: (rowIndex: number) => number;
-  remeasureAll: () => void;
 };
 
 export const useRowHeights = <TData extends RowData, TValue>({
@@ -30,26 +22,25 @@ export const useRowHeights = <TData extends RowData, TValue>({
   defaultRowHeight,
   wrappedColumnsOptions,
   measureBodyCellDimensions,
-  pinnedTopRowsCount,
 }: UseRowHeightsProps<TData, TValue>): UseRowHeightsResult<TData> => {
   const tableRef = useRef<Table<TData>>();
   const virtualGridRef = useRef<VirtualGrid>();
 
   const rowHeightsCache = useRef<Map<number, number>>(new Map());
-  const elementsByRow = useRef<Map<number, Set<Element>>>(new Map());
+  const elementsByRowIndex = useRef<Map<number, Set<Element>>>(new Map());
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
 
   const measureRowHeight = useCallback(
-    (rowIndex: number) => {
+    (index: number) => {
       if (wrappedColumnsOptions.length === 0) {
         return defaultRowHeight;
       }
 
       return Math.max(
         ...wrappedColumnsOptions.map((column) => {
-          const value = column.accessorFn(data[rowIndex]);
+          const value = column.accessorFn(data[index]);
           const formattedValue = column.formatter
-            ? column.formatter(value, rowIndex, column.id)
+            ? column.formatter(value, index, column.id)
             : String(value);
 
           if (value == null || formattedValue === "") {
@@ -80,49 +71,46 @@ export const useRowHeights = <TData extends RowData, TValue>({
   );
 
   const getRowHeight = useCallback(
-    (rowIndex: number): number =>
-      rowHeightsCache.current.get(rowIndex) ?? defaultRowHeight,
+    (index: number): number =>
+      rowHeightsCache.current.get(index) ?? defaultRowHeight,
     [defaultRowHeight],
   );
 
   const updateRowHeight = useCallback(
-    (rowIndex: number): number => {
-      const height = measureRowHeight(rowIndex);
-      rowHeightsCache.current.set(rowIndex, height);
+    (index: number): number => {
+      const height = measureRowHeight(index);
+      rowHeightsCache.current.set(index, height);
       return height;
     },
     [measureRowHeight],
   );
 
   const remeasureRow = useCallback(
-    (rowIndex: number) => {
-      const height = updateRowHeight(rowIndex);
-      const isVirtual = rowIndex >= pinnedTopRowsCount;
-
-      if (isVirtual) {
-        const virtualIndex = rowIndex - pinnedTopRowsCount;
+    ({ index, virtualIndex }: RowIndices) => {
+      if (index === null) {
+        return;
+      }
+      const height = updateRowHeight(index);
+      if (virtualIndex !== null) {
         virtualGridRef.current?.rowVirtualizer.resizeItem(virtualIndex, height);
       }
     },
-    [updateRowHeight, pinnedTopRowsCount],
+    [updateRowHeight],
   );
 
   const recalculate = useCallback(
     (entries: ResizeObserverEntry[]) => {
       for (const entry of entries) {
         const element = entry.target;
-        const rowIndex = getRowIndex(element);
-        if (rowIndex === null) {
-          continue;
-        }
-        remeasureRow(rowIndex);
+        const indices = getRowIndices(element);
+        remeasureRow(indices);
       }
     },
     [remeasureRow],
   );
 
   const remountElements = useCallback(() => {
-    for (const elements of elementsByRow.current.values()) {
+    for (const elements of elementsByRowIndex.current.values()) {
       for (const el of elements) {
         if (el.isConnected) {
           resizeObserverRef.current?.observe(el);
@@ -132,7 +120,7 @@ export const useRowHeights = <TData extends RowData, TValue>({
   }, []);
 
   const unwatchUnmountedElements = useCallback(() => {
-    for (const [rowIndex, elements] of elementsByRow.current) {
+    for (const [index, elements] of elementsByRowIndex.current) {
       for (const el of elements) {
         if (!el.isConnected) {
           resizeObserverRef.current?.unobserve(el);
@@ -140,19 +128,25 @@ export const useRowHeights = <TData extends RowData, TValue>({
         }
       }
       if (elements.size === 0) {
-        elementsByRow.current.delete(rowIndex);
+        elementsByRowIndex.current.delete(index);
       }
     }
   }, []);
 
-  const watchElement = useCallback((element: Element, rowIndex: number) => {
-    const rowElements = elementsByRow.current.get(rowIndex) ?? new Set();
-    elementsByRow.current.set(rowIndex, rowElements);
-    if (!rowElements.has(element)) {
-      rowElements.add(element);
-      resizeObserverRef.current?.observe(element);
-    }
-  }, []);
+  const watchElement = useCallback(
+    (element: Element, { index }: RowIndices) => {
+      if (index === null) {
+        return;
+      }
+      const rowElements = elementsByRowIndex.current.get(index) ?? new Set();
+      elementsByRowIndex.current.set(index, rowElements);
+      if (!rowElements.has(element)) {
+        rowElements.add(element);
+        resizeObserverRef.current?.observe(element);
+      }
+    },
+    [],
+  );
 
   const rowMeasureRef = useCallback(
     (element: Element | null) => {
@@ -160,19 +154,19 @@ export const useRowHeights = <TData extends RowData, TValue>({
         unwatchUnmountedElements();
         return;
       }
-      const rowIndex = getRowIndex(element);
-      if (rowIndex === null) {
-        return;
-      }
-      watchElement(element, rowIndex);
-      remeasureRow(rowIndex);
+      const indices = getRowIndices(element);
+      watchElement(element, indices);
+      remeasureRow(indices);
     },
     [remeasureRow, unwatchUnmountedElements, watchElement],
   );
 
   const remeasureAll = useCallback(() => {
-    for (const [rowIndex] of elementsByRow.current) {
-      remeasureRow(rowIndex);
+    for (const elements of elementsByRowIndex.current.values()) {
+      for (const element of elements) {
+        const indices = getRowIndices(element);
+        remeasureRow(indices);
+      }
     }
   }, [remeasureRow]);
 
