@@ -280,7 +280,7 @@ describe("scenarios > data-studio > transforms > inspect", () => {
 
       H.expectUnstructuredSnowplowEvent({
         event: "transform_inspect_lens_loaded",
-        event_detail: "unmatched-rows",
+        event_detail: "unmatched-rows?join_step=1",
       });
 
       cy.findByRole("tab", { name: tabName }).within(() => {

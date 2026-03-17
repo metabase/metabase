@@ -30,6 +30,27 @@
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
+(deftest ^:parallel column-metadata-effective-type-test
+  (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))]
+    (testing "type-of falls back to :base-type when :effective-type is absent"
+      (let [col (dissoc (meta/field-metadata :orders :created-at) :effective-type)]
+        (is (= (:base-type col)
+               (lib/type-of query col)))))
+    (testing "type-of uses :effective-type over :base-type"
+      (let [col (assoc (meta/field-metadata :orders :total)
+                       :effective-type :type/Currency
+                       :base-type :type/Float)]
+        (is (= :type/Currency
+               (lib/type-of query col)))))
+    (testing "temporal extraction returns :type/Integer"
+      (let [col (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month-of-year)]
+        (is (= :type/Integer
+               (lib/type-of query col)))))
+    (testing "temporal truncation (non-extraction) preserves effective type"
+      (let [col (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month)]
+        (is (= (:effective-type (meta/field-metadata :orders :created-at))
+               (lib/type-of query col)))))))
+
 (deftest ^:parallel ref-test
   (is (=? [:field
            {:base-type      :type/DateTime
@@ -55,6 +76,29 @@
                     :lib/type                                   :metadata/column
                     :lib/original-effective-type :type/DateTime
                     :lib/temporal-unit           :year}))))
+
+(deftest ^:parallel column-metadata->field-ref-source-alias-test
+  (testing "column with :lib/join-alias gets :join-alias in the ref"
+    (let [col (assoc (meta/field-metadata :orders :total)
+                     :lib/join-alias "MyJoin"
+                     :lib/source :source/joins)]
+      (is (= "MyJoin"
+             (:join-alias (second (lib/ref col)))))))
+  (testing "inherited column does not propagate :lib/original-join-alias"
+    (let [col (assoc (meta/field-metadata :orders :total)
+                     :lib/original-join-alias "MyJoin"
+                     :lib/source :source/previous-stage
+                     :lib/source-column-alias "TOTAL")]
+      (is (nil? (:join-alias (second (lib/ref col))))))))
+
+(deftest ^:parallel column-metadata->field-ref-inherited-column-test
+  (testing "inherited columns do not get non-inherited propagated keys"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    lib/append-stage)
+          col   (first (lib/visible-columns query))
+          ref-opts (second (lib/ref col))]
+      (is (not (contains? ref-opts :source-field)))
+      (is (not (contains? ref-opts :join-alias))))))
 
 (defn grandparent-parent-child-id [field]
   (+ (meta/id :venues :id)
@@ -160,6 +204,24 @@
                   (->> query
                        lib/visible-columns
                        (map #(lib/display-info base -1 %))))))))))
+
+(deftest ^:parallel nested-field-nil-parent-display-name-test
+  (testing "nested field with nil parent display-name falls back gracefully"
+    (let [child-field  (assoc (meta/field-metadata :orders :created-at)
+                              :id 99999
+                              :parent-id 99998
+                              :name "CHILD_COL"
+                              :display-name "Child Col")
+          parent-field (assoc (meta/field-metadata :orders :created-at)
+                              :id 99998
+                              :display-name nil
+                              :parent-id nil)
+          mp    (lib.tu/mock-metadata-provider
+                 meta/metadata-provider
+                 {:fields [child-field parent-field]})
+          query (lib/query mp (meta/table-metadata :orders))]
+      (is (= "Child Col"
+             (lib/display-name query child-field))))))
 
 (deftest ^:parallel nested-field-display-name-via-model-test
   (testing "Nested field display names should not be doubled when querying a model (#QUE-XXXX)"
@@ -459,6 +521,28 @@
                        (for [option options]
                          (:selected (lib/display-info query2 option)))))))))))))
 
+(deftest ^:parallel fingerprint-based-default-temporal-bucket-test
+  (testing "The default temporal bucket is based on the fingerprint's date range"
+    (doseq [[earliest latest expected-default]
+            ;; < 1 day => :minute, 1-30 days => :day, 31-364 days => :week, >= 365 days => :month
+            [["2024-01-01T00:00:00" "2024-01-01T12:00:00" :minute]
+             ["2024-01-01T00:00:00" "2024-01-02T00:00:00" :day]     ;; boundary: exactly 1 day
+             ["2024-01-01"          "2024-01-15"           :day]
+             ["2024-01-01"          "2024-01-31"           :day]     ;; boundary: exactly 30 days
+             ["2024-01-01"          "2024-02-01"           :week]    ;; boundary: exactly 31 days
+             ["2024-01-01"          "2024-06-01"           :week]
+             ["2023-01-01"          "2023-12-31"           :week]    ;; boundary: exactly 364 days
+             ["2023-01-01"          "2024-01-01"           :month]   ;; boundary: exactly 365 days
+             ["2024-01-01"          "2025-06-01"           :month]]]
+      (let [field (assoc (meta/field-metadata :orders :created-at)
+                         :fingerprint {:type {:type/DateTime {:earliest earliest :latest latest}}})
+            mp    (lib.tu/mock-metadata-provider meta/metadata-provider {:fields [field]})
+            query (lib/query mp (meta/table-metadata :orders))
+            buckets (lib/available-temporal-buckets query field)
+            default-unit (some #(when (:default %) (:unit %)) buckets)]
+        (testing (str earliest " to " latest " => " expected-default)
+          (is (= expected-default default-unit)))))))
+
 (deftest ^:parallel field-with-binning-test
   (let [query         (lib/query meta/metadata-provider (meta/table-metadata :orders))
         binning       {:strategy :num-bins
@@ -742,6 +826,21 @@
                 (lib/with-fields [(meta/field-metadata :venues :id)
                                   (meta/field-metadata :venues :name)])
                 lib/fieldable-columns)))))
+
+(deftest ^:parallel fieldable-columns-excludes-joins-and-expressions-test
+  (testing "fieldable-columns excludes joined columns"
+    (let [query (-> (lib.tu/venues-query)
+                    (lib/join (-> (lib/join-clause (meta/table-metadata :categories)
+                                                   [(lib/= (meta/field-metadata :venues :category-id)
+                                                           (meta/field-metadata :categories :id))])
+                                  (lib/with-join-fields :all))))]
+      (is (not-any? #(= :source/joins (:lib/source %))
+                    (lib/fieldable-columns query)))))
+  (testing "fieldable-columns excludes expression columns"
+    (let [query (-> (lib.tu/venues-query)
+                    (lib/expression "myadd" (lib/+ 1 (meta/field-metadata :venues :category-id))))]
+      (is (not-any? #(= :source/expressions (:lib/source %))
+                    (lib/fieldable-columns query))))))
 
 (deftest ^:parallel ref-to-joined-column-from-previous-stage-test
   (let [query (-> (lib.tu/venues-query)
@@ -1066,6 +1165,65 @@
                       (lib/remove-field 1 (second columns))
                       (lib/add-field 1 (second columns))
                       fields-of)))))))
+
+(deftest ^:parallel add-field-expression-to-explicit-fields-test
+  (testing "adding an expression column to a query with explicit :fields includes it"
+    (let [query       (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                          (lib/expression "custom" (lib/* 3 2)))
+          own-columns (filter #(= (:lib/source %) :source/table-defaults)
+                              (lib/fieldable-columns query -1))
+          subset      (map lib/ref (take 4 own-columns))
+          ;; Set :fields to only table columns (no expression)
+          field-query (-> (lib/with-fields query -1 subset)
+                          (update-in [:stages 0 :fields] (comp vec (partial take 4))))
+          expr-column (->> (lib/visible-columns field-query)
+                           (filter #(= :source/expressions (:lib/source %)))
+                           first)
+          result      (lib/add-field field-query -1 expr-column)]
+      (is (= (inc (count (:fields (first (:stages field-query)))))
+             (count (:fields (first (:stages result)))))))))
+
+(deftest ^:parallel add-field-to-join-with-none-fields-test
+  (testing "adding a field to a join with :fields :none sets field list"
+    (let [query    (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                       (lib/join (-> (lib/join-clause (meta/table-metadata :categories)
+                                                      [(lib/= (meta/field-metadata :venues :category-id)
+                                                              (meta/field-metadata :categories :id))])
+                                     (lib/with-join-fields :none))))
+          join-col (->> (lib/visible-columns query)
+                        (filter #(= :source/joins (:lib/source %)))
+                        first)
+          result   (lib/add-field query -1 join-col)]
+      (is (= :none (lib/join-fields (first (lib/joins query)))))
+      (is (=? [[:field {} (:id join-col)]]
+              (lib/join-fields (first (lib/joins result))))))))
+
+(deftest ^:parallel remove-field-expression-from-explicit-fields-test
+  (testing "removing an expression column from a query with explicit :fields excludes it"
+    (let [query       (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                          (lib/expression "custom" (lib/* 3 2)))
+          own-columns (filter #(= (:lib/source %) :source/table-defaults)
+                              (lib/fieldable-columns query -1))
+          subset      (map lib/ref (take 4 own-columns))
+          field-query (lib/with-fields query -1 subset)
+          expr-column (->> (lib/returned-columns field-query)
+                           (filter #(= :source/expressions (:lib/source %)))
+                           first)
+          result      (lib/remove-field field-query -1 expr-column)]
+      (is (= (dec (count (:fields (first (:stages field-query)))))
+             (count (:fields (first (:stages result)))))))))
+
+(deftest ^:parallel remove-field-from-join-none-fields-test
+  (testing "removing a field from a join with :none fields is a no-op"
+    (let [query    (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                       (lib/join (-> (lib/join-clause (meta/table-metadata :categories)
+                                                      [(lib/= (meta/field-metadata :venues :category-id)
+                                                              (meta/field-metadata :categories :id))])
+                                     (lib/with-join-fields :none))))
+          join-col (->> (lib/visible-columns query)
+                        (filter #(= :source/joins (:lib/source %)))
+                        first)]
+      (is (= query (lib/remove-field query -1 join-col))))))
 
 (defn- clean-ref [column]
   (-> column
@@ -1472,6 +1630,27 @@
                :id (meta/id :checkins :user-id)
                :display-name "User ID"}
               (lib/find-visible-column-for-ref query col-ref))))))
+
+(deftest ^:parallel find-visible-column-for-ref-aggregation-test
+  (testing "find-visible-column-for-ref works with aggregation refs"
+    (let [query    (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                       (lib/aggregate (lib/count)))
+          agg-cols (filter #(= :source/aggregations (:lib/source %))
+                           (lib/returned-columns query))
+          agg-ref  (lib/ref (first agg-cols))]
+      (is (=? {:lib/type     :metadata/column
+               :display-name "Count"}
+              (lib/find-visible-column-for-ref query agg-ref))))))
+
+(deftest ^:parallel find-visible-column-for-ref-multi-stage-test
+  (testing "2-arity find-visible-column-for-ref uses last stage"
+    (let [query     (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                        (lib/aggregate (lib/count))
+                        lib/append-stage)
+          cols      (lib/visible-columns query)
+          col       (first cols)
+          field-ref (lib/ref col)]
+      (is (some? (lib/find-visible-column-for-ref query field-ref))))))
 
 (deftest ^:parallel self-join-ambiguity-test
   (testing "Even when doing a tree-like self join, fields are matched correctly"

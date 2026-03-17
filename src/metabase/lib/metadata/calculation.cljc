@@ -698,13 +698,15 @@
         id->target-fields (m/index-by :id (lib.metadata/bulk-metadata
                                            query :metadata/column (into #{} (map :fk-target-field-id) fk-fields)))
         target-fields (into []
-                            (comp (map (fn [{source-field-id :id
-                                             :keys [fk-target-field-id]
-                                             :as   source}]
-                                         (-> (id->target-fields fk-target-field-id)
-                                             (assoc ::fk-field-id   source-field-id
-                                                    ::fk-field-name (lib.field.util/inherited-column-name source)
-                                                    ::fk-join-alias (:lib/join-alias source)))))
+                            (comp (keep (fn [{source-field-id :id
+                                              :keys [fk-target-field-id]
+                                              :as   source}]
+                                          ;; the target field might not exist
+                                          (when-let [target (id->target-fields fk-target-field-id)]
+                                            (assoc target
+                                                   ::fk-field-id   source-field-id
+                                                   ::fk-field-name (lib.field.util/inherited-column-name source)
+                                                   ::fk-join-alias (:lib/join-alias source)))))
                                   (remove #(contains? existing-table-ids (:table-id %))))
                             fk-fields)
         id->table (m/index-by :id (lib.metadata/bulk-metadata
@@ -734,3 +736,26 @@
     (into [] (remove (comp #{:source/joins :source/implicitly-joinable}
                            :lib/source))
           (returned-columns no-fields stage-number))))
+
+(mu/defn primary-source-table :- [:maybe ::lib.schema.metadata/table]
+  "If this query has an MBQL first stage with a `:source-table` ID, return the `:metadata/table` for it.
+
+  Returns nil if the query is native or has a `:source-card`."
+  [query]
+  (some->> query lib.util/source-table-id (lib.metadata/table query)))
+
+(mu/defn primary-source-card :- [:maybe ::lib.schema.metadata/card]
+  "If this query has an MBQL first stage with a `:source-card` ID, return the `:metadata/card` for it.
+
+  Returns nil if the query is native or has a `:source-table`."
+  [query]
+  (some->> query lib.util/source-card-id (lib.metadata/card query)))
+
+(mu/defn primary-source :- [:maybe [:or ::lib.schema.metadata/card ::lib.schema.metadata/table]]
+  "If this query has an MBQL first stage with a `:source-table` or `:source-card`, return the corresponding
+  `:metadata/table` or `:metadata/card`.
+
+  Returns nil if the query is native."
+  [query]
+  (or (primary-source-table query)
+      (primary-source-card  query)))

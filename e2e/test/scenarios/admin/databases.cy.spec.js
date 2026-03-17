@@ -12,7 +12,7 @@ import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import { visitDatabase, waitForDbSync } from "./helpers/e2e-database-helpers";
 
 const { H } = cy;
-const { IS_ENTERPRISE } = Cypress.env();
+const IS_ENTERPRISE = Cypress.expose("IS_ENTERPRISE");
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
 describe(
@@ -807,8 +807,7 @@ describe("scenarios > admin > databases > sample database", () => {
     cy.findByLabelText(/Choose when syncs and scans happen/).click({
       force: true,
     });
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Hourly").click();
+    cy.findByDisplayValue("Hourly").click();
     H.popover().within(() => {
       cy.findByText("Daily").click({ force: true });
     });
@@ -819,10 +818,7 @@ describe("scenarios > admin > databases > sample database", () => {
       .click();
 
     H.popover().findByText("Regularly, on a schedule").click();
-    cy.findAllByRole("button", { name: /Daily/ })
-      .should("have.length", 2)
-      .eq(1)
-      .click();
+    cy.findAllByDisplayValue("Daily").should("have.length", 2).eq(1).click();
     H.popover().findByText("Weekly").click();
 
     cy.button("Save changes").click();

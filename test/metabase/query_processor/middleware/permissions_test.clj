@@ -729,7 +729,6 @@
 (deftest e2e-ignore-user-supplied-card-ids-test
   (testing "You shouldn't be able to bypass security restrictions by passing `[:info :card-id]` in the query."
     (mt/with-temp-copy-of-db
-      ;; TODO: re-evaluate this test; the error is being thrown at the API-layer and not in the QP
       (mt/with-no-data-perms-for-all-users!
         (mt/with-restored-data-perms-for-group! (u/the-id (perms/all-users-group))
           (mt/with-temp [:model/Collection collection {}
@@ -738,9 +737,10 @@
             ;; Since the collection derives from the root collection this grant shouldn't really be needed, but better to
             ;; be extra-sure in this case that the user is getting rejected for data perms and not card/collection perms
             (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :post 403 "dataset" (assoc (mt/mbql-query venues {:limit 1})
-                                                                           :info {:card-id (u/the-id card)}))))))))))
+            (is (=? {:status "failed"
+                     :error  "You do not have permissions to run this query."}
+                    (mt/user-http-request :rasta :post 403 "dataset" (assoc (mt/mbql-query venues {:limit 1})
+                                                                            :info {:card-id (u/the-id card)}))))))))))
 
 (deftest e2e-ignore-user-supplied-perms-test
   (testing "You shouldn't be able to bypass security restrictions by passing in `:query-permissions/perms` in the query"

@@ -59,7 +59,9 @@
     (case (count columns)
       0 (throw (ex-info "No column found" {:columns available-columns, :column-spec column-spec}))
       1 (first columns)
-      (throw (ex-info "Multiple columns found" {:columns columns, :column-spec column-spec})))))
+      (if (:index column-spec)
+        (get columns (:index column-spec))
+        (throw (ex-info "Multiple columns found" {:columns columns, :column-spec column-spec}))))))
 
 (mu/defn- append-fields :- ::lib.schema/query
   [query        :- ::lib.schema/query
@@ -97,11 +99,15 @@
 
 (mu/defn- matches-binning? :- :boolean
   [strategy       :- ::lib.schema.binning/strategy
-   value          :- [:or ::lib.schema.binning/num-bins ::lib.schema.binning/bin-width]
+   value          :- [:or ::lib.schema.binning/num-bins ::lib.schema.binning/bin-width ::lib.schema.test-spec/test-auto-bin-spec]
    {:keys [mbql]} :- ::lib.schema.binning/binning-option]
-  (and
-   (= strategy (:strategy mbql))
-   (== value (strategy mbql))))
+  (or
+   (and
+    (= :default (:strategy mbql))
+    (= value :auto))
+   (and
+    (= strategy (:strategy mbql))
+    (== value (strategy mbql)))))
 
 (mu/defn- find-binning-strategy :- ::lib.schema.binning/binning-option
   [query        :- ::lib.schema/query

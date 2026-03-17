@@ -4,7 +4,7 @@ import { testDataset } from "__support__/testDataset";
 import { screen, within } from "__support__/ui";
 import * as Urls from "metabase/lib/urls";
 import * as Lib from "metabase-lib";
-import { createQuery, getJoinQueryHelpers } from "metabase-lib/test-helpers";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { BaseEntityId } from "metabase-types/api";
 import {
   createMockCard,
@@ -12,7 +12,7 @@ import {
   createMockModerationReview,
   createMockUserInfo,
 } from "metabase-types/api/mocks";
-import { PRODUCTS_ID } from "metabase-types/api/mocks/presets";
+import { ORDERS_ID, PRODUCTS_ID } from "metabase-types/api/mocks/presets";
 
 import { setup } from "./setup";
 
@@ -278,25 +278,28 @@ describe("QuestionInfoSidebar", () => {
 });
 
 function getJoinedQuery() {
-  const query = createQuery();
-  const {
-    table,
-    defaultStrategy,
-    defaultOperator,
-    findLHSColumn,
-    findRHSColumn,
-  } = getJoinQueryHelpers(query, 0, PRODUCTS_ID);
-  const ordersProductId = findLHSColumn("ORDERS", "PRODUCT_ID");
-  const productsId = findRHSColumn("PRODUCTS", "ID");
-  const stageIndex = -1;
-  const condition = Lib.joinConditionClause(
-    defaultOperator,
-    ordersProductId,
-    productsId,
-  );
-  return Lib.join(
-    query,
-    stageIndex,
-    Lib.joinClause(table, [condition], defaultStrategy),
-  );
+  return Lib.createTestQuery(SAMPLE_PROVIDER, {
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
+        joins: [
+          {
+            source: { type: "table", id: PRODUCTS_ID },
+            strategy: "left-join",
+            conditions: [
+              {
+                operator: "=",
+                left: {
+                  type: "column",
+                  sourceName: "ORDERS",
+                  name: "PRODUCT_ID",
+                },
+                right: { type: "column", sourceName: "PRODUCTS", name: "ID" },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  });
 }

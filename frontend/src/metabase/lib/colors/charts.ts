@@ -6,7 +6,7 @@ export const getColorsForValues = (
   keys: string[],
   existingMapping?: Record<string, string> | null,
   palette?: ColorPalette,
-  seriesVizSettingsDefaultKeys?: string[],
+  seriesVizSettingsDefaultKeys?: (string | undefined)[],
 ) => {
   if (keys.length <= ACCENT_COUNT) {
     return getHashBasedMapping(
@@ -92,7 +92,7 @@ const getHashBasedMapping = (
   values: string[],
   existingMapping: Record<string, string> | null | undefined,
   getPreferredValue: (key: string) => string | undefined,
-  seriesVizSettingsDefaultKeys?: string[],
+  seriesVizSettingsDefaultKeys?: (string | undefined)[],
 ) => {
   const newMapping: Record<string, string> = {};
   const sortedKeys = [...keys].sort();

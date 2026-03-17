@@ -515,6 +515,7 @@
                                 [:uuid      ms/UUIDString]
                                 [:param-key ms/NonBlankString]]
    {:keys [value]}          :- [:map [:value :any]]]
+  (public-sharing.validation/check-public-sharing-enabled)
   (let [card (t2/select-one :model/Card :public_uuid uuid, :archived false)]
     (request/as-admin
       (queries/card-param-remapped-value card param-key (codec/url-decode value)))))
@@ -529,6 +530,7 @@
                                 [:uuid      ms/UUIDString]
                                 [:param-key ms/NonBlankString]]
    constraint-param-key->value :- [:map-of string? any?]]
+  (public-sharing.validation/check-public-sharing-enabled)
   (let [dashboard (dashboard-with-uuid uuid)]
     (request/as-admin
       (binding [qp.perms/*param-values-query* true]
@@ -545,6 +547,7 @@
                                       [:param-key ms/NonBlankString]
                                       [:query     ms/NonBlankString]]
    constraint-param-key->value]
+  (public-sharing.validation/check-public-sharing-enabled)
   (let [dashboard (dashboard-with-uuid uuid)]
     (request/as-admin
       (binding [qp.perms/*param-values-query* true]
@@ -560,6 +563,7 @@
                                 [:uuid      ms/UUIDString]
                                 [:param-key ms/NonBlankString]]
    {:keys [value]}          :- [:map [:value :any]]]
+  (public-sharing.validation/check-public-sharing-enabled)
   (let [dashboard (dashboard-with-uuid uuid)]
     (request/as-admin
       (binding [qp.perms/*param-values-query* true]
@@ -824,9 +828,10 @@
 
 ;;; ----------------------------------------- Route Definitions & Complaints -----------------------------------------
 
-;; TODO - why don't we just make these routes have a bit of middleware that includes the
-;; `public-sharing.validation/check-public-sharing-enabled` check in each of them? That way we don't need to remember to include the line in
-;; every single endpoint definition here? Wouldn't that be 100x better?!
-;;
-;; TODO - also a smart person would probably just parse the UUIDs automatically in middleware as appropriate for
+;; TODO - a smart person would probably just parse the UUIDs automatically in middleware as appropriate for
 ;;`/dashboard` vs `/card`
+
+(def ^{:arglists '([request respond raise])} routes
+  "`/api/public` routes. Enforces public-sharing-enabled check via middleware, in addition to
+  per-endpoint checks."
+  (api.macros/ns-handler *ns* public-sharing.validation/+public-sharing-enabled))

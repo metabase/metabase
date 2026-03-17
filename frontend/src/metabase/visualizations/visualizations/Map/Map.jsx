@@ -67,7 +67,7 @@ export class Map extends Component {
         return t`Map type`;
       },
       widget: "select",
-      props: {
+      getProps: () => ({
         options: [
           {
             get name() {
@@ -81,11 +81,9 @@ export class Map extends Component {
             },
             value: "pin",
           },
-          // NOTE tlrobinson 4/13/18: Heat maps disabled until we can compute leaflet-heat options better
-          // { name: "Heat map", value: "heat" },
           { name: "Grid map", value: "grid" },
         ],
-      },
+      }),
       getDefault: ([{ card, data }], settings) => {
         switch (card.display) {
           case "state":
@@ -108,9 +106,6 @@ export class Map extends Component {
                 longitudeColumn.binning_info
               ) {
                 return "grid";
-                // NOTE tlrobinson 4/13/18: Heat maps disabled until we can compute leaflet-heat options better
-                // } else if (settings["map.metric_column"]) {
-                //   return "heat";
               } else {
                 return "pin";
               }
@@ -130,7 +125,7 @@ export class Map extends Component {
         return t`Pin type`;
       },
       widget: "select",
-      props: {
+      getProps: () => ({
         options: [
           {
             get name() {
@@ -144,11 +139,9 @@ export class Map extends Component {
             },
             value: "markers",
           },
-          // NOTE tlrobinson 4/13/18: Heat maps disabled until we can compute leaflet-heat options better
-          // { name: "Heat", value: "heat" },
           { name: "Grid", value: "grid" },
         ],
-      },
+      }),
       getDefault: ([{ data }], vizSettings) =>
         vizSettings["map.type"] === "heat"
           ? "heat"
@@ -246,7 +239,7 @@ export class Map extends Component {
         return t`Color`;
       },
       widget: ColorRangeSelector,
-      props: {
+      getProps: () => ({
         colors: getAccentColors(),
         colorMapping: Object.fromEntries(
           getAccentColors().map((color) => [
@@ -255,7 +248,7 @@ export class Map extends Component {
           ]),
         ),
         isQuantile: true,
-      },
+      }),
       default: getColorplethColorScale(getAccentColors()[0]),
       getHidden: (series, vizSettings) => vizSettings["map.type"] !== "region",
     },

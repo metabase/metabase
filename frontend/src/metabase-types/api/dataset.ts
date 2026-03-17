@@ -6,7 +6,7 @@ import type {
   VisualizerColumnValueSource,
 } from "metabase-types/api";
 
-import type { Card } from "./card";
+import type { Card, ColumnSettings } from "./card";
 import type { DatabaseId } from "./database";
 import type {
   Field,
@@ -22,6 +22,12 @@ import type { TableId } from "./table";
 
 export type RowValue = string | number | null | boolean | object;
 export type RowValues = RowValue[];
+
+export function getRowsForStableKeys(
+  data: Pick<DatasetData, "rows" | "untranslatedRows">,
+): RowValues[] {
+  return data.untranslatedRows ?? data.rows;
+}
 
 export type BinningMetadata = {
   binning_strategy?: "default" | "bin-width" | "num-bins";
@@ -74,11 +80,13 @@ export interface DatasetColumn {
   remapped_to?: string;
   effective_type?: string;
   binning_info?: BinningMetadata | null;
-  settings?: Record<string, any>;
+  settings?: ColumnSettings;
   fingerprint?: FieldFingerprint | null;
 
   // model with customized metadata
   fk_target_field_id?: FieldId | null;
+
+  remapping?: Map<RowValue, string | number>;
 }
 
 export interface ResultsMetadata {
@@ -102,6 +110,9 @@ export interface DatasetData {
     "show-row-totals"?: boolean;
     "show-column-totals"?: boolean;
   };
+  untranslatedRows?: RowValues[];
+
+  sourceRows?: (number | null)[][]; // present in pivoted data
 }
 
 export type JsonQuery = DatasetQuery & {
@@ -239,6 +250,7 @@ export interface TemplateTag {
 
   // Table specific
   "table-id"?: TableId;
+  "emit-alias"?: boolean;
 }
 
 export type TemplateTags = Record<TemplateTagName, TemplateTag>;
@@ -265,3 +277,5 @@ export type GetRemappedParameterValueRequest = {
   field_ids: FieldId[];
   value: ParameterValueOrArray;
 };
+
+export type Point = [number, number];

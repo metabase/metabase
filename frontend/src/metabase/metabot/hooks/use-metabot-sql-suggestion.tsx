@@ -35,8 +35,9 @@ export function useMetabotSQLSuggestion({
       referencedEntities?: ReferencedEntity[];
     }) => {
       if (!databaseId) {
-        setError(t`No database selected.`);
-        return;
+        const errText = t`No database selected.`;
+        setError(errText);
+        throw new Error(errText);
       }
       setError(undefined);
       try {
@@ -54,15 +55,16 @@ export function useMetabotSQLSuggestion({
           setSource(result.sql);
           onGenerated?.(result);
         } else {
-          setError(t`Something went wrong. Please try again.`);
+          throw new Error(t`Something went wrong. Please try again.`);
         }
       } catch (err) {
         const error = err as { status?: number; data?: unknown };
+        let errText = t`Something went wrong. Please try again.`;
         if (error.status === 400 && typeof error.data === "string") {
-          setError(error.data);
-        } else {
-          setError(t`Something went wrong. Please try again.`);
+          errText = error.data;
         }
+        setError(errText);
+        throw new Error(errText);
       }
     },
     [generateSql, databaseId, onGenerated],

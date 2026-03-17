@@ -29,7 +29,6 @@ export const CANCEL_EDITING_PULSE = "CANCEL_EDITING_PULSE";
 export const TEST_PULSE = "TEST_PULSE";
 
 export const FETCH_PULSE_FORM_INPUT = "FETCH_PULSE_FORM_INPUT";
-export const FETCH_PULSE_CARD_PREVIEW = "FETCH_PULSE_CARD_PREVIEW";
 
 export const FETCH_PULSE_LIST_BY_DASHBOARD_ID =
   "FETCH_PULSE_LIST_BY_DASHBOARD_ID";
@@ -124,15 +123,6 @@ export const fetchPulseFormInput = createThunkAction(
   function () {
     return async function (): Promise<ChannelApiResponse> {
       return await PulseApi.form_input();
-    };
-  },
-);
-
-export const fetchPulseCardPreview = createThunkAction(
-  FETCH_PULSE_CARD_PREVIEW,
-  function (id: number) {
-    return async function () {
-      return await PulseApi.preview_card({ id: id });
     };
   },
 );

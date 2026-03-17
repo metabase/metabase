@@ -14,7 +14,6 @@ const Template: StoryFn = ({ align }: { align?: string }) => {
   return (
     <VisualizationWrapper>
       <Box h={300} w={300}>
-        {/* @ts-expect-error Text is still a js component */}
         <Text
           settings={{
             virtual_card: {

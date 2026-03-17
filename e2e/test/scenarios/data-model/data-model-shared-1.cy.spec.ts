@@ -705,7 +705,14 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
           column: "Total",
           values: ["39.72", "117.03", "49.21", "115.23", "134.91"],
         });
-        PreviewSection.get().findByTestId("header-cell").realHover();
+        // Use trigger("mouseover") instead of realHover() because Chrome v133+
+        // headless hit-tests CDP mouse events differently, preventing the
+        // HoverCard from appearing. mouseover bubbles and React 18 uses it to
+        // simulate onMouseEnter (which Mantine HoverCard.Target relies on).
+        PreviewSection.get()
+          .findByTestId("header-cell")
+          .findByTestId("cell-data")
+          .trigger("mouseover");
         H.hovercard().should("not.contain.text", "The total billed amount.");
 
         cy.visit(
@@ -767,7 +774,11 @@ function verifyTablePreview({
     });
 
     if (description != null) {
-      cy.findByTestId("header-cell").realHover();
+      // mouseover bubbles and React 18 uses it to simulate onMouseEnter
+      // (which Mantine HoverCard.Target relies on).
+      cy.findByTestId("header-cell")
+        .findByTestId("cell-data")
+        .trigger("mouseover");
     }
   });
 

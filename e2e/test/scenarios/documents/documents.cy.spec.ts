@@ -519,37 +519,32 @@ describe("documents", () => {
       });
 
       it("should handle undo/redo properly, resetting the history whenever a different document is viewed", () => {
-        const isMac = Cypress.platform === "darwin";
-        const metaKey = isMac ? "Meta" : "Control";
         H.visitDocument("@documentId");
         H.getDocumentCard("Orders").should("exist");
         H.documentContent().within(() => {
           const originalText = "Lorem Ipsum and some more words";
           const originalExact = new RegExp(`^${originalText}$`);
           cy.contains(originalExact).click();
-          cy.realPress([metaKey, "z"]);
+          cy.realPress([H.metaKey, "z"]);
           cy.contains(originalExact);
 
           const modification = " etc.";
           const modifiedExact = new RegExp(`^${originalText}${modification}$`);
           H.addToDocument(modification, false);
           cy.contains(modifiedExact);
-          cy.realPress([metaKey, "z"]);
+          cy.realPress([H.metaKey, "z"]);
           cy.contains(originalExact);
-          cy.realPress(["Shift", metaKey, "z"]);
+          cy.realPress(["Shift", H.metaKey, "z"]);
           cy.contains(modifiedExact);
-          cy.realPress([metaKey, "z"]); // revert to prevent "unsaved changes" dialog
+          cy.realPress([H.metaKey, "z"]); // revert to prevent "unsaved changes" dialog
         });
         H.newButton("Document").click();
         H.documentContent().should("have.text", "");
-        cy.realPress([metaKey, "z"]);
+        cy.realPress([H.metaKey, "z"]);
         H.documentContent().should("have.text", "");
       });
 
       it("should not clear undo history on save", () => {
-        const isMac = Cypress.platform === "darwin";
-        const metaKey = isMac ? "Meta" : "Control";
-
         const originalText = "Lorem Ipsum and some more words";
         const originalExact = new RegExp(`^${originalText}$`);
         H.visitDocument("@documentId");
@@ -561,13 +556,13 @@ describe("documents", () => {
         H.addToDocument(modification, false);
         H.documentContent().contains(modifiedExact);
 
-        cy.realPress([metaKey, "s"]);
+        cy.realPress([H.metaKey, "s"]);
         cy.findByTestId("toast-undo")
           .findByText("Document saved")
           .should("be.visible");
 
-        cy.realPress([metaKey, "z"]);
-        cy.realPress([metaKey, "z"]);
+        cy.realPress([H.metaKey, "z"]);
+        cy.realPress([H.metaKey, "z"]);
         H.documentContent().contains(originalExact);
       });
     });

@@ -1,0 +1,13 @@
+.dimensionList {
+  max-width: 100%;
+  color: var(--mb-color-brand);
+}
+
+.metricListItem {
+  cursor: pointer;
+  border-radius: var(--mantine-radius-sm);
+
+  &:hover {
+    background-color: var(--mb-color-background-hover);
+  }
+}

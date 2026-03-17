@@ -14,8 +14,8 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
    [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.instrumentation :as transforms.instrumentation]
-   [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.json :as json]
@@ -270,14 +270,13 @@
 
 (defn- build-table-query
   "Build a mbql query for table, might add a proper filter for incremental transforms."
-  [table-id source-incremental-strategy transform-id limit]
+  [table-id source-incremental-strategy source-range-params limit]
   (let [db-id             (t2/select-one-fn :db_id (t2/table-name :model/Table) :id table-id)
         metadata-provider (lib-be/application-database-metadata-provider db-id)
-        table-metadata    (lib.metadata/table metadata-provider table-id)
-        transform         (t2/select-one :model/Transform transform-id)]
+        table-metadata    (lib.metadata/table metadata-provider table-id)]
     (cond-> (-> (lib/query metadata-provider table-metadata)
                 lib/disable-default-limit)
-      source-incremental-strategy (transforms.u/preprocess-incremental-query source-incremental-strategy (transforms.u/next-checkpoint transform))
+      source-incremental-strategy (transforms-base.u/preprocess-incremental-query source-range-params)
       limit                       (lib/limit limit))))
 
 ;; TODO break this up such that s3 can be swapped out for other transfer mechanisms.
@@ -289,11 +288,12 @@
            source
            cancel-chan
            limit
-           transform-id]}]
+           source-range-params]}]
   (when (and (:source-incremental-strategy source)
              (> (count (:source-tables source)) 1))
     (throw (ex-info "Incremental transforms for python only supports one source table" {})))
   (doseq [[table-name v] (:source-tables source)
+          ;; TODO (Chris 2026-03-03) We should also handle the case where table-id has not been backfilled yet...
           :let [table-id                                (if (int? v) v (:table_id v))
                 {:keys [s3-client bucket-name objects]} shared-storage
                 {data-path :path}                       (get objects [:table table-id :data])
@@ -306,7 +306,7 @@
               fields-meta (fields-metadata driver table-id)
               manifest    (generate-manifest table-id fields-meta)]
           (transforms.instrumentation/with-stage-timing [run-id [:export :dwh-to-file]]
-            (let [query (build-table-query table-id (:source-incremental-strategy source) transform-id limit)]
+            (let [query (build-table-query table-id (:source-incremental-strategy source) source-range-params limit)]
               (write-query-data-to-file!
                {:query       query
                 :fields-meta fields-meta

@@ -151,11 +151,10 @@ jobs:
               :only-tags [:mb/driver-tests]
               :exclude-tags [:mb/transforms-python-test]
               :fail-fast? true
-# DS 2025-09-26 temporarily disabled while we diagnose flakes
-#          - name: Transforms Python Tests
-#            test-args: >-
-#              :only-tags [:mb/transforms-python-test]
-#            needs-python-runner: true
+          - name: Transforms Python Tests
+            test-args: >-
+              :only-tags [:mb/transforms-python-test]
+            needs-python-runner: true
     env:
       CI: 'true'
       DRIVERS: bigquery-cloud-sdk
@@ -562,9 +561,9 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - name: MariaDB 10.2
-            junit-name: be-tests-mariadb-10-2-ee
-            image: circleci/mariadb:10.2.23
+          - name: MariaDB 10.6
+            junit-name: be-tests-mariadb-10-6-ee
+            image: circleci/mariadb:10.6
             env:
               enable-ssl-tests: 'false'
               enable-aws-iam-tests: 'false'
@@ -574,9 +573,9 @@ jobs:
             env:
               enable-ssl-tests: 'false'
               enable-aws-iam-tests: 'false'
-          - name: MySQL 8.0
-            junit-name: be-tests-mysql-8-0-ee
-            image: mysql:8.0
+          - name: MySQL 8.4
+            junit-name: be-tests-mysql-8-4-ee
+            image: mysql:8.4
             env:
               enable-ssl-tests: 'false'
               enable-aws-iam-tests: 'false'
@@ -989,9 +988,9 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - name: Postgres 12.x
+          - name: Postgres 14.x
             junit-name: postgres-ee
-            docker-image: postgres:12-alpine
+            docker-image: postgres:14-alpine
             env:
               enable-ssl-tests: 'false'
               enable-aws-iam-tests: 'false'
@@ -1278,12 +1277,10 @@ jobs:
               :only-tags [:mb/driver-tests]
               :exclude-tags [:mb/transforms-python-test]
               :fail-fast? true
-
-# DS 2025-09-26 temporarily disabled while we diagnose flakes
-#          - name: Transforms Python Tests
-#            test-args: >-
-#              :only-tags [:mb/transforms-python-test]
-#            needs-python-runner: true
+          - name: Transforms Python Tests
+            test-args: >-
+              :only-tags [:mb/transforms-python-test]
+            needs-python-runner: true
     env:
       CI: 'true'
       DRIVERS: snowflake

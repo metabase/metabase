@@ -15,9 +15,10 @@ import {
 } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import {
+  DEFAULT_TEST_QUERY,
   SAMPLE_METADATA,
   columnFinder,
-  createQuery,
+  createMetadataProvider,
 } from "metabase-lib/test-helpers";
 import type {
   FieldId,
@@ -1194,7 +1195,8 @@ describe("NumberFilterValuePicker", () => {
 });
 
 function createQueryWithMetadata(metadata = SAMPLE_METADATA) {
-  const query = createQuery({ metadata });
+  const provider = createMetadataProvider({ metadata });
+  const query = Lib.createTestQuery(provider, DEFAULT_TEST_QUERY);
   const stageIndex = 0;
   const availableColumns = Lib.filterableColumns(query, stageIndex);
   const findColumn = columnFinder(query, availableColumns);

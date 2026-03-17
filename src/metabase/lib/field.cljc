@@ -116,13 +116,22 @@
     simple-display-name   :lib/simple-display-name
     original-display-name :lib/original-display-name
     ref-display-name      :lib/ref-display-name
+    from-model?           :lib/from-model?
     source                :lib/source
     source-uuid           :lib/source-uuid
     :as                   col}
    style]
   (let [humanized-name     (u.humanization/name->human-readable-name :simple field-name)
         field-display-name (or ref-display-name
-                               original-display-name
+                               ;; TODO (Cam 2026-02-27) HACK for Models, `:original-display-name` gets incorrectly
+                               ;; overriden at some point with a recalculated display name for the column, so user
+                               ;; edits to `:display-name` itself get stomped on. Since we want to preserve the user
+                               ;; edits in `:display-name` we should ignore `:original-display-name` which is
+                               ;; incorrect here. FIXME -- we should make sure `:original-display-name` is set right
+                               ;; away for metadata coming from models and we can remove this hack.
+                               (when (or (not from-model?)
+                                         (= source :source/joins))
+                                 original-display-name)
                                field-display-name)
         fk-field-id        (or fk-field-id original-fk-field-id)]
     (or simple-display-name
@@ -167,6 +176,8 @@
     fk-field-id          :fk-field-id
     original-fk-field-id :lib/original-fk-field-id
     table-id             :table-id
+    from-model?          :lib/from-model?
+    source               :lib/source
     :as                  _col}
    style
    display-name]
@@ -174,9 +185,17 @@
                               original-join-alias)
         fk-field-id       (or fk-field-id original-fk-field-id)
         join-display-name (when (and (= style :long)
-                                     ;; don't prepend a join display name if `:display-name` already contains one! Legacy
-                                     ;; result metadata might include it for joined Fields, don't want to add it twice.
-                                     ;; Otherwise we'll end up with display names like
+                                     ;; don't append join aliases to columns that were introduced (directly in the
+                                     ;; main previous stage/source card lineage) by models, since their
+                                     ;; `:display-name` should already include the join alias and if it doesn't it's
+                                     ;; because the user edited the display name to something else. Still ok to
+                                     ;; prepend join aliases when we JOIN a model, since that should be added on top
+                                     ;; of whatever is already there.
+                                     (or (not from-model?)
+                                         (= source :source/joins))
+                                     ;; don't prepend a join display name if `:display-name` already contains one!
+                                     ;; Legacy result metadata might include it for joined Fields, don't want to add
+                                     ;; it twice. Otherwise we'll end up with display names like
                                      ;;
                                      ;;    Products → Products → Category
                                      (not (str/includes? display-name " → ")))
@@ -408,11 +427,12 @@
     [:base-type
      :inherited-temporal-unit
      :lib/original-binning
-     :lib/original-effective-type])
-   {:lib/binning       :binning
-    :lib/temporal-unit :temporal-unit
-    :lib/ref-name                     :name
-    :lib/ref-display-name             :display-name}))
+     :lib/original-effective-type
+     :qp.pivot/pivot-grouping?])
+   {:lib/binning          :binning
+    :lib/temporal-unit    :temporal-unit
+    :lib/ref-name         :name
+    :lib/ref-display-name :display-name}))
 
 (def ^:private field-ref-propagated-keys-for-non-inherited-columns
   "Keys that should get copied into `:field` ref options from column metadata ONLY when the column is not inherited.
@@ -428,9 +448,9 @@
     ;; types -- they're required for field name refs.
     [:lib/transformation-added-base-type])
    {:lib/join-alias :join-alias
-    :fk-field-id                  :source-field
-    :fk-join-alias                :source-field-join-alias
-    :fk-field-name                :source-field-name}))
+    :fk-field-id    :source-field
+    :fk-join-alias  :source-field-join-alias
+    :fk-field-name  :source-field-name}))
 
 (defn- select-renamed-keys [m old->new]
   (-> m
@@ -446,6 +466,10 @@
                                  (when-not inherited-column?
                                    (select-renamed-keys metadata field-ref-propagated-keys-for-non-inherited-columns)))
         id-or-name        (or (lib.field.util/inherited-column-name metadata)
+                              ;; For card-sourced columns (even via joins), use the string name
+                              ;; instead of a numeric field ID. QUE2-383
+                              (when (:lib/card-id metadata)
+                                (:lib/source-column-alias metadata))
                               ((some-fn :id :lib/source-column-alias :lib/deduplicated-name :lib/original-name :name) metadata))]
     [:field options id-or-name]))
 
@@ -586,7 +610,7 @@
                  "hidden in the UI.")))
 
 (mu/defn add-field :- ::lib.schema/query
-  "Adds a given field (`ColumnMetadata`, as returned from eg. [[visible-columns]]) to the fields returned by the query.
+  "Adds a given field (column metadata), as returned from eg. [[visible-columns]]) to the fields returned by the query.
   Exactly what this means depends on the source of the field:
   - Source table/card, previous stage of the query, custom expression, aggregation or breakout:
       - Add it to the `:fields` list
@@ -714,9 +738,9 @@
                   query stage-number)]
      (lib.equality/find-matching-column query stage-number field-ref columns))))
 
-(defn json-field?
+(mu/defn json-field? :- :boolean
   "Return true if field is a JSON field, false if not."
-  [field]
+  [field :- [:maybe ::lib.schema.metadata/column]]
   (some? (:nfc-path field)))
 
 ;;; yes, this is intentionally different from the version in `:metabase.lib.schema.metadata/column.has-field-values`.

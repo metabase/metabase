@@ -43,6 +43,5 @@ export type DashboardSubscriptionData =
 export interface PulseState {
   editingPulse: DraftDashboardSubscription;
   formInput: ChannelApiResponse;
-  cardPreviews: Record<number, { id: number }>;
   pulseList: DashboardSubscription[];
 }

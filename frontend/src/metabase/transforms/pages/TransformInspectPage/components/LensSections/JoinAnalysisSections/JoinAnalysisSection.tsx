@@ -92,6 +92,7 @@ export const JoinAnalysisSection = ({ cards }: JoinAnalysisSectionProps) => {
               card={row.original.card}
               severity={row.original.severity}
               transformId={transform.id}
+              isExpanded={row.getIsExpanded()}
               onToggleAlerts={() => row.toggleExpanded()}
             />
           ),

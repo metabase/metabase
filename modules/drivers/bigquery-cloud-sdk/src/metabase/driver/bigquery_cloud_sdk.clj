@@ -53,8 +53,6 @@
     Field$Mode
     FieldValue
     FieldValueList
-    InsertAllRequest
-    InsertAllRequest$RowToInsert
     JobInfo
     QueryJobConfiguration
     Schema
@@ -965,7 +963,7 @@
   [base-type value]
   (condp #(isa? %2 %1) base-type
     :type/JSON
-    (.toString (JsonParser/parseString value))
+    (bigquery.params/param "JSON" (JsonParser/parseString value))
 
     :type/Dictionary
     (JsonParser/parseString value)
@@ -1006,30 +1004,25 @@
     v))
 
 (defmethod driver/insert-from-source! [:bigquery-cloud-sdk :rows]
-  [_driver db-id {table-name :name :keys [columns]} {:keys [data]}]
-  (let [col-names (map :name columns)
-        database  (t2/select-one :model/Database db-id)
-        details   (driver.conn/effective-details database)
-
-        client     (database-details->client details)
-        project-id (get-project-id details)
-
-        dataset-id (namespace table-name)
-        table-name (name table-name)
-
-        table-id (.getTableId (get-table client project-id dataset-id table-name))
-
-        prepared-rows (map #(into {} (map vector col-names %)) data)]
-    (doseq [chunk (partition-all (or driver/*insert-chunk-rows* 1000) prepared-rows)]
-      (let [insert-request-builder (InsertAllRequest/newBuilder table-id)]
-        (doseq [^java.util.Map row chunk]
-          (.addRow insert-request-builder (InsertAllRequest$RowToInsert/of row)))
-        (let [insert-request (.build insert-request-builder)
-              response       (.insertAll client insert-request)]
-          (when (.hasErrors response)
-            (let [errors (.getInsertErrors response)]
-              (throw (ex-info "BigQuery insert failed"
-                              {:errors (into [] (map str errors))})))))))))
+  [driver db-id {table-name :name :keys [columns]} {:keys [data]}]
+  ;; Uses SQL inserts instead of the Storage API or the legacy .insertAll API.
+  ;; this is because during transforms tables are dropped and re-created, and both these API's do not
+  ;; update their metadata caches frequently enough for timely transform runs (or interactive previews).
+  ;; rather than waiting many minutes, we trade torward consistency by using SQL DML, whose table metadata
+  ;; is consistent, and we do not see cached non-existence and things like that causing trouble.
+  (let [database   (t2/select-one :model/Database db-id)
+        col-kws    (mapv (comp keyword name :name) columns)
+        num-cols   (count col-kws)
+        ;; bigquery allows 10k query parameters per request
+        max-rows   (max 1 (quot 10000 num-cols))
+        chunk-size (min (or driver/*insert-chunk-rows* 1000) max-rows)]
+    (doseq [chunk (partition-all chunk-size data)
+            :let [lift       #(if (coll? %) [:lift %] %)
+                  lift-tuple #(mapv lift %)]]
+      (let [[sql & params] (sql.qp/format-honeysql driver {:insert-into table-name
+                                                           :columns     col-kws
+                                                           :values      (mapv lift-tuple chunk)})]
+        (driver/execute-raw-queries! driver database [[sql params]])))))
 
 (defmethod driver/execute-raw-queries! :bigquery-cloud-sdk
   [driver conn-spec queries]

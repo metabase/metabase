@@ -31,6 +31,7 @@
    [metabase.logger.api]
    [metabase.login-history.api]
    [metabase.measures.api]
+   [metabase.metrics.api]
    [metabase.model-persistence.api]
    [metabase.native-query-snippets.api]
    [metabase.notification.api]
@@ -86,6 +87,7 @@
          metabase.logger.api/keep-me
          metabase.login-history.api/keep-me
          metabase.measures.api/keep-me
+         metabase.metrics.api/keep-me
          metabase.model-persistence.api/keep-me
          metabase.native-query-snippets.api/keep-me
          metabase.permissions-rest.api/keep-me
@@ -176,6 +178,7 @@
    "/logger"               (+auth 'metabase.logger.api)
    "/login-history"        (+auth 'metabase.login-history.api)
    "/measure"              (+auth 'metabase.measures.api)
+   "/metric"               (+auth 'metabase.metrics.api)
    "/model-index"          (+auth 'metabase.indexed-entities.api)
    "/native-query-snippet" (+auth 'metabase.native-query-snippets.api)
    "/notification"         metabase.notification.api/notification-routes
@@ -185,7 +188,7 @@
    "/premium-features"     (+auth metabase.premium-features.api/routes)
    "/preview_embed"        (+auth metabase.embedding-rest.api/preview-embedding-routes)
    "/product-feedback"     'metabase.product-feedback.api
-   "/public"               (+public-exceptions 'metabase.public-sharing-rest.api)
+   "/public"               (+public-exceptions metabase.public-sharing-rest.api/routes)
    "/pulse"                metabase.pulse.api/pulse-routes
    "/revision"             (+auth 'metabase.revisions.api)
    "/search"               (+auth metabase.search.api/routes)

@@ -17,13 +17,14 @@
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.task-history.core :as task-history]
    [metabase.task.core :as task]
+   [metabase.tracing.core :as tracing]
    [metabase.util.cron :as u.cron]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2])
   (:import
    (java.util TimeZone)
-   (org.quartz CronTrigger DisallowConcurrentExecution TriggerKey)))
+   (org.quartz CronTrigger DisallowConcurrentExecution JobExecutionContext TriggerKey)))
 
 (set! *warn-on-reflection* true)
 
@@ -48,22 +49,24 @@
 
 (defn- send-pulse!
   [pulse-id channel-ids]
-  (try
-    (if-let [pulse (models.pulse/retrieve-notification pulse-id
-                                                       :archived false
-                                                       ;; alerts should all be migrated to notifications by now
-                                                       :alert_condition nil)]
-      (task-history/with-task-run (some-> (pulse.send/pulse->task-run-info pulse) (assoc :auto-complete false))
-        (task-history/with-task-history {:task         "send-pulse"
-                                         :task_details {:pulse-id    pulse-id
-                                                        :channel-ids (seq channel-ids)}}
-          (log/debugf "Starting Pulse Execution: %d" pulse-id)
-          (pulse.send/send-pulse! pulse :channel-ids channel-ids :async? true)
-          (log/debugf "Finished Pulse Execution: %d" pulse-id)
-          :done))
-      (log/debugf "Pulse %d not found, Skipping." pulse-id))
-    (catch Throwable e
-      (log/errorf e "Error sending Pulse %d to channel ids: %s" pulse-id (str/join ", " channel-ids)))))
+  (tracing/with-span :tasks "task.pulse.send" {:pulse/id            pulse-id
+                                               :pulse/channel-count (count channel-ids)}
+    (try
+      (if-let [pulse (models.pulse/retrieve-notification pulse-id
+                                                         :archived false
+                                                         ;; alerts should all be migrated to notifications by now
+                                                         :alert_condition nil)]
+        (task-history/with-task-run (some-> (pulse.send/pulse->task-run-info pulse) (assoc :auto-complete false))
+          (task-history/with-task-history {:task         "send-pulse"
+                                           :task_details {:pulse-id    pulse-id
+                                                          :channel-ids (seq channel-ids)}}
+            (log/debugf "Starting Pulse Execution: %d" pulse-id)
+            (pulse.send/send-pulse! pulse :channel-ids channel-ids :async? true)
+            (log/debugf "Finished Pulse Execution: %d" pulse-id)
+            :done))
+        (log/debugf "Pulse %d not found, Skipping." pulse-id))
+      (catch Throwable e
+        (log/errorf e "Error sending Pulse %d to channel ids: %s" pulse-id (str/join ", " channel-ids))))))
 
 (defn- send-trigger-timezone
   []
@@ -104,24 +107,25 @@
 (defn- clear-pulse-channels-no-recipients!
   "Delete PulseChannels that have no recipients and no channel set for a pulse, returns the channel ids that were deleted."
   [pulse-id]
-  (when-let [ids-to-delete (seq
-                            (for [channel (t2/select [:model/PulseChannel :id :details :channel_id :channel_type]
-                                                     :pulse_id pulse-id
-                                                     :id [:not-in {:select   [[:pulse_channel_id :id]]
-                                                                   :from     :pulse_channel_recipient
-                                                                   :group-by [:pulse_channel_id]
-                                                                   :having   [:>= :%count.* [:raw 1]]}])
-                                  :when  (case (:channel_type channel)
-                                           :email
-                                           (empty? (get-in channel [:details :emails]))
-                                           :slack
-                                           (empty? (get-in channel [:details :channel]))
-                                           :http
-                                           (nil? (:channel_id channel)))]
-                              (:id channel)))]
-    (log/infof "Deleting %d PulseChannels with id: %s due to having no recipients" (count ids-to-delete) (str/join ", " ids-to-delete))
-    (t2/delete! :model/PulseChannel :id [:in ids-to-delete])
-    (set ids-to-delete)))
+  (tracing/with-span :tasks "task.pulse.clear-orphan-channels" {:pulse/id pulse-id}
+    (when-let [ids-to-delete (seq
+                              (for [channel (t2/select [:model/PulseChannel :id :details :channel_id :channel_type]
+                                                       :pulse_id pulse-id
+                                                       :id [:not-in {:select   [[:pulse_channel_id :id]]
+                                                                     :from     :pulse_channel_recipient
+                                                                     :group-by [:pulse_channel_id]
+                                                                     :having   [:>= :%count.* [:raw 1]]}])
+                                    :when  (case (:channel_type channel)
+                                             :email
+                                             (empty? (get-in channel [:details :emails]))
+                                             :slack
+                                             (empty? (get-in channel [:details :channel]))
+                                             :http
+                                             (nil? (:channel_id channel)))]
+                                (:id channel)))]
+      (log/infof "Deleting %d PulseChannels with id: %s due to having no recipients" (count ids-to-delete) (str/join ", " ids-to-delete))
+      (t2/delete! :model/PulseChannel :id [:in ids-to-delete])
+      (set ids-to-delete))))
 
 (defn- send-pulse!*
   "Do several things:
@@ -152,8 +156,25 @@
 (task/defjob ^{:doc "Triggers that send a pulse to a list of channels at a specific time"}
   SendPulse
   [context]
-  (let [{:strs [pulse-id channel-ids]} (qc/from-job-data context)]
-    (send-pulse!* pulse-id channel-ids)))
+  (let [{:strs [pulse-id channel-ids]} (qc/from-job-data context)
+        ^JobExecutionContext ctx  context
+        scheduled-fire-time       (.getScheduledFireTime ctx)
+        fire-time                 (.getFireTime ctx)
+        fire-instance-id          (.getFireInstanceId ctx)
+        recovering?               (.isRecovering ctx)
+        refire-count              (.getRefireCount ctx)
+        trigger-key               (.. ctx getTrigger getKey getName)
+        scheduler-id              (.. ctx getScheduler getSchedulerInstanceId)]
+    (log/with-context {:quartz-fire-instance-id    fire-instance-id
+                       :quartz-scheduled-fire-time (str scheduled-fire-time)
+                       :quartz-fire-time           (str fire-time)
+                       :quartz-recovering          recovering?
+                       :quartz-refire-count        refire-count
+                       :quartz-trigger-key         trigger-key
+                       :quartz-scheduler-id        scheduler-id}
+      (log/infof "SendPulse fired for pulse %d (trigger=%s, scheduled=%s, actual=%s, recovering=%s, refire=%d, scheduler=%s)"
+                 pulse-id trigger-key scheduled-fire-time fire-time recovering? refire-count scheduler-id)
+      (send-pulse!* pulse-id channel-ids))))
 
 (declare update-send-pulse-trigger-if-needed!)
 

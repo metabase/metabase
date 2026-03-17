@@ -17,7 +17,7 @@
    [metabase.lib.core :as lib]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.sql-tools.core :as sql-tools]
-   [metabase.transforms.util :as transforms.util]
+   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
@@ -61,7 +61,7 @@
     (mapv (fn [join]
             {:strategy     (or (:strategy join) :left-join)
              :alias        (:alias join)
-             :source-table (lib/source-table-id join)
+             :source-table (-> join :stages first :source-table)
              :conditions   (:conditions join)})
           joins)))
 
@@ -81,11 +81,11 @@
    Returns {:join-structure [...] :visited-fields {...}} or nil on failure."
   [transform]
   (let [preprocessed (-> transform :source :query
-                         transforms.util/massage-sql-query
+                         transforms-base.u/massage-sql-query
                          qp.preprocess/preprocess)]
     (when (<= (count (:stages preprocessed)) 1)
       {:preprocessed-query preprocessed
-       :from-table-id      (lib/source-table-id preprocessed)
+       :from-table-id      (lib/primary-source-table-id preprocessed)
        :join-structure     (extract-mbql-join-structure preprocessed)
        :visited-fields     (extract-mbql-visited-fields preprocessed)})))
 
@@ -144,20 +144,6 @@
           (when (and left-hsql right-hsql)
             [(keyword operator) left-hsql right-hsql]))))))
 
-(defn- column-from-ast
-  "Extract the column on `side` (:left or :right) from a single equality join condition.
-   Returns nil for compound (AND/OR) or multi-condition joins — we only analyze
-   simple single-condition joins."
-  [side conditions]
-  (let [conditions-list (if (sequential? conditions) conditions [conditions])
-        condition       (when (= 1 (count conditions-list)) (first conditions-list))]
-    (when (and condition
-               (= (:type condition) :macaw.ast/binary-expression)
-               (not (contains? #{"AND" "OR"} (u/upper-case-en (str (:operator condition))))))
-      (let [node (case side :left (:left condition) :right (:right condition))]
-        (when (= (:type node) :macaw.ast/column)
-          node)))))
-
 (defn- build-join-condition-hsql
   "Build a HoneySQL condition form from a macaw join node's conditions."
   [driver ast-node]
@@ -192,14 +178,11 @@
 
 (defn- extract-native-join-structure
   "Extract join structure from macaw AST as HoneySQL data.
-   Returns join info with :join-table, :join-condition, :lhs-column, :rhs-column as HoneySQL forms."
+   Returns join info with :join-table and :join-condition as HoneySQL forms."
   [ast table->id driver]
   (when-let [join-nodes (:join ast)]
     (mapv (fn [join-node]
-            (let [strategy (ast-join-type->strategy (:join-type join-node))
-                  is-outer? (contains? #{:left-join :right-join :full-join} strategy)
-                  lhs-col (when is-outer? (column-from-ast :left (:condition join-node)))
-                  rhs-col (when is-outer? (column-from-ast :right (:condition join-node)))]
+            (let [strategy (ast-join-type->strategy (:join-type join-node))]
               {:strategy       strategy
                :alias          (sql.normalize/normalize-name
                                 driver
@@ -209,9 +192,7 @@
                                            driver
                                            (get-in join-node [:source :table])))
                :join-table     (macaw-table->hsql driver (:source join-node))
-               :join-condition (build-join-condition-hsql driver join-node)
-               :lhs-column     (when lhs-col (macaw-column->hsql driver lhs-col))
-               :rhs-column     (when rhs-col (macaw-column->hsql driver rhs-col))}))
+               :join-condition (build-join-condition-hsql driver join-node)}))
           join-nodes)))
 
 (defn- resolve-native-visited-fields
@@ -232,10 +213,10 @@
   [transform sources]
   (try
     (let [native-query (-> (get-in transform [:source :query])
-                           transforms.util/massage-sql-query
+                           transforms-base.u/massage-sql-query
                            qp.preprocess/preprocess)
           sql (lib/raw-native-query native-query)
-          db-id (transforms.util/transform-source-database transform)
+          db-id (transforms-base.u/transform-source-database transform)
           driver (t2/select-one-fn (comp keyword :engine) :model/Database :id db-id)
           parsed (macaw-parsed-query sql driver)
           ast (macaw.ast/->ast parsed {:with-instance? false})]

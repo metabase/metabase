@@ -72,12 +72,11 @@
            (when <>
              (log/warnf "Found expression %s in previous stage" (pr-str expression-name)))))
        (when (lib.util/first-stage? query stage-number)
-         (when-let [source-card-id (lib.util/source-card-id query)]
-           (when-let [source-card (lib.metadata/card query source-card-id)]
-             (u/prog1 (resolve-expression (:dataset-query source-card) expression-name)
-               (when <>
-                 (log/warnf "Found expression %s in source card %d. Next time, use a :field name ref!"
-                            (pr-str expression-name) source-card-id))))))
+         (when-let [source-card (lib.metadata.calculation/primary-source-card query)]
+           (u/prog1 (resolve-expression (:dataset-query source-card) expression-name)
+             (when <>
+               (log/warnf "Found expression %s in source card %d. Next time, use a :field name ref!"
+                          (pr-str expression-name) (:id source-card))))))
        (throw (ex-info (i18n/tru "No expression named {0}" (pr-str expression-name))
                        {:expression-name expression-name
                         :query           query
@@ -95,8 +94,8 @@
     (fn []
       (let [base-type (lib.metadata.calculation/type-of query stage-number expression-ref-clause)]
         (merge {:lib/type                :metadata/column
-              ;; TODO (Cam 8/7/25) -- is the source UUID of an expression ref supposed to be the ID of the ref, or the ID
-              ;; of the expression definition??
+                ;; TODO (Cam 8/7/25) -- is the source UUID of an expression ref supposed to be the ID of the ref, or the ID
+                ;; of the expression definition??
                 :lib/source-uuid         (:lib/uuid opts)
                 :name                    expression-name
                 :lib/expression-name     expression-name
@@ -109,7 +108,9 @@
                  {:lib/temporal-unit unit})
                (when lib.metadata.calculation/*propagate-binning-and-bucketing*
                  (when-let [unit (lib.temporal-bucket/raw-temporal-bucket expression-ref-clause)]
-                   {:inherited-temporal-unit unit})))))))
+                   {:inherited-temporal-unit unit}))
+               (when-some [pivot-grouping? (:qp.pivot/pivot-grouping? opts)]
+                 {:qp.pivot/pivot-grouping? pivot-grouping?}))))))
 
 (defmethod lib.temporal-bucket/available-temporal-buckets-method :expression
   [query stage-number [_expression opts _expr-name, :as expr-clause]]

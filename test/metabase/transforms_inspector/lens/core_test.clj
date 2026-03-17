@@ -1,7 +1,10 @@
 (ns metabase.transforms-inspector.lens.core-test
   (:require
    [clojure.test :refer :all]
+   [metabase.transforms-inspector.core :as inspector]
    [metabase.transforms-inspector.lens.core :as lens.core]))
+
+(comment inspector/keep-me)
 
 ;;; -------------------------------------------------- lens-id->type --------------------------------------------------
 
@@ -57,11 +60,43 @@
     (is (true? (lens.core/lens-applicable? :generic-summary {:has-joins? false})))))
 
 (deftest join-analysis-applicability-test
-  (testing "join-analysis applicable when has-joins? is true"
-    (is (true? (lens.core/lens-applicable? :join-analysis {:has-joins? true}))))
+  (testing "join-analysis applicable when has-joins? is true and all tables are simple"
+    (is (true? (lens.core/lens-applicable? :join-analysis
+                                           {:has-joins? true
+                                            :from-table-id 10
+                                            :native-context {:join-structure [{:strategy :left-join
+                                                                               :source-table 1}]}})))
+    (is (true? (lens.core/lens-applicable? :join-analysis
+                                           {:has-joins? true
+                                            :from-table-id 10
+                                            :mbql-context {:join-structure [{:strategy :left-join
+                                                                             :source-table 1}
+                                                                            {:strategy :inner-join
+                                                                             :source-table 2}]}}))))
   (testing "join-analysis not applicable without joins"
     (is (not (lens.core/lens-applicable? :join-analysis {:has-joins? false})))
-    (is (not (lens.core/lens-applicable? :join-analysis {})))))
+    (is (not (lens.core/lens-applicable? :join-analysis {}))))
+  (testing "join-analysis not applicable when FROM table is a CTE/subquery (nil from-table-id)"
+    (is (not (lens.core/lens-applicable? :join-analysis
+                                         {:has-joins? true
+                                          :from-table-id nil
+                                          :native-context {:join-structure [{:strategy :left-join
+                                                                             :source-table 1}]}}))))
+  ;; see analyze-native-query-cte-join-source-table-is-nil-test for real SQL CTE parsing
+  (testing "join-analysis not applicable when a join target is a CTE (nil source-table)"
+    (is (not (lens.core/lens-applicable? :join-analysis
+                                         {:has-joins? true
+                                          :from-table-id 10
+                                          :native-context {:join-structure [{:strategy :left-join
+                                                                             :source-table nil}]}})))
+
+    (is (not (lens.core/lens-applicable? :join-analysis
+                                         {:has-joins? true
+                                          :from-table-id 10
+                                          :mbql-context {:join-structure [{:strategy :left-join
+                                                                           :source-table 1}
+                                                                          {:strategy :inner-join
+                                                                           :source-table nil}]}})))))
 
 (deftest column-comparison-applicability-test
   (testing "column-comparison applicable when has-column-matches? is true"

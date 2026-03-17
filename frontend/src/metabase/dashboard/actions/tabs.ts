@@ -22,6 +22,7 @@ import type {
   GetState,
   SelectedTabId,
   StoreDashboard,
+  StoreDashcard,
   TabDeletionId,
 } from "metabase-types/store";
 
@@ -219,7 +220,7 @@ export function getPrevDashAndTabs({
   filterRemovedTabs?: boolean;
 }) {
   const dashId = state.dashboardId;
-  const prevDash = dashId ? state.dashboards[dashId] : null;
+  const prevDash = dashId ? (state as DashboardState).dashboards[dashId] : null;
   const prevTabs =
     prevDash?.tabs?.filter((t) => !filterRemovedTabs || !t.isRemoved) ?? [];
 
@@ -367,7 +368,7 @@ export const tabsReducer = createReducer<DashboardState>(
           };
 
           // We don't have card (question) data for virtual dashcards (text, heading, link, action)
-          if (isVirtualDashCard(sourceDashCard)) {
+          if (isVirtualDashCard(sourceDashCard as StoreDashcard)) {
             return;
           }
 

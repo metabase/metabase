@@ -362,7 +362,9 @@
                 :measure/name
                 :measure/description
                 :measure/archived
-                :measure/definition]
+                :measure/definition
+                :measure/dimensions
+                :measure/dimension_mappings]
     :from      [[(t2/table-name :model/Measure) :measure]]
     :left-join [[(t2/table-name :model/Table) :table]
                 [:= :measure/table_id :table/id]]}))
@@ -547,7 +549,10 @@
   (metadatas [_this metadata-spec]
     (metadatas database-id metadata-spec))
   (setting [_this setting-name]
-    (setting/get setting-name))
+    (if (setting/database-local-values)
+      (setting/get setting-name)
+      (setting/with-database (database database-id)
+        (setting/get setting-name))))
 
   pretty/PrettyPrintable
   (pretty [_this]

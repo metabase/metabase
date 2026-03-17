@@ -97,3 +97,17 @@ const getTableOrderInSources = (
   tableOrdersInSources: Map<number | undefined, number>,
 ): number =>
   tableOrdersInSources.get(card.metadata.table_id) ?? Number.POSITIVE_INFINITY;
+
+export const getAllCards = (groups: CardGroup[]): InspectorCard[] =>
+  groups.flatMap((group) => group.inputCards.concat(group.outputCards));
+
+export const getVisibleGroups = (
+  groups: CardGroup[],
+  visibleCards: InspectorCard[],
+): CardGroup[] => {
+  const visibleCardIds = new Set(visibleCards.map(({ id }) => id));
+  return groups.filter((group) => {
+    const allCards = group.inputCards.concat(group.outputCards);
+    return allCards.every(({ id }) => visibleCardIds.has(id));
+  });
+};

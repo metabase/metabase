@@ -6,6 +6,7 @@
    [environ.core :as env]
    [metabase.config.core :as config]
    [metabase.embedding.settings :as embed.settings]
+   [metabase.server.instance :as server.instance]
    [metabase.server.middleware.security :as mw.security]
    [metabase.server.settings :as server.settings]
    [metabase.test :as mt]
@@ -90,7 +91,7 @@
                                           ;; should be the script tags for the webpack bundles
                                           (assert (= path "frontend_client/index.html"))
                                           (render-file "frontend_client/index_template.html" variables))]
-        (let [response  (http/get (str "http://localhost:" (config/config-str :mb-jetty-port)))
+        (let [response  (http/get (str "http://localhost:" (server.instance/server-port)))
               nonce     (json/decode @nonceJSON)
               csp       (get-in response [:headers "Content-Security-Policy"])
               style-src (->> (str/split csp #"; *")

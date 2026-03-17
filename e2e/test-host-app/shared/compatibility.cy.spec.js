@@ -5,7 +5,7 @@ import {
 
 const TIMEOUT_MS = 40000;
 
-const CLIENT_PORT = Cypress.env("CLIENT_PORT");
+const CLIENT_PORT = Cypress.expose("CLIENT_PORT");
 const CLIENT_HOST = `http://localhost:${CLIENT_PORT}`;
 
 describe("Embedding SDK: shared Host Apps compatibility tests", () => {
@@ -59,13 +59,16 @@ describe("Embedding SDK: shared Host Apps compatibility tests", () => {
     cy.findByTestId("interactive-question-result-toolbar", {
       timeout: TIMEOUT_MS,
     }).within(() => {
-      cy.findByText("Filtro").click();
+      cy.findByText("Filtrar").click();
     });
 
-    cy.get('[data-element-id="mantine-popover"]').within(() => {
-      cy.findByText("Started At").click();
-      cy.findByText(/Rango de fechas relativo…/).click();
-    });
+    cy.get('[data-element-id="mantine-popover"]')
+      .should("have.length.above", 0)
+      .last()
+      .within(() => {
+        cy.findByText("Started At").click();
+        cy.findByText(/Rango de fechas relativo…/).click();
+      });
 
     cy.findByTestId("date-filter-picker").within(() => {
       cy.findByText(/^dic.*2024/).should("exist");
@@ -83,12 +86,15 @@ describe("Embedding SDK: shared Host Apps compatibility tests", () => {
     cy.findByTestId("interactive-question-result-toolbar", {
       timeout: TIMEOUT_MS,
     }).within(() => {
-      cy.findByText("Filtro").click();
+      cy.findByText("Filtrar").click();
     });
-    cy.get('[data-element-id="mantine-popover"]').within(() => {
-      cy.findByText("Started At").click();
-      cy.findByText(/Rango de fechas fijo…/).click();
-    });
+    cy.get('[data-element-id="mantine-popover"]')
+      .should("have.length.above", 0)
+      .last()
+      .within(() => {
+        cy.findByText("Started At").click();
+        cy.findByText(/Rango de fechas fijo…/).click();
+      });
 
     cy.findByTestId("date-filter-picker").within(() => {
       cy.findByText("enero 2025").should("exist");
