@@ -33,15 +33,16 @@ We'll cover [setting up Remote Sync](#setting-up-remote-sync), an [example dev-t
 ### Remote Sync has two modes for different roles
 
 - **Read-write mode**: Create and edit content. You can [push](#pushing-changes-to-git) and [pull](#pulling-changes-from-git) changes to and from your repository. Multiple Metabase instances can connect in Read-write mode, each working on [different branches](#branch-management).
-- **Read-only mode**: Read-only instances only [pull](#pulling-changes-from-git) changes (typically from your main branch) and don't allow direct editing of synced content. In Read-only mode, you also can't edit transforms (even if transforms syncing wasn't enabled in read-write mode), can't edit Library content, and can't create segments or measures on published tables. You can set up [auto-sync](#pulling-changes-automatically) to automatically pull approved changes every five minutes.
+- **Read-only mode**: Read-only instances only [pull](#pulling-changes-from-git) changes (typically from your main branch) and don't allow direct editing of synced content. In Read-only mode, you also can't edit transforms (transforms are always read-only in this mode—see [Configure transforms syncing](#8-configure-transforms-syncing-optional)), can't edit Library content, and can't create segments or measures on published tables. You can set up [auto-sync](#pulling-changes-automatically) to automatically pull approved changes every five minutes.
 
 ### You choose what to sync
 
 You can sync:
 
 - Your [Library](../data-studio/library.md)
-- [Transforms](../data-studio/transforms/transforms-overview.md) as well.
-- Any top-level collection under Our Analytics. If you use [tenants](../embedding/tenants.md), you can also choose to sync [shared collections](../embedding/tenants.md#collection-types).
+- [Transforms](../data-studio/transforms/transforms-overview.md)
+- Any top-level collection under Our Analytics.
+- If you use [tenants](../embedding/tenants.md), you can also sync [shared collections](../embedding/tenants.md#collection-types).
 
 ### Items in synced collections must be self-contained
 
@@ -55,11 +56,11 @@ For Remote Sync to work properly, synced collections must be self-contained. Eve
 
 ### Content is stored as YAML files
 
-Remote Sync stores your content as [YAML files]( [YAML files](./serialization.md#example-of-a-serialized-question) in your Git repository. Each dashboard, question, model, and document becomes a YAML file that can be reviewed in pull requests and versioned like code.
+Remote Sync stores your content as [YAML files](./serialization.md#example-of-a-serialized-question) in your Git repository. Each dashboard, question, model, and document becomes a YAML file that can be reviewed in pull requests and versioned like code.
 
 ### Remote Sync excludes table metadata
 
-Column types, descriptions, and visibility settings don't sync. If you need to version table metadata, use [serialization](./serialization.md) instead.
+Table metadata doesn't sync. Table metadata includes things like table names, column types, descriptions, and visibility settings. If you need to version table metadata, use [serialization](./serialization.md) instead.
 
 ### One branch at a time per Metabase
 
@@ -94,7 +95,7 @@ Create a personal access token with read and write repository access. Copy the t
 
 - **GitHub**: Create a [fine-grained personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) with **Contents: Read and write** and **Metadata: Read-only** permissions.
 - **GitLab**: In **User Settings** > **Personal access tokens**, [create a token](https://docs.gitlab.com/user/profile/personal_access_tokens/) with **read_repository** and **write_repository** scopes. Tokens have an expiration date (your admin may set a maximum lifetime).
-- **Bitbucket**: In your [Atlassian account settings](https://id.atlassian.com/manage-profile/security) under **Security**, click **Create API token with scopes**. Select Bitbucket, search for "repos", and grant **read:repository:bitbucket** and **write:repository:bitbucket** (write does not include read). Tokens expire and can't be modified after creation.
+- **Bitbucket**: In your [Atlassian account settings](https://id.atlassian.com/manage-profile/security) under **Security**, click **Create API token with scopes**. Select Bitbucket, search for "repos", and grant `read:repository:bitbucket` and `write:repository:bitbucket` (write does not include read). Tokens expire and can't be modified after creation.
 
 ### 3. Connect your development Metabase to your repository
 
@@ -148,7 +149,7 @@ Create a personal access token with read-only repository access. Copy the token 
 
 - **GitHub**: Create a [fine-grained personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) with **Contents: Read-only** and **Metadata: Read-only** permissions.
 - **GitLab**: In **User Settings** > **Personal access tokens**, [create a token](https://docs.gitlab.com/user/profile/personal_access_tokens/) with **read_repository** scope only.
-- **Bitbucket**: In your [Atlassian account settings](https://id.atlassian.com/manage-profile/security) under **Security**, click **Create API token with scopes**. Select Bitbucket and grant **read:repository:bitbucket** only.
+- **Bitbucket**: In your [Atlassian account settings](https://id.atlassian.com/manage-profile/security) under **Security**, click **Create API token with scopes**. Select Bitbucket and grant `read:repository:bitbucket` only.
 
 ### 7. Connect your production Metabase to your repository
 
@@ -184,7 +185,12 @@ At this point, you should be all set up. Exit Admin, then reload your browser. Y
 
 ### 8. Configure transforms syncing (optional)
 
-To version control your data transformation logic, you can sync your [Transforms](../data-studio/transforms/transforms-overview.md) including all your tags and jobs. Transform syncing is all or nothing: Metabase will sync your entire transforms namespace. You can't selectively sync specific transform folders.
+To version your data transformation logic, you can sync your [Transforms](../data-studio/transforms/transforms-overview.md), including all your tags and jobs. Some things to keep in mind:
+
+- **Transform syncing is all or nothing**: Metabase will sync your entire transforms namespace. You can't selectively sync specific transform folders.
+- **This setting only determines whether Metabase pushes transforms from Read-write mode.** When you _pull_ from a repository, all content present in the repo is loaded—including any transforms—regardless of this setting. Think of it like pulling a repo that has a new collection you hadn't previously synced: the setting doesn't filter what comes in, only what goes out.
+-**You can't edit transforms in read-only mode.**, even if you haven't explicitly turned on transform syncing. Keeping transforms read-only prevents unintended overwrites on subsequent pulls.
+- **Use different databases for dev and production**. If you use transforms with Remote Sync, your development and production Metabases should connect to separate databases that share _identical_ schemas. If you use the same database for both, dev transforms would also change production data.
 
 ## An example dev-to-production workflow
 
@@ -295,7 +301,7 @@ Remote Sync uses the same serialization format as the [Metabase CLI serializatio
 - Alerts and subscriptions
 - Database connections
 - Personal collections
-- Table metadata (column types, descriptions, visibility settings, etc.)
+- Table metadata (table names, column types, descriptions, visibility settings, etc.)
 
 ## Branch management
 
@@ -398,8 +404,6 @@ In Read-only mode, you can set Metabase to auto-sync changes from your main bran
 By default, Metabase will check for and pull changes from the branch you specify every five minutes. You can also manually sync as needed.
 
 ## Disabling Remote Sync
-
-To disable Remote Sync, go to the Remote Sync settings page in Admin.
 
 To disable Remote Sync:
 
