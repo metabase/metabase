@@ -371,12 +371,12 @@
         (:timeout body)
         {:status  :failed
          :logs    events
-         :message (i18n/tru "Python execution timed out")}
+         :message (i18n/deferred-tru "Python execution timed out")}
 
         (not= 200 status)
         {:status  :failed
          :logs    events
-         :message (i18n/tru "Python execution failure (exit code {0})" (:exit_code body "?"))}
+         :message (i18n/deferred-tru "Python execution failure (exit code {0})" (:exit_code body "?"))}
 
         :else
         (let [output-manifest (read-output-manifest @shared-storage-ref)
