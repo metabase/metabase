@@ -9,8 +9,8 @@
                               [0 1 2] 0
                               []      7}]
     (is (= expected
-           (pivot.common/group-bitmask 3 indices))))
-)
+           (pivot.common/group-bitmask 3 indices)))))
+
 (deftest ^:parallel group-bitmask-test-2
   (testing "Should work for more than 31 breakouts"
     (is (= 4294967295 (pivot.common/group-bitmask 32 [])))))
