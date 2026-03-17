@@ -157,37 +157,51 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
     });
 
     it("should enable drill-through when drills is true", () => {
-      H.visitCustomHtmlPage(`
-      ${H.getNewEmbedScriptTag()}
-      ${H.getNewEmbedConfigurationScript()}
-      <metabase-dashboard dashboard-id="${ORDERS_DASHBOARD_ID}" drills />
-      `);
+      H.createQuestionAndDashboard({
+        questionDetails: {
+          name: "Limited Orders",
+          query: { "source-table": ORDERS_ID, limit: 5 },
+        },
+      }).then(({ body: { dashboard_id } }) => {
+        H.visitCustomHtmlPage(`
+        ${H.getNewEmbedScriptTag()}
+        ${H.getNewEmbedConfigurationScript()}
+        <metabase-dashboard dashboard-id="${dashboard_id}" drills />
+        `);
 
-      H.getSimpleEmbedIframeContent()
-        .findAllByText("37.65")
-        .first()
-        .should("be.visible")
-        .click();
-      H.getSimpleEmbedIframeContent()
-        .findByText(/Filter by this value/)
-        .should("be.visible");
+        H.getSimpleEmbedIframeContent()
+          .findAllByText("37.65")
+          .first()
+          .should("be.visible")
+          .click();
+        H.getSimpleEmbedIframeContent()
+          .findByText(/Filter by this value/)
+          .should("be.visible");
+      });
     });
 
     it("should disable drill-through when drills is false", () => {
-      H.visitCustomHtmlPage(`
-      ${H.getNewEmbedScriptTag()}
-      ${H.getNewEmbedConfigurationScript()}
-      <metabase-dashboard dashboard-id="${ORDERS_DASHBOARD_ID}" drills="false" />
-      `);
+      H.createQuestionAndDashboard({
+        questionDetails: {
+          name: "Limited Orders",
+          query: { "source-table": ORDERS_ID, limit: 5 },
+        },
+      }).then(({ body: { dashboard_id } }) => {
+        H.visitCustomHtmlPage(`
+        ${H.getNewEmbedScriptTag()}
+        ${H.getNewEmbedConfigurationScript()}
+        <metabase-dashboard dashboard-id="${dashboard_id}" drills="false" />
+        `);
 
-      H.getSimpleEmbedIframeContent()
-        .findAllByText("37.65")
-        .first()
-        .should("be.visible")
-        .click();
-      H.getSimpleEmbedIframeContent()
-        .findByText(/Filter by this value/)
-        .should("not.exist");
+        H.getSimpleEmbedIframeContent()
+          .findAllByText("37.65")
+          .first()
+          .should("be.visible")
+          .click();
+        H.getSimpleEmbedIframeContent()
+          .findByText(/Filter by this value/)
+          .should("not.exist");
+      });
     });
   });
 
