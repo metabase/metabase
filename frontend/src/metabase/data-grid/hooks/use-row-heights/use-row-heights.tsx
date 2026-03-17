@@ -48,15 +48,11 @@ export const useRowHeights = <TData extends RowData, TValue>({
           }
           const tableColumn = tableRef.current?.getColumn(column.id);
 
-          try {
-            const cellDimensions = measureBodyCellDimensions(
-              formattedValue,
-              tableColumn?.getSize(),
-            );
-            return cellDimensions.height;
-          } catch {
-            return defaultRowHeight;
-          }
+          const cellDimensions = measureBodyCellDimensions(
+            formattedValue,
+            tableColumn?.getSize(),
+          );
+          return cellDimensions.height;
         }),
         defaultRowHeight,
       );

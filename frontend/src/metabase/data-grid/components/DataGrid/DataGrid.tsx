@@ -218,6 +218,7 @@ export const DataGrid = function DataGrid<TData>({
   return (
     <DataGridThemeProvider theme={theme}>
       <DndContext {...dndContextProps}>
+        {measureRoot}
         <div
           className={cx(S.table, classNames?.root)}
           data-testid="table-root"
@@ -318,7 +319,6 @@ export const DataGrid = function DataGrid<TData>({
             tableFooterExtraButtons={tableFooterExtraButtons}
           />
         </div>
-        {measureRoot}
       </DndContext>
     </DataGridThemeProvider>
   );
