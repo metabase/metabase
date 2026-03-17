@@ -109,6 +109,36 @@
         dependents (models.dependency/transitive-dependents type->objects)]
     (mark-supported-dependents-stale! dependents)))
 
+(mu/defn mark-entity-stale!
+  "Mark a single entity as stale for re-analysis by the background job."
+  [entity-type :- AnalyzableEntityType
+   entity-id   :- pos-int?]
+  (deps.analysis-finding/mark-stale! entity-type [entity-id]))
+
+(mu/defn mark-immediate-dependents-stale! :- :boolean
+  "Mark the immediate dependents of an entity as stale.
+  Unlike [[mark-dependents-stale!]], this does NOT traverse transitively."
+  [entity-type :- DependableEntityType
+   entity-id   :- pos-int?]
+  (let [key-seq [[entity-type entity-id]]
+        deps-map (models.dependency/direct-dependents key-seq)
+        dependents (models.dependency/group-nodes
+                    (into #{} cat (vals deps-map)))]
+    (mark-supported-dependents-stale! dependents)))
+
+(defn- analyze-and-propagate!
+  "Analyze an entity and mark its immediate dependents as stale.
+  Wrapped in a transaction so that if marking dependents fails, the analysis
+  is rolled back and the entity stays stale for retry on the next pass.
+  The newly-stale dependents are picked up by the job's loop in
+  `task.entity-check/check-entities!`, which drains all stale entities
+  before returning — no need to re-trigger the job."
+  [instance]
+  (let [entity-type (deps.dependency-types/model->dependency-type (t2/model instance))]
+    (t2/with-transaction [_conn]
+      (upsert-analysis! instance)
+      (mark-immediate-dependents-stale! entity-type (:id instance)))))
+
 (mu/defn analyze-batch! :- nat-int?
   "Add or update analyses for a batch of entities.
 
@@ -118,5 +148,9 @@
    batch-size :- pos-int?]
   (let [instances (deps.analysis-finding/instances-for-analysis type batch-size)]
     (lib-be/with-metadata-provider-cache
-      (analyze-instances! instances))
+      (doseq [instance instances]
+        (try (analyze-and-propagate! instance)
+             (catch Exception e
+               (log/errorf e "Analyzing entity %s %s failed"
+                           (t2/model instance) (:id instance))))))
     (count instances)))

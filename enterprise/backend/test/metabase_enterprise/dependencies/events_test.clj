@@ -2,7 +2,6 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
-   [metabase-enterprise.dependencies.async :as async]
    [metabase-enterprise.dependencies.calculation :as deps.calculation]
    [metabase-enterprise.dependencies.events]
    [metabase-enterprise.dependencies.findings :as deps.findings]
@@ -785,7 +784,7 @@
 (deftest ^:sequential card-update-works-with-no-analyses-test
   (run-with-dependencies-setup!
    (fn [mp]
-     (testing "Card updates should analyze the card and mark dependents stale for async processing"
+     (testing "Card updates should mark the card stale and trigger the background job"
        (let [products-id (mt/id :products)
              products (lib.metadata/table mp products-id)]
          (mt/with-temp [:model/Card {parent-card-id :id :as parent-card} {:dataset_query (lib/query mp products)}
@@ -794,10 +793,10 @@
                                              :from_entity_id child-card-id
                                              :to_entity_type :card
                                              :to_entity_id parent-card-id}]
-           (with-redefs [async/submit! (fn [f] (f))]
-             (events/publish-event! :event/card-update {:object parent-card :previous-object parent-card :user-id api/*current-user-id*}))
+           (events/publish-event! :event/card-update {:object parent-card :previous-object parent-card :user-id api/*current-user-id*})
+           ;; No analysis record should exist yet - mark-entity-stale! is a no-op for never-analyzed entities
            (assert-has-analyses
-            {:card {parent-card-id -1}})
+            {:card {parent-card-id nil}})
            (is (nil? (t2/select-one-fn :analysis_version :model/AnalysisFinding
                                        :analyzed_entity_type :card
                                        :analyzed_entity_id child-card-id))
@@ -806,13 +805,12 @@
 (deftest ^:sequential card-update-updates-analyses-test
   (run-with-dependencies-setup!
    (fn [mp]
-     (testing "Card updates should update the card's analysis and mark dependents stale"
+     (testing "Card updates should mark the card stale, then the job re-analyzes and propagates"
        (let [products-id (mt/id :products)
              orders-id (mt/id :orders)
              products (lib.metadata/table mp products-id)
              orders (lib.metadata/table mp orders-id)
-             old-version models.analysis-finding/*current-analysis-finding-version*
-             new-version (inc models.analysis-finding/*current-analysis-finding-version*)]
+             old-version models.analysis-finding/*current-analysis-finding-version*]
          (mt/with-temp [:model/Card {parent-card-id :id :as parent-card} {:dataset_query (lib/query mp products)}
                         :model/Card {child-card-id :id :as child-card} {:dataset_query (lib/query mp (lib.metadata/card mp parent-card-id))}
                         :model/Card {other-card-id :id :as other-card} {:dataset_query (lib/query mp orders)}
@@ -828,25 +826,35 @@
               {:card {parent-card-id old-version
                       child-card-id old-version
                       other-card-id old-version}}))
-           (t2/with-transaction [_conn]
-             (binding [models.analysis-finding/*current-analysis-finding-version* new-version]
-               (with-redefs [async/submit! (fn [f] (f))]
-                 (events/publish-event! :event/card-update {:object parent-card :previous-object parent-card :user-id api/*current-user-id*})))
-             (testing "Parent should be re-analyzed synchronously"
-               (assert-has-analyses
-                {:card {parent-card-id new-version}}))
-             (testing "Child should be marked stale (not re-analyzed yet)"
-               (let [child-finding (t2/select-one :model/AnalysisFinding
-                                                  :analyzed_entity_type :card
-                                                  :analyzed_entity_id child-card-id)]
-                 (is (= old-version (:analysis_version child-finding)))
-                 (is (true? (:stale child-finding)))))
-             (testing "Other card should be unchanged"
-               (let [other-finding (t2/select-one :model/AnalysisFinding
-                                                  :analyzed_entity_type :card
-                                                  :analyzed_entity_id other-card-id)]
-                 (is (= old-version (:analysis_version other-finding)))
-                 (is (false? (:stale other-finding))))))))))))
+           ;; Event handler just marks the entity stale
+           (events/publish-event! :event/card-update {:object parent-card :previous-object parent-card :user-id api/*current-user-id*})
+           (testing "Parent should be marked stale"
+             (is (=? {:analysis_version old-version :stale true}
+                     (t2/select-one :model/AnalysisFinding
+                                    :analyzed_entity_type :card
+                                    :analyzed_entity_id parent-card-id))))
+           (testing "Child should be unchanged before job runs"
+             (is (=? {:analysis_version old-version :stale false}
+                     (t2/select-one :model/AnalysisFinding
+                                    :analyzed_entity_type :card
+                                    :analyzed_entity_id child-card-id))))
+           ;; Run the batch job - it re-analyzes parent and marks immediate dependents stale
+           (deps.findings/analyze-batch! :card 10)
+           (testing "Parent should be re-analyzed after job"
+             (is (=? {:analysis_version old-version :stale false}
+                     (t2/select-one :model/AnalysisFinding
+                                    :analyzed_entity_type :card
+                                    :analyzed_entity_id parent-card-id))))
+           (testing "Child should be marked stale by the job (immediate dependent)"
+             (is (=? {:analysis_version old-version :stale true}
+                     (t2/select-one :model/AnalysisFinding
+                                    :analyzed_entity_type :card
+                                    :analyzed_entity_id child-card-id))))
+           (testing "Other card should be unchanged"
+             (is (=? {:analysis_version old-version :stale false}
+                     (t2/select-one :model/AnalysisFinding
+                                    :analyzed_entity_type :card
+                                    :analyzed_entity_id other-card-id))))))))))
 
 (deftest ^:sequential stale-entities-are-processed-by-job-test
   (run-with-dependencies-setup!
@@ -863,15 +871,15 @@
            ;; Create initial analyses for both cards
            (deps.findings/upsert-analysis! parent-card)
            (deps.findings/upsert-analysis! child-card)
-           ;; Update parent - this marks child as stale
-           (t2/with-transaction [_conn]
-             (with-redefs [async/submit! (fn [f] (f))]
-               (events/publish-event! :event/card-update {:object parent-card :previous-object parent-card :user-id api/*current-user-id*}))
-             ;; Verify child is stale
-             (is (true? (t2/select-one-fn :stale :model/AnalysisFinding
-                                          :analyzed_entity_type :card
-                                          :analyzed_entity_id child-card-id))
-                 "Child should be marked stale after parent update"))
+           ;; Update parent - this marks parent as stale
+           (events/publish-event! :event/card-update {:object parent-card :previous-object parent-card :user-id api/*current-user-id*})
+           ;; Run the job to analyze the parent, which marks child as stale
+           (deps.findings/analyze-batch! :card 10)
+           ;; Verify child is stale
+           (is (true? (t2/select-one-fn :stale :model/AnalysisFinding
+                                        :analyzed_entity_type :card
+                                        :analyzed_entity_id child-card-id))
+               "Child should be marked stale after parent analyzed by job")
            ;; Run the job to process stale entities
            (deps.findings/analyze-batch! :card 10)
            ;; Verify child is no longer stale and has been re-analyzed
@@ -883,37 +891,81 @@
              (is (= current-version (:analysis_version child-finding))
                  "Child should have current analysis version"))))))))
 
-(deftest ^:sequential card-update-transaction-rollback-test
+(deftest ^:sequential transitive-propagation-through-card-chain-test
   (run-with-dependencies-setup!
    (fn [mp]
-     (testing "If marking dependents stale fails, analysis upsert is rolled back"
+     (testing "Staleness propagates through a -> b -> c chain across multiple batch runs"
        (let [products (lib.metadata/table mp (mt/id :products))
-             old-version models.analysis-finding/*current-analysis-finding-version*
-             new-version (inc old-version)]
+             old-version models.analysis-finding/*current-analysis-finding-version*]
+         (mt/with-temp [:model/Card {a-id :id :as card-a} {:dataset_query (lib/query mp products)}
+                        :model/Card {b-id :id :as card-b} {:dataset_query (lib/query mp (lib.metadata/card mp a-id))}
+                        :model/Card {c-id :id :as card-c} {:dataset_query (lib/query mp (lib.metadata/card mp b-id))}
+                        :model/Dependency _ {:from_entity_type :card
+                                             :from_entity_id b-id
+                                             :to_entity_type :card
+                                             :to_entity_id a-id}
+                        :model/Dependency _ {:from_entity_type :card
+                                             :from_entity_id c-id
+                                             :to_entity_type :card
+                                             :to_entity_id b-id}]
+           ;; Analyze all three cards
+           (deps.findings/upsert-analysis! card-a)
+           (deps.findings/upsert-analysis! card-b)
+           (deps.findings/upsert-analysis! card-c)
+           ;; Update card-a — event handler marks it stale
+           (events/publish-event! :event/card-update {:object card-a :previous-object card-a :user-id api/*current-user-id*})
+           (testing "Only a is stale after event"
+             (is (=? {:stale true}  (t2/select-one :model/AnalysisFinding :analyzed_entity_type :card :analyzed_entity_id a-id)))
+             (is (=? {:stale false} (t2/select-one :model/AnalysisFinding :analyzed_entity_type :card :analyzed_entity_id b-id)))
+             (is (=? {:stale false} (t2/select-one :model/AnalysisFinding :analyzed_entity_type :card :analyzed_entity_id c-id))))
+           ;; Pass 1: analyzes a, marks b stale
+           (deps.findings/analyze-batch! :card 10)
+           (testing "After pass 1: a is fresh, b is stale, c is still fresh"
+             (is (=? {:stale false} (t2/select-one :model/AnalysisFinding :analyzed_entity_type :card :analyzed_entity_id a-id)))
+             (is (=? {:stale true}  (t2/select-one :model/AnalysisFinding :analyzed_entity_type :card :analyzed_entity_id b-id)))
+             (is (=? {:stale false} (t2/select-one :model/AnalysisFinding :analyzed_entity_type :card :analyzed_entity_id c-id))))
+           ;; Pass 2: analyzes b, marks c stale
+           (deps.findings/analyze-batch! :card 10)
+           (testing "After pass 2: a and b are fresh, c is stale"
+             (is (=? {:stale false} (t2/select-one :model/AnalysisFinding :analyzed_entity_type :card :analyzed_entity_id a-id)))
+             (is (=? {:stale false} (t2/select-one :model/AnalysisFinding :analyzed_entity_type :card :analyzed_entity_id b-id)))
+             (is (=? {:stale true}  (t2/select-one :model/AnalysisFinding :analyzed_entity_type :card :analyzed_entity_id c-id))))
+           ;; Pass 3: analyzes c, everything is fresh
+           (deps.findings/analyze-batch! :card 10)
+           (testing "After pass 3: all cards are fresh"
+             (is (=? {:stale false :analysis_version old-version}
+                     (t2/select-one :model/AnalysisFinding :analyzed_entity_type :card :analyzed_entity_id a-id)))
+             (is (=? {:stale false :analysis_version old-version}
+                     (t2/select-one :model/AnalysisFinding :analyzed_entity_type :card :analyzed_entity_id b-id)))
+             (is (=? {:stale false :analysis_version old-version}
+                     (t2/select-one :model/AnalysisFinding :analyzed_entity_type :card :analyzed_entity_id c-id))))))))))
+
+(deftest ^:sequential card-update-marks-stale-test
+  (run-with-dependencies-setup!
+   (fn [mp]
+     (testing "Card update marks the entity stale for the background job"
+       (let [products (lib.metadata/table mp (mt/id :products))
+             old-version models.analysis-finding/*current-analysis-finding-version*]
          (mt/with-temp [:model/Card {card-id :id :as card} {:dataset_query (lib/query mp products)}]
            ;; Create initial analysis
            (deps.findings/upsert-analysis! card)
-           (testing "Initial analysis exists"
-             (is (= old-version (t2/select-one-fn :analysis_version :model/AnalysisFinding
-                                                  :analyzed_entity_type :card
-                                                  :analyzed_entity_id card-id))))
-           ;; Try to update with mark-dependents-stale! throwing an exception
-           (binding [models.analysis-finding/*current-analysis-finding-version* new-version]
-             (with-redefs [async/submit!                     (fn [f] (f))
-                           deps.findings/mark-dependents-stale! (fn [_ _] (throw (ex-info "Simulated failure" {})))]
-               (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Simulated failure"
-                                     (events/publish-event! :event/card-update {:object card :previous-object card :user-id api/*current-user-id*})))))
-           ;; Verify analysis was NOT updated (rolled back)
-           (testing "Analysis should be unchanged after failed event"
-             (is (= old-version (t2/select-one-fn :analysis_version :model/AnalysisFinding
-                                                  :analyzed_entity_type :card
-                                                  :analyzed_entity_id card-id))))))))))
+           (testing "Initial analysis exists and is not stale"
+             (is (=? {:analysis_version old-version :stale false}
+                     (t2/select-one :model/AnalysisFinding
+                                    :analyzed_entity_type :card
+                                    :analyzed_entity_id card-id))))
+           ;; Event handler just marks stale
+           (events/publish-event! :event/card-update {:object card :previous-object card :user-id api/*current-user-id*})
+           (testing "Analysis should be marked stale after event"
+             (is (=? {:analysis_version old-version :stale true}
+                     (t2/select-one :model/AnalysisFinding
+                                    :analyzed_entity_type :card
+                                    :analyzed_entity_id card-id))))))))))
 
 (deftest ^:sequential card-update-triggers-native-cards-test
   (run-with-dependencies-setup!
    (fn [mp]
-     (let [old-version models.analysis-finding/*current-analysis-finding-version*
-           new-version (inc old-version)]
+     (let [old-version models.analysis-finding/*current-analysis-finding-version*]
        (mt/with-temp [:model/Card
                       {parent-id :id :as parent}
                       {:dataset_query (lib/native-query mp "select * from products")}
@@ -928,21 +980,22 @@
                                            :to_entity_id parent-id}]
          (deps.findings/upsert-analysis! parent)
          (deps.findings/upsert-analysis! child)
-         (t2/with-transaction [_conn]
-           (binding [models.analysis-finding/*current-analysis-finding-version* new-version]
-             (with-redefs [async/submit! (fn [f] (f))]
-               (events/publish-event! :event/card-update {:object parent
-                                                          :previous-object parent
-                                                          :user-id api/*current-user-id*})
-               (testing "Native card update should trigger analysis"
-                 (assert-has-analyses
-                  {:card {parent-id new-version}}))
-               (testing "Its dependents should be marked stale"
-                 (let [child-finding (t2/select-one :model/AnalysisFinding
-                                                    :analyzed_entity_type :card
-                                                    :analyzed_entity_id child-id)]
-                   (is (= old-version (:analysis_version child-finding)))
-                   (is (true? (:stale child-finding)))))))))))))
+         ;; Event handler just marks parent stale
+         (events/publish-event! :event/card-update {:object parent
+                                                    :previous-object parent
+                                                    :user-id api/*current-user-id*})
+         (testing "Native card should be marked stale"
+           (is (=? {:analysis_version old-version :stale true}
+                   (t2/select-one :model/AnalysisFinding
+                                  :analyzed_entity_type :card
+                                  :analyzed_entity_id parent-id))))
+         ;; Run the job to analyze parent and mark child stale
+         (deps.findings/analyze-batch! :card 10)
+         (testing "Its dependents should be marked stale after job"
+           (is (=? {:analysis_version old-version :stale true}
+                   (t2/select-one :model/AnalysisFinding
+                                  :analyzed_entity_type :card
+                                  :analyzed_entity_id child-id)))))))))
 
 (deftest ^:sequential card-update-stops-on-transforms-test
   (run-with-dependencies-setup!
@@ -952,8 +1005,7 @@
              orders-id (mt/id :orders)
              products (lib.metadata/table mp products-id)
              orders (lib.metadata/table mp orders-id)
-             old-version models.analysis-finding/*current-analysis-finding-version*
-             new-version (inc models.analysis-finding/*current-analysis-finding-version*)]
+             old-version models.analysis-finding/*current-analysis-finding-version*]
          (mt/with-temp [:model/Card {parent-card-id :id :as parent-card} {:dataset_query (lib/query mp products)}
                         :model/Transform {transform-id :id :as transform} {:source {:type :query
                                                                                     :query (lib/query mp products)}
@@ -978,25 +1030,32 @@
               {:card {parent-card-id old-version
                       child-card-id old-version}
                :transform {transform-id old-version}}))
-           (binding [models.analysis-finding/*current-analysis-finding-version* new-version]
-             (t2/with-transaction [_conn]
-               (with-redefs [async/submit! (fn [f] (f))]
-                 (events/publish-event! :event/card-update {:object parent-card :previous-object parent-card :user-id api/*current-user-id*})
-                 (testing "parent card should be re-analyzed synchronously"
-                   (is (=? {:analysis_version new-version :stale false}
-                           (t2/select-one :model/AnalysisFinding
-                                          :analyzed_entity_type :card
-                                          :analyzed_entity_id parent-card-id))))
-                 (testing "transform (direct dependent) should be marked stale"
-                   (is (=? {:analysis_version old-version :stale true}
-                           (t2/select-one :model/AnalysisFinding
-                                          :analyzed_entity_type :transform
-                                          :analyzed_entity_id transform-id))))
-                 (testing "child card (transitive dependent) should be marked stale"
-                   (is (=? {:analysis_version old-version :stale true}
-                           (t2/select-one :model/AnalysisFinding
-                                          :analyzed_entity_type :card
-                                          :analyzed_entity_id child-card-id)))))))))))))
+           ;; Event handler just marks parent stale
+           (events/publish-event! :event/card-update {:object parent-card :previous-object parent-card :user-id api/*current-user-id*})
+           (testing "parent card should be marked stale"
+             (is (=? {:analysis_version old-version :stale true}
+                     (t2/select-one :model/AnalysisFinding
+                                    :analyzed_entity_type :card
+                                    :analyzed_entity_id parent-card-id))))
+           ;; Run the job - analyzes parent, marks immediate dependents (transform) stale
+           (deps.findings/analyze-batch! :card 10)
+           (testing "transform (immediate dependent) should be marked stale"
+             (is (=? {:analysis_version old-version :stale true}
+                     (t2/select-one :model/AnalysisFinding
+                                    :analyzed_entity_type :transform
+                                    :analyzed_entity_id transform-id))))
+           (testing "child card (not immediate) should NOT be marked stale yet"
+             (is (=? {:analysis_version old-version :stale false}
+                     (t2/select-one :model/AnalysisFinding
+                                    :analyzed_entity_type :card
+                                    :analyzed_entity_id child-card-id))))
+           ;; Run the transform batch - analyzes transform, marks child stale
+           (deps.findings/analyze-batch! :transform 10)
+           (testing "child card should now be marked stale (propagated through transform)"
+             (is (=? {:analysis_version old-version :stale true}
+                     (t2/select-one :model/AnalysisFinding
+                                    :analyzed_entity_type :card
+                                    :analyzed_entity_id child-card-id))))))))))
 
 (deftest ^:sequential transform-update-works-with-no-analyses-test
   (run-with-dependencies-setup!
@@ -1015,11 +1074,11 @@
                                              :from_entity_id card-id
                                              :to_entity_type :transform
                                              :to_entity_id transform-id}]
-           (events/publish-event! :event/transform-update {:object transform :user-id api/*current-user-id*})
+           (events/publish-event! :event/update-transform {:object transform :user-id api/*current-user-id*})
+           ;; No analysis record should exist yet - mark-entity-stale! is a no-op for never-analyzed entities
            (assert-has-analyses
-            ;; child cards shouldn't be updated on transform update, only on run
             {:card {card-id nil}
-             :transform {transform-id -1}})))))))
+             :transform {transform-id nil}})))))))
 
 (deftest ^:sequential transform-update-updates-analyses-test
   (run-with-dependencies-setup!
@@ -1029,8 +1088,7 @@
              orders-id (mt/id :orders)
              products (lib.metadata/table mp products-id)
              orders (lib.metadata/table mp orders-id)
-             old-version models.analysis-finding/*current-analysis-finding-version*
-             new-version (inc models.analysis-finding/*current-analysis-finding-version*)]
+             old-version models.analysis-finding/*current-analysis-finding-version*]
          (mt/with-premium-features #{:dependencies}
            (mt/with-temp [:model/Card {card-id :id :as card} {:dataset_query (lib/query mp products)}
                           :model/Transform {transform-id :id :as transform} {:source {:type :query
@@ -1052,14 +1110,22 @@
                 {:card {card-id old-version
                         other-card-id old-version}
                  :transform {transform-id old-version}}))
-             (binding [models.analysis-finding/*current-analysis-finding-version* new-version]
-               (events/publish-event! :event/update-transform {:object transform :user-id api/*current-user-id*}))
-             (testing "Checking that the correct analyses were updated"
-               (assert-has-analyses
-                ;; neither unrelated cards nor dependent cards should be updated on transform update
-                {:card {card-id old-version
-                        other-card-id old-version}
-                 :transform {transform-id new-version}})))))))))
+             ;; Event handler just marks stale
+             (events/publish-event! :event/update-transform {:object transform :user-id api/*current-user-id*})
+             (testing "Transform should be marked stale"
+               (is (=? {:analysis_version old-version :stale true}
+                       (t2/select-one :model/AnalysisFinding
+                                      :analyzed_entity_type :transform
+                                      :analyzed_entity_id transform-id))))
+             (testing "Cards should be unchanged"
+               (is (=? {:analysis_version old-version :stale false}
+                       (t2/select-one :model/AnalysisFinding
+                                      :analyzed_entity_type :card
+                                      :analyzed_entity_id card-id)))
+               (is (=? {:analysis_version old-version :stale false}
+                       (t2/select-one :model/AnalysisFinding
+                                      :analyzed_entity_type :card
+                                      :analyzed_entity_id other-card-id)))))))))))
 
 (deftest ^:sequential transform-update-triggers-native-transforms-test
   (run-with-dependencies-setup!
@@ -1071,9 +1137,10 @@
                                                                          :target {:schema "public"
                                                                                   :name "sample"
                                                                                   :type :table}}]
+         ;; Event handler just marks stale - no analysis record yet so it's a no-op
          (events/publish-event! :event/update-transform {:object transform :user-id api/*current-user-id*})
          (assert-has-analyses
-          {:transform {transform-id models.analysis-finding/*current-analysis-finding-version*}}))))))
+          {:transform {transform-id nil}}))))))
 
 (deftest ^:sequential transform-run-works-with-no-analyses-test
   (run-with-dependencies-setup!
@@ -1167,9 +1234,9 @@
                                              :to_entity_type :segment
                                              :to_entity_id segment-id}]
            (events/publish-event! :event/segment-update {:object segment :user-id api/*current-user-id*})
-           ;; Segment should be analyzed synchronously
+           ;; No analysis record should exist yet - mark-entity-stale! is a no-op for never-analyzed entities
            (assert-has-analyses
-            {:segment {segment-id -1}})))))))
+            {:segment {segment-id nil}})))))))
 
 (deftest ^:sequential segment-update-updates-analyses-test
   (run-with-dependencies-setup!
@@ -1178,8 +1245,7 @@
        (let [products-id (mt/id :products)
              price-field-id (mt/id :products :price)
              products (lib.metadata/table mp products-id)
-             old-version models.analysis-finding/*current-analysis-finding-version*
-             new-version (inc models.analysis-finding/*current-analysis-finding-version*)]
+             old-version models.analysis-finding/*current-analysis-finding-version*]
          (mt/with-temp [:model/Segment {segment-id :id :as segment} {:table_id products-id
                                                                      :definition {:filter [:> [:field price-field-id nil] 50]}}
                         :model/Card {card-id :id :as card} {:dataset_query (lib/query mp products)}
@@ -1193,19 +1259,25 @@
              (assert-has-analyses
               {:card {card-id old-version}
                :segment {segment-id old-version}}))
-           (binding [models.analysis-finding/*current-analysis-finding-version* new-version]
-             (t2/with-transaction [_conn]
-               (events/publish-event! :event/segment-update {:object segment :user-id api/*current-user-id*})
-               (testing "segment should be re-analyzed synchronously"
-                 (is (=? {:analysis_version new-version :stale false}
-                         (t2/select-one :model/AnalysisFinding
-                                        :analyzed_entity_type :segment
-                                        :analyzed_entity_id segment-id))))
-               (testing "dependent card should be marked stale"
-                 (is (=? {:analysis_version old-version :stale true}
-                         (t2/select-one :model/AnalysisFinding
-                                        :analyzed_entity_type :card
-                                        :analyzed_entity_id card-id))))))))))))
+           ;; Event handler just marks stale
+           (events/publish-event! :event/segment-update {:object segment :user-id api/*current-user-id*})
+           (testing "segment should be marked stale"
+             (is (=? {:analysis_version old-version :stale true}
+                     (t2/select-one :model/AnalysisFinding
+                                    :analyzed_entity_type :segment
+                                    :analyzed_entity_id segment-id))))
+           (testing "dependent card should be unchanged before job runs"
+             (is (=? {:analysis_version old-version :stale false}
+                     (t2/select-one :model/AnalysisFinding
+                                    :analyzed_entity_type :card
+                                    :analyzed_entity_id card-id))))
+           ;; Run the job - analyzes segment, marks immediate dependents stale
+           (deps.findings/analyze-batch! :segment 10)
+           (testing "dependent card should be marked stale after job"
+             (is (=? {:analysis_version old-version :stale true}
+                     (t2/select-one :model/AnalysisFinding
+                                    :analyzed_entity_type :card
+                                    :analyzed_entity_id card-id))))))))))
 
 ;;; ### Table Metadata Update Tests
 (deftest ^:sequential table-metadata-update-triggers-dependent-analysis-test

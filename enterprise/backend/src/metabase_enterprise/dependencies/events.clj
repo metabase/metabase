@@ -1,12 +1,10 @@
 (ns metabase-enterprise.dependencies.events
   (:require
-   [metabase-enterprise.dependencies.async :as async]
    [metabase-enterprise.dependencies.calculation :as deps.calculation]
    [metabase-enterprise.dependencies.findings :as deps.findings]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.dependencies.task.entity-check :as task.entity-check]
    [metabase.events.core :as events]
-   [metabase.lib-be.core :as lib-be]
    [metabase.premium-features.core :as premium-features]
    [metabase.transforms.core :as transforms]
    [metabase.util.log :as log]
@@ -282,45 +280,59 @@
 (derive ::check-card-dependents :metabase/event)
 (derive :event/card-create ::check-card-dependents)
 (derive :event/card-update ::check-card-dependents)
-(derive :event/card-delete ::check-card-dependents)
 
 (methodical/defmethod events/publish-event! ::check-card-dependents
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (async/submit!
-     (fn []
-       (lib-be/with-metadata-provider-cache
-         (let [has-stale-dependents? (t2/with-transaction [_conn]
-                                       (deps.findings/upsert-analysis! object)
-                                       (deps.findings/mark-dependents-stale! :card (:id object)))]
-           (when has-stale-dependents?
-             (task.entity-check/trigger-entity-check-job!))))))))
+    (deps.findings/mark-entity-stale! :card (:id object))
+    (task.entity-check/trigger-entity-check-job!)))
+
+(derive ::check-card-dependents-on-delete :metabase/event)
+(derive :event/card-delete ::check-card-dependents-on-delete)
+
+(methodical/defmethod events/publish-event! ::check-card-dependents-on-delete
+  [_ {:keys [object]}]
+  (when (premium-features/has-feature? :dependencies)
+    (when (deps.findings/mark-immediate-dependents-stale! :card (:id object))
+      (task.entity-check/trigger-entity-check-job!))))
 
 (derive ::check-transform :metabase/event)
 (derive :event/create-transform ::check-transform)
 (derive :event/update-transform ::check-transform)
-(derive :event/delete-transform ::check-transform)
 
 (methodical/defmethod events/publish-event! ::check-transform
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (lib-be/with-metadata-provider-cache
-      (deps.findings/upsert-analysis! object))))
+    (deps.findings/mark-entity-stale! :transform (:id object))
+    (task.entity-check/trigger-entity-check-job!)))
+
+(derive ::check-transform-on-delete :metabase/event)
+(derive :event/delete-transform ::check-transform-on-delete)
+
+(methodical/defmethod events/publish-event! ::check-transform-on-delete
+  [_ {:keys [id]}]
+  (when (premium-features/has-feature? :dependencies)
+    (when (deps.findings/mark-immediate-dependents-stale! :transform id)
+      (task.entity-check/trigger-entity-check-job!))))
 
 (derive ::check-segment-dependents :metabase/event)
 (derive :event/segment-create ::check-segment-dependents)
 (derive :event/segment-update ::check-segment-dependents)
-(derive :event/segment-delete ::check-segment-dependents)
 
 (methodical/defmethod events/publish-event! ::check-segment-dependents
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (lib-be/with-metadata-provider-cache
-      (let [has-stale-dependents? (t2/with-transaction [_conn]
-                                    (deps.findings/upsert-analysis! object)
-                                    (deps.findings/mark-dependents-stale! :segment (:id object)))]
-        (when has-stale-dependents?
-          (task.entity-check/trigger-entity-check-job!))))))
+    (deps.findings/mark-entity-stale! :segment (:id object))
+    (task.entity-check/trigger-entity-check-job!)))
+
+(derive ::check-segment-dependents-on-delete :metabase/event)
+(derive :event/segment-delete ::check-segment-dependents-on-delete)
+
+(methodical/defmethod events/publish-event! ::check-segment-dependents-on-delete
+  [_ {:keys [object]}]
+  (when (premium-features/has-feature? :dependencies)
+    (when (deps.findings/mark-immediate-dependents-stale! :segment (:id object))
+      (task.entity-check/trigger-entity-check-job!))))
 
 (derive ::check-transform-dependents :metabase/event)
 (derive :event/transform-run-complete ::check-transform-dependents)
