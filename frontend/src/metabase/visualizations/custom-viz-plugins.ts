@@ -37,11 +37,11 @@ function ensureVizApi() {
 // ---------------------------------------------------------------------------
 
 // Track which plugins have already been loaded to avoid re-execution.
-// Maps plugin id → { identifier, commit } so we can detect when a
-// refetch on the server produced a new commit.
+// Maps plugin id → { identifier, commit, etag } so we can detect when a
+// refetch on the server produced a new commit or the dev bundle changed.
 const loadedPlugins = new Map<
   number,
-  { identifier: string; commit: string | null }
+  { identifier: string; commit: string | null; etag: string | null }
 >();
 
 export function isCustomVizDisplay(display: string | undefined): boolean {
@@ -62,9 +62,62 @@ export function useCustomVizPlugins({
 }
 
 /**
+ * Dev mode: listen for Server-Sent Events from the Vite notify plugin.
+ * The SSE server runs on the port after the dev_bundle_url port (e.g. 5175).
+ * CSP must allow the SSE origin via MB_CUSTOM_VIZ_DEV_SERVER_URL env var.
+ */
+function useCustomVizDevReload(
+  display: string | undefined,
+  plugins: CustomVizPluginRuntime[] | undefined,
+  setLoading: (loading: boolean) => void,
+) {
+  useEffect(() => {
+    if (!isCustomVizDisplay(display) || !plugins) {
+      return;
+    }
+
+    const identifier = display!.slice("custom:".length);
+    const plugin = plugins.find((p) => p.identifier === identifier);
+    if (!plugin?.dev_bundle_url) {
+      return;
+    }
+
+    const devUrl = new URL(plugin.dev_bundle_url);
+    const notifyPort = Number(devUrl.port) + 1;
+    const sseUrl = `http://${devUrl.hostname}:${notifyPort}`;
+
+    const eventSource = new EventSource(sseUrl);
+
+    eventSource.addEventListener("message", async () => {
+      // eslint-disable-next-line no-console
+      console.log(
+        `[custom-viz] Dev server rebuilt "${plugin.display_name}", reloading…`,
+      );
+      setLoading(true);
+      try {
+        await loadCustomVizPlugin(plugin, `?t=${Date.now()}`);
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    eventSource.addEventListener("error", () => {
+      // SSE auto-reconnects; nothing to do
+    });
+
+    return () => {
+      eventSource.close();
+    };
+  }, [display, plugins, setLoading]);
+}
+
+/**
  * Hook that auto-loads a custom viz plugin bundle when the current display
  * type starts with "custom:". Returns `true` while loading so the caller
  * can show a spinner instead of rendering the (not-yet-registered) viz.
+ *
+ * For plugins with `dev_bundle_url` set, polls the bundle endpoint via HEAD
+ * every 2s and reloads when the ETag changes.
  */
 export function useAutoLoadCustomVizPlugin(display: string | undefined): {
   loading: boolean;
@@ -79,7 +132,11 @@ export function useAutoLoadCustomVizPlugin(display: string | undefined): {
       return;
     }
     const existing = loadedPlugins.get(pluginToLoad.id);
-    if (existing && existing.commit === pluginToLoad.resolved_commit) {
+    if (
+      existing &&
+      existing.commit === pluginToLoad.resolved_commit &&
+      !pluginToLoad.dev_bundle_url
+    ) {
       return;
     }
     loadingRef.current = ident;
@@ -108,6 +165,8 @@ export function useAutoLoadCustomVizPlugin(display: string | undefined): {
     }
   }, [display, plugins, load]);
 
+  useCustomVizDevReload(display, plugins, setLoading);
+
   // `loading` state drives re-renders when async load completes.
   // Without it, the Map-based check alone wouldn't trigger a re-render.
   if (loading) {
@@ -133,9 +192,15 @@ export function useAutoLoadCustomVizPlugin(display: string | undefined): {
  */
 export async function loadCustomVizPlugin(
   plugin: CustomVizPluginRuntime,
+  cacheBustSuffix?: string,
 ): Promise<string | null> {
   const existing = loadedPlugins.get(plugin.id);
-  if (existing && existing.commit === plugin.resolved_commit) {
+  if (
+    existing &&
+    existing.commit === plugin.resolved_commit &&
+    !plugin.dev_bundle_url &&
+    !cacheBustSuffix
+  ) {
     // eslint-disable-next-line no-console
     console.log(
       `[custom-viz] Plugin "${plugin.display_name}" already registered as "${existing.identifier}"`,
@@ -150,10 +215,20 @@ export async function loadCustomVizPlugin(
 
   try {
     const bundleUrl = new URL(plugin.bundle_url, window.location.origin);
-    if (plugin.resolved_commit) {
+    if (cacheBustSuffix) {
+      bundleUrl.searchParams.set("t", Date.now().toString());
+    } else if (plugin.resolved_commit) {
       bundleUrl.searchParams.set("v", plugin.resolved_commit);
     }
-    const imported = await import(/* webpackIgnore: true */ bundleUrl.href);
+    // Use fetch + Blob URL instead of direct import() to avoid
+    // "base URL is about:blank" errors when JS is served cross-origin
+    // (e.g. webpack dev server on a different port).
+    const res = await fetch(bundleUrl.href, { cache: "no-store" });
+    const text = await res.text();
+    const blob = new Blob([text], { type: "application/javascript" });
+    const blobUrl = URL.createObjectURL(blob);
+    const imported = await import(/* webpackIgnore: true */ blobUrl);
+    URL.revokeObjectURL(blobUrl);
 
     const factory = imported.default;
     if (typeof factory !== "function") {
@@ -190,7 +265,9 @@ export async function loadCustomVizPlugin(
 
     // Use registerVisualization for first load; overwrite directly for updates
     // (registerVisualization throws on duplicate identifiers).
-    if (loadedPlugins.has(plugin.id)) {
+    // Check visualizations map directly (not loadedPlugins) because HMR may
+    // reset loadedPlugins while the visualizations map retains registrations.
+    if (visualizations.has(identifier)) {
       visualizations.set(identifier, Component);
     } else {
       registerVisualization(Component);
@@ -198,6 +275,7 @@ export async function loadCustomVizPlugin(
     loadedPlugins.set(plugin.id, {
       identifier,
       commit: plugin.resolved_commit,
+      etag: null,
     });
 
     // eslint-disable-next-line no-console

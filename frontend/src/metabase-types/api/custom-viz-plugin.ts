@@ -9,6 +9,7 @@ export interface CustomVizPlugin {
   error_message: string | null;
   pinned_version: string | null;
   resolved_commit: string | null;
+  dev_bundle_url?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -20,6 +21,7 @@ export interface CustomVizPluginRuntime {
   icon: string | null;
   bundle_url: string;
   resolved_commit: string | null;
+  dev_bundle_url?: string | null;
 }
 
 export interface CreateCustomVizPluginRequest {

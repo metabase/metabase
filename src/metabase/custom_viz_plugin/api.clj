@@ -11,6 +11,13 @@
 
 (set! *warn-on-reflection* true)
 
+;;; ---------------------------------------- In-memory dev bundle URLs -----------------------------------------
+
+;; dev_bundle_url is transient (only useful while a dev server is running),
+;; so we store it in memory rather than the database. Cleared on restart.
+(defonce ^:private dev-bundle-urls
+  (atom {})) ;; {plugin-id -> url-string}
+
 ;;; ------------------------------------------------ Schemas ------------------------------------------------
 
 (def ^:private CustomVizPluginResponse
@@ -25,6 +32,7 @@
    [:error_message {:optional true} [:maybe :string]]
    [:pinned_version  {:optional true} [:maybe :string]]
    [:resolved_commit {:optional true} [:maybe :string]]
+   [:dev_bundle_url  {:optional true} [:maybe :string]]
    [:created_at    :any]
    [:updated_at    :any]])
 
@@ -35,7 +43,8 @@
    [:display_name    ms/NonBlankString]
    [:icon            {:optional true} [:maybe :string]]
    [:bundle_url      ms/NonBlankString]
-   [:resolved_commit {:optional true} [:maybe :string]]])
+   [:resolved_commit {:optional true} [:maybe :string]]
+   [:dev_bundle_url  {:optional true} [:maybe :string]]])
 
 ;;; ------------------------------------------------ Helpers ------------------------------------------------
 
@@ -50,17 +59,20 @@
   [plugin]
   (-> plugin
       strip-token
-      (update :status name)))
+      (update :status name)
+      (assoc :dev_bundle_url (get @dev-bundle-urls (:id plugin)))))
 
 (defn- plugin->runtime-response
   "Convert a plugin record to the safe runtime response shape."
   [{:keys [id identifier display_name icon resolved_commit]}]
-  {:id              id
-   :identifier      identifier
-   :display_name    display_name
-   :icon            icon
-   :bundle_url      (format "/api/custom-viz-plugin/%d/bundle" id)
-   :resolved_commit resolved_commit})
+  (let [dev-url (get @dev-bundle-urls id)]
+    (cond-> {:id              id
+             :identifier      identifier
+             :display_name    display_name
+             :icon            icon
+             :bundle_url      (format "/api/custom-viz-plugin/%d/bundle" id)
+             :resolved_commit resolved_commit}
+      dev-url (assoc :dev_bundle_url dev-url))))
 
 ;;; ------------------------------------------------ Endpoints ------------------------------------------------
 
@@ -111,6 +123,7 @@
   (api/check-superuser)
   (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))
   (cache/evict! id)
+  (swap! dev-bundle-urls dissoc id)
   (t2/delete! :model/CustomVizPlugin :id id)
   nil)
 
@@ -119,10 +132,10 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    body :- [:map
-            [:enabled       {:optional true} [:maybe :boolean]]
-            [:display_name  {:optional true} [:maybe ms/NonBlankString]]
-            [:icon          {:optional true} [:maybe :string]]
-            [:access_token  {:optional true} [:maybe :string]]
+            [:enabled        {:optional true} [:maybe :boolean]]
+            [:display_name   {:optional true} [:maybe ms/NonBlankString]]
+            [:icon           {:optional true} [:maybe :string]]
+            [:access_token   {:optional true} [:maybe :string]]
             [:pinned_version {:optional true} [:maybe :string]]]]
   (api/check-superuser)
   (let [existing    (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))
@@ -138,9 +151,21 @@
         (cache/fetch-and-cache! updated-plugin {:force? true}))))
   (plugin->response (t2/select-one :model/CustomVizPlugin :id id)))
 
+(defn- fetch-dev-bundle
+  "Fetch a JS bundle from a dev URL. Returns {:content str :hash str} or nil."
+  [^String url]
+  (try
+    (let [content (slurp (java.net.URI. url))]
+      {:content content
+       :hash    (str (hash content))})
+    (catch Exception e
+      (throw (ex-info (str "Failed to fetch dev bundle from " url ": " (.getMessage e))
+                      {:status-code 502})))))
+
 (api.macros/defendpoint :get "/:id/bundle"
   "Serve the cached JS bundle for a plugin.
-   Returns application/javascript with ETag and Cache-Control headers."
+   Returns application/javascript with ETag and Cache-Control headers.
+   In dev mode, proxies from dev_bundle_url if set."
   [{:keys [id], :as _route-params} :- [:map [:id ms/PositiveInt]]
    _query-params
    _body
@@ -149,19 +174,36 @@
    raise]
   (try
     (let [plugin (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))
-          entry  (or (cache/get-bundle id)
-                     (cache/fetch-and-cache! plugin))]
+          dev-url (get @dev-bundle-urls id)
+          entry  (if dev-url
+                   (fetch-dev-bundle dev-url)
+                   (or (cache/get-bundle id)
+                       (cache/fetch-and-cache! plugin)))]
       (if entry
         (respond {:status  200
-                  :headers {"Content-Type"  "application/javascript"
-                            "ETag"          (:hash entry)
-                            "Cache-Control" "public, max-age=31536000, immutable"}
+                  :headers (cond-> {"Content-Type" "application/javascript"
+                                    "ETag"         (:hash entry)}
+                             dev-url     (assoc "Cache-Control" "no-store")
+                             (not dev-url) (assoc "Cache-Control" "public, max-age=31536000, immutable"))
                   :body    (:content entry)})
         (respond {:status 503
                   :headers {"Content-Type" "application/json"}
                   :body   "{\"error\": \"Bundle not available\"}"})))
     (catch Throwable e
       (raise e))))
+
+(api.macros/defendpoint :put "/:id/dev-url"
+  "Set or clear the in-memory dev bundle URL for a plugin.
+   This is transient — cleared on server restart."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   {:keys [dev_bundle_url]} :- [:map [:dev_bundle_url [:maybe :string]]]]
+  (api/check-superuser)
+  (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))
+  (if (seq dev_bundle_url)
+    (swap! dev-bundle-urls assoc id dev_bundle_url)
+    (swap! dev-bundle-urls dissoc id))
+  {:dev_bundle_url (get @dev-bundle-urls id)})
 
 (api.macros/defendpoint :post "/:id/refresh" :- CustomVizPluginResponse
   "Re-fetch the bundle from the git repository."
