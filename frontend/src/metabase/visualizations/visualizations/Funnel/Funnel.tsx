@@ -147,9 +147,9 @@ Object.assign(Funnel, {
 
         return getUniqueFunnelRows(funnelRows);
       },
-      props: {
+      getProps: () => ({
         hasEditSettings: false,
-      },
+      }),
       getHidden: (series: RawSeries, settings: ComputedVisualizationSettings) =>
         settings["funnel.dimension"] === null ||
         settings["funnel.metric"] === null,
@@ -175,14 +175,12 @@ Object.assign(Funnel, {
       section: t`Display`,
 
       widget: "select",
-      props: {
+      getProps: () => ({
         options: [
-          // eslint-disable-next-line ttag/no-module-declaration -- see metabase#5504
           { name: t`Funnel`, value: "funnel" },
-          // eslint-disable-next-line ttag/no-module-declaration -- see metabase#5504
           { name: t`Bar chart`, value: "bar" },
         ],
-      },
+      }),
       // legacy "bar" funnel was only previously available via multiseries
       getDefault: (series: RawSeries) => (series.length > 1 ? "bar" : "funnel"),
       useRawSeries: true,

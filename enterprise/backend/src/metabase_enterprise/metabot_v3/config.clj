@@ -16,7 +16,7 @@
   "The name of the collection exposed by the answer-sources tool."
   {internal-metabot-id {:profile-id "internal"
                         :entity-id "metabotmetabotmetabot"}
-   embedded-metabot-id {:profile-id "embedding"
+   embedded-metabot-id {:profile-id "embedding_next"
                         :entity-id "embeddedmetabotmetabo"}})
 
 (defn metabot-id->profile-id
@@ -30,7 +30,7 @@
 (defn normalize-metabot-id
   "Return the primary key for the metabot instance identified by `metabot-id`.
 
-  Returns nil, no entry can be found.
+  Returns nil if no entry can be found.
   The provided ID can be a UUID from [[metabot-config]] or an entity_id of a Metabot instance."
   [metabot-id]
   (t2/select-one-pk :model/Metabot :entity_id (get-in metabot-config [metabot-id :entity-id] metabot-id)))
@@ -45,11 +45,11 @@
 
 (defn resolve-dynamic-profile-id
   "Resolve the ultimate ai-service profile ID with logical fall backs
-   Precedence: explicit profile_id > env profile_id > metabot-id->profile-id > default (embedded)"
+   Precedence: explicit profile_id > env profile_id > metabot-id->profile-id > default (embedding_next)"
   ([profile-id]
    (resolve-dynamic-profile-id profile-id (resolve-dynamic-metabot-id nil)))
   ([profile-id metabot-id]
    (or profile-id
        (metabot-v3.settings/ai-service-profile-id)
        (metabot-id->profile-id metabot-id)
-       "default")))
+       "embedding_next")))
