@@ -181,10 +181,10 @@
     (api/read-check :model/Dashboard dashboard-id)
     (check-card-and-dashcard-are-in-dashboard dashboard-id card-id dashcard-id)
     (api/check-403
-     (= :unrestricted
-        (perms/most-permissive-database-permission-for-user
-         api/*current-user-id* :perms/view-data
-         (t2/select-one-fn :database_id :model/Card card-id))))
+     (not= :blocked
+           (perms/most-permissive-database-permission-for-user
+            api/*current-user-id* :perms/view-data
+            (t2/select-one-fn :database_id :model/Card card-id))))
     (let [resolved-params (resolve-params-for-query dashboard-id card-id dashcard-id parameters)
           options         (merge
                            {:ignore-cache false
