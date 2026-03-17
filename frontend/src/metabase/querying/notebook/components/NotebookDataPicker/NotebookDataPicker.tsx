@@ -50,6 +50,7 @@ export interface NotebookDataPickerProps {
     metadataProvider: Lib.MetadataProvider,
   ) => void;
   shouldDisableItem?: (item: OmniPickerItem) => boolean;
+  getDisabledItemTooltip?: (item: OmniPickerItem) => string | undefined;
   shouldDisableDatabase?: (item: QueryEditorDatabasePickerItem) => boolean;
   columnPicker: React.ReactNode;
   shouldShowLibrary?: boolean;
@@ -68,6 +69,7 @@ export function NotebookDataPicker({
   setIsOpened,
   onChange,
   shouldDisableItem,
+  getDisabledItemTooltip,
   shouldDisableDatabase,
   shouldShowLibrary,
   columnPicker,
@@ -135,6 +137,7 @@ export function NotebookDataPicker({
         isDisabled={isDisabled}
         onChange={handleChange}
         shouldDisableItem={shouldDisableItem}
+        getDisabledItemTooltip={getDisabledItemTooltip}
         shouldDisableDatabase={shouldDisableDatabase}
         shouldShowLibrary={shouldShowLibrary}
       />
@@ -155,6 +158,7 @@ type ModernDataPickerProps = {
   isDisabled: boolean;
   onChange: (tableId: TableId) => void;
   shouldDisableItem?: (item: OmniPickerItem) => boolean;
+  getDisabledItemTooltip?: (item: OmniPickerItem) => string | undefined;
   shouldDisableDatabase?: (database: QueryEditorDatabasePickerItem) => boolean;
   shouldShowLibrary?: boolean;
 };
@@ -171,6 +175,7 @@ function ModernDataPicker({
   isDisabled,
   onChange,
   shouldDisableItem,
+  getDisabledItemTooltip,
   shouldDisableDatabase,
   shouldShowLibrary,
 }: ModernDataPickerProps) {
@@ -262,6 +267,7 @@ function ModernDataPicker({
                   shouldDisableDatabase?.(i)),
             );
           }}
+          getDisabledItemTooltip={getDisabledItemTooltip}
           // searchQuery={dataSourceSearchQuery} ?
         />
       )}

@@ -57,6 +57,9 @@ type QueryEditorBodyProps = {
   isShowingTemplateTagsSidebar: boolean;
   shouldDisableDatabase?: (database: QueryEditorDatabasePickerItem) => boolean;
   shouldDisableItem?: (item: OmniPickerItem | RecentCollectionItem) => boolean;
+  getDisabledItemTooltip?: (
+    item: OmniPickerItem | RecentCollectionItem,
+  ) => string | undefined;
   shouldShowLibrary?: boolean;
   onBlur?: () => void;
   onChange: (newQuestion: Question) => void;
@@ -95,6 +98,7 @@ export function QueryEditorBody({
   isShowingTemplateTagsSidebar,
   shouldDisableDatabase,
   shouldDisableItem,
+  getDisabledItemTooltip,
   shouldShowLibrary,
   onBlur,
   onChange,
@@ -123,8 +127,18 @@ export function QueryEditorBody({
   );
 
   const dataPickerOptions = useMemo(
-    () => ({ shouldDisableItem, shouldDisableDatabase, shouldShowLibrary }),
-    [shouldDisableItem, shouldDisableDatabase, shouldShowLibrary],
+    () => ({
+      shouldDisableItem,
+      getDisabledItemTooltip,
+      shouldDisableDatabase,
+      shouldShowLibrary,
+    }),
+    [
+      shouldDisableItem,
+      getDisabledItemTooltip,
+      shouldDisableDatabase,
+      shouldShowLibrary,
+    ],
   );
 
   const setQuestion = (newQuestion: Question) => {

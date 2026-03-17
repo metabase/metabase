@@ -48,7 +48,7 @@ export interface NotebookStepAction {
 
 export type NotebookDataPickerOptions = Pick<
   NotebookDataPickerProps,
-  "shouldDisableItem"
+  "shouldDisableItem" | "getDisabledItemTooltip"
 >;
 
 export interface NotebookStepProps {

@@ -94,6 +94,7 @@ export function getItemFunctions({
   isHiddenItem,
   isDisabledItem,
   isSelectableItem,
+  getDisabledItemTooltip,
 }: {
   models: EntityPickerProps["models"];
 } & Partial<PickerItemFunctions>): PickerItemFunctions {
@@ -188,6 +189,7 @@ export function getItemFunctions({
     isHiddenItem: isHidden,
     isDisabledItem: isDisabled,
     isSelectableItem: isSelectable,
+    getDisabledItemTooltip,
   };
 }
 

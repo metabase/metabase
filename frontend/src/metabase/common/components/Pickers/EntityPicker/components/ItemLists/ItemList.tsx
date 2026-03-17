@@ -14,6 +14,7 @@ import {
   Icon,
   NavLink,
   type NavLinkProps,
+  Tooltip,
 } from "metabase/ui";
 
 import { useOmniPickerContext } from "../../context";
@@ -57,6 +58,7 @@ export function ItemList({
     isDisabledItem,
     isFolderItem,
     isSelectableItem,
+    getDisabledItemTooltip,
     onChange,
     options,
   } = useOmniPickerContext();
@@ -102,6 +104,10 @@ export function ItemList({
           isTenantUser,
         });
         const isDisabled = isDisabledItem(item);
+        const disabledTooltip =
+          isDisabled && getDisabledItemTooltip
+            ? getDisabledItemTooltip(item)
+            : undefined;
 
         return (
           <Box
@@ -109,43 +115,51 @@ export function ItemList({
             key={`${item.model}-${item.id}`}
             {...containerProps}
           >
-            <NavLink
-              w={"auto"}
-              disabled={isDisabled}
-              rightSection={
-                isFolderItem(item) ? (
-                  <Icon name="chevronright" size={10} />
-                ) : null
-              }
-              mb={0}
-              label={
-                <Flex align="center">
-                  {tc(item.name)}{" "}
-                  <PLUGIN_MODERATION.ModerationStatusIcon
-                    status={"moderated_status" in item && item.moderated_status}
-                    filled
-                    size={14}
-                    ml="0.5rem"
-                  />
-                </Flex>
-              }
-              active={isSelected}
-              leftSection={<Icon {...icon} />}
-              onClick={(e: React.MouseEvent) => {
-                e.preventDefault(); // prevent form submission
-                e.stopPropagation(); // prevent parent onClick
-                setPath((prevPath) => [
-                  ...prevPath.slice(0, pathIndex + 1),
-                  item,
-                ]);
-
-                if (!options?.hasConfirmButtons && isSelectableItem(item)) {
-                  onChange(item);
+            <Tooltip
+              label={disabledTooltip}
+              disabled={!disabledTooltip}
+              position="right"
+            >
+              <NavLink
+                w={"auto"}
+                disabled={isDisabled}
+                rightSection={
+                  isFolderItem(item) ? (
+                    <Icon name="chevronright" size={10} />
+                  ) : null
                 }
-              }}
-              variant={isCurrentLevel ? "default" : "mb-light"}
-              {...navLinkProps?.(isSelected)}
-            />
+                mb={0}
+                label={
+                  <Flex align="center">
+                    {tc(item.name)}{" "}
+                    <PLUGIN_MODERATION.ModerationStatusIcon
+                      status={
+                        "moderated_status" in item && item.moderated_status
+                      }
+                      filled
+                      size={14}
+                      ml="0.5rem"
+                    />
+                  </Flex>
+                }
+                active={isSelected}
+                leftSection={<Icon {...icon} />}
+                onClick={(e: React.MouseEvent) => {
+                  e.preventDefault(); // prevent form submission
+                  e.stopPropagation(); // prevent parent onClick
+                  setPath((prevPath) => [
+                    ...prevPath.slice(0, pathIndex + 1),
+                    item,
+                  ]);
+
+                  if (!options?.hasConfirmButtons && isSelectableItem(item)) {
+                    onChange(item);
+                  }
+                }}
+                variant={isCurrentLevel ? "default" : "mb-light"}
+                {...navLinkProps?.(isSelected)}
+              />
+            </Tooltip>
           </Box>
         );
       })}

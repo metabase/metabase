@@ -123,6 +123,7 @@ export function QueryEditor({
               uiState.sidebarType === "template-tags"
             }
             shouldDisableItem={uiOptions?.shouldDisableDataPickerItem}
+            getDisabledItemTooltip={uiOptions?.getDisabledDataPickerItemTooltip}
             shouldDisableDatabase={uiOptions?.shouldDisableDatabasePickerItem}
             shouldShowLibrary={uiOptions?.shouldShowLibrary}
             onChange={setQuestion}

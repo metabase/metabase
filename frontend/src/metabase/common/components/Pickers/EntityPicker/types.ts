@@ -40,6 +40,7 @@ export type PickerItemFunctions = {
   isHiddenItem: (item: OmniPickerItem) => boolean;
   isDisabledItem: (item: OmniPickerItem) => boolean;
   isSelectableItem: (item: OmniPickerItem) => boolean;
+  getDisabledItemTooltip?: (item: OmniPickerItem) => string | undefined;
 };
 
 export type EntityPickerProps = {

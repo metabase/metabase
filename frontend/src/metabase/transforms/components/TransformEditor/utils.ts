@@ -3,7 +3,10 @@ import { t } from "ttag";
 import type { QueryEditorUiOptions } from "metabase/querying/editor/types";
 import type { Database } from "metabase-types/api";
 
-import { doesDatabaseSupportTransforms } from "../../utils";
+import {
+  doesDatabaseSupportTransforms,
+  getDatabaseTransformDisabledReason,
+} from "../../utils";
 
 export function getEditorOptions(
   databases: Database[],
@@ -40,6 +43,25 @@ export function getEditorOptions(
       }
 
       return false;
+    },
+    getDisabledDataPickerItemTooltip: (item) => {
+      if (item.model === "database") {
+        const database = databases.find((db) => db.id === item.id);
+        return getDatabaseTransformDisabledReason(database);
+      }
+
+      if (
+        item.model === "card" ||
+        item.model === "dataset" ||
+        item.model === "metric" ||
+        item.model === "table"
+      ) {
+        const databaseId = "db_id" in item ? item.db_id : item.database_id;
+        const database = databases.find((db) => db.id === databaseId);
+        return getDatabaseTransformDisabledReason(database);
+      }
+
+      return undefined;
     },
     shouldShowLibrary: false,
     readOnly,

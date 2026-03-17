@@ -23,6 +23,7 @@ interface Props {
   onClose: () => void;
   onlyDatabaseId?: DatabaseId;
   shouldDisableItem?: (item: OmniPickerItem) => boolean;
+  getDisabledItemTooltip?: (item: OmniPickerItem) => string | undefined;
   options?: EntityPickerOptions;
 }
 
@@ -42,6 +43,7 @@ export const DataPickerModal = ({
   onClose,
   onlyDatabaseId,
   shouldDisableItem,
+  getDisabledItemTooltip,
   options: passedOptions,
   models: passedModels = DATA_PICKER_MODELS,
 }: Props) => {
@@ -103,6 +105,7 @@ export const DataPickerModal = ({
       onClose={onClose}
       onChange={handleItemSelect}
       isDisabledItem={shouldDisable}
+      getDisabledItemTooltip={getDisabledItemTooltip}
     />
   );
 };
