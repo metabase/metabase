@@ -163,14 +163,11 @@
 
 (deftest slack-link-buffering-test
   (testing "buffers incomplete Slack-format links"
-    (let [[outputs flushed] (process-chunks ["Check <metabase://mod" "el/123|My Model>"])]
-      (with-redefs [system/site-url (constantly "https://metabase.example.com")]
-        ;; Note: the buffering happens before resolution, so we need to test
-        ;; the full flow with proper site-url binding
-        (let [[outputs2 flushed2] (process-chunks ["Check <metabase://mod" "el/123|My Model>"])]
-          (is (= "Check " (first outputs2)))
-          (is (re-find #"metabase\.example\.com/model/123" (second outputs2)))
-          (is (= "" flushed2))))))
+    (with-redefs [system/site-url (constantly "https://metabase.example.com")]
+      (let [[outputs flushed] (process-chunks ["Check <metabase://mod" "el/123|My Model>"])]
+        (is (= "Check " (first outputs)))
+        (is (re-find #"metabase\.example\.com/model/123" (second outputs)))
+        (is (= "" flushed)))))
 
   (testing "does NOT buffer regular < characters"
     (let [[output flushed] (process "x < y and z > w")]
