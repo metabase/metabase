@@ -1228,6 +1228,18 @@ databaseChangeLog:
         - customChange:
             class: "metabase.app_db.custom_migrations.FixClickHouseUploadDBSchemaNames"
 
+
+  - changeSet:
+      id: v58.2026-03-17T00:00:11
+      author: nvoxland
+      comment: Clear out transform permissions from downgrade
+      changes:
+        - sql:
+            sql: delete from data_permissions where perm_type='perms/transforms';
+      rollback:
+        # unneeded
+
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
