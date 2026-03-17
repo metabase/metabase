@@ -125,7 +125,7 @@
     {:installed? false}
     (let [doctor-json (try
                         ;; `mise doctor` has a non-zero exit code when there are pending installs,
-                        ;;  but still produces valid JSON on stdout — but `sh` requires exit 0.
+                        ;; but still produces valid JSON on stdout — but `sh` requires exit 0.
                         (some-> @(p/process {:out :string, :err :string, :dir u/project-root-directory}
                                             "mise" "doctor" "--json")
                                 :out str/trim not-empty
