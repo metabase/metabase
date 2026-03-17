@@ -6,7 +6,6 @@
    [clojure.test :refer :all]
    [compojure.response]
    [medley.core :as m]
-   [metabase-enterprise.llm.settings :as llm.settings]
    [metabase-enterprise.metabot-v3.api :as api]
    [metabase-enterprise.metabot-v3.client :as client]
    [metabase-enterprise.metabot-v3.client-test :as client-test]
@@ -17,6 +16,7 @@
    [metabase-enterprise.metabot-v3.test-util :as mut]
    [metabase-enterprise.metabot-v3.util :as metabot.u]
    [metabase.config.core :as config]
+   [metabase.llm.settings :as llm.settings]
    [metabase.search.test-util :as search.tu]
    [metabase.server.instance :as server.instance]
    [metabase.server.streaming-response :as sr]
@@ -261,8 +261,8 @@
             (mt/with-premium-features #{:metabot-v3}
               (mt/with-temporary-setting-values [metabot.settings/use-native-agent true]
                 (let [real-http-post http/post]
-                  (with-redefs [llm.settings/ee-openrouter-api-key      (constantly "fake-key")
-                                llm.settings/ee-openrouter-api-base-url (constantly llm-url)
+                  (with-redefs [llm.settings/llm-openrouter-api-key      (constantly "fake-key")
+                                llm.settings/llm-openrouter-api-base-url (constantly llm-url)
                                 ;; The fake LLM server doesn't gzip, but clj-http wraps with
                                 ;; GZIPInputStream by default. Closing mid-stream causes ZLIB errors.
                                 http/post                              (fn [url opts]

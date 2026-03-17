@@ -1,4 +1,4 @@
-(ns metabase-enterprise.llm.client
+(ns metabase.llm.client
   "A wrapper around the OpenAI client API.
 
   The `create-chat-completion` function combines several useful middlewares to create a client that can be used for AI
@@ -19,8 +19,8 @@
   [OpenAI Client](https://platform.openai.com/docs/libraries) with [Llama API](https://docs.llama-api.com/essentials/chat).
   "
   (:require
-   [metabase-enterprise.llm.settings :as llm-settings]
    [metabase.analytics.core :as analytics]
+   [metabase.llm.settings :as llm-settings]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [wkok.openai-clojure.api :as openai.api]))
@@ -40,8 +40,6 @@
                                (assoc
                                 usage-summary
                                 :event :llm-usage))
-       ;; TODO -- Remove before final PR/merge
-       ;(tap> usage-summary)
        response))
     ([params] (wrap-usage* params nil))))
 
@@ -94,29 +92,29 @@
     ([params] (wrap-openai-exceptions* params nil))))
 
 (defn wrap-model-defaults
-  "Add the EE default model from settings into the request"
+  "Add the default model from settings into the request."
   [openai-fn]
   (fn wrap-model-defaults*
     ([params options]
      (openai-fn
       (merge
-       {:model (llm-settings/ee-openai-model)}
+       {:model (llm-settings/llm-openai-model)}
        params)
       options))
     ([params] (wrap-model-defaults* params nil))))
 
-(defn wrap-ee-auth
-  "Add the EE API key from settings into the request"
+(defn wrap-auth
+  "Add the API key from settings into the request."
   [openai-fn]
-  (fn wrap-ee-auth*
+  (fn wrap-auth*
     ([params options]
      (openai-fn
       params
       (merge
-       {:api-key (llm-settings/ee-openai-api-key)}
+       {:api-key (llm-settings/llm-openai-api-key)}
        options)))
     ([params]
-     (wrap-ee-auth* params nil))))
+     (wrap-auth* params nil))))
 
 (defn wrap-find-result
   "Return the first choice for which a message is present and has content."
@@ -190,7 +188,7 @@
   bottom up and postprocessing middlewares happen from the top down."
   []
   (-> *create-chat-completion-endpoint*
-      wrap-ee-auth
+      wrap-auth
       wrap-model-defaults
       wrap-openai-exceptions
       wrap-usage
