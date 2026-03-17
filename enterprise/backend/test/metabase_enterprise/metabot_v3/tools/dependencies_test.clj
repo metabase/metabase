@@ -46,7 +46,7 @@
        ~@body)))
 
 (deftest check-transform-dependencies-test
-  (mt/with-premium-features [:transforms-basic]
+  (mt/with-premium-features [:transforms]
     (testing "removing total field from transform1 breaks transform2"
       (mt/as-admin
         (with-dependent-transforms! [transform1-id transform2-id]
@@ -64,7 +64,7 @@
 
 (deftest check-transform-dependencies-limit-test
   (testing "max-reported-broken-transforms limit"
-    (mt/with-premium-features #{:transforms-basic}
+    (mt/with-premium-features #{:transforms}
       (mt/as-admin
         (with-dependent-transforms! [transform1-id _]
           (mt/with-temp
@@ -97,7 +97,7 @@
 
 (deftest check-transform-dependencies-with-cards-test
   (testing "removing field from transform breaks dependent card"
-    (mt/with-premium-features [:transforms-basic]
+    (mt/with-premium-features [:transforms]
       (mt/as-admin
         (with-dependent-transforms! [transform1-id _]
           (mt/with-temp
@@ -125,7 +125,7 @@
                 (is (some? (:errors (first bad-questions))))))))))))
 
 (deftest check-transform-dependencies-card-limit-test
-  (mt/with-premium-features #{:transforms-basic}
+  (mt/with-premium-features #{:transforms}
     (testing "max-reported-broken-transforms limit applies to cards"
       (mt/as-admin
         (with-dependent-transforms! [transform1-id _]
@@ -180,7 +180,7 @@
 
 (deftest check-transform-dependencies-permission-filtering-test
   (testing "Broken cards in inaccessible collections are filtered from results"
-    (mt/with-premium-features #{:transforms-basic}
+    (mt/with-premium-features #{:transforms}
       (with-dependent-transforms! [transform1-id _]
         (mt/with-temp
           [:model/Collection {restricted-collection-id :id} {:name "Restricted Collection"}
