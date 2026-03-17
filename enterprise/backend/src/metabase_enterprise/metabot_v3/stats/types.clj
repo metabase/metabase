@@ -7,7 +7,7 @@
 
 (mr/def ::column-type
   "Type of data in a column."
-  [:enum :string :number :datetime :date :time :boolean])
+  [:enum "string" "number" "datetime" "date" "time" "boolean"])
 
 (mr/def ::column-metadata
   "Metadata about a column in the chart data."
@@ -42,11 +42,6 @@
    [:query {:optional true} [:maybe :map]]
    [:display_type {:optional true} [:maybe :string]]
    [:title {:optional true} [:maybe :string]]])
-
-(mr/def ::analyze-chart-input
-  "Input schema for the analyze-chart tool."
-  [:map
-   [:chart_config ::chart-config]])
 
 ;;; ------------------------------------------------- Output Schemas -------------------------------------------------
 
@@ -118,7 +113,7 @@
 
 (mr/def ::correlation-direction
   "Direction of correlation."
-  [:enum :positive :negative])
+  [:enum :positive :negative :none])
 
 (mr/def ::correlation
   "Correlation between two series."
@@ -133,29 +128,49 @@
   "An outlier detected in the data."
   [:map
    [:index :int]
-   [:date :any]
+   [:label :any]
    [:value number?]
    [:modified_z_score number?]])
 
+(mr/def ::cumulative-outlier
+  "An outlier detected in cumulative data (via period-over-period diffs)."
+  [:map
+   [:index :int]
+   [:label :any]
+   [:value number?]
+   [:diff number?]
+   [:modified_z_score number?]])
+
+;;; --------------------------------------------------- Options ------------------------------------------------------
+
+(mr/def ::options
+  "Options map for chart statistics computation."
+  [:map
+   [:deep? {:optional true} [:maybe :boolean]]
+   [:max-correlation-series {:optional true} [:maybe :int]]])
+
 ;;; ---------------------------------------------- Chart Type Stats --------------------------------------------------
+
+(mr/def ::time-series-series-stats
+  "Statistics for a single time series."
+  [:map
+   [:summary ::series-summary]
+   [:time_range ::time-range]
+   [:data_points :int]
+   [:trend ::trend-summary]
+   [:is_cumulative :boolean]
+   [:outliers {:optional true} [:maybe [:sequential ::outlier]]]
+   [:volatility {:optional true} [:maybe ::volatility]]
+   [:patterns {:optional true} [:maybe [:sequential ::pattern-insight]]]
+   [:significant_changes {:optional true} [:maybe [:sequential ::significant-change]]]
+   [:most_recent_change {:optional true} [:maybe ::significant-change]]])
 
 (mr/def ::time-series-stats
   "Statistics for time series charts."
   [:map
    [:chart_type [:= :time-series]]
    [:series_count :int]
-   [:series [:map-of :string
-             [:map
-              [:summary ::series-summary]
-              [:time_range ::time-range]
-              [:data_points :int]
-              [:trend ::trend-summary]
-              [:is_cumulative :boolean]
-              [:outliers {:optional true} [:maybe [:sequential ::outlier]]]
-              [:volatility {:optional true} [:maybe ::volatility]]
-              [:patterns {:optional true} [:maybe [:sequential ::pattern-insight]]]
-              [:significant_changes {:optional true} [:maybe [:sequential ::significant-change]]]
-              [:most_recent_change {:optional true} [:maybe ::significant-change]]]]]
+   [:series [:map-of :string ::time-series-series-stats]]
    [:correlations {:optional true} [:maybe [:sequential ::correlation]]]])
 
 (mr/def ::category-stat
@@ -163,19 +178,25 @@
   [:map
    [:name :string]
    [:value number?]
-   [:percentage number?]])
+   [:percentage {:optional true} number?]])
+
+(mr/def ::categorical-series-stats
+  "Statistics for a single categorical series."
+  [:map
+   [:summary [:maybe ::series-summary]]
+   [:data_points :int]
+   [:category_count :int]
+   [:top_categories [:sequential ::category-stat]]
+   [:bottom_categories {:optional true} [:maybe [:sequential ::category-stat]]]
+   [:outliers {:optional true} [:maybe [:sequential ::outlier]]]])
 
 (mr/def ::categorical-stats
-  "Statistics for categorical charts."
+  "Statistics for categorical charts (bar, pie, etc.)."
   [:map
    [:chart_type [:= :categorical]]
    [:series_count :int]
-   [:series [:map-of :string
-             [:map
-              [:summary ::series-summary]
-              [:category_count :int]
-              [:top_categories [:sequential ::category-stat]]
-              [:bottom_categories {:optional true} [:maybe [:sequential ::category-stat]]]]]]])
+   [:series [:map-of :string ::categorical-series-stats]]
+   [:correlations {:optional true} [:maybe [:sequential ::correlation]]]])
 
 (mr/def ::regression-stats
   "Linear regression statistics."
@@ -184,48 +205,79 @@
    [:intercept number?]
    [:r_squared number?]])
 
+(mr/def ::scatter-series-stats
+  "Statistics for a single scatter series."
+  [:map
+   [:x_summary [:maybe ::series-summary]]
+   [:y_summary [:maybe ::series-summary]]
+   [:data_points :int]
+   [:sampled_points {:optional true} [:maybe [:sequential [:sequential :any]]]]
+   [:correlation {:optional true} [:maybe [:map
+                                           [:coefficient number?]
+                                           [:strength ::correlation-strength]
+                                           [:direction ::correlation-direction]]]]
+   [:regression {:optional true} [:maybe ::regression-stats]]
+   [:outliers {:optional true} [:maybe [:sequential ::outlier]]]])
+
 (mr/def ::scatter-stats
   "Statistics for scatter plots."
   [:map
    [:chart_type [:= :scatter]]
-   [:x_summary ::series-summary]
-   [:y_summary ::series-summary]
-   [:data_points :int]
-   [:correlation [:map
-                  [:coefficient number?]
-                  [:strength ::correlation-strength]
-                  [:direction ::correlation-direction]]]
-   [:regression ::regression-stats]])
+   [:series_count :int]
+   [:series [:map-of :string ::scatter-series-stats]]])
 
-(mr/def ::distribution-stats
-  "Distribution statistics for histogram data."
+(mr/def ::histogram-summary
+  "Weighted summary statistics estimated from binned histogram data."
   [:map
-   [:percentiles [:map
-                  [:p25 number?]
-                  [:p50 number?]
-                  [:p75 number?]
-                  [:p90 number?]
-                  [:p95 number?]
-                  [:p99 number?]]]
-   [:quartiles [:map
-                [:q1 number?]
-                [:median number?]
-                [:q3 number?]
-                [:iqr number?]]]
-   [:skewness number?]
-   [:kurtosis number?]])
+   [:weighted_mean number?]
+   [:weighted_std_dev number?]
+   [:data_range number?]])
+
+(mr/def ::estimated-distribution-stats
+  "Distribution statistics estimated from binned histogram data using weighted approximations."
+  [:map
+   [:estimated_percentiles [:map-of :int number?]]
+   [:estimated_quartiles [:map
+                          [:q1 number?]
+                          [:median number?]
+                          [:q3 number?]
+                          [:iqr number?]]]
+   [:weighted_skewness {:optional true} [:maybe number?]]
+   [:weighted_kurtosis {:optional true} [:maybe number?]]])
+
+(mr/def ::histogram-structure
+  "Structural properties of histogram bin distribution."
+  [:map
+   [:mode_bin [:maybe [:sequential :any]]]
+   [:peak_count :int]
+   [:concentration_top3 number?]
+   [:gap_count :int]
+   [:empty_bin_ratio number?]
+   [:bin_count :int]])
+
+(mr/def ::histogram-series-stats
+  "Statistics for a single histogram series."
+  [:map
+   [:estimated_summary ::histogram-summary]
+   [:total_count :int]
+   [:data_points :int]
+   [:bin_data [:sequential [:sequential :any]]]
+   [:distribution ::estimated-distribution-stats]
+   [:structure ::histogram-structure]])
 
 (mr/def ::histogram-stats
   "Statistics for histogram charts."
   [:map
    [:chart_type [:= :histogram]]
-   [:summary ::series-summary]
-   [:data_points :int]
-   [:distribution ::distribution-stats]])
+   [:series_count :int]
+   [:series [:map-of :string ::histogram-series-stats]]])
 
-(mr/def ::chart-type
-  "Detected chart type."
-  [:enum :time-series :categorical :scatter :histogram :unknown])
+(mr/def ::unknown-stats
+  "Fallback stats for chart types that don't have dedicated analysis (e.g. scalar)."
+  [:map
+   [:chart_type [:= :unknown]]
+   [:series_count :int]
+   [:message :string]])
 
 (mr/def ::chart-stats
   "Union of all chart statistics types."
@@ -233,12 +285,15 @@
    ::time-series-stats
    ::categorical-stats
    ::scatter-stats
-   ::histogram-stats])
+   ::histogram-stats
+   ::unknown-stats])
 
-;;; --------------------------------------------- Tool Response Schema -----------------------------------------------
+;;; ------------------------------------------ Representation Schema ------------------------------------------------
 
-(mr/def ::analyze-chart-output
-  "Output schema for the analyze-chart tool."
+(mr/def ::generate-repr-context
+  "Context map for generating chart statistics representation."
   [:map
-   [:output :string]
-   [:stats {:optional true} [:maybe ::chart-stats]]])
+   [:stats ::chart-stats]
+   [:title {:optional true} [:maybe :string]]
+   [:display-type {:optional true} [:maybe :string]]
+   [:timeline-events {:optional true} [:maybe [:sequential ::timeline-event]]]])

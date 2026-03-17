@@ -6,26 +6,16 @@
   - Deep: volatility, patterns, significant changes, correlations"
   (:require
    [metabase-enterprise.metabot-v3.stats.outliers :as outliers]
+   [metabase-enterprise.metabot-v3.stats.types :as stats.types]
+   [metabase-enterprise.metabot-v3.stats.util :as stats.u]
+   [metabase.util.malli :as mu]
    [tech.v3.datatype.functional :as dfn]))
 
 (set! *warn-on-reflection* true)
 
 ;;; ------------------------------------------------ Basic Statistics ------------------------------------------------
 
-(defn compute-summary
-  "Compute basic statistical summary for a series of values.
-  Returns map with :min :max :mean :median :std_dev :range"
-  [values]
-  (let [min-val (dfn/reduce-min values)
-        max-val (dfn/reduce-max values)]
-    {:min min-val
-     :max max-val
-     :mean (dfn/mean values)
-     :median (dfn/median values)
-     :std_dev (dfn/standard-deviation values)
-     :range (- max-val min-val)}))
-
-(defn compute-time-range
+(defn- compute-time-range
   "Compute time range information from dates.
   Returns map with :start :end :span_description"
   [dates]
@@ -54,7 +44,7 @@
         (< pct-change -10) :decreasing
         :else :flat))))
 
-(defn compute-trend
+(defn- compute-trend
   "Compute trend summary using linear regression.
   Returns map with :direction :overall_change_pct :start_value :end_value"
   [values]
@@ -66,9 +56,7 @@
         start-val (first values-vec)
         end-val (last values-vec)
         mean-val (dfn/mean values)
-        change-pct (if (zero? start-val)
-                     0.0
-                     (* 100.0 (/ (- end-val start-val) (Math/abs (double start-val)))))]
+        change-pct (stats.u/percentage-change start-val end-val)]
     {:direction (slope-to-direction slope mean-val n)
      :overall_change_pct change-pct
      :start_value start-val
@@ -76,7 +64,7 @@
 
 ;;; --------------------------------------------- Cumulative Detection -----------------------------------------------
 
-(defn detect-cumulative?
+(defn- detect-cumulative?
   "Detect if data appears to be cumulative (monotonically increasing).
   Returns true if at least 95% of consecutive differences are non-negative."
   [values]
@@ -89,7 +77,7 @@
 
 ;;; ------------------------------------------------ Deep Statistics -------------------------------------------------
 
-(defn compute-volatility
+(defn- compute-volatility
   "Compute volatility metrics for time series.
   Returns map with :level :coefficient_of_variation :max_period_change_pct"
   [values]
@@ -141,7 +129,7 @@
                                 streaks)]
               (recur (inc i) direction i new-streaks))))))))
 
-(defn detect-patterns
+(defn- detect-patterns
   "Detect patterns like consecutive increases/decreases (5+ periods).
   Returns sequence of pattern insight maps."
   [values dates]
@@ -154,7 +142,7 @@
              :to_date (nth dates-vec end_idx)})
           streaks)))
 
-(defn find-significant-changes
+(defn- find-significant-changes
   "Find the top N most significant period-to-period changes.
   Returns sequence of significant change maps sorted by magnitude."
   [values dates n]
@@ -164,9 +152,7 @@
                       :let [from-val (nth values-vec (dec i))
                             to-val (nth values-vec i)
                             change-abs (- to-val from-val)
-                            change-pct (if (zero? from-val)
-                                         0.0
-                                         (* 100.0 (/ change-abs (Math/abs (double from-val)))))]]
+                            change-pct (stats.u/percentage-change from-val to-val)]]
                   {:from_date (nth dates-vec (dec i))
                    :to_date (nth dates-vec i)
                    :from_value from-val
@@ -178,7 +164,7 @@
          (take n)
          vec)))
 
-(defn compute-most-recent-change
+(defn- compute-most-recent-change
   "Compute the most recent period-to-period change.
   Returns a significant change map or nil if insufficient data."
   [values dates]
@@ -189,9 +175,7 @@
       (let [from-val (nth values-vec (- n 2))
             to-val (nth values-vec (dec n))
             change-abs (- to-val from-val)
-            change-pct (if (zero? from-val)
-                         0.0
-                         (* 100.0 (/ change-abs (Math/abs (double from-val)))))]
+            change-pct (stats.u/percentage-change from-val to-val)]
         {:from_date (nth dates-vec (- n 2))
          :to_date (nth dates-vec (dec n))
          :from_value from-val
@@ -199,64 +183,9 @@
          :change_abs change-abs
          :change_pct change-pct}))))
 
-;;; --------------------------------------------- Cross-Series Correlation -------------------------------------------
-
-(defn- correlation-strength
-  "Classify correlation coefficient into strength category."
-  [coef]
-  (let [abs-coef (Math/abs (double coef))]
-    (cond
-      (>= abs-coef 0.7) :strong
-      (>= abs-coef 0.4) :moderate
-      (>= abs-coef 0.2) :weak
-      :else :none)))
-
-(defn- align-series-on-x
-  "Align two series on common x-values using listwise deletion.
-  Returns [aligned-vals-a aligned-vals-b] containing only values at shared x positions."
-  [x-vals-a y-vals-a x-vals-b y-vals-b]
-  (let [b-lookup (zipmap x-vals-b y-vals-b)
-        common-pairs (for [[x y-a] (map vector x-vals-a y-vals-a)
-                           :let [y-b (get b-lookup x)]
-                           :when (some? y-b)]
-                       [y-a y-b])]
-    [(mapv first common-pairs)
-     (mapv second common-pairs)]))
-
-(def ^:private min-correlation-sample-size
-  "Minimum sample size required for meaningful correlation computation."
-  10)
-
-(defn compute-correlations
-  "Compute pairwise correlations between multiple series.
-  series-map is a map of series-name -> {:x_values [...] :y_values [...]}.
-  Aligns series on common x-values (listwise deletion) before computing correlation.
-  Skips pairs with fewer than 10 aligned data points.
-  Returns sequence of correlation maps."
-  [series-map]
-  (let [series-names (keys series-map)
-        pairs (for [a series-names
-                    b series-names
-                    :when (pos? (compare (str b) (str a)))]
-                [a b])]
-    (vec
-     (for [[name-a name-b] pairs
-           :let [{x-a :x_values y-a :y_values} (get series-map name-a)
-                 {x-b :x_values y-b :y_values} (get series-map name-b)
-                 [aligned-a aligned-b] (align-series-on-x x-a y-a x-b y-b)
-                 n (count aligned-a)]
-           :when (>= n min-correlation-sample-size)
-           :let [coef (dfn/pearsons-correlation aligned-a aligned-b)]]
-       {:series_a name-a
-        :series_b name-b
-        :coefficient coef
-        :strength (correlation-strength coef)
-        :direction (if (neg? coef) :negative :positive)
-        :aligned_sample_size n}))))
-
 ;;; ------------------------------------------------ Main Entry Point ------------------------------------------------
 
-(defn compute-series-stats
+(defn- compute-series-stats
   "Compute statistics for a single time series.
 
   Arguments:
@@ -269,7 +198,7 @@
         outliers (if is-cumulative
                    (outliers/find-outliers-cumulative values dates)
                    (outliers/find-outliers values dates))
-        basic-stats {:summary (compute-summary values)
+        basic-stats {:summary (stats.u/compute-summary values)
                      :time_range (compute-time-range dates)
                      :data_points (count values)
                      :trend (compute-trend values)
@@ -283,20 +212,18 @@
              :most_recent_change (compute-most-recent-change values dates))
       basic-stats)))
 
-(defn compute-time-series-stats
+(mu/defn compute-time-series-stats :- ::stats.types/time-series-stats
   "Compute complete time series statistics for a chart.
 
   Arguments:
     series-data - map of series-name -> {:x_values [...] :y_values [...]}
     opts        - options map:
                   :deep? - if true, compute additional stats"
-  [series-data opts]
-  (let [series-stats (into {}
-                           (for [[name {:keys [x_values y_values]}] series-data]
-                             [name (compute-series-stats y_values x_values opts)]))
-        correlations (when (and (:deep? opts) (> (count series-data) 1))
-                       (compute-correlations series-data))]
-    (cond-> {:chart_type :time-series
-             :series_count (count series-data)
-             :series series-stats}
-      correlations (assoc :correlations correlations))))
+  [series-data :- [:map-of :string ::stats.types/series-config]
+   opts        :- ::stats.types/options]
+  (let [series-stats (stats.u/compute-series-with-labels
+                      series-data
+                      (fn [x-vals y-vals]
+                        (compute-series-stats y-vals x-vals opts)))
+        correlations (stats.u/maybe-compute-correlations series-data opts)]
+    (stats.u/make-chart-result :time-series series-data series-stats correlations)))
