@@ -363,9 +363,8 @@
             ;; so it sets transform_id on the target table.
             (with-redefs [transforms-base.i/execute-base!                            (constantly {:status :succeeded})
                           transforms-base.u/sync-target!                             (constantly nil)
-                          transforms-base.u/execute-secondary-index-ddl-if-required! (constantly nil)
-                          transforms.u/run-cancelable-transform!                     (fn [_run-id _driver _details run-fn & _opts]
-                                                                                       (run-fn (a/promise-chan)))]
+                          transforms.u/run-cancelable-transform!                     (fn [_run-id _transform _driver _details run-fn & _opts]
+                                                                                       (run-fn (a/promise-chan) nil))]
               (transforms.execute/execute! transform {:run-method :manual})
               (is (= transform-id
                      (t2/select-one-fn :transform_id :model/Table :id table-id))))))))))
@@ -399,7 +398,7 @@
       (mt/with-premium-features #{:transforms-basic}
         (let [transform {:source {:type  "query"
                                   :query (lib/query (mt/metadata-provider) (mt/mbql-query venues))}}
-              {:keys [query]} (transforms-base.u/compile-source transform)]
+              {:keys [query]} (transforms-base.u/compile-source transform (transforms-base.u/get-source-range-params transform))]
           (is (string? query))
           (is (not (re-find #"(?i)\bLIMIT\b" query))
               (str "Expected no LIMIT clause in compiled SQL, got: " query)))))))
