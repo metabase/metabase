@@ -1228,6 +1228,7 @@ databaseChangeLog:
   - changeSet:
       id: v59.2026-01-27T13:00:00
       author: wotbrew
+      validCheckSum: ANY
       comment: Drop medallion names for data_layer enum use (hidden, internal instead)
       preConditions:
         - onFail: MARK_RAN
@@ -1237,21 +1238,11 @@ databaseChangeLog:
               author: wotbrew
               changeLogFile: migrations/058_update_migrations.yaml
       changes:
-        - sql:
-            sql: >-
-              UPDATE metabase_table
-              SET data_layer = CASE data_layer
-                WHEN 'copper' THEN 'hidden'
-                ELSE 'final'
-              END
+        - customChange:
+            class: "metabase.app_db.custom_migrations.DropMedallionNamesForDataLayer"
       rollback:
-        - sql:
-            sql: >-
-              UPDATE metabase_table
-              SET data_layer = CASE data_layer
-                WHEN 'hidden' THEN 'copper'
-                ELSE 'bronze'
-              END
+        - customChange:
+            class: "metabase.app_db.custom_migrations.DropMedallionNamesForDataLayer"
 
   - changeSet:
       id: v59.2026-01-28T10:00:00

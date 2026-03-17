@@ -2051,3 +2051,40 @@
           (t2/query {:update :transform
                      :set    {:source (json-in (dissoc parsed :source-incremental-strategy))}
                      :where  [:= :id id]}))))))
+
+(defn- batched-data-layer-update!
+  "Update `metabase_table.data_layer` in 500K ID-range chunks to avoid timeout on large instances.
+   Computes min/max ID once and strides through the range. A final unbounded UPDATE catches any
+   rows inserted during the migration."
+  [from-values case-expr]
+  (let [batch-size 500000
+        {:keys [min-id max-id]} (t2.execute/query-one
+                                 {:select [[[:min :id] :min-id]
+                                           [[:max :id] :max-id]]
+                                  :from   [:metabase_table]})]
+    (when (and min-id max-id)
+      (loop [start (long min-id)]
+        (when (<= start (long max-id))
+          (t2.execute/query-one
+           {:update :metabase_table
+            :set    {:data_layer case-expr}
+            :where  [:and
+                     [:>= :id start]
+                     [:< :id (+ start batch-size)]
+                     [:not-in :data_layer from-values]]})
+          (recur (+ start batch-size))))
+      ;; catch any rows inserted above the original max-id during the migration
+      (t2.execute/query-one
+       {:update :metabase_table
+        :set    {:data_layer case-expr}
+        :where  [:and
+                 [:> :id max-id]
+                 [:not-in :data_layer from-values]]}))))
+
+(define-reversible-migration DropMedallionNamesForDataLayer
+  (batched-data-layer-update!
+   ["hidden" "final"]
+   [:case [:= :data_layer "copper"] "hidden" :else "final"])
+  (batched-data-layer-update!
+   ["copper" "bronze"]
+   [:case [:= :data_layer "hidden"] "copper" :else "bronze"]))
