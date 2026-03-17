@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase-enterprise.dependencies.api :as deps.api]
+   [metabase-enterprise.dependencies.async :as dependencies.async]
    [metabase-enterprise.dependencies.core :as dependencies]
    [metabase-enterprise.dependencies.events]
    [metabase-enterprise.dependencies.findings :as dependencies.findings]
@@ -2196,7 +2197,12 @@
        (mt/with-temp [:model/User user# {:email "test@test.com"}]
          (let [~user-binding user#
                ~base-card-binding (card/create-card! (basic-card "Base") user#)]
-           ~@body)))))
+           (try
+             ~@body
+             (finally
+               ;; Drain the single-threaded async executor to ensure all pending dependency
+               ;; work completes before model cleanup deletes cards, avoiding lock timeouts.
+               @(dependencies.async/submit! (fn [] nil)))))))))
 
 (deftest ^:sequential dependents-query-filter-test
   (testing "GET /api/ee/dependencies/graph/dependents with query parameter"
