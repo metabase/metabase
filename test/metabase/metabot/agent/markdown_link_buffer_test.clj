@@ -29,19 +29,19 @@
 
 ;;; State machine / buffering tests
 
-(deftest nested-bracket-handling-test
+(deftest ^:parallel nested-bracket-handling-test
   (testing "does not drop characters when nested brackets appear"
     (let [[output flushed] (process "[foo[")]
       (is (= "[foo" output))
       (is (= "[" flushed)))))
 
-(deftest basic-text-passthrough-test
+(deftest ^:parallel basic-text-passthrough-test
   (testing "passes through plain text unchanged"
     (let [[output flushed] (process "Hello world")]
       (is (= "Hello world" output))
       (is (= "" flushed)))))
 
-(deftest buffering-incomplete-link-test
+(deftest ^:parallel buffering-incomplete-link-test
   (testing "buffers incomplete markdown link"
     (let [[outputs flushed] (process-chunks ["Check [link" "](http://example.com)"])]
       (is (= ["Check " "[link](http://example.com)"] outputs))
@@ -57,7 +57,7 @@
       (is (= "Incomplete " output))
       (is (= "[link" flushed)))))
 
-(deftest regular-url-passthrough-test
+(deftest ^:parallel regular-url-passthrough-test
   (testing "passes through regular URLs unchanged"
     (let [[output flushed] (process "[Google](https://google.com)")]
       (is (= "[Google](https://google.com)" output))
@@ -67,7 +67,7 @@
 
 (def resolved-link-re #"\[Results\]\(/question#[a-zA-ZZ0-9=]+\)")
 
-(deftest resolve-query-link-test
+(deftest ^:parallel resolve-query-link-test
   (testing "resolves metabase://query links using queries-state"
     (let [query (lib.tu/venues-query)
           [output flushed] (process "[Results](metabase://query/q-123)" {"q-123" query})]
@@ -86,7 +86,7 @@
       (is (=? ["Your " "" resolved-link-re] output))
       (is (= "" flushed)))))
 
-(deftest resolve-chart-link-test
+(deftest ^:parallel resolve-chart-link-test
   (testing "resolves metabase://chart links using charts-state"
     (let [query (lib.tu/venues-query)
           queries {"q-456" query}
@@ -101,7 +101,7 @@
       (is (= "Chart" output))
       (is (= "" flushed)))))
 
-(deftest resolve-entity-link-test
+(deftest ^:parallel resolve-entity-link-test
   (testing "resolves metabase://model links"
     (let [[output flushed] (process "[My Model](metabase://model/123)")]
       (is (= "[My Model](/model/123)" output))
@@ -122,7 +122,7 @@
       (is (= "[Users Table](/table/42)" output))
       (is (= "" flushed)))))
 
-(deftest resolve-link-split-across-chunks-test
+(deftest ^:parallel resolve-link-split-across-chunks-test
   (testing "resolves metabase:// link split across multiple chunks"
     (let [query (lib.tu/venues-query)
           [outputs flushed] (process-chunks ["Check [Results](metabase://" "query/split-query)"]
@@ -131,7 +131,7 @@
       (is (re-find #"\[Results\]\(/question#" (second outputs)))
       (is (= "" flushed)))))
 
-(deftest multiple-links-in-text-test
+(deftest ^:parallel multiple-links-in-text-test
   (testing "resolves multiple links in same chunk"
     (let [[output flushed] (process "[Model A](metabase://model/1) and [Model B](metabase://model/2)")]
       (is (= "[Model A](/model/1) and [Model B](/model/2)" output))
