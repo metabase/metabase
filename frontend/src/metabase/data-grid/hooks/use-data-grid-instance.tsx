@@ -303,7 +303,6 @@ export const useDataGridInstance = <TData, TValue>({
   const virtualGrid = useVirtualGrid({
     gridRef,
     table,
-    defaultRowHeight,
     getRowHeight,
     pinnedTopRowsCount,
     enableRowVirtualization,

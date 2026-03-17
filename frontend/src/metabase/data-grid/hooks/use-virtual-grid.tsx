@@ -11,7 +11,6 @@ interface VirtualGridOptions<TData> {
   gridRef: React.RefObject<HTMLDivElement>;
   table: ReactTable<TData>;
   getRowHeight: (rowIndex: number) => number;
-  defaultRowHeight: number;
   pinnedTopRowsCount: number;
   enableRowVirtualization?: boolean;
 }
@@ -31,7 +30,6 @@ export const useVirtualGrid = <TData,>({
   gridRef,
   table,
   getRowHeight,
-  defaultRowHeight,
   pinnedTopRowsCount,
   enableRowVirtualization,
 }: VirtualGridOptions<TData>): VirtualGrid => {
@@ -67,8 +65,7 @@ export const useVirtualGrid = <TData,>({
   const rowVirtualizer = useVirtualizer({
     count: centerRows.length,
     getScrollElement: () => gridRef.current,
-    estimateSize: (index) =>
-      getRowHeight(index + pinnedTopRowsCount) || defaultRowHeight,
+    estimateSize: (index) => getRowHeight(index + pinnedTopRowsCount),
     overscan: 3,
     enabled: enableRowVirtualization,
   });
