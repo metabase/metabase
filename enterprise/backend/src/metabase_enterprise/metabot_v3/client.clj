@@ -12,6 +12,7 @@
    [malli.transform :as mtx]
    [metabase-enterprise.metabot-v3.client.schema :as metabot-v3.client.schema]
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
+   [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
    [metabase-enterprise.metabot-v3.settings :as metabot-v3.settings]
    [metabase.api.common :as api]
    [metabase.premium-features.core :as premium-features]
@@ -93,9 +94,6 @@
 (defn- metric-selection-endpoint-url []
   (str (metabot-v3.settings/ai-service-base-url) "/v1/select-metric"))
 
-(defn- find-outliers-endpoint-url []
-  (str (metabot-v3.settings/ai-service-base-url) "/v1/find-outliers"))
-
 (defn- fix-sql-endpoint []
   (str (metabot-v3.settings/ai-service-base-url) "/v1/sql/fix"))
 
@@ -114,9 +112,6 @@
 (defn- document-generate-content-endpoint []
   (str (metabot-v3.settings/ai-service-base-url) "/v1/document/generate-content"))
 
-(defn- generate-embeddings-endpoint []
-  (str (metabot-v3.settings/ai-service-base-url) "/v1/embeddings"))
-
 (defn- quick-closing-body
   "Some requests come with body wrapped in ContentLengthInputStream, and that will never close the underlying stream.
   So we just close the client itself.
@@ -133,15 +128,17 @@
 (defn- open-ai-stream!
   "Make a streaming request to the AI service. Returns the HTTP response.
    Caller is responsible for reading from the response body and closing it."
-  [{:keys [context message history profile-id conversation-id session-id state]}]
+  [{:keys [context message history profile-id conversation-id session-id state debug?]}]
   (premium-features/assert-has-feature :metabot-v3 "MetaBot")
   (let [url      (ai-url "/v2/agent/stream")
-        body     {:messages        (conj (vec history) message)
-                  :context         context
-                  :conversation_id conversation-id
-                  :profile_id      profile-id
-                  :user_id         api/*current-user-id*
-                  :state           state}
+        body     (cond-> {:messages        (conj (vec history) message)
+                          :context         context
+                          :conversation_id conversation-id
+                          :profile_id      profile-id
+                          :user_id         api/*current-user-id*
+                          :state           state}
+                   debug? (assoc :debug true))
+        _        (metabot-v3.context/log body :llm.log/be->llm)
         _        (log/debugf "V2 request to AI Proxy:\n%s" (u/pprint-to-str body))
         options  (cond-> {:headers          {"Accept"                    "text/event-stream"
                                              "Content-Type"              "application/json;charset=UTF-8"
@@ -185,6 +182,7 @@
        [:conversation-id :string]
        [:session-id :string]
        [:state :map]
+       [:debug? {:optional true} [:maybe :boolean]]
        [:on-complete {:optional true} [:function [:=> [:cat :any] :any]]]]]
   (try
     (let [response (open-ai-stream! opts)
@@ -261,21 +259,6 @@
         (log/debugf "Response:\n%s" (u/pprint-to-str <>))))
     (catch Throwable e
       (throw (ex-info (format "Error in request to AI Service: %s" (ex-message e))
-                      {}
-                      e)))))
-
-(mu/defn find-outliers-request
-  "Make a request to AI Service to find outliers"
-  [values :- [:sequential [:map [:dimension :any] [:value :any]]]]
-  (try
-    (let [url (find-outliers-endpoint-url)
-          body {:values values}
-          options (build-request-options body)
-          response (post! url options)]
-      (u/prog1 (check-response! response body)
-        (log/debugf "Response:\n%s" (u/pprint-to-str <>))))
-    (catch Throwable e
-      (throw (ex-info (format "Error in request to AI service: %s" (ex-message e))
                       {}
                       e)))))
 
@@ -396,14 +379,3 @@
         options (build-request-options payload)
         response (post! url options)]
     (check-response! response payload)))
-
-(defn generate-embeddings
-  "Generate vector embeddings for a batch of inputs questions for the given models and metrics."
-  [model-name texts]
-  (let [url (generate-embeddings-endpoint)
-        body {:model model-name
-              :input texts
-              :encoding_format "base64"}
-        options (build-request-options body)
-        response (post! url options)]
-    (check-response! response body)))

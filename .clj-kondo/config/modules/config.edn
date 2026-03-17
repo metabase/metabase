@@ -814,7 +814,6 @@
            lib
            lib-be
            models
-           premium-features
            request
            settings
            sql-tools
@@ -2308,13 +2307,19 @@
   enterprise/metabot-v3
   {:team    "Metabot"
    :api     #{metabase-enterprise.metabot-v3.api
-              metabase-enterprise.metabot-v3.client
               metabase-enterprise.metabot-v3.core
               metabase-enterprise.metabot-v3.init
-              metabase-enterprise.metabot-v3.tools.api}
+              metabase-enterprise.metabot-v3.tools.api
+              metabase-enterprise.metabot-v3.tools.deftool
+              metabase-enterprise.metabot-v3.tools.entity-details
+              metabase-enterprise.metabot-v3.tools.field-stats
+              metabase-enterprise.metabot-v3.tools.filters
+              metabase-enterprise.metabot-v3.tools.search
+              metabase-enterprise.metabot-v3.util}
    :friends #{enterprise/agent-api
               enterprise/slackbot}
    :uses    #{activity-feed
+              analytics
               api
               app-db
               audit-app
@@ -2345,11 +2350,11 @@
               task
               transforms
               transforms-base
-              users
               util
               warehouses
               enterprise/api
               enterprise/dependencies
+              enterprise/llm
               enterprise/slackbot
               enterprise/transforms-python}}
 
@@ -2468,8 +2473,7 @@
            task
            tracing
            util
-           enterprise/llm
-           enterprise/metabot-v3}}
+           enterprise/llm}}
 
   enterprise/serialization
   {:team "Querying"
