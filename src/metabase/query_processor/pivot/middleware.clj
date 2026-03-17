@@ -142,7 +142,6 @@
   (let [full-breakout-combination (splice-in-remap breakout-combination remap)]
     (column-mapping-for-subquery num-canonical-cols num-canonical-breakouts full-breakout-combination)))
 
-;; NOCOMMIT update dox
 (mu/defn- row-mapping-fn :- [:=> [:cat ::row] ::row]
   "This function needs to be called for each row so that it can actually shape the row according to the
   `column-mapping-fn` we build at the beginning.
