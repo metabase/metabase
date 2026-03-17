@@ -29,8 +29,10 @@ RUN npm install -g bun
 # install frontend dependencies
 RUN bun install --frozen-lockfile
 
+RUN INTERACTIVE=false CI=true MB_EDITION=$MB_EDITION bin/build.sh :version ${VERSION} \
+    || (find /tmp -name "clojure-*.edn" -exec cat {} \; && exit 1)
 # ENABLE TO BUILD FASTER, BUT IT CONSUMES MORE MEMORY AND CPU, SO IT MAY NOT WORK IN ALL ENVIRONMENTS
-RUN INTERACTIVE=false CI=true MB_EDITION=$MB_EDITION bin/build.sh :version ${VERSION}
+# RUN INTERACTIVE=false CI=true MB_EDITION=$MB_EDITION bin/build.sh :version ${VERSION}
 
 # # RUN INTERACTIVE=false CI=true MB_EDITION=$MB_EDITION \
 # # JAVA_TOOL_OPTIONS="-Xmx2g" \
