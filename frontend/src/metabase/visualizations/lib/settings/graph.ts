@@ -542,6 +542,64 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS: VisualizationSettingsDefinitions = {
     getDefault: (_series, settings) => getDefaultShowStackValues(settings),
     readDependencies: ["graph.show_values", "stackable.stack_type"],
   },
+  "graph.stack_value_format": {
+    get section() {
+      return t`Display`;
+    },
+    get title() {
+      return t`Stack value format`;
+    },
+    widget: "radio",
+    getHidden: (series, vizSettings) => {
+      const hasBars = getSeriesDisplays(series, vizSettings).some(
+        (display) => display === "bar",
+      );
+
+      if (!hasBars || vizSettings["graph.show_values"] !== true) {
+        return true;
+      }
+
+      const stackType = vizSettings["stackable.stack_type"];
+
+      // For normalized stacks ("Stack - 100%"), always show the setting
+      if (stackType === "normalized") {
+        return false;
+      }
+
+      // For regular stacked charts, only show when segment values are visible
+      if (stackType === "stacked") {
+        return !(
+          vizSettings["graph.show_stack_values"] === "series" ||
+          vizSettings["graph.show_stack_values"] === "all"
+        );
+      }
+
+      // Hide for non-stacked charts
+      return true;
+    },
+    props: {
+      options: [
+        {
+          get name() {
+            return t`Values`;
+          },
+          value: "value",
+        },
+        {
+          get name() {
+            return t`Percentages`;
+          },
+          value: "percentage",
+        },
+      ],
+    },
+    getDefault: () => "value",
+    readDependencies: [
+      "graph.show_values",
+      "stackable.stack_type",
+      "graph.show_stack_values",
+    ],
+  },
   "graph.label_value_formatting": {
     get section() {
       return t`Display`;
@@ -693,8 +751,7 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
       "graph.x_axis._is_histogram",
     ],
     isValid: isXAxisScaleValid,
-    getDefault: (series, vizSettings) =>
-      getDefaultXAxisScale(vizSettings, series[0]?.card?.display),
+    getDefault: (series, vizSettings) => getDefaultXAxisScale(vizSettings),
     getProps: (series, vizSettings) => ({
       options: getAvailableXAxisScales(series, vizSettings),
     }),
