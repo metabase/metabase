@@ -32,10 +32,14 @@ RUN bun install --frozen-lockfile
 # ENABLE TO BUILD FASTER, BUT IT CONSUMES MORE MEMORY AND CPU, SO IT MAY NOT WORK IN ALL ENVIRONMENTS
 # RUN INTERACTIVE=false CI=true MB_EDITION=$MB_EDITION bin/build.sh :version ${VERSION}
 
+# RUN INTERACTIVE=false CI=true MB_EDITION=$MB_EDITION \
+# JAVA_TOOL_OPTIONS="-Xmx2g" \
+# SHADOW_CLJS_OPTS="-Dshadow.cljs.compile.parallel=false" \
+# bin/build.sh :version ${VERSION}
+
 RUN INTERACTIVE=false CI=true MB_EDITION=$MB_EDITION \
 JAVA_TOOL_OPTIONS="-Xmx2g" \
-SHADOW_CLJS_OPTS="-Dshadow.cljs.compile.parallel=false" \
-bin/build.sh :version ${VERSION}
+bin/build.sh :skip-frontend-build :version ${VERSION}
 
 # ###################
 # # STAGE 2: runner
