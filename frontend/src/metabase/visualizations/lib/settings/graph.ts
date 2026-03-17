@@ -295,16 +295,16 @@ export const GRAPH_BUBBLE_SETTINGS: VisualizationSettingsDefinitions = {
   },
 };
 
-export const LINE_SETTINGS = {
+export const LINE_SETTINGS: VisualizationSettingsDefinitions = {
   // DEPRECATED: moved to series settings
   "line.interpolate": {
-    default: "linear",
+    getDefault: () => "linear",
   },
   // DEPRECATED: moved to series settings
   "line.marker_enabled": {},
   // DEPRECATED: moved to series settings
   "line.missing": {
-    default: "interpolate",
+    getDefault: () => "interpolate",
   },
 };
 
@@ -419,7 +419,7 @@ export const GRAPH_TREND_SETTINGS: VisualizationSettingsDefinitions = {
       return t`Trend line`;
     },
     widget: "toggle",
-    default: false,
+    getDefault: () => false,
     getHidden: (series, vizSettings) => {
       const { insights } = series[0].data;
       const graphDimensions = vizSettings["graph.dimensions"] ?? [];
@@ -599,7 +599,7 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS: VisualizationSettingsDefinitions = {
   "graph.max_categories_enabled": {
     hidden: true,
     // temporarily hiding the setting (metabase#50510)
-    default: false,
+    getDefault: () => false,
     isValid: () => false,
     readDependencies: ["series_settings"],
   },
@@ -607,7 +607,7 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS: VisualizationSettingsDefinitions = {
     widget: ChartSettingMaxCategories,
     hidden: true,
     // temporarily hiding the setting (metabase#50510)
-    default: Number.MAX_SAFE_INTEGER,
+    getDefault: () => Number.MAX_SAFE_INTEGER,
     isValid: () => false,
     getProps: (_series, settings) => {
       return {
@@ -622,7 +622,7 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS: VisualizationSettingsDefinitions = {
     ],
   },
   "graph.other_category_color": {
-    default: color("text-tertiary"),
+    getDefault: () => color("text-tertiary"),
   },
   "graph.other_category_aggregation_fn": {
     hidden: true,
@@ -711,7 +711,7 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
       return t`Y-axis`;
     },
     widget: "select",
-    default: "linear",
+    getDefault: () => "linear",
     getProps: () => ({
       options: [
         { name: t`Linear`, value: "linear" },
@@ -766,7 +766,7 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
         },
       ],
     }),
-    default: true,
+    getDefault: () => true,
   },
   "graph.y_axis.axis_enabled": {
     get section() {
@@ -796,7 +796,7 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
         },
       ],
     }),
-    default: true,
+    getDefault: () => true,
   },
   "graph.y_axis.unpin_from_zero": {
     get section() {
@@ -851,7 +851,7 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
       return t`Min`;
     },
     widget: "number",
-    default: 0,
+    getDefault: () => 0,
     getHidden: (_series, vizSettings) =>
       vizSettings["graph.y_axis.auto_range"] !== false,
   },
@@ -867,7 +867,7 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
       return t`Max`;
     },
     widget: "number",
-    default: 100,
+    getDefault: () => 100,
     getHidden: (series, vizSettings) =>
       vizSettings["graph.y_axis.auto_range"] !== false,
   },
@@ -994,7 +994,7 @@ export const BOXPLOT_SETTINGS: VisualizationSettingsDefinitions<
       return t`Whiskers extend to`;
     },
     widget: "radio",
-    default: "tukey",
+    getDefault: () => "tukey",
     getProps: () => ({
       get options() {
         return [
@@ -1012,7 +1012,7 @@ export const BOXPLOT_SETTINGS: VisualizationSettingsDefinitions<
       return t`Show points`;
     },
     widget: "radio",
-    default: "outliers",
+    getDefault: () => "outliers",
     getValue: (_series, settings) => {
       const isMinMax = settings["boxplot.whisker_type"] === "min-max";
       const savedValue = settings["boxplot.points_mode"];
@@ -1043,7 +1043,7 @@ export const BOXPLOT_SETTINGS: VisualizationSettingsDefinitions<
       return t`Show mean`;
     },
     widget: "toggle",
-    default: true,
+    getDefault: () => true,
     inline: true,
   },
   "graph.show_values": {
@@ -1054,7 +1054,7 @@ export const BOXPLOT_SETTINGS: VisualizationSettingsDefinitions<
       return t`Show values on data points`;
     },
     widget: "toggle",
-    default: false,
+    getDefault: () => false,
     inline: true,
     marginBottom: "1rem",
   },
@@ -1066,7 +1066,7 @@ export const BOXPLOT_SETTINGS: VisualizationSettingsDefinitions<
       return t`Values to display`;
     },
     widget: "segmentedControl",
-    default: "median",
+    getDefault: () => "median",
     getHidden: (_series, vizSettings) => !vizSettings["graph.show_values"],
     getProps: () => ({
       options: [
@@ -1094,7 +1094,7 @@ export const BOXPLOT_SETTINGS: VisualizationSettingsDefinitions<
       return t`Hide overlapping labels`;
     },
     widget: ChartSettingEnumToggle,
-    default: "fit",
+    getDefault: () => "fit",
     inline: true,
     getHidden: (_series, vizSettings) => !vizSettings["graph.show_values"],
     getProps: () => ({
@@ -1111,7 +1111,7 @@ export const BOXPLOT_SETTINGS: VisualizationSettingsDefinitions<
       return t`Auto formatting`;
     },
     widget: "segmentedControl",
-    default: "compact",
+    getDefault: () => "compact",
     getHidden: (_series, vizSettings) => !vizSettings["graph.show_values"],
     getProps: () => ({
       options: [

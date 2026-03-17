@@ -28,18 +28,17 @@ const HeadingWrapper = Object.assign(Heading, {
   settings: {
     "card.title": {
       dashboard: false,
-      // eslint-disable-next-line ttag/no-module-declaration
-      default: t`Heading card`,
+      getDefault: () => t`Heading card`,
     },
     "card.description": {
       dashboard: false,
     },
     text: {
       value: "",
-      default: "",
+      getDefault: () => "",
     },
     "dashcard.background": {
-      default: false,
+      getDefault: () => false,
     },
   },
 });

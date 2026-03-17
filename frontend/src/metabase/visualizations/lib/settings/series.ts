@@ -203,7 +203,7 @@ export function seriesSetting({
     axis: {
       title: t`Y-axis position`,
       widget: "segmentedControl",
-      default: null,
+      getDefault: () => null,
       getHidden: (single) => single.card.display === "row",
       getProps: () => ({
         options: [

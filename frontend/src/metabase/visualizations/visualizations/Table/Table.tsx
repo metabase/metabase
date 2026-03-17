@@ -102,7 +102,7 @@ export class Table extends Component<TableProps, TableState> {
       inline: true,
       widget: "toggle",
       dashboard: true,
-      default: false,
+      getDefault: () => false,
     },
     "table.row_index": {
       get section() {
@@ -113,7 +113,7 @@ export class Table extends Component<TableProps, TableState> {
       },
       inline: true,
       widget: "toggle",
-      default: false,
+      getDefault: () => false,
     },
     "table.pivot": {
       get section() {
@@ -215,7 +215,7 @@ export class Table extends Component<TableProps, TableState> {
         return t`Conditional Formatting`;
       },
       widget: ChartSettingsTableFormatting,
-      default: [],
+      getDefault: () => [],
       getProps: (series: Series, settings: VisualizationSettings) => ({
         cols: series[0].data.cols.filter(isFormattable),
         isPivoted: settings["table.pivot"],

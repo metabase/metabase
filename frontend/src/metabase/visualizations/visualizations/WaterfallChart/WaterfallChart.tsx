@@ -69,7 +69,7 @@ Object.assign(
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         title: t`Show total`,
         widget: "toggle",
-        default: true,
+        getDefault: () => true,
         inline: true,
       },
       "waterfall.total_color": {
