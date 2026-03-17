@@ -17,7 +17,7 @@
 
 (defn- compute-time-range
   "Compute time range information from dates.
-  Returns map with :start :end :span_description"
+  Returns map with :start :end :span-description"
   [dates]
   (let [sorted-dates (sort dates)
         start (first sorted-dates)
@@ -25,7 +25,7 @@
         n (count dates)]
     {:start start
      :end end
-     :span_description (str n " data points from " start " to " end)}))
+     :span-description (str n " data points from " start " to " end)}))
 
 ;;; ------------------------------------------------ Trend Detection ------------------------------------------------
 
@@ -38,15 +38,15 @@
     (let [total-change (* slope (dec n))
           pct-change (* 100.0 (/ total-change (Math/abs (double mean))))]
       (cond
-        (> pct-change 50) :strongly_increasing
+        (> pct-change 50) :strongly-increasing
         (> pct-change 10) :increasing
-        (< pct-change -50) :strongly_decreasing
+        (< pct-change -50) :strongly-decreasing
         (< pct-change -10) :decreasing
         :else :flat))))
 
 (defn- compute-trend
   "Compute trend summary using linear regression.
-  Returns map with :direction :overall_change_pct :start_value :end_value"
+  Returns map with :direction :overall-change-pct :start-value :end-value"
   [values]
   (let [n (count values)
         values-vec (vec values)
@@ -58,9 +58,9 @@
         mean-val (dfn/mean values)
         change-pct (stats.u/percentage-change start-val end-val)]
     {:direction (slope-to-direction slope mean-val n)
-     :overall_change_pct change-pct
-     :start_value start-val
-     :end_value end-val}))
+     :overall-change-pct change-pct
+     :start-value start-val
+     :end-value end-val}))
 
 ;;; --------------------------------------------- Cumulative Detection -----------------------------------------------
 
@@ -79,7 +79,7 @@
 
 (defn- compute-volatility
   "Compute volatility metrics for time series.
-  Returns map with :level :coefficient_of_variation :max_period_change_pct"
+  Returns map with :level :coefficient-of-variation :max-period-change-pct"
   [values]
   (let [mean-val (dfn/mean values)
         std-dev (dfn/standard-deviation values)
@@ -97,12 +97,12 @@
                 (< cv 0.5) :high
                 :else :extreme)]
     {:level level
-     :coefficient_of_variation cv
-     :max_period_change_pct max-change}))
+     :coefficient-of-variation cv
+     :max-period-change-pct max-change}))
 
 (defn- find-consecutive-streaks
   "Find consecutive increasing or decreasing streaks of length >= min-length.
-  Returns sequence of maps with :type :start_idx :end_idx :length"
+  Returns sequence of maps with :type :start-idx :end-idx :length"
   [values min-length]
   (let [values-vec (vec values)
         n (count values-vec)]
@@ -113,19 +113,19 @@
       (if (>= i n)
         (let [final-length (- i streak-start)]
           (if (and current-type (>= final-length min-length))
-            (conj streaks {:type current-type :start_idx streak-start :end_idx (dec i) :length final-length})
+            (conj streaks {:type current-type :start-idx streak-start :end-idx (dec i) :length final-length})
             streaks))
         (let [prev (nth values-vec (dec i))
               curr (nth values-vec i)
               direction (cond
-                          (> curr prev) :consecutive_increase
-                          (< curr prev) :consecutive_decrease
+                          (> curr prev) :consecutive-increase
+                          (< curr prev) :consecutive-decrease
                           :else nil)]
           (if (= direction current-type)
             (recur (inc i) current-type streak-start streaks)
             (let [streak-length (- i streak-start)
                   new-streaks (if (and current-type (>= streak-length min-length))
-                                (conj streaks {:type current-type :start_idx streak-start :end_idx (dec i) :length streak-length})
+                                (conj streaks {:type current-type :start-idx streak-start :end-idx (dec i) :length streak-length})
                                 streaks)]
               (recur (inc i) direction i new-streaks))))))))
 
@@ -135,11 +135,11 @@
   [values dates]
   (let [dates-vec (vec dates)
         streaks (find-consecutive-streaks values 5)]
-    (mapv (fn [{:keys [type start_idx end_idx length]}]
+    (mapv (fn [{:keys [type start-idx end-idx length]}]
             {:type type
              :description (str (name type) " over " length " periods")
-             :from_date (nth dates-vec start_idx)
-             :to_date (nth dates-vec end_idx)})
+             :from-date (nth dates-vec start-idx)
+             :to-date (nth dates-vec end-idx)})
           streaks)))
 
 (defn- find-significant-changes
@@ -153,14 +153,14 @@
                             to-val (nth values-vec i)
                             change-abs (- to-val from-val)
                             change-pct (stats.u/percentage-change from-val to-val)]]
-                  {:from_date (nth dates-vec (dec i))
-                   :to_date (nth dates-vec i)
-                   :from_value from-val
-                   :to_value to-val
-                   :change_abs change-abs
-                   :change_pct change-pct})]
+                  {:from-date (nth dates-vec (dec i))
+                   :to-date (nth dates-vec i)
+                   :from-value from-val
+                   :to-value to-val
+                   :change-abs change-abs
+                   :change-pct change-pct})]
     (->> changes
-         (sort-by #(Math/abs (double (:change_abs %))) >)
+         (sort-by #(Math/abs (double (:change-abs %))) >)
          (take n)
          vec)))
 
@@ -176,12 +176,12 @@
             to-val (nth values-vec (dec n))
             change-abs (- to-val from-val)
             change-pct (stats.u/percentage-change from-val to-val)]
-        {:from_date (nth dates-vec (- n 2))
-         :to_date (nth dates-vec (dec n))
-         :from_value from-val
-         :to_value to-val
-         :change_abs change-abs
-         :change_pct change-pct}))))
+        {:from-date (nth dates-vec (- n 2))
+         :to-date (nth dates-vec (dec n))
+         :from-value from-val
+         :to-value to-val
+         :change-abs change-abs
+         :change-pct change-pct}))))
 
 ;;; ------------------------------------------------ Main Entry Point ------------------------------------------------
 
@@ -199,17 +199,17 @@
                    (outliers/find-outliers-cumulative values dates)
                    (outliers/find-outliers values dates))
         basic-stats {:summary (stats.u/compute-summary values)
-                     :time_range (compute-time-range dates)
-                     :data_points (count values)
+                     :time-range (compute-time-range dates)
+                     :data-points (count values)
                      :trend (compute-trend values)
-                     :is_cumulative is-cumulative
+                     :is-cumulative is-cumulative
                      :outliers outliers}]
     (if deep?
       (assoc basic-stats
              :volatility (compute-volatility values)
              :patterns (detect-patterns values dates)
-             :significant_changes (find-significant-changes values dates 3)
-             :most_recent_change (compute-most-recent-change values dates))
+             :significant-changes (find-significant-changes values dates 3)
+             :most-recent-change (compute-most-recent-change values dates))
       basic-stats)))
 
 (mu/defn compute-time-series-stats :- ::stats.types/time-series-stats

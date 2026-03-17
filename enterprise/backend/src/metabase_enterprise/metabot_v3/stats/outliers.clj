@@ -55,7 +55,7 @@
     :index           - position in the original sequence
     :label           - the label at that position
     :value           - the numeric value
-    :modified_z_score - the modified Z-score"
+    :modified-z-score - the modified Z-score"
   [values :- [:sequential number?]
    labels :- [:sequential :any]]
   (when-let [z-scores (compute-modified-z-scores values)]
@@ -67,7 +67,7 @@
               {:index idx
                :label (nth labels-vec idx)
                :value (nth values-vec idx)
-               :modified_z_score (nth z-scores-vec idx)})
+               :modified-z-score (nth z-scores-vec idx)})
             indices))))
 
 (mu/defn find-outliers-cumulative :- [:maybe [:sequential ::stats.types/cumulative-outlier]]
@@ -86,7 +86,7 @@
     :label           - the label at that position
     :value           - the numeric value at that position
     :diff            - the period-over-period change that was flagged
-    :modified_z_score - the modified Z-score of the diff"
+    :modified-z-score - the modified Z-score of the diff"
   [values :- [:sequential number?]
    labels :- [:sequential :any]]
   (let [values-vec (vec values)
@@ -101,5 +101,5 @@
                    :label (nth labels-vec point-idx)
                    :value (nth values-vec point-idx)
                    :diff (nth diffs diff-idx)
-                   :modified_z_score (nth z-scores-vec diff-idx)}))
+                   :modified-z-score (nth z-scores-vec diff-idx)}))
               outlier-diff-indices)))))

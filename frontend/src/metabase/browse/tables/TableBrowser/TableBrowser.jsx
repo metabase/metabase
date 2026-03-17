@@ -11,7 +11,7 @@ import { trackSimpleEvent } from "metabase/lib/analytics";
 import { useSelector } from "metabase/lib/redux";
 import { isSyncInProgress } from "metabase/lib/syncing";
 import { PLUGIN_TABLE_EDITING } from "metabase/plugins";
-import { getDatabases } from "metabase/reference/selectors";
+import { getShallowDatabases as getDatabases } from "metabase/selectors/metadata";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { ActionIcon, Group, Icon, Loader, Paper } from "metabase/ui";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
