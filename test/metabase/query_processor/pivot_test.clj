@@ -151,25 +151,14 @@
         (let [expected (mt/$ids
                          [{:query {:breakout    [$orders.user_id->people.state
                                                  $orders.user_id->people.source
-                                                 $orders.product_id->products.category
-                                                 [:expression "pivot-grouping"]]
-                                   :expressions {:pivot-grouping [:abs 0]}}}
+                                                 $orders.product_id->products.category]}}
                           {:query {:breakout    [$orders.user_id->people.source
-                                                 $orders.product_id->products.category
-                                                 [:expression "pivot-grouping"]]
-                                   :expressions {:pivot-grouping [:abs 1]}}}
-                          {:query {:breakout    [$orders.product_id->products.category
-                                                 [:expression "pivot-grouping"]]
-                                   :expressions {:pivot-grouping [:abs 3]}}}
+                                                 $orders.product_id->products.category]}}
+                          {:query {:breakout    [$orders.product_id->products.category]}}
                           {:query {:breakout    [$orders.user_id->people.state
-                                                 $orders.user_id->people.source
-                                                 [:expression "pivot-grouping"]]
-                                   :expressions {:pivot-grouping [:abs 4]}}}
-                          {:query {:breakout    [$orders.user_id->people.source
-                                                 [:expression "pivot-grouping"]]
-                                   :expressions {:pivot-grouping [:abs 5]}}}
-                          {:query {:breakout    [[:expression "pivot-grouping"]]
-                                   :expressions {:pivot-grouping [:abs 7]}}}])
+                                                 $orders.user_id->people.source]}}
+                          {:query {:breakout    [$orders.user_id->people.source]}}
+                          {:query {}}])
               expected (for [query expected]
                          (-> query
                              (assoc :database (mt/id)
