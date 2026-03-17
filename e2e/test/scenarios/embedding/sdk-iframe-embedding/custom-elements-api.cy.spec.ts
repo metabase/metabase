@@ -310,9 +310,10 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
 
         cy.wait("@getCardQuery");
 
-        H.getSimpleEmbedIframeContent().findAllByText("37.65").as("cells");
-        cy.get("@cells").first().as("cell");
-        cy.get("@cell").should("be.visible").click();
+        H.getSimpleEmbedIframeContent()
+          .findByText("37.65")
+          .should("be.visible")
+          .click();
 
         H.getSimpleEmbedIframeContent()
           .findByText(/Filter by this value/)
