@@ -134,6 +134,20 @@
   [card-id]
   (dependencies.findings/upsert-analysis! (t2/select-one :model/Card :id card-id)))
 
+(defmacro with-system
+  [[sym system-config] & body]
+  `(let [~sym (ig/init ~system-config)]
+     (try ~@body
+          (finally
+            (try (ig/halt! system)
+                 (catch Exception e
+                   (log/error "Failed to halt system" (ex-data e))))))))
+
+(use-fixtures :each
+  (fn fresh-dependency-check-executor-fixture [t]
+    (with-system [_system# {::dependencies.async/executor {}}]
+      (t))))
+
 (deftest check-card-test
   (testing "POST /api/ee/dependencies/check-card"
     (mt/with-premium-features #{:dependencies}
@@ -2194,24 +2208,14 @@
   [base-card user card-name & opts]
   (card/create-card! (apply assoc (wrap-card base-card) :name card-name opts) user))
 
-(defmacro with-system
-  [[sym system-config] & body]
-  `(let [~sym (ig/init ~system-config)]
-     (try ~@body
-          (finally
-            (try (ig/halt! system)
-                 (catch Exception e
-                   (log/error "Failed to halt system" (ex-data e))))))))
-
 (defmacro ^:private with-dependents-test!
   [[user-binding base-card-binding] & body]
-  `(with-system [_system# {::dependencies.async/executor {}}]
-     (mt/with-premium-features #{:dependencies}
-       (mt/with-model-cleanup [:model/Card :model/Dependency]
-         (mt/with-temp [:model/User user# {:email "test@test.com"}]
-           (let [~user-binding user#
-                 ~base-card-binding (card/create-card! (basic-card "Base") user#)]
-             ~@body))))))
+  `(mt/with-premium-features #{:dependencies}
+     (mt/with-model-cleanup [:model/Card :model/Dependency]
+       (mt/with-temp [:model/User user# {:email "test@test.com"}]
+         (let [~user-binding user#
+               ~base-card-binding (card/create-card! (basic-card "Base") user#)]
+           ~@body)))))
 
 (deftest ^:sequential dependents-query-filter-test
   (testing "GET /api/ee/dependencies/graph/dependents with query parameter"
