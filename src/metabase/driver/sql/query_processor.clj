@@ -382,6 +382,17 @@
   [_driver tag & args]
   (into [tag] args))
 
+;; TODO(rileythomp, 2026-03-16): Can we merge this with make-clause?
+(defmulti make-clause-with-opts
+  "Return an mbql clause given a tag and arguments"
+  {:added "0.59.0" :arglists '([driver tag opts & args])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod make-clause-with-opts :sql
+  [_driver tag opts & args]
+  (conj (into [tag] args) opts))
+
 (defn- week-of-year
   "Calculate the week of year for `:us` or `:instance` `mode`. Returns a Honey SQL expression.
 
@@ -750,7 +761,7 @@
                              (apply h2x/identifier :field source-query-alias source-alias)
 
                              (literal-text-value? driver expression-definition)
-                             [::expression-literal-text-value expression-definition]
+                             (make-clause driver ::expression-literal-text-value expression-definition)
 
                              ;; Handle raw string literals (not wrapped in :value) - needed for
                              ;; expression definitions that are just string literals, e.g. from
@@ -758,8 +769,8 @@
                              ;; the string becomes a parameter placeholder without type info,
                              ;; which some databases (like H2) can't handle.
                              (string? expression-definition)
-                             [::expression-literal-text-value
-                              [:value expression-definition {:base_type :type/Text}]]
+                             (make-clause driver ::expression-literal-text-value
+                                          (make-clause-with-opts driver :value {:base_type :type/Text} expression-definition))
 
                              :else
                              expression-definition))))

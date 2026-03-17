@@ -226,6 +226,10 @@
   ;; TODO(rileythomp, 2026-03-16): Add :lib/uuid key and fix any broken tests
   (into [tag {} #_{:lib/uuid (str (random-uuid))}] args))
 
+(defmethod sql.qp/make-clause-with-opts :sql-mbql5
+  [_driver tag opts & args]
+  (into [tag (assoc opts :lib/uuid (str (random-uuid)))] args))
+
 (defmethod sql.params.substitution/field->clause :sql-mbql5
   [_driver field opts]
   [:field
