@@ -123,11 +123,11 @@
   value and a directive if we should test against the most or least permissive permission the user has.
 
   Options:
-    :include-inactive? - when false, only include active tables. Default true."
+    :active-only? - when true, only include active tables. Default false."
   [select-column                                    :- [:enum :id :db_id]
    {:keys [user-id is-superuser? is-data-analyst?]} :- UserInfo
    permission-mapping                               :- PermissionMapping
-   & [{:keys [include-inactive?] :or {include-inactive? true}}]]
+   & [{:keys [active-only?] :or {active-only? false}}]]
   {:select [(case select-column
               :id :mt.id
               :db_id :mt.db_id)]
@@ -135,15 +135,15 @@
    :where  (if (or is-superuser?
                    (and is-data-analyst?
                         (contains? permission-mapping :perms/manage-table-metadata)))
-             (if include-inactive?
-               [:= [:inline 1] [:inline 1]]
-               [:= :mt.active true])
+             (if active-only?
+               [:= :mt.active true]
+               [:= [:inline 1] [:inline 1]])
              (cond-> (into [:and]
                            (mapcat (fn [[perm-type perm-level]]
                                      [(apply has-perms-for-table-as-honey-sql? user-id perm-type (cond-> perm-level
                                                                                                    (not (sequential? perm-level)) vector))]))
                            permission-mapping)
-               (not include-inactive?) (conj [:= :mt.active true])))})
+               active-only? (conj [:= :mt.active true])))})
 
 (mu/defn- permission-type-having-clause
   "Builds a HAVING clause condition for a single permission type using conditional aggregation."
@@ -188,11 +188,11 @@
    inefficient BitmapOr scans that occur with OR joins.
 
    Options:
-     :include-inactive? - when false, only include active tables in the CTE. Default true."
+     :active-only? - when true, only include active tables in the CTE. Default false."
   [column-or-exp                                    :- :any
    {:keys [user-id is-superuser? is-data-analyst?]} :- UserInfo
    permission-mapping                               :- PermissionMapping
-   & [{:keys [include-inactive?] :or {include-inactive? true}}]]
+   & [{:keys [active-only?] :or {active-only? false}}]]
   ;; Superusers see all tables. Data analysts see all tables when checking manage-table-metadata.
   (if (or is-superuser?
           (and is-data-analyst?
@@ -213,7 +213,7 @@
       {:with [;; First CTE: collect all permission grants that apply to each table
               [:table_permissions
                {:union-all
-                (let [active-clause (when-not include-inactive? [:= :mt.active true])]
+                (let [active-clause (when active-only? [:= :mt.active true])]
                   [;; Table-level permissions (direct grant to table)
                    {:select [:mt.id :dp.perm_type :dp.perm_value]
                     :from   [[:data_permissions :dp]]

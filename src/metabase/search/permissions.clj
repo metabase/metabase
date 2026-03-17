@@ -59,4 +59,4 @@
    {:perms/view-data :unrestricted
     :perms/create-queries :query-builder}
    {:include-published-via-collection? true
-    :include-inactive? false}))
+    :active-only? true}))

@@ -375,9 +375,9 @@
    column-or-exp      :- :any
    user-info          :- perms/UserInfo
    permission-mapping :- perms/PermissionMapping
-   & [{:keys [include-published-via-collection? include-inactive?]}]]
+   & [{:keys [include-published-via-collection? active-only?]}]]
   (let [opts (cond-> {}
-               (some? include-inactive?) (assoc :include-inactive? include-inactive?))
+               (some? active-only?) (assoc :active-only? active-only?))
         {:keys [clause with]} (perms/visible-table-filter-with-cte column-or-exp user-info permission-mapping opts)]
     (if-let [published-clause (and include-published-via-collection?
                                    (perms/published-table-visible-clause column-or-exp user-info))]
