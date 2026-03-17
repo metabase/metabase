@@ -25,6 +25,12 @@
   []
   (get-in (current-memory) [:state :charts] {}))
 
+(defn current-chart-configs-state
+  "Returns the current chart-configs state map from agent memory.
+  Chart configs contain pre-materialized series data from the frontend viewing context."
+  []
+  (get-in (current-memory) [:state :chart-configs] {}))
+
 (defn current-context
   "Returns the current agent context from memory."
   []
