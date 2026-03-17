@@ -1,12 +1,14 @@
 (ns metabase.llm.settings
-  "Settings for OSS LLM integration."
+  "Settings for LLM integration (API keys, model defaults, provider configuration)."
   (:require
    [clojure.string :as str]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]))
 
+;;; ------------------------------------------------- Anthropic -------------------------------------------------
+
 (defsetting llm-anthropic-api-key
-  (deferred-tru "Anthropic API key for AI-assisted SQL generation.")
+  (deferred-tru "The Anthropic API Key.")
   :sensitive? true
   :visibility :settings-manager
   :export? false
@@ -20,7 +22,7 @@
   :doc false)
 
 (defsetting llm-anthropic-api-key-configured?
-  "Whether an Anthropic API key has been configured for AI-assisted SQL generation."
+  "Whether an Anthropic API key has been configured."
   :type       :boolean
   :visibility :public
   :setter     :none
@@ -29,28 +31,131 @@
   :doc        false)
 
 (defsetting llm-anthropic-model
-  (deferred-tru "Anthropic model for AI-assisted SQL generation.")
+  (deferred-tru "The Anthropic model to use.")
   :encryption :no
   :visibility :settings-manager
   :default "claude-opus-4-5-20251101"
   :export? false
   :doc false)
 
-(defsetting llm-anthropic-api-url
-  (deferred-tru "Anthropic Base API URL for AI-assisted SQL generation.")
+(defsetting llm-anthropic-api-base-url
+  (deferred-tru "The Anthropic API base URL.")
   :encryption :no
-  :visibility :internal
+  :visibility :settings-manager
   :default "https://api.anthropic.com"
   :export? false
   :doc false)
 
 (defsetting llm-anthropic-api-version
-  (deferred-tru "Anthropic API version for AI-assisted SQL generation.")
+  (deferred-tru "The Anthropic API version.")
   :encryption :no
   :visibility :internal
   :default "2023-06-01"
   :export? false
   :doc false)
+
+;;; -------------------------------------------------- OpenAI ---------------------------------------------------
+
+(defsetting llm-openai-model
+  (deferred-tru "The OpenAI Model (e.g. ''gpt-4'', ''gpt-3.5-turbo'')")
+  :encryption :no
+  :visibility :settings-manager
+  :default "gpt-4.1-mini"
+  :export? false
+  :doc false)
+
+(defsetting llm-openai-api-base-url
+  (deferred-tru "The OpenAI API base URL.")
+  :encryption :no
+  :visibility :settings-manager
+  :default "https://api.openai.com"
+  :export? false
+  :doc false)
+
+(defsetting llm-openai-api-key
+  (deferred-tru "The OpenAI API Key.")
+  :sensitive? true
+  :visibility :settings-manager
+  :export? false
+  :doc false)
+
+;;; ------------------------------------------------- OpenRouter ------------------------------------------------
+
+(defsetting llm-openrouter-api-base-url
+  (deferred-tru "The OpenRouter API base URL used for Chat Completions.")
+  :encryption :no
+  :visibility :settings-manager
+  :default "https://openrouter.ai/api"
+  :export? false
+  :doc false)
+
+(defsetting llm-openrouter-api-key
+  (deferred-tru "The OpenRouter API Key.")
+  :sensitive? true
+  :visibility :settings-manager
+  :export? false
+  :doc false)
+
+;;; -------------------------------------------------- Metabot --------------------------------------------------
+
+(def ^:private supported-metabot-providers
+  "Set of supported LLM provider prefixes for the `llm-metabot-provider` setting."
+  #{"anthropic" "openai" "openrouter"})
+
+(defn- validate-metabot-provider!
+  "Validate that `value` has the format `provider/model` with a supported provider prefix.
+  Throws an exception with `:status-code 400` on invalid input."
+  [value]
+  (when-not (string? value)
+    (throw (ex-info (tru "Metabot provider must be a string, got: {0}" (pr-str value))
+                    {:status-code 400})))
+  (let [[provider model] (str/split value #"/" 2)]
+    (when-not (contains? supported-metabot-providers provider)
+      (throw (ex-info (tru "Unknown provider {0}. Supported providers: {1}"
+                           (pr-str provider) (str/join ", " (sort supported-metabot-providers)))
+                      {:status-code 400
+                       :provider    provider
+                       :supported   supported-metabot-providers})))
+    (when (str/blank? model)
+      (throw (ex-info (tru "Model name is required. Expected format: provider/model, e.g. \"anthropic/claude-haiku-4-5\"")
+                      {:status-code 400
+                       :value       value})))))
+
+(defsetting llm-metabot-provider
+  (deferred-tru "The AI provider and model for Metabot. Format: provider/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-4.1-mini`, `openrouter/anthropic/claude-haiku-4-5`.")
+  :type       :string
+  :encryption :no
+  :default    "openrouter/anthropic/claude-haiku-4-5"
+  :visibility :settings-manager
+  :export?    false
+  :doc        false
+  :setter     (fn [new-value]
+                (when new-value
+                  (validate-metabot-provider! new-value))
+                (setting/set-value-of-type! :string :llm-metabot-provider new-value)))
+
+(defsetting llm-metabot-provider-lite
+  (deferred-tru "The AI provider and model for lightweight Metabot tasks (e.g. user intent classification).")
+  :type       :string
+  :encryption :no
+  :default    "openrouter/openai/gpt-oss-20b"
+  :visibility :settings-manager
+  :export?    false
+  :doc        false
+  :setter     (fn [new-value]
+                (when new-value
+                  (validate-metabot-provider! new-value))
+                (setting/set-value-of-type! :string :llm-metabot-provider-lite new-value)))
+
+(defsetting llm-metabot-internal-tasks-enabled?
+  (deferred-tru "Controls whether Metabot performs internal tasks that might require background tasks or additional LLM calls (e.g. user intent classification).")
+  :type       :boolean
+  :visibility :settings-manager
+  :default    true
+  :export?    false
+  :doc        false)
+
+;;; -------------------------------------------------- General --------------------------------------------------
 
 (defsetting llm-max-tokens
   (deferred-tru "Maximum tokens for LLM responses.")

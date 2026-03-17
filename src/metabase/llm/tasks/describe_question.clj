@@ -1,8 +1,8 @@
-(ns metabase-enterprise.llm.tasks.describe-question
+(ns metabase.llm.tasks.describe-question
   "LLM task(s) for generating question descriptions"
   (:require
    [clojure.set :refer [rename-keys]]
-   [metabase-enterprise.llm.client :as llm-client]
+   [metabase.llm.client :as llm-client]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.util :as u]
    [metabase.util.json :as json]))

@@ -15,8 +15,8 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase-enterprise.llm.settings :as llm]
    [metabase-enterprise.metabot-v3.self :as self]
+   [metabase.llm.settings :as llm]
    [metabase.util.log :as log]
    [selmer.parser :as selmer]))
 
@@ -105,7 +105,7 @@
   retry logic, error handling, and OTel tracing."
   [rendered-prompt]
   (self/call-llm-structured
-   (llm/ee-ai-metabot-provider)
+   (llm/llm-metabot-provider)
    [{:role "user" :content rendered-prompt}]
    questions-json-schema
    temperature

@@ -3,8 +3,8 @@
    [clj-http.client :as http]
    [clojure.string :as str]
    [malli.json-schema :as mjs]
-   [metabase-enterprise.llm.settings :as llm]
    [metabase-enterprise.metabot-v3.self.core :as core]
+   [metabase.llm.settings :as llm]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]))
@@ -157,7 +157,7 @@
   "Perform a streaming request to OpenAI Responses API."
   [{:keys [model system input tools schema tool_choice temperature max-tokens]
     :or   {model "gpt-4.1-mini"}} :- core/LLMRequestOpts]
-  (when-not (llm/ee-openai-api-key)
+  (when-not (llm/llm-openai-api-key)
     (throw (ex-info "No OpenAI API key is set" {:api-error true})))
   (let [all-tools (or (when schema
                         ;; Structured output: force a tool call with the given JSON schema
@@ -179,9 +179,9 @@
                     temperature (assoc :temperature temperature)
                     max-tokens  (assoc :max_tokens max-tokens))]
     (try
-      (let [res (http/post (str (llm/ee-openai-api-base-url) "/v1/responses")
+      (let [res (http/post (str (llm/llm-openai-api-base-url) "/v1/responses")
                            {:as      :stream
-                            :headers {"Authorization" (str "Bearer " (llm/ee-openai-api-key))
+                            :headers {"Authorization" (str "Bearer " (llm/llm-openai-api-key))
                                       "Content-Type"  "application/json"}
                             :body    (json/encode req)})]
         (core/sse-reducible (:body res)))

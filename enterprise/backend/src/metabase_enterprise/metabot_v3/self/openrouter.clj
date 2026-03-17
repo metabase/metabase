@@ -11,8 +11,8 @@
    [clj-http.client :as http]
    [clojure.string :as str]
    [malli.json-schema :as mjs]
-   [metabase-enterprise.llm.settings :as llm]
    [metabase-enterprise.metabot-v3.self.core :as core]
+   [metabase.llm.settings :as llm]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -220,7 +220,7 @@
   `/v1/chat/completions` (e.g. vLLM, Ollama, Together, etc.)."
   [{:keys [model system input tools temperature max-tokens tool_choice schema]
     :or   {model "anthropic/claude-haiku-4-5"}} :- core/LLMRequestOpts]
-  (when-not (llm/ee-openrouter-api-key)
+  (when-not (llm/llm-openrouter-api-key)
     (throw (ex-info "No OpenRouter API key is set" {:api-error true})))
   (let [messages   (cond-> (parts->cc-messages input)
                      system (as-> msgs (into [{:role "system" :content system}] msgs)))
@@ -248,9 +248,9 @@
                       :msg-count  (count messages)
                       :tool-count (count (or tools []))}
       (try
-        (let [res (http/post (str (llm/ee-openrouter-api-base-url) "/v1/chat/completions")
+        (let [res (http/post (str (llm/llm-openrouter-api-base-url) "/v1/chat/completions")
                              {:as      :stream
-                              :headers {"Authorization" (str "Bearer " (llm/ee-openrouter-api-key))
+                              :headers {"Authorization" (str "Bearer " (llm/llm-openrouter-api-key))
                                         "Content-Type"  "application/json"
                                         "HTTP-Referer"  "https://metabase.com"
                                         "X-Title"       "Metabase"}
