@@ -50,7 +50,7 @@
                               :sso-saml
                               :sso-slack
                               :support-users
-                              :transforms
+                              :transforms-basic
                               :transforms-python
                               :upload-management
                               :whitelabel
@@ -101,7 +101,7 @@
             :sso_slack                      true
             :support-users                  true
             :table_data_editing             false
-            :transforms                     true
+            :transforms-basic               true
             :transforms-python              true
             :upload_management              true
             :whitelabel                     true

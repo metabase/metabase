@@ -60,7 +60,7 @@
   [transform]
   (into #{}
         (map source-table-value->dependency)
-        (vals (get-in transform [:source :source-tables]))))
+        (get-in transform [:source :source-tables])))
 
 ;;; ------------------------------------------------- Message Log (in-memory only) -------------------------------------------------
 
@@ -165,18 +165,23 @@
   (fn [_ _ transform _ _] (-> transform :target :type keyword)))
 
 (defmethod transfer-file-to-db :table-incremental
-  [driver {db-id :id}
+  [driver {db-id :id :as db}
    {:keys [target] :as transform}
    metadata temp-file]
-  (let [table-name (transforms-base.u/qualified-table-name driver target)
-        table-exists? (transforms-base.u/target-table-exists? transform)
-        data-source {:type :jsonl-file
-                     :file temp-file}]
-    (if (not table-exists?)
-      (do
-        (log/info "New table")
-        (create-table-and-insert-data! driver db-id (table-schema table-name metadata) data-source))
-      (insert-data! driver db-id (table-schema table-name metadata) data-source))))
+  ;; First incremental run: no checkpoint exists yet, behave like non-incremental
+  ;; to drop and recreate the table rather than appending to existing data.
+  (if (nil? (:last_checkpoint_value transform))
+    ((get-method transfer-file-to-db :table) driver db transform metadata temp-file)
+    ;; Normal incremental: append if table exists, create if it doesn't
+    (let [table-name (transforms-base.u/qualified-table-name driver target)
+          table-exists? (transforms-base.u/target-table-exists? transform)
+          data-source {:type :jsonl-file
+                       :file temp-file}]
+      (if (not table-exists?)
+        (do
+          (log/info "New table")
+          (create-table-and-insert-data! driver db-id (table-schema table-name metadata) data-source))
+        (insert-data! driver db-id (table-schema table-name metadata) data-source)))))
 
 (defmethod transfer-file-to-db :table
   [driver {db-id :id :as db}
@@ -216,18 +221,19 @@
 
    Options:
    - `with-stage-timing-fn` - optional, (fn [run-id stage thunk] result) for instrumentation"
-  [{:keys [source] :as transform} db run-id cancel-chan message-log {:keys [with-stage-timing-fn]}]
+  [{:keys [source] :as transform} db run-id cancel-chan message-log {:keys [with-stage-timing-fn source-range-params]}]
   ;; Resolve name-based source table refs to table IDs (throws if any not found)
   (let [resolved-source-tables (transforms-base.u/resolve-source-tables (:source-tables source))]
     (with-open [shared-storage-ref (s3/open-shared-storage! resolved-source-tables)]
       (let [driver          (:engine db)
             server-url      (transforms-python.settings/python-runner-url)
-            _               (python-runner/copy-tables-to-s3! {:run-id         run-id
-                                                               :shared-storage @shared-storage-ref
-                                                               :source         (assoc source :source-tables resolved-source-tables)
-                                                               :cancel-chan    cancel-chan
-                                                               :limit          (:limit source)
-                                                               :transform-id   (:id transform)})
+            _               (python-runner/copy-tables-to-s3! {:run-id              run-id
+                                                               :shared-storage      @shared-storage-ref
+                                                               :source              (assoc source :source-tables resolved-source-tables)
+                                                               :cancel-chan          cancel-chan
+                                                               :limit               (:limit source)
+                                                               :transform-id        (:id transform)
+                                                               :source-range-params source-range-params})
             _               (start-cancellation-process! server-url run-id cancel-chan)
             {:keys [status body] :as response}
             (python-runner/execute-python-code-http-call!
@@ -305,7 +311,7 @@
     :logs <string>
     :error <exception if failed>}"
   [transform :- ::transforms-base.schema/transform
-   {:keys [cancelled? run-id with-stage-timing-fn message-log cancel-chan]} :- [:maybe ::transforms-base.schema/execute-base-options]]
+   {:keys [cancelled? run-id with-stage-timing-fn message-log cancel-chan source-range-params]} :- [:maybe ::transforms-base.schema/execute-base-options]]
   (assert (transforms-base.u/python-transform? transform) "Transform must be a python transform")
   (let [message-log (or message-log (empty-message-log))]
     (try
@@ -336,7 +342,8 @@
         (log/info "Executing Python transform" transform-id "with target" (pr-str target))
 
         (let [result (run-python-transform-impl! transform db effective-run-id cancel-chan message-log
-                                                 {:with-stage-timing-fn with-stage-timing-fn})]
+                                                 {:with-stage-timing-fn with-stage-timing-fn
+                                                  :source-range-params  source-range-params})]
           (log! message-log (i18n/tru "Python execution finished successfully in {0}"
                                       (u.format/format-milliseconds (u/since-ms start-ms))))
 
@@ -346,7 +353,8 @@
 
           {:status :succeeded
            :result result
-           :logs (message-log->string message-log)}))
+           :logs (message-log->string message-log)
+           :source-range-params source-range-params}))
 
       (catch Exception e
         (let [data (ex-data e)

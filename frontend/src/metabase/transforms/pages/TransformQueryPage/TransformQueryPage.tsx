@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import type { Route, RouteProps } from "react-router";
 import { push } from "react-router-redux";
 import { useLatest } from "react-use";
@@ -32,7 +32,6 @@ import type {
   Transform,
 } from "metabase-types/api";
 
-import { useQueryComplexityChecks } from "../../components/QueryComplexityWarning";
 import {
   TransformEditor,
   type TransformEditorProps,
@@ -120,9 +119,16 @@ function TransformQueryPageBody({
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   const isEditMode = !readOnly && !!route.path?.includes("/edit");
 
-  useRegisterMetabotTransformContext(transform, source);
+  const lastRunError = useMemo(() => {
+    if (!transform.last_run) {
+      return undefined;
+    }
+    return transform.last_run.status === "failed"
+      ? (transform.last_run.message ?? undefined)
+      : undefined;
+  }, [transform.last_run]);
 
-  const { confirmIfQueryIsComplex, modal } = useQueryComplexityChecks();
+  useRegisterMetabotTransformContext(transform, source, lastRunError);
 
   const {
     checkData,
@@ -177,13 +183,6 @@ function TransformQueryPageBody({
     if (!isCompleteSource(source)) {
       return;
     }
-    if ("source-incremental-strategy" in source) {
-      const confirmed = await confirmIfQueryIsComplex(source);
-      if (!confirmed) {
-        return;
-      }
-    }
-
     await handleInitialSave({ id: transform.id, source });
   };
 
@@ -280,7 +279,6 @@ function TransformQueryPageBody({
         isEnabled={isDirty && !isSaving && !isCheckingDependencies}
         onConfirm={rejectProposed}
       />
-      {modal}
     </>
   );
 }

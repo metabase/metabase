@@ -93,6 +93,15 @@
     (mt/with-temp [:model/TransformJob job {:name "job-5" :schedule "0 0 * * * ? *"}]
       (is (= #{} (#'jobs/job-transform-ids (:id job)))))))
 
+(deftest run-job-skips-empty-transforms-test
+  (testing "run-job! returns nil and creates no job run when there are no transforms to execute"
+    (mt/with-temp [:model/TransformTag tag {:name "empty-tag"}
+                   :model/TransformJob job {:name "empty-job" :schedule "0 0 * * * ? *"}
+                   :model/TransformJobTransformTag _ {:job_id (:id job) :tag_id (:id tag) :position 0}]
+      (let [result (jobs/run-job! (:id job) {:run-method :cron})]
+        (is (nil? result))
+        (is (= 0 (t2/count :model/TransformJobRun :job_id (:id job))))))))
+
 (deftest next-transform-test
   (let [ordering {1 #{2 3}
                   2 #{3 4}
@@ -163,7 +172,7 @@
               "Should not log warnings when feature is enabled")
           (is @run-called?
               "Should call run-mbql-transform! when feature is enabled")))))
-  (testing "Query transforms are skipped when hosted without :transforms feature"
+  (testing "Query transforms are skipped when hosted without :transforms-basic feature"
     (mt/with-premium-features #{:hosting}
       (let [query-transform {:id 1
                              :source query-source
@@ -182,8 +191,8 @@
                           (:message (first @logged-messages)))
               "Warning message should indicate transform was skipped due to missing features")))))
 
-  (testing "Query transforms run with :transforms feature"
-    (mt/with-premium-features #{:hosting :transforms}
+  (testing "Query transforms run with :transforms-basic feature"
+    (mt/with-premium-features #{:hosting :transforms-basic}
       (let [query-transform {:id 3
                              :source query-source
                              :name "Test Query Transform"}
@@ -203,7 +212,7 @@
               "Should call run-mbql-transform! when feature is enabled"))))))
 
 (deftest job-run-boom-test
-  (mt/with-premium-features #{:transforms}
+  (mt/with-premium-features #{:transforms-basic}
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset transforms-dataset/transforms-test
         (mt/with-model-cleanup [:model/Notification
@@ -252,7 +261,7 @@
                       (is (mt/received-email-body? :crowberto #"Uncaught error")))))))))))))
 
 (deftest job-run-boom-manual-no-email-test
-  (mt/with-premium-features #{:transforms}
+  (mt/with-premium-features #{:transforms-basic}
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset transforms-dataset/transforms-test
         (mt/with-model-cleanup [:model/Notification
@@ -299,7 +308,7 @@
                       (is (zero? (count @mt/inbox))))))))))))))
 
 (deftest job-run-with-tranform-run-failure-test
-  (mt/with-premium-features #{:transforms}
+  (mt/with-premium-features #{:transforms-basic}
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset transforms-dataset/transforms-test
         (mt/with-model-cleanup [:model/Notification]
@@ -393,7 +402,7 @@
 
 (deftest run-mbql-transform-anonymous-user-routing-error-test
   (mt/when-ee-evailable
-   (mt/with-premium-features #{:database-routing :transforms}
+   (mt/with-premium-features #{:database-routing :transforms-basic}
      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
        (mt/dataset transforms-dataset/transforms-test
          (mt/with-model-cleanup [:model/Notification]
@@ -446,7 +455,7 @@
   ;; Because it is possible to set up transforms to run on overlapping schedules, such races are inevitable.
   ;; On duplicate key error we should go back to the waiting loop until the is_active slot is available.
   (testing "Two concurrent run-transforms! that race on is_active state will both eventually run"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset transforms-dataset/transforms-test
           (let [mp (mt/metadata-provider)

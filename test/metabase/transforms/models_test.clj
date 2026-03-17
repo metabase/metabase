@@ -107,7 +107,7 @@
 
 (deftest transform-tags-ordering-test
   (testing "Transform tags maintain specified order through updates"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp [:model/Transform transform {}
                      :model/TransformTag tag1 {:name "tag1"}
                      :model/TransformTag tag2 {:name "tag2"}
@@ -144,7 +144,7 @@
 
 (deftest job-tags-ordering-test
   (testing "Job tags maintain specified order through updates"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp [:model/TransformJob job {:name "test job" :schedule "0 0 * * *"}
                      :model/TransformTag tag1 {:name "tag1"}
                      :model/TransformTag tag2 {:name "tag2"}
@@ -288,7 +288,7 @@
 
 (deftest deleted-transform-preserves-runs-test
   (testing "Deleting a transform sets transform_id to NULL but preserves the run"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp [:model/Transform {transform-id :id
                                        transform-name :name
                                        entity-id :entity_id} {}
@@ -307,7 +307,7 @@
 
 (deftest orphaned-run-hydration-test
   (testing "Hydrating :transform on orphaned runs returns {:name ... :deleted true}"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp [:model/TransformRun run {:transform_id nil
                                               :transform_name "Deleted Transform"
                                               :transform_entity_id "test-entity-id-123"
@@ -318,10 +318,58 @@
 
 (deftest start-run-captures-transform-info-test
   (testing "start-run! captures transform_name and transform_entity_id"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp [:model/Transform {transform-id :id
                                        transform-name :name
                                        entity-id :entity_id} {}]
         (let [run (transform-run/start-run! transform-id {:run_method "manual"})]
           (is (= transform-name (:transform_name run)))
           (is (= entity-id (:transform_entity_id run))))))))
+
+(deftest checkpoint-reset-on-filter-field-change-test
+  (testing "Changing checkpoint-filter-field-id resets stored checkpoint"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temp [:model/Database {db-id :id} {}
+                     :model/Transform {transform-id :id}
+                     {:source {:type "query"
+                               :query {:database db-id
+                                       :type "native"
+                                       :native {:query "SELECT 1"
+                                                :template-tags {}}}
+                               :source-incremental-strategy {:type "checkpoint"
+                                                             :checkpoint-filter-field-id 100}}
+                      :target {:type "table-incremental"
+                               :schema "public"
+                               :name "test_incr"
+                               :db_id db-id}
+                      :last_checkpoint_value "42"}]
+        (testing "checkpoint is present before update"
+          (let [t (t2/select-one :model/Transform transform-id)]
+            (is (= "42" (:last_checkpoint_value t)))))
+
+        (testing "changing checkpoint-filter-field-id resets checkpoint"
+          (t2/update! :model/Transform transform-id
+                      {:source {:type "query"
+                                :query {:database db-id
+                                        :type "native"
+                                        :native {:query "SELECT 1"
+                                                 :template-tags {}}}
+                                :source-incremental-strategy {:type "checkpoint"
+                                                              :checkpoint-filter-field-id 200}}})
+          (let [t (t2/select-one :model/Transform transform-id)]
+            (is (nil? (:last_checkpoint_value t)))))
+
+        (testing "updating without changing checkpoint-filter-field-id preserves checkpoint"
+          ;; Set checkpoint again
+          (t2/update! :model/Transform transform-id
+                      {:last_checkpoint_value "99"})
+          (t2/update! :model/Transform transform-id
+                      {:source {:type "query"
+                                :query {:database db-id
+                                        :type "native"
+                                        :native {:query "SELECT 2"
+                                                 :template-tags {}}}
+                                :source-incremental-strategy {:type "checkpoint"
+                                                              :checkpoint-filter-field-id 200}}})
+          (let [t (t2/select-one :model/Transform transform-id)]
+            (is (= "99" (:last_checkpoint_value t)))))))))

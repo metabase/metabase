@@ -31,11 +31,9 @@
   add-source-readable
   is-temp-transform-table?]
  [metabase.transforms.crud
-  python-source-table-ref->table-id
+  source-tables-vec->map-for-fe
   check-database-feature
   check-feature-enabled!
-  extract-all-columns-from-query
-  extract-incremental-filter-columns-from-query
   validate-incremental-column-type!
   validate-transform-query!
   get-transforms

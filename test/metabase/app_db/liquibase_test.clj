@@ -63,7 +63,7 @@
             (liquibase/consolidate-liquibase-changesets! conn liquibase)
 
             (testing "makes sure the change log filename are correctly set"
-              (is (= (set (mdb.test-util/liquibase-file->included-ids "migrations/000_legacy_migrations.yaml" driver/*driver* conn))
+              (is (= (set (mdb.test-util/liquibase-file->included-ids "liquibase_legacy_migrations.yaml" driver/*driver* conn))
                      (t2/select-fn-set :id table-name :filename "migrations/000_legacy_migrations.yaml")))
 
               (is (= (set (mdb.test-util/liquibase-file->included-ids "migrations/001_update_migrations.yaml" driver/*driver* conn))
@@ -156,7 +156,8 @@
 (deftest extract-numbers-special-case-test
   (testing "when specific migration verison is passed reports different major version"
     (is (= 55 (first (#'liquibase/extract-numbers "v56.2025-06-05T16:48:48"))))
-    (is (= 55 (first (#'liquibase/extract-numbers "v56.2025-05-19T16:48:48"))))))
+    (is (= 55 (first (#'liquibase/extract-numbers "v56.2025-05-19T16:48:48"))))
+    (is (= 60 (first (#'liquibase/extract-numbers "v60.ghdf99efd"))))))
 
 (deftest rollback-major-version
   (mt/test-drivers #{:h2 :mysql :rollback}
