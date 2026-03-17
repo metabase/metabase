@@ -132,7 +132,7 @@
   (dependencies.findings/upsert-analysis! (t2/select-one :model/Card :id card-id)))
 
 (use-fixtures :each
-  (fn fresh-dependency-async-executor-fixture [t]
+  (fn drained-dependency-async-executor-fixture [t]
     (try
       (t)
       (finally
