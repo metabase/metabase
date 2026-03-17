@@ -1700,13 +1700,11 @@
            metabase.transforms-rest.api.transform-job
            metabase.transforms-rest.api.transform-tag}
    :uses #{api
-           driver
            events
            models
            query-processor
            request
            server
-           sql-tools
            transforms
            transforms-base
            transforms-inspector

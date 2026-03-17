@@ -35,25 +35,28 @@
                                                            :db/id                 (:id db)
                                                            :db/engine             (name driver)}
            (let [conn-spec         (driver/connection-spec driver db)
-                 transform-details {:db-id (:id db) :conn-spec conn-spec :output-schema (:schema target)}]
-             (transforms.instrumentation/with-stage-timing [run-id [:computation :mbql-query]]
-               (transforms.u/run-cancelable-transform!
-                run-id driver transform-details
-                (fn [cancel-chan]
-                  (let [result (transforms-base.i/execute-base!
-                                transform
-                                {:cancelled?           #(boolean (a/poll! cancel-chan))
-                                 :run-id               run-id
-                                 :with-stage-timing-fn (fn [rid stage thunk]
-                                                         (transforms.instrumentation/with-stage-timing [rid stage]
-                                                           (thunk)))})]
-                    ;; Bridge result-map to exception-based flow for run-cancelable-transform!
-                    (when-not (= :succeeded (:status result))
-                      (throw (or (:error result) (ex-info "Transform failed" {:status (:status result)}))))
-                    result))))
+                 transform-details {:db-id (:id db) :conn-spec conn-spec :output-schema (:schema target)}
+                 exec-result
+                 (transforms.instrumentation/with-stage-timing [run-id [:computation :mbql-query]]
+                   (transforms.u/run-cancelable-transform!
+                    run-id transform driver transform-details
+                    (fn [cancel-chan source-range-params]
+                      (let [result (transforms-base.i/execute-base!
+                                    transform
+                                    {:cancelled?           #(boolean (a/poll! cancel-chan))
+                                     :run-id               run-id
+                                     :source-range-params  source-range-params
+                                     :with-stage-timing-fn (fn [rid stage thunk]
+                                                             (transforms.instrumentation/with-stage-timing [rid stage]
+                                                               (thunk)))})]
+                        ;; Bridge result-map to exception-based flow for run-cancelable-transform!
+                        (when-not (= :succeeded (:status result))
+                          (throw (or (:error result) (ex-info "Transform failed" {:status (:status result)}))))
+                        result))))]
              ;; Post-processing: sync, transform_id, events, secondary indexes (after succeed-started-run!)
              (transforms-base.u/complete-execution! transform
                                                     {:run-id               run-id
+                                                     :source-range-params  (:source-range-params exec-result)
                                                      :with-stage-timing-fn (fn [rid stage thunk]
                                                                              (transforms.instrumentation/with-stage-timing [rid stage]
                                                                                (thunk)))})))))

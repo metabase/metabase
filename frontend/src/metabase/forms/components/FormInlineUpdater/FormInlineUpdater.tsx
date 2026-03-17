@@ -10,6 +10,8 @@ type FormInlineUpdaterProps<T, TSuccess> = {
   onSuccess?: (value: TSuccess) => void;
   onError?: (error: unknown) => void;
   debounceMs?: number;
+  /** If provided, called before each update. Return false to skip the update. */
+  onBeforeUpdate?: (values: T) => Promise<boolean> | boolean;
 };
 const DEFAULT_INLINE_UPDATE_DEBOUNCE_MS = 300;
 
@@ -23,6 +25,7 @@ const DEFAULT_INLINE_UPDATE_DEBOUNCE_MS = 300;
  * @param onSuccess - Optional callback called with the update result on success
  * @param onError - Optional callback called with the error on failure
  * @param debounceMs - Delay in ms before calling update (default: 300)
+ * @param onBeforeUpdate - Optional callback called before each update. Return false to skip the update.
  *
  * @example
  * ```tsx
@@ -39,6 +42,7 @@ export const FormInlineUpdater = <T, TSuccess>({
   onSuccess,
   onError,
   debounceMs = DEFAULT_INLINE_UPDATE_DEBOUNCE_MS,
+  onBeforeUpdate,
 }: FormInlineUpdaterProps<T, TSuccess>) => {
   const { initialValues } = useFormikContext<T>();
   const updateInProgress = useRef(false);
@@ -83,6 +87,13 @@ export const FormInlineUpdater = <T, TSuccess>({
     // from API responses or Redux state changes that update initialValues
     if (_.isEqual(values, initialValues)) {
       return;
+    }
+
+    if (onBeforeUpdate) {
+      const shouldProceed = await onBeforeUpdate(values);
+      if (!shouldProceed) {
+        return;
+      }
     }
 
     await processUpdate(values);

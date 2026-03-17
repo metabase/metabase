@@ -390,11 +390,12 @@
 (defmethod driver/grant-workspace-read-access! :clickhouse
   [_driver database workspace tables]
   (let [read-user-name (-> workspace :database_details :user)
+        qu             (sql.u/quote-name :clickhouse :field read-user-name)
         sqls           (for [table tables]
-                         (format "GRANT SELECT ON `%s`.`%s` TO `%s`"
-                                 (:schema table)
-                                 (:name table)
-                                 read-user-name))]
+                         (format "GRANT SELECT ON %s.%s TO %s"
+                                 (sql.u/quote-name :clickhouse :schema (:schema table))
+                                 (sql.u/quote-name :clickhouse :table (:name table))
+                                 qu))]
     (when-not read-user-name
       (throw (ex-info "Workspace isolation is not properly initialized - missing read user name"
                       {:workspace-id (:id workspace) :step :grant})))
