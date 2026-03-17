@@ -219,18 +219,20 @@
 
 (deftest tools-call-search-test
   (testing "search tool invocation works and returns parseable results"
-    (let [[session-id _] (initialize!)
-          response (mcp-request (jsonrpc-request "tools/call"
-                                                 {:name "search"
-                                                  :arguments {:term_queries ["orders"]}})
-                                {"mcp-session-id" session-id})
-          result (get-in response [:body :result])]
-      (is (= 200 (:status response)))
-      (is (nil? (:isError result)))
-      (is (= "text" (:type (first (:content result)))))
-      (let [search-data (json/decode+kw (:text (first (:content result))))]
-        (is (contains? search-data :data))
-        (is (contains? search-data :total_count))))))
+    ;; Force the in-place search engine so the test doesn't depend on the appdb search index being built.
+    (mt/with-temp-env-var-value! [mb-search-engine "in-place"]
+      (let [[session-id _] (initialize!)
+            response (mcp-request (jsonrpc-request "tools/call"
+                                                   {:name "search"
+                                                    :arguments {:term_queries ["orders"]}})
+                                  {"mcp-session-id" session-id})
+            result (get-in response [:body :result])]
+        (is (= 200 (:status response)))
+        (is (nil? (:isError result)))
+        (is (= "text" (:type (first (:content result)))))
+        (let [search-data (json/decode+kw (:text (first (:content result))))]
+          (is (contains? search-data :data))
+          (is (contains? search-data :total_count)))))))
 
 ;;; ------------------------------------------------ SSE Transport -------------------------------------------------
 
