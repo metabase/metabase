@@ -271,7 +271,7 @@ export const _columnSettings = {
     widget: ChartSettingIconRadio,
     inline: true,
     borderBottom: true,
-    props: {
+    getProps: () => ({
       options: [
         {
           iconName: "arrow_up",
@@ -282,7 +282,7 @@ export const _columnSettings = {
           value: COLUMN_SORT_ORDER_DESC,
         },
       ],
-    },
+    }),
     getHidden: ({ source }: { source: DatasetColumn["source"] }) =>
       source === "aggregation",
   },
