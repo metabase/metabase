@@ -443,8 +443,7 @@
   :cljs
   {:extra-paths ["test"]
    :extra-deps
-   {com.google.javascript/closure-compiler-unshaded {:mvn/version "v20250407"}
-    binaryage/devtools                 {:mvn/version "1.0.7"}
+   {binaryage/devtools                 {:mvn/version "1.0.7"}
     cider/cider-nrepl                  {:mvn/version "0.58.0"}
     cider/piggieback                   {:mvn/version "0.6.1"}
     cljs-bean/cljs-bean                {:mvn/version "1.9.0"}
