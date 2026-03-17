@@ -9,18 +9,19 @@
 
 (mu/defn ^{:tool-name "create_dashboard_subscription"}
   create-dashboard-subscription-tool
-  "Create a dashboard subscription to send regular email updates.
+  "Create a dashboard subscription to send regular updates via email or Slack.
 
   Use when a user wants to receive or send regular updates on a dashboard's contents.
-  Requires a valid dashboard ID, email address, and schedule.
+  Requires a valid dashboard ID, either an email address or a Slack channel name, and a schedule.
 
   Do NOT infer email addresses from usernames or other information.
   If the email address is incomplete or missing a part like the TLD,
   ask the user for clarification before proceeding."
-  [{:keys [dashboard_id email schedule]}
+  [{:keys [dashboard_id email slack_channel schedule]}
    :- [:map {:closed true}
        [:dashboard_id :int]
-       [:email :string]
+       [:email {:optional true} [:maybe :string]]
+       [:slack_channel {:optional true} [:maybe :string]]
        [:schedule [:map
                    [:frequency [:enum "hourly" "daily" "weekly" "monthly"]]
                    [:hour {:optional true} [:maybe :int]]
@@ -28,15 +29,16 @@
                    [:day_of_month {:optional true} [:maybe :string]]]]]]
   (try
     (subscription-tools/create-dashboard-subscription
-     {:dashboard-id dashboard_id
-      :email        email
-      :schedule     (-> schedule
-                        (update :frequency keyword)
-                        (cond->
-                         (:day_of_week schedule)  (-> (assoc :day-of-week (keyword (:day_of_week schedule)))
-                                                      (dissoc :day_of_week))
-                         (:day_of_month schedule) (-> (assoc :day-of-month (keyword (:day_of_month schedule)))
-                                                      (dissoc :day_of_month))))})
+     {:dashboard-id  dashboard_id
+      :email         email
+      :slack-channel slack_channel
+      :schedule      (-> schedule
+                         (update :frequency keyword)
+                         (cond->
+                          (:day_of_week schedule)  (-> (assoc :day-of-week (keyword (:day_of_week schedule)))
+                                                       (dissoc :day_of_week))
+                          (:day_of_month schedule) (-> (assoc :day-of-month (keyword (:day_of_month schedule)))
+                                                       (dissoc :day_of_month))))})
     (catch Exception e
       (log/error e "Error creating dashboard subscription")
       (if (:agent-error? (ex-data e))

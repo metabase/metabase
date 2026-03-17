@@ -87,6 +87,7 @@ type PluginMetabotType = {
   MetabotAppBarButton: ComponentType;
   MetabotDataStudioButton: ComponentType;
   MetabotDataStudioSidebar: ComponentType;
+  MetabotSlackSetup: ComponentType;
   useLazyMetabotGenerateContentQuery: TypedUseLazyQuery<
     MetabotGenerateContentResponse,
     MetabotGenerateContentRequest,
@@ -173,6 +174,7 @@ const getDefaultPluginMetabot = (): PluginMetabotType => ({
   MetabotAppBarButton: PluginPlaceholder,
   MetabotDataStudioButton: PluginPlaceholder,
   MetabotDataStudioSidebar: PluginPlaceholder,
+  MetabotSlackSetup: PluginPlaceholder,
   useLazyMetabotGenerateContentQuery:
     (() => []) as unknown as PluginMetabotType["useLazyMetabotGenerateContentQuery"],
   MetabotThinkingStyles: {},
