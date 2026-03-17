@@ -34,8 +34,6 @@
   source-tables-vec->map-for-fe
   check-database-feature
   check-feature-enabled!
-  extract-all-columns-from-query
-  extract-incremental-filter-columns-from-query
   validate-incremental-column-type!
   validate-transform-query!
   get-transforms
