@@ -5171,10 +5171,10 @@
         "type" : "object"
       },
       "metabase-enterprise.metabot-v3.tools.transforms.transform-source" : {
-        "$ref" : "#/components/schemas/metabase.transforms.schema.transform-source"
+        "$ref" : "#/components/schemas/metabase.transforms.api.transform.transform-source"
       },
       "metabase-enterprise.metabot-v3.tools.transforms.transform-target" : {
-        "$ref" : "#/components/schemas/metabase.transforms.schema.transform-target"
+        "$ref" : "#/components/schemas/metabase.transforms.api.transform.transform-target"
       },
       "metabase-enterprise.permission-debug.impl.group-id" : {
         "type" : "integer"
@@ -5621,20 +5621,10 @@
               "type" : "integer"
             },
             "source-tables" : {
-              "items" : {
-                "properties" : {
-                  "alias" : {
-                    "minLength" : 1,
-                    "type" : "string"
-                  },
-                  "table_id" : {
-                    "type" : "integer"
-                  }
-                },
-                "required" : [ "alias", "table_id" ],
-                "type" : "object"
+              "additionalProperties" : {
+                "type" : "integer"
               },
-              "type" : "array"
+              "type" : "object"
             },
             "type" : {
               "const" : "python"
@@ -6410,6 +6400,141 @@
           }
         },
         "required" : [ "type", "multiplier", "min_duration_ms" ],
+        "type" : "object"
+      },
+      "metabase.cache.api.cache-config-item" : {
+        "properties" : {
+          "collection" : {
+            "oneOf" : [ {
+              "properties" : {
+                "authority_level" : {
+                  "oneOf" : [ {
+                    "type" : "string"
+                  }, {
+                    "type" : "null"
+                  } ]
+                },
+                "id" : {
+                  "description" : "value must be an integer greater than zero.",
+                  "minimum" : 1,
+                  "type" : "integer"
+                },
+                "name" : {
+                  "oneOf" : [ {
+                    "type" : "string"
+                  }, {
+                    "type" : "null"
+                  } ]
+                },
+                "type" : {
+                  "oneOf" : [ {
+                    "type" : "string"
+                  }, {
+                    "type" : "null"
+                  } ]
+                }
+              },
+              "required" : [ "id", "name" ],
+              "type" : "object"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "model" : {
+            "enum" : [ "root", "database", "dashboard", "question" ],
+            "type" : "string"
+          },
+          "model_id" : {
+            "description" : "value must be an integer greater or equal to than zero.",
+            "minimum" : 0,
+            "type" : "integer"
+          },
+          "name" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "strategy" : {
+            "properties" : {
+              "type" : {
+                "type" : "string"
+              }
+            },
+            "required" : [ "type" ],
+            "type" : "object"
+          }
+        },
+        "required" : [ "model", "model_id", "strategy" ],
+        "type" : "object"
+      },
+      "metabase.cache.api.cache-config-list-response" : {
+        "properties" : {
+          "data" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.cache.api.cache-config-item"
+            },
+            "type" : "array"
+          },
+          "limit" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "minimum" : 1,
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "offset" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater or equal to than zero.",
+              "minimum" : 0,
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "total" : {
+            "description" : "value must be an integer greater or equal to than zero.",
+            "minimum" : 0,
+            "type" : "integer"
+          }
+        },
+        "required" : [ "data" ],
+        "type" : "object"
+      },
+      "metabase.cache.api.cache-config-store-response" : {
+        "properties" : {
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        },
+        "required" : [ "id" ],
+        "type" : "object"
+      },
+      "metabase.cache.api.cache-invalidate-response" : {
+        "properties" : {
+          "body" : {
+            "properties" : {
+              "count" : {
+                "type" : "integer"
+              },
+              "message" : {
+                "type" : "string"
+              }
+            },
+            "required" : [ "count", "message" ],
+            "type" : "object"
+          },
+          "status" : {
+            "enum" : [ 200, 404 ],
+            "type" : "integer"
+          }
+        },
+        "required" : [ "status", "body" ],
         "type" : "object"
       },
       "metabase.cache.api.cache-strategy" : {
@@ -7192,6 +7317,21 @@
         "required" : [ "type", "name", "display-name", "snippet-name", "snippet-id" ],
         "type" : "object"
       },
+      "metabase.legacy-mbql.schema..TemplateTag.SourceFilter" : {
+        "description" : "Schema for a single source-filter applied to a table template tag.",
+        "properties" : {
+          "field-id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
+          },
+          "op" : {
+            "enum" : [ "<=", ">", ">=", "!=", "=", "<" ],
+            "type" : "string"
+          },
+          "value" : { }
+        },
+        "required" : [ "field-id", "op", "value" ],
+        "type" : "object"
+      },
       "metabase.legacy-mbql.schema..TemplateTag.SourceQuery" : {
         "description" : "Things required by all template tag types.",
         "properties" : {
@@ -7220,11 +7360,20 @@
           "display-name" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
           },
+          "emit-alias" : {
+            "type" : "boolean"
+          },
           "id" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.id"
           },
           "name" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "source-filters" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema..TemplateTag.SourceFilter"
+            },
+            "type" : "array"
           },
           "table-id" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
@@ -7308,54 +7457,6 @@
       },
       "metabase.legacy-mbql.schema..legacy-column-metadata.qualified-keys" : {
         "properties" : {
-          "lib/binning" : {
-            "oneOf" : [ {
-              "allOf" : [ {
-                "properties" : {
-                  "strategy" : {
-                    "$ref" : "#/components/schemas/metabase.lib.schema.binning.strategy"
-                  }
-                },
-                "required" : [ "strategy" ],
-                "type" : "object"
-              }, {
-                "oneOf" : [ {
-                  "properties" : {
-                    "strategy" : {
-                      "const" : "default"
-                    }
-                  },
-                  "required" : [ "strategy" ],
-                  "type" : "object"
-                }, {
-                  "properties" : {
-                    "bin-width" : {
-                      "$ref" : "#/components/schemas/metabase.lib.schema.binning.bin-width"
-                    },
-                    "strategy" : {
-                      "const" : "bin-width"
-                    }
-                  },
-                  "required" : [ "strategy", "bin-width" ],
-                  "type" : "object"
-                }, {
-                  "properties" : {
-                    "num-bins" : {
-                      "$ref" : "#/components/schemas/metabase.lib.schema.binning.num-bins"
-                    },
-                    "strategy" : {
-                      "const" : "num-bins"
-                    }
-                  },
-                  "required" : [ "strategy", "num-bins" ],
-                  "type" : "object"
-                } ]
-              } ],
-              "description" : "Schema for `:binning` options passed to a `:field` clause."
-            }, {
-              "type" : "null"
-            } ]
-          },
           "lib/breakout?" : {
             "oneOf" : [ {
               "type" : "boolean"
@@ -7417,9 +7518,8 @@
               "type" : "null"
             } ]
           },
-          "lib/join-alias" : {
+          "lib/model-display-name" : {
             "oneOf" : [ {
-              "minLength" : 1,
               "type" : "string"
             }, {
               "type" : "null"
@@ -7480,13 +7580,6 @@
               "type" : "null"
             } ]
           },
-          "lib/original-effective-type" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
           "lib/original-expression-name" : {
             "oneOf" : [ {
               "minLength" : 1,
@@ -7525,14 +7618,6 @@
               "type" : "null"
             } ]
           },
-          "lib/simple-display-name" : {
-            "oneOf" : [ {
-              "minLength" : 1,
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
           "lib/source" : {
             "oneOf" : [ {
               "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.source"
@@ -7555,7 +7640,59 @@
               "type" : "null"
             } ]
           },
-          "lib/temporal-unit" : {
+          "lib/type" : {
+            "const" : "metadata/column",
+            "default" : "metadata/column"
+          },
+          "metabase.lib.field/binning" : {
+            "oneOf" : [ {
+              "allOf" : [ {
+                "properties" : {
+                  "strategy" : {
+                    "$ref" : "#/components/schemas/metabase.lib.schema.binning.strategy"
+                  }
+                },
+                "required" : [ "strategy" ],
+                "type" : "object"
+              }, {
+                "oneOf" : [ {
+                  "properties" : {
+                    "strategy" : {
+                      "const" : "default"
+                    }
+                  },
+                  "required" : [ "strategy" ],
+                  "type" : "object"
+                }, {
+                  "properties" : {
+                    "bin-width" : {
+                      "$ref" : "#/components/schemas/metabase.lib.schema.binning.bin-width"
+                    },
+                    "strategy" : {
+                      "const" : "bin-width"
+                    }
+                  },
+                  "required" : [ "strategy", "bin-width" ],
+                  "type" : "object"
+                }, {
+                  "properties" : {
+                    "num-bins" : {
+                      "$ref" : "#/components/schemas/metabase.lib.schema.binning.num-bins"
+                    },
+                    "strategy" : {
+                      "const" : "num-bins"
+                    }
+                  },
+                  "required" : [ "strategy", "num-bins" ],
+                  "type" : "object"
+                } ]
+              } ],
+              "description" : "Schema for `:binning` options passed to a `:field` clause."
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "metabase.lib.field/temporal-unit" : {
             "oneOf" : [ {
               "enum" : [ "day", "day-of-month", "day-of-week", "day-of-year", "default", "hour", "hour-of-day", "millisecond", "minute", "minute-of-hour", "month", "month-of-year", "quarter", "quarter-of-year", "second", "second-of-minute", "week", "week-of-year", "year", "year-of-era" ],
               "type" : "string"
@@ -7563,27 +7700,10 @@
               "type" : "null"
             } ]
           },
-          "lib/transformation-added-base-type" : {
+          "metabase.lib.join/join-alias" : {
             "oneOf" : [ {
-              "type" : "boolean"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "lib/type" : {
-            "const" : "metadata/column",
-            "default" : "metadata/column"
-          },
-          "metabase.lib.metadata.result-metadata/field-ref" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Reference"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "metabase.lib.metadata.result-metadata/source" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.legacy-source"
+              "minLength" : 1,
+              "type" : "string"
             }, {
               "type" : "null"
             } ]
@@ -8031,98 +8151,97 @@
       "metabase.legacy-mbql.schema.FieldRefOptions" : {
         "description" : "Options for an MBQL 4 `:field` ref are the same as MBQL 5, except that `:lib/uuid` is not required and it cannot be\n  empty.",
         "oneOf" : [ {
-          "allOf" : [ {
-            "default" : { },
-            "properties" : {
-              "base-type" : {
-                "oneOf" : [ {
-                  "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
-                }, {
-                  "type" : "null"
-                } ]
-              },
-              "binning" : {
-                "$ref" : "#/components/schemas/metabase.lib.schema.binning.binning"
-              },
-              "database-type" : {
-                "oneOf" : [ {
-                  "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-                }, {
-                  "type" : "null"
-                } ]
-              },
-              "display-name" : {
-                "oneOf" : [ {
-                  "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-                }, {
-                  "type" : "null"
-                } ]
-              },
-              "effective-type" : {
-                "oneOf" : [ {
-                  "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
-                }, {
-                  "type" : "null"
-                } ]
-              },
-              "inherited-temporal-unit" : {
-                "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
-              },
-              "join-alias" : {
-                "$ref" : "#/components/schemas/metabase.lib.schema.join.alias"
-              },
-              "lib/original-binning" : {
-                "$ref" : "#/components/schemas/metabase.lib.schema.binning.binning"
-              },
-              "lib/original-effective-type" : {
+          "default" : { },
+          "properties" : {
+            "base-type" : {
+              "oneOf" : [ {
                 "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
-              },
-              "lib/uuid" : {
-                "maxLength" : 36,
-                "minLength" : 36,
-                "type" : "string"
-              },
-              "name" : {
-                "oneOf" : [ {
-                  "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-                }, {
-                  "type" : "null"
-                } ]
-              },
-              "original-temporal-unit" : {
-                "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
-              },
-              "qp.pivot/pivot-grouping?" : {
-                "oneOf" : [ {
-                  "type" : "boolean"
-                }, {
-                  "type" : "null"
-                } ]
-              },
-              "semantic-type" : {
-                "oneOf" : [ {
-                  "$ref" : "#/components/schemas/metabase.lib.schema.common.semantic-or-relation-type"
-                }, {
-                  "type" : "null"
-                } ]
-              },
-              "source-field" : {
-                "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
-              },
-              "source-field-join-alias" : {
-                "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-              },
-              "source-field-name" : {
-                "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-              },
-              "temporal-unit" : {
-                "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
-              }
+              }, {
+                "type" : "null"
+              } ]
             },
-            "type" : "object"
-          }, {
-            "allOf" : [ ]
-          } ]
+            "binning" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.binning.binning"
+            },
+            "database-type" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "display-name" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "effective-type" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "inherited-temporal-unit" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
+            },
+            "join-alias" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.join.alias"
+            },
+            "lib/original-binning" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.binning.binning"
+            },
+            "lib/uuid" : {
+              "maxLength" : 36,
+              "minLength" : 36,
+              "type" : "string"
+            },
+            "metabase.lib.field/original-effective-type" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
+            },
+            "metabase.lib.field/original-temporal-unit" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
+            },
+            "name" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "original-temporal-unit" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
+            },
+            "qp.pivot/pivot-grouping?" : {
+              "oneOf" : [ {
+                "type" : "boolean"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "semantic-type" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.lib.schema.common.semantic-or-relation-type"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "source-field" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
+            },
+            "source-field-join-alias" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+            },
+            "source-field-name" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+            },
+            "temporal-unit" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
+            }
+          },
+          "type" : "object"
         }, {
           "type" : "null"
         } ]
@@ -9063,54 +9182,6 @@
                 "type" : "null"
               } ]
             },
-            "lib/binning" : {
-              "oneOf" : [ {
-                "allOf" : [ {
-                  "properties" : {
-                    "strategy" : {
-                      "$ref" : "#/components/schemas/metabase.lib.schema.binning.strategy"
-                    }
-                  },
-                  "required" : [ "strategy" ],
-                  "type" : "object"
-                }, {
-                  "oneOf" : [ {
-                    "properties" : {
-                      "strategy" : {
-                        "const" : "default"
-                      }
-                    },
-                    "required" : [ "strategy" ],
-                    "type" : "object"
-                  }, {
-                    "properties" : {
-                      "bin-width" : {
-                        "$ref" : "#/components/schemas/metabase.lib.schema.binning.bin-width"
-                      },
-                      "strategy" : {
-                        "const" : "bin-width"
-                      }
-                    },
-                    "required" : [ "strategy", "bin-width" ],
-                    "type" : "object"
-                  }, {
-                    "properties" : {
-                      "num-bins" : {
-                        "$ref" : "#/components/schemas/metabase.lib.schema.binning.num-bins"
-                      },
-                      "strategy" : {
-                        "const" : "num-bins"
-                      }
-                    },
-                    "required" : [ "strategy", "num-bins" ],
-                    "type" : "object"
-                  } ]
-                } ],
-                "description" : "Schema for `:binning` options passed to a `:field` clause."
-              }, {
-                "type" : "null"
-              } ]
-            },
             "lib/breakout?" : {
               "oneOf" : [ {
                 "type" : "boolean"
@@ -9172,9 +9243,8 @@
                 "type" : "null"
               } ]
             },
-            "lib/join-alias" : {
+            "lib/model-display-name" : {
               "oneOf" : [ {
-                "minLength" : 1,
                 "type" : "string"
               }, {
                 "type" : "null"
@@ -9235,13 +9305,6 @@
                 "type" : "null"
               } ]
             },
-            "lib/original-effective-type" : {
-              "oneOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
-            },
             "lib/original-expression-name" : {
               "oneOf" : [ {
                 "minLength" : 1,
@@ -9280,14 +9343,6 @@
                 "type" : "null"
               } ]
             },
-            "lib/simple-display-name" : {
-              "oneOf" : [ {
-                "minLength" : 1,
-                "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
-            },
             "lib/source" : {
               "oneOf" : [ {
                 "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.source"
@@ -9310,7 +9365,59 @@
                 "type" : "null"
               } ]
             },
-            "lib/temporal-unit" : {
+            "lib/type" : {
+              "const" : "metadata/column",
+              "default" : "metadata/column"
+            },
+            "metabase.lib.field/binning" : {
+              "oneOf" : [ {
+                "allOf" : [ {
+                  "properties" : {
+                    "strategy" : {
+                      "$ref" : "#/components/schemas/metabase.lib.schema.binning.strategy"
+                    }
+                  },
+                  "required" : [ "strategy" ],
+                  "type" : "object"
+                }, {
+                  "oneOf" : [ {
+                    "properties" : {
+                      "strategy" : {
+                        "const" : "default"
+                      }
+                    },
+                    "required" : [ "strategy" ],
+                    "type" : "object"
+                  }, {
+                    "properties" : {
+                      "bin-width" : {
+                        "$ref" : "#/components/schemas/metabase.lib.schema.binning.bin-width"
+                      },
+                      "strategy" : {
+                        "const" : "bin-width"
+                      }
+                    },
+                    "required" : [ "strategy", "bin-width" ],
+                    "type" : "object"
+                  }, {
+                    "properties" : {
+                      "num-bins" : {
+                        "$ref" : "#/components/schemas/metabase.lib.schema.binning.num-bins"
+                      },
+                      "strategy" : {
+                        "const" : "num-bins"
+                      }
+                    },
+                    "required" : [ "strategy", "num-bins" ],
+                    "type" : "object"
+                  } ]
+                } ],
+                "description" : "Schema for `:binning` options passed to a `:field` clause."
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "metabase.lib.field/temporal-unit" : {
               "oneOf" : [ {
                 "enum" : [ "day", "day-of-month", "day-of-week", "day-of-year", "default", "hour", "hour-of-day", "millisecond", "minute", "minute-of-hour", "month", "month-of-year", "quarter", "quarter-of-year", "second", "second-of-minute", "week", "week-of-year", "year", "year-of-era" ],
                 "type" : "string"
@@ -9318,27 +9425,10 @@
                 "type" : "null"
               } ]
             },
-            "lib/transformation-added-base-type" : {
+            "metabase.lib.join/join-alias" : {
               "oneOf" : [ {
-                "type" : "boolean"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "lib/type" : {
-              "const" : "metadata/column",
-              "default" : "metadata/column"
-            },
-            "metabase.lib.metadata.result-metadata/field-ref" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Reference"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "metabase.lib.metadata.result-metadata/source" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.legacy-source"
+                "minLength" : 1,
+                "type" : "string"
               }, {
                 "type" : "null"
               } ]
@@ -9773,10 +9863,6 @@
           "$ref" : "#/components/schemas/metabase.lib.schema.util.distinct-mbql-clauses"
         } ]
       },
-      "metabase.lib.schema.column-unique-key" : {
-        "pattern" : "^column-unique-key-v\\d+\\$.+$",
-        "type" : "string"
-      },
       "metabase.lib.schema.common.base-type" : {
         "type" : "string"
       },
@@ -10166,7 +10252,7 @@
       },
       "metabase.lib.schema.info.context" : {
         "description" : "Schema for `info.context`; used for informational purposes to record how a query was executed.",
-        "enum" : [ "action", "ad-hoc", "agent", "cache-refresh", "collection", "map-tiles", "pulse", "dashboard-subscription", "dashboard", "question", "csv-download", "xlsx-download", "json-download", "public-dashboard", "public-question", "public-csv-download", "public-xlsx-download", "public-json-download", "embedded-dashboard", "embedded-question", "embedded-csv-download", "embedded-xlsx-download", "embedded-json-download", "table-grid", "transform-inspector" ],
+        "enum" : [ "action", "ad-hoc", "agent", "cache-refresh", "collection", "map-tiles", "pulse", "dashboard-subscription", "dashboard", "question", "csv-download", "xlsx-download", "json-download", "public-dashboard", "public-question", "public-csv-download", "public-xlsx-download", "public-json-download", "embedded-dashboard", "embedded-question", "embedded-csv-download", "embedded-xlsx-download", "embedded-json-download", "table-grid" ],
         "type" : "string"
       },
       "metabase.lib.schema.info.hash" : {
@@ -10218,21 +10304,6 @@
               "type" : "null"
             } ]
           },
-          "lens-id" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "lens-params" : {
-            "oneOf" : [ {
-              "additionalProperties" : { },
-              "type" : "object"
-            }, {
-              "type" : "null"
-            } ]
-          },
           "metadata/model-metadata" : {
             "oneOf" : [ {
               "items" : {
@@ -10275,13 +10346,6 @@
           "query-hash" : {
             "oneOf" : [ {
               "$ref" : "#/components/schemas/metabase.lib.schema.info.hash"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "transform-id" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.transform"
             }, {
               "type" : "null"
             } ]
@@ -10361,7 +10425,7 @@
       },
       "metabase.lib.schema.join.strategy" : {
         "default" : "left-join",
-        "description" : "Valid values for the optional `:strategy` key in a join. Note that these are only valid if the current Database\n  supports that specific join type; these match 1:1 with the Database `:features`, e.g. a Database that supports left\n  joins will support the `:left-join` feature.\n\n  When `:strategy` is not specified, [[default-strategy]] is used.",
+        "description" : "Valid values for the optional `:strategy` key in a join. Note that these are only valid if the current Database\n  supports that specific join type; these match 1:1 with the Database `:features`, e.g. a Database that supports left\n  joins will support the `:left-join` feature.\n\n  When `:strategy` is not specified, `:left-join` is the default strategy.",
         "enum" : [ "left-join", "right-join", "inner-join", "full-join" ],
         "type" : "string"
       },
@@ -10873,6 +10937,13 @@
                 "type" : "null"
               } ]
             },
+            "field-ref" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Reference"
+              }, {
+                "type" : "null"
+              } ]
+            },
             "fingerprint" : {
               "oneOf" : [ {
                 "$ref" : "#/components/schemas/metabase.lib.schema.metadata.fingerprint.fingerprint"
@@ -10929,13 +11000,6 @@
                 "type" : "null"
               } ]
             },
-            "lib/binning" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.binning.binning"
-              }, {
-                "type" : "null"
-              } ]
-            },
             "lib/breakout?" : {
               "oneOf" : [ {
                 "type" : "boolean"
@@ -10988,9 +11052,9 @@
                 "type" : "null"
               } ]
             },
-            "lib/join-alias" : {
+            "lib/model-display-name" : {
               "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.join.alias"
+                "type" : "string"
               }, {
                 "type" : "null"
               } ]
@@ -11005,13 +11069,6 @@
             "lib/original-display-name" : {
               "oneOf" : [ {
                 "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "lib/original-effective-type" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
               }, {
                 "type" : "null"
               } ]
@@ -11047,13 +11104,6 @@
                 "type" : "null"
               } ]
             },
-            "lib/simple-display-name" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-              }, {
-                "type" : "null"
-              } ]
-            },
             "lib/source" : {
               "oneOf" : [ {
                 "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.source"
@@ -11075,34 +11125,27 @@
                 "type" : "null"
               } ]
             },
-            "lib/temporal-unit" : {
+            "lib/type" : {
+              "const" : "metadata/column",
+              "default" : "metadata/column"
+            },
+            "metabase.lib.field/binning" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.lib.schema.binning.binning"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "metabase.lib.field/temporal-unit" : {
               "oneOf" : [ {
                 "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
               }, {
                 "type" : "null"
               } ]
             },
-            "lib/transformation-added-base-type" : {
+            "metabase.lib.join/join-alias" : {
               "oneOf" : [ {
-                "type" : "boolean"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "lib/type" : {
-              "const" : "metadata/column",
-              "default" : "metadata/column"
-            },
-            "metabase.lib.metadata.result-metadata/field-ref" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Reference"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "metabase.lib.metadata.result-metadata/source" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.legacy-source"
+                "$ref" : "#/components/schemas/metabase.lib.schema.join.alias"
               }, {
                 "type" : "null"
               } ]
@@ -11152,6 +11195,20 @@
                 "type" : "null"
               } ]
             },
+            "source" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.legacy-source"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "source-alias" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+              }, {
+                "type" : "null"
+              } ]
+            },
             "visibility-type" : {
               "oneOf" : [ {
                 "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.visibility-type"
@@ -11166,8 +11223,6 @@
           "$ref" : "#/components/schemas/metabase.lib.schema.common.kebab-cased-map"
         }, {
           "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.validate-for-source"
-        }, {
-          "allOf" : [ ]
         } ],
         "description" : "Malli schema for a valid map of column metadata, which can mean one of two things:\n\n  1. Metadata about a particular Field in the application database. This will always have an `:id`\n\n  2. Results metadata from a column in `data.cols` and/or `data.results_metadata.columns` in a Query Processor\n     response, or saved in something like `Card.result_metadata`. These *may* have an `:id`, or may not -- columns\n     coming back from native queries or things like `SELECT count(*)` aren't associated with any particular `Field`\n     and thus will not have an `:id`.\n\n  Now maybe these should be two different schemas, but `:id` being there or not is the only real difference; besides\n  that they are largely compatible. So they're the same for now. We can revisit this in the future if we actually want\n  to differentiate between the two versions."
       },
@@ -11384,6 +11439,13 @@
                   "type" : "null"
                 } ]
               },
+              "field-ref" : {
+                "oneOf" : [ {
+                  "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Reference"
+                }, {
+                  "type" : "null"
+                } ]
+              },
               "fingerprint" : {
                 "oneOf" : [ {
                   "$ref" : "#/components/schemas/metabase.lib.schema.metadata.fingerprint.fingerprint"
@@ -11440,13 +11502,6 @@
                   "type" : "null"
                 } ]
               },
-              "lib/binning" : {
-                "oneOf" : [ {
-                  "$ref" : "#/components/schemas/metabase.lib.schema.binning.binning"
-                }, {
-                  "type" : "null"
-                } ]
-              },
               "lib/breakout?" : {
                 "oneOf" : [ {
                   "type" : "boolean"
@@ -11499,9 +11554,9 @@
                   "type" : "null"
                 } ]
               },
-              "lib/join-alias" : {
+              "lib/model-display-name" : {
                 "oneOf" : [ {
-                  "$ref" : "#/components/schemas/metabase.lib.schema.join.alias"
+                  "type" : "string"
                 }, {
                   "type" : "null"
                 } ]
@@ -11516,13 +11571,6 @@
               "lib/original-display-name" : {
                 "oneOf" : [ {
                   "type" : "string"
-                }, {
-                  "type" : "null"
-                } ]
-              },
-              "lib/original-effective-type" : {
-                "oneOf" : [ {
-                  "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
                 }, {
                   "type" : "null"
                 } ]
@@ -11558,13 +11606,6 @@
                   "type" : "null"
                 } ]
               },
-              "lib/simple-display-name" : {
-                "oneOf" : [ {
-                  "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-                }, {
-                  "type" : "null"
-                } ]
-              },
               "lib/source" : {
                 "oneOf" : [ {
                   "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.source"
@@ -11586,34 +11627,27 @@
                   "type" : "null"
                 } ]
               },
-              "lib/temporal-unit" : {
+              "lib/type" : {
+                "const" : "metadata/column",
+                "default" : "metadata/column"
+              },
+              "metabase.lib.field/binning" : {
+                "oneOf" : [ {
+                  "$ref" : "#/components/schemas/metabase.lib.schema.binning.binning"
+                }, {
+                  "type" : "null"
+                } ]
+              },
+              "metabase.lib.field/temporal-unit" : {
                 "oneOf" : [ {
                   "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
                 }, {
                   "type" : "null"
                 } ]
               },
-              "lib/transformation-added-base-type" : {
+              "metabase.lib.join/join-alias" : {
                 "oneOf" : [ {
-                  "type" : "boolean"
-                }, {
-                  "type" : "null"
-                } ]
-              },
-              "lib/type" : {
-                "const" : "metadata/column",
-                "default" : "metadata/column"
-              },
-              "metabase.lib.metadata.result-metadata/field-ref" : {
-                "oneOf" : [ {
-                  "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Reference"
-                }, {
-                  "type" : "null"
-                } ]
-              },
-              "metabase.lib.metadata.result-metadata/source" : {
-                "oneOf" : [ {
-                  "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.legacy-source"
+                  "$ref" : "#/components/schemas/metabase.lib.schema.join.alias"
                 }, {
                   "type" : "null"
                 } ]
@@ -11663,6 +11697,20 @@
                   "type" : "null"
                 } ]
               },
+              "source" : {
+                "oneOf" : [ {
+                  "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.legacy-source"
+                }, {
+                  "type" : "null"
+                } ]
+              },
+              "source-alias" : {
+                "oneOf" : [ {
+                  "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+                }, {
+                  "type" : "null"
+                } ]
+              },
               "visibility-type" : {
                 "oneOf" : [ {
                   "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.visibility-type"
@@ -11677,8 +11725,6 @@
             "$ref" : "#/components/schemas/metabase.lib.schema.common.kebab-cased-map"
           }, {
             "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.validate-for-source"
-          }, {
-            "allOf" : [ ]
           } ],
           "description" : "Malli schema for a valid map of column metadata, which can mean one of two things:\n\n  1. Metadata about a particular Field in the application database. This will always have an `:id`\n\n  2. Results metadata from a column in `data.cols` and/or `data.results_metadata.columns` in a Query Processor\n     response, or saved in something like `Card.result_metadata`. These *may* have an `:id`, or may not -- columns\n     coming back from native queries or things like `SELECT count(*)` aren't associated with any particular `Field`\n     and thus will not have an `:id`.\n\n  Now maybe these should be two different schemas, but `:id` being there or not is the only real difference; besides\n  that they are largely compatible. So they're the same for now. We can revisit this in the future if we actually want\n  to differentiate between the two versions."
         }, {
@@ -12062,186 +12108,184 @@
         "type" : "array"
       },
       "metabase.lib.schema.ref..field.literal.options" : {
-        "allOf" : [ {
-          "default" : { },
-          "properties" : {
-            "base-type" : {
-              "type" : "string"
-            },
-            "binning" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.binning.binning"
-            },
-            "database-type" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "display-name" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "effective-type" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "inherited-temporal-unit" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
-            },
-            "join-alias" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.join.alias"
-            },
-            "lib/original-binning" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.binning.binning"
-            },
-            "lib/original-effective-type" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
-            },
-            "lib/uuid" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.common.uuid"
-            },
-            "name" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "original-temporal-unit" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
-            },
-            "qp.pivot/pivot-grouping?" : {
-              "oneOf" : [ {
-                "type" : "boolean"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "semantic-type" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.common.semantic-or-relation-type"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "source-field" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
-            },
-            "source-field-join-alias" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-            },
-            "source-field-name" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-            },
-            "temporal-unit" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
-            }
+        "default" : { },
+        "properties" : {
+          "base-type" : {
+            "type" : "string"
           },
-          "required" : [ "lib/uuid", "base-type" ],
-          "type" : "object"
-        }, {
-          "allOf" : [ ]
-        } ]
+          "binning" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.binning.binning"
+          },
+          "database-type" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "display-name" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "effective-type" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "inherited-temporal-unit" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
+          },
+          "join-alias" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.join.alias"
+          },
+          "lib/original-binning" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.binning.binning"
+          },
+          "lib/uuid" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.uuid"
+          },
+          "metabase.lib.field/original-effective-type" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
+          },
+          "metabase.lib.field/original-temporal-unit" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
+          },
+          "name" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "original-temporal-unit" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
+          },
+          "qp.pivot/pivot-grouping?" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "semantic-type" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.semantic-or-relation-type"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "source-field" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
+          },
+          "source-field-join-alias" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "source-field-name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "temporal-unit" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
+          }
+        },
+        "required" : [ "lib/uuid", "base-type" ],
+        "type" : "object"
       },
       "metabase.lib.schema.ref..field.options" : {
-        "allOf" : [ {
-          "default" : { },
-          "properties" : {
-            "base-type" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "binning" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.binning.binning"
-            },
-            "database-type" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "display-name" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "effective-type" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "inherited-temporal-unit" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
-            },
-            "join-alias" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.join.alias"
-            },
-            "lib/original-binning" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.binning.binning"
-            },
-            "lib/original-effective-type" : {
+        "default" : { },
+        "properties" : {
+          "base-type" : {
+            "oneOf" : [ {
               "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
-            },
-            "lib/uuid" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.common.uuid"
-            },
-            "name" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "original-temporal-unit" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
-            },
-            "qp.pivot/pivot-grouping?" : {
-              "oneOf" : [ {
-                "type" : "boolean"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "semantic-type" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.common.semantic-or-relation-type"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "source-field" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
-            },
-            "source-field-join-alias" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-            },
-            "source-field-name" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-            },
-            "temporal-unit" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
-            }
+            }, {
+              "type" : "null"
+            } ]
           },
-          "required" : [ "lib/uuid" ],
-          "type" : "object"
-        }, {
-          "allOf" : [ ]
-        } ]
+          "binning" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.binning.binning"
+          },
+          "database-type" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "display-name" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "effective-type" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "inherited-temporal-unit" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
+          },
+          "join-alias" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.join.alias"
+          },
+          "lib/original-binning" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.binning.binning"
+          },
+          "lib/uuid" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.uuid"
+          },
+          "metabase.lib.field/original-effective-type" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
+          },
+          "metabase.lib.field/original-temporal-unit" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
+          },
+          "name" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "original-temporal-unit" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
+          },
+          "qp.pivot/pivot-grouping?" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "semantic-type" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.semantic-or-relation-type"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "source-field" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
+          },
+          "source-field-join-alias" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "source-field-name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "temporal-unit" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
+          }
+        },
+        "required" : [ "lib/uuid" ],
+        "type" : "object"
       },
       "metabase.lib.schema.ref.aggregation-options" : {
         "default" : { },
@@ -12493,6 +12537,21 @@
           "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.disallow-dimension"
         } ]
       },
+      "metabase.lib.schema.template-tag.source-filter" : {
+        "description" : "Schema for a single source-filter applied to a table template tag.",
+        "properties" : {
+          "field-id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
+          },
+          "op" : {
+            "enum" : [ "<=", ">", ">=", "!=", "=", "<" ],
+            "type" : "string"
+          },
+          "value" : { }
+        },
+        "required" : [ "field-id", "op", "value" ],
+        "type" : "object"
+      },
       "metabase.lib.schema.template-tag.source-query" : {
         "allOf" : [ {
           "properties" : {
@@ -12524,11 +12583,20 @@
             "display-name" : {
               "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
             },
+            "emit-alias" : {
+              "type" : "boolean"
+            },
             "id" : {
               "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.id"
             },
             "name" : {
               "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.name"
+            },
+            "source-filters" : {
+              "items" : {
+                "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.source-filter"
+              },
+              "type" : "array"
             },
             "table-id" : {
               "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
@@ -15040,19 +15108,6 @@
         "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.legacy-column-metadata",
         "description" : "A single result metadata column as returned by the Query Processor."
       },
-      "metabase.query-processor.schema.any-query" : {
-        "description" : "Schema for a map that is in the general shape of either a legacy MBQL or MBQL 5 query. Query may not be normalized\n  yet!\n\n  This schema is not very strict because we need to handle different types of queries (legacy MBQL, pMBQL,\n  super-legacy MBQL, internal audit app queries, etc.) and it might not be normalized yet.",
-        "properties" : {
-          "database" : {
-            "anyOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
-            }, {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.saved-questions-virtual-database"
-            } ]
-          }
-        },
-        "type" : "object"
-      },
       "metabase.query-processor.schema.export-format" : {
         "description" : "Schema for valid export formats for downloading query results.",
         "enum" : [ "csv", "api", "xlsx", "json" ],
@@ -15393,12 +15448,49 @@
         "enum" : [ "events" ],
         "type" : "string"
       },
-      "metabase.transforms-base.util.source-table-entry" : {
-        "description" : "A source table entry in the array format. Combines alias with table reference.",
+      "metabase.transforms.api.transform.run-trigger" : {
+        "enum" : [ "none", "global-schedule" ],
+        "type" : "string"
+      },
+      "metabase.transforms.api.transform.transform-source" : {
+        "$ref" : "#/components/schemas/metabase.transforms.schema.transform-source"
+      },
+      "metabase.transforms.api.transform.transform-target" : {
+        "$ref" : "#/components/schemas/metabase.transforms.schema.transform-target"
+      },
+      "metabase.transforms.schema.append-config" : {
         "properties" : {
-          "alias" : {
-            "type" : "string"
+          "type" : {
+            "const" : "append"
+          }
+        },
+        "required" : [ "type" ],
+        "type" : "object"
+      },
+      "metabase.transforms.schema.checkpoint-strategy" : {
+        "properties" : {
+          "checkpoint-filter-field-id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
           },
+          "type" : {
+            "const" : "checkpoint"
+          }
+        },
+        "required" : [ "type" ],
+        "type" : "object"
+      },
+      "metabase.transforms.schema.id" : {
+        "minimum" : 1,
+        "type" : "integer"
+      },
+      "metabase.transforms.schema.source-incremental-strategy" : {
+        "oneOf" : [ {
+          "$ref" : "#/components/schemas/metabase.transforms.schema.checkpoint-strategy"
+        } ]
+      },
+      "metabase.transforms.schema.source-table-ref" : {
+        "description" : "A reference to a source table by name, for cases where table_id may not exist yet.\n  Also saves querying metadata in situations where we'll need the name.",
+        "properties" : {
           "database_id" : {
             "type" : "integer"
           },
@@ -15420,549 +15512,16 @@
             } ]
           }
         },
-        "required" : [ "alias" ],
+        "required" : [ "database_id", "table" ],
         "type" : "object"
       },
-      "metabase.transforms-inspector.schema.alert-trigger" : {
-        "description" : "Definition for conditional alerts.\n   FE evaluates condition against card results and shows alert if triggered.",
-        "properties" : {
-          "condition" : {
-            "$ref" : "#/components/schemas/metabase.transforms-inspector.schema.trigger-condition"
-          },
-          "id" : {
-            "type" : "string"
-          },
-          "message" : {
-            "type" : "string"
-          },
-          "metadata" : {
-            "$ref" : "#/components/schemas/metabase.transforms-inspector.schema.trigger-metadata"
-          },
-          "severity" : {
-            "enum" : [ "info", "warning", "error" ],
-            "type" : "string"
-          }
-        },
-        "required" : [ "id", "condition", "severity", "message" ],
-        "type" : "object"
-      },
-      "metabase.transforms-inspector.schema.card" : {
-        "description" : "A visualization card in the inspector output.\n\n   Cards are generic - lens-specific data goes in :metadata.\n   The :metadata map is opaque to the core but interpreted by\n   lens-specific lib utilities on the frontend. ",
-        "properties" : {
-          "dataset_query" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.query"
-          },
-          "display" : {
-            "$ref" : "#/components/schemas/metabase.transforms-inspector.schema.display-type"
-          },
-          "id" : {
-            "type" : "string"
-          },
-          "metadata" : {
-            "$ref" : "#/components/schemas/metabase.transforms-inspector.schema.card-metadata"
-          },
-          "section_id" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "title" : {
-            "type" : "string"
-          }
-        },
-        "required" : [ "id", "title", "display", "dataset_query" ],
-        "type" : "object"
-      },
-      "metabase.transforms-inspector.schema.card-metadata" : {
-        "description" : "Common metadata for join-related cards and triggers.",
-        "properties" : {
-          "card_type" : {
-            "type" : "string"
-          },
-          "dedup_key" : {
-            "$ref" : "#/components/schemas/metabase.transforms-inspector.schema.dedup-key"
-          },
-          "depends_on_cards" : {
-            "items" : {
-              "type" : "string"
-            },
-            "type" : "array",
-            "uniqueItems" : true
-          },
-          "group_id" : {
-            "type" : "string"
-          },
-          "group_order" : {
-            "type" : "integer"
-          },
-          "group_role" : {
-            "$ref" : "#/components/schemas/metabase.transforms-inspector.schema.group-role"
-          },
-          "join_alias" : {
-            "type" : "string"
-          },
-          "join_step" : {
-            "type" : "integer"
-          },
-          "join_strategy" : {
-            "type" : "string"
-          }
-        },
-        "type" : "object"
-      },
-      "metabase.transforms-inspector.schema.complexity" : {
-        "description" : "Complexity estimate for a lens.",
-        "properties" : {
-          "level" : {
-            "$ref" : "#/components/schemas/metabase.transforms-inspector.schema.complexity-level"
-          },
-          "score" : {
-            "minimum" : 1,
-            "type" : "integer"
-          }
-        },
-        "required" : [ "level" ],
-        "type" : "object"
-      },
-      "metabase.transforms-inspector.schema.complexity-level" : {
-        "description" : "Estimated complexity/cost of generating a lens.",
-        "enum" : [ "fast", "slow", "very-slow" ],
-        "type" : "string"
-      },
-      "metabase.transforms-inspector.schema.dedup-key" : {
-        "description" : "Key for deduplicating identical queries across lenses.\n   Typically a vector like [:table_count table-id].",
-        "items" : { },
-        "type" : "array"
-      },
-      "metabase.transforms-inspector.schema.discovery-response" : {
-        "description" : "Response from lens discovery.",
-        "properties" : {
-          "available_lenses" : {
-            "items" : {
-              "$ref" : "#/components/schemas/metabase.transforms-inspector.schema.lens-metadata"
-            },
-            "type" : "array"
-          },
-          "description" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "sources" : {
-            "items" : {
-              "$ref" : "#/components/schemas/metabase.transforms-inspector.schema.table"
-            },
-            "type" : "array"
-          },
-          "status" : {
-            "$ref" : "#/components/schemas/metabase.transforms-inspector.schema.inspector-status"
-          },
-          "target" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.transforms-inspector.schema.table"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "visited_fields" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.transforms-inspector.schema.visited-fields"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        },
-        "required" : [ "name", "status", "sources", "available_lenses" ],
-        "type" : "object"
-      },
-      "metabase.transforms-inspector.schema.display-type" : {
-        "description" : "Valid display types for cards.",
-        "enum" : [ "bar", "row", "line", "area", "pie", "scalar", "gauge", "progress", "table", "hidden" ],
-        "type" : "string"
-      },
-      "metabase.transforms-inspector.schema.drill-lens" : {
-        "description" : "A drill-down lens available from the current lens.",
-        "properties" : {
-          "description" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "display_name" : {
-            "type" : "string"
-          },
-          "id" : {
-            "type" : "string"
-          }
-        },
-        "required" : [ "id", "display_name" ],
-        "type" : "object"
-      },
-      "metabase.transforms-inspector.schema.drill-lens-trigger" : {
-        "description" : "Definition for conditional drill lens availability.\n   FE evaluates condition and shows drill lens option if triggered.\n   :params is passed to the drill lens when triggered.",
-        "properties" : {
-          "condition" : {
-            "$ref" : "#/components/schemas/metabase.transforms-inspector.schema.trigger-condition"
-          },
-          "lens_id" : {
-            "type" : "string"
-          },
-          "metadata" : {
-            "$ref" : "#/components/schemas/metabase.transforms-inspector.schema.trigger-metadata"
-          },
-          "params" : {
-            "additionalProperties" : { },
-            "type" : "object"
-          },
-          "reason" : {
-            "type" : "string"
-          }
-        },
-        "required" : [ "lens_id", "condition" ],
-        "type" : "object"
-      },
-      "metabase.transforms-inspector.schema.field" : {
-        "description" : "Field metadata for inspector.",
-        "properties" : {
-          "base_type" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
-          },
-          "display_name" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "id" : {
-            "minimum" : 1,
-            "type" : "integer"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "semantic_type" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.common.semantic-or-relation-type"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "stats" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.transforms-inspector.schema.field-stats"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        },
-        "required" : [ "id", "name", "base_type" ],
-        "type" : "object"
-      },
-      "metabase.transforms-inspector.schema.field-stats" : {
-        "description" : "Statistics for a field from fingerprints.",
-        "properties" : {
-          "avg" : {
-            "type" : "number"
-          },
-          "distinct_count" : {
-            "type" : "integer"
-          },
-          "earliest" : {
-            "type" : "string"
-          },
-          "latest" : {
-            "type" : "string"
-          },
-          "max" : {
-            "type" : "number"
-          },
-          "min" : {
-            "type" : "number"
-          },
-          "nil_percent" : {
-            "type" : "number"
-          },
-          "q1" : {
-            "type" : "number"
-          },
-          "q3" : {
-            "type" : "number"
-          }
-        },
-        "type" : "object"
-      },
-      "metabase.transforms-inspector.schema.group-role" : {
-        "description" : "Role of a card within a comparison group.",
-        "enum" : [ "input", "output" ],
-        "type" : "string"
-      },
-      "metabase.transforms-inspector.schema.inspector-status" : {
-        "description" : "Status of the inspector result.",
-        "enum" : [ "not-run", "ready" ],
-        "type" : "string"
-      },
-      "metabase.transforms-inspector.schema.layout-type" : {
-        "description" : "Layout hints for sections.\n   - :flat - cards displayed in a grid\n   - :comparison - cards grouped for side-by-side comparison",
-        "enum" : [ "flat", "comparison" ],
-        "type" : "string"
-      },
-      "metabase.transforms-inspector.schema.lens" : {
-        "description" : "Full lens contents and drill lens/alert triggers.",
-        "properties" : {
-          "alert_triggers" : {
-            "items" : {
-              "$ref" : "#/components/schemas/metabase.transforms-inspector.schema.alert-trigger"
-            },
-            "type" : "array"
-          },
-          "cards" : {
-            "items" : {
-              "$ref" : "#/components/schemas/metabase.transforms-inspector.schema.card"
-            },
-            "type" : "array"
-          },
-          "complexity" : {
-            "$ref" : "#/components/schemas/metabase.transforms-inspector.schema.complexity"
-          },
-          "display_name" : {
-            "type" : "string"
-          },
-          "drill_lens_triggers" : {
-            "items" : {
-              "$ref" : "#/components/schemas/metabase.transforms-inspector.schema.drill-lens-trigger"
-            },
-            "type" : "array"
-          },
-          "drill_lenses" : {
-            "items" : {
-              "$ref" : "#/components/schemas/metabase.transforms-inspector.schema.drill-lens"
-            },
-            "type" : "array"
-          },
-          "id" : {
-            "type" : "string"
-          },
-          "sections" : {
-            "items" : {
-              "$ref" : "#/components/schemas/metabase.transforms-inspector.schema.section"
-            },
-            "type" : "array"
-          },
-          "summary" : {
-            "$ref" : "#/components/schemas/metabase.transforms-inspector.schema.lens-summary"
-          }
-        },
-        "required" : [ "id", "display_name", "sections", "cards" ],
-        "type" : "object"
-      },
-      "metabase.transforms-inspector.schema.lens-metadata" : {
-        "properties" : {
-          "complexity" : {
-            "$ref" : "#/components/schemas/metabase.transforms-inspector.schema.complexity"
-          },
-          "description" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "display_name" : {
-            "type" : "string"
-          },
-          "id" : {
-            "type" : "string"
-          }
-        },
-        "required" : [ "id", "display_name" ],
-        "type" : "object"
-      },
-      "metabase.transforms-inspector.schema.lens-summary" : {
-        "description" : "Summary section of a lens.",
-        "properties" : {
-          "alerts" : {
-            "items" : {
-              "properties" : { },
-              "type" : "object"
-            },
-            "type" : "array"
-          },
-          "highlights" : {
-            "items" : {
-              "$ref" : "#/components/schemas/metabase.transforms-inspector.schema.summary-highlight"
-            },
-            "type" : "array"
-          },
-          "text" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        },
-        "type" : "object"
-      },
-      "metabase.transforms-inspector.schema.section" : {
-        "description" : "A section grouping cards in a lens.",
-        "properties" : {
-          "description" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "id" : {
-            "type" : "string"
-          },
-          "layout" : {
-            "$ref" : "#/components/schemas/metabase.transforms-inspector.schema.layout-type"
-          },
-          "title" : {
-            "type" : "string"
-          }
-        },
-        "required" : [ "id", "title" ],
-        "type" : "object"
-      },
-      "metabase.transforms-inspector.schema.summary-highlight" : {
-        "description" : "A highlight in the lens summary.",
-        "properties" : {
-          "card_id" : {
-            "type" : "string"
-          },
-          "label" : {
-            "type" : "string"
-          },
-          "value" : {
-            "oneOf" : [ { }, {
-              "type" : "null"
-            } ]
-          }
-        },
-        "required" : [ "label" ],
-        "type" : "object"
-      },
-      "metabase.transforms-inspector.schema.table" : {
-        "description" : "Table metadata.",
-        "properties" : {
-          "column_count" : {
-            "type" : "integer"
-          },
-          "db_id" : {
-            "minimum" : 1,
-            "type" : "integer"
-          },
-          "fields" : {
-            "items" : {
-              "$ref" : "#/components/schemas/metabase.transforms-inspector.schema.field"
-            },
-            "type" : "array"
-          },
-          "schema" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "table_id" : {
-            "minimum" : 1,
-            "type" : "integer"
-          },
-          "table_name" : {
-            "type" : "string"
-          }
-        },
-        "required" : [ "table_id", "table_name", "db_id", "column_count", "fields" ],
-        "type" : "object"
-      },
-      "metabase.transforms-inspector.schema.trigger-condition" : {
-        "description" : "A named condition that triggers an alert or drill lens.\n   Evaluated by multimethod in lib against card results.\n   Only :name is required; other keys are condition-specific.",
-        "properties" : {
-          "name" : {
-            "type" : "string"
-          }
-        },
-        "required" : [ "name" ],
-        "type" : "object"
-      },
-      "metabase.transforms-inspector.schema.trigger-metadata" : {
-        "description" : "Common metadata for join-related cards and triggers.",
-        "properties" : {
-          "join_alias" : {
-            "type" : "string"
-          },
-          "join_step" : {
-            "type" : "integer"
-          },
-          "join_strategy" : {
-            "type" : "string"
-          }
-        },
-        "type" : "object"
-      },
-      "metabase.transforms-inspector.schema.visited-fields" : {
-        "description" : "Field IDs used in semantically important query clauses.\n   Used for interestingness scoring and preselection.",
-        "properties" : {
-          "all" : {
-            "items" : {
-              "minimum" : 1,
-              "type" : "integer"
-            },
-            "type" : "array",
-            "uniqueItems" : true
-          }
-        },
-        "type" : "object"
-      },
-      "metabase.transforms-rest.api.transform.run-trigger" : {
-        "enum" : [ "none", "global-schedule" ],
-        "type" : "string"
-      },
-      "metabase.transforms.schema.append-config" : {
-        "properties" : {
-          "type" : {
-            "const" : "append"
-          }
-        },
-        "required" : [ "type" ],
-        "type" : "object"
-      },
-      "metabase.transforms.schema.checkpoint-strategy" : {
-        "properties" : {
-          "checkpoint-filter" : {
-            "type" : "string"
-          },
-          "checkpoint-filter-unique-key" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.column-unique-key"
-          },
-          "type" : {
-            "const" : "checkpoint"
-          }
-        },
-        "required" : [ "type" ],
-        "type" : "object"
-      },
-      "metabase.transforms.schema.id" : {
-        "minimum" : 1,
-        "type" : "integer"
-      },
-      "metabase.transforms.schema.source-incremental-strategy" : {
-        "oneOf" : [ {
-          "$ref" : "#/components/schemas/metabase.transforms.schema.checkpoint-strategy"
-        } ]
+      "metabase.transforms.schema.source-table-value" : {
+        "anyOf" : [ {
+          "type" : "integer"
+        }, {
+          "$ref" : "#/components/schemas/metabase.transforms.schema.source-table-ref"
+        } ],
+        "description" : "Either a table ID (int) or a reference map."
       },
       "metabase.transforms.schema.table-incremental-target" : {
         "properties" : {
@@ -16070,10 +15629,10 @@
               "$ref" : "#/components/schemas/metabase.transforms.schema.source-incremental-strategy"
             },
             "source-tables" : {
-              "items" : {
-                "$ref" : "#/components/schemas/metabase.transforms-base.util.source-table-entry"
+              "additionalProperties" : {
+                "$ref" : "#/components/schemas/metabase.transforms.schema.source-table-value"
               },
-              "type" : "array"
+              "type" : "object"
             },
             "type" : {
               "const" : "python"
@@ -16090,7 +15649,7 @@
           "$ref" : "#/components/schemas/metabase.transforms.schema.table-incremental-target"
         } ]
       },
-      "metabase.users.schema.user-group-membership" : {
+      "metabase.users-rest.api.user-group-membership" : {
         "description" : "Group Membership info of a User.\n  In which :is_group_manager is only included if `advanced-permissions` is enabled.",
         "properties" : {
           "id" : {
@@ -16244,7 +15803,7 @@
       "url" : "https://www.gnu.org/licenses/agpl-3.0.html"
     },
     "title" : "Metabase API",
-    "version" : "v0.57.1-SNAPSHOT"
+    "version" : "vUNKNOWN"
   },
   "openapi" : "3.1.0",
   "paths" : {
@@ -18372,6 +17931,13 @@
         },
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -18449,6 +18015,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.cache.api.cache-config-list-response"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -18491,6 +18064,13 @@
         },
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.cache.api.cache-config-store-response"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -18574,6 +18154,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.cache.api.cache-invalidate-response"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -27380,68 +26967,6 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "additionalProperties" : false,
-                  "properties" : {
-                    "checklist" : {
-                      "additionalProperties" : false,
-                      "properties" : {
-                        "add-data" : {
-                          "type" : "boolean"
-                        },
-                        "configure-row-column-security" : {
-                          "type" : "boolean"
-                        },
-                        "create-dashboard" : {
-                          "type" : "boolean"
-                        },
-                        "create-models" : {
-                          "type" : "boolean"
-                        },
-                        "create-tenants" : {
-                          "type" : "boolean"
-                        },
-                        "create-test-embed" : {
-                          "type" : "boolean"
-                        },
-                        "data-permissions-and-enable-tenants" : {
-                          "type" : "boolean"
-                        },
-                        "embed-production" : {
-                          "type" : "boolean"
-                        },
-                        "enable-tenants" : {
-                          "type" : "boolean"
-                        },
-                        "setup-data-segregation-strategy" : {
-                          "type" : "boolean"
-                        },
-                        "sso-auth-manual-tested" : {
-                          "type" : "boolean"
-                        },
-                        "sso-configured" : {
-                          "type" : "boolean"
-                        }
-                      },
-                      "required" : [ "add-data", "create-dashboard", "create-models", "configure-row-column-security", "create-test-embed", "embed-production", "sso-configured", "data-permissions-and-enable-tenants", "enable-tenants", "create-tenants", "setup-data-segregation-strategy", "sso-auth-manual-tested" ],
-                      "type" : "object"
-                    },
-                    "data-isolation-strategy" : {
-                      "oneOf" : [ {
-                        "enum" : [ "row-column-level-security", "connection-impersonation", "database-routing" ],
-                        "type" : "string"
-                      }, {
-                        "type" : "null"
-                      } ]
-                    }
-                  },
-                  "required" : [ "checklist", "data-isolation-strategy" ],
-                  "type" : "object"
-                }
-              }
-            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -33084,186 +32609,6 @@
           }
         },
         "summary" : "GET /api/ee/workspace/{ws-id}/graph",
-        "tags" : [ "/api/ee/workspace" ]
-      }
-    },
-    "/api/ee/workspace/{ws-id}/input/grant" : {
-      "post" : {
-        "description" : "Grant read access to input tables by table coordinates. Superuser only.\n   Idempotent - returns which tables were already granted vs newly granted.",
-        "operationId" : "post-api-ee-workspace-ws-id-input-grant",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "ws-id",
-          "required" : true,
-          "schema" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
-          }
-        } ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "properties" : {
-                  "tables" : {
-                    "items" : {
-                      "properties" : {
-                        "db_id" : {
-                          "description" : "value must be an integer greater than zero.",
-                          "minimum" : 1,
-                          "type" : "integer"
-                        },
-                        "schema" : {
-                          "oneOf" : [ {
-                            "type" : "string"
-                          }, {
-                            "type" : "null"
-                          } ]
-                        },
-                        "table" : {
-                          "type" : "string"
-                        }
-                      },
-                      "required" : [ "db_id", "schema", "table" ],
-                      "type" : "object"
-                    },
-                    "type" : "array"
-                  }
-                },
-                "required" : [ "tables" ],
-                "type" : "object"
-              }
-            }
-          }
-        },
-        "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "properties" : {
-                    "already_granted" : {
-                      "items" : {
-                        "properties" : {
-                          "db_id" : {
-                            "description" : "value must be an integer greater than zero.",
-                            "minimum" : 1,
-                            "type" : "integer"
-                          },
-                          "schema" : {
-                            "oneOf" : [ {
-                              "type" : "string"
-                            }, {
-                              "type" : "null"
-                            } ]
-                          },
-                          "table" : {
-                            "type" : "string"
-                          }
-                        },
-                        "required" : [ "db_id", "schema", "table" ],
-                        "type" : "object"
-                      },
-                      "type" : "array"
-                    },
-                    "newly_granted" : {
-                      "items" : {
-                        "properties" : {
-                          "db_id" : {
-                            "description" : "value must be an integer greater than zero.",
-                            "minimum" : 1,
-                            "type" : "integer"
-                          },
-                          "schema" : {
-                            "oneOf" : [ {
-                              "type" : "string"
-                            }, {
-                              "type" : "null"
-                            } ]
-                          },
-                          "table" : {
-                            "type" : "string"
-                          }
-                        },
-                        "required" : [ "db_id", "schema", "table" ],
-                        "type" : "object"
-                      },
-                      "type" : "array"
-                    }
-                  },
-                  "required" : [ "already_granted", "newly_granted" ],
-                  "type" : "object"
-                }
-              }
-            },
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "summary" : "POST /api/ee/workspace/{ws-id}/input/grant",
-        "tags" : [ "/api/ee/workspace" ]
-      }
-    },
-    "/api/ee/workspace/{ws-id}/input/pending" : {
-      "get" : {
-        "description" : "List all input tables that haven't been granted access yet, excluding tables shadowed by workspace outputs.",
-        "operationId" : "get-api-ee-workspace-ws-id-input-pending",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "ws-id",
-          "required" : true,
-          "schema" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "properties" : {
-                    "inputs" : {
-                      "items" : {
-                        "properties" : {
-                          "db_id" : {
-                            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
-                          },
-                          "schema" : {
-                            "oneOf" : [ {
-                              "type" : "string"
-                            }, {
-                              "type" : "null"
-                            } ]
-                          },
-                          "table" : {
-                            "type" : "string"
-                          }
-                        },
-                        "required" : [ "db_id", "schema", "table" ],
-                        "type" : "object"
-                      },
-                      "type" : "array"
-                    }
-                  },
-                  "required" : [ "inputs" ],
-                  "type" : "object"
-                }
-              }
-            },
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "summary" : "GET /api/ee/workspace/{ws-id}/input/pending",
         "tags" : [ "/api/ee/workspace" ]
       }
     },
@@ -45106,10 +44451,39 @@
                         "minimum" : 1,
                         "type" : "integer"
                       },
+                      "last_checkpoint_value" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
                       "last_run" : {
                         "oneOf" : [ {
                           "additionalProperties" : false,
                           "properties" : {
+                            "checkpoint_filter_field_id" : {
+                              "oneOf" : [ {
+                                "minimum" : 1,
+                                "type" : "integer"
+                              }, {
+                                "type" : "null"
+                              } ]
+                            },
+                            "checkpoint_hi_value" : {
+                              "oneOf" : [ {
+                                "type" : "string"
+                              }, {
+                                "type" : "null"
+                              } ]
+                            },
+                            "checkpoint_lo_value" : {
+                              "oneOf" : [ {
+                                "type" : "string"
+                              }, {
+                                "type" : "null"
+                              } ]
+                            },
                             "end_time" : {
                               "oneOf" : [ { }, {
                                 "type" : "null"
@@ -45347,7 +44721,7 @@
                     } ]
                   },
                   "run_trigger" : {
-                    "$ref" : "#/components/schemas/metabase.transforms-rest.api.transform.run-trigger"
+                    "$ref" : "#/components/schemas/metabase.transforms.api.transform.run-trigger"
                   },
                   "source" : {
                     "$ref" : "#/components/schemas/metabase.transforms.schema.transform-source"
@@ -45466,10 +44840,39 @@
                       "minimum" : 1,
                       "type" : "integer"
                     },
+                    "last_checkpoint_value" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
                     "last_run" : {
                       "oneOf" : [ {
                         "additionalProperties" : false,
                         "properties" : {
+                          "checkpoint_filter_field_id" : {
+                            "oneOf" : [ {
+                              "minimum" : 1,
+                              "type" : "integer"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "checkpoint_hi_value" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "checkpoint_lo_value" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
                           "end_time" : {
                             "oneOf" : [ { }, {
                               "type" : "null"
@@ -46866,112 +46269,6 @@
         "tags" : [ "/api/transform-tag" ]
       }
     },
-    "/api/transform/extract-columns" : {
-      "post" : {
-        "description" : "Extract column names suitable for incremental transform checkpoint filtering.\n\n  This endpoint is specifically for populating the checkpoint column dropdown in\n  incremental transforms. It only returns columns with types supported for checkpoint\n  filtering: temporal (timestamp/tz) and numeric (int/float) types.\n\n  Text, boolean, and other unsupported column types are filtered out.\n\n  The query is compiled to native SQL using [[qp.compile/compile-with-inline-parameters]],\n  which handles parameterized queries with template tags. Then extracts column names\n  and types using PreparedStatement metadata.\n\n  Returns a map with a :columns key containing a vector of column names (strings).\n  If extraction fails, returns nil for :columns.",
-        "operationId" : "post-api-transform-extract-columns",
-        "parameters" : [ ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "properties" : {
-                  "query" : {
-                    "$ref" : "#/components/schemas/metabase.query-processor.schema.any-query"
-                  }
-                },
-                "required" : [ "query" ],
-                "type" : "object"
-              }
-            }
-          }
-        },
-        "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "properties" : {
-                    "columns" : {
-                      "oneOf" : [ {
-                        "items" : {
-                          "type" : "string"
-                        },
-                        "type" : "array"
-                      }, {
-                        "type" : "null"
-                      } ]
-                    }
-                  },
-                  "required" : [ "columns" ],
-                  "type" : "object"
-                }
-              }
-            },
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "summary" : "POST /api/transform/extract-columns",
-        "tags" : [ "/api/transform" ]
-      }
-    },
-    "/api/transform/is-simple-query" : {
-      "post" : {
-        "description" : "Checks if a native SQL query string is simple enough for automatic checkpoint insertion",
-        "operationId" : "post-api-transform-is-simple-query",
-        "parameters" : [ ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "properties" : {
-                  "query" : {
-                    "type" : "string"
-                  }
-                },
-                "required" : [ "query" ],
-                "type" : "object"
-              }
-            }
-          }
-        },
-        "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "properties" : {
-                    "is_simple" : {
-                      "type" : "boolean"
-                    },
-                    "reason" : {
-                      "type" : "string"
-                    }
-                  },
-                  "required" : [ "is_simple" ],
-                  "type" : "object"
-                }
-              }
-            },
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "summary" : "POST /api/transform/is-simple-query",
-        "tags" : [ "/api/transform" ]
-      }
-    },
     "/api/transform/run" : {
       "get" : {
         "description" : "Get transform runs based on a set of filter params.",
@@ -47090,6 +46387,28 @@
                       "items" : {
                         "additionalProperties" : false,
                         "properties" : {
+                          "checkpoint_filter_field_id" : {
+                            "oneOf" : [ {
+                              "minimum" : 1,
+                              "type" : "integer"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "checkpoint_hi_value" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "checkpoint_lo_value" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
                           "end_time" : {
                             "oneOf" : [ { }, {
                               "type" : "null"
@@ -47250,6 +46569,28 @@
                 "schema" : {
                   "additionalProperties" : false,
                   "properties" : {
+                    "checkpoint_filter_field_id" : {
+                      "oneOf" : [ {
+                        "minimum" : 1,
+                        "type" : "integer"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "checkpoint_hi_value" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "checkpoint_lo_value" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
                     "end_time" : {
                       "oneOf" : [ { }, {
                         "type" : "null"
@@ -47517,10 +46858,39 @@
                       "minimum" : 1,
                       "type" : "integer"
                     },
+                    "last_checkpoint_value" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
                     "last_run" : {
                       "oneOf" : [ {
                         "additionalProperties" : false,
                         "properties" : {
+                          "checkpoint_filter_field_id" : {
+                            "oneOf" : [ {
+                              "minimum" : 1,
+                              "type" : "integer"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "checkpoint_hi_value" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "checkpoint_lo_value" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
                           "end_time" : {
                             "oneOf" : [ { }, {
                               "type" : "null"
@@ -47765,7 +47135,7 @@
                     } ]
                   },
                   "run_trigger" : {
-                    "$ref" : "#/components/schemas/metabase.transforms-rest.api.transform.run-trigger"
+                    "$ref" : "#/components/schemas/metabase.transforms.api.transform.run-trigger"
                   },
                   "source" : {
                     "$ref" : "#/components/schemas/metabase.transforms.schema.transform-source"
@@ -47883,10 +47253,39 @@
                       "minimum" : 1,
                       "type" : "integer"
                     },
+                    "last_checkpoint_value" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
                     "last_run" : {
                       "oneOf" : [ {
                         "additionalProperties" : false,
                         "properties" : {
+                          "checkpoint_filter_field_id" : {
+                            "oneOf" : [ {
+                              "minimum" : 1,
+                              "type" : "integer"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "checkpoint_hi_value" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "checkpoint_lo_value" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
                           "end_time" : {
                             "oneOf" : [ { }, {
                               "type" : "null"
@@ -48225,10 +47624,39 @@
                         "minimum" : 1,
                         "type" : "integer"
                       },
+                      "last_checkpoint_value" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
                       "last_run" : {
                         "oneOf" : [ {
                           "additionalProperties" : false,
                           "properties" : {
+                            "checkpoint_filter_field_id" : {
+                              "oneOf" : [ {
+                                "minimum" : 1,
+                                "type" : "integer"
+                              }, {
+                                "type" : "null"
+                              } ]
+                            },
+                            "checkpoint_hi_value" : {
+                              "oneOf" : [ {
+                                "type" : "string"
+                              }, {
+                                "type" : "null"
+                              } ]
+                            },
+                            "checkpoint_lo_value" : {
+                              "oneOf" : [ {
+                                "type" : "string"
+                              }, {
+                                "type" : "null"
+                              } ]
+                            },
                             "end_time" : {
                               "oneOf" : [ { }, {
                                 "type" : "null"
@@ -48422,162 +47850,6 @@
         "tags" : [ "/api/transform" ]
       }
     },
-    "/api/transform/{id}/inspect" : {
-      "get" : {
-        "description" : "Phase 1: Discover available lenses for a transform.\n   Returns structural metadata and available lens types.",
-        "operationId" : "get-api-transform-id-inspect",
-        "parameters" : [ {
-          "description" : "value must be an integer greater than zero.",
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "minimum" : 1,
-            "type" : "integer"
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase.transforms-inspector.schema.discovery-response"
-                }
-              }
-            },
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "summary" : "GET /api/transform/{id}/inspect",
-        "tags" : [ "/api/transform" ]
-      }
-    },
-    "/api/transform/{id}/inspect/{lens-id}" : {
-      "get" : {
-        "description" : "Phase 2: Get full lens contents for a transform.\n   Returns sections, cards with dataset_query, and trigger definitions.\n   Accepts optional params for drill lenses as query params.",
-        "operationId" : "get-api-transform-id-inspect-lens-id",
-        "parameters" : [ {
-          "description" : "value must be an integer greater than zero.",
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "minimum" : 1,
-            "type" : "integer"
-          }
-        }, {
-          "in" : "path",
-          "name" : "lens-id",
-          "required" : true,
-          "schema" : {
-            "minLength" : 1,
-            "type" : "string"
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase.transforms-inspector.schema.lens"
-                }
-              }
-            },
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "summary" : "GET /api/transform/{id}/inspect/{lens-id}",
-        "tags" : [ "/api/transform" ]
-      }
-    },
-    "/api/transform/{id}/inspect/{lens-id}/query" : {
-      "post" : {
-        "description" : "Execute a query in the context of a transform inspector lens.",
-        "operationId" : "post-api-transform-id-inspect-lens-id-query",
-        "parameters" : [ {
-          "description" : "value must be an integer greater than zero.",
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "minimum" : 1,
-            "type" : "integer"
-          }
-        }, {
-          "in" : "path",
-          "name" : "lens-id",
-          "required" : true,
-          "schema" : {
-            "minLength" : 1,
-            "type" : "string"
-          }
-        } ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "properties" : {
-                  "lens_params" : {
-                    "oneOf" : [ {
-                      "additionalProperties" : { },
-                      "type" : "object"
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "query" : {
-                    "properties" : {
-                      "database" : {
-                        "oneOf" : [ {
-                          "type" : "integer"
-                        }, {
-                          "type" : "null"
-                        } ]
-                      }
-                    },
-                    "type" : "object"
-                  }
-                },
-                "required" : [ "query" ],
-                "type" : "object"
-              }
-            }
-          }
-        },
-        "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase.query-processor.schema.query-result"
-                }
-              }
-            },
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "summary" : "POST /api/transform/{id}/inspect/{lens-id}/query",
-        "tags" : [ "/api/transform" ]
-      }
-    },
     "/api/transform/{id}/merge-history" : {
       "get" : {
         "description" : "Get merge history for a transform. Returns all merge events that affected this transform,\n   ordered by created_at descending (newest first).",
@@ -48648,6 +47920,42 @@
           }
         },
         "summary" : "GET /api/transform/{id}/merge-history",
+        "tags" : [ "/api/transform" ]
+      }
+    },
+    "/api/transform/{id}/reset-checkpoint" : {
+      "post" : {
+        "description" : "Reset the checkpoint for an incremental transform.",
+        "operationId" : "post-api-transform-id-reset-checkpoint",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/transform/{id}/reset-checkpoint",
         "tags" : [ "/api/transform" ]
       }
     },
@@ -48948,6 +48256,7 @@
                   "source" : {
                     "default" : "admin",
                     "oneOf" : [ {
+                      "minLength" : 1,
                       "type" : "string"
                     }, {
                       "type" : "null"
@@ -48965,7 +48274,7 @@
                   "user_group_memberships" : {
                     "oneOf" : [ {
                       "items" : {
-                        "$ref" : "#/components/schemas/metabase.users.schema.user-group-membership"
+                        "$ref" : "#/components/schemas/metabase.users-rest.api.user-group-membership"
                       },
                       "type" : "array"
                     }, {
@@ -49332,7 +48641,7 @@
                   "user_group_memberships" : {
                     "oneOf" : [ {
                       "items" : {
-                        "$ref" : "#/components/schemas/metabase.users.schema.user-group-membership"
+                        "$ref" : "#/components/schemas/metabase.users-rest.api.user-group-membership"
                       },
                       "type" : "array"
                     }, {
