@@ -3,7 +3,7 @@
   (:require
    [buddy.core.codecs :as codecs]
    [buddy.core.mac :as mac]
-   [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
+   [metabase-enterprise.metabot-v3.agent.core :as agent]
    [metabase-enterprise.slackbot.api :as slackbot]
    [metabase-enterprise.slackbot.client :as slackbot.client]
    [metabase-enterprise.slackbot.config :as slackbot.config]
@@ -174,24 +174,23 @@
                                                                :file-id     file-id})
                                       {:url (str "https://files.slack.com/files/" filename)
                                        :id  file-id}))
-       ;; Mock the streaming client - returns AISDK-formatted lines
-       metabot-v3.client/streaming-request-with-callback
+       ;; Mock the agent loop - returns a reducible of parts
+       agent/run-agent-loop
        (fn [opts]
          (swap! ai-request-calls conj opts)
-         ;; Generate AISDK-format lines from text and data-parts
-         (let [text-lines   (when ai-text [(str "0:" (json/encode ai-text))])
-               data-lines   (map #(str "2:" (json/encode %)) data-parts)
-               finish-line  (str "d:" (json/encode {:finishReason "stop"
-                                                    :usage        {"model" {:prompt 10 :completion 5}}}))
-               mock-lines   (vec (concat text-lines data-lines [finish-line]))]
-           ;; Call on-line callback for each line if provided
-           (when-let [on-line (:on-line opts)]
-             (doseq [line mock-lines]
-               (on-line line)))
-           ;; Call on-complete callback with collected lines
-           (when-let [on-complete (:on-complete opts)]
-             (on-complete mock-lines))
-           mock-lines))
+         ;; Return a reducible that emits parts matching the agent loop output format
+         (reify clojure.lang.IReduceInit
+           (reduce [_ rf init]
+             (cond-> init
+               ai-text
+               (rf {:type :text :text ai-text})
+
+               (seq data-parts)
+               (as-> r (reduce (fn [acc dp]
+                                 (rf acc {:type      :data
+                                          :data-type (:type dp)
+                                          :data      (:value dp dp)}))
+                               r data-parts))))))
        slackbot.query/generate-card-output (fn [card-id]
                                              (swap! generate-card-output-calls conj {:card-id card-id})
                                              {:type :image :content fake-png-bytes :card-name (str "Card " card-id)})
