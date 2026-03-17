@@ -4,11 +4,11 @@
   Renders from the structured content JSON that TipTap produces, with an allowlist of
   known node types and mark types. Anything not on the allowlist is stripped or rendered
   as plain text. Nodes are first converted to Hiccup data structures, then compiled to
-  HTML via `hiccup.core/html`."
+  HTML via `hiccup2.core/html`."
   (:require
    [clojure.string :as str]
-   [hiccup.core :as hiccup]
-   [hiccup.core :refer [h]]
+   [hiccup.util :as hiccup.util]
+   [hiccup2.core :as h2]
    [metabase.system.core :as system]
    [metabase.util.log :as log])
   (:import
@@ -83,7 +83,8 @@
                          (str model " " entityId))]
     (if (and href (relative-path? href))
       [:a {:href (str (system/site-url) href)} display-text]
-      (h display-text))))
+      ;; Return escaped text as a raw string so hiccup won't double-escape it
+      (hiccup.util/raw-string (hiccup.util/escape-html display-text)))))
 
 (defn node->hiccup
   "Convert a single TipTap JSON node to a Hiccup data structure. Unknown node types return nil.
@@ -101,11 +102,11 @@
       "bulletList"     (into [:ul] (children->hiccup content))
       "orderedList"    (into [:ol] (children->hiccup content))
       "listItem"       (into [:li] (children->hiccup content))
-      "codeBlock"      [:pre [:code (h (apply str (map :text content)))]]
+      "codeBlock"      [:pre [:code (apply str (map :text content))]]
       "blockquote"     (into [:blockquote] (children->hiccup content))
       "horizontalRule" [:hr]
       "hardBreak"      [:br]
-      "text"           (wrap-marks (h text) (sanitize-marks marks))
+      "text"           (wrap-marks text (sanitize-marks marks))
       "smartLink"      (smart-link->hiccup node))))
 
 (defn content->html
@@ -116,5 +117,5 @@
     (let [hiccup (node->hiccup content)]
       (if (sequential? (first hiccup))
         ;; doc node returns a seq of hiccup forms
-        (apply str (map #(hiccup/html %) hiccup))
-        (hiccup/html hiccup)))))
+        (apply str (map #(str (h2/html %)) hiccup))
+        (str (h2/html hiccup))))))
