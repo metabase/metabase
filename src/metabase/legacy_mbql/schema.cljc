@@ -1536,20 +1536,30 @@
     [:type    [:= {:decode/normalize helpers/normalize-keyword} :card]]
     [:card-id ::lib.schema.id/card]]])
 
+(mr/def ::TemplateTag.SourceFilter
+  "Schema for a single source-filter applied to a table template tag."
+  [:map
+   [:field-id ::lib.schema.id/field]
+   [:op       (into [:enum] lib.schema.template-tag/allowed-source-filter-ops)]
+   [:value    :any]])
+
 ;; Example:
 ;;
 ;;    {:id           "fc5e14d9-7d14-67af-66b2-b2a6e25afeaf"
 ;;     :name         "#1635"
 ;;     :display-name "#1635"
 ;;     :type         :table
-;;     :table-id     2}
+;;     :table-id     2
+;;     :source-filters [{:op :> :field-id 3 :value 500}]}
 (mr/def ::TemplateTag.SourceTable
   "Schema for a source query template tag."
   [:merge
    ::TemplateTag.Common
    [:map
     [:type                  [:= {:decode/normalize helpers/normalize-keyword} :table]]
-    [:table-id              ::lib.schema.id/table]]])
+    [:table-id              ::lib.schema.id/table]
+    [:emit-alias            {:optional true} :boolean]
+    [:source-filters        {:optional true} [:sequential [:ref ::TemplateTag.SourceFilter]]]]])
 
 (mr/def ::TemplateTag.Value.Common
   "Stuff shared between the Field filter and raw value template tag schemas."

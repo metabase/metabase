@@ -4,7 +4,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
-   [metabase.driver :as driver]
    [metabase.events.core :as events]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
@@ -12,7 +11,6 @@
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
    [metabase.server.core :as server]
-   [metabase.sql-tools.core :as sql-tools]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms-inspector.core :as inspector]
    [metabase.transforms-inspector.schema :as inspector.schema]
@@ -74,7 +72,10 @@
    [:message [:maybe :string]]
    [:user_id [:maybe pos-int?]]
    [:transform_name {:optional true} [:maybe :string]]
-   [:transform_entity_id {:optional true} [:maybe :string]]])
+   [:transform_entity_id {:optional true} [:maybe :string]]
+   [:checkpoint_filter_field_id {:optional true} [:maybe pos-int?]]
+   [:checkpoint_lo_value {:optional true} [:maybe :string]]
+   [:checkpoint_hi_value {:optional true} [:maybe :string]]])
 
 (def ^:private TransformResponse
   [:map {:closed true}
@@ -100,7 +101,8 @@
    [:table {:optional true} [:maybe :map]]
    [:owner_user_id {:optional true} [:maybe pos-int?]]
    [:owner_email {:optional true} [:maybe :string]]
-   [:owner {:optional true} [:maybe OwnerResponse]]])
+   [:owner {:optional true} [:maybe OwnerResponse]]
+   [:last_checkpoint_value {:optional true} [:maybe :string]]])
 
 (def ^:private TransformRunResponse
   [:map {:closed true}
@@ -115,6 +117,9 @@
    [:user_id [:maybe pos-int?]]
    [:transform_name {:optional true} [:maybe :string]]
    [:transform_entity_id {:optional true} [:maybe :string]]
+   [:checkpoint_filter_field_id {:optional true} [:maybe pos-int?]]
+   [:checkpoint_lo_value {:optional true} [:maybe :string]]
+   [:checkpoint_hi_value {:optional true} [:maybe :string]]
    ;; Transform can have id/name when exists, or be nil when deleted
    [:transform {:optional true} [:maybe [:map {:closed true}
                                          [:id {:optional true} pos-int?]
@@ -297,6 +302,13 @@
       (transforms.core/cancel-run! (:id run))))
   nil)
 
+(api.macros/defendpoint :post "/:id/reset-checkpoint" :- :nil
+  "Reset the stored checkpoint for an incremental transform."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (api/write-check :model/Transform id)
+  (t2/update! :model/Transform id {:last_checkpoint_value nil})
+  nil)
+
 (defn run-transform!
   "Run a transform. Returns a 202 response with run_id.
    The transform must already be fetched and validated."
@@ -325,49 +337,6 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (run-transform! (api/write-check :model/Transform id)))
-
-(defn- simple-native-query?
-  "Checks if a native SQL query string is simple enough for automatic checkpoint insertion.
-  Delegates to sql-tools which dispatches to the configured parser backend (macaw or sqlglot)."
-  [sql-string]
-  (sql-tools/simple-query? sql-string))
-
-(api.macros/defendpoint :post "/is-simple-query" :- [:map
-                                                     [:is_simple :boolean]
-                                                     [:reason {:optional true} :string]]
-  "Checks if a native SQL query string is simple enough for automatic checkpoint insertion"
-  [_route-params
-   _query-params
-   {:keys [query]} :- [:map [:query string?]]]
-  (api/check-superuser)
-  (simple-native-query? query))
-
-(api.macros/defendpoint :post "/extract-columns"
-  :- [:map [:columns [:maybe [:sequential :string]]]]
-  "Extract column names suitable for incremental transform checkpoint filtering.
-
-  This endpoint is specifically for populating the checkpoint column dropdown in
-  incremental transforms. It only returns columns with types supported for checkpoint
-  filtering: temporal (timestamp/tz) and numeric (int/float) types.
-
-  Text, boolean, and other unsupported column types are filtered out.
-
-  The query is compiled to native SQL using [[qp.compile/compile-with-inline-parameters]],
-  which handles parameterized queries with template tags. Then extracts column names
-  and types using PreparedStatement metadata.
-
-  Returns a map with a :columns key containing a vector of column names (strings).
-  If extraction fails, returns nil for :columns."
-  [_route-params
-   _query-params
-   {:keys [query]} :- [:map
-                       [:query ::qp.schema/any-query]]]
-  (api/check-superuser)
-  (let [database-id (:database query)
-        database    (api/check-404 (t2/select-one :model/Database :id database-id))
-        driver-name (driver/the-initialized-driver (:engine database))
-        columns     (transforms.core/extract-incremental-filter-columns-from-query driver-name database-id query)]
-    {:columns columns}))
 
 ;;; -------------------------------------------------- Inspector API --------------------------------------------------
 

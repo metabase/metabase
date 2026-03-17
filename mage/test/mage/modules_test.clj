@@ -142,12 +142,12 @@
         (is (= "master/release branch" (:reason result)))))))
 
 ;;; =============================================================================
-;;; Priority 9: Driver deps affected (self-hosted only)
+;;; Priority 10: Driver deps affected (self-hosted only)
 ;;; =============================================================================
 
 (deftest driver-deps-affected-runs-self-hosted-drivers
   (testing "Self-hosted drivers run when driver module is affected"
-    ;; H2/Postgres hit priority 2 first, others hit priority 8
+    ;; H2/Postgres hit priority 2 first, others hit priority 10
     (doseq [driver [:mysql :mongo :oracle :sqlserver]]
       (let [result (mage.modules/driver-decision driver
                                                  (make-ctx {})
@@ -159,7 +159,7 @@
         (is (= "driver module affected by shared code changes" (:reason result)))))))
 
 ;;; =============================================================================
-;;; Priority 5-8: Cloud driver special rules
+;;; Priority 5-9: Cloud driver special rules
 ;;; =============================================================================
 
 (deftest cloud-driver-with-label-runs
@@ -199,6 +199,18 @@
         (is (= "Module updated which explicitly triggers cloud drivers"
                (:reason result)))))))
 
+(deftest cloud-driver-runs-when-driver-deps-affected
+  (testing "Cloud driver runs when driver deps are affected (e.g., deps.edn changed)"
+    (doseq [driver [:athena :bigquery :databricks :redshift :snowflake]]
+      (let [result (mage.modules/driver-decision driver
+                                                 (make-ctx {})
+                                                 true  ; driver-deps-affected
+                                                 #{}   ; quarantined
+                                                 #{})] ; updated
+        (is (true? (:should-run result))
+            (str driver " should run when driver deps affected"))
+        (is (= "driver module affected by shared code changes" (:reason result)))))))
+
 (deftest cloud-driver-without-changes-skips
   (testing "Cloud driver skips when no relevant changes"
     (doseq [driver [:athena :bigquery :databricks :redshift :snowflake]]
@@ -212,7 +224,7 @@
         (is (= "no relevant changes for cloud driver" (:reason result)))))))
 
 ;;; =============================================================================
-;;; Priority 10: Self-hosted drivers
+;;; Priority 11: Self-hosted drivers
 ;;; =============================================================================
 
 (deftest self-hosted-driver-not-affected-skips
@@ -269,10 +281,20 @@
             If this test fails, you've likely connected a module to driver that shouldn't trigger driver tests.
             Add it to driver-affecting-overrides if it shouldn't trigger driver tests."
     (let [modules-triggering-drivers (modules-affecting-drivers)
-          ;; This count was 37 as of 2026-02-06. Update this number ONLY if you
-          ;; intentionally want more modules to trigger driver tests.
-          ;; 2-10-26 Bumping to 38 for sql-tools + sql-parsing
-          max-allowed-count 38]
+          ;; This is a ratchet: it prevents accidental expansion of which modules
+          ;; trigger driver tests. When a module transitively depends on driver code,
+          ;; changes to that module cause ALL driver tests to run in CI, which is
+          ;; expensive. If this test fails, either:
+          ;;   1. Your module legitimately affects drivers -- bump max-allowed-count
+          ;;   2. Your module is infrastructure/gating, not driver logic
+          ;;      -- add it to driver-affecting-overrides in mage.modules
+          ;;
+          ;; History:
+          ;; 2026-02-06 Initial count: 37
+          ;; 2026-02-10 Bumped to 38 for sql-tools + sql-parsing
+          ;; 2026-03-10 Bumped to 40 for lib-metric + metrics (Metrics Explorer #68961)
+          ;;            Added premium-features to driver-affecting-overrides (#69561)
+          max-allowed-count 40]
       (is (<= (count modules-triggering-drivers) max-allowed-count)
           (format "Too many modules trigger driver tests! Expected <= %d, got %d.
                    Modules triggering driver tests: %s

@@ -599,6 +599,7 @@ interface PublicSettings {
   "snowplow-url": string;
   "start-of-week": DayOfWeekId;
   "token-features": TokenFeatures;
+  "tracing-enabled": boolean;
   "transforms-enabled": boolean;
   version: Version;
   "version-info-last-checked": string | null;

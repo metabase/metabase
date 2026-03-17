@@ -35,7 +35,7 @@ Currently, Metabase can create transforms on the following databases:
 
 You can't create transforms on databases that have [Database routing](../../permissions/database-routing.md) enabled, or on Metabase's Sample Database.
 
-Transforms will create tables in your database, so the database user you use for your connection must have appropriate privileges. See [Database users, roles, and privileges](../../databases/users-roles-privileges.md).
+Transforms will create tables in your database, so the database user you use for your connection must have appropriate privileges. See [Database users, roles, and privileges](../../databases/users-roles-privileges.md). We suggest using a [Writable connection](../../databases/writable-connection.md) option for your database.
 
 ## Types of transforms
 
@@ -48,11 +48,10 @@ Metabase supports two types of transforms: query-based transforms and Python tra
 
 If you are running Metabase Open Source/Starter, Admins (and only Admins) can see and run transforms.
 
-Metabase Pro/Enterprise comes with additional permission controls for transforms, see [Transform permissions](../../permissions/data.md).
+Metabase Pro/Enterprise comes with additional permission controls for transforms:
 
-To **see** the list of transforms on your instance, people need to be able to access Data Studio, so they need to be either an Admin or a member of the special [Data Analyst group](../../people-and-groups/managing.md).
-
-To **execute** transforms on a database, people additionally need to have the [Transform permissions](../../permissions/data.md) for that database.
+- To **see** the list of transforms on your instance, people need to be able to access Data Studio, so they need to be either an Admin or a member of the special [Data Analyst group](../../people-and-groups/managing.md).
+- To **execute** transforms on a database, people additionally need to have the [Transform permissions](../../permissions/data.md) for that database.
 
 ## See all transforms
 

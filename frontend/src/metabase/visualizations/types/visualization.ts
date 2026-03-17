@@ -12,6 +12,7 @@ import type {
   ClickObject,
   QueryClickActionsMode,
 } from "metabase/visualizations/types";
+import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
@@ -23,6 +24,7 @@ import type {
   DatasetData,
   RawSeries,
   RowValue,
+  RowValues,
   Series,
   SeriesSettings,
   SingleSeries,
@@ -55,10 +57,15 @@ export interface Padding {
   right: number;
 }
 
-export type Formatter = (value: unknown, options?: OptionsType) => string;
+export type Formatter = (
+  value: RowValue,
+  options?: OptionsType,
+) => string | null;
 export type TableCellFormatter = (value: RowValue) => ReactNode;
 
 export type ColorGetter = (colorName: string) => string;
+
+export type Extent = [number, number];
 
 export interface RenderingContext {
   getColor: ColorGetter;
@@ -368,7 +375,6 @@ export type VisualizationSettingDefinition<
   ) => string;
   persistDefault?: boolean;
   inline?: boolean;
-  props?: Partial<TProps>;
   getProps?: (
     object: T,
     vizSettings: T extends DatasetColumn
@@ -393,8 +399,9 @@ export type CompleteVisualizationSettingDefinition<
   T = unknown,
   TValue = unknown,
   TProps extends Record<string, unknown> = Record<string, unknown>,
-> = VisualizationSettingDefinition<T, TValue, TProps> & {
+> = Omit<VisualizationSettingDefinition<T, TValue, TProps>, "getProps"> & {
   id: string;
+  props: Partial<TProps>;
 };
 
 export type DatasetColumnSettingDefinition<
@@ -435,6 +442,7 @@ export type VisualizationSettingsDefinitions<
   color?: SingleSeriesSettingDefinition<Value, Props>;
   column?: DatasetColumnSettingDefinition<Value, Props>;
   column_settings?: DatasetColumnSettingDefinition<Value, Props>;
+  column_title?: DatasetColumnSettingDefinition<Value, Props>;
   currency?: DatasetColumnSettingDefinition<Value, Props>;
   currency_in_header?: DatasetColumnSettingDefinition<Value, Props>;
   currency_style?: DatasetColumnSettingDefinition<Value, Props>;
@@ -619,4 +627,12 @@ export type VisualizationDefinition = {
   ) => void | never;
   isLiveResizable?: (series: Series) => boolean;
   onDisplayUpdate?: (settings: VisualizationSettings) => VisualizationSettings;
+};
+
+export type PivotedRowValues = RowValues & {
+  _dimension?: Lib.ClickObjectDimension; // present in pivoted data
+};
+
+export type PivotedDatasetColumn = DatasetColumn & {
+  _dimension?: Lib.ClickObjectDimension; // present in pivoted data
 };
