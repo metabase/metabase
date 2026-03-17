@@ -193,13 +193,11 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
         <metabase-dashboard dashboard-id="${dashboard_id}" drills="false" />
         `);
 
-        cy.wait(5000);
-
         H.getSimpleEmbedIframeContent()
           .findAllByText("37.65")
           .first()
           .should("be.visible")
-          .click();
+          .click({ force: true });
         H.getSimpleEmbedIframeContent()
           .findByText(/Filter by this value/)
           .should("not.exist");
@@ -332,12 +330,10 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
           .findByTestId("table-root")
           .should("have.attr", "data-rows-count", "5");
 
-        cy.wait(5000);
-
         H.getSimpleEmbedIframeContent()
           .findByText("37.65")
           .should("be.visible")
-          .click();
+          .click({ force: true });
 
         H.getSimpleEmbedIframeContent()
           .findByText(/Filter by this value/)
