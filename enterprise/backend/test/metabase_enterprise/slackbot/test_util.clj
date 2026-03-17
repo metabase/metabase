@@ -181,17 +181,16 @@
          ;; Return a reducible that emits parts matching the agent loop output format
          (reify clojure.lang.IReduceInit
            (reduce [_ rf init]
-             (let [result (cond-> init
-                            ai-text
-                            (rf {:type :text :text ai-text})
+             (cond-> init
+               ai-text
+               (rf {:type :text :text ai-text})
 
-                            (seq data-parts)
-                            (as-> r (reduce (fn [acc dp]
-                                              (rf acc {:type      :data
-                                                       :data-type (:type dp)
-                                                       :data      (:value dp dp)}))
-                                            r data-parts)))]
-               (rf result)))))
+               (seq data-parts)
+               (as-> r (reduce (fn [acc dp]
+                                 (rf acc {:type      :data
+                                          :data-type (:type dp)
+                                          :data      (:value dp dp)}))
+                               r data-parts))))))
        slackbot.query/generate-card-output (fn [card-id]
                                              (swap! generate-card-output-calls conj {:card-id card-id})
                                              {:type :image :content fake-png-bytes :card-name (str "Card " card-id)})
