@@ -2083,8 +2083,8 @@
 
 (define-reversible-migration DropMedallionNamesForDataLayer
   (batched-data-layer-update!
-   ["hidden" "final"]
+   ["hidden" "internal" "final"]
    [:case [:= :data_layer "copper"] "hidden" :else "final"])
   (batched-data-layer-update!
-   ["copper" "bronze"]
+   ["copper" "bronze" "silver" "gold"]
    [:case [:= :data_layer "hidden"] "copper" :else "bronze"]))
