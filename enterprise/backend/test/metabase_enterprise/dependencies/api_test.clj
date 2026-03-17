@@ -132,6 +132,15 @@
   [card-id]
   (dependencies.findings/upsert-analysis! (t2/select-one :model/Card :id card-id)))
 
+(use-fixtures :each
+  (fn fresh-dependency-async-executor-fixture [t]
+    (try
+      (t)
+      (finally
+        ;; Drain the single-threaded async executor to ensure all pending dependency
+        ;; work completes before model cleanup deletes cards, avoiding lock timeouts.
+        @(dependencies.async/submit! (fn [] nil))))))
+
 (deftest check-card-test
   (testing "POST /api/ee/dependencies/check-card"
     (mt/with-premium-features #{:dependencies}
@@ -2199,12 +2208,7 @@
        (mt/with-temp [:model/User user# {:email "test@test.com"}]
          (let [~user-binding user#
                ~base-card-binding (card/create-card! (basic-card "Base") user#)]
-           (try
-             ~@body
-             (finally
-               ;; Drain the single-threaded async executor to ensure all pending dependency
-               ;; work completes before model cleanup deletes cards, avoiding lock timeouts.
-               @(dependencies.async/submit! (fn [] nil)))))))))
+           ~@body)))))
 
 (deftest ^:sequential dependents-query-filter-test
   (testing "GET /api/ee/dependencies/graph/dependents with query parameter"
@@ -2695,7 +2699,7 @@
                     names (mapv #(get-in % [:data :name]) response)]
                 (is (= ["B Dependent - countsorttest" "A Dependent - countsorttest"] names))))))))))
 
-(deftest ^:parallel broken-requires-id-and-type-test
+(deftest broken-requires-id-and-type-test
   (testing "GET /api/ee/dependencies/graph/broken - requires id and type parameters"
     (mt/with-premium-features #{:dependencies}
       (testing "missing both id and type returns 400"
