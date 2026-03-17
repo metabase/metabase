@@ -31,7 +31,7 @@
 (mu/defn ^{:tool-name "search"} search-tool
   "Search for tables, models, metrics, dashboards, and saved questions."
   [{:keys [semantic_queries keyword_queries entity_types]} :- [:map {:closed true}
-                                                               [:semantic_queries [:sequential :string]]
+                                                               [:semantic_queries {:feature :semantic-search} [:sequential :string]]
                                                                [:keyword_queries [:sequential :string]]
                                                                [:entity_types {:optional true}
                                                                 [:maybe [:sequential [:enum "table" "model" "metric" "dashboard" "question"]]]]]]
