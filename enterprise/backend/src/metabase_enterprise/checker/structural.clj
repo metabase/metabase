@@ -257,14 +257,99 @@
 ;;; Validation
 ;;; ===========================================================================
 
+(defn- levenshtein
+  "Calculate Levenshtein distance between two strings."
+  [^String s1 ^String s2]
+  (let [len1 (count s1)
+        len2 (count s2)]
+    (cond
+      (zero? len1) len2
+      (zero? len2) len1
+      :else
+      (let [matrix (make-array Long/TYPE (inc len1) (inc len2))]
+        (dotimes [i (inc len1)] (aset matrix i 0 (long i)))
+        (dotimes [j (inc len2)] (aset matrix 0 j (long j)))
+        (dotimes [i len1]
+          (dotimes [j len2]
+            (let [cost (if (= (.charAt s1 i) (.charAt s2 j)) 0 1)]
+              (aset matrix (inc i) (inc j)
+                    (long (min (inc (aget matrix i (inc j)))
+                               (inc (aget matrix (inc i) j))
+                               (+ (aget matrix i j) cost)))))))
+        (aget matrix len1 len2)))))
+
+(defn- find-similar-keys
+  "Find keys in actual-keys that are similar to target-key."
+  [target-key actual-keys & {:keys [max-distance] :or {max-distance 3}}]
+  (let [target-str (name target-key)]
+    (->> actual-keys
+         (map (fn [k]
+                (let [k-str (name k)
+                      dist (levenshtein target-str k-str)]
+                  {:key k :distance dist})))
+         (filter #(<= (:distance %) max-distance))
+         (sort-by :distance)
+         (map :key))))
+
+(defn- schema-required-keys
+  "Extract required keys from a Malli map schema."
+  [schema]
+  (when (and (vector? schema) (= :map (first schema)))
+    (->> (rest schema)
+         (filter vector?)
+         (remove #(and (map? (second %)) (:optional (second %))))
+         (map first)
+         set)))
+
+(defn- schema-optional-keys
+  "Extract optional keys from a Malli map schema."
+  [schema]
+  (when (and (vector? schema) (= :map (first schema)))
+    (->> (rest schema)
+         (filter vector?)
+         (filter #(and (map? (second %)) (:optional (second %))))
+         (map first)
+         set)))
+
+(defn- diagnose-errors
+  "Analyze validation errors and provide helpful diagnostics.
+   Only reports issues for actual validation failures, not extra keys."
+  [schema data errors]
+  (let [required (schema-required-keys schema)
+        optional (schema-optional-keys schema)
+        all-schema-keys (into (or required #{}) optional)
+        actual-keys (when (map? data) (set (keys data)))
+        missing-required (when (and required actual-keys)
+                           (clojure.set/difference required actual-keys))
+        extra-keys (when (and all-schema-keys actual-keys)
+                     (clojure.set/difference actual-keys all-schema-keys))
+        diagnostics (atom [])]
+    ;; Check for typos in missing required keys
+    (doseq [missing missing-required]
+      (let [similar (find-similar-keys missing extra-keys)]
+        (if (seq similar)
+          (swap! diagnostics conj
+                 {:type :likely-typo
+                  :missing missing
+                  :found (first similar)
+                  :message (str "Missing required key '" (name missing) "'"
+                                " - found '" (name (first similar)) "' which may be a typo")})
+          (swap! diagnostics conj
+                 {:type :missing-required
+                  :key missing
+                  :message (str "Missing required key '" (name missing) "'")}))))
+    {:raw-errors errors
+     :diagnostics @diagnostics}))
+
 (defn validate
   "Validate data against a schema. Returns nil if valid, error map if invalid."
   [schema data]
   #_{:clj-kondo/ignore [:discouraged-var]}
   (when-not (m/validate schema data)
     #_{:clj-kondo/ignore [:discouraged-var]}
-    {:errors (me/humanize (m/explain schema data))
-     :value data}))
+    (let [errors (me/humanize (m/explain schema data))]
+      (merge {:errors errors}
+             (diagnose-errors schema data errors)))))
 
 (defn validate-yaml-file
   "Validate a YAML file against its schema. Returns nil if valid, error map if invalid."
@@ -352,6 +437,22 @@
 ;;; CLI / REPL Helpers
 ;;; ===========================================================================
 
+(defn- format-validation-error
+  "Format a validation error for human-readable output."
+  [{:keys [file type error diagnostics raw-errors]}]
+  (let [lines (atom [(str "\n  " file " (" (name type) ")")])]
+    (if error
+      ;; Parse error or other exception
+      (swap! lines conj (str "    " error))
+      ;; Validation errors with diagnostics
+      (if (seq diagnostics)
+        ;; Show friendly diagnostics
+        (doseq [{:keys [message]} diagnostics]
+          (swap! lines conj (str "    - " message)))
+        ;; Fall back to raw errors if no diagnostics
+        (swap! lines conj (str "    " (pr-str raw-errors)))))
+    (str/join "\n" @lines)))
+
 (defn check
   "Validate all files in export-dir. Prints summary and returns results."
   [export-dir]
@@ -362,11 +463,8 @@
     (println "  Invalid files:" (count invalid))
     (when (seq invalid)
       (println "\nErrors:")
-      (doseq [{:keys [file type errors error]} invalid]
-        (println (str "  " file " (" (name type) ")"))
-        (if error
-          (println (str "    " error))
-          (println (str "    " (pr-str errors))))))
+      (doseq [inv invalid]
+        (println (format-validation-error inv))))
     results))
 
 (defn cli

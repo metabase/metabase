@@ -117,6 +117,64 @@
       (is (some? result) "Should have validation error"))))
 
 ;;; ===========================================================================
+;;; Typo Detection Tests
+;;; ===========================================================================
+
+(deftest typo-detection-test
+  (testing "Detects typo when required key is missing but similar key exists"
+    (let [data {:nname "Test Database"  ; typo: nname instead of name
+                :engine "h2"
+                :serdes/meta [{:id "Test" :model "Database"}]}
+          result (structural/validate structural/Database data)]
+      (is (some? result) "Should have validation error")
+      (is (seq (:diagnostics result)) "Should have diagnostics")
+      (let [diag (first (:diagnostics result))]
+        (is (= :likely-typo (:type diag)) "Should detect as typo")
+        (is (= :name (:missing diag)) "Should identify missing key")
+        (is (= :nname (:found diag)) "Should identify the typo"))))
+
+  (testing "Detects typo with multiple character difference"
+    (let [data {:namee "Test Database"  ; typo: namee instead of name
+                :engine "h2"
+                :serdes/meta [{:id "Test" :model "Database"}]}
+          result (structural/validate structural/Database data)]
+      (is (some? result) "Should have validation error")
+      (is (seq (:diagnostics result)) "Should have diagnostics")
+      (is (= :likely-typo (:type (first (:diagnostics result)))) "Should detect as typo")))
+
+  (testing "Reports missing key without typo suggestion when no similar key"
+    (let [data {:engine "h2"
+                :serdes/meta [{:id "Test" :model "Database"}]}
+          result (structural/validate structural/Database data)]
+      (is (some? result) "Should have validation error")
+      (is (seq (:diagnostics result)) "Should have diagnostics")
+      (let [diag (first (:diagnostics result))]
+        (is (= :missing-required (:type diag)) "Should be missing-required type")
+        (is (= :name (:key diag)) "Should identify the missing key"))))
+
+  (testing "Extra keys are allowed without error"
+    (let [data {:name "Test Database"
+                :engine "h2"
+                :extra_field "should be ignored"
+                :another_extra 123
+                :serdes/meta [{:id "Test" :model "Database"}]}
+          result (structural/validate structural/Database data)]
+      (is (nil? result) "Extra keys should not cause validation error")))
+
+  (testing "Typo message format is correct"
+    (let [data {:nnnname "Test"
+                :engine "h2"
+                :serdes/meta [{:id "Test" :model "Database"}]}
+          result (structural/validate structural/Database data)
+          diag (first (:diagnostics result))]
+      (is (re-find #"Missing required key 'name'" (:message diag))
+          "Message should mention the missing key")
+      (is (re-find #"'nnnname'" (:message diag))
+          "Message should mention the typo found")
+      (is (re-find #"typo" (:message diag))
+          "Message should suggest it may be a typo"))))
+
+;;; ===========================================================================
 ;;; File Validation Tests
 ;;; ===========================================================================
 
