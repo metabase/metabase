@@ -1,6 +1,11 @@
 import type { RowData, Table } from "@tanstack/react-table";
-import { useCallback, useLayoutEffect, useRef, useState } from "react";
-// import { useUpdateEffect } from "react-use";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 
 import type { ColumnOptions } from "../types";
 
@@ -31,11 +36,11 @@ export const useRowHeights = <TData extends RowData, TValue>({
   defaultRowHeight,
   wrappedColumnsOptions,
   measureBodyCellDimensions,
-  // pinnedTopRowsCount,
+  pinnedTopRowsCount,
 }: UseRowHeightsProps<TData, TValue>): UseRowHeightsResult<TData> => {
   const tableRef = useRef<Table<TData>>();
   const virtualGridRef = useRef<VirtualGrid>();
-  const [pinnedTopRowHeights] = useState<number[]>([]);
+  const [pinnedTopRowHeights, setPinnedTopRowHeights] = useState<number[]>([]);
 
   const measureRowHeight = useCallback(
     (rowIndex: number) => {
@@ -136,19 +141,18 @@ export const useRowHeights = <TData extends RowData, TValue>({
       virtualGridRef.current?.measureRow(element),
     [virtualGridRef],
   );
-  //
-  // useUpdateEffect(() => {
-  //   const heights = Array.from({ length: pinnedTopRowsCount }, (_, i) =>
-  //     measureRowHeight(i),
-  //   );
-  //
-  //   setPinnedTopRowHeights((prev) =>
-  //     heights.length === prev.length &&
-  //     heights.every((height, i) => height === prev[i])
-  //       ? prev
-  //       : heights,
-  //   );
-  // }, [pinnedTopRowsCount, measureRowHeight]);
+
+  useEffect(() => {
+    const heights = Array.from({ length: pinnedTopRowsCount }, (_, i) =>
+      measureRowHeight(i),
+    );
+    setPinnedTopRowHeights((prev) =>
+      heights.length === prev.length &&
+      heights.every((height, i) => height === prev[i])
+        ? prev
+        : heights,
+    );
+  }, [pinnedTopRowsCount, measureRowHeight]);
 
   return {
     tableRef,
