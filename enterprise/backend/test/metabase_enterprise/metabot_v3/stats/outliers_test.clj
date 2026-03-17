@@ -16,7 +16,7 @@
       (is (seq result))
       (is (=? {:index 4
                :value 10.0
-               :modified_z_score #(> (Math/abs (double %)) 3.0)}
+               :modified-z-score #(> (Math/abs (double %)) 3.0)}
               (first (filter #(= "E" (:label %)) result)))))))
 
 (deftest ^:parallel find-outliers-no-outliers-returns-empty-test
@@ -53,7 +53,7 @@
       (is (some #(= "D" (:label %)) result)))))
 
 (deftest ^:parallel find-outliers-cumulative-outlier-map-structure-test
-  (testing "cumulative outlier maps include :index :label :value :diff :modified_z_score"
+  (testing "cumulative outlier maps include :index :label :value :diff :modified-z-score"
     (let [values [1.0 2.0 3.0 10.0 12.0]
           labels ["A" "B" "C" "D" "E"]
           result (outliers/find-outliers-cumulative values labels)]
@@ -62,7 +62,7 @@
                :label "D"
                :value 10.0
                :diff 7.0
-               :modified_z_score (=?/approx [3.37 0.01])}
+               :modified-z-score (=?/approx [3.37 0.01])}
               (first result))))))
 
 (deftest ^:parallel find-outliers-cumulative-uniform-increments-test
