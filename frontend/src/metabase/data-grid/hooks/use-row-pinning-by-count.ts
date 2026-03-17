@@ -2,9 +2,9 @@ import type { Row, RowPinningState } from "@tanstack/react-table";
 import type { RefObject } from "react";
 import { useMemo } from "react";
 
-import { HEADER_HEIGHT } from "../constants";
+// import { HEADER_HEIGHT } from "../constants";
 
-import { useItemsLimiter } from "./use-items-limiter";
+// import { useItemsLimiter } from "./use-items-limiter";
 
 type UseRowPinningByCountProps<TData> = {
   top?: number;
@@ -18,20 +18,22 @@ export const useRowPinningByCount = <TData>({
   top = 0,
   data,
   getRowId,
-  gridRef,
-  topRowHeights,
+  // gridRef,
+  // topRowHeights,
 }: UseRowPinningByCountProps<TData>): RowPinningState => {
-  const pinnedRowSizes = useMemo(
-    () => [HEADER_HEIGHT, ...topRowHeights.slice(0, top)],
-    [topRowHeights, top],
-  );
+  // const pinnedRowSizes = useMemo(
+  //   () => [HEADER_HEIGHT, ...topRowHeights.slice(0, top)],
+  //   [topRowHeights, top],
+  // );
 
-  const effectivePinnedRowsCount = useItemsLimiter({
-    containerRef: gridRef,
-    dimension: "height",
-    sizes: pinnedRowSizes,
-    maxRatio: 0.9,
-  });
+  // let effectivePinnedRowsCount = useItemsLimiter({
+  //   containerRef: gridRef,
+  //   dimension: "height",
+  //   sizes: pinnedRowSizes,
+  //   maxRatio: 0.9,
+  // });
+
+  const effectivePinnedRowsCount = top;
 
   return useMemo(() => {
     const actualPinnedCount = Math.max(0, effectivePinnedRowsCount - 1);
