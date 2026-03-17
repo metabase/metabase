@@ -143,7 +143,7 @@
   {:doc "Start a REPL replicating a CI test job environment (Docker + env vars)"
    :examples [["./bin/mage ci-test-repl" "Interactive selection with fzf"]
               ["./bin/mage ci-test-repl app-db/be-tests-mysql" "Start REPL for a specific job"]]
-   :requires [[mage.ci-test-repl :as ci-test-repl]]
+   :requires [[mage.bgrabow.ci-test-repl :as ci-test-repl]]
    :task (let [wj (first *command-line-args*)
                [workflow job] (when wj (clojure.string/split wj (re-pattern "/") 2))]
            (ci-test-repl/ci-test-repl {:workflow workflow :job job}))}

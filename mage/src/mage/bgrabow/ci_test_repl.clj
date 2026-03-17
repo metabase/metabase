@@ -1,4 +1,4 @@
-(ns mage.ci-test-repl
+(ns mage.bgrabow.ci-test-repl
   "Start a REPL that replicates a CI test job environment.
    Parses .github/workflows/ YAML at runtime to extract services, env vars,
    and Docker images, then starts containers and an nREPL matching CI."
