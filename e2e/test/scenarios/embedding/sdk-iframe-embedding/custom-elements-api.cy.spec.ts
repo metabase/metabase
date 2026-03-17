@@ -310,6 +310,12 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
 
         cy.wait("@getCardQuery");
 
+        // Wait for the table to finish rendering before interacting,
+        // as column auto-sizing can cause re-renders that detach elements.
+        H.getSimpleEmbedIframeContent()
+          .findByTestId("table-root")
+          .should("have.attr", "data-rows-count", "5");
+
         H.getSimpleEmbedIframeContent()
           .findByText("37.65")
           .should("be.visible")
