@@ -1,9 +1,10 @@
 import type { RowData, Table } from "@tanstack/react-table";
 import { useCallback, useLayoutEffect, useRef } from "react";
 
-import type { ColumnOptions } from "../types";
+import type { ColumnOptions } from "../../types";
+import type { VirtualGrid } from "../use-virtual-grid";
 
-import type { VirtualGrid } from "./use-virtual-grid";
+import { getRowIndex } from "./utils";
 
 type UseRowHeightsProps<TData extends RowData, TValue> = {
   data: TData[];
@@ -84,14 +85,6 @@ export const useRowHeights = <TData extends RowData, TValue>({
     [defaultRowHeight],
   );
 
-  const getRowIndex = useCallback((element: Element): number | null => {
-    const indexRaw = element.getAttribute("data-dataset-index");
-    if (!indexRaw) {
-      return null;
-    }
-    return parseInt(indexRaw, 10);
-  }, []);
-
   const updateRowHeight = useCallback(
     (rowIndex: number): number => {
       const height = measureRowHeight(rowIndex);
@@ -125,7 +118,7 @@ export const useRowHeights = <TData extends RowData, TValue>({
         remeasureRow(rowIndex);
       }
     },
-    [getRowIndex, remeasureRow],
+    [remeasureRow],
   );
 
   const remountElements = useCallback(() => {
@@ -174,7 +167,7 @@ export const useRowHeights = <TData extends RowData, TValue>({
       watchElement(element, rowIndex);
       remeasureRow(rowIndex);
     },
-    [remeasureRow, unwatchUnmountedElements, getRowIndex, watchElement],
+    [remeasureRow, unwatchUnmountedElements, watchElement],
   );
 
   const remeasureAll = useCallback(() => {
