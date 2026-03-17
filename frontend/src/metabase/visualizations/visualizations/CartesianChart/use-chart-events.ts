@@ -63,6 +63,9 @@ export const useChartEvents = (
   }: VisualizationProps,
 ) => {
   const isBrushing = useRef<boolean>();
+  const hoveredRef = useRef(hovered);
+  hoveredRef.current = hovered;
+
   useTooltipMouseLeave(chartRef, onHoverChange, containerRef);
 
   const onOpenQuestion = useCallback(
@@ -134,9 +137,10 @@ export const useChartEvents = (
           }
 
           const hoveredObject = getSeriesHovered(chartModel, event);
+          const currentHovered = hoveredRef.current;
           const isSameDatumHovered =
-            hoveredObject?.index === hovered?.index &&
-            hoveredObject?.datumIndex === hovered?.datumIndex;
+            hoveredObject?.index === currentHovered?.index &&
+            hoveredObject?.datumIndex === currentHovered?.datumIndex;
 
           if (!isSameDatumHovered) {
             onHoverChange?.(hoveredObject);
@@ -223,7 +227,6 @@ export const useChartEvents = (
       onHoverChange,
       timelineEventsModel,
       chartModel,
-      hovered,
       settings,
       visualizationIsClickable,
       onVisualizationClick,

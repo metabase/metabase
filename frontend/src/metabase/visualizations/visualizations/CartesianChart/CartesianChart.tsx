@@ -1,5 +1,12 @@
 import type { EChartsType } from "echarts/core";
-import { type MouseEvent, useCallback, useMemo, useRef, useState } from "react";
+import {
+  type MouseEvent,
+  memo,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import React from "react";
 import { useSet } from "react-use";
 
@@ -24,7 +31,9 @@ import { useChartDebug } from "./use-chart-debug";
 import { useModelsAndOption } from "./use-models-and-option";
 import { getDashboardAdjustedSettings } from "./utils";
 
-function CartesianChartInner(props: VisualizationProps) {
+const CartesianChartInner = memo(function CartesianChartInner(
+  props: VisualizationProps,
+) {
   const containerRef = useRef<HTMLDivElement>(null);
   // The width and height from props reflect the dimensions of the entire container which includes legend,
   // however, for correct ECharts option calculation we need to use the dimensions of the chart viewport
@@ -130,7 +139,9 @@ function CartesianChartInner(props: VisualizationProps) {
   );
 
   const handleResize = useCallback((width: number, height: number) => {
-    setChartSize({ width, height });
+    setChartSize((prev) =>
+      prev.width === width && prev.height === height ? prev : { width, height },
+    );
   }, []);
 
   // We can't navigate a user to a particular card from a visualizer viz,
@@ -138,6 +149,11 @@ function CartesianChartInner(props: VisualizationProps) {
   const canSelectTitle =
     !!onChangeCardAndRun &&
     (!isVisualizerCard || React.Children.count(titleMenuItems) === 1);
+
+  const handleSelectTitle = useCallback(
+    () => onOpenQuestion(card.id),
+    [onOpenQuestion, card.id],
+  );
 
   const seriesColorsCss = useCartesianChartSeriesColorsClasses(
     chartModel,
@@ -159,9 +175,7 @@ function CartesianChartInner(props: VisualizationProps) {
           actionButtons={actionButtons}
           hasInfoTooltip={!isDashboard || !isEditing}
           getHref={canSelectTitle ? getHref : undefined}
-          onSelectTitle={
-            canSelectTitle ? () => onOpenQuestion(card.id) : undefined
-          }
+          onSelectTitle={canSelectTitle ? handleSelectTitle : undefined}
           width={outerWidth}
           titleMenuItems={titleMenuItems}
         />
@@ -200,7 +214,7 @@ function CartesianChartInner(props: VisualizationProps) {
       {seriesColorsCss}
     </CartesianChartRoot>
   );
-}
+});
 
 export function CartesianChart(props: VisualizationProps) {
   return (

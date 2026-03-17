@@ -200,6 +200,9 @@ function timeseriesTicksInterval(
 }
 
 /// return the maximum number of ticks to show for a timeseries chart of a given width
+let cachedTickFormat: ((value: RowValue) => string) | null = null;
+let cachedFormattedValueLength: number | null = null;
+
 function maxTicksForChartWidth(
   chartWidth: number,
   tickFormat: (value: RowValue) => string,
@@ -210,9 +213,14 @@ function maxTicksForChartWidth(
 
   // day of week and month names vary in length, but it's slow to check all of them
   // as an approximation we just use a specific date which was long in my locale
-  const formattedValue = tickFormat(new Date(2019, 8, 4).toISOString());
+  if (tickFormat !== cachedTickFormat || cachedFormattedValueLength === null) {
+    cachedTickFormat = tickFormat;
+    cachedFormattedValueLength = tickFormat(
+      new Date(2019, 8, 4).toISOString(),
+    ).length;
+  }
   const pixelsPerTick =
-    formattedValue.length * PIXELS_PER_CHARACTER + TICK_BUFFER_PIXELS;
+    cachedFormattedValueLength * PIXELS_PER_CHARACTER + TICK_BUFFER_PIXELS;
   return Math.floor(chartWidth / pixelsPerTick); // round down so we don't end up with too many ticks
 }
 
