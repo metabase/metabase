@@ -720,12 +720,12 @@
 
                   agent-analytics/classify-and-track-user-intent-async!
                   (fn [_ _] (swap! classify-called inc))]
-      (testing "does not call classify-and-track-user-intent-async! when ee-ai-metabot-internal-tasks-enabled? is false"
-        (mt/with-temporary-setting-values [ee-ai-metabot-internal-tasks-enabled? false]
+      (testing "does not call classify-and-track-user-intent-async! when llm-metabot-internal-tasks-enabled? is false"
+        (mt/with-temporary-setting-values [llm-metabot-internal-tasks-enabled? false]
           (run-agent-loop! opts)
           (is (zero? @classify-called))))
-      (testing "calls classify-and-track-user-intent-async! when ee-ai-metabot-internal-tasks-enabled? is true"
-        (mt/with-temporary-setting-values [ee-ai-metabot-internal-tasks-enabled? true]
+      (testing "calls classify-and-track-user-intent-async! when llm-metabot-internal-tasks-enabled? is true"
+        (mt/with-temporary-setting-values [llm-metabot-internal-tasks-enabled? true]
           (run-agent-loop! opts)
           (is (= 1 @classify-called)))))))
 

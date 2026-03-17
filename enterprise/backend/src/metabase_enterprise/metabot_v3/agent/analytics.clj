@@ -2,10 +2,10 @@
   "Snowplow and Prometheus analytics and intent-classification helpers for the metabot agent."
   (:require
    [clojure.string :as str]
-   [metabase-enterprise.llm.settings :as llm]
    [metabase-enterprise.metabot-v3.self :as self]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
+   [metabase.llm.settings :as llm]
    [metabase.util.json :as json]
    [metabase.util.log :as log]))
 
@@ -90,7 +90,7 @@
   (let [context (json/encode (take-last 3 messages))
         text    (transduce (keep (fn [{:keys [type text]}] (when (= type :text) text)))
                            str
-                           (self/call-llm (llm/ee-ai-metabot-provider-lite)
+                           (self/call-llm (llm/llm-metabot-provider-lite)
                                           nil
                                           [{:role "user" :content (build-intent-prompt context)}]
                                           []

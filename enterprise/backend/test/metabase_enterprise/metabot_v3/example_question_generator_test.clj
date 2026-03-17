@@ -1,11 +1,11 @@
 (ns metabase-enterprise.metabot-v3.example-question-generator-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.llm.settings :as llm]
    [metabase-enterprise.metabot-v3.example-question-generator :as native-generator]
    [metabase-enterprise.metabot-v3.self.openrouter :as openrouter]
    [metabase-enterprise.metabot-v3.test-util :as test-util]
    [metabase.analytics.snowplow-test :as snowplow-test]
+   [metabase.llm.settings :as llm]
    [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
@@ -112,7 +112,7 @@
     ;; Mocks openrouter/openrouter rather than native-generator/call-llm to exercise the path through
     ;; self/call-llm-structured and parse-provider-model.
     (let [captured-opts (atom [])]
-      (mt/with-temporary-setting-values [llm/ee-ai-metabot-provider "openrouter/anthropic/claude-haiku-4-5"]
+      (mt/with-temporary-setting-values [llm/llm-metabot-provider "openrouter/anthropic/claude-haiku-4-5"]
         (with-redefs [openrouter/openrouter (fn [opts]
                                               (swap! captured-opts conj opts)
                                               [{:type :start :messageId "msg-1"}
@@ -131,7 +131,7 @@
                                  :queryable-dimensions [{:name "region" :type "string"}]}]}))))
           (testing "makes one openrouter call per table and metric"
             (is (= 2 (count @captured-opts))))
-          (testing "passes the model name derived from ee-ai-metabot-provider for every call"
+          (testing "passes the model name derived from llm-metabot-provider for every call"
             (is (=? [{:model "anthropic/claude-haiku-4-5"}
                      {:model "anthropic/claude-haiku-4-5"}]
                     @captured-opts))))))))
@@ -148,7 +148,7 @@
 
 (deftest call-llm-prometheus-test
   (mt/with-prometheus-system! [_ system]
-    (mt/with-temporary-setting-values [llm/ee-ai-metabot-provider "openrouter/test-model"]
+    (mt/with-temporary-setting-values [llm/llm-metabot-provider "openrouter/test-model"]
       (let [labels {:model "test-model" :source "example-question-generation"}]
         (testing "increments llm-requests and observes duration on success"
           (with-redefs [openrouter/openrouter
@@ -165,7 +165,7 @@
 (deftest call-llm-snowplow-test
   (testing "fires token_usage snowplow event for call-llm"
     (let [rasta-id (mt/user->id :rasta)]
-      (mt/with-temporary-setting-values [llm/ee-ai-metabot-provider "openrouter/test-model"]
+      (mt/with-temporary-setting-values [llm/llm-metabot-provider "openrouter/test-model"]
         (with-redefs [openrouter/openrouter
                       (constantly (test-util/mock-llm-response
                                    [{:type :start :id "msg-1"}

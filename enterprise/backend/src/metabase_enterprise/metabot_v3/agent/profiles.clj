@@ -4,8 +4,8 @@
   (:require
    [clojure.string :as str]
    [malli.error :as me]
-   [metabase-enterprise.llm.settings :as llm]
    [metabase-enterprise.metabot-v3.agent.tools :as agent-tools]
+   [metabase.llm.settings :as llm]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
@@ -39,7 +39,7 @@
   - :temperature - LLM temperature setting
   - :tools - Vector of tool vars available to this profile
 
-  Note: `:model` is resolved at runtime from the `ee-ai-metabot-provider` setting
+  Note: `:model` is resolved at runtime from the `llm-metabot-provider` setting
   (see [[get-profile]]), not stored in the profile."
   [profile :- [:map
                [:name :keyword]
@@ -195,11 +195,11 @@
 
 (defn get-profile
   "Get profile configuration by profile-id keyword.
-  The `:model` in the returned profile is resolved from the `ee-ai-metabot-provider`
+  The `:model` in the returned profile is resolved from the `llm-metabot-provider`
   setting at call time, so it always reflects the current admin configuration."
   [profile-id]
   (when-let [profile (get @*profiles profile-id)]
-    (assoc profile :model (llm/ee-ai-metabot-provider))))
+    (assoc profile :model (llm/llm-metabot-provider))))
 
 (defn get-tools-for-profile
   "Get tool registry filtered by profile configuration and user capabilities."

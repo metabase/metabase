@@ -3,9 +3,9 @@
    [clj-http.client :as http]
    [clojure.string :as str]
    [malli.json-schema :as mjs]
-   [metabase-enterprise.llm.settings :as llm]
    [metabase-enterprise.metabot-v3.self.core :as core]
    [metabase-enterprise.metabot-v3.self.schema :as schema]
+   [metabase.llm.settings :as llm]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
@@ -188,7 +188,7 @@
   "Perform a streaming request to Claude API."
   [{:keys [model system input tools schema tool_choice temperature max-tokens]
     :or   {model "claude-haiku-4-5"}} :- core/LLMRequestOpts]
-  (when-not (llm/ee-anthropic-api-key)
+  (when-not (llm/llm-anthropic-api-key)
     (throw (ex-info "No Anthropic API key is set" {:api-error true})))
   (let [messages  (parts->claude-messages input)
         all-tools (when (seq tools) (mapv tool->claude tools))
@@ -213,9 +213,9 @@
                       :msg-count  (count input)
                       :tool-count (count tools)}
       (try
-        (let [res (http/post (str (llm/ee-anthropic-api-base-url) "/v1/messages")
+        (let [res (http/post (str (llm/llm-anthropic-api-base-url) "/v1/messages")
                              {:as      :stream
-                              :headers {"x-api-key"         (llm/ee-anthropic-api-key)
+                              :headers {"x-api-key"         (llm/llm-anthropic-api-key)
                                         "anthropic-version" "2023-06-01"
                                         "content-type"      "application/json"}
                               :body    (json/encode req)})]
