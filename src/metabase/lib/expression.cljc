@@ -1,5 +1,5 @@
 (ns metabase.lib.expression
-  (:refer-clojure :exclude [+ - * / case coalesce abs time concat replace float mapv some select-keys not-empty get-in
+  (:refer-clojure :exclude [+ - * / case coalesce abs time concat replace float mapv some select-keys not-empty get-in every?
                             #?(:clj doseq) #?(:clj for)])
   (:require
    [clojure.string :as str]
@@ -31,7 +31,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.number :as u.number]
-   [metabase.util.performance :refer [mapv some select-keys not-empty get-in #?(:clj doseq) #?(:clj for)]]))
+   [metabase.util.performance :refer [mapv some select-keys not-empty get-in every? #?(:clj doseq) #?(:clj for)]]))
 
 (mu/defn column-metadata->expression-ref :- :mbql.clause/expression
   "Given `:metadata/column` column metadata for an expression, construct an `:expression` reference."
@@ -630,6 +630,62 @@
      (lib.util/clause? expr)
      (some #(invalid-nesting % (conj path-tags (first expr))) (nnext expr)))))
 
+(defn- find-type-error
+  "Given a malli explanation, return the first error with an `:error/type-description`."
+  [explanation]
+  (some (fn [error]
+          (let [schema (:schema error)
+                props (or (mc/properties schema)
+                          (mc/type-properties schema))
+                type-desc-msg-or-fn (:error/type-description props)
+                type-desc (if (fn? type-desc-msg-or-fn)
+                            (type-desc-msg-or-fn)
+                            type-desc-msg-or-fn)]
+            (when type-desc
+              [(str type-desc) (:in error)])))
+        (:errors explanation)))
+
+(defn- parent-operator-name
+  "Given an expression and a path to a value, return the name of the parent operator of that value."
+  [expr in-path]
+  (when (and (seq in-path) (every? integer? in-path))
+    (let [parent-path (pop (vec in-path))
+          parent (get-in expr parent-path)]
+      (when (and (vector? parent) (first parent))
+        (name (first parent))))))
+
+(defn- friendly-error-message
+  [explanation]
+  (let [error (first (:errors explanation))
+        schema (:schema error)
+        props (or (mc/properties schema)
+                  (mc/type-properties schema))
+        message-or-fn (:error/message props)]
+    (when (:error/friendly props)
+      (if (fn? message-or-fn)
+        (str (message-or-fn))
+        (str message-or-fn)))))
+
+(defn- ordinal-str
+  "Returns a translated ordinal string"
+  [n]
+  (cond
+    (= n 1) (i18n/tru "1st")
+    (= n 2) (i18n/tru "2nd")
+    (= n 3) (i18n/tru "3rd")
+    (and (>= n 4) (<= n 20)) (i18n/tru "{0}th" n)
+    :else (str n)))
+
+(defn- type-error-message
+  [explanation expr]
+  (let [[type-desc in-path] (find-type-error explanation)
+        op-name (parent-operator-name expr in-path)
+        param-pos (when (last in-path)
+                    (ordinal-str (dec (last in-path))))]
+    (if (and op-name type-desc param-pos)
+      (i18n/tru "Types are incompatible: {0} expects {1} as the {2} parameter." op-name type-desc param-pos)
+      (i18n/tru "Types are incompatible."))))
+
 (mu/defn diagnose-expression :- [:maybe [:map [:message :string]]]
   "Checks `expr` for type errors and, if `expression-mode` is :expression and
   `expression-position` is provided, for cyclic references with other expressions.
@@ -657,15 +713,9 @@
                       :aggregation aggregation-explainer
                       :filter filter-explainer)]
       (or (when-let [explanation (explainer expr)]
-            (let [error (first (:errors explanation))
-                  schema (:schema error)
-                  props (or (mc/properties schema)
-                            (mc/type-properties schema))
-                  error-friendly? (:error/friendly props)
-                  error-message-or-fn (:error/message props)
-                  error-message (if (fn? error-message-or-fn) (str (error-message-or-fn)) (str error-message-or-fn))
-                  fallback-message (i18n/tru "Types are incompatible.")
-                  message (if error-friendly? error-message fallback-message)]
+            (let [friendly-message (friendly-error-message explanation)
+                  type-message (type-error-message explanation expr)
+                  message (or friendly-message type-message)]
               {:message message
                :friendly true}))
           (when-let [dependency-path

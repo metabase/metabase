@@ -138,10 +138,10 @@ describe("settings framework", () => {
       expect(getHidden.mock.calls).toEqual([[mockObject, {}, {}]]);
     });
 
-    it("should return props when `props` is provided", () => {
+    it("should ignore provided `props`", () => {
       const defs = { foo: { widget: "input", props: { hello: "world" } } };
       const widgets = getSettingsWidgets(defs, {}, {}, mockObject, () => {});
-      expect(widgets[0].props).toEqual({ hello: "world" });
+      expect(widgets[0].props).toEqual({});
     });
 
     it("should compute props when `getProps` is provided", () => {
