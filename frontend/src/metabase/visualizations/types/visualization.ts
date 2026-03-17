@@ -458,6 +458,8 @@ export type VisualizationSettingsDefinitions<
   >;
   "graph.colors"?: SeriesSettingDefinition<Value, Props>;
   "graph.dimensions"?: SeriesSettingDefinition<Value, Props>;
+  "graph.goal_label"?: SeriesSettingDefinition<Value, Props>;
+  "graph.goal_value"?: SeriesSettingDefinition<Value, Props>;
   "graph.metrics"?: SeriesSettingDefinition<Value, Props>;
   "graph.label_value_frequency"?: SeriesSettingDefinition<
     Value,
@@ -477,6 +479,7 @@ export type VisualizationSettingsDefinitions<
     ChartSettingSeriesOrderProps
   >;
   "graph.series_order_dimension"?: SeriesSettingDefinition<Value, Props>;
+  "graph.show_goal"?: SeriesSettingDefinition<Value, Props>;
   "graph.show_mean"?: SeriesSettingDefinition<Value, Props>;
   "graph.show_stack_values"?: SeriesSettingDefinition<Value, Props>;
   "graph.show_trendline"?: SeriesSettingDefinition<Value, Props>;
