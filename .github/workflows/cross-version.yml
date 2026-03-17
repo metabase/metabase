@@ -61,6 +61,12 @@ jobs:
       - name: Prepare release scripts
         uses: ./.github/actions/prepare-release-scripts
 
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+
+      - name: Prepare Cypress environment
+        uses: ./.github/actions/prepare-cypress
+
       - name: Run cross-version test
         env:
           CURRENT_VERSION: ${{ vars.CURRENT_VERSION }}
@@ -86,6 +92,12 @@ jobs:
 
       - name: Prepare release scripts
         uses: ./.github/actions/prepare-release-scripts
+
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+
+      - name: Prepare Cypress environment
+        uses: ./.github/actions/prepare-cypress
 
       - name: Run cross-version test
         env:
