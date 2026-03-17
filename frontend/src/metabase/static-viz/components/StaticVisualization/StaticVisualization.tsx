@@ -68,15 +68,11 @@ export const StaticVisualization = ({
     const customViz = customVizRegistry.get(display);
     if (customViz?.StaticVisualizationComponent) {
       const { StaticVisualizationComponent } = customViz;
-      // Custom viz settings come from the card's visualization_settings,
-      // not from Metabase's computed settings pipeline which doesn't know
-      // about custom viz setting definitions.
-      const customSettings = rawSeries[0].card.visualization_settings ?? {};
       return (
         <StaticVisualizationComponent
           series={rawSeries}
           renderingContext={renderingContext}
-          settings={customSettings}
+          settings={settings}
           isStorybook={isStorybook}
           hasDevWatermark={hasDevWatermark}
         />
