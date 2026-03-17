@@ -193,6 +193,8 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
         <metabase-dashboard dashboard-id="${dashboard_id}" drills="false" />
         `);
 
+        cy.wait(5000);
+
         H.getSimpleEmbedIframeContent()
           .findAllByText("37.65")
           .first()
