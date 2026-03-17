@@ -310,10 +310,13 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
 
         cy.wait("@getCardQuery");
 
-        H.getSimpleEmbedIframeContent().within(() => {
-          cy.findAllByText("37.65").first().should("be.visible").click();
-          cy.findByText(/Filter by this value/).should("not.exist");
-        });
+        H.getSimpleEmbedIframeContent().findAllByText("37.65").as("cells");
+        cy.get("@cells").first().as("cell");
+        cy.get("@cell").should("be.visible").click();
+
+        H.getSimpleEmbedIframeContent()
+          .findByText(/Filter by this value/)
+          .should("not.exist");
       });
     });
 
