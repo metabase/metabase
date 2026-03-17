@@ -6,7 +6,8 @@
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer [deftest is testing use-fixtures]]
-   [metabase-enterprise.checker.checker :as checker]))
+   [metabase-enterprise.checker.checker :as checker]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]))
 
 (set! *warn-on-reflection* true)
 
@@ -46,11 +47,12 @@
     (checker/build-index! (fixtures-path))
     (let [stats (checker/file-index-stats)]
       (is (:file-index-built? stats) "Index should be built")
-      (is (= 1 (get-in stats [:indexed :databases])) "Should have 1 database")
-      (is (= 2 (get-in stats [:indexed :tables])) "Should have 2 tables (orders, products)")
-      (is (= 7 (get-in stats [:indexed :fields])) "Should have 7 fields")
-      (is (= 3 (get-in stats [:indexed :cards])) "Should have 3 cards")
-      (is (= ["Test Database"] (:database-names stats)) "Database name should be Test Database"))))
+      (is (= 2 (get-in stats [:indexed :databases])) "Should have 2 databases (Test Database, SQLite DB)")
+      (is (= 4 (get-in stats [:indexed :tables])) "Should have 4 tables")
+      (is (= 11 (get-in stats [:indexed :fields])) "Should have 11 fields")
+      (is (= 5 (get-in stats [:indexed :cards])) "Should have 5 cards")
+      (is (some #{"Test Database"} (:database-names stats)) "Should include Test Database")
+      (is (some #{"SQLite DB"} (:database-names stats)) "Should include SQLite DB"))))
 
 (deftest simple-mbql-query-test
   (testing "Simple MBQL query on orders table validates successfully"
@@ -89,10 +91,69 @@
 (deftest all-cards-checked-test
   (testing "All cards in fixtures are checked"
     (let [results (checker/check-all-cards (fixtures-path))]
-      (is (= 3 (count results)) "Should check all 3 cards")
+      (is (= 5 (count results)) "Should check all 5 cards")
       (is (contains? results "simple-orders"))
       (is (contains? results "native-orders"))
-      (is (contains? results "orders-with-products")))))
+      (is (contains? results "orders-with-products"))
+      (is (contains? results "schemaless-query"))
+      (is (contains? results "orders-with-fk")))))
+
+;;; ===========================================================================
+;;; Schema-less Database Tests
+;;;
+;;; Databases like SQLite don't have schemas, so tables are stored directly
+;;; under databases/<db>/tables/ instead of databases/<db>/schemas/<schema>/tables/
+;;; ===========================================================================
+
+(deftest schemaless-database-index-test
+  (testing "Schema-less databases are indexed correctly with nil schema"
+    (checker/build-index! (fixtures-path))
+    (let [stats (checker/file-index-stats)]
+      ;; Should have both "Test Database" and "SQLite DB"
+      (is (= 2 (get-in stats [:indexed :databases])) "Should have 2 databases")
+      ;; Test Database has 2 tables, SQLite DB has 2 tables = 4 total
+      (is (= 4 (get-in stats [:indexed :tables])) "Should have 4 tables")
+      (is (some #{"SQLite DB"} (:database-names stats)) "Should include SQLite DB"))))
+
+(deftest schemaless-query-test
+  (testing "Query on schema-less database validates successfully"
+    (let [results (checker/check-all-cards (fixtures-path))
+          result (get results "schemaless-query")]
+      (is (some? result) "Card should be found")
+      (is (= "Schemaless Query" (:name result)) "Card name should match")
+      (is (nil? (:error result)) (str "Should not have errors: " (:error result)))
+      (is (empty? (:unresolved result)) "Should not have unresolved refs")
+      (is (empty? (:bad-refs result)) "Should not have bad refs"))))
+
+;;; ===========================================================================
+;;; FK Resolution Tests
+;;;
+;;; Foreign key references in field metadata and result_metadata must be
+;;; converted from path vectors to integer IDs.
+;;; ===========================================================================
+
+(deftest fk-in-field-metadata-test
+  (testing "FK target in field metadata is resolved to integer ID"
+    (checker/build-index! (fixtures-path))
+    (let [provider (checker/make-provider (fixtures-path))
+          ;; Get the product_id field which has FK to products.id
+          fields (metabase.lib.metadata.protocols/metadatas
+                  provider {:lib/type :metadata/column})
+          fk-field (first (filter #(= "product_id" (:name %)) fields))]
+      (is (some? fk-field) "Should find product_id field")
+      (is (= :type/FK (:semantic-type fk-field)) "Should be FK type")
+      (is (pos-int? (:fk-target-field-id fk-field))
+          "FK target should be resolved to positive integer"))))
+
+(deftest fk-in-result-metadata-test
+  (testing "FK target in card result_metadata is resolved to integer ID"
+    (let [results (checker/check-all-cards (fixtures-path))
+          result (get results "orders-with-fk")]
+      (is (some? result) "Card should be found")
+      (is (= "Orders With FK" (:name result)) "Card name should match")
+      (is (nil? (:error result)) (str "Should not have errors: " (:error result)))
+      (is (empty? (:unresolved result)) "Should not have unresolved refs")
+      (is (empty? (:bad-refs result)) "Should not have bad refs"))))
 
 ;;; ===========================================================================
 ;;; Tests Using Custom Resolvers for Edge Cases

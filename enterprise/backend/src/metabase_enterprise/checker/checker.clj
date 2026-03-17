@@ -169,8 +169,12 @@
               :let [db-name folder-name]]
         ;; Index database
         (swap! state assoc-in [:db-name->file db-name] (.getPath db-yaml-file))
-        ;; Index tables and fields
-        (let [schemas-dir (io/file db-folder "schemas")]
+        ;; Index tables and fields - two possible structures:
+        ;; 1. With schemas: databases/<db>/schemas/<schema>/tables/<table>/
+        ;; 2. Without schemas: databases/<db>/tables/<table>/ (schema is null in paths)
+        (let [schemas-dir (io/file db-folder "schemas")
+              tables-dir-no-schema (io/file db-folder "tables")]
+          ;; Handle databases with schemas
           (when (.exists schemas-dir)
             (doseq [^File schema-dir (.listFiles schemas-dir)
                     :when (.isDirectory schema-dir)
@@ -196,6 +200,28 @@
                           :when (not (str/includes? (.getName field-file) "___"))
                           :let [field-name (str/replace (.getName field-file) ".yaml" "")
                                 field-path [db-name schema-name table-name field-name]]]
+                    (swap! state assoc-in [:field-path->file field-path] (.getPath field-file)))))))
+          ;; Handle databases without schemas (tables directly under db folder)
+          (when (.exists tables-dir-no-schema)
+            (doseq [^File table-dir (.listFiles tables-dir-no-schema)
+                    :when (.isDirectory table-dir)
+                    :let [table-name (.getName table-dir)
+                          ;; Schema is nil for schema-less databases
+                          table-path [db-name nil table-name]
+                          table-yaml (io/file table-dir (str table-name ".yaml"))]]
+              ;; Index table
+              (when (.exists table-yaml)
+                (swap! state assoc-in [:table-path->file table-path] (.getPath table-yaml)))
+              ;; Index fields
+              (let [fields-dir (io/file table-dir "fields")]
+                (when (.exists fields-dir)
+                  (doseq [^File field-file (.listFiles fields-dir)
+                          :when (.isFile field-file)
+                          :when (str/ends-with? (.getName field-file) ".yaml")
+                          :when (not (str/includes? (.getName field-file) "___"))
+                          :let [field-name (str/replace (.getName field-file) ".yaml" "")
+                                ;; Schema is nil for schema-less databases
+                                field-path [db-name nil table-name field-name]]]
                     (swap! state assoc-in [:field-path->file field-path] (.getPath field-file)))))))))))
   ;; Index cards (separate traversal since they're in collections)
   (doseq [^File file (file-seq (io/file export-dir))
@@ -368,10 +394,8 @@
 (defn- import-field-fk [path] (resolve-field-path path))
 (defn- import-table-fk [path] (resolve-table-path path))
 (defn- import-fk [entity-id model]
-  (println {:type (type model) :value model})
-  (throw (ex-info "done" {:model model}))
   (case model
-    Card (resolve-card-entity-id entity-id)
+    (Card Segment Measure) (resolve-card-entity-id entity-id)
     (do (when *unresolved-refs*
           (swap! *unresolved-refs* conj {:type :unknown :model model :entity-id entity-id}))
         nil)))
@@ -462,6 +486,10 @@
       (vector? (:table_id col))
       (as-> c (if-let [id (import-table-fk (:table_id col))]
                 (assoc c :table_id id) (dissoc c :table_id)))
+      ;; Convert :fk_target_field_id, remove if unresolved
+      (vector? (:fk_target_field_id col))
+      (as-> c (if-let [id (import-field-fk (:fk_target_field_id col))]
+                (assoc c :fk_target_field_id id) (dissoc c :fk_target_field_id)))
       ;; Convert :field_ref, remove if contains nil
       (:field_ref col)
       (as-> c (let [ref (serdes/import-mbql (:field_ref col))]
@@ -750,8 +778,10 @@
      :database-names (vec (keys (:db-name->file s)))}))
 
 (defn check
-  "Quick test - validate all cards in test-export-dir. Returns results map."
+  "Validate all cards in export-dir. Resets state and rebuilds index first.
+   Returns results map keyed by entity-id."
   [export-dir]
+  (reset-state!)
   (check-all-cards export-dir))
 
 (defn cli
