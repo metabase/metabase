@@ -48,9 +48,9 @@
       (mt/with-dynamic-fn-redefs [http/post (fn [_url opts]
                                               (reset! captured (json/decode+kw (:body opts)))
                                               (throw (ex-info "stop" {::skip true :status 401 :body "skip parsing"})))]
-        (mt/with-temporary-setting-values [ee-anthropic-api-key  "test-key"
-                                           ee-openrouter-api-key "test-key"
-                                           ee-openai-api-key     "test-key"]
+        (mt/with-temporary-setting-values [llm-anthropic-api-key  "sk-ant-test-key"
+                                           llm-openrouter-api-key "test-key"
+                                           llm-openai-api-key     "test-key"]
           (doseq [[model expected] [["anthropic/test-model"  {:type "any"}]
                                     ["openrouter/test-model" "required"]
                                     ["openai/test-model"     "required"]]]

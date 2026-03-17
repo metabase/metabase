@@ -216,10 +216,6 @@
   "Enable restrict email recipients?"
   :email-restrict-recipients)
 
-(define-premium-feature ^{:added "0.50.0"} enable-llm-autodescription?
-  "Enable automatic descriptions of questions and dashboards by LLMs?"
-  :llm-autodescription)
-
 (define-premium-feature ^{:added "0.51.0"} enable-query-reference-validation?
   "Enable the Query Validator Tool?"
   :query-reference-validation)
@@ -358,7 +354,6 @@
    :etl_connections                (enable-etl-connections?)
    :etl_connections_pg             (enable-etl-connections-pg?)
    :hosting                        (is-hosted?)
-   :llm_autodescription            (enable-llm-autodescription?)
    :metabot_v3                     (enable-metabot-v3?)
    :official_collections           (enable-official-collections?)
    :query_reference_validation     (enable-query-reference-validation?)
