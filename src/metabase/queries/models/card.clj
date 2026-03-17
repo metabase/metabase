@@ -1300,8 +1300,6 @@
           :dataset_query_metrics_v2_migration_backup
           ;; this column is not used anymore
           :cache_ttl
-          ;; dependencies aren't serialized, so the version of dependency analysis done shouldn't be serialized
-          :dependency_analysis_version
           ;; dimensions are computed from the query and reconciled on read, not serialized
           :dimensions :dimension_mappings
           ;; temporary column to power rollback from v57 to v56; we can remove it in v58

@@ -1374,7 +1374,6 @@
       (mt/with-temp [:model/Dashboard {unreffed-dashboard-id :id} {:name "Unreferenced Dashboard - unreftest"}
                      :model/Dashboard {referenced-dashboard-id :id} {:name "Referenced Dashboard - unreftest"}
                      :model/Document _ {:name "Document with dashboard link"
-                                        :dependency_analysis_version 0
                                         :document {:type "doc"
                                                    :content [{:type "paragraph"
                                                               :content [{:type "smartLink"
