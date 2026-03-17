@@ -67,7 +67,7 @@ export class Map extends Component {
         return t`Map type`;
       },
       widget: "select",
-      props: {
+      getProps: () => ({
         options: [
           {
             get name() {
@@ -83,7 +83,7 @@ export class Map extends Component {
           },
           { name: "Grid map", value: "grid" },
         ],
-      },
+      }),
       getDefault: ([{ card, data }], settings) => {
         switch (card.display) {
           case "state":
@@ -125,7 +125,7 @@ export class Map extends Component {
         return t`Pin type`;
       },
       widget: "select",
-      props: {
+      getProps: () => ({
         options: [
           {
             get name() {
@@ -141,7 +141,7 @@ export class Map extends Component {
           },
           { name: "Grid", value: "grid" },
         ],
-      },
+      }),
       getDefault: ([{ data }], vizSettings) =>
         vizSettings["map.type"] === "heat"
           ? "heat"
@@ -239,7 +239,7 @@ export class Map extends Component {
         return t`Color`;
       },
       widget: ColorRangeSelector,
-      props: {
+      getProps: () => ({
         colors: getAccentColors(),
         colorMapping: Object.fromEntries(
           getAccentColors().map((color) => [
@@ -248,7 +248,7 @@ export class Map extends Component {
           ]),
         ),
         isQuantile: true,
-      },
+      }),
       default: getColorplethColorScale(getAccentColors()[0]),
       getHidden: (series, vizSettings) => vizSettings["map.type"] !== "region",
     },

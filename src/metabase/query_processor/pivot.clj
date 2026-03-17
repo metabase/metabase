@@ -9,6 +9,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
+   [metabase.lib.expression :as lib.expression]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -167,8 +168,10 @@
   [query   :- ::lib.schema/query
    bitmask :- ::bitmask]
   (as-> query query
+    ;; [[lib/expression]] is exported but it doesn't include the 5th arg for options, since it's an MBQL internal
+    ;; detail. So this imports and calls [[lib.expression/expression]] directly.
     ;;TODO: replace this value with a bitmask or something to indicate the source better
-    (lib/expression query -1 "pivot-grouping" (lib/abs bitmask) {:add-to-fields? false})
+    (lib.expression/expression query -1 "pivot-grouping" (lib/abs bitmask) {:add-to-fields? false})
     ;; in PostgreSQL and most other databases, all the expressions must be present in the breakouts. Add a pivot
     ;; grouping expression ref to the breakouts
     (lib/breakout query (-> (lib/expression-ref query "pivot-grouping")

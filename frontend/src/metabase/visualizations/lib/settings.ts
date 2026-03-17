@@ -200,15 +200,14 @@ function getSettingWidget<T, TValue, TProps extends Record<string, unknown>>(
   }
 
   const getHiddenFn = settingDef.getHidden;
-  const getPropsFn = settingDef.getProps;
-  const defaultProps = {} as TProps;
+  const { getProps, ...settingDefProps } = settingDef;
 
   const section = settingDef.getSection
     ? settingDef.getSection(resolvedObject, computedSettings, extra)
     : settingDef.section;
 
   return {
-    ...settingDef,
+    ...settingDefProps,
     id: settingId,
     value,
     section,
@@ -221,20 +220,14 @@ function getSettingWidget<T, TValue, TProps extends Record<string, unknown>>(
     disabled: settingDef.getDisabled
       ? settingDef.getDisabled(resolvedObject, computedSettings, extra)
       : (settingDef.disabled ?? false),
-    props: {
-      ...(settingDef.props && typeof settingDef.props === "object"
-        ? settingDef.props
-        : defaultProps),
-      ...(getPropsFn
-        ? getPropsFn(
-            resolvedObject,
-            computedSettings,
-            onChange,
-            extra,
-            onChangeSettings,
-          )
-        : defaultProps),
-    },
+    props:
+      getProps?.(
+        resolvedObject,
+        computedSettings,
+        onChange,
+        extra,
+        onChangeSettings,
+      ) ?? {},
     set: settingId in storedSettings,
     widget:
       typeof settingDef.widget === "string"
