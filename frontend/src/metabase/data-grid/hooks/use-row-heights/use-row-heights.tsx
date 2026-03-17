@@ -100,9 +100,8 @@ export const useRowHeights = <TData extends RowData, TValue>({
 
   const recalculate = useCallback(
     (entries: ResizeObserverEntry[]) => {
-      for (const entry of entries) {
-        const element = entry.target;
-        const indices = getRowIndices(element);
+      for (const { target } of entries) {
+        const indices = getRowIndices(target);
         remeasureRow(indices);
       }
     },
