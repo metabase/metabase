@@ -176,21 +176,16 @@ describe("DataGrid", () => {
 
   it("uses correct ARIA roles for grid structure (#70548)", () => {
     renderWithProviders(<TestDataGrid />);
-    act(() => {
-      jest.runAllTimers();
-    });
 
-    const grid = screen.getByRole("grid");
-    expect(grid).toBeInTheDocument();
-
-    const rows = screen.getAllByRole("row");
+    const rows = within(screen.getByRole("grid")).getAllByRole("row");
     expect(rows.length).toBeGreaterThan(1);
 
     const headerRow = rows[0];
+    const bodyRows = rows.slice(1);
+
     const columnHeaders = within(headerRow).getAllByRole("columnheader");
     expect(columnHeaders.length).toBeGreaterThan(0);
 
-    const bodyRows = rows.slice(1);
     bodyRows.forEach((row) => {
       const cells = within(row).getAllByRole("gridcell");
       expect(cells.length).toBeGreaterThan(0);

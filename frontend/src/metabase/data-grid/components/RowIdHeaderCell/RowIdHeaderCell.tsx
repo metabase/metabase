@@ -10,12 +10,7 @@ export interface RowIdHeaderCellProps {
 
 export const RowIdHeaderCell = ({ name = "" }: RowIdHeaderCellProps) => {
   return (
-    <BaseCell
-      className={cx(S.root)}
-      hasHover={false}
-      align="right"
-      role="columnheader"
-    >
+    <BaseCell className={cx(S.root)} hasHover={false} align="right">
       {name}
     </BaseCell>
   );
