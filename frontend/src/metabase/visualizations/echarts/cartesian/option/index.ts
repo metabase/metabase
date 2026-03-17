@@ -321,9 +321,6 @@ export function buildSplitPanelOverrides(
   renderingContext: RenderingContext,
 ) {
   return {
-    axisPointer: {
-      link: [{ xAxisIndex: "all" as unknown as number }],
-    },
     brush: {
       toolbox: ["lineX" as const],
       xAxisIndex: Array.from({ length: panelCount }, (_, index) => index),
