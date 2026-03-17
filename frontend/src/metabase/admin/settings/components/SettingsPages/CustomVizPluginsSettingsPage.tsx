@@ -10,6 +10,7 @@ import {
   useDeleteCustomVizPluginMutation,
   useListAllCustomVizPluginsQuery,
   useRefreshCustomVizPluginMutation,
+  useSetCustomVizPluginDevUrlMutation,
   useUpdateCustomVizPluginMutation,
 } from "metabase/api";
 import {
@@ -21,6 +22,7 @@ import {
 } from "metabase/forms";
 import {
   ActionIcon,
+  Badge,
   Box,
   Button,
   Flex,
@@ -99,6 +101,7 @@ function PluginForm({
 }) {
   const [createPlugin] = useCreateCustomVizPluginMutation();
   const [updatePlugin] = useUpdateCustomVizPluginMutation();
+  const [setDevUrl] = useSetCustomVizPluginDevUrlMutation();
   const isEdit = Boolean(plugin);
 
   const [selectedIcon, setSelectedIcon] = useState<IconName>(
@@ -111,6 +114,7 @@ function PluginForm({
       display_name: plugin?.display_name ?? "",
       access_token: "",
       pinned_version: plugin?.pinned_version ?? "",
+      dev_bundle_url: plugin?.dev_bundle_url ?? "",
     }),
     [plugin],
   );
@@ -121,6 +125,7 @@ function PluginForm({
       display_name: string;
       access_token: string;
       pinned_version: string;
+      dev_bundle_url: string;
     }) => {
       const icon = selectedIcon === DEFAULT_ICON ? null : selectedIcon;
 
@@ -131,6 +136,11 @@ function PluginForm({
           icon,
           access_token: values.access_token || undefined,
           pinned_version: values.pinned_version || null,
+        }).unwrap();
+        // dev_bundle_url uses a separate in-memory endpoint
+        await setDevUrl({
+          id: plugin.id,
+          dev_bundle_url: values.dev_bundle_url || null,
         }).unwrap();
       } else {
         await createPlugin({
@@ -143,7 +153,15 @@ function PluginForm({
       }
       onClose();
     },
-    [createPlugin, updatePlugin, plugin, isEdit, selectedIcon, onClose],
+    [
+      createPlugin,
+      updatePlugin,
+      setDevUrl,
+      plugin,
+      isEdit,
+      selectedIcon,
+      onClose,
+    ],
   );
 
   return (
@@ -188,6 +206,21 @@ function PluginForm({
                   placeholder="main"
                 />
               </Stack>
+              {isEdit && (
+                <Stack gap="md">
+                  <Text fw={700}>{t`Development`}</Text>
+                  <FormTextInput
+                    name="dev_bundle_url"
+                    label={t`Dev bundle URL`}
+                    description={
+                      <Text c="text-tertiary" size="sm" component="span">
+                        {t`Local URL to load bundle from during development (dev mode only)`}
+                      </Text>
+                    }
+                    placeholder="http://localhost:5174/index.js"
+                  />
+                </Stack>
+              )}
               <Stack gap="md">
                 <Text fw={700}>{t`Customization`}</Text>
                 <FormTextInput
@@ -268,7 +301,14 @@ function PluginListItem({
       <Group gap="md" align="flex-start">
         <IconPreview iconName={(plugin.icon as IconName) ?? DEFAULT_ICON} />
         <Stack gap="xs">
-          <Text fw={700}>{plugin.display_name}</Text>
+          <Group gap="xs">
+            <Text fw={700}>{plugin.display_name}</Text>
+            {plugin.dev_bundle_url && (
+              <Badge size="xs" variant="light" color="violet">
+                {t`DEV`}
+              </Badge>
+            )}
+          </Group>
           <Text
             component="a"
             href={plugin.repo_url}

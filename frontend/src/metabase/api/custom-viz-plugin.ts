@@ -65,6 +65,21 @@ export const customVizPluginApi = Api.injectEndpoints({
           idTag("custom-viz-plugin", id),
         ]),
     }),
+    setCustomVizPluginDevUrl: builder.mutation<
+      { dev_bundle_url: string | null },
+      { id: number; dev_bundle_url: string | null }
+    >({
+      query: ({ id, ...body }) => ({
+        method: "PUT",
+        url: `/api/custom-viz-plugin/${id}/dev-url`,
+        body,
+      }),
+      invalidatesTags: (_, error, { id }) =>
+        invalidateTags(error, [
+          listTag("custom-viz-plugin"),
+          idTag("custom-viz-plugin", id),
+        ]),
+    }),
     refreshCustomVizPlugin: builder.mutation<CustomVizPlugin, number>({
       query: (id) => ({
         method: "POST",
@@ -86,4 +101,5 @@ export const {
   useDeleteCustomVizPluginMutation,
   useUpdateCustomVizPluginMutation,
   useRefreshCustomVizPluginMutation,
+  useSetCustomVizPluginDevUrlMutation,
 } = customVizPluginApi;

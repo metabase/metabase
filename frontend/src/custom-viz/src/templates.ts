@@ -8,7 +8,7 @@ export function generatePackageJson(name: string): string {
     type: "module",
     scripts: {
       build: "vite build",
-      dev: "vite build --watch",
+      dev: "vite build --watch & vite preview",
       "type-check": "tsc --noEmit",
     },
     devDependencies: {
@@ -26,6 +26,7 @@ export function generatePackageJson(name: string): string {
 export function generateViteConfig(): string {
   return `\
 import { resolve } from "path";
+import { createServer } from "http";
 import { defineConfig } from "vite";
 
 /**
@@ -72,8 +73,54 @@ function metabaseVizExternals() {
   };
 }
 
+const NOTIFY_PORT = 5175;
+
+/**
+ * Vite plugin that starts a tiny SSE server and sends a "reload" event
+ * to all connected clients after each rebuild completes.
+ * Metabase's frontend connects to this to live-reload the custom viz.
+ */
+function metabaseNotifyReload() {
+  const clients = new Set<import("http").ServerResponse>();
+  let server: ReturnType<typeof createServer> | null = null;
+
+  return {
+    name: "metabase-notify-reload",
+
+    buildStart() {
+      if (server) {
+        return;
+      }
+      server = createServer((req, res) => {
+        res.writeHead(200, {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          "Connection": "keep-alive",
+          "Access-Control-Allow-Origin": "*",
+        });
+        clients.add(res);
+        req.on("close", () => clients.delete(res));
+      });
+      server.listen(NOTIFY_PORT, () => {
+        console.log(
+          \`[metabase-notify] SSE server listening on http://localhost:\${NOTIFY_PORT}\`,
+        );
+      });
+    },
+
+    closeBundle() {
+      for (const client of clients) {
+        client.write("data: reload\\n\\n");
+      }
+      console.log(
+        \`[metabase-notify] Build complete, notified \${clients.size} client(s)\`,
+      );
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [metabaseVizExternals()],
+  plugins: [metabaseVizExternals(), metabaseNotifyReload()],
   build: {
     outDir: "dist",
     lib: {
@@ -82,6 +129,11 @@ export default defineConfig({
       fileName: (format) => format === "iife" ? "index.iife.js" : "index.js",
       name: "__customVizPlugin__",
     },
+  },
+  preview: {
+    port: 5174,
+    host: true,
+    cors: true,
   },
 });
 `;
