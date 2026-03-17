@@ -44,16 +44,13 @@ const TextWrapper = Object.assign(Text, {
       // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
       title: t`Vertical Alignment`,
       widget: "select",
-      props: {
+      getProps: () => ({
         options: [
-          // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
           { name: t`Top`, value: "top" },
-          // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
           { name: t`Middle`, value: "middle" },
-          // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
           { name: t`Bottom`, value: "bottom" },
         ],
-      },
+      }),
       default: "top",
     },
     "text.align_horizontal": {
@@ -62,16 +59,13 @@ const TextWrapper = Object.assign(Text, {
       // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
       title: t`Horizontal Alignment`,
       widget: "select",
-      props: {
+      getProps: () => ({
         options: [
-          // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
           { name: t`Left`, value: "left" },
-          // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
           { name: t`Center`, value: "center" },
-          // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
           { name: t`Right`, value: "right" },
         ],
-      },
+      }),
       default: "left",
     },
     "dashcard.background": {
