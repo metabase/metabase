@@ -1,5 +1,5 @@
 diff --git a/node_modules/html2canvas-pro/dist/html2canvas-pro.esm.js b/node_modules/html2canvas-pro/dist/html2canvas-pro.esm.js
-index d49f1bd..1387285 100644
+index d49f1bd..6428dc1 100644
 --- a/node_modules/html2canvas-pro/dist/html2canvas-pro.esm.js
 +++ b/node_modules/html2canvas-pro/dist/html2canvas-pro.esm.js
 @@ -5875,6 +5875,8 @@ class SVGElementContainer extends ElementContainer {
@@ -11,6 +11,27 @@ index d49f1bd..1387285 100644
          const bounds = parseBounds(context, img);
          img.setAttribute('width', `${bounds.width}px`);
          img.setAttribute('height', `${bounds.height}px`);
+@@ -7145,13 +7147,13 @@ const ignoredStyleProperties = [
+     'content' // Safari shows pseudoelements if content is set
+ ];
+ const copyCSSStyles = (style, target) => {
+-    // Edge does not provide value for cssText
+-    for (let i = style.length - 1; i >= 0; i--) {
+-        const property = style.item(i);
+-        // fix: Chrome_138 ignore custom properties
+-        if (ignoredStyleProperties.indexOf(property) === -1 && !property.startsWith('--')) {
+-            target.style.setProperty(property, style.getPropertyValue(property));
+-        }
++    // Use cssText for a single native call instead of iterating 300+ properties
++    // individually via style.item(i), which is extremely slow in Firefox due to
++    // Stylo's per-call indexmap lookups in the custom properties map.
++    target.style.cssText = style.cssText;
++    // Remove properties that should be ignored
++    for (let i = ignoredStyleProperties.length - 1; i >= 0; i--) {
++        target.style.removeProperty(ignoredStyleProperties[i]);
+     }
+     return target;
+ };
 @@ -7534,7 +7536,8 @@ class ElementPaint {
              const rotateMatrix = [cos, sin, -sin, cos, 0, 0];
              this.effects.push(new TransformEffect(offsetX, offsetY, rotateMatrix));
