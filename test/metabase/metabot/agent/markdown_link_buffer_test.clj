@@ -69,7 +69,7 @@
 
 (deftest resolve-query-link-test
   (testing "resolves metabase://query links using queries-state"
-    (let [query {:database 1 :type :query :query {:source-table 1}}
+    (let [query (lib.tu/venues-query)
           [output flushed] (process "[Results](metabase://query/q-123)" {"q-123" query})]
       (is (=? resolved-link-re output))
       (is (not (re-find #"metabase://" output)))
@@ -81,14 +81,14 @@
       (is (= "" flushed))))
 
   (testing "incomplete chunks are also replaced well"
-    (let [query {:database 1 :type :query :query {:source-table 1}}
+    (let [query (lib.tu/venues-query)
           [output flushed] (process-chunks ["Your [Res" "ults](metabase://qu" "ery/q-123)"] {"q-123" query})]
       (is (=? ["Your " "" resolved-link-re] output))
       (is (= "" flushed)))))
 
 (deftest resolve-chart-link-test
   (testing "resolves metabase://chart links using charts-state"
-    (let [query {:database 1 :type :query :query {:source-table 1}}
+    (let [query (lib.tu/venues-query)
           queries {"q-456" query}
           charts {"c-789" {:query-id "q-456" :chart-type :bar}}
           [output flushed] (process "[My Chart](metabase://chart/c-789)" queries charts)]
@@ -124,7 +124,7 @@
 
 (deftest resolve-link-split-across-chunks-test
   (testing "resolves metabase:// link split across multiple chunks"
-    (let [query {:database 1 :type :query :query {:source-table 1}}
+    (let [query (lib.tu/venues-query)
           [outputs flushed] (process-chunks ["Check [Results](metabase://" "query/split-query)"]
                                             {"split-query" query})]
       (is (= "Check " (first outputs)))
