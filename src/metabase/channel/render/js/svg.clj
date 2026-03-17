@@ -215,6 +215,7 @@
    `custom-viz-bundles` is an optional seq of `{:identifier str :source str}` maps for custom visualization plugins."
   [cards-with-data dashcard-viz-settings custom-viz-bundles]
   (let [response (with-static-viz-context context
+                   ;; TODO: we'll have to force release of the context if we've loaded any custom viz
                    (doseq [{:keys [identifier source]} custom-viz-bundles]
                      (js.engine/load-js-string context source (str "custom-viz-" identifier ".js"))
                      (js.engine/execute-fn-name context "register_custom_viz_plugin" identifier))
