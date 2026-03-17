@@ -11,6 +11,7 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (defn handle-agent-error
@@ -98,7 +99,7 @@
     (parse-field-id nil) => nil
     (parse-field-id \"invalid\") => nil"
   [field-id]
-  (when (string? field-id)
+  (when (and field-id (string? field-id))
     (when-let [[_ model-tag model-id field-index] (re-matches #"^([tcq])(.+)-(\d+)$" field-id)]
       {:model-tag   model-tag
        ;; For tables and cards, model-id should be numeric; for queries it's a nano-id string
@@ -128,6 +129,11 @@
       (when-not (if (string? expected-prefix)
                   (str/starts-with? field-id expected-prefix)
                   (re-matches expected-prefix field-id))
+        (log/warn "Field id prefix mismatch"
+                  {:field-id field-id
+                   :expected-prefix expected-prefix
+                   :model-tag model-tag
+                   :model-id model-id})
         (throw (ex-info (str "field " field-id " does not match expected prefix " expected-prefix)
                         {:agent-error? true
                          :status-code 400
@@ -169,7 +175,7 @@
       api/read-check))
 
 (defn card-query
-  "Return a query based on the model with ID `model-id`."
+  "Return a query based on the card with ID `card-id`."
   [card-id]
   (when-let [card (get-card card-id)]
     (let [mp (lib-be/application-database-metadata-provider (:database_id card))]
@@ -178,7 +184,7 @@
                       (#{:question} (:type card)) (get :dataset-query))))))
 
 (defn metric-query
-  "Return a query based on the model with ID `model-id`."
+  "Return a query based on the metric with ID `metric-id`."
   [metric-id]
   (when-let [card (get-card metric-id)]
     (let [mp (lib-be/application-database-metadata-provider (:database_id card))]

@@ -268,13 +268,13 @@ export class Table extends Component<TableProps, TableState> {
             ? "right"
             : "left";
         },
-        props: {
+        getProps: () => ({
           options: [
             { name: t`Left`, value: "left" },
             { name: t`Right`, value: "right" },
             { name: t`Middle`, value: "middle" },
           ],
-        },
+        }),
       },
     };
 
@@ -329,9 +329,9 @@ export class Table extends Component<TableProps, TableState> {
         title: t`Display as`,
         widget: options.length === 2 ? "radio" : "select",
         default: defaultValue,
-        props: {
+        getProps: () => ({
           options,
-        },
+        }),
       };
     }
 
