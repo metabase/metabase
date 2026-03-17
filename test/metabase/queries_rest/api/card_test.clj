@@ -3522,6 +3522,26 @@
                              (-> response :values set)))
             (is (not ((into #{} (mapcat identity) (:values response)) "The Virgil")))))))))
 
+(deftest field-filter-values-without-create-queries-permission-test
+  (testing "Users without create-queries permission can still get field filter values for saved cards (#GHY-1605)"
+    (with-card-param-values-fixtures [{:keys [param-keys field-filter-card]}]
+      (mt/with-no-data-perms-for-all-users!
+        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
+        (testing "GET /api/card/:card-id/params/:param-key/values"
+          (let [response (mt/user-http-request :rasta :get 200
+                                               (param-values-url field-filter-card (:field-values param-keys)))]
+            (is (false? (:has_more_values response)))
+            (is (set/subset? #{["20th Century Cafe"] ["33 Taps"]}
+                             (-> response :values set)))))
+        (testing "GET /api/card/:card-id/params/:param-key/search/:query"
+          (let [response (mt/user-http-request :rasta :get 200
+                                               (param-values-url field-filter-card
+                                                                 (:field-values param-keys)
+                                                                 "bar"))]
+            (is (set/subset? #{["Barney's Beanery"] ["bigmista's barbecue"]}
+                             (-> response :values set)))))))))
+
 (deftest parameters-with-field-to-field-remapping-test
   (let [param-key "id/param"]
     (mt/with-temp
