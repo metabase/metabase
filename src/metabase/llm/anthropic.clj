@@ -84,7 +84,7 @@
   (memoize/ttl
    (fn [api-key]
      (try
-       (let [url (str (llm.settings/llm-anthropic-api-url) "/v1/models")
+       (let [url (str (llm.settings/llm-anthropic-api-base-url) "/v1/models")
              response (http/get url
                                 {:headers {"x-api-key"         api-key
                                            "anthropic-version" (llm.settings/llm-anthropic-api-version)}})
@@ -119,7 +119,7 @@
                     :messages messages}
         start-time (u/start-timer)]
     (try
-      (let [url      (str (llm.settings/llm-anthropic-api-url) "/v1/messages")
+      (let [url      (str (llm.settings/llm-anthropic-api-base-url) "/v1/messages")
             response (http/post url
                                 {:headers            (build-request-headers (get-api-key-or-throw))
                                  :body               (json/encode (build-request-body request))

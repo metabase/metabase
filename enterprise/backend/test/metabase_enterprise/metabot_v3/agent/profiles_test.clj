@@ -1,8 +1,8 @@
 (ns metabase-enterprise.metabot-v3.agent.profiles-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.llm.settings :as llm]
    [metabase-enterprise.metabot-v3.agent.profiles :as profiles]
+   [metabase.llm.settings :as llm]
    [metabase.test :as mt]))
 
 (deftest get-profile-test
@@ -94,10 +94,10 @@
           (is (every? var? (:tools profile))))))))
 
 (deftest get-profile-respects-provider-setting-test
-  (testing "model reflects ee-ai-metabot-provider setting"
-    (mt/with-temporary-setting-values [llm/ee-ai-metabot-provider "openai/gpt-4.1-mini"]
+  (testing "model reflects llm-metabot-provider setting"
+    (mt/with-temporary-setting-values [llm/llm-metabot-provider "openai/gpt-4.1-mini"]
       (is (= "openai/gpt-4.1-mini" (:model (profiles/get-profile :internal)))))
-    (mt/with-temporary-setting-values [llm/ee-ai-metabot-provider "openrouter/google/gemini-2.5-flash"]
+    (mt/with-temporary-setting-values [llm/llm-metabot-provider "openrouter/google/gemini-2.5-flash"]
       (is (= "openrouter/google/gemini-2.5-flash" (:model (profiles/get-profile :embedding_next)))))))
 
 (deftest get-tools-for-profile-capabilities-test

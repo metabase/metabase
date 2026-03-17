@@ -1,9 +1,9 @@
-(ns metabase-enterprise.llm.tasks.describe-dashboard
+(ns metabase.llm.tasks.describe-dashboard
   "LLM task(s) for generating dashboard descriptions"
   (:require
    [clojure.set :refer [rename-keys]]
    [clojure.walk :as walk]
-   [metabase-enterprise.llm.client :as llm-client]
+   [metabase.llm.client :as llm-client]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
