@@ -135,7 +135,7 @@
                 spliced-index (+ index offset)
                 selected?     (selected index)
                 mapped-index  (when selected?
-                               (remap spliced-index))]
+                                (remap spliced-index))]
             (recur (inc index)
                    offset
                    (cond-> combination
