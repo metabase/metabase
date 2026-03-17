@@ -13,7 +13,8 @@
   {:name                     "pivot-grouping"
    :display_name             "pivot-grouping"
    :lib/desired-column-alias "pivot-grouping"
-   :base_type                :type/Integer})
+   :base_type                :type/Integer
+   :effective_type           :type/Integer})
 
 (defn- add-column-grouping-metadata [cols num-breakouts]
   (vec
