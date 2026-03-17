@@ -131,6 +131,10 @@
   [card-id]
   (dependencies.findings/upsert-analysis! (t2/select-one :model/Card :id card-id)))
 
+; dependencies.async/submit! effectively awaits all pending tasks on the executor.
+; Those tasks would be executed regardless; this is just changing the timing to be
+; less problematic for multiple test runs in sequence.
+#_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (use-fixtures :each
   (fn drained-dependency-async-executor-fixture [t]
     (try
