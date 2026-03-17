@@ -1,9 +1,8 @@
 (ns metabase-enterprise.metabot-v3.api
   "`/api/ee/metabot-v3/` routes"
   (:require
-   [clj-http.client :as http]
    [clojure.core.async :as a]
-   [clojure.string :as str]
+   [metabase-enterprise.api.routes.common :as ee.api.routes]
    [metabase-enterprise.metabot-v3.agent.core :as agent]
    [metabase-enterprise.metabot-v3.api.document]
    [metabase-enterprise.metabot-v3.api.metabot]
@@ -12,20 +11,20 @@
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
    [metabase-enterprise.metabot-v3.envelope :as metabot-v3.envelope]
+   [metabase-enterprise.metabot-v3.feedback :as metabot-v3.feedback]
    [metabase-enterprise.metabot-v3.self.core :as self.core]
    [metabase-enterprise.metabot-v3.settings :as metabot-v3.settings]
    [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
+   [metabase-enterprise.slackbot.api]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
    [metabase.app-db.core :as app-db]
    [metabase.config.core :as config]
-   [metabase.premium-features.core :as premium-features]
    [metabase.server.streaming-response :as sr]
-   [metabase.store-api.core :as store-api]
    [metabase.util :as u]
-   [metabase.util.json :as json]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
@@ -61,6 +60,7 @@
                                        (filter map?)
                                        (map #(+ (:prompt %) (:completion %)))
                                        (apply +))})))
+
 (defn- check-metabot-enabled!
   "Checks that the Metabot instance identified by `metabot-id` is enabled. Throws a 403 if it's not."
   [metabot-id]
@@ -264,23 +264,26 @@
   [_route-params
    _query-params
    feedback :- :map]
-  (let [token (premium-features/premium-embedding-token)
-        base-url (store-api/store-api-url)]
-    (api/check-400 (not (or (str/blank? token) (str/blank? base-url)))
-                   "Cannot build a request. The license token and/or Store api url are missing!")
-    (try
-      (http/post (str base-url "/api/v2/metabot/feedback/" token)
-                 {:content-type :json
-                  :body         (json/encode feedback)})
-      api/generic-204-no-content
-      (catch Exception e
-        (log/error e "Failed to submit feedback to Harbormaster")
-        (throw e)))))
+  (try
+    (api/check-400 (metabot-v3.feedback/submit-to-harbormaster! feedback)
+                   "Cannot submit feedback. The license token and/or Store API URL are missing!")
+    api/generic-204-no-content
+    (catch Exception e
+      (log/error e "Failed to submit feedback to Harbormaster")
+      (throw e))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/metabot-v3` routes."
   (handlers/routes
-   (api.macros/ns-handler *ns* +auth)
    (handlers/route-map-handler
-    {"/metabot" metabase-enterprise.metabot-v3.api.metabot/routes
-     "/document" metabase-enterprise.metabot-v3.api.document/routes})))
+    {"/metabot"  (ee.api.routes/+require-premium-feature
+                  :metabot-v3 (deferred-tru "MetaBot")
+                  metabase-enterprise.metabot-v3.api.metabot/routes)
+     "/document" (ee.api.routes/+require-premium-feature
+                  :metabot-v3 (deferred-tru "MetaBot")
+                  metabase-enterprise.metabot-v3.api.document/routes)
+     ;; premium check happens in the route so we still ack events to prevent slack retrying
+     "/slack"    metabase-enterprise.slackbot.api/routes})
+   (ee.api.routes/+require-premium-feature
+    :metabot-v3 (deferred-tru "MetaBot")
+    (api.macros/ns-handler *ns* +auth))))
