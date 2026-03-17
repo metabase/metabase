@@ -361,8 +361,8 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
       cy.findByText("Today").click();
     });
 
-    H.getDashboardCard(0).should("contain", "Variable: Aujourd'hui");
-    H.getDashboardCard(1).should("contain", "Variable: Aujourd'hui");
+    H.getDashboardCard(0).findByText("Variable: Aujourd'hui").should("exist");
+    H.getDashboardCard(1).findByText("Variable: Aujourd'hui").should("exist");
 
     // Let's make sure the localization was reset back to the user locale by checking that specific text exists in
     // English on the homepage.
