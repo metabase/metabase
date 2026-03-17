@@ -127,7 +127,14 @@ export const DashCardMenu = ({
           canEdit={canEdit}
         />
         {openUnderlyingQuestionItems && (
-          <Menu trigger="click-hover" shadow="md" position="right" width={200}>
+          <Menu
+            closeOnEscape
+            position="right"
+            shadow="md"
+            trapFocus
+            trigger="click-hover"
+            width={200}
+          >
             <Menu.Target>
               <Menu.Item
                 fw="bold"
