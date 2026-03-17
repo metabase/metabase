@@ -11,19 +11,20 @@
 
 (deftest client-store-register-and-get-test
   (t2/with-transaction [_conn nil {:rollback-only true}]
-    (let [cs     (store/create-client-store)
-          config {:client-id      (str (random-uuid))
-                  :client-secret  "super-secret"
-                  :redirect-uris  ["https://example.com/callback"]
-                  :grant-types    ["authorization_code"]
-                  :response-types ["code"]
-                  :scopes         ["openid" "profile"]}
-          result (proto/register-client cs config)]
+    (let [cs          (store/create-client-store)
+          secret-hash (oidc-util/hash-client-secret "super-secret")
+          config      {:client-id      (str (random-uuid))
+                       ;; The library pre-hashes the client secret before calling register-client
+                       :client-secret  secret-hash
+                       :redirect-uris  ["https://example.com/callback"]
+                       :grant-types    ["authorization_code"]
+                       :response-types ["code"]
+                       :scopes         ["openid" "profile"]}
+          result      (proto/register-client cs config)]
       (testing "register-client returns config with client-id"
         (is (= (:client-id config) (:client-id result))))
-      (testing "client secret is hashed and plaintext preserved in return value"
-        (is (=? {:client-secret-hash string?
-                 :client-secret      "super-secret"}
+      (testing "client secret hash is stored"
+        (is (=? {:client-secret-hash string?}
                 result)))
       (testing "get-client returns only the hash, not plaintext secret"
         (let [fetched (proto/get-client cs (:client-id config))]
@@ -113,9 +114,8 @@
                     ;; The library pre-hashes before calling register-client
                     :registration-access-token rat-hash}
           result   (proto/register-client cs config)]
-      (testing "register-client stores the hash and preserves it in the return value"
-        (is (=? {:registration-access-token-hash string?
-                 :registration-access-token      rat-hash}
+      (testing "register-client stores the hash"
+        (is (=? {:registration-access-token-hash string?}
                 result)))
       (testing "get-client returns hash under both :registration-access-token-hash and :registration-access-token"
         (let [fetched (proto/get-client cs (:client-id config))]

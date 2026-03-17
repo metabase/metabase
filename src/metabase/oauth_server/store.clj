@@ -3,7 +3,6 @@
   (:require
    [metabase.util :as u]
    [oidc-provider.protocol :as proto]
-   [oidc-provider.util :as oidc-util]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -107,25 +106,24 @@
         db-row->client-config))
 
   (register-client [_ client-config]
-    (let [client-id    (or (:client-id client-config)
-                           (str (java.util.UUID/randomUUID)))
-          secret       (:client-secret client-config)
-          rat          (:registration-access-token client-config)
-          secret-hash  (when secret (oidc-util/hash-client-secret secret))
-          config       (-> client-config
-                           (assoc :client-id client-id)
-                           (cond-> secret-hash (assoc :client-secret-hash secret-hash)
-                                   ;; The library pre-hashes the registration-access-token
-                                   ;; before calling register-client, so store it as-is.
-                                   rat (assoc :registration-access-token-hash rat))
-                           (dissoc :client-secret :registration-access-token))
-          row          (client-config->db-row config)]
+    (let [client-id (or (:client-id client-config)
+                        (str (java.util.UUID/randomUUID)))
+          config    (-> client-config
+                        (assoc :client-id client-id)
+                        (cond->
+                          ;; The library pre-hashes the registration-access-token before calling
+                          ;; register-client; map it to the DB column name.
+                         (:registration-access-token client-config)
+                          (-> (assoc :registration-access-token-hash (:registration-access-token client-config))
+                              (dissoc :registration-access-token))
+                          ;; The library pre-hashes the client-secret before calling register-client;
+                          ;; map it to the DB column name.
+                          (:client-secret client-config)
+                          (-> (assoc :client-secret-hash (:client-secret client-config))
+                              (dissoc :client-secret))))
+          row       (client-config->db-row config)]
       (t2/insert! :model/OAuthClient row)
-      ;; Return config with the original values preserved for response building
-      ;; (e.g. handle-registration-request needs them for the wire response).
-      (cond-> config
-        secret (assoc :client-secret secret)
-        rat    (assoc :registration-access-token rat))))
+      config))
 
   (update-client [_ client-id updated-config]
     (let [existing (t2/select-one :model/OAuthClient :client_id client-id)]
