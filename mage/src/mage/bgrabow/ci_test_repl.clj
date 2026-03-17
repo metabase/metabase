@@ -357,29 +357,103 @@
         (let [idx (.indexOf ^java.util.List labels (str/trim selected))]
           (nth matches idx))))))
 
+(defn- shell-quote
+  "Quote a string for shell if it contains special characters."
+  [s]
+  (if (re-find #"[^a-zA-Z0-9_./:=@,-]" s)
+    (str "'" (str/replace s "'" "'\\''") "'")
+    s))
+
+(defn- docker-cmds-for-services
+  "Build docker run command vectors for all services in a job without executing them.
+   Returns a seq of command vectors."
+  [{:keys [job-map matrix-version]}]
+  (for [[_svc-name svc-def] (:services job-map)
+        :let [resolved (resolve-service-map svc-def matrix-version)
+              image    (:image resolved)
+              ci-ports (first (:ports resolved))
+              svc-env  (:env resolved)]
+        :when (and image (not (str/includes? image "${")))
+        :let [suffix         (image->container-suffix image)
+              container-name (str container-prefix "-" suffix)
+              host-port      (host-port-for-image image ci-ports)
+              container-port (second (str/split ci-ports #":"))
+              port-mapping   (str host-port ":" container-port)
+              env-args       (mapcat (fn [[k v]] ["-e" (str (name k) "=" v)]) (or svc-env {}))]]
+    (vec (concat ["docker" "run" "-d"
+                  "--name" container-name
+                  "-p" port-mapping]
+                 env-args
+                 [image]))))
+
+(def ^:private clojure-cmd
+  ["clojure" "-M:dev:ee:ee-dev:drivers:drivers-dev" "-m" "nrepl.cmdline" "--interactive"])
+
+(defn- compute-port-remaps
+  "Compute the port remappings that would result from starting services.
+   Returns a map of {ci-host-port → local-host-port}."
+  [{:keys [job-map matrix-version]}]
+  (into {}
+        (for [[_svc-name svc-def] (:services job-map)
+              :let [resolved (resolve-service-map svc-def matrix-version)
+                    image    (:image resolved)
+                    ci-ports (first (:ports resolved))]
+              :when (and image (not (str/includes? image "${")))
+              :let [ci-host-port (first (str/split ci-ports #":"))
+                    host-port    (host-port-for-image image ci-ports)]
+              :when (not= ci-host-port host-port)]
+          [ci-host-port host-port])))
+
+(defn- dry-run!
+  "Print the docker commands, env vars, and clojure command without executing anything."
+  [test-job]
+  (let [docker-cmds (when (has-services? test-job)
+                      (docker-cmds-for-services test-job))
+        port-remaps (if (has-services? test-job)
+                      (compute-port-remaps test-job)
+                      {})
+        ci-env      (-> (resolve-env-map (get-in test-job [:job-map :env]) (:matrix-version test-job))
+                        (remap-env-ports port-remaps))]
+    (when (seq docker-cmds)
+      (println "# Docker commands")
+      (doseq [cmd docker-cmds]
+        (println (str/join " " (map shell-quote cmd))))
+      (println))
+    (when (seq ci-env)
+      (println "# Environment variables")
+      (doseq [[k v] (sort-by key ci-env)]
+        (println (str "export " (name k) "=" (shell-quote (str v)))))
+      (println))
+    (println "# Clojure REPL command")
+    (println (str/join " " clojure-cmd))))
+
 (defn ci-test-repl
   "Start a REPL replicating the CI environment for a given workflow/job.
-   If no arguments are provided, present an interactive fuzzy finder."
-  [{:keys [workflow job]}]
+   If no arguments are provided, present an interactive fuzzy finder.
+   Pass :dry-run? true to print commands without executing."
+  [{:keys [workflow job dry-run?]}]
   (let [test-job (if (and workflow job)
                    (find-test-job workflow job)
                    (select-test-job!))]
-    (println)
-    (println (c/bold (str "=== CI Test REPL: " (display-name test-job) " ===")))
-    (println)
+    (if dry-run?
+      (dry-run! test-job)
+      (do
+        (println)
+        (println (c/bold (str "=== CI Test REPL: " (display-name test-job) " ===")))
+        (println)
 
-    ;; Start Docker services and collect port remappings
-    (let [port-remaps (if (has-services? test-job)
-                        (start-services! test-job)
-                        {})
-          ci-env      (export-env-summary test-job port-remaps)]
-      (println)
-      (println (c/bold "Starting nREPL") "(aliases: :dev:ee:ee-dev:drivers:drivers-dev)...")
-      (println "To stop containers:" (c/green (str "docker rm -f $(docker ps -q --filter name=" container-prefix ")")))
-      (println)
+        ;; Start Docker services and collect port remappings
+        (let [port-remaps (if (has-services? test-job)
+                            (start-services! test-job)
+                            {})
+              ci-env      (export-env-summary test-job port-remaps)]
+          (println)
+          (println (c/bold "Starting nREPL") "(aliases: :dev:ee:ee-dev:drivers:drivers-dev)...")
+          (println "To stop containers:" (c/green (str "docker rm -f $(docker ps -q --filter name=" container-prefix ")")))
+          (println)
 
-      ;; Replace this process with the nREPL (like shell `exec`)
-      (let [extra-env (into {} (map (fn [[k v]] [(name k) (str v)]) ci-env))]
-        (process/exec {:extra-env extra-env}
-                      "clojure" "-M:dev:ee:ee-dev:drivers:drivers-dev"
-                      "-m" "nrepl.cmdline" "--interactive")))))
+          ;; Replace this process with the nREPL (like shell `exec`)
+          (let [extra-env (into {} (map (fn [[k v]] [(name k) (str v)]) ci-env))]
+            (process/exec {:extra-env extra-env}
+                          "clojure" "-M:dev:ee:ee-dev:drivers:drivers-dev"
+                          "-m" "nrepl.cmdline" "--interactive")))))))
