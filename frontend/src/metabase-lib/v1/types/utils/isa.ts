@@ -29,6 +29,26 @@ export interface FieldTypeInfo {
 
 type FieldTypeKey = keyof typeof TYPE_HIERARCHIES;
 
+type FieldPropKey = "base" | "effective" | "semantic";
+
+interface TypeHierarchyDefinition {
+  base?: string[];
+  effective?: string[];
+  semantic?: string[];
+  include?: string[];
+  exclude?: string[];
+}
+
+const FIELD_PROP_TO_TYPE_KEY: Record<FieldPropKey, keyof FieldTypeInfo> = {
+  base: "base_type",
+  effective: "effective_type",
+  semantic: "semantic_type",
+};
+
+function isFieldTypeKey(key: string): key is FieldTypeKey {
+  return key in TYPE_HIERARCHIES;
+}
+
 /**
  * Is x the same as, or a descendant type of, y?
  *
@@ -62,9 +82,9 @@ export function isFieldType(
     return false;
   }
 
-  const typeDefinition = TYPE_HIERARCHIES[type] as Record<string, string[]>;
+  const typeDefinition: TypeHierarchyDefinition = TYPE_HIERARCHIES[type];
   // check to see if it belongs to any of the field types:
-  const props = field.effective_type
+  const props: FieldPropKey[] = field.effective_type
     ? ["effective", "semantic"]
     : ["base", "semantic"];
   for (const prop of props) {
@@ -73,7 +93,7 @@ export function isFieldType(
       continue;
     }
 
-    const fieldType = field[(prop + "_type") as keyof FieldTypeInfo];
+    const fieldType = field[FIELD_PROP_TO_TYPE_KEY[prop]];
     for (const allowedType of allowedTypes) {
       if (isa(fieldType, allowedType)) {
         return true;
@@ -83,14 +103,14 @@ export function isFieldType(
 
   // recursively check to see if it's NOT another field type:
   for (const excludedType of typeDefinition.exclude || []) {
-    if (isFieldType(excludedType as FieldTypeKey, field)) {
+    if (isFieldTypeKey(excludedType) && isFieldType(excludedType, field)) {
       return false;
     }
   }
 
   // recursively check to see if it's another field type:
   for (const includedType of typeDefinition.include || []) {
-    if (isFieldType(includedType as FieldTypeKey, field)) {
+    if (isFieldTypeKey(includedType) && isFieldType(includedType, field)) {
       return true;
     }
   }
