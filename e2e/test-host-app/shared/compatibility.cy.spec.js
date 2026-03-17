@@ -59,7 +59,7 @@ describe("Embedding SDK: shared Host Apps compatibility tests", () => {
     cy.findByTestId("interactive-question-result-toolbar", {
       timeout: TIMEOUT_MS,
     }).within(() => {
-      cy.findByText("Filtrar").click();
+      cy.findByText("Filtro").click();
     });
 
     cy.get('[data-element-id="mantine-popover"]')
@@ -86,7 +86,7 @@ describe("Embedding SDK: shared Host Apps compatibility tests", () => {
     cy.findByTestId("interactive-question-result-toolbar", {
       timeout: TIMEOUT_MS,
     }).within(() => {
-      cy.findByText("Filtrar").click();
+      cy.findByText("Filtro").click();
     });
     cy.get('[data-element-id="mantine-popover"]')
       .should("have.length.above", 0)
