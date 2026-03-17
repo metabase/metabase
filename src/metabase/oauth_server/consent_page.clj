@@ -1,4 +1,4 @@
-(ns metabase-enterprise.oauth-server.consent-page
+(ns metabase.oauth-server.consent-page
   "Server-side rendered consent page for the OAuth authorization flow."
   (:require
    [clojure.string :as str]

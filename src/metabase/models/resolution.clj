@@ -63,10 +63,10 @@
     :model/ModerationReview                  metabase.content-verification.models.moderation-review
     :model/NativeQuerySnippet                metabase.native-query-snippets.models.native-query-snippet
     :model/Notification                      metabase.notification.models
-    :model/OAuthAccessToken                  metabase-enterprise.oauth-server.models.oauth-access-token
-    :model/OAuthAuthorizationCode            metabase-enterprise.oauth-server.models.oauth-authorization-code
-    :model/OAuthClient                       metabase-enterprise.oauth-server.models.oauth-client
-    :model/OAuthRefreshToken                 metabase-enterprise.oauth-server.models.oauth-refresh-token
+    :model/OAuthAccessToken                  metabase.oauth-server.models.oauth-access-token
+    :model/OAuthAuthorizationCode            metabase.oauth-server.models.oauth-authorization-code
+    :model/OAuthClient                       metabase.oauth-server.models.oauth-client
+    :model/OAuthRefreshToken                 metabase.oauth-server.models.oauth-refresh-token
     :model/NotificationCard                  metabase.notification.models
     :model/NotificationHandler               metabase.notification.models
     :model/NotificationRecipient             metabase.notification.models

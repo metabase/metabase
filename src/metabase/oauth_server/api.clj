@@ -1,49 +1,18 @@
 (ns metabase.oauth-server.api
-  "Routes for the embedded OAuth/OIDC provider endpoints."
+  "Top-level route handlers for the embedded OAuth/OIDC provider.
+   Assembles handlers from [[metabase.oauth-server.api.oauth]] and [[metabase.oauth-server.api.metadata]]."
   (:require
-   [compojure.core :refer [GET POST context routes]]
-   [metabase.oauth-server.core :as oauth-server]))
+   [metabase.api.macros :as api.macros]
+   [metabase.oauth-server.api.metadata]
+   [metabase.oauth-server.api.oauth]))
 
-(def ^:private not-found-response
-  {:status 404 :body {:error "not_found"}})
+(comment metabase.oauth-server.api.metadata/keep-me
+         metabase.oauth-server.api.oauth/keep-me)
 
-(def well-known-routes
-  "Ring handler for `/.well-known/` routes (top-level, per RFC 8414 and RFC 9728).
-   The protected-resource metadata is served at the path-suffixed URI per RFC 9728 §3:
-   `/.well-known/oauth-protected-resource` + the resource path (`/api/mcp`)."
-  (routes
-   (GET "/.well-known/oauth-authorization-server" request
-     (or (oauth-server/openid-discovery-handler request)
-         not-found-response))
-   (GET "/.well-known/openid-configuration" request
-     (or (oauth-server/openid-discovery-handler request)
-         not-found-response))
-   (GET "/.well-known/oauth-protected-resource/api/mcp" request
-     (or (oauth-server/protected-resource-metadata-handler request)
-         not-found-response))))
+(def ^{:arglists '([request respond raise])} well-known-routes
+  "Handler for `/.well-known/` routes (top-level, per RFC 8414 and RFC 9728)."
+  (api.macros/ns-handler 'metabase.oauth-server.api.metadata))
 
-(def oauth-routes
-  "Ring handler for `/oauth/` routes."
-  (context "/oauth" []
-    (routes
-     (GET "/jwks" request
-       (or (oauth-server/jwks-handler request)
-           not-found-response))
-     (POST "/register" request
-       (or (oauth-server/dynamic-register-handler request)
-           not-found-response))
-     (GET "/register/:client-id" [client-id :as request]
-       (or (oauth-server/dynamic-client-read-handler request client-id)
-           not-found-response))
-     (GET "/authorize" request
-       (or (oauth-server/authorize-handler request)
-           not-found-response))
-     (POST "/authorize/decision" request
-       (or (oauth-server/authorize-decision-handler request)
-           not-found-response))
-     (POST "/token" request
-       (or (oauth-server/token-handler request)
-           not-found-response))
-     (POST "/revoke" request
-       (or (oauth-server/revocation-handler request)
-           not-found-response)))))
+(def ^{:arglists '([request respond raise])} oauth-routes
+  "Handler for `/oauth/` routes."
+  (api.macros/ns-handler 'metabase.oauth-server.api.oauth))

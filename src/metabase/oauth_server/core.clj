@@ -1,59 +1,91 @@
 (ns metabase.oauth-server.core
-  "OSS namespace for OAuth/OIDC server functionality. Defines defenterprise functions
-   that return nil in OSS; EE implementations delegate to the oidc-provider library."
   (:require
-   [metabase.premium-features.core :refer [defenterprise]]))
+   [clojure.string :as str]
+   [metabase.oauth-server.settings :as oauth-settings]
+   [metabase.oauth-server.store :as store]
+   [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.system.core :as system]
+   [oidc-provider.core :as oidc]
+   [oidc-provider.token :as oidc-token])
+  (:import
+   (com.nimbusds.jose.jwk RSAKey)))
 
-(defenterprise openid-discovery-handler
-  "Returns the OIDC discovery document as a Ring response, or nil if unavailable."
-  metabase-enterprise.oauth-server.api
-  [_request]
-  nil)
+(set! *warn-on-reflection* true)
 
-(defenterprise jwks-handler
-  "Returns the JWKS as a Ring response, or nil if unavailable."
-  metabase-enterprise.oauth-server.api
-  [_request]
-  nil)
+(defonce ^:private provider (atom nil))
 
-(defenterprise dynamic-register-handler
-  "Handles dynamic client registration (RFC 7591), or returns nil if unavailable."
-  metabase-enterprise.oauth-server.api
-  [_request]
-  nil)
+(defn- serialize-key
+  "Serialize an RSAKey to a JSON string for storage."
+  [^RSAKey k]
+  (.toJSONString k))
 
-(defenterprise dynamic-client-read-handler
-  "Handles client configuration read (RFC 7592), or returns nil if unavailable."
-  metabase-enterprise.oauth-server.api
-  [_request _client-id]
-  nil)
+(defn- deserialize-key
+  "Deserialize a JSON string back to an RSAKey."
+  ^RSAKey [^String s]
+  (RSAKey/parse s))
 
-(defenterprise authorize-handler
-  "Handles the authorization endpoint (GET /oauth/authorize), or returns nil if unavailable."
-  metabase-enterprise.oauth-server.api
-  [_request]
-  nil)
+(defn- get-or-generate-signing-key!
+  "Returns the RSA signing key. Reads from settings if persisted, otherwise generates
+   a new key and persists it."
+  []
+  (if-let [stored (oauth-settings/oauth-server-signing-key)]
+    (deserialize-key stored)
+    (let [k (oidc-token/generate-rsa-key)]
+      (oauth-settings/oauth-server-signing-key! (serialize-key k))
+      k)))
 
-(defenterprise authorize-decision-handler
-  "Handles the authorization decision (POST /oauth/authorize/decision), or returns nil if unavailable."
-  metabase-enterprise.oauth-server.api
-  [_request]
-  nil)
+(defenterprise all-agent-scopes
+  "All supported OAuth scopes for the MCP/agent API, derived from endpoint metadata.
+   Returns empty vector in OSS; EE implementation derives scopes from agent API endpoints."
+  metabase-enterprise.oauth-server.core
+  []
+  [])
 
-(defenterprise revocation-handler
-  "Handles the token revocation endpoint (POST /oauth/revoke), or returns nil if unavailable."
-  metabase-enterprise.oauth-server.api
-  [_request]
-  nil)
+(defn- build-provider-config
+  "Build the configuration map for the OIDC provider from Metabase settings."
+  [signing-key]
+  (let [base-url (system/site-url)]
+    {:issuer                         base-url
+     :authorization-endpoint         (str base-url "/oauth/authorize")
+     :token-endpoint                 (str base-url "/oauth/token")
+     :jwks-uri                       (str base-url "/oauth/jwks")
+     :registration-endpoint          (str base-url "/oauth/register")
+     :revocation-endpoint            (str base-url "/oauth/revoke")
+     :signing-key                    signing-key
+     :access-token-ttl-seconds       (oauth-settings/oauth-server-access-token-ttl)
+     :id-token-ttl-seconds           (oauth-settings/oauth-server-id-token-ttl)
+     :authorization-code-ttl-seconds (oauth-settings/oauth-server-authorization-code-ttl)
+     :client-store                   (store/create-client-store)
+     :code-store                     (store/create-authorization-code-store)
+     :token-store                    (store/create-token-store)
+     :scopes-supported               (all-agent-scopes)
+     :claims-provider                (store/create-claims-provider)}))
 
-(defenterprise token-handler
-  "Handles the token endpoint (POST /oauth/token), or returns nil if unavailable."
-  metabase-enterprise.oauth-server.api
-  [_request]
-  nil)
+(defn create-provider!
+  "Create and store the OIDC provider instance."
+  []
+  (let [signing-key (get-or-generate-signing-key!)
+        config      (build-provider-config signing-key)
+        p           (oidc/create-provider config)]
+    (reset! provider p)
+    p))
 
-(defenterprise protected-resource-metadata-handler
-  "Returns OAuth Protected Resource Metadata (RFC 9728), or nil if unavailable."
-  metabase-enterprise.oauth-server.api
-  [_request]
-  nil)
+(defn get-provider
+  "Returns the current provider instance, creating it lazily if needed."
+  []
+  (or @provider
+      (locking provider
+        (or @provider
+            (create-provider!)))))
+
+(defn reset-provider!
+  "Reset the provider atom to nil. Useful for testing."
+  []
+  (reset! provider nil))
+
+(defn extract-bearer-token
+  "Extract the bearer token from the Authorization header of a Ring request."
+  [request]
+  (when-let [auth (get-in request [:headers "authorization"])]
+    (when (str/starts-with? (str/lower-case auth) "bearer ")
+      (str/trim (subs auth 7)))))

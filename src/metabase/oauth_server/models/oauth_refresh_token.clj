@@ -1,4 +1,4 @@
-(ns metabase-enterprise.oauth-server.models.oauth-refresh-token
+(ns metabase.oauth-server.models.oauth-refresh-token
   (:require
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]

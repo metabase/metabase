@@ -2,10 +2,10 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase-enterprise.oauth-server.core :as oauth-server]
    [metabase.api.macros.scope :as scope]
    [metabase.mcp.api :as mcp.api]
    [metabase.mcp.tools :as mcp.tools]
+   [metabase.oauth-server.core :as oauth-server]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]

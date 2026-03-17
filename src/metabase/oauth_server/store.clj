@@ -1,4 +1,4 @@
-(ns metabase-enterprise.oauth-server.store
+(ns metabase.oauth-server.store
   "Database-backed implementations of OIDC provider storage protocols."
   (:require
    [metabase.util :as u]

@@ -1,4 +1,4 @@
-(ns metabase-enterprise.oauth-server.settings
+(ns metabase.oauth-server.settings
   (:require
    [metabase.settings.core :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
@@ -9,7 +9,6 @@
   :encryption :when-encryption-key-set
   :sensitive? true
   :visibility :internal
-  :feature    :metabot-v3
   :doc        false
   :export?    false)
 
@@ -18,7 +17,6 @@
   :type       :integer
   :visibility :internal
   :default    3600
-  :feature    :metabot-v3
   :doc        false
   :export?    false
   :audit      :never)
@@ -28,7 +26,6 @@
   :type       :integer
   :visibility :internal
   :default    3600
-  :feature    :metabot-v3
   :doc        false
   :export?    false
   :audit      :never)
@@ -38,7 +35,6 @@
   :type       :integer
   :visibility :internal
   :default    600
-  :feature    :metabot-v3
   :doc        false
   :export?    false
   :audit      :never)
@@ -48,7 +44,6 @@
   :type       :boolean
   :default    true
   :visibility :internal
-  :feature    :metabot-v3
   :doc        false
   :export?    false
   :audit      :getter)

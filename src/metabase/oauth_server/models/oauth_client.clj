@@ -1,4 +1,4 @@
-(ns metabase-enterprise.oauth-server.models.oauth-client
+(ns metabase.oauth-server.models.oauth-client
   (:require
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]

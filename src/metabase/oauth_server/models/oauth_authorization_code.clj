@@ -1,4 +1,4 @@
-(ns metabase-enterprise.oauth-server.models.oauth-authorization-code
+(ns metabase.oauth-server.models.oauth-authorization-code
   (:require
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]

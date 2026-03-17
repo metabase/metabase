@@ -98,8 +98,8 @@
   #_{:clj-kondo/ignore [:discouraged-var]}
   (compojure/routes
    auth-wrapper/routes
-   oauth-server.api/well-known-routes
-   oauth-server.api/oauth-routes
+   (context "/.well-known" [] oauth-server.api/well-known-routes)
+   (context "/oauth" [] oauth-server.api/oauth-routes)
    ;; ^/$ -> index.html
    (GET "/" [] index/index)
    (GET "/favicon.ico" [] (response/resource-response (appearance/application-favicon-url)))
