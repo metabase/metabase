@@ -25,9 +25,9 @@
         n       (count agg)]
     (if (zero? n)
       {:summary        nil
-       :data_points    0
-       :category_count 0
-       :top_categories []
+       :data-points    0
+       :category-count 0
+       :top-categories []
        :outliers       []}
       (let [ys       (mapv second agg)
             xs       (mapv first agg)
@@ -44,11 +44,11 @@
             bottom   (when (> n many-categories-threshold)
                        (mapv make-cat (take-last bottom-n-categories sorted)))]
         (cond-> {:summary        summary
-                 :data_points    (count valid)
-                 :category_count n
-                 :top_categories (mapv make-cat (take top-n-categories sorted))
+                 :data-points    (count valid)
+                 :category-count n
+                 :top-categories (mapv make-cat (take top-n-categories sorted))
                  :outliers       (or outliers [])}
-          bottom (assoc :bottom_categories bottom))))))
+          bottom (assoc :bottom-categories bottom))))))
 
 (mu/defn compute-categorical-stats :- ::stats.types/categorical-stats
   "Compute categorical stats for all series in a chart."

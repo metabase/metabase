@@ -51,10 +51,10 @@
         downsampled     (into {} (for [[name orig-count] original-counts
                                        :let [new-count (count (get-in limited-series [name :y_values]))]
                                        :when (< new-count orig-count)]
-                                   [name {:original_count orig-count :sampled_count new-count}]))]
+                                   [name {:original-count orig-count :sampled-count new-count}]))]
     [limited-series
      (when (seq downsampled)
-       {:downsampled_series downsampled})]))
+       {:downsampled-series downsampled})]))
 
 ;;; ----------------------------------------------- Chart Type Detection ---------------------------------------------
 
@@ -156,16 +156,16 @@
         opts                         (cond-> opts
                                        too-many-series? (assoc :max-correlation-series max-series-for-correlations))
         limits-info                  (cond-> limits-info
-                                       too-many-series? (assoc :correlations_capped
-                                                               {:total_series   (count limited-series)
-                                                                :max_correlated max-series-for-correlations}))
+                                       too-many-series? (assoc :correlations-capped
+                                                               {:total-series   (count limited-series)
+                                                                :max-correlated max-series-for-correlations}))
         stats                        (case chart-type
                                        :time-series (time-series/compute-time-series-stats limited-series opts)
                                        :categorical (categorical/compute-categorical-stats limited-series opts)
                                        :scatter     (scatter/compute-scatter-stats limited-series opts)
                                        :histogram   (histogram/compute-histogram-stats limited-series opts)
-                                       {:chart_type   chart-type
-                                        :series_count (count limited-series)
+                                       {:chart-type   chart-type
+                                        :series-count (count limited-series)
                                         :message      (str "Statistics for " (name chart-type)
                                                            " charts not yet implemented")})]
     (cond-> stats
