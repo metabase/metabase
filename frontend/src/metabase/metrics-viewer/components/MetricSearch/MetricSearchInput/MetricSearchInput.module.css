@@ -48,3 +48,46 @@
   color: var(--mb-color-text-medium);
   user-select: none;
 }
+
+.cmOperator {
+  color: var(--mb-color-syntax-parameters);
+}
+
+.codeEditor {
+  flex: 1;
+  min-width: 7.5rem;
+
+  :global {
+    .cm-editor {
+      background: transparent;
+    }
+
+    .cm-focused {
+      outline: none;
+    }
+
+    .cm-content {
+      padding: 0;
+      font-family: var(--mb-default-monospace-font-family);
+      font-size: 0.875rem;
+      color: var(--mb-color-text-primary);
+    }
+
+    .cm-line {
+      padding: 0;
+    }
+
+    .cm-cursor {
+      border-left-width: 1.6px;
+      border-left-color: var(--mb-color-text-secondary);
+    }
+
+    .cm-placeholder {
+      color: var(--mb-color-text-tertiary);
+    }
+
+    .cm-scroller {
+      overflow: hidden;
+    }
+  }
+}

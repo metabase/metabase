@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import type { ExpressionToken, MathOperator } from "../../types/operators";
 import type { SelectedMetric } from "../../types/viewer-state";
 
@@ -368,6 +370,90 @@ type SearchResultLike = {
   id: number;
   model: "metric" | "measure";
 };
+
+/**
+ * Validates a single item's token stream (between separators).
+ * Returns a user-facing error message, or null if the item is valid.
+ *
+ * Checks performed:
+ * 1. Unmatched parentheses
+ * 2. Consecutive operators without an operand between them (e.g. "+ *")
+ * 3. Expression starts or ends with an operator (no leading/trailing operators)
+ * 4. Empty parentheses "()"
+ * 5. Item has no operands (metrics or constants) at all
+ */
+function validateItem(itemTokens: ExpressionToken[]): string | null {
+  if (itemTokens.length === 0) {
+    return null; // empty items are filtered elsewhere
+  }
+
+  // 1. Unmatched parentheses
+  let depth = 0;
+  for (const token of itemTokens) {
+    if (token.type === "open-paren") {
+      depth++;
+    } else if (token.type === "close-paren") {
+      depth--;
+      if (depth < 0) {
+        return t`Unmatched closing parenthesis`;
+      }
+    }
+  }
+  if (depth > 0) {
+    return t`Unmatched opening parenthesis`;
+  }
+
+  // 2 & 3. Consecutive / leading / trailing operators, and empty parens
+  let prevSignificant: ExpressionToken | null = null;
+  for (const token of itemTokens) {
+    if (token.type === "operator") {
+      if (prevSignificant === null) {
+        return t`Expression cannot start with an operator`;
+      }
+      if (prevSignificant.type === "operator") {
+        return t`Two operators in a row without a metric between them`;
+      }
+      if (prevSignificant.type === "open-paren") {
+        return t`Operator right after opening parenthesis`;
+      }
+    }
+    if (
+      token.type === "close-paren" &&
+      prevSignificant?.type === "open-paren"
+    ) {
+      return t`Empty parentheses`;
+    }
+    prevSignificant = token;
+  }
+  if (prevSignificant?.type === "operator") {
+    return t`Expression cannot end with an operator`;
+  }
+
+  // 4. Must have at least one operand
+  const hasOperand = itemTokens.some(
+    (t) => t.type === "metric" || t.type === "constant",
+  );
+  if (!hasOperand) {
+    return t`Expression must contain at least one metric`;
+  }
+
+  return null;
+}
+
+/**
+ * Validates all items in a full token stream (split by separators).
+ * Returns the first error message found, or null if everything is valid.
+ */
+export function validateExpression(tokens: ExpressionToken[]): string | null {
+  const items = splitByItems(tokens);
+  for (const item of items) {
+    const error = validateItem(item);
+    if (error) {
+      return error;
+    }
+  }
+  return null;
+}
 
 export function filterSearchResults<T extends SearchResultLike>(
   results: T[],

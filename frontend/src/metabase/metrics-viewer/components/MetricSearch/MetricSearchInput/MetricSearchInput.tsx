@@ -1,7 +1,11 @@
+import { EditorSelection } from "@codemirror/state";
+import { keymap, placeholder } from "@codemirror/view";
+import type { ReactCodeMirrorRef } from "@uiw/react-codemirror";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
-import { Flex, Popover, TextInput } from "metabase/ui";
+import { CodeMirror } from "metabase/common/components/CodeMirror";
+import { Button, Flex, Icon, Popover, Tooltip } from "metabase/ui";
 import type { ProjectionClause } from "metabase-lib/metric";
 
 import type { ExpressionToken } from "../../../types/operators";
@@ -29,9 +33,11 @@ import {
   parseFullText,
   removeUnmatchedParens,
   splitByItems,
+  validateExpression,
 } from "../utils";
 
 import S from "./MetricSearchInput.module.css";
+import { operatorHighlight } from "./operatorHighlight";
 
 // Metrics in the expression input can be used multiple times, so nothing is filtered out
 const EMPTY_SET = new Set<number>();
@@ -68,15 +74,29 @@ export function MetricSearchInput({
   const [currentWord, setCurrentWord] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
-  const inputRef = useRef<HTMLInputElement>(null);
+  const editorRef = useRef<ReactCodeMirrorRef>(null);
   const pendingFocusRef = useRef(false);
-  const blurTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Refs so blur timeout can read latest values without stale closures
+  // lastCommittedText is the formula text from the last committed (run) query.
+  // isDirty is computed by comparing editText to this value — no separate dirty state needed.
+  const [lastCommittedText, setLastCommittedText] = useState("");
+  const lastCommittedTextRef = useRef(lastCommittedText);
+  lastCommittedTextRef.current = lastCommittedText;
+  // Refs for reading latest values in callbacks without stale closures
   const editTextRef = useRef(editText);
   editTextRef.current = editText;
   const selectedMetricsRef = useRef(selectedMetrics);
   selectedMetricsRef.current = selectedMetrics;
+  // Tracks whether an editing session is active. Set to true only once
+  // handleInputFocus initializes the session; set back to false in commitAndCollapse.
+  // Used to prevent autoFocus / view.focus() re-entrancy from reinitializing text.
+  const isEditingSessionActiveRef = useRef(false);
+
+  const handleRunRef = useRef<() => void>(() => {});
+
+  // Dirty when the current edit text differs from the last committed text
+  const isDirty = editText !== lastCommittedText;
 
   // Remove unnecessary parentheses per item (only when not actively editing)
   useEffect(() => {
@@ -139,83 +159,103 @@ export function MetricSearchInput({
     [definitions],
   );
 
-  // Focus the input after transitioning from collapsed → expanded mode
+  // Focus the editor after transitioning from collapsed → expanded mode
   useEffect(() => {
     if (isFocused && pendingFocusRef.current) {
       pendingFocusRef.current = false;
-      inputRef.current?.focus();
+      editorRef.current?.view?.focus();
     }
   }, [isFocused]);
 
   const handleInputFocus = useCallback(() => {
-    if (blurTimeoutRef.current !== null) {
-      // Re-focused before the blur timeout fired — cancel and keep current text
-      clearTimeout(blurTimeoutRef.current);
-      blurTimeoutRef.current = null;
-      setIsFocused(true);
+    // If an editing session is already active (e.g. focus returning from a
+    // dropdown item click via view.focus()), do not reset the text or the
+    // committed baseline.
+    if (isEditingSessionActiveRef.current) {
       return;
     }
+    isEditingSessionActiveRef.current = true;
+    const fullText = buildFullText(tokens, selectedMetrics);
     setIsFocused(true);
-    setEditText(buildFullText(tokens, selectedMetrics));
+    setEditText(fullText);
+    setLastCommittedText(fullText);
+    setValidationError(null);
   }, [tokens, selectedMetrics]);
 
-  const handleInputBlur = useCallback(() => {
-    blurTimeoutRef.current = setTimeout(() => {
-      blurTimeoutRef.current = null;
+  /** Commits the current text: parses tokens, removes unreferenced metrics, and collapses. */
+  const commitAndCollapse = useCallback(() => {
+    const finalTokens = parseFullText(
+      editTextRef.current,
+      selectedMetricsRef.current,
+    );
 
-      // Parse the final text and sync tokens, removing unreferenced metrics
-      const finalTokens = parseFullText(
-        editTextRef.current,
-        selectedMetricsRef.current,
+    const referencedIndices = new Set(
+      finalTokens
+        .filter(
+          (t): t is { type: "metric"; metricIndex: number } =>
+            t.type === "metric",
+        )
+        .map((t) => t.metricIndex),
+    );
+
+    // Remove unreferenced metrics, highest index first to keep indices valid
+    let remappedTokens = [...finalTokens];
+    const toRemove = selectedMetricsRef.current
+      .map((_, idx) => idx)
+      .filter((idx) => !referencedIndices.has(idx))
+      .sort((a, b) => b - a);
+
+    for (const removeIdx of toRemove) {
+      remappedTokens = remappedTokens.map((t) =>
+        t.type === "metric" && t.metricIndex > removeIdx
+          ? { ...t, metricIndex: t.metricIndex - 1 }
+          : t,
       );
-
-      const referencedIndices = new Set(
-        finalTokens
-          .filter(
-            (t): t is { type: "metric"; metricIndex: number } =>
-              t.type === "metric",
-          )
-          .map((t) => t.metricIndex),
-      );
-
-      // Remove unreferenced metrics, highest index first to keep indices valid
-      let remappedTokens = [...finalTokens];
-      const toRemove = selectedMetricsRef.current
-        .map((_, idx) => idx)
-        .filter((idx) => !referencedIndices.has(idx))
-        .sort((a, b) => b - a);
-
-      for (const removeIdx of toRemove) {
-        remappedTokens = remappedTokens.map((t) =>
-          t.type === "metric" && t.metricIndex > removeIdx
-            ? { ...t, metricIndex: t.metricIndex - 1 }
-            : t,
-        );
-        const metric = selectedMetricsRef.current[removeIdx];
-        if (metric) {
-          onRemoveMetric(metric.id, metric.sourceType);
-        }
+      const metric = selectedMetricsRef.current[removeIdx];
+      if (metric) {
+        onRemoveMetric(metric.id, metric.sourceType);
       }
+    }
 
-      onTokensChange(remappedTokens);
-      setIsFocused(false);
-      setIsOpen(false);
-      setCurrentWord("");
-      setEditText("");
-    }, 150);
+    onTokensChange(remappedTokens);
+    isEditingSessionActiveRef.current = false;
+    setIsFocused(false);
+    setIsOpen(false);
+    setCurrentWord("");
+    setEditText("");
+    setLastCommittedText("");
+    setValidationError(null);
   }, [onRemoveMetric, onTokensChange]);
 
+  const handleInputBlur = useCallback(() => {
+    const currentTokens = parseFullText(
+      editTextRef.current,
+      selectedMetricsRef.current,
+    );
+    const error = validateExpression(currentTokens);
+    if (error) {
+      // Invalid formula — stay in focused/editing mode and show the error.
+      // Do NOT close the dropdown here: if blur was caused by the user clicking
+      // a dropdown item, the click must still fire so handleSelect can run.
+      setValidationError(error);
+      return;
+    }
+    setValidationError(null);
+    commitAndCollapse();
+  }, [commitAndCollapse]);
+
   const handleChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      const newText = event.target.value;
+    (newText: string) => {
       setEditText(newText);
+      setValidationError(null);
 
       // Re-parse tokens from the updated text
       const newTokens = parseFullText(newText, selectedMetrics);
       onTokensChange(newTokens);
 
       // Extract the word at the cursor for the dropdown search
-      const cursorPos = event.target.selectionStart ?? newText.length;
+      const cursorPos =
+        editorRef.current?.view?.state.selection.main.head ?? newText.length;
       const { word } = getWordAtCursor(newText, cursorPos);
       setCurrentWord(word);
       setIsOpen(true);
@@ -225,28 +265,19 @@ export function MetricSearchInput({
 
   const handleSelect = useCallback(
     (metric: SelectedMetric) => {
-      const cursorPos = inputRef.current?.selectionStart ?? editText.length;
+      const cursorPos =
+        editorRef.current?.view?.state.selection.main.head ?? editText.length;
       const { start, end } = getWordAtCursor(editText, cursorPos);
 
       const metricName = metric.name ?? "";
 
       // Check if we need to auto-insert a separator before this metric.
-      // A comma is needed when the preceding content ends with something that
-      // is not an operator, open-paren, comma, or nothing — i.e. another metric
-      // name or a close-paren would make the new metric ambiguously part of the
-      // same expression without an operator.
       const textBeforeWord = editText.slice(0, start).trimEnd();
       const lastChar = textBeforeWord[textBeforeWord.length - 1];
       const NO_COMMA_CHARS = new Set(["+", "-", "*", "/", "(", ","]);
       const needsComma =
         textBeforeWord.length > 0 && !NO_COMMA_CHARS.has(lastChar);
 
-      // Build the new text.
-      // • comma case: trim trailing whitespace from the text before the word,
-      //   then insert ", " so we don't get "Metric  , NewMetric".
-      // • no-comma case: use the original (untrimmed) slice so any deliberate
-      //   spacing between an operator and the metric is preserved (e.g. the " "
-      //   in "Revenue + " stays, giving "Revenue + Costs" not "Revenue +Costs").
       let newText: string;
       let newCursorPos: number;
       if (needsComma) {
@@ -276,9 +307,12 @@ export function MetricSearchInput({
 
       // Reposition cursor right after the inserted metric name
       setTimeout(() => {
-        if (inputRef.current) {
-          inputRef.current.setSelectionRange(newCursorPos, newCursorPos);
-          inputRef.current.focus();
+        const view = editorRef.current?.view;
+        if (view) {
+          view.dispatch({
+            selection: EditorSelection.cursor(newCursorPos),
+          });
+          view.focus();
         }
       }, 0);
     },
@@ -338,25 +372,63 @@ export function MetricSearchInput({
   );
 
   const handleContainerClick = useCallback(() => {
-    if (inputRef.current) {
-      inputRef.current.focus();
+    const view = editorRef.current?.view;
+    if (view) {
+      view.focus();
     } else {
-      // TextInput not rendered yet (collapsed mode) — transition to expanded
+      // Editor not rendered yet (collapsed mode) — transition to expanded
       pendingFocusRef.current = true;
       setIsFocused(true);
     }
   }, []);
 
-  const handleInputClick = useCallback(() => {
-    if (!inputRef.current) {
+  const handleEditorClick = useCallback(() => {
+    const view = editorRef.current?.view;
+    if (!view) {
       return;
     }
     // Re-extract word at the new cursor position after a click
-    const cursorPos = inputRef.current.selectionStart ?? editText.length;
-    const { word } = getWordAtCursor(editText, cursorPos);
+    const cursorPos = view.state.selection.main.head;
+    const text = view.state.doc.toString();
+    const { word } = getWordAtCursor(text, cursorPos);
     setCurrentWord(word);
     setIsOpen(true);
-  }, [editText]);
+  }, []);
+
+  /** Validate the expression and either show an error or commit + run the query. */
+  const handleRun = useCallback(() => {
+    const currentTokens = parseFullText(
+      editTextRef.current,
+      selectedMetricsRef.current,
+    );
+    const error = validateExpression(currentTokens);
+    if (error) {
+      setValidationError(error);
+      return;
+    }
+    setValidationError(null);
+    commitAndCollapse();
+  }, [commitAndCollapse]);
+  handleRunRef.current = handleRun;
+
+  // CodeMirror extensions for the formula editor
+  const editorExtensions = useMemo(
+    () => [
+      operatorHighlight,
+      placeholder(tokens.length === 0 ? t`Search for metrics...` : ""),
+      // Prevent Enter from creating newlines; trigger run when dirty
+      keymap.of([
+        {
+          key: "Enter",
+          run: () => {
+            handleRunRef.current();
+            return true;
+          },
+        },
+      ]),
+    ],
+    [tokens.length],
+  );
 
   const isCollapsed = !isFocused && tokens.length > 0;
 
@@ -369,6 +441,7 @@ export function MetricSearchInput({
       px="sm"
       py="xs"
       onClick={handleContainerClick}
+      data-has-error={validationError ? true : undefined}
     >
       <Flex align="center" gap="sm" flex={1} wrap="wrap" mih="2.375rem">
         {isCollapsed ? (
@@ -454,7 +527,7 @@ export function MetricSearchInput({
             })}
           </>
         ) : (
-          // Focused: single text input showing the full expression
+          // Focused: CodeMirror editor with syntax highlighting
           <Popover
             opened={isOpen}
             onChange={setIsOpen}
@@ -463,22 +536,22 @@ export function MetricSearchInput({
             withinPortal
           >
             <Popover.Target>
-              <TextInput
-                ref={inputRef}
-                classNames={{ input: S.inputField }}
-                flex={1}
-                miw="7.5rem"
-                variant="unstyled"
-                placeholder={
-                  tokens.length === 0 ? t`Search for metrics...` : ""
-                }
-                value={editText}
-                onChange={handleChange}
-                onClick={handleInputClick}
+              <div
+                className={S.codeEditor}
                 onFocus={handleInputFocus}
                 onBlur={handleInputBlur}
-                data-testid="metrics-viewer-search-input"
-              />
+                onClick={handleEditorClick}
+              >
+                <CodeMirror
+                  ref={editorRef}
+                  basicSetup={false}
+                  autoFocus
+                  value={editText}
+                  onChange={handleChange}
+                  extensions={editorExtensions}
+                  data-testid="metrics-viewer-search-input"
+                />
+              </div>
             </Popover.Target>
             <Popover.Dropdown p={0} miw="19rem" maw="25rem">
               {isOpen && (
@@ -493,6 +566,27 @@ export function MetricSearchInput({
           </Popover>
         )}
       </Flex>
+      {validationError && (
+        <Tooltip label={validationError} withinPortal>
+          <Icon
+            name="warning"
+            color="error"
+            aria-label={validationError}
+            data-testid="expression-validation-icon"
+          />
+        </Tooltip>
+      )}
+      {isDirty && (
+        <Button
+          variant="filled"
+          size="xs"
+          data-testid="run-expression-button"
+          onClick={(e: React.MouseEvent) => {
+            e.stopPropagation();
+            handleRun();
+          }}
+        >{t`Run`}</Button>
+      )}
     </Flex>
   );
 }

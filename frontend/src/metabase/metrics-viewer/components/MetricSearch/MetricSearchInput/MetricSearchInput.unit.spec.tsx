@@ -230,11 +230,12 @@ describe("collapsed view (tokens present, not focused)", () => {
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
   });
 
-  it("shows placeholder text when there are no tokens and no focus", () => {
+  it("shows the CodeMirror editor when there are no tokens", () => {
     setup({ tokens: [] });
-    // The input is rendered but unfocused with empty tokens
-    const input = screen.getByRole("textbox");
-    expect(input).toHaveAttribute("placeholder", "Search for metrics...");
+    // With empty tokens the editor is always shown (not collapsed to pills)
+    expect(
+      screen.getByTestId("metrics-viewer-search-input"),
+    ).toBeInTheDocument();
   });
 });
 
@@ -252,17 +253,19 @@ describe("expanded view (focused text input)", () => {
     });
   });
 
-  it("shows full expression text in the text input when focused", async () => {
+  it("shows the text editor when focused (transitions from pills)", async () => {
     const { user } = setup({ tokens: [m(0), op("+"), m(1)] });
 
     await user.click(screen.getByTestId("metric-expression-pill"));
 
     await waitFor(() => {
-      expect(screen.getByRole("textbox")).toHaveValue("Revenue + Costs");
+      expect(
+        screen.getByTestId("metrics-viewer-search-input"),
+      ).toBeInTheDocument();
     });
   });
 
-  it("shows multiple items as comma-separated text in the input", async () => {
+  it("shows multiple items editor when focused", async () => {
     const { user } = setup({ tokens: [m(0), sep, m(1)] });
 
     // Click the first pill to focus
@@ -270,11 +273,13 @@ describe("expanded view (focused text input)", () => {
     await user.click(pills[0]);
 
     await waitFor(() => {
-      expect(screen.getByRole("textbox")).toHaveValue("Revenue, Costs");
+      expect(
+        screen.getByTestId("metrics-viewer-search-input"),
+      ).toBeInTheDocument();
     });
   });
 
-  it("shows the expression with constant in text input", async () => {
+  it("shows the expression with constant in text editor", async () => {
     const { user } = setup({
       tokens: [openP, m(0), op("+"), m(1), closeP, op("*"), k(0.85)],
     });
@@ -282,17 +287,17 @@ describe("expanded view (focused text input)", () => {
     await user.click(screen.getByTestId("metric-expression-pill"));
 
     await waitFor(() => {
-      expect(screen.getByRole("textbox")).toHaveValue(
-        "(Revenue + Costs) * 0.85",
-      );
+      expect(
+        screen.getByTestId("metrics-viewer-search-input"),
+      ).toBeInTheDocument();
     });
   });
 
-  it("opens the search dropdown when the input is focused", async () => {
+  it("opens the search dropdown when typing in the editor", async () => {
     const { user } = setup({ tokens: [] });
 
-    const input = screen.getByRole("textbox");
-    await user.click(input);
+    const input = screen.getByTestId("metrics-viewer-search-input");
+    await user.type(input, "R");
 
     await waitFor(() => {
       expect(screen.getByTestId("search-dropdown")).toBeInTheDocument();
@@ -303,23 +308,54 @@ describe("expanded view (focused text input)", () => {
 // ── Blur / unfocus behavior ─────────────────────────────────────────────────
 
 describe("blur behavior", () => {
-  it("returns to collapsed view after blur (after 150ms timeout)", async () => {
+  it("returns to collapsed view after blur when text is unchanged", async () => {
+    const revenue = makeMetric(1, "Revenue");
+    const { user } = setup({
+      tokens: [m(0)],
+      selectedMetrics: [revenue],
+      definitions: [makeEntry(revenue)],
+    });
+
+    // Click pill to enter focused mode
+    await user.click(screen.getByTestId("metric-pill"));
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("metrics-viewer-search-input"),
+      ).toBeInTheDocument();
+    });
+
+    // Blur without editing — text unchanged, collapse is immediate (no timeout)
+    await user.tab();
+
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId("metrics-viewer-search-input"),
+      ).not.toBeInTheDocument();
+      expect(screen.getByTestId("metric-pill")).toBeInTheDocument();
+    });
+  });
+
+  it("stays focused after blur when formula is invalid", async () => {
     const { user } = setup({ tokens: [m(0), op("+"), m(1)] });
 
     await user.click(screen.getByTestId("metric-expression-pill"));
     expect(await screen.findByRole("textbox")).toBeInTheDocument();
 
-    // Blur the input
-    await user.tab();
-    jest.advanceTimersByTime(200);
+    // Type an invalid expression (trailing operator)
+    const input = screen.getByRole("textbox");
+    await user.clear(input);
+    await user.type(input, "Revenue +");
 
-    await waitFor(() => {
-      expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
-      expect(screen.getByTestId("metric-expression-pill")).toBeInTheDocument();
-    });
+    await user.tab();
+
+    // Invalid formula — should stay in focused mode
+    expect(screen.getByRole("textbox")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("expression-validation-icon"),
+    ).toBeInTheDocument();
   });
 
-  it("calls onTokensChange on blur with parsed tokens", async () => {
+  it("collapses and commits on blur when formula is valid (even if changed)", async () => {
     const onTokensChange = jest.fn();
     const { user } = setup({
       tokens: [m(0), op("+"), m(1)],
@@ -329,20 +365,74 @@ describe("blur behavior", () => {
     await user.click(screen.getByTestId("metric-expression-pill"));
     expect(await screen.findByRole("textbox")).toBeInTheDocument();
 
-    // Clear and re-type a simpler expression
+    // Change to a different valid expression
     const input = screen.getByRole("textbox");
     await user.clear(input);
     await user.type(input, "Revenue");
 
     await user.tab();
-    jest.advanceTimersByTime(200);
 
+    // Valid formula — should collapse immediately
     await waitFor(() => {
-      expect(onTokensChange).toHaveBeenCalled();
+      expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
     });
   });
 
-  it("removes unreferenced metrics from selectedMetrics on blur", async () => {
+  it("shows the Run button when formula is dirty", async () => {
+    const { user } = setup({ tokens: [m(0), op("+"), m(1)] });
+
+    await user.click(screen.getByTestId("metric-expression-pill"));
+    expect(await screen.findByRole("textbox")).toBeInTheDocument();
+
+    // Edit the text to make it dirty
+    const input = screen.getByRole("textbox");
+    await user.clear(input);
+    await user.type(input, "Revenue");
+
+    expect(screen.getByTestId("run-expression-button")).toBeInTheDocument();
+  });
+
+  it("does not show the Run button when formula is unchanged", async () => {
+    const { user } = setup({ tokens: [m(0), op("+"), m(1)] });
+
+    await user.click(screen.getByTestId("metric-expression-pill"));
+    expect(await screen.findByRole("textbox")).toBeInTheDocument();
+
+    // No edits — not dirty
+    expect(
+      screen.queryByTestId("run-expression-button"),
+    ).not.toBeInTheDocument();
+  });
+});
+
+// ── Run button and validation ───────────────────────────────────────────────
+
+describe("run button and validation", () => {
+  it("collapses and commits when Run is clicked with a valid expression", async () => {
+    const onTokensChange = jest.fn();
+    const { user } = setup({
+      tokens: [m(0), op("+"), m(1)],
+      onTokensChange,
+    });
+
+    await user.click(screen.getByTestId("metric-expression-pill"));
+    expect(await screen.findByRole("textbox")).toBeInTheDocument();
+
+    // Edit to a valid but different expression
+    const input = screen.getByRole("textbox");
+    await user.clear(input);
+    await user.type(input, "Revenue");
+
+    const runButton = screen.getByTestId("run-expression-button");
+    await user.click(runButton);
+
+    // Should collapse back to pills
+    await waitFor(() => {
+      expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+    });
+  });
+
+  it("removes unreferenced metrics when Run commits a valid expression", async () => {
     const onRemoveMetric = jest.fn();
     const { user } = setup({
       tokens: [m(0), op("+"), m(1)],
@@ -357,42 +447,73 @@ describe("blur behavior", () => {
     await user.clear(input);
     await user.type(input, "Revenue");
 
-    await user.tab();
-    jest.advanceTimersByTime(200);
+    await user.click(screen.getByTestId("run-expression-button"));
 
     await waitFor(() => {
-      // Costs (index 1) should be removed
+      // Costs (id 2) should be removed
       expect(onRemoveMetric).toHaveBeenCalledWith(2, "metric");
     });
   });
 
-  it("discards empty items (trailing separators) on blur via cleanupSeparators", async () => {
-    const onTokensChange = jest.fn();
-    const revenue = makeMetric(1, "Revenue");
-    const { user } = setup({
-      tokens: [m(0)],
-      selectedMetrics: [revenue],
-      definitions: [makeEntry(revenue)],
-      onTokensChange,
-    });
+  it("shows a validation error for consecutive operators", async () => {
+    const { user } = setup({ tokens: [m(0), op("+"), m(1)] });
+
+    await user.click(screen.getByTestId("metric-expression-pill"));
+    expect(await screen.findByRole("textbox")).toBeInTheDocument();
+
+    const input = screen.getByRole("textbox");
+    await user.clear(input);
+    await user.type(input, "Revenue + *");
+
+    await user.click(screen.getByTestId("run-expression-button"));
+
+    // Should display validation error and NOT collapse
+    expect(
+      screen.getByTestId("expression-validation-icon"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("textbox")).toBeInTheDocument();
+  });
+
+  it("shows a validation error for unmatched parentheses", async () => {
+    const { user } = setup({ tokens: [m(0)] });
 
     await user.click(screen.getByTestId("metric-pill"));
     expect(await screen.findByRole("textbox")).toBeInTheDocument();
 
-    // Type a trailing comma — results in an empty second item
     const input = screen.getByRole("textbox");
     await user.clear(input);
-    await user.type(input, "Revenue,");
+    await user.type(input, "(Revenue + Costs");
 
-    await user.tab();
-    jest.advanceTimersByTime(200);
+    await user.click(screen.getByTestId("run-expression-button"));
 
-    await waitFor(() => {
-      const lastCall =
-        onTokensChange.mock.calls[onTokensChange.mock.calls.length - 1][0];
-      // Should not have a trailing separator
-      expect(lastCall[lastCall.length - 1]?.type).not.toBe("separator");
-    });
+    expect(
+      screen.getByTestId("expression-validation-icon"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("textbox")).toBeInTheDocument();
+  });
+
+  it("clears validation error when user types after an error", async () => {
+    const { user } = setup({ tokens: [m(0), op("+"), m(1)] });
+
+    await user.click(screen.getByTestId("metric-expression-pill"));
+    expect(await screen.findByRole("textbox")).toBeInTheDocument();
+
+    const input = screen.getByRole("textbox");
+    await user.clear(input);
+    await user.type(input, "Revenue +");
+
+    await user.click(screen.getByTestId("run-expression-button"));
+
+    expect(
+      screen.getByTestId("expression-validation-icon"),
+    ).toBeInTheDocument();
+
+    // Type more to fix the expression
+    await user.type(input, " Costs");
+
+    expect(
+      screen.queryByTestId("expression-validation-icon"),
+    ).not.toBeInTheDocument();
   });
 });
 
@@ -535,12 +656,16 @@ describe("auto-comma on metric selection", () => {
 
     // Enter focus mode — input shows "Revenue + Costs"
     await user.click(screen.getByTestId("metric-expression-pill"));
-    expect(await screen.findByRole("textbox")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("metrics-viewer-search-input"),
+      ).toBeInTheDocument();
+    });
 
     // Type ")" to place the cursor just after a closing-paren. This positions
     // getWordAtCursor so textBeforeWord ends with ")", triggering auto-comma
     // when the next metric is selected.
-    const input = screen.getByRole("textbox");
+    const input = screen.getByTestId("metrics-viewer-search-input");
     await user.type(input, ")");
 
     expect(await screen.findByTestId("search-dropdown")).toBeInTheDocument();
@@ -563,20 +688,18 @@ describe("auto-comma on metric selection", () => {
     const onTokensChange = jest.fn();
     const onAddMetric = jest.fn();
     const { user } = setup({
-      tokens: [m(0), op("+")],
+      tokens: [],
       onTokensChange,
       onAddMetric,
     });
 
-    // Enter focus mode
-    await user.click(screen.getByTestId("metric-expression-pill"));
-    expect(await screen.findByRole("textbox")).toBeInTheDocument();
+    // Type an expression ending with an operator to set up the cursor position
+    const input = screen.getByTestId("metrics-viewer-search-input");
+    await user.type(input, "Revenue + ");
 
-    // Click the input to open the dropdown
-    await user.click(screen.getByRole("textbox"));
     expect(await screen.findByTestId("search-dropdown")).toBeInTheDocument();
 
-    // The input now shows "Revenue +" — clicking select should NOT insert a separator
+    // Select a metric — should NOT insert a comma since last char is "+"
     await user.click(screen.getByRole("button", { name: "select-new-metric" }));
 
     const calls = onTokensChange.mock.calls;
