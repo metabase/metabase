@@ -32,22 +32,23 @@
 
   * Splice the [[metabase.query-processor.pivot.common/group-bitmask]] into each row in the same position as the pivot
     column grouping metadata."
-  [{breakout-combination :qp.pivot/breakout-combination
-    num-breakouts        :qp.pivot/num-canonical-breakouts
-    :as                  _query}
+  [{unremapped-breakout-combination :qp.pivot/unremapped-breakout-combination
+    num-remapped-breakouts          :qp.pivot/num-remapped-breakouts
+    num-unremapped-breakouts        :qp.pivot/num-unremapped-breakouts
+    :as                             _subquery}
    rff]
-  (if-not breakout-combination
+  (if-not unremapped-breakout-combination
     rff
     (fn rff' [metadata]
-      (let [metadata'     (m/update-existing metadata :cols add-column-grouping-metadata num-breakouts)
+      (let [metadata'     (m/update-existing metadata :cols add-column-grouping-metadata num-remapped-breakouts)
             rf            (rff metadata')
-            group-bitmask (pivot.common/group-bitmask num-breakouts breakout-combination)
+            group-bitmask (pivot.common/group-bitmask num-unremapped-breakouts unremapped-breakout-combination)
             xform         (map (fn [row]
                                  (vec
                                   (concat
-                                   (take num-breakouts row)
+                                   (take num-remapped-breakouts row)
                                    [group-bitmask]
-                                   (drop num-breakouts row)))))]
+                                   (drop num-remapped-breakouts row)))))]
         (xform rf)))))
 
 ;; this is mainly for documentation purposes
@@ -66,8 +67,11 @@
   [:sequential [:maybe ::pivot.common/index]])
 
 (mu/defn- column-mapping-for-subquery :- ::pivot-column-mapping
-  [num-canonical-cols            :- nat-int?
-   num-canonical-breakouts       :- ::pivot.common/num-breakouts
+  [{num-remapped-cols      :qp.pivot/num-remapped-cols
+    num-remapped-breakouts :qp.pivot/num-remapped-breakouts
+    :as                    _subquery} :- [:map
+                                          [:qp.pivot/num-remapped-cols      nat-int?]
+                                          [:qp.pivot/num-remapped-breakouts ::pivot.common/num-breakouts]]
    subquery-breakout-combination :- ::pivot.common/breakout-combination]
   ;; all pivot queries consist of *breakout columns* + *other columns*. Breakout columns are always first, and the only
   ;; thing that can change between subqueries. The other columns will always be the same, and in the same order.
@@ -75,16 +79,16 @@
         ;; map, we build it in two parts:
         canonical-index->subquery-index
         (merge
-         ;; 1. breakouts remapping, based on the `:qp.pivot/breakout-combination`
+         ;; 1. breakouts remapping, based on the `:qp.pivot/remapped-breakout-combination`
          (into {}
                (map (fn [[subquery-index canonical-index]]
                       [canonical-index subquery-index]))
                (m/indexed subquery-breakout-combination))
          ;; 2. other columns remapping, which just takes the other columns offset in the subquery and moves that column
          ;;    so it matches up with the position it is in the canonical query.
-         (let [canonical-other-columns-offset num-canonical-breakouts
+         (let [canonical-other-columns-offset num-remapped-breakouts
                subquery-other-columns-offset  (count subquery-breakout-combination)
-               num-other-columns              (- num-canonical-cols num-canonical-breakouts)]
+               num-other-columns              (- num-remapped-cols num-remapped-breakouts)]
            (into {}
                  (map (fn [i]
                         [(+ canonical-other-columns-offset i) (+ subquery-other-columns-offset i)]))
@@ -104,30 +108,33 @@
     ;; * canonical column 2 corresponds to subquery column 1
     (mapv (fn [i]
             (get canonical-index->subquery-index i))
-          (range num-canonical-cols))))
+          (range num-remapped-cols))))
 
-(mu/defn- splice-in-remap :- ::pivot.common/breakout-combination
+(mu/defn- full-breakout-combination :- ::pivot.common/breakout-combination
   "Returns the breakout combination corresponding to `breakout-combination` belonging to the base query (the one without
   remapped fields) accounting for the field remapping specified by `remap`.
 
   To produce the breakout combination for the real query, the target indexes have to be included whenever a source
   index is selected, we have to shift the indexes before which a mapped index is inserted."
-  [breakout-combination :- ::pivot.common/breakout-combination
-   remap                :- [:map-of ::pivot.common/index ::pivot.common/index]]
+  [{breakout-combination :qp.pivot/remapped-breakout-combination
+    remap                :qp.pivot/remapped-indexes
+    :as                  _subquery} :- [:map
+                                        [:qp.pivot/remapped-breakout-combination ::pivot.common/breakout-combination]
+                                        [:qp.pivot/remapped-indexes              ::pivot.common/remapped-indexes]]]
   (if (or (empty? remap)
           (empty? breakout-combination))
     breakout-combination
-    (let [limit (apply max breakout-combination)
+    (let [limit    (apply max breakout-combination)
           selected (set breakout-combination)
           inserted (set (vals remap))]
       (loop [index 0, offset 0, combination #{}]
         (if (> index limit)
           (-> combination sort vec)
-          (let [offset (cond-> offset
-                         (inserted (+ index offset)) inc)
+          (let [offset        (cond-> offset
+                                (inserted (+ index offset)) inc)
                 spliced-index (+ index offset)
-                selected? (selected index)
-                mapped-index (when selected?
+                selected?     (selected index)
+                mapped-index  (when selected?
                                (remap spliced-index))]
             (recur (inc index)
                    offset
@@ -135,13 +142,9 @@
                      selected?    (conj spliced-index)
                      mapped-index (into (take-while some? (iterate remap mapped-index)))))))))))
 
-(defn- column-mapping [{num-canonical-cols      :qp.pivot/num-canonical-cols
-                        num-canonical-breakouts :qp.pivot/num-canonical-breakouts
-                        breakout-combination    :qp.pivot/breakout-combination
-                        remap                   :qp.pivot/remapped-indexes
-                        :as                     _subquery}]
-  (let [full-breakout-combination (splice-in-remap breakout-combination remap)]
-    (column-mapping-for-subquery num-canonical-cols num-canonical-breakouts full-breakout-combination)))
+(mu/defn- column-mapping [subquery :- :map]
+  (let [full-breakout-combination (full-breakout-combination subquery)]
+    (column-mapping-for-subquery subquery full-breakout-combination)))
 
 (mu/defn- row-mapping-fn :- [:=> [:cat ::row] ::row]
   "This function needs to be called for each row so that it can actually shape the row according to the
@@ -165,7 +168,7 @@
   "For Pivot QP subqueries, adjust the shape of the rows to match the shape of rows in the original query, splicing in
   `nil` values as needed."
   [query rff]
-  (if-not (:qp.pivot/breakout-combination query)
+  (if-not (:qp.pivot/remapped-breakout-combination query)
     rff
     (fn rff' [metadata]
       (let [rf             (rff metadata)

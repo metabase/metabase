@@ -140,7 +140,7 @@
      (fn [query i]
        (lib/breakout query (nth all-breakouts i)))
      (-> (lib/remove-all-breakouts query)
-         (assoc :qp.pivot/breakout-combination breakout-indexes-to-keep))
+         (assoc :qp.pivot/remapped-breakout-combination breakout-indexes-to-keep))
      breakout-indexes-to-keep)))
 
 (mu/defn- remove-non-aggregation-order-bys :- ::lib.schema/query
@@ -170,6 +170,7 @@
                                                                                show-column-totals)
                                                  (log/tracef "Using breakout combinations: %s" (pr-str <>)))]
                           (-> query
+                              (assoc :qp.pivot/unremapped-breakout-combination breakout-indexes)
                               remove-non-aggregation-order-bys
                               (keep-breakouts-at-indexes breakout-indexes)))]
       (conj (rest (map #(assoc-in % [:info :pivot/result-metadata] :none) all-queries))
@@ -416,7 +417,7 @@
                             [::qp.add-remaps/original-field-dimension-id
                              ::qp.add-remaps/new-field-dimension-id]))))
 
-(defn- remapped-indexes
+(mu/defn- remapped-indexes :- ::pivot.common/remapped-indexes
   [breakouts]
   (let [remap-pairs (first
                      (reduce (fn [[m i] breakout]
@@ -448,14 +449,17 @@
   Some pivot subqueries exclude certain breakouts, so we need to fill in those missing columns with `nil` in the overall
   results -- "
   [query :- ::lib.schema/query]
-  (let [canonical-query         (qp.add-remaps/add-remapped-columns query)
-        remap                   (remapped-indexes (lib/breakouts canonical-query))
-        canonical-cols          (lib/returned-columns canonical-query)
-        num-canonical-cols      (count canonical-cols)
-        num-canonical-breakouts (count (filter :lib/breakout? canonical-cols))]
-    (assoc query :qp.pivot/num-canonical-cols      num-canonical-cols
-           :qp.pivot/num-canonical-breakouts num-canonical-breakouts
-           :qp.pivot/remapped-indexes        remap)))
+  (let [remapped-query           (qp.add-remaps/add-remapped-columns query)
+        remap                    (remapped-indexes (lib/breakouts remapped-query))
+        remapped-cols            (lib/returned-columns remapped-query)
+        num-remapped-cols        (count remapped-cols)
+        num-unremapped-breakouts (count (lib/breakouts query))
+        num-remapped-breakouts   (count (filter :lib/breakout? remapped-cols))]
+    (assoc query
+           :qp.pivot/num-remapped-cols        num-remapped-cols
+           :qp.pivot/num-unremapped-breakouts num-unremapped-breakouts
+           :qp.pivot/num-remapped-breakouts   num-remapped-breakouts
+           :qp.pivot/remapped-indexes         remap)))
 
 (mu/defn run-pivot-query
   "Run the pivot query. You are expected to wrap this call in [[metabase.query-processor.streaming/streaming-response]]

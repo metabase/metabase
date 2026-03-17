@@ -12,6 +12,9 @@
 (mr/def ::breakout-combination
   [:sequential ::index])
 
+(mr/def ::remapped-indexes
+  [:map-of ::index ::index])
+
 (mu/defn group-bitmask :- ::bitmask
   "Calculate the value of the `pivot-grouping` column we add to Pivot QP results in post-processing
   in [[metabase.query-processor.pivot.middleware]].
