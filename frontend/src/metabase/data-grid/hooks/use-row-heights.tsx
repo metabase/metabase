@@ -128,12 +128,15 @@ export const useRowHeights = <TData extends RowData, TValue>({
     [getRowIndex, remeasureRow],
   );
 
-  useLayoutEffect(() => {
-    resizeObserverRef.current = new ResizeObserver(recalculate);
-    return () => {
-      resizeObserverRef.current?.disconnect();
-    };
-  }, [recalculate]);
+  const remountElements = useCallback(() => {
+    for (const elements of elementsByRow.current.values()) {
+      for (const el of elements) {
+        if (el.isConnected) {
+          resizeObserverRef.current?.observe(el);
+        }
+      }
+    }
+  }, []);
 
   const unwatchUnmountedElements = useCallback(() => {
     for (const [rowIndex, elements] of elementsByRow.current) {
@@ -179,6 +182,15 @@ export const useRowHeights = <TData extends RowData, TValue>({
       remeasureRow(rowIndex);
     }
   }, [remeasureRow]);
+
+  useLayoutEffect(() => {
+    resizeObserverRef.current = new ResizeObserver(recalculate);
+    remountElements();
+
+    return () => {
+      resizeObserverRef.current?.disconnect();
+    };
+  }, [recalculate, remountElements]);
 
   return {
     tableRef,
