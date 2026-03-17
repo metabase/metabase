@@ -1,6 +1,7 @@
 (ns metabase-enterprise.dependencies.api-test
   (:require
    [clojure.test :refer :all]
+   [integrant.core :as ig]
    [medley.core :as m]
    [metabase-enterprise.dependencies.api :as deps.api]
    [metabase-enterprise.dependencies.async :as dependencies.async]
@@ -21,6 +22,7 @@
    [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (comment
@@ -2192,19 +2194,24 @@
   [base-card user card-name & opts]
   (card/create-card! (apply assoc (wrap-card base-card) :name card-name opts) user))
 
+(defmacro with-system
+  [[sym system-config] & body]
+  `(let [~sym (ig/init ~system-config)]
+     (try ~@body
+          (finally
+            (try (ig/halt! system)
+                 (catch Exception e
+                   (log/error "Failed to halt system" (ex-data e))))))))
+
 (defmacro ^:private with-dependents-test!
   [[user-binding base-card-binding] & body]
-  `(mt/with-premium-features #{:dependencies}
-     (mt/with-model-cleanup [:model/Card :model/Dependency]
-       (mt/with-temp [:model/User user# {:email "test@test.com"}]
-         (let [~user-binding user#
-               ~base-card-binding (card/create-card! (basic-card "Base") user#)]
-           (try
-             ~@body
-             (finally
-               ;; Drain the single-threaded async executor to ensure all pending dependency
-               ;; work completes before model cleanup deletes cards, avoiding lock timeouts.
-               @(dependencies.async/submit! (fn [] nil)))))))))
+  `(with-system [_system# {::dependencies.async/executor {}}]
+     (mt/with-premium-features #{:dependencies}
+       (mt/with-model-cleanup [:model/Card :model/Dependency]
+         (mt/with-temp [:model/User user# {:email "test@test.com"}]
+           (let [~user-binding user#
+                 ~base-card-binding (card/create-card! (basic-card "Base") user#)]
+             ~@body))))))
 
 (deftest ^:sequential dependents-query-filter-test
   (testing "GET /api/ee/dependencies/graph/dependents with query parameter"
