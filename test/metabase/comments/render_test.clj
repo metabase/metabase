@@ -110,7 +110,7 @@
                                                         :content [{:type "text" :text "quoted"}]}]}]}))))
 
   (testing "hard break"
-    (is (= "<p>line1<br/>line2</p>"
+    (is (= "<p>line1<br />line2</p>"
            (render/content->html {:type    "doc"
                                   :content [{:type    "paragraph"
                                              :content [{:type "text" :text "line1"}
@@ -118,7 +118,7 @@
                                                        {:type "text" :text "line2"}]}]}))))
 
   (testing "horizontal rule"
-    (is (= "<hr/>"
+    (is (= "<hr />"
            (render/content->html {:type    "doc"
                                   :content [{:type "horizontalRule"}]})))))
 

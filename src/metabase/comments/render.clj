@@ -3,9 +3,11 @@
 
   Renders from the structured content JSON that TipTap produces, with an allowlist of
   known node types and mark types. Anything not on the allowlist is stripped or rendered
-  as plain text."
+  as plain text. Nodes are first converted to Hiccup data structures, then compiled to
+  HTML via `hiccup.core/html`."
   (:require
    [clojure.string :as str]
+   [hiccup.core :as hiccup]
    [hiccup.core :refer [h]]
    [metabase.system.core :as system]
    [metabase.util.log :as log])
@@ -36,25 +38,28 @@
 
 ;;; --------------------------------------------------- Rendering --------------------------------------------------
 
+(def ^:private mark-type->tag
+  {"bold"   :strong
+   "italic" :em
+   "strike" :s
+   "code"   :code})
+
 (defn- wrap-marks
-  "Wrap text in HTML tags for each mark (bold, italic, etc.)."
-  [html marks]
-  (reduce (fn [html {:keys [type]}]
-            (case type
-              "bold"   (str "<strong>" html "</strong>")
-              "italic" (str "<em>" html "</em>")
-              "strike" (str "<s>" html "</s>")
-              "code"   (str "<code>" html "</code>")
-              html))
-          html
+  "Wrap hiccup content in tags for each mark (bold, italic, etc.)."
+  [content marks]
+  (reduce (fn [inner {:keys [type]}]
+            (if-let [tag (mark-type->tag type)]
+              [tag inner]
+              inner))
+          content
           marks))
 
-(declare render-node)
+(declare node->hiccup)
 
-(defn- render-children
-  "Render a sequence of child nodes, skipping nodes with disallowed types."
+(defn- children->hiccup
+  "Convert a sequence of child nodes to hiccup, skipping nodes with disallowed types."
   [children]
-  (str/join (map render-node children)))
+  (keep node->hiccup children))
 
 (defn- relative-path?
   "Check if a string is a relative path using java.net.URI. Returns true only for paths
@@ -68,42 +73,48 @@
            (str/starts-with? (str (.getPath uri)) "/")))
     (catch URISyntaxException _ false)))
 
-(defn- render-smart-link
-  "Render a smartLink node as a clickable link when the href is a safe relative path,
-  or as plain text otherwise. Only relative internal paths are rendered as links."
+(defn- smart-link->hiccup
+  "Convert a smartLink node to hiccup. Renders as a clickable link when the href is a safe
+  relative path, or as escaped plain text otherwise."
   [{:keys [attrs]}]
   (let [{:keys [label href model entityId]} attrs
-        display-text (h (or label
-                            (when (= model "user") (str "@" entityId))
-                            (str model " " entityId)))]
+        display-text (or label
+                         (when (= model "user") (str "@" entityId))
+                         (str model " " entityId))]
     (if (and href (relative-path? href))
-      (str "<a href=\"" (h (str (system/site-url) href)) "\">" display-text "</a>")
-      display-text)))
+      [:a {:href (str (system/site-url) href)} display-text]
+      (h display-text))))
 
-(defn render-node
-  "Render a single TipTap JSON node to safe HTML. Unknown node types are dropped."
+(defn node->hiccup
+  "Convert a single TipTap JSON node to a Hiccup data structure. Unknown node types return nil.
+  Doc nodes return a sequence of hiccup forms (not a single form) so the caller can join them."
   [{:keys [type content text marks attrs] :as node}]
   (if-not (allowed-node-types type)
     (do (log/warnf "Ignoring unknown TipTap node type: %s" type)
-        "")
+        nil)
     (case type
-      "doc"            (render-children content)
-      "paragraph"      (str "<p>" (render-children content) "</p>")
-      "heading"        (let [level (min (max (get attrs :level 1) 1) 6)]
-                         (str "<h" level ">" (render-children content) "</h" level ">"))
-      "bulletList"     (str "<ul>" (render-children content) "</ul>")
-      "orderedList"    (str "<ol>" (render-children content) "</ol>")
-      "listItem"       (str "<li>" (render-children content) "</li>")
-      "codeBlock"      (str "<pre><code>" (h (render-children content)) "</code></pre>")
-      "blockquote"     (str "<blockquote>" (render-children content) "</blockquote>")
-      "horizontalRule" "<hr/>"
-      "hardBreak"      "<br/>"
+      "doc"            (children->hiccup content)
+      "paragraph"      (into [:p] (children->hiccup content))
+      "heading"        (let [level (min (max (get attrs :level 1) 1) 6)
+                             tag   (keyword (str "h" level))]
+                         (into [tag] (children->hiccup content)))
+      "bulletList"     (into [:ul] (children->hiccup content))
+      "orderedList"    (into [:ol] (children->hiccup content))
+      "listItem"       (into [:li] (children->hiccup content))
+      "codeBlock"      [:pre [:code (h (apply str (map :text content)))]]
+      "blockquote"     (into [:blockquote] (children->hiccup content))
+      "horizontalRule" [:hr]
+      "hardBreak"      [:br]
       "text"           (wrap-marks (h text) (sanitize-marks marks))
-      "smartLink"      (render-smart-link node))))
+      "smartLink"      (smart-link->hiccup node))))
 
 (defn content->html
   "Convert TipTap JSON content to safe HTML. This is the main entry point.
   Returns nil if content is nil."
   [content]
   (when content
-    (render-node content)))
+    (let [hiccup (node->hiccup content)]
+      (if (sequential? (first hiccup))
+        ;; doc node returns a seq of hiccup forms
+        (apply str (map #(hiccup/html %) hiccup))
+        (hiccup/html hiccup)))))

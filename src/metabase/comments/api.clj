@@ -53,7 +53,6 @@
    [:target_type [:enum "document"]]
    [:target_id   ms/PositiveInt]
    [:content     CommentContent]
-   [:html {:optional true} :string]
    [:child_target_id {:optional true} [:maybe :string]]
    [:parent_comment_id {:optional true} [:maybe ms/PositiveInt]]])
 
@@ -145,8 +144,7 @@
                     :author         (:common_name (:creator comment))
                     :comment        (comments.render/content->html (:content comment))
                     :parent_author  (:common_name (:creator parent))
-                    :parent_comment (when parent
-                                      (comments.render/content->html (:content parent)))
+                    :parent_comment (some-> parent :content comments.render/content->html)
                     :style            {:color_text_dark   channel.render/color-text-dark
                                        :color_text_light  channel.render/color-text-light
                                        :color_text_medium channel.render/color-text-medium}}]
