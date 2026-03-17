@@ -139,9 +139,9 @@
   `(let [~sym (ig/init ~system-config)]
      (try ~@body
           (finally
-            (try (ig/halt! system)
-                 (catch Exception e
-                   (log/error "Failed to halt system" (ex-data e))))))))
+            (try (ig/halt! ~sym)
+                 (catch Exception e#
+                   (log/error "Failed to halt system" (ex-data e#))))))))
 
 (use-fixtures :each
   (fn fresh-dependency-check-executor-fixture [t]
