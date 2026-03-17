@@ -79,5 +79,11 @@ describe("Cross-version: Instance setup", () => {
     cy.findAllByRole("gridcell")
       .should("contain", "Enjoyable")
       .and("contain", "Perfecto");
+
+    cy.go("back");
+    cy.findAllByRole("link").filter(":contains(Orders)").click();
+    cy.findAllByRole("gridcell")
+      .should("contain", "Fantastic Wool Shirt")
+      .and("contain", "Small Marble Hat");
   });
 });
