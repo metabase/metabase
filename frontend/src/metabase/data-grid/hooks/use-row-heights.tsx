@@ -1,11 +1,6 @@
 import type { RowData, Table } from "@tanstack/react-table";
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import { useUpdateEffect } from "react-use";
 
 import type { ColumnOptions } from "../types";
 
@@ -20,7 +15,6 @@ type UseRowHeightsProps<TData extends RowData, TValue> = {
     width?: number,
   ) => { width: number; height: number };
   pinnedTopRowsCount: number;
-  gridRef: React.RefObject<HTMLDivElement>;
 };
 
 type UseRowHeightsResult<TData> = {
@@ -38,7 +32,6 @@ export const useRowHeights = <TData extends RowData, TValue>({
   wrappedColumnsOptions,
   measureBodyCellDimensions,
   pinnedTopRowsCount,
-  gridRef,
 }: UseRowHeightsProps<TData, TValue>): UseRowHeightsResult<TData> => {
   const tableRef = useRef<Table<TData>>();
   const virtualGridRef = useRef<VirtualGrid>();
@@ -140,10 +133,7 @@ export const useRowHeights = <TData extends RowData, TValue>({
     [virtualGridRef],
   );
 
-  useEffect(() => {
-    if (!gridRef.current) {
-      return;
-    }
+  useUpdateEffect(() => {
     const heights = Array.from({ length: pinnedTopRowsCount }, (_, i) =>
       measureRowHeight(i),
     );
@@ -154,7 +144,7 @@ export const useRowHeights = <TData extends RowData, TValue>({
         ? prev
         : heights,
     );
-  }, [pinnedTopRowsCount, measureRowHeight, gridRef]);
+  }, [pinnedTopRowsCount, measureRowHeight]);
 
   return {
     tableRef,
