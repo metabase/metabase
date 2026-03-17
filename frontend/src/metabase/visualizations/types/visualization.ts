@@ -362,7 +362,6 @@ export type VisualizationSettingDefinition<
   autoOpenWhenUnset?: boolean;
   disabled?: boolean;
   default?: TValue;
-  marginBottom?: string;
   noPadding?: boolean;
   value?: TValue;
   set?: boolean;
@@ -399,8 +398,12 @@ export type CompleteVisualizationSettingDefinition<
   T = unknown,
   TValue = unknown,
   TProps extends Record<string, unknown> = Record<string, unknown>,
-> = Omit<VisualizationSettingDefinition<T, TValue, TProps>, "getProps"> & {
+> = Omit<
+  VisualizationSettingDefinition<T, TValue, TProps>,
+  "getMarginBottom" | "getProps"
+> & {
   id: string;
+  marginBottom?: string;
   props: Partial<TProps>;
 };
 
