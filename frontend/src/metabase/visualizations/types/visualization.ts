@@ -403,7 +403,6 @@ export type CompleteVisualizationSettingDefinition<
   "getDefault" | "getProps"
 > & {
   id: string;
-  default?: TValue;
   props: Partial<TProps>;
 };
 
