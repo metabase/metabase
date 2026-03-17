@@ -258,7 +258,7 @@ const VisualizationComponent = (props: CustomVisualizationProps<Settings>) => {
 };
 
 const StaticVisualizationComponent = (
-  props: CustomStaticVisualizationProps<ThumbsVizSettings>,
+  props: CustomStaticVisualizationProps<Settings>,
 ) => {
   const width = 540;
   const height = 360;
