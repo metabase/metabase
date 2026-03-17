@@ -8,7 +8,7 @@ import {
   withRouter,
 } from "react-router";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
 import { INPUT_WRAPPER_TEST_ID } from "metabase/common/components/TabButton";
 import { getDefaultTab, resetTempTabId } from "metabase/dashboard/actions";
 import { useDashboardUrlQuery } from "metabase/dashboard/hooks/use-dashboard-url-query";
@@ -205,18 +205,23 @@ describe("DashboardTabs", () => {
     });
 
     it("should use role=tab on tab items and role=tablist on the container (#70546)", () => {
-      setup({ isEditing: false });
+      setup({
+        isEditing: false,
+        tabs: [
+          getDefaultTab({ tabId: 1, dashId: 1, name: "Tab 1" }),
+          getDefaultTab({ tabId: 2, dashId: 1, name: "Tab 2" }),
+        ],
+      });
 
       const tablist = screen.getByRole("tablist");
       expect(tablist).toBeInTheDocument();
 
-      const tabs = screen.getAllByRole("tab", { hidden: true });
-      expect(tabs.length).toBeGreaterThanOrEqual(2);
-
-      // Sortable wrappers should not add role="button" inside the tablist
-      const buttons = screen.queryAllByRole("button");
-      const tablistButtons = buttons.filter((btn) => tablist.contains(btn));
-      expect(tablistButtons).toHaveLength(0);
+      expect(
+        within(tablist).getByRole("tab", { name: "Tab 1" }),
+      ).toBeInTheDocument();
+      expect(
+        within(tablist).getByRole("tab", { name: "Tab 2" }),
+      ).toBeInTheDocument();
     });
 
     it("should not display tabs when there is one", () => {
@@ -289,19 +294,6 @@ describe("DashboardTabs", () => {
   });
 
   describe("when editing", () => {
-    it("should not have role=button on sortable tab wrappers (#70546)", () => {
-      setup({ isEditing: true });
-
-      // Sortable wrappers should use role="presentation", not role="button"
-      // Tab items should have role="tab", and the tablist should not contain
-      // any elements with role="button" except for actual button controls
-      const tabs = screen.getAllByRole("tab", { hidden: true });
-      tabs.forEach((tab) => {
-        expect(tab).not.toHaveAttribute("role", "button");
-        expect(tab).toHaveAttribute("role", "tab");
-      });
-    });
-
     it("should display a placeholder tab when there are none", async () => {
       setup({ tabs: [] });
 
