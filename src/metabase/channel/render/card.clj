@@ -100,6 +100,12 @@
             (= [[nil]] (-> data :rows)))
         (chart-type :empty "there are no rows in results")
 
+        (and (str/starts-with? (name display-type) "custom:")
+             (let [identifier (subs (name display-type) (count "custom:"))
+                   plugin     (t2/select-one :model/CustomVizPlugin :identifier identifier :enabled true)]
+               (some-> plugin :id custom-viz-plugin.cache/get-bundle :iife-content)))
+        (chart-type :javascript_visualization "display-type is a custom visualization with static support")
+
         (#{:pin_map :state :country} display-type)
         (chart-type nil "display-type is %s" display-type)
 
@@ -134,12 +140,6 @@
            :bar
            :combo} display-type)
         (chart-type :javascript_visualization "display-type is javascript_visualization")
-
-        (and (str/starts-with? (name display-type) "custom:")
-             (let [identifier (subs (name display-type) (count "custom:"))
-                   plugin     (t2/select-one :model/CustomVizPlugin :identifier identifier :enabled true)]
-               (some-> plugin :id custom-viz-plugin.cache/get-bundle :iife-content)))
-        (chart-type :javascript_visualization "display-type is a custom visualization with static support")
 
         (str/starts-with? (name display-type) "custom:")
         (chart-type :table "display-type is a custom visualization without static support, falling back to table")
