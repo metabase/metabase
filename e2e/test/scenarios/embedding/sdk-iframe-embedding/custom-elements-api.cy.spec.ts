@@ -276,41 +276,51 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
     });
 
     it("should enable drill-through when drills is true", () => {
-      H.visitCustomHtmlPage(`
-      ${H.getNewEmbedScriptTag()}
-      ${H.getNewEmbedConfigurationScript()}
-      <metabase-question question-id="${ORDERS_QUESTION_ID}" drills />
-      `);
+      H.createQuestion({
+        name: "Limited Orders",
+        query: { "source-table": ORDERS_ID, limit: 5 },
+      }).then(({ body: { id: questionId } }) => {
+        H.visitCustomHtmlPage(`
+        ${H.getNewEmbedScriptTag()}
+        ${H.getNewEmbedConfigurationScript()}
+        <metabase-question question-id="${questionId}" drills />
+        `);
 
-      H.getSimpleEmbedIframeContent()
-        .findAllByText("37.65")
-        .first()
-        .should("be.visible")
-        .click();
-      H.getSimpleEmbedIframeContent()
-        .findByText(/Filter by this value/)
-        .should("be.visible");
+        H.getSimpleEmbedIframeContent()
+          .findAllByText("37.65")
+          .first()
+          .should("be.visible")
+          .click();
+        H.getSimpleEmbedIframeContent()
+          .findByText(/Filter by this value/)
+          .should("be.visible");
+      });
     });
 
     it("should disable drill-through when drills is false", () => {
-      H.visitCustomHtmlPage(`
-      ${H.getNewEmbedScriptTag()}
-      ${H.getNewEmbedConfigurationScript()}
-      <metabase-question question-id="${ORDERS_QUESTION_ID}" drills="false" />
-      `);
+      H.createQuestion({
+        name: "Limited Orders",
+        query: { "source-table": ORDERS_ID, limit: 5 },
+      }).then(({ body: { id: questionId } }) => {
+        H.visitCustomHtmlPage(`
+        ${H.getNewEmbedScriptTag()}
+        ${H.getNewEmbedConfigurationScript()}
+        <metabase-question question-id="${questionId}" drills="false" />
+        `);
 
-      cy.wait("@getCardQuery");
+        cy.wait("@getCardQuery");
 
-      H.getSimpleEmbedIframeContent()
-        .findAllByText("37.65", { timeout: 40000 })
-        .as("cell")
-        .first()
-        .should("be.visible")
-        .click();
+        H.getSimpleEmbedIframeContent()
+          .findAllByText("37.65")
+          .as("cell")
+          .first()
+          .should("be.visible")
+          .click();
 
-      H.getSimpleEmbedIframeContent()
-        .findByText(/Filter by this value/)
-        .should("not.exist");
+        H.getSimpleEmbedIframeContent()
+          .findByText(/Filter by this value/)
+          .should("not.exist");
+      });
     });
 
     it("should allow saving a question when `is-save-enabled` is true", () => {
