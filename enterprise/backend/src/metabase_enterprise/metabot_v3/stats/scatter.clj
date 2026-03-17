@@ -28,9 +28,9 @@
                             (map vector x-values y-values))
         n           (count valid-pairs)]
     (if (< n min-correlation-points)
-      {:x_summary   nil
-       :y_summary   nil
-       :data_points n}
+      {:x-summary   nil
+       :y-summary   nil
+       :data-points n}
       (let [xs               (mapv (comp double first) valid-pairs)
             ys               (mapv (comp double second) valid-pairs)
             x-summary        (stats.u/compute-summary xs)
@@ -49,15 +49,15 @@
                                        r-squared (* (double raw-coef) (double raw-coef))]
                                    {:slope     slope
                                     :intercept intercept
-                                    :r_squared r-squared})
+                                    :r-squared r-squared})
                                  (catch Exception _ nil)))
             scatter-outliers (when (>= n min-outlier-points)
                                (outliers/find-outliers ys xs))
             sampled-points   (sample-points (mapv vector xs ys) max-sample-points)]
-        (cond-> {:x_summary      x-summary
-                 :y_summary      y-summary
-                 :data_points    n
-                 :sampled_points sampled-points}
+        (cond-> {:x-summary      x-summary
+                 :y-summary      y-summary
+                 :data-points    n
+                 :sampled-points sampled-points}
           correlation            (assoc :correlation correlation)
           regression             (assoc :regression regression)
           (seq scatter-outliers) (assoc :outliers scatter-outliers))))))
