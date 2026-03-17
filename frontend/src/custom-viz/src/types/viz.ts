@@ -134,7 +134,6 @@ type VisualizationSettingDefinitionBase<
 
   isValid?: (object: T, settings: CustomVisualizationSettings) => boolean;
   getDefault?: (object: T, settings: CustomVisualizationSettings) => TValue;
-  getDisabled?: (object: T, settings: CustomVisualizationSettings) => boolean;
   getValue?: (object: T, settings: CustomVisualizationSettings) => TValue;
 };
 
