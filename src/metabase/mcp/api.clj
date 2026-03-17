@@ -1,13 +1,13 @@
-(ns metabase-enterprise.mcp.api
+(ns metabase.mcp.api
   "MCP (Model Context Protocol) Streamable HTTP transport handler.
    Exposes Metabase's agent tools via JSON-RPC 2.0 over a single `/api/mcp` endpoint."
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]
    [compojure.response :as compojure.response]
-   [metabase-enterprise.mcp.tools :as mcp.tools]
    [metabase.api.common :as api]
    [metabase.api.open-api :as open-api]
+   [metabase.mcp.tools :as mcp.tools]
    [metabase.request.core :as request]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.util :as u]

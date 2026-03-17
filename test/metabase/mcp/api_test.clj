@@ -1,9 +1,9 @@
-(ns metabase-enterprise.mcp.api-test
+(ns metabase.mcp.api-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase-enterprise.mcp.api :as mcp.api]
-   [metabase-enterprise.mcp.tools :as mcp.tools]
+   [metabase.mcp.api :as mcp.api]
+   [metabase.mcp.tools :as mcp.tools]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]

@@ -28,7 +28,6 @@
    [metabase-enterprise.gsheets.api :as gsheets.api]
    [metabase-enterprise.library.api]
    [metabase-enterprise.llm.api]
-   [metabase-enterprise.mcp.api]
    [metabase-enterprise.metabot-v3.api]
    [metabase-enterprise.metabot-v3.tools.api]
    [metabase-enterprise.permission-debug.api]
@@ -50,8 +49,7 @@
 
 (comment metabase-enterprise.advanced-config.api.logs/keep-me
          metabase-enterprise.llm.api/keep-me
-         metabase-enterprise.agent-api.api/keep-me
-         metabase-enterprise.mcp.api/keep-me)
+         metabase-enterprise.agent-api.api/keep-me)
 
 (def ^:private required-feature->message
   {:advanced-permissions       (deferred-tru "Advanced Permissions")
@@ -90,8 +88,7 @@
 
 (def ^:private top-level-routes
   "These are routes that intentionally do not follow the /ee/<feature>/ convention."
-  {"/agent" (premium-handler metabase-enterprise.agent-api.api/routes :agent-api)
-   "/mcp"   (premium-handler metabase-enterprise.mcp.api/handler :agent-api)})
+  {"/agent" (premium-handler metabase-enterprise.agent-api.api/routes :agent-api)})
 
 (def ^:private naughty-routes-map
   "The following routes are NAUGHTY and do not follow the naming convention (i.e., they do not start with

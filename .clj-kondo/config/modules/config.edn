@@ -846,6 +846,16 @@
            settings
            util}}
 
+  mcp
+  {:team "Metabot"
+   :api  #{metabase.mcp.api}
+   :uses #{api
+           config
+           premium-features
+           request
+           server
+           util}}
+
   measures
   {:team "Querying"
    :api  #{metabase.measures.api}
@@ -2307,12 +2317,8 @@
 
   enterprise/mcp
   {:team "Metabot"
-   :api  #{metabase-enterprise.mcp.api}
    :uses #{api
-           config
-           request
-           server
-           util
+           premium-features
            enterprise/agent-api}}
 
   enterprise/metabot-v3
