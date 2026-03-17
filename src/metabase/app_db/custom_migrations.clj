@@ -2058,7 +2058,7 @@
    rows inserted during the migration."
   [from-values case-expr]
   (let [batch-size 500000
-        {:keys [min-id max-id]} (t2.execute/query-one
+        {:keys [min-id max-id]} (t2/query-one
                                  {:select [[[:min :id] :min-id]
                                            [[:max :id] :max-id]]
                                   :from   [:metabase_table]})]
@@ -2081,10 +2081,27 @@
                  [:> :id max-id]
                  [:not-in :data_layer from-values]]}))))
 
-(define-reversible-migration DropMedallionNamesForDataLayer
-  (batched-data-layer-update!
-   ["hidden" "internal" "final"]
-   [:case [:= :data_layer "copper"] "hidden" :else "final"])
-  (batched-data-layer-update!
-   ["copper" "bronze" "silver" "gold"]
-   [:case [:= :data_layer "hidden"] "copper" :else "bronze"]))
+;; Intentionally not using define-reversible-migration here to avoid wrapping in a transaction.
+;; A single long transaction on millions of rows can hit connection/transaction timeouts.
+;; Each batch runs as its own implicit transaction instead.
+;; Partial completion is safe: :model/Table's transform-data-layer handles on-read conversion
+;; of any unconverted rows in both directions (58<->59).
+(defrecord DropMedallionNamesForDataLayer []
+  CustomTaskChange
+  (execute [_ _database]
+    (batched-data-layer-update!
+     ["hidden" "internal" "final"]
+     [:case [:= :data_layer "copper"] "hidden" :else "final"]))
+  (getConfirmationMessage [_]
+    "Custom migration: DropMedallionNamesForDataLayer")
+  (setUp [_])
+  (validate [_ _database]
+    (ValidationErrors.))
+  (setFileOpener [_ _resourceAccessor])
+
+  CustomTaskRollback
+  (rollback [_ _database]
+    (when (should-execute-change?)
+      (batched-data-layer-update!
+       ["copper" "bronze" "silver" "gold"]
+       [:case [:= :data_layer "hidden"] "copper" :else "bronze"]))))
