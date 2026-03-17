@@ -1,11 +1,12 @@
 (ns metabase.driver.sql-mbql5
   "Driver for opt in mbql 5 compilation."
-  (:refer-clojure :exclude [some mapv every? select-keys empty? not-empty])
+  (:refer-clojure :exclude [mapv  empty?])
   (:require
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
+   [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.options :as lib.options]
    [metabase.lib.util :as lib.util]
@@ -184,7 +185,7 @@
     ((get-method sql.qp/->honeysql [:sql op]) driver (into [op] (conj (vec args) opts)))))
 
 (defmethod sql.qp/field-clause->alias :sql-mbql5
-  [driver [clause-type opts id-or-name] & unique-name-fn]
+  [driver [clause-type opts id-or-name] & _unique-name-fn]
   (sql.qp/field-clause->alias* driver [clause-type id-or-name opts]))
 
 (defmethod sql.qp/clause-value-idx :sql-mbql5 [_driver] 2)
@@ -222,4 +223,15 @@
 
 (defmethod sql.qp/make-clause :sql-mbql5
   [_driver tag & args]
+  ;; TODO(rileythomp, 2026-03-16): Add :lib/uuid key and fix any broken tests
   (into [tag {} #_{:lib/uuid (str (random-uuid))}] args))
+
+(defmethod sql.params.substitution/field->clause :sql-mbql5
+  [_driver field opts]
+  [:field
+   (merge {:lib/uuid (str (random-uuid))
+           :base-type                     (:base-type field)
+           driver-api/qp.add.source-table (:table-id field)
+           ::compiling-field-filter?      true}
+          opts)
+   (:id field)])

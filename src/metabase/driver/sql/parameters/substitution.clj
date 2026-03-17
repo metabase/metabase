@@ -264,8 +264,14 @@
     {:replacement-snippet     snippet
      :prepared-statement-args args}))
 
-(mu/defn- field->clause :- driver-api/mbql.schema.field
-  [field other-opts]
+(defmulti field->clause
+  "Return an mbql field clause"
+  {:added "0.60.0" :arglists '([driver field opts])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(mu/defmethod field->clause :sql :- driver-api/mbql.schema.field
+  [_driver field other-opts]
   (driver-api/normalize
    driver-api/mbql.schema.field
    [:field
@@ -275,7 +281,8 @@
             ::compiling-field-filter?      true}
            other-opts)]))
 
-(mu/defn- field->field-filter-clause :- driver-api/mbql.schema.field
+;; TODO(rileythomp, 2026-03-16): Update the schema to work with mbql4 and mbql5
+(mu/defn- field->field-filter-clause ; :- driver-api/mbql.schema.field
   [driver     :- :keyword
    field      :- driver-api/schema.metadata.column
    param-type :- driver-api/schema.parameter.type
@@ -286,7 +293,7 @@
   ;; middleware would work either because we don't know what Field this parameter actually refers to until we resolve
   ;; the parameter. There's probably _some_ way to structure things that would make this "duplicate" call unneeded, but
   ;; I haven't figured out what that is yet
-  (field->clause field {:temporal-unit (align-temporal-unit-with-param-type-and-value driver field param-type value)}))
+  (field->clause driver field {:temporal-unit (align-temporal-unit-with-param-type-and-value driver field param-type value)}))
 
 (mu/defn- field->identifier :- driver-api/schema.common.non-blank-string
   "Return an appropriate snippet to represent this `field` in SQL given its param type.
