@@ -1,33 +1,27 @@
 import type { CardId, DashboardId, ParameterId } from "metabase-types/api";
 
-export type OnBeforeRequestHandlerData = {
+export type OnBeforeRequestHandlerConfig = {
   method: "GET" | "POST";
   url: string;
   options: {
     headers?: Record<string, string>;
     hasBody: boolean;
   } & Record<string, unknown>;
-  /**
-   * Overrides for rawData URL parameters. Handlers can use this to supply
-   * an updated token (e.g. after a refresh) so that api.js URL-parameter
-   * substitution uses the fresh value instead of the stale value captured
-   * at call-time.
-   */
-  rawDataOverrides?: Record<string, unknown>;
+  data: Record<string, unknown>;
 };
 
 export type OnBeforeRequestHandler = (
-  data: OnBeforeRequestHandlerData,
-) => Promise<void | OnBeforeRequestHandlerData>;
+  data: OnBeforeRequestHandlerConfig,
+) => Promise<void | OnBeforeRequestHandlerConfig>;
 
 const getDefaultPluginApi = () => ({
   onBeforeRequestHandlers: {
     overrideRequestsForPublicEmbeds: async (
-      _data: OnBeforeRequestHandlerData,
-    ): Promise<OnBeforeRequestHandlerData | void> => {},
+      _data: OnBeforeRequestHandlerConfig,
+    ): Promise<OnBeforeRequestHandlerConfig | void> => {},
     overrideRequestsForStaticEmbeds: async (
-      _data: OnBeforeRequestHandlerData,
-    ): Promise<OnBeforeRequestHandlerData | void> => {},
+      _data: OnBeforeRequestHandlerConfig,
+    ): Promise<OnBeforeRequestHandlerConfig | void> => {},
   },
   getRemappedCardParameterValueUrl: (
     cardId: CardId | string | undefined,

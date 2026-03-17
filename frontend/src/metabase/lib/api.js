@@ -125,17 +125,20 @@ export class Api extends EventEmitter {
       };
 
       return async (rawData, invocationOptions = {}) => {
-        let { url, method, options, rawDataOverrides } =
-          await this.apiRequestManipulationMiddleware({
-            url: urlTemplate,
-            method: methodTemplate,
-            options: { ...defaultOptions, ...invocationOptions },
-          });
+        let {
+          url,
+          method,
+          options,
+          data: middlewareData,
+        } = await this.apiRequestManipulationMiddleware({
+          url: urlTemplate,
+          method: methodTemplate,
+          options: { ...defaultOptions, ...invocationOptions },
+          data: rawData,
+        });
         // this will transform arrays to objects with numeric keys
         // we shouldn't be using top level-arrays in the API
-        // rawDataOverrides lets middleware (e.g. token refresh) supply updated
-        // values for URL parameters without the caller needing to re-invoke.
-        const data = { ...rawData, ...rawDataOverrides };
+        const data = { ...middlewareData };
         for (const tag of url.match(/:\w+/g) || []) {
           const paramName = tag.slice(1);
           let value = data[paramName];
@@ -149,14 +152,6 @@ export class Api extends EventEmitter {
           }
           url = url.replace(tag, value);
         }
-        // Remove any rawDataOverrides keys that were not consumed as URL
-        // parameters so they don't leak into the query string. These keys
-        // (e.g. "token", "entityIdentifier") are purely for URL-path
-        // substitution and must never be forwarded as query params.
-        for (const key of Object.keys(rawDataOverrides)) {
-          delete data[key];
-        }
-
         // remove undefined
         for (const name in data) {
           if (data[name] === undefined) {
@@ -386,12 +381,11 @@ export class Api extends EventEmitter {
   }
 
   /**
-   * @param data {import('metabase/plugins').OnBeforeRequestHandlerData}
-   * @return data {Promise<import('metabase/plugins').OnBeforeRequestHandlerData>}
+   * @param {import('metabase/plugins/oss/api').OnBeforeRequestHandlerConfig} config
+   * @return {Promise<import('metabase/plugins/oss/api').OnBeforeRequestHandlerConfig>}
    */
-  async apiRequestManipulationMiddleware(data) {
-    let { method, url, options } = data;
-    let rawDataOverrides = {};
+  async apiRequestManipulationMiddleware(config) {
+    let { method, url, options, data } = config;
 
     /**
      * Handlers order is important.
@@ -426,6 +420,7 @@ export class Api extends EventEmitter {
           method,
           url,
           options,
+          data,
         });
 
         if (onBeforeRequestHandlerResult) {
@@ -444,17 +439,14 @@ export class Api extends EventEmitter {
             };
           }
 
-          if (onBeforeRequestHandlerResult.rawDataOverrides) {
-            rawDataOverrides = {
-              ...rawDataOverrides,
-              ...onBeforeRequestHandlerResult.rawDataOverrides,
-            };
+          if (onBeforeRequestHandlerResult.data) {
+            data = onBeforeRequestHandlerResult.data;
           }
         }
       }
     }
 
-    return { method, url, options, rawDataOverrides };
+    return { method, url, options, data };
   }
 }
 
