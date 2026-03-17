@@ -3561,6 +3561,7 @@ databaseChangeLog:
   - changeSet:
       id: v59.2026-03-16T10:00:01
       author: sgavrylov
+      failOnError: false
       comment: Add unique constraint on custom_viz_plugin.repo_url
       preConditions:
         - onFail: MARK_RAN
@@ -3577,6 +3578,7 @@ databaseChangeLog:
   - changeSet:
       id: v59.2026-03-16T10:00:02
       author: sgavrylov
+      failOnError: false
       comment: Add unique constraint on custom_viz_plugin.identifier
       preConditions:
         - onFail: MARK_RAN
