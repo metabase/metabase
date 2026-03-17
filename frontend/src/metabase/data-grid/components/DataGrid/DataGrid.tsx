@@ -6,7 +6,7 @@ import {
 import type { HeaderGroup } from "@tanstack/react-table";
 import cx from "classnames";
 import type React from "react";
-import { useCallback, useEffect } from "react";
+import { useEffect } from "react";
 import _ from "underscore";
 
 import { useForceUpdate } from "metabase/common/hooks/use-force-update";
@@ -62,15 +62,13 @@ export const DataGrid = function DataGrid<TData>({
   getCenterRows,
   getPinnedColumns,
   getCenterColumns,
-  pinnedRowMeasureRef,
-  centerRowMeasureRef,
+  rowMeasureRef,
   emptyState,
   zoomedRowIndex,
   onBodyCellClick,
   onWheel,
   tableFooterExtraButtons,
   rowsTruncated,
-  sorting,
   onAddColumnClick,
   onHeaderCellClick,
   isColumnReorderingDisabled,
@@ -81,12 +79,6 @@ export const DataGrid = function DataGrid<TData>({
     virtualPaddingLeft,
     virtualPaddingRight,
   } = virtualGrid;
-
-  const rowMeasureRef = useCallback(
-    (element: HTMLDivElement | null) => centerRowMeasureRef(element),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `sorting` triggers re-measurement when sorting changes
-    [centerRowMeasureRef, sorting],
-  );
 
   const forceUpdate = useForceUpdate();
   useEffect(() => {
@@ -140,13 +132,12 @@ export const DataGrid = function DataGrid<TData>({
     row: DataGridRowType<TData>,
     columns: DataGridColumnType<TData>[],
     key: string,
-    measureRef?: (element: HTMLDivElement | null) => void,
   ) => (
     <DataGridRow
       key={key}
       row={row}
       pinnedRowsCount={pinnedRows.length}
-      rowMeasureRef={measureRef}
+      rowMeasureRef={rowMeasureRef}
       columns={columns}
       zoomedRowIndex={zoomedRowIndex}
       selection={selection}
@@ -216,15 +207,10 @@ export const DataGrid = function DataGrid<TData>({
   ) =>
     renderGridPanels({
       pinnedContent: rows.map((row, index) =>
-        renderRow(row, pinnedColumns, `pinned-${index}`, pinnedRowMeasureRef),
+        renderRow(row, pinnedColumns, `pinned-${index}`),
       ),
       centerContent: rows.map((row, index) =>
-        renderRow(
-          row,
-          centerColumns,
-          `center-${index}`,
-          row.virtualItem ? rowMeasureRef : undefined,
-        ),
+        renderRow(row, centerColumns, `center-${index}`),
       ),
       minHeight,
     });

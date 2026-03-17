@@ -254,10 +254,9 @@ export const useDataGridInstance = <TData, TValue>({
   const {
     tableRef,
     virtualGridRef,
-    measureRowHeight,
-    pinnedRowMeasureRef,
-    centerRowMeasureRef,
-    pinnedTopRowHeights,
+    getRowHeight,
+    rowMeasureRef,
+    remeasureAll,
   } = useRowHeights({
     data,
     defaultRowHeight,
@@ -271,7 +270,7 @@ export const useDataGridInstance = <TData, TValue>({
     data,
     getRowId,
     gridRef,
-    topRowHeights: pinnedTopRowHeights,
+    topRowHeights: [],
   });
 
   const table = useReactTable({
@@ -306,7 +305,8 @@ export const useDataGridInstance = <TData, TValue>({
     gridRef,
     table,
     defaultRowHeight,
-    measureRowHeight,
+    getRowHeight,
+    pinnedTopRowsCount,
     enableRowVirtualization,
   });
 
@@ -386,13 +386,14 @@ export const useDataGridInstance = <TData, TValue>({
       );
     if (didColumnSizingChange || didColumnWrappingChange) {
       measureGrid();
+      remeasureAll();
     }
 
     prevColumnSizing.current = columnSizingMap;
     prevWrappedColumns.current = wrappedColumnsOptions.map(
       (column) => column.id,
     );
-  }, [columnSizingMap, measureGrid, wrappedColumnsOptions]);
+  }, [columnSizingMap, measureGrid, remeasureAll, wrappedColumnsOptions]);
 
   // Handle column resize from resize observer
   const handleColumnResize = useCallback(
@@ -455,9 +456,9 @@ export const useDataGridInstance = <TData, TValue>({
       table.getTopRows().map((row, index) => ({
         origin: row,
         displayIndex: index,
-        height: measureRowHeight(row.index),
+        height: getRowHeight(index),
       })),
-    [table, measureRowHeight],
+    [table, getRowHeight],
   );
 
   const getCenterRows = useCallback((): DataGridRowType<TData>[] => {
@@ -467,7 +468,7 @@ export const useDataGridInstance = <TData, TValue>({
       return centerRows.map((row, index) => ({
         origin: row,
         displayIndex: index + pinnedRowsCount,
-        height: measureRowHeight(row.index),
+        height: getRowHeight(row.index),
       }));
     }
     return virtualGrid.virtualRows.map((virtualRow) => ({
@@ -476,12 +477,7 @@ export const useDataGridInstance = <TData, TValue>({
       displayIndex: virtualRow.index + pinnedRowsCount,
       height: virtualRow.size,
     }));
-  }, [
-    enableRowVirtualization,
-    measureRowHeight,
-    table,
-    virtualGrid.virtualRows,
-  ]);
+  }, [enableRowVirtualization, getRowHeight, table, virtualGrid.virtualRows]);
 
   const getPinnedColumns = useCallback(
     (): DataGridColumnType<TData>[] =>
@@ -579,8 +575,7 @@ export const useDataGridInstance = <TData, TValue>({
     getCenterColumns,
     getPinnedColumns,
     getPinnedRows,
-    centerRowMeasureRef,
-    pinnedRowMeasureRef,
+    rowMeasureRef,
     enablePagination,
     sorting,
   };

@@ -29,7 +29,7 @@ export const useRowPinningByCount = <TData>({
   //   maxRatio: 0.9,
   // });
 
-  const effectivePinnedRowsCount = top;
+  const effectivePinnedRowsCount = top + 1;
 
   return useMemo(() => {
     const actualPinnedCount = Math.max(0, effectivePinnedRowsCount - 1);

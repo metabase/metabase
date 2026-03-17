@@ -1,11 +1,5 @@
 import type { RowData, Table } from "@tanstack/react-table";
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useLayoutEffect, useRef } from "react";
 
 import type { ColumnOptions } from "../types";
 
@@ -25,10 +19,9 @@ type UseRowHeightsProps<TData extends RowData, TValue> = {
 type UseRowHeightsResult<TData> = {
   tableRef: React.MutableRefObject<Table<TData> | undefined>;
   virtualGridRef: React.MutableRefObject<VirtualGrid | undefined>;
-  measureRowHeight: (rowIndex: number) => number;
-  pinnedRowMeasureRef: (element: HTMLDivElement | null) => void;
-  centerRowMeasureRef: (element: HTMLDivElement | null) => void;
-  pinnedTopRowHeights: number[];
+  rowMeasureRef: (element: HTMLDivElement | null) => void;
+  getRowHeight: (rowIndex: number) => number;
+  remeasureAll: () => void;
 };
 
 export const useRowHeights = <TData extends RowData, TValue>({
@@ -40,7 +33,10 @@ export const useRowHeights = <TData extends RowData, TValue>({
 }: UseRowHeightsProps<TData, TValue>): UseRowHeightsResult<TData> => {
   const tableRef = useRef<Table<TData>>();
   const virtualGridRef = useRef<VirtualGrid>();
-  const [pinnedTopRowHeights, setPinnedTopRowHeights] = useState<number[]>([]);
+
+  const rowHeightsCache = useRef<Map<number, number>>(new Map());
+  const elementsByRow = useRef<Map<number, Set<Element>>>(new Map());
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
 
   const measureRowHeight = useCallback(
     (rowIndex: number) => {
@@ -82,84 +78,113 @@ export const useRowHeights = <TData extends RowData, TValue>({
     ],
   );
 
-  const pinnedRowsHeightsCache = useRef<Map<number, number>>(new Map());
-  const pinnedResizeObserverRef = useRef<ResizeObserver | null>(null);
-  const pinnedObservedElements = useRef<Set<HTMLElement>>(new Set());
+  const getRowHeight = useCallback(
+    (rowIndex: number): number =>
+      rowHeightsCache.current.get(rowIndex) ?? defaultRowHeight,
+    [defaultRowHeight],
+  );
 
-  const updatePinnedHeight = useCallback((el: HTMLElement) => {
-    const indexRaw = el.getAttribute("data-dataset-index");
-    if (indexRaw == null) {
-      return false;
+  const getRowIndex = useCallback((element: Element): number | null => {
+    const indexRaw = element.getAttribute("data-dataset-index");
+    if (!indexRaw) {
+      return null;
     }
-    const dataIndex = parseInt(indexRaw, 10);
-    const height = el.offsetHeight;
-    const prev = pinnedRowsHeightsCache.current.get(dataIndex);
-    if (prev !== height) {
-      pinnedRowsHeightsCache.current.set(dataIndex, height);
-      return true;
-    }
-    return false;
+    return parseInt(indexRaw, 10);
   }, []);
 
-  useLayoutEffect(() => {
-    pinnedResizeObserverRef.current = new ResizeObserver((entries) => {
-      let changed = false;
-      for (const entry of entries) {
-        const el = entry.target;
-        if (el instanceof HTMLElement && updatePinnedHeight(el)) {
-          changed = true;
-        }
-      }
-      if (changed) {
-        virtualGridRef.current?.measureGrid();
-      }
-    });
+  const updateRowHeight = useCallback(
+    (rowIndex: number): number => {
+      const height = measureRowHeight(rowIndex);
+      rowHeightsCache.current.set(rowIndex, height);
+      return height;
+    },
+    [measureRowHeight],
+  );
 
-    return () => {
-      pinnedResizeObserverRef.current?.disconnect();
-    };
-  }, [virtualGridRef, updatePinnedHeight]);
+  const remeasureRow = useCallback(
+    (rowIndex: number) => {
+      const height = updateRowHeight(rowIndex);
+      const isVirtual = rowIndex >= pinnedTopRowsCount;
 
-  const pinnedRowMeasureRef = useCallback(
-    (element: HTMLDivElement | null | undefined) => {
-      if (!element) {
-        return;
-      }
-      if (updatePinnedHeight(element)) {
-        virtualGridRef.current?.measureGrid();
-      }
-      if (!pinnedObservedElements.current.has(element)) {
-        pinnedObservedElements.current.add(element);
-        pinnedResizeObserverRef.current?.observe(element);
+      if (isVirtual) {
+        const virtualIndex = rowIndex - pinnedTopRowsCount;
+        virtualGridRef.current?.rowVirtualizer.resizeItem(virtualIndex, height);
       }
     },
-    [virtualGridRef, updatePinnedHeight],
+    [updateRowHeight, pinnedTopRowsCount],
   );
 
-  const centerRowMeasureRef = useCallback(
-    (element: HTMLDivElement | null | undefined) =>
-      virtualGridRef.current?.measureRow(element),
-    [virtualGridRef],
+  const recalculate = useCallback(
+    (entries: ResizeObserverEntry[]) => {
+      for (const entry of entries) {
+        const element = entry.target;
+        const rowIndex = getRowIndex(element);
+        if (rowIndex === null) {
+          continue;
+        }
+        remeasureRow(rowIndex);
+      }
+    },
+    [getRowIndex, remeasureRow],
   );
 
-  useEffect(() => {
-    const heights = Array.from({ length: pinnedTopRowsCount }, (_, i) =>
-      measureRowHeight(i),
-    );
-    setPinnedTopRowHeights((prev) =>
-      heights.length === prev.length &&
-      heights.every((height, i) => height === prev[i])
-        ? prev
-        : heights,
-    );
-  }, [pinnedTopRowsCount, measureRowHeight]);
+  useLayoutEffect(() => {
+    resizeObserverRef.current = new ResizeObserver(recalculate);
+    return () => {
+      resizeObserverRef.current?.disconnect();
+    };
+  }, [recalculate]);
+
+  const unwatchUnmountedElements = useCallback(() => {
+    for (const [rowIndex, elements] of elementsByRow.current) {
+      for (const el of elements) {
+        if (!el.isConnected) {
+          resizeObserverRef.current?.unobserve(el);
+          elements.delete(el);
+        }
+      }
+      if (elements.size === 0) {
+        elementsByRow.current.delete(rowIndex);
+      }
+    }
+  }, []);
+
+  const watchElement = useCallback((element: Element, rowIndex: number) => {
+    const rowElements = elementsByRow.current.get(rowIndex) ?? new Set();
+    elementsByRow.current.set(rowIndex, rowElements);
+    if (!rowElements.has(element)) {
+      rowElements.add(element);
+      resizeObserverRef.current?.observe(element);
+    }
+  }, []);
+
+  const rowMeasureRef = useCallback(
+    (element: Element | null) => {
+      if (!element) {
+        unwatchUnmountedElements();
+        return;
+      }
+      const rowIndex = getRowIndex(element);
+      if (rowIndex === null) {
+        return;
+      }
+      watchElement(element, rowIndex);
+      remeasureRow(rowIndex);
+    },
+    [remeasureRow, unwatchUnmountedElements, getRowIndex, watchElement],
+  );
+
+  const remeasureAll = useCallback(() => {
+    for (const [rowIndex] of elementsByRow.current) {
+      remeasureRow(rowIndex);
+    }
+  }, [remeasureRow]);
 
   return {
     tableRef,
     virtualGridRef,
-    measureRowHeight,
-    pinnedRowMeasureRef,
-    centerRowMeasureRef,
-    pinnedTopRowHeights,
+    rowMeasureRef,
+    getRowHeight,
+    remeasureAll,
   };
 };

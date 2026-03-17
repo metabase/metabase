@@ -10,8 +10,9 @@ import { useCallback, useLayoutEffect, useMemo, useRef } from "react";
 interface VirtualGridOptions<TData> {
   gridRef: React.RefObject<HTMLDivElement>;
   table: ReactTable<TData>;
-  measureRowHeight: (rowIndex: number) => number;
+  getRowHeight: (rowIndex: number) => number;
   defaultRowHeight: number;
+  pinnedTopRowsCount: number;
   enableRowVirtualization?: boolean;
 }
 
@@ -23,15 +24,15 @@ export interface VirtualGrid {
   rowVirtualizer: Virtualizer<HTMLDivElement, Element>;
   columnVirtualizer: Virtualizer<HTMLDivElement, Element>;
   measureGrid: () => void;
-  measureRow: (element: HTMLDivElement | null | undefined) => void;
   scrollTo: (options: { rowIndex?: number; columnIndex?: number }) => void;
 }
 
 export const useVirtualGrid = <TData,>({
   gridRef,
   table,
-  measureRowHeight,
+  getRowHeight,
   defaultRowHeight,
+  pinnedTopRowsCount,
   enableRowVirtualization,
 }: VirtualGridOptions<TData>): VirtualGrid => {
   const centerColumns = table.getCenterLeafColumns();
@@ -66,33 +67,15 @@ export const useVirtualGrid = <TData,>({
   const rowVirtualizer = useVirtualizer({
     count: centerRows.length,
     getScrollElement: () => gridRef.current,
-    estimateSize: () => defaultRowHeight,
+    estimateSize: (index) =>
+      getRowHeight(index + pinnedTopRowsCount) || defaultRowHeight,
     overscan: 3,
     enabled: enableRowVirtualization,
-    measureElement: (element) => {
-      if (!element) {
-        return defaultRowHeight;
-      }
-      const rowIndexRaw = element.getAttribute("data-dataset-index");
-      if (rowIndexRaw) {
-        return measureRowHeight(parseInt(rowIndexRaw, 10));
-      }
-      return defaultRowHeight;
-    },
   });
 
-  const measureRow = useCallback(
-    (element: Element | null | undefined) =>
-      rowVirtualizer.measureElement(element),
-    [rowVirtualizer],
-  );
-
   const measureGrid = useCallback(() => {
-    Array.from(rowVirtualizer.elementsCache.values()).forEach((el) =>
-      measureRow(el),
-    );
     columnVirtualizer.measure();
-  }, [rowVirtualizer, measureRow, columnVirtualizer]);
+  }, [columnVirtualizer]);
 
   const pinnedColumnsCount = table.getLeftLeafColumns().length;
   const scrollTo = useCallback(
@@ -128,7 +111,6 @@ export const useVirtualGrid = <TData,>({
     rowVirtualizer,
     columnVirtualizer,
     measureGrid,
-    measureRow,
     scrollTo,
   };
 };
