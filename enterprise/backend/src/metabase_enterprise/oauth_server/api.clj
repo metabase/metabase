@@ -142,9 +142,6 @@
                :headers {"Content-Type" "text/html; charset=utf-8"}
                :body    (consent-page/render-consent-page
                          {:client-name  (or (:client-name client) "Unknown Application")
-                          :scopes       (if-let [scope (:scope parsed)]
-                                          (str/split scope #"\s+")
-                                          [])
                           :nonce        (:nonce request)
                           :csrf-token   csrf-token
                           :oauth-params {:client_id             (:client_id parsed)

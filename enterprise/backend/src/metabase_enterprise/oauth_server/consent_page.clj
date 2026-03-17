@@ -49,7 +49,7 @@
 
 (defn render-consent-page
   "Render a server-side HTML consent page for the OAuth authorization flow."
-  [{:keys [client-name scopes oauth-params nonce csrf-token]}]
+  [{:keys [client-name oauth-params nonce csrf-token]}]
   (let [{:keys [font-family logo-url brand-color]} (appearance-settings)
         css-font-family (css-escape-font-name font-family)]
     (str
@@ -74,13 +74,6 @@
                    .logo { display: flex; justify-content: center; margin-bottom: 1.5rem; }
                    h1 { font-size: 1.25rem; font-weight: 700; color: #2e353b; text-align: center; margin-bottom: 0.5rem; }
                    .subtitle { text-align: center; font-size: 0.875rem; line-height: 1.5; color: #696e7b; margin-bottom: 1.5rem; }
-                   .scope-label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
-                                   color: #949aab; margin-bottom: 0.5rem; }
-                   .scopes { list-style: none; background: #f9fbfc; border-radius: 6px; border: 1px solid #eeecec;
-                              padding: 0; margin-bottom: 1.5rem; }
-                   .scopes li { padding: 0.625rem 0.875rem; font-size: 0.875rem; color: #4c5773;
-                                 border-bottom: 1px solid #eeecec; }
-                   .scopes li:last-child { border-bottom: none; }
                    .actions { display: flex; gap: 0.75rem; }
                    button { flex: 1; padding: 0.75rem 1rem; border-radius: 8px; font-size: 0.875rem; font-weight: 700;
                             font-family: inherit; cursor: pointer;
@@ -93,13 +86,8 @@
         [:div.consent
          [:div.logo [:img {:src logo-url :alt "Logo" :height "32"}]]
          [:h1 "Authorize " client-name]
-         [:p.subtitle "This application is requesting permission to access your Metabase account."]
-         (when (seq scopes)
-           [:div
-            [:p.scope-label "Permissions requested"]
-            [:ul.scopes
-             (for [scope scopes]
-               [:li scope])]])
+         [:p.subtitle "This MCP client is requesting to be authorized. If you approve, it will be able to access resources from "
+          [:strong (appearance.settings/application-name)] " on your behalf."]
          [:form {:method "POST" :action "/oauth/authorize/decision"}
           [:input {:type "hidden" :name "csrf_token" :value csrf-token}]
           (for [[k v] oauth-params
