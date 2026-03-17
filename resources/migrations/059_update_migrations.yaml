@@ -3476,6 +3476,18 @@ databaseChangeLog:
                   constraints:
                     nullable: true
 
+  - changeSet:
+      id: v59.2026-03-17T10:30:03
+      author: nvoxland
+      comment: When rolling back, make sure any transform permissions that were added are removed. Because 58 doesn't know about them and errors
+      changes:
+        - output:
+            message: Placeholder for managing transform permissions on rollback
+            target: STDOUT
+      rollback: delete from data_permissions where perm_type='perms/transforms';
+
+
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
