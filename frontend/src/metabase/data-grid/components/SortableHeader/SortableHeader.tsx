@@ -64,14 +64,9 @@ export const SortableHeader = memo(function SortableHeader<TData, TValue>({
       return {};
     }
 
-    // dnd-kit adds role="button" to attributes, which violates the ARIA grid
-    // pattern (grid > rowgroup > row > columnheader). We strip the role so
-    // the parent columnheader wrapper in DataGrid is respected.
-    const { role: _role, ...restAttributes } = attributes;
-
     return {
       ...listeners,
-      ...restAttributes,
+      ...attributes,
     };
   }, [attributes, isPinned, listeners]);
 
