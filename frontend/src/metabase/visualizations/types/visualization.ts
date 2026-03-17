@@ -398,10 +398,7 @@ export type CompleteVisualizationSettingDefinition<
   T = unknown,
   TValue = unknown,
   TProps extends Record<string, unknown> = Record<string, unknown>,
-> = Omit<
-  VisualizationSettingDefinition<T, TValue, TProps>,
-  "getDefault" | "getProps"
-> & {
+> = Omit<VisualizationSettingDefinition<T, TValue, TProps>, "getProps"> & {
   id: string;
   props: Partial<TProps>;
 };
