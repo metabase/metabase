@@ -4,18 +4,17 @@ on:
   workflow_dispatch:
     inputs:
       source_version:
-        description: "Source version (e.g., v1.58.6 for EE, v0.58.6 for OSS, or HEAD)"
+        description: "Source version (e.g., v1.58.6 or HEAD)"
         required: true
         type: string
       target_version:
-        description: "Target version (e.g., v1.58.7 for EE, v0.58.7 for OSS, or HEAD)"
+        description: "Target version (e.g., v1.58.7 or HEAD)"
         required: true
         type: string
 
   pull_request:
     paths:
       - "cross-version/**"
-      - "resources/migrations/**"
       - ".github/workflows/cross-version.yml"
       - ".github/scripts/build-cross-version-matrix.js"
 

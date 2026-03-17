@@ -13,8 +13,6 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { skipToken, useListCommentsQuery } from "metabase/api";
-import { getTargetChildCommentThreads } from "metabase/comments/utils";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { ExplicitSizeRefreshModeContext } from "metabase/common/components/ExplicitSize/ExplicitSize";
 import { QuestionPickerModal } from "metabase/common/components/Pickers";
@@ -24,7 +22,6 @@ import {
   trackDocumentAddSupportingText,
   trackDocumentReplaceCard,
 } from "metabase/documents/analytics";
-import { getUnresolvedComments } from "metabase/documents/components/Editor/CommentsMenu";
 import { EDITOR_STYLE_BOUNDARY_CLASS } from "metabase/documents/components/Editor/constants";
 import { MAX_GROUP_SIZE } from "metabase/documents/constants";
 import {
@@ -33,13 +30,13 @@ import {
 } from "metabase/documents/documents.slice";
 import { useCardData } from "metabase/documents/hooks/use-card-data";
 import { useNodeInViewport } from "metabase/documents/hooks/use-node-in-viewport";
+import { useUnresolvedCommentsCount } from "metabase/documents/hooks/use-unresolved-comments-count";
 import {
   getChildTargetId,
   getCurrentDocument,
   getHasUnsavedChanges,
   getHoveredChildTargetId,
 } from "metabase/documents/selectors";
-import { getListCommentsQuery } from "metabase/documents/utils/api";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { usePublicDocumentContext } from "metabase/public/contexts/PublicDocumentContext";
 import { usePublicDocumentCardData } from "metabase/public/hooks/use-public-document-card-data";
@@ -177,19 +174,8 @@ export const CardEmbedComponent = memo(
     const document = useSelector(getCurrentDocument);
     const { publicDocumentUuid } = usePublicDocumentContext();
     const { _id } = node.attrs;
-    const commentsQuery = isInViewport
-      ? getListCommentsQuery(document)
-      : skipToken;
-    const { unresolvedCommentsCount } = useListCommentsQuery(commentsQuery, {
-      selectFromResult: ({ data: commentsData }) => {
-        const threads = getTargetChildCommentThreads(
-          commentsData?.comments,
-          _id,
-        );
-        return {
-          unresolvedCommentsCount: getUnresolvedComments(threads).length,
-        };
-      },
+    const unresolvedCommentsCount = useUnresolvedCommentsCount(_id, {
+      skip: !isInViewport,
     });
 
     const hasUnsavedChanges = useSelector(getHasUnsavedChanges);

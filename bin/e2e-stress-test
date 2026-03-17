@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+RUNS="${E2E_STRESS_RUNS:-5}"
+
+if [ $# -eq 0 ]; then
+  echo "Usage: bin/e2e-stress-test [cypress args...]"
+  echo "  e.g. bin/e2e-stress-test --spec e2e/test/scenarios/organization/bookmarks-dashboard.cy.spec.js"
+  echo ""
+  echo "Set E2E_STRESS_RUNS=N to change iteration count (default: 5)"
+  exit 1
+fi
+
+rm -rf cypress/screenshots cypress/videos
+
+for i in $(seq 1 "$RUNS"); do
+  echo ""
+  echo "=========================================="
+  echo "  Run $i / $RUNS"
+  echo "=========================================="
+  echo ""
+
+  if ! CYPRESS_VIDEO=false CYPRESS_RETRIES=0 CYPRESS_GUI=false GENERATE_SNAPSHOTS=false bun test-cypress "$@"; then
+    echo ""
+    echo "=========================================="
+    echo "  FAILED on run $i / $RUNS"
+    echo "=========================================="
+
+    if ls cypress/screenshots/**/*.png 1>/dev/null 2>&1; then
+      echo ""
+      echo "Screenshots:"
+      find cypress/screenshots -name "*.png" -print
+    fi
+
+    exit 1
+  fi
+done
+
+echo ""
+echo "=========================================="
+echo "  All $RUNS runs passed"
+echo "=========================================="

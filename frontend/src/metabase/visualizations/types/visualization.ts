@@ -375,7 +375,6 @@ export type VisualizationSettingDefinition<
   ) => string;
   persistDefault?: boolean;
   inline?: boolean;
-  props?: Partial<TProps>;
   getProps?: (
     object: T,
     vizSettings: T extends DatasetColumn
@@ -400,8 +399,9 @@ export type CompleteVisualizationSettingDefinition<
   T = unknown,
   TValue = unknown,
   TProps extends Record<string, unknown> = Record<string, unknown>,
-> = VisualizationSettingDefinition<T, TValue, TProps> & {
+> = Omit<VisualizationSettingDefinition<T, TValue, TProps>, "getProps"> & {
   id: string;
+  props: Partial<TProps>;
 };
 
 export type DatasetColumnSettingDefinition<

@@ -234,7 +234,11 @@ export const Editor: React.FC<EditorProps> = React.memo(
           ref={editorContainerRef}
           onClick={(e) => {
             // Focus editor when clicking on empty space
-            const target = e.target as HTMLElement;
+            const target = e.target;
+            if (!(target instanceof HTMLElement)) {
+              return;
+            }
+
             if (
               target.classList.contains(S.editorContent) ||
               target.classList.contains("ProseMirror")

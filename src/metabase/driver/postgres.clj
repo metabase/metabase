@@ -1368,6 +1368,7 @@
 (defmethod driver/grant-workspace-read-access! :postgres
   [_driver database workspace tables]
   (let [username       (-> workspace :database_details :user)
+        qu             (sql.u/quote-name :postgres :field username)
         ;; Collect all unique source schemas that contain the tables we need to grant access to
         source-schemas (into #{} (keep :schema) tables)
         ;; Grant USAGE on source schemas, then SELECT on each table
@@ -1375,12 +1376,16 @@
         sqls           (concat
                         ;; USAGE on each source schema containing tables we're granting access to
                         (for [s source-schemas]
-                          (format "GRANT USAGE ON SCHEMA \"%s\" TO \"%s\"" s username))
+                          (format "GRANT USAGE ON SCHEMA %s TO %s"
+                                  (sql.u/quote-name :postgres :schema s) qu))
                         ;; SELECT on each table
                         (for [{s :schema, t :name} tables]
                           (if (str/blank? s)
-                            (format "GRANT SELECT ON TABLE \"%s\" TO \"%s\"" t username)
-                            (format "GRANT SELECT ON TABLE \"%s\".\"%s\" TO \"%s\"" s t username))))]
+                            (format "GRANT SELECT ON TABLE %s TO %s"
+                                    (sql.u/quote-name :postgres :table t) qu)
+                            (format "GRANT SELECT ON TABLE %s.%s TO %s"
+                                    (sql.u/quote-name :postgres :schema s)
+                                    (sql.u/quote-name :postgres :table t) qu))))]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
         (doseq [sql sqls]

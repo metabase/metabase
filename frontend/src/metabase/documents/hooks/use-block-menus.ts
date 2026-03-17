@@ -2,16 +2,13 @@ import { autoUpdate, useFloating } from "@floating-ui/react";
 import type { Editor, NodeViewProps } from "@tiptap/core";
 import { useCallback, useEffect, useState } from "react";
 
-import { skipToken, useListCommentsQuery } from "metabase/api";
-import { getTargetChildCommentThreads } from "metabase/comments/utils";
-import { getUnresolvedComments } from "metabase/documents/components/Editor/CommentsMenu";
 import { useNodeInViewport } from "metabase/documents/hooks/use-node-in-viewport";
+import { useUnresolvedCommentsCount } from "metabase/documents/hooks/use-unresolved-comments-count";
 import {
   getChildTargetId,
   getCurrentDocument,
   getHoveredChildTargetId,
 } from "metabase/documents/selectors";
-import { getListCommentsQuery } from "metabase/documents/utils/api";
 import { isTopLevel } from "metabase/documents/utils/editorNodeUtils";
 import { isWithinIframe } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
@@ -44,16 +41,8 @@ export function useBlockMenus({
 
   const { ref: viewportRef, isInViewport } = useNodeInViewport();
 
-  const commentsQuery = isInViewport
-    ? getListCommentsQuery(document)
-    : skipToken;
-  const { unresolvedCommentsCount } = useListCommentsQuery(commentsQuery, {
-    selectFromResult: ({ data: commentsData }) => {
-      const threads = getTargetChildCommentThreads(commentsData?.comments, _id);
-      return {
-        unresolvedCommentsCount: getUnresolvedComments(threads).length,
-      };
-    },
+  const unresolvedCommentsCount = useUnresolvedCommentsCount(_id, {
+    skip: !isInViewport,
   });
 
   const [hovered, setHovered] = useState(false);

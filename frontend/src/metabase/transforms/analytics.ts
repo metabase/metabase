@@ -43,12 +43,15 @@ export function trackTransformCreate({
 
 export function trackTransformCreated({
   transformId,
+  isIncremental,
 }: {
   transformId: TransformId;
+  isIncremental: boolean;
 }) {
   trackSimpleEvent({
     event: "transform_created",
     target_id: transformId,
+    event_detail: isIncremental ? "incremental" : undefined,
   });
 }
 

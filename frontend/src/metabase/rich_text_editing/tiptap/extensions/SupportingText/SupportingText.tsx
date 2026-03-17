@@ -14,16 +14,12 @@ import cx from "classnames";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { skipToken } from "metabase/api";
-import { useListCommentsQuery } from "metabase/api/comment";
-import { getTargetChildCommentThreads } from "metabase/comments/utils";
-import { getUnresolvedComments } from "metabase/documents/components/Editor/CommentsMenu";
 import { useNodeInViewport } from "metabase/documents/hooks/use-node-in-viewport";
+import { useUnresolvedCommentsCount } from "metabase/documents/hooks/use-unresolved-comments-count";
 import {
   getChildTargetId,
   getCurrentDocument,
 } from "metabase/documents/selectors";
-import { getListCommentsQuery } from "metabase/documents/utils/api";
 import { isWithinIframe } from "metabase/lib/dom";
 import { useDispatch, useSelector } from "metabase/lib/redux/hooks";
 import { DropZone } from "metabase/rich_text_editing/tiptap/extensions/shared/dnd/DropZone";
@@ -145,16 +141,8 @@ const SupportingTextComponent = ({
   const childTargetId = useSelector(getChildTargetId);
   const document = useSelector(getCurrentDocument);
   const { _id } = node.attrs;
-  const commentsQuery = isInViewport
-    ? getListCommentsQuery(document)
-    : skipToken;
-  const { unresolvedCommentsCount } = useListCommentsQuery(commentsQuery, {
-    selectFromResult: ({ data: commentsData }) => {
-      const threads = getTargetChildCommentThreads(commentsData?.comments, _id);
-      return {
-        unresolvedCommentsCount: getUnresolvedComments(threads).length,
-      };
-    },
+  const unresolvedCommentsCount = useUnresolvedCommentsCount(_id, {
+    skip: !isInViewport,
   });
   const isOpen = childTargetId === _id;
   const commentsPath = document

@@ -12,6 +12,7 @@ import CS from "metabase/css/core/index.css";
 import { assignUserColors } from "metabase/lib/formatting";
 import { connect } from "metabase/lib/redux";
 import * as metadataActions from "metabase/redux/metadata";
+import { getShallowTables as getTables } from "metabase/selectors/metadata";
 
 import ReferenceHeader from "../components/ReferenceHeader";
 import {
@@ -19,7 +20,6 @@ import {
   getLoading,
   getSegment,
   getSegmentRevisions,
-  getTables,
   getUser,
 } from "../selectors";
 

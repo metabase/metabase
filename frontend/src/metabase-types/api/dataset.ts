@@ -250,6 +250,7 @@ export interface TemplateTag {
 
   // Table specific
   "table-id"?: TableId;
+  "emit-alias"?: boolean;
 }
 
 export type TemplateTags = Record<TemplateTagName, TemplateTag>;
