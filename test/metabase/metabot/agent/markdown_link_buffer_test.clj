@@ -1,6 +1,7 @@
 (ns metabase.metabot.agent.markdown-link-buffer-test
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.metabot.agent.markdown-link-buffer :as mlb]
    [metabase.system.core :as system]))
 
@@ -10,7 +11,7 @@
   ([text] (process text {} {}))
   ([text queries] (process text queries {}))
   ([text queries charts]
-   (let [[state output] (mlb/step (mlb/with-context mlb/initial-state queries charts) text)]
+   (let [[state output] (mlb/step (mlb/with-context mlb/initial-state queries charts (atom {})) text)]
      [output (mlb/flush-state state)])))
 
 (defn- process-chunks
@@ -18,7 +19,7 @@
   ([chunks] (process-chunks chunks {} {}))
   ([chunks queries] (process-chunks chunks queries {}))
   ([chunks queries charts]
-   (loop [state (mlb/with-context mlb/initial-state queries charts)
+   (loop [state (mlb/with-context mlb/initial-state queries charts (atom {}))
           [chunk & more] chunks
           outputs []]
      (if chunk
@@ -183,15 +184,41 @@
 
 ;;; with-context tests
 
-(deftest with-context-test
+(deftest ^:parallel resolve-xf-records-link-registry-test
+  (testing "resolve-xf records resolved links in link-registry-atom"
+    (let [registry (atom {})
+          parts    [{:type :text :text "[Model](metabase://model/1)"}
+                    {:type :text :text " and [Dash](metabase://dashboard/2)"}]
+          result   (into [] (mlb/resolve-xf {} {} registry) parts)]
+      (is (= "[Model](/model/1)" (-> result first :text)))
+      (is (= " and [Dash](/dashboard/2)" (-> result second :text)))
+      (is (= {"/model/1"     "metabase://model/1"
+              "/dashboard/2" "metabase://dashboard/2"}
+             @registry)))))
+
+(deftest ^:parallel resolve-xf-accumulates-queries-and-records-link-registry-test
+  (testing "resolve-xf accumulates queries and records query link in registry"
+    (let [registry (atom {})
+          query    (lib.tu/venues-query)
+          parts    [{:type :tool-output
+                     :id "t1"
+                     :result {:structured-output {:query-id "q1" :query query}}}
+                    {:type :text :text "[Results](metabase://query/q1)"}]
+          result   (into [] (mlb/resolve-xf {} {} registry) parts)]
+      (is (re-find #"\[Results\]\(/question#" (-> result second :text)))
+      (is (= 1 (count @registry)))
+      (is (= "metabase://query/q1" (first (vals @registry)))))))
+
+(deftest ^:parallel with-context-test
   (testing "updates state for subsequent link resolution"
-    (let [;; First, link cannot be resolved
-          state1 (mlb/with-context mlb/initial-state {} {})
+    (let [registry (atom {})
+          ;; First, link cannot be resolved
+          state1 (mlb/with-context mlb/initial-state {} {} registry)
           [state2 output1] (mlb/step state1 "[Results](metabase://query/new-query)")
           _ (is (= "Results" output1))
           ;; Update state with the query
-          query {:database 1 :type :query :query {:source-table 1}}
-          state3 (mlb/with-context state2 {"new-query" query} {})
+          query (lib.tu/venues-query)
+          state3 (mlb/with-context state2 {"new-query" query} {} registry)
           ;; Now link can be resolved
           [state4 output2] (mlb/step state3 " See [More](metabase://query/new-query)")]
       (is (re-find #"\[More\]\(/question#" output2))

@@ -139,18 +139,40 @@
   and replaces metabase:// URLs with proper Metabase URLs.
   Non-metabase:// links are preserved unchanged.
 
+  `link-registry-atom` is an atom of {resolved-url original-metabase-uri}.
+  Every successful resolution is recorded so that resolved URLs can later be
+  inverted back to metabase:// URIs (see [[invert-links]]).
+
   Returns the text with all resolvable links replaced."
-  [text queries-state charts-state]
+  [text queries-state charts-state link-registry-atom]
   (when (string? text)
     (str/replace text link-pattern
                  (fn [[_ link-text url]]
                    (if (str/starts-with? url "metabase://")
                      (if-let [resolved (resolve-metabase-uri url queries-state charts-state)]
-                       (str "[" link-text "](" resolved ")")
+                       (do
+                         (swap! link-registry-atom assoc resolved url)
+                         (str "[" link-text "](" resolved ")"))
                        (do
                          (log/warn "Failed to resolve link URL" {:url url})
                          link-text))
                      (str "[" link-text "](" url ")"))))))
+
+(defn invert-links
+  "Replace resolved URLs with their original metabase:// URIs.
+
+  `registry-map` is a map of {resolved-url original-metabase-uri}.
+
+  Returns `text` unchanged if `registry-map` is empty or nil."
+  [text registry-map]
+  (if (or (not (string? text))
+          (empty? text)
+          (empty? registry-map))
+    text
+    (reduce-kv (fn [txt resolved original]
+                 (str/replace txt resolved original))
+               text
+               registry-map)))
 
 (defn resolve-links-xf
   "Transducer that resolves metabase:// links in text parts.
@@ -158,10 +180,10 @@
   Takes queries-state and charts-state for link resolution.
   For :text parts, resolves metabase:// links to proper URLs.
   For other part types, passes through unchanged."
-  [queries-state charts-state]
+  [queries-state charts-state link-registry-atom]
   (map (fn [part]
          (if (and (= (:type part) :text) (:text part))
-           (update part :text resolve-links queries-state charts-state)
+           (update part :text resolve-links queries-state charts-state link-registry-atom)
            part))))
 
 ;;; Part Processing (deprecated, use resolve-links-xf)
@@ -173,9 +195,9 @@
   For other part types, returns unchanged.
 
   Deprecated: Use resolve-links-xf transducer instead."
-  [part queries-state charts-state]
+  [part queries-state charts-state link-registry-atom]
   (if (and (= (:type part) :text) (:text part))
-    (update part :text resolve-links queries-state charts-state)
+    (update part :text resolve-links queries-state charts-state link-registry-atom)
     part))
 
 (defn process-parts-links
@@ -183,5 +205,5 @@
   Returns parts with all text links resolved.
 
   Deprecated: Use resolve-links-xf transducer instead."
-  [parts queries-state charts-state]
-  (into [] (resolve-links-xf queries-state charts-state) parts))
+  [parts queries-state charts-state link-registry-atom]
+  (into [] (resolve-links-xf queries-state charts-state link-registry-atom) parts))

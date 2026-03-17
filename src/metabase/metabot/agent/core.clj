@@ -6,6 +6,7 @@
    [metabase.analytics.prometheus :as prometheus]
    [metabase.config.core :as config]
    [metabase.metabot.agent.analytics :as agent-analytics]
+   [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.messages :as messages]
    [metabase.metabot.agent.profiles :as profiles]
@@ -141,13 +142,14 @@
   [:sequential ::message])
 
 (mr/def ::state
-  "Agent state containing queries, charts, chart-configs, todos, and transforms."
+  "Agent state containing queries, charts, chart-configs, todos, transforms, and link-registry."
   [:map
    [:queries {:optional true} [:map-of [:or :string :keyword] :map]]
    [:charts {:optional true} [:map-of [:or :string :keyword] :map]]
    [:chart-configs {:optional true} [:map-of [:or :string :keyword] :map]]
    [:todos {:optional true} [:sequential :map]]
-   [:transforms {:optional true} [:map-of [:or :string :keyword] :map]]])
+   [:transforms {:optional true} [:map-of [:or :string :keyword] :map]]
+   [:link-registry {:optional true} [:map-of [:or :string :keyword] :string]]])
 
 (mr/def ::context
   "Context information for the agent."
@@ -196,15 +198,33 @@
 
 ;;; Call LLM
 
+(defn- invert-links
+  "Apply link inversion to all :text parts in a sequence of AISDK parts.
+  Also inverts :content in user-role parts (which contain resolved URLs from prior requests)."
+  [parts registry-map]
+  (if (empty? registry-map)
+    parts
+    (mapv (fn [part]
+            (cond
+              (and (= (:type part) :text) (string? (:text part)))
+              (update part :text links/invert-links registry-map)
+
+              (and (= (:role part) :user) (string? (:content part)))
+              (update part :content links/invert-links registry-map)
+
+              :else part))
+          parts)))
+
 (defn- call-llm
   "Call the LLM and stream processed parts.
 
   Builds AISDK parts from memory and passes them to the adapter which converts
   them to its native wire format."
-  [memory context profile tools iteration tracking-opts]
+  [memory context profile tools iteration tracking-opts link-registry-atom]
   (let [model        (:model profile)
         system-msg   (messages/build-system-message context profile tools)
-        input-parts  (messages/build-message-history memory)
+        input-parts  (-> (messages/build-message-history memory)
+                         (invert-links @link-registry-atom))
         llm-opts     (cond-> {}
                        (:required-tool-call? profile) (assoc :tool-choice "required"))]
     (when *debug-log*
@@ -215,7 +235,8 @@
                    :parts     input-parts
                    :tools     (vec tools)}))
     (eduction (streaming/post-process-xf (get-in memory [:state :queries] {})
-                                         (get-in memory [:state :charts] {}))
+                                         (get-in memory [:state :charts] {})
+                                         link-registry-atom)
               (self/call-llm model (:content system-msg) input-parts tools tracking-opts llm-opts))))
 
 ;;; Memory management
@@ -336,34 +357,37 @@
 (defn- init-agent
   "Initialize agent state."
   [{:keys [messages state metabot-id profile-id context tracking-opts]}]
-  (let [context      (assign-context-ids context)
-        profile      (or (profiles/get-profile profile-id)
-                         (throw (ex-info "Unknown profile" {:profile-id profile-id})))
-        capabilities (get context :capabilities #{})
-        base-tools   (profiles/get-tools-for-profile profile-id capabilities)
-        seeded       (-> (or state {})
-                         (seed-state context)
-                         (seed-chart-configs context))
-        memory       (-> (memory/initialize messages seeded context)
-                         (memory/load-queries-from-state seeded)
-                         (memory/load-charts-from-state seeded)
-                         (memory/load-transforms-from-state seeded)
-                         (memory/load-todos-from-state seeded))
-        memory-atom  (atom memory)
-        tools        (agent-tools/wrap-tools-with-state base-tools memory-atom metabot-id)]
+  (let [context            (assign-context-ids context)
+        profile            (or (profiles/get-profile profile-id)
+                               (throw (ex-info "Unknown profile" {:profile-id profile-id})))
+        capabilities       (get context :capabilities #{})
+        base-tools         (profiles/get-tools-for-profile profile-id capabilities)
+        seeded             (-> (or state {})
+                               (seed-state context)
+                               (seed-chart-configs context))
+        memory             (-> (memory/initialize messages seeded context)
+                               (memory/load-queries-from-state seeded)
+                               (memory/load-charts-from-state seeded)
+                               (memory/load-transforms-from-state seeded)
+                               (memory/load-todos-from-state seeded)
+                               (memory/load-link-registry-from-state seeded))
+        link-registry-atom (atom (get-in memory [:state :link-registry] {}))
+        memory-atom        (atom memory)
+        tools              (agent-tools/wrap-tools-with-state base-tools memory-atom metabot-id)]
     (log/info "Starting agent" {:profile  profile-id
                                 :tools    (count tools)
                                 :max-iter (:max-iterations profile)
                                 :msgs     (count messages)})
-    {:profile       profile
-     :tools         tools
-     :context       context
-     :memory-atom   memory-atom
-     :tracking-opts (merge {:profile-id profile-id
-                            :request-id (str (random-uuid))
-                            :source     "metabot_agent"
-                            :tag        "agent"}
-                           tracking-opts)}))
+    {:profile            profile
+     :tools              tools
+     :context            context
+     :memory-atom        memory-atom
+     :link-registry-atom link-registry-atom
+     :tracking-opts      (merge {:profile-id profile-id
+                                 :request-id (str (random-uuid))
+                                 :source     "metabot_agent"
+                                 :tag        "agent"}
+                                tracking-opts)}))
 
 (defn- initial-loop-state
   "Create initial loop state from agent config and reduction context."
@@ -375,8 +399,11 @@
    :status     :continue
    :usage-atom usage-atom})
 
-(defn- final-state-part [memory]
-  {:type :data, :data-type "state", :version 1, :data (memory/get-state memory)})
+(defn- final-state-part [memory link-registry-atom]
+  {:type :data
+   :data-type "state"
+   :version 1
+   :data (assoc (memory/get-state memory) :link-registry @link-registry-atom)})
 
 (defn- error-part [^Exception e]
   {:type :error, :error {:message (.getMessage e), :type (str (type e)), :data (ex-data e)}})
@@ -402,11 +429,11 @@
   [{:keys [agent rf result iteration usage-atom] :as loop-state}]
   (with-span :debug {:name      :metabot.agent/loop-step
                      :iteration iteration}
-    (let [{:keys [profile tools context memory-atom tracking-opts]} agent
+    (let [{:keys [profile tools context memory-atom tracking-opts link-registry-atom]} agent
           max-iter      (:max-iterations profile 10)
           tracking-opts (assoc tracking-opts :iteration iteration)
           parts-atom    (atom [])
-          llm-call      (call-llm @memory-atom context profile tools iteration tracking-opts)
+          llm-call      (call-llm @memory-atom context profile tools iteration tracking-opts link-registry-atom)
           xf         (comp (accumulate-usage-xf usage-atom)
                            (u/tee-xf parts-atom))
           ;; We use `reduce` instead of `transduce` because rf is the outer reducing
@@ -424,7 +451,7 @@
                      :all-parts parts}))
       (log/debug "Iteration" {:n iteration :parts-count (count parts)})
       (if (empty? parts)
-        (assoc loop-state :status :done :result (rf result (final-state-part @memory-atom)))
+        (assoc loop-state :status :done :result (rf result (final-state-part @memory-atom link-registry-atom)))
         (do
           (log/debug "Got parts" {:count (count parts) :types (mapv :type parts)})
           (swap! memory-atom update-memory parts)
@@ -442,7 +469,7 @@
                            :reason     (finish-reason iteration max-iter parts)})
                 (assoc loop-state
                        :status :done
-                       :result (rf result' (final-state-part @memory-atom))))))))))
+                       :result (rf result' (final-state-part @memory-atom link-registry-atom))))))))))
 
 ;;; Public API
 

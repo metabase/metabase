@@ -17,14 +17,17 @@
 
 (def initial-state
   "Initial parser state."
-  {:buffer  ""
-   :queries {}
-   :charts  {}})
+  {:buffer             ""
+   :queries            {}
+   :charts             {}
+   :link-registry-atom (atom {})})
 
 (defn with-context
-  "Update the queries and charts context in the state."
-  [state queries charts]
-  (assoc state :queries queries :charts charts))
+  "Update the queries, charts, and link-registry-atom context in the state."
+  ([state queries charts]
+   (assoc state :queries queries :charts charts))
+  ([state queries charts link-registry-atom]
+   (assoc state :queries queries :charts charts :link-registry-atom link-registry-atom)))
 
 ;;; Slack Link Resolution
 
@@ -96,7 +99,7 @@
   [{:keys [buffer] :as state} chunk]
   (let [text        (str buffer chunk)
         ;; Resolve complete markdown links, then Slack-format links
-        resolved    (-> (links/resolve-links text (:queries state) (:charts state))
+        resolved    (-> (links/resolve-links text (:queries state) (:charts state) (:link-registry-atom state))
                         (resolve-slack-links (:queries state) (:charts state)))
         ;; Then check for incomplete link at the end
         split-point (find-potential-link-start resolved)]
@@ -131,12 +134,14 @@
 
    Parameters:
    - initial-queries: Initial map of query-id to query data
-   - initial-charts: Initial map of chart-id to chart data"
-  [initial-queries initial-charts]
+   - initial-charts: Initial map of chart-id to chart data
+   - link-registry-atom: Atom of {resolved-url original-metabase-uri}"
+  [initial-queries initial-charts link-registry-atom]
   (fn [rf]
     (let [state   (volatile! (with-context initial-state
                                (or initial-queries {})
-                               (or initial-charts {})))
+                               (or initial-charts {})
+                               link-registry-atom))
           queries (volatile! (or initial-queries {}))
           charts  (volatile! (or initial-charts {}))]
       (fn

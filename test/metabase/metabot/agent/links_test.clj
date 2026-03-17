@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.metabot.agent.links :as links]))
 
 (deftest resolve-metabase-uri-test
@@ -65,36 +66,36 @@
           queries-state {query-id query}
           charts-state {}
           text "Check out [My Results](metabase://query/test-query) for details."
-          result (links/resolve-links text queries-state charts-state)]
+          result (links/resolve-links text queries-state charts-state (atom {}))]
       (is (str/includes? result "[My Results](/question#"))
       (is (not (str/includes? result "metabase://")))))
 
   (testing "preserves non-metabase links"
     (let [text "Visit [Google](https://google.com) for more."
-          result (links/resolve-links text {} {})]
+          result (links/resolve-links text {} {} (atom {}))]
       (is (= text result))))
 
   (testing "handles multiple links"
     (let [text "[Model](metabase://model/1) and [Metric](metabase://metric/2)"
-          result (links/resolve-links text {} {})]
+          result (links/resolve-links text {} {} (atom {}))]
       (is (str/includes? result "[Model](/model/1)"))
       (is (str/includes? result "[Metric](/metric/2)"))))
 
   (testing "handles text without links"
     (let [text "Just some plain text"
-          result (links/resolve-links text {} {})]
+          result (links/resolve-links text {} {} (atom {}))]
       (is (= text result)))))
 
 (deftest process-part-links-test
   (testing "processes text parts"
     (let [part {:type :text :text "[Link](metabase://model/123)"}
-          result (links/process-part-links part {} {})]
+          result (links/process-part-links part {} {} (atom {}))]
       (is (= :text (:type result)))
       (is (= "[Link](/model/123)" (:text result)))))
 
   (testing "leaves non-text parts unchanged"
     (let [part {:type :tool-input :function "search" :arguments {:query "test"}}
-          result (links/process-part-links part {} {})]
+          result (links/process-part-links part {} {} (atom {}))]
       (is (= part result)))))
 
 (deftest process-parts-links-test
@@ -102,7 +103,7 @@
     (let [parts [{:type :text :text "[A](metabase://model/1)"}
                  {:type :tool-input :function "search"}
                  {:type :text :text "[B](metabase://metric/2)"}]
-          result (links/process-parts-links parts {} {})]
+          result (links/process-parts-links parts {} {} (atom {}))]
       (is (= 3 (count result)))
       (is (= "[A](/model/1)" (-> result first :text)))
       (is (= {:type :tool-input :function "search"} (second result)))
@@ -113,7 +114,7 @@
     (let [parts [{:type :text :text "[A](metabase://model/1)"}
                  {:type :tool-input :function "search"}
                  {:type :text :text "[B](metabase://metric/2)"}]
-          result (into [] (links/resolve-links-xf {} {}) parts)]
+          result (into [] (links/resolve-links-xf {} {} (atom {})) parts)]
       (is (= 3 (count result)))
       (is (= "[A](/model/1)" (-> result first :text)))
       (is (= {:type :tool-input :function "search"} (second result)))
@@ -124,7 +125,7 @@
           query {:database 1 :type :query :query {:source-table 1}}
           queries-state {query-id query}
           parts [{:type :text :text "[Query](metabase://query/q1)"}]
-          result (transduce (links/resolve-links-xf queries-state {})
+          result (transduce (links/resolve-links-xf queries-state {} (atom {}))
                             conj
                             []
                             parts)]
@@ -136,7 +137,7 @@
                  {:type :text :text "[B](metabase://model/2)"}
                  {:type :tool-input :function "search"}]
           result (into []
-                       (comp (links/resolve-links-xf {} {})
+                       (comp (links/resolve-links-xf {} {} (atom {}))
                              (filter #(= :text (:type %))))
                        parts)]
       (is (= 2 (count result)))
@@ -145,7 +146,7 @@
 
   (testing "transducer handles nil state maps"
     (let [parts [{:type :text :text "[Link](metabase://model/123)"}]
-          result (into [] (links/resolve-links-xf nil nil) parts)]
+          result (into [] (links/resolve-links-xf nil nil (atom {})) parts)]
       (is (= "[Link](/model/123)" (-> result first :text))))))
 
 ;;; Nil handling tests - important for robustness against LLM edge cases
@@ -165,46 +166,46 @@
   (testing "handles nil text gracefully"
     ;; Note: This test verifies the function doesn't throw on edge cases
     ;; The actual behavior may need adjustment based on requirements
-    (let [result (links/resolve-links nil {} {})]
+    (let [result (links/resolve-links nil {} {} (atom {}))]
       (is (nil? result))))
 
   (testing "handles text with nil URL in regex capture groups"
     ;; This tests the case where markdown regex captures nil
     (let [text "Some text without links"
-          result (links/resolve-links text {} {})]
+          result (links/resolve-links text {} {} (atom {}))]
       (is (= text result))))
 
   (testing "handles empty text"
-    (let [result (links/resolve-links "" {} {})]
+    (let [result (links/resolve-links "" {} {} (atom {}))]
       (is (= "" result))))
 
   (testing "handles nil state maps"
     (let [text "[Link](metabase://model/123)"
-          result (links/resolve-links text nil nil)]
+          result (links/resolve-links text nil nil (atom {}))]
       (is (str/includes? result "[Link](/model/123)")))))
 
 (deftest process-part-links-edge-cases-test
   (testing "handles part with nil text"
     (let [part {:type :text :text nil}
-          result (links/process-part-links part {} {})]
+          result (links/process-part-links part {} {} (atom {}))]
       (is (= :text (:type result)))
       (is (nil? (:text result)))))
 
   (testing "handles part with empty text"
     (let [part {:type :text :text ""}
-          result (links/process-part-links part {} {})]
+          result (links/process-part-links part {} {} (atom {}))]
       (is (= :text (:type result)))
       (is (= "" (:text result)))))
 
   (testing "handles part without :type key"
     (let [part {:text "[Link](metabase://model/1)"}
-          result (links/process-part-links part {} {})]
+          result (links/process-part-links part {} {} (atom {}))]
       ;; Should return unchanged since :type is not :text
       (is (= part result))))
 
   (testing "handles tool-output parts (should not process links)"
     (let [part {:type :tool-output :id "test-123" :result {:data "test"}}
-          result (links/process-part-links part {} {})]
+          result (links/process-part-links part {} {} (atom {}))]
       (is (= part result)))))
 
 (deftest chart-link-resolution-test
@@ -268,14 +269,14 @@
           query {:database 1 :type :query :query {:source-table 1}}
           queries-state {query-id query}
           text "See [Model](metabase://model/1), [Metric](metabase://metric/2), and [Query](metabase://query/q1)"
-          result (links/resolve-links text queries-state {})]
+          result (links/resolve-links text queries-state {} (atom {}))]
       (is (str/includes? result "[Model](/model/1)"))
       (is (str/includes? result "[Metric](/metric/2)"))
       (is (str/includes? result "/question#"))))
 
   (testing "preserves text between links"
     (let [text "Start [A](metabase://model/1) middle [B](metabase://model/2) end"
-          result (links/resolve-links text {} {})]
+          result (links/resolve-links text {} {} (atom {}))]
       (is (str/includes? result "Start "))
       (is (str/includes? result " middle "))
       (is (str/includes? result " end")))))
@@ -283,7 +284,7 @@
 (deftest special-characters-in-links-test
   (testing "handles link text with special characters"
     (let [text   "[Link with (parens)](metabase://model/1)"
-          result (links/resolve-links text {} {})]
+          result (links/resolve-links text {} {} (atom {}))]
       ;; Markdown parser should handle this - may or may not match depending on regex
       (is (string? result))))
 
@@ -300,3 +301,115 @@
           queries-state {query-id query}
           result        (links/resolve-metabase-uri (str "metabase://query/" query-id) queries-state {})]
       (is (string? result)))))
+
+;;; Link registry recording tests
+
+(deftest ^:parallel resolve-links-records-entity-links-in-registry-test
+  (testing "records resolved entity links in registry atom"
+    (let [registry (atom {})
+          text     "[Model](metabase://model/123) and [Metric](metabase://metric/456)"
+          _result  (links/resolve-links text {} {} registry)]
+      (is (= {"/model/123"  "metabase://model/123"
+              "/metric/456" "metabase://metric/456"}
+             @registry)))))
+
+(deftest ^:parallel resolve-links-records-query-links-in-registry-test
+  (testing "records resolved query links in registry atom"
+    (let [registry      (atom {})
+          query-id      "q1"
+          queries-state {query-id (lib.tu/venues-query)}
+          result        (links/resolve-links "[Results](metabase://query/q1)" queries-state {} registry)
+          resolved-url  (second (re-find #"\[Results\]\((/question#[^)]+)\)" result))]
+      (is (= 1 (count @registry)))
+      (is (= "metabase://query/q1" (get @registry resolved-url))))))
+
+(deftest ^:parallel resolve-links-records-dashboard-table-transform-links-test
+  (testing "records dashboard, table, and transform links"
+    (let [registry (atom {})
+          text     "[Dash](metabase://dashboard/10) [Tbl](metabase://table/20) [Tx](metabase://transform/30)"
+          _result  (links/resolve-links text {} {} registry)]
+      (is (= {"/dashboard/10"        "metabase://dashboard/10"
+              "/table/20"            "metabase://table/20"
+              "/admin/transforms/30" "metabase://transform/30"}
+             @registry)))))
+
+(deftest ^:parallel resolve-links-does-not-record-failed-resolutions-test
+  (testing "does not record failed resolutions"
+    (let [registry (atom {})
+          text     "[Missing](metabase://query/nonexistent)"
+          _result  (links/resolve-links text {} {} registry)]
+      (is (empty? @registry)))))
+
+(deftest ^:parallel resolve-links-does-not-record-non-metabase-links-test
+  (testing "does not record non-metabase links"
+    (let [registry (atom {})
+          text     "[Google](https://google.com)"
+          _result  (links/resolve-links text {} {} registry)]
+      (is (empty? @registry)))))
+
+;;; invert-links tests
+
+(deftest ^:parallel invert-links-replaces-resolved-urls-test
+  (testing "replaces resolved URLs with original metabase URIs"
+    (let [registry {"/model/123"  "metabase://model/123"
+                    "/metric/456" "metabase://metric/456"}
+          text     "[Model](/model/123) and [Metric](/metric/456)"]
+      (is (= "[Model](metabase://model/123) and [Metric](metabase://metric/456)"
+             (links/invert-links text registry))))))
+
+(deftest ^:parallel invert-links-unchanged-for-empty-registry-test
+  (testing "returns text unchanged for empty registry"
+    (let [text "some text with [Link](/model/123)"]
+      (is (= text (links/invert-links text {})))
+      (is (= text (links/invert-links text nil))))))
+
+(deftest ^:parallel invert-links-nil-input-test
+  (testing "returns non-string input unchanged"
+    (is (nil? (links/invert-links nil {"/a" "b"})))))
+
+(deftest ^:parallel invert-links-no-matching-entries-test
+  (testing "handles registry entries that don't match text"
+    (let [text "no links here"]
+      (is (= text
+             (links/invert-links text {"/model/999" "metabase://model/999"}))))))
+
+(deftest ^:parallel invert-links-base64-with-regex-special-chars-test
+  (testing "handles base64 URLs with regex-special characters"
+    (let [resolved "/question#eyJkYXRhc2V0X3F1ZXJ5Ijp7fX0="
+          original "metabase://query/q1"
+          registry {resolved original}
+          text     (str "[Results](" resolved ")")]
+      (is (= "[Results](metabase://query/q1)"
+             (links/invert-links text registry))))))
+
+;;; Round-trip tests
+
+(deftest ^:parallel round-trip-entity-links-test
+  (testing "round-trip: resolve then invert returns original text for entity links"
+    (let [original "[Model](metabase://model/123) and [Dashboard](metabase://dashboard/456)"
+          registry (atom {})
+          resolved (links/resolve-links original {} {} registry)
+          inverted (links/invert-links resolved @registry)]
+      (is (= original inverted)))))
+
+(deftest ^:parallel round-trip-query-links-test
+  (testing "round-trip: resolve then invert for query links"
+    (let [query-id      "q1"
+          queries-state {query-id (lib.tu/venues-query)}
+          original      "[Results](metabase://query/q1)"
+          registry      (atom {})
+          resolved      (links/resolve-links original queries-state {} registry)
+          inverted      (links/invert-links resolved @registry)]
+      (is (= original inverted)))))
+
+(deftest ^:parallel round-trip-mixed-link-types-test
+  (testing "round-trip: mixed link types"
+    (let [query-id      "q1"
+          queries-state {query-id (lib.tu/venues-query)}
+          original      (str "See [Model](metabase://model/1), "
+                             "[Query](metabase://query/q1), and "
+                             "[Table](metabase://table/42)")
+          registry      (atom {})
+          resolved      (links/resolve-links original queries-state {} registry)
+          inverted      (links/invert-links resolved @registry)]
+      (is (= original inverted)))))
