@@ -316,6 +316,8 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
           .findByTestId("table-root")
           .should("have.attr", "data-rows-count", "5");
 
+        cy.wait(5000);
+
         H.getSimpleEmbedIframeContent()
           .findByText("37.65")
           .should("be.visible")
