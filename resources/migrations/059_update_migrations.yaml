@@ -3465,6 +3465,7 @@ databaseChangeLog:
                   id: v59.2026-01-27T13:00:00
                   author: wotbrew
                   changeLogFile: migrations/059_update_migrations.yaml
+      runInTransaction: false
       changes:
         - customChange:
             class: "metabase.app_db.custom_migrations.DropMedallionNamesForDataLayer"
