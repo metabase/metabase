@@ -2,11 +2,17 @@ import "./mock-environment";
 import "fast-text-encoding";
 
 import { setPlatformAPI } from "echarts/core";
+import React from "react";
 import ReactDOMServer from "react-dom/server";
+import * as jsxRuntime from "react/jsx-runtime";
 
 // eslint-disable-next-line import/order
 import enterpriseOverrides from "ee-overrides";
 import "metabase/lib/dayjs";
+
+// Expose React and jsxRuntime for custom viz IIFE bundles that reference
+// window.__METABASE_VIZ_API__ via the metabaseVizExternals Vite plugin.
+window.__METABASE_VIZ_API__ = { React, jsxRuntime };
 
 import { updateStartOfWeek } from "metabase/lib/i18n";
 import MetabaseSettings from "metabase/lib/settings";
@@ -23,6 +29,7 @@ import {
   splitVisualizerSeries,
 } from "metabase/visualizer/utils";
 
+import { customVizRegistry } from "./custom-viz-registry";
 import { LegacyStaticChart } from "./containers/LegacyStaticChart";
 
 setPlatformAPI({
@@ -90,6 +97,11 @@ function getVisualizerRawSeries(rawSeries, dashcardSettings) {
       columnValuesMapping,
     },
   ];
+}
+
+export function registerCustomVizPlugin(factory, identifier) {
+  const vizDef = factory({});
+  customVizRegistry.set(`custom:${identifier}`, vizDef);
 }
 
 export function RenderChart(rawSeries, dashcardSettings, options) {

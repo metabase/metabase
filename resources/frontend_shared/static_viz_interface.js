@@ -37,6 +37,12 @@ function funnel(data, settings, tokenFeatures) {
 }
 
 
+function register_custom_viz_plugin(identifier) {
+  if (typeof __customVizPlugin__ === "function") {
+    StaticViz.registerCustomVizPlugin(__customVizPlugin__, identifier);
+  }
+}
+
 function javascript_visualization(rawSeries, dashcardSettings, options) {
   const content = StaticViz.RenderChart(
     JSON.parse(rawSeries),
