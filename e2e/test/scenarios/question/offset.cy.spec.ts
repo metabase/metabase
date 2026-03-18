@@ -1346,7 +1346,10 @@ function verifyTableContent(rows: string[][]) {
 
 function verifyTableCellContent(index: number, text: string) {
   // eslint-disable-next-line metabase/no-unsafe-element-filtering
-  cy.findAllByRole("gridcell").eq(index).should("have.text", text);
+  H.tableInteractiveBody()
+    .findAllByTestId("cell-data")
+    .eq(index)
+    .should("have.text", text);
 }
 
 function verifyNoQuestionError() {
