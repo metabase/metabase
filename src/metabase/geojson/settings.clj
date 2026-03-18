@@ -3,11 +3,12 @@
    [clojure.java.io :as io]
    [metabase.config.core :as config]
    [metabase.settings.core :as setting :refer [defsetting]]
+   [metabase.util.http :as http]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms])
   (:import
-   (java.net InetAddress URI URL)))
+   (java.net URI URL)))
 
 (set! *warn-on-reflection* true)
 
@@ -70,22 +71,6 @@
        " "
        (tru "URLs referring to hosts that supply internal hosting metadata are prohibited.")))
 
-(def ^:private invalid-hosts
-  #{"metadata.google.internal"}) ; internal metadata for GCP
-
-(defn- parse-url
-  [s]
-  (.toURL (URI. s)))
-
-(defn- valid-host?
-  [^URL url]
-  (let [host (.getHost url)
-        host->url (fn [host] (parse-url (str "http://" host)))
-        base-url  (host->url (.getHost url))]
-    (and (not-any? (fn [invalid-url] (.equals ^URL base-url invalid-url))
-                   (map host->url invalid-hosts))
-         (not (.isLinkLocalAddress (InetAddress/getByName host))))))
-
 (defn- valid-protocol?
   [^URL url]
   (#{"http" "https"} (.getProtocol url)))
@@ -93,9 +78,9 @@
 (defn- valid-url?
   [url-string]
   (try
-    (let [url (parse-url url-string)]
+    (let [url (.toURL (URI. url-string))]
       (and (valid-protocol? url)
-           (valid-host? url)))
+           (http/valid-host? :external-only url)))
     (catch Throwable _ false)))
 
 (defn valid-geojson-resource-path?
