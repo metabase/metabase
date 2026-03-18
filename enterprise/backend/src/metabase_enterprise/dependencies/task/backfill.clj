@@ -9,7 +9,6 @@
   (:require
    [java-time.api :as t]
    [metabase-enterprise.dependencies.calculation :as deps.calculation]
-   [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
    [metabase-enterprise.dependencies.settings :as deps.settings]
@@ -19,7 +18,6 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
    [metabase.transforms.core :as transforms]
-   [metabase.util :as u]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2])
@@ -114,12 +112,7 @@
                                                              :dashboardcard_id [:in (map :id dashcards)]))]
                      (assoc entity :dashcards dashcards :series-card-ids series-card-ids))
                    entity)
-          deps (try
-                 (deps-fn entity)
-                 (catch Throwable e
-                   (log/error e "Dependency calculation failed" {:entity-type entity-type
-                                                                 :entity-id   (:id entity)})
-                   nil))]
+          deps (deps-fn entity)]
       (models.dependency/replace-dependencies! entity-type (:id entity) deps)
       ;; Entity-specific cleanup
       (when (= entity-type :transform)
@@ -233,4 +226,4 @@
 (methodical/defmethod events/publish-event! ::backfill
   [_ _]
   (when (premium-features/has-feature? :dependencies)
-    (backfill-dependencies!)))
+    (trigger-backfill-job!)))

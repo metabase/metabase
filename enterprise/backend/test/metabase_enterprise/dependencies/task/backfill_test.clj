@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [environ.core :as env]
    [java-time.api :as t]
+   [metabase-enterprise.dependencies.calculation :as deps.calculation]
    [metabase-enterprise.dependencies.models.dependency :as dependencies.model]
    [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
    [metabase-enterprise.dependencies.task.backfill :as dependencies.backfill]
@@ -199,7 +200,7 @@
                                        :mb-dependency-backfill-delay-minutes "0"
                                        :mb-dependency-backfill-variance-minutes "0")
                         ;; Make compute-deps-for-entity! throw
-                        metabase-enterprise.dependencies.calculation/upstream-deps:card
+                        deps.calculation/upstream-deps:card
                         (fn [_]
                           (vswap! compute-attempts inc)
                           (throw (ex-info "Simulated computation error" {:card-id card-id})))]
@@ -223,8 +224,8 @@
           (mark-stale! :card card-id)
           (with-redefs [env/env (assoc env/env
                                        :mb-dependency-backfill-delay-minutes "1")
-                        metabase-enterprise.dependencies.calculation/upstream-deps:card
-                        (fn [entity]
+                        deps.calculation/upstream-deps:card
+                        (fn [_entity]
                           (if (zero? @compute-attempts)
                             (do
                               (vswap! compute-attempts inc)
@@ -236,17 +237,17 @@
             ;; first failure - should be put into retry state
             (while (zero? @compute-attempts)
               (backfill-dependencies-single-trigger!))
-            (is (t2/exists? :model/DependencyStatus :entity_type :card :entity_id card-id :stale true)))
+            (is (t2/exists? :model/DependencyStatus :entity_type :card :entity_id card-id :stale true))
 
-          ;; advance time by less than retry delay - should NOT be processed
-          (mt/with-clock (t/plus (t/zoned-date-time) (t/duration 10 :seconds))
-            (backfill-dependencies-single-trigger!))
-          (is (t2/exists? :model/DependencyStatus :entity_type :card :entity_id card-id :stale true))
+            ;; advance time by less than retry delay - should NOT be processed
+            (mt/with-clock (t/plus (t/zoned-date-time) (t/duration 10 :seconds))
+              (backfill-dependencies-single-trigger!))
+            (is (t2/exists? :model/DependencyStatus :entity_type :card :entity_id card-id :stale true))
 
-          ;; advance time by more than retry delay - should be processed
-          (mt/with-clock (t/plus (t/zoned-date-time) (t/duration 2 :minutes))
-            (backfill-dependencies-single-trigger!))
-          (assert-processed :card card-id))))))
+            ;; advance time by more than retry delay - should be processed
+            (mt/with-clock (t/plus (t/zoned-date-time) (t/duration 2 :minutes))
+              (backfill-dependencies-single-trigger!))
+            (assert-processed :card card-id)))))))
 
 (deftest backfill-card-does-not-cause-revision-test
   (testing "backfilling a card does not create a new revision or audit log entry"
@@ -266,7 +267,7 @@
             (is (= 1 deps-after))))))))
 
 (deftest ^:sequential backfill-dependencies-on-serdes-load-test
-  (testing "Test that serdes load correctly processes stale entities"
+  (testing "Serdes load triggers the backfill job (entities remain stale until job runs)"
     (backfill-all-existing-entities!)
     (let [query (mt/mbql-query orders)]
       (mt/with-premium-features #{:dependencies}
@@ -277,7 +278,15 @@
           (mark-stale! :card card1-id)
           (mark-stale! :card card2-id)
           (mark-stale! :card card3-id)
+          ;; serdes-load triggers the async job, not synchronous processing
           (events/publish-event! :event/serdes-load {})
+          ;; entities are still stale (job hasn't run yet in this test)
+          (is (= 3 (t2/count :model/DependencyStatus
+                             :entity_type :card
+                             :entity_id [:in [card1-id card2-id card3-id]]
+                             :stale true)))
+          ;; manually run the backfill to verify it processes them
+          (backfill-all-existing-entities!)
           (is (= 3 (t2/count :model/DependencyStatus
                              :entity_type :card
                              :entity_id [:in [card1-id card2-id card3-id]]
@@ -285,7 +294,7 @@
                              :dependency_analysis_version dependencies.model/current-dependency-analysis-version))))))))
 
 (deftest ^:sequential backfill-dependencies-on-token-update-test
-  (testing "Test that token update correctly processes stale entities"
+  (testing "Token update triggers the backfill job (entities remain stale until job runs)"
     (backfill-all-existing-entities!)
     (let [query (mt/mbql-query orders)]
       (mt/with-premium-features #{:dependencies}
@@ -296,7 +305,15 @@
           (mark-stale! :card card1-id)
           (mark-stale! :card card2-id)
           (mark-stale! :card card3-id)
+          ;; token update triggers the async job, not synchronous processing
           (events/publish-event! :event/set-premium-embedding-token {})
+          ;; entities are still stale (job hasn't run yet in this test)
+          (is (= 3 (t2/count :model/DependencyStatus
+                             :entity_type :card
+                             :entity_id [:in [card1-id card2-id card3-id]]
+                             :stale true)))
+          ;; manually run the backfill to verify it processes them
+          (backfill-all-existing-entities!)
           (is (= 3 (t2/count :model/DependencyStatus
                              :entity_type :card
                              :entity_id [:in [card1-id card2-id card3-id]]

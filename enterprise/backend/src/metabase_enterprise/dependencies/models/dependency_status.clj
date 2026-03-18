@@ -78,8 +78,3 @@
                          models.dependency/current-dependency-analysis-version]]
                 :order-by [[[:case [:= :dependency_status.stale true] [:inline 0] :else [:inline 1]]]]
                 :limit batch-size})))
-
-(defn has-stale-entities?
-  "Check if there are any stale dependency_status records."
-  []
-  (t2/exists? :model/DependencyStatus :stale true))

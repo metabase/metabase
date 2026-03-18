@@ -4,8 +4,6 @@
    [metabase-enterprise.dependencies.events]
    [metabase-enterprise.dependencies.findings :as deps.findings]
    [metabase-enterprise.dependencies.models.analysis-finding :as models.analysis-finding]
-   [metabase-enterprise.dependencies.models.dependency :as models.dependency]
-   [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
    [metabase-enterprise.dependencies.task.backfill :as dependencies.backfill]
    [metabase.api.common :as api]
    [metabase.events.core :as events]
@@ -385,12 +383,14 @@
                        :to_entity_id transform-id}]
                      (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform))))
            (testing "changing target update"
-             (events/publish-event! :event/update-transform
-                                    {:object (assoc-in transform [:target :name] "test_table2")
-                                     :user-id api/*current-user-id*})
-             (run-backfill!)
-             (is (empty?
-                  (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform))))))))))
+             (t2/update! :model/Transform transform-id {:target (assoc target :name "test_table2")})
+             (let [updated (t2/select-one :model/Transform :id transform-id)]
+               (events/publish-event! :event/update-transform
+                                      {:object updated
+                                       :user-id api/*current-user-id*})
+               (run-backfill!)
+               (is (empty?
+                    (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform)))))))))))
 
 (deftest ^:sequential query-transform-update-handles-downstream-dependencies-test
   (testing "query transform update events handles downstream dependencies"
@@ -425,12 +425,14 @@
                        :to_entity_id transform-id}]
                      (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform))))
            (testing "changing target update"
-             (events/publish-event! :event/update-transform
-                                    {:object (assoc-in transform [:target :name] "test_table2")
-                                     :user-id api/*current-user-id*})
-             (run-backfill!)
-             (is (empty?
-                  (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform))))))))))
+             (t2/update! :model/Transform transform-id {:target (assoc target :name "test_table2")})
+             (let [updated (t2/select-one :model/Transform :id transform-id)]
+               (events/publish-event! :event/update-transform
+                                      {:object updated
+                                       :user-id api/*current-user-id*})
+               (run-backfill!)
+               (is (empty?
+                    (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform)))))))))))
 
 (deftest segment-update-sets-correct-dependencies
   (run-with-dependencies-setup!
