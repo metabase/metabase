@@ -6,6 +6,19 @@
 
 .closeButton {
   visibility: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: var(--mantine-spacing-xs);
+  padding: 2px;
+  border-radius: var(--mantine-radius-xs);
+  cursor: pointer;
+  color: var(--mantine-color-text-secondary);
+
+  &:hover {
+    color: var(--mantine-color-text-primary);
+    background-color: var(--mantine-color-bg-medium);
+  }
 }
 
 .tab:hover .closeButton {

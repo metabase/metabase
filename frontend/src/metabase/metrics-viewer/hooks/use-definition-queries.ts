@@ -75,8 +75,9 @@ function parseTerm(ctx: ParseCtx): unknown | null {
   const token = ctx.tokens[ctx.pos];
 
   if (token.type === "metric") {
+    const tokenPos = ctx.pos;
     ctx.pos++;
-    return ctx.leafRefs.get(token.metricIndex) ?? null;
+    return ctx.leafRefs.get(tokenPos) ?? null;
   }
 
   if (token.type === "constant") {
@@ -162,15 +163,16 @@ function buildArithmeticRequest(
     idx++;
   }
 
-  // Build leaf refs and projections for each unique metric index in the expression
+  // Build leaf refs and projections for each metric occurrence in the expression.
+  // Each occurrence gets its own unique UUID keyed by token position so the same
+  // metric can appear multiple times (e.g. Revenue / Revenue).
   const leafRefs = new Map<number, unknown>();
   const projections: TypedProjection[] = [];
+  const seenProjections = new Set<string>();
 
-  for (const token of tokens) {
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i];
     if (token.type !== "metric") {
-      continue;
-    }
-    if (leafRefs.has(token.metricIndex)) {
       continue;
     }
     const req = indexToRequest.get(token.metricIndex);
@@ -178,29 +180,27 @@ function buildArithmeticRequest(
       return null; // metric not in a tab yet
     }
 
-    const uuid = `leaf-${token.metricIndex}`;
+    const uuid = `leaf-${i}`;
     const metricId = LibMetric.sourceMetricId(req.modifiedDefinition);
     const measureId = LibMetric.sourceMeasureId(req.modifiedDefinition);
 
     if (metricId != null) {
-      leafRefs.set(token.metricIndex, [
-        "metric",
-        { "lib/uuid": uuid },
-        metricId,
-      ]);
+      leafRefs.set(i, ["metric", { "lib/uuid": uuid }, metricId]);
     } else if (measureId != null) {
-      leafRefs.set(token.metricIndex, [
-        "measure",
-        { "lib/uuid": uuid },
-        measureId,
-      ]);
+      leafRefs.set(i, ["measure", { "lib/uuid": uuid }, measureId]);
     } else {
       return null;
     }
 
     const jsdef = toJsDefinition(req.modifiedDefinition);
     if (jsdef.projections) {
-      projections.push(...jsdef.projections);
+      for (const proj of jsdef.projections) {
+        const key = `${proj.type}:${proj.id}`;
+        if (!seenProjections.has(key)) {
+          seenProjections.add(key);
+          projections.push(proj);
+        }
+      }
     }
   }
 
