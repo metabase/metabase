@@ -19,11 +19,12 @@ import MetabaseSettings from "metabase/lib/settings";
 import { Button, Flex, Modal, Text, TextInput } from "metabase/ui";
 import type { User } from "metabase-types/api";
 
-import { clearTemporaryPassword } from "../people";
+import { clearTemporaryPassword, storeTemporaryPassword } from "../people";
 import { getUserTemporaryPassword } from "../selectors";
 
 interface UserPasswordResetModalInnerProps {
   clearTemporaryPassword: () => void;
+  storeTemporaryPassword: (id: number, password: string) => void;
   onClose: () => void;
   user: User;
   emailConfigured: boolean;
@@ -32,6 +33,7 @@ interface UserPasswordResetModalInnerProps {
 
 const UserPasswordResetModalInner = ({
   clearTemporaryPassword,
+  storeTemporaryPassword,
   emailConfigured,
   onClose,
   temporaryPassword,
@@ -61,6 +63,7 @@ const UserPasswordResetModalInner = ({
     } else {
       const password = generatePassword();
       await updatePassword({ id: user.id, password }).unwrap();
+      storeTemporaryPassword(user.id, password);
     }
   };
 
@@ -163,6 +166,9 @@ export const UserPasswordResetModal = (props: UserPasswordResetModalProps) => {
           {...props}
           clearTemporaryPassword={() =>
             dispatch(clearTemporaryPassword(user.id))
+          }
+          storeTemporaryPassword={(id, password) =>
+            dispatch(storeTemporaryPassword({ id, password }))
           }
           user={user}
           emailConfigured={MetabaseSettings.isEmailConfigured()}
