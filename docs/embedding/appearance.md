@@ -13,7 +13,6 @@ You can style your embedded [Metabase components](./components.md) with a **them
 
 Guest embeds on OSS and Starter plans come with two theme presets - light and dark. On Metabase Pro and Enterprise plans, you can also customize individual colors, backgrounds, fonts and more. See [Advanced theming](#advanced-theming).
 
-<a id="basic-theming"></a>
 
 ## Dark mode and light mode
 
