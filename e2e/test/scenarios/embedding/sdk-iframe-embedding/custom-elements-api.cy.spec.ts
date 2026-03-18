@@ -569,6 +569,91 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
     });
   });
 
+  describe("<metabase-adhoc>", () => {
+    // Simple Orders query: SELECT * FROM orders — used for basic rendering tests.
+    // Produces column headers like "ID", "Total", etc. but no title (no aggregation).
+    const ordersQuery = btoa(
+      JSON.stringify({
+        database: 1,
+        type: "query",
+        query: { "source-table": ORDERS_ID },
+      }),
+    );
+
+    // Orders query with aggregation: Max of Quantity, grouped by Product ID.
+    // Produces the title "Max of Quantity by Product ID" for with-title tests.
+    const ordersAggQuery = btoa(
+      JSON.stringify({
+        database: 1,
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["max", ["field", ORDERS.QUANTITY, null]]],
+          breakout: [["field", ORDERS.PRODUCT_ID, null]],
+          limit: 2,
+        },
+      }),
+    );
+
+    it("should render an ad-hoc question from a base64-encoded MBQL query", () => {
+      H.visitCustomHtmlPage(`
+      ${H.getNewEmbedScriptTag()}
+      ${H.getNewEmbedConfigurationScript()}
+      <metabase-adhoc query="${ordersQuery}" />
+      `);
+
+      H.getSimpleEmbedIframeContent().findByText("Total").should("be.visible");
+    });
+
+    it("should show title when with-title is true", () => {
+      H.visitCustomHtmlPage(`
+      ${H.getNewEmbedScriptTag()}
+      ${H.getNewEmbedConfigurationScript()}
+      <metabase-adhoc query="${ordersAggQuery}" with-title />
+      `);
+
+      H.getSimpleEmbedIframeContent()
+        .findByText("Max of Quantity by Product ID")
+        .should("be.visible");
+    });
+
+    it("should hide title when with-title is false", () => {
+      H.visitCustomHtmlPage(`
+      ${H.getNewEmbedScriptTag()}
+      ${H.getNewEmbedConfigurationScript()}
+      <metabase-adhoc query="${ordersAggQuery}" with-title="false" />
+      `);
+
+      H.getSimpleEmbedIframeContent()
+        .findByText("Max of Quantity by Product ID")
+        .should("not.exist");
+    });
+
+    it("should show the save button when is-save-enabled is true", () => {
+      H.visitCustomHtmlPage(`
+      ${H.getNewEmbedScriptTag()}
+      ${H.getNewEmbedConfigurationScript()}
+      <metabase-adhoc query="${ordersQuery}" is-save-enabled />
+      `);
+
+      H.getSimpleEmbedIframeContent()
+        .findByRole("button", { name: "Save" })
+        .should("be.visible");
+    });
+
+    it("should not show the save button when is-save-enabled is false", () => {
+      H.visitCustomHtmlPage(`
+      ${H.getNewEmbedScriptTag()}
+      ${H.getNewEmbedConfigurationScript()}
+      <metabase-adhoc query="${ordersQuery}" is-save-enabled="false" />
+      `);
+
+      H.getSimpleEmbedIframeContent()
+        .findByRole("button", { name: "Save" })
+        .should("not.exist");
+    });
+  });
+
   describe("common checks", () => {
     describe("should be permissive with json attributes", () => {
       // NOTE: pay attention if you use initialFilters for these tests, as when the filters are not parsed correctly
