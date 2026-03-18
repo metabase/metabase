@@ -7,11 +7,17 @@ import {
 import type React from "react";
 import { useCallback, useLayoutEffect, useMemo, useRef } from "react";
 
-interface VirtualGridOptions<TData> {
+import type { HeightChangeEvent } from "./use-row-heights";
+
+interface VirtualGridProps<TData> {
   gridRef: React.RefObject<HTMLDivElement>;
   table: ReactTable<TData>;
   defaultRowHeight: number;
   enableRowVirtualization?: boolean;
+  resizeRowRef: React.MutableRefObject<
+    ((event: HeightChangeEvent) => void) | undefined
+  >;
+  virtualIndexAttributeName: string;
 }
 
 export interface VirtualGrid {
@@ -23,6 +29,7 @@ export interface VirtualGrid {
   columnVirtualizer: Virtualizer<HTMLDivElement, Element>;
   measureGrid: () => void;
   scrollTo: (options: { rowIndex?: number; columnIndex?: number }) => void;
+  virtualIndexAttributeName: string;
 }
 
 export const useVirtualGrid = <TData,>({
@@ -30,7 +37,9 @@ export const useVirtualGrid = <TData,>({
   table,
   defaultRowHeight,
   enableRowVirtualization,
-}: VirtualGridOptions<TData>): VirtualGrid => {
+  resizeRowRef,
+  virtualIndexAttributeName,
+}: VirtualGridProps<TData>): VirtualGrid => {
   const centerColumns = table.getCenterLeafColumns();
   const centerRows = table.getCenterRows();
 
@@ -62,11 +71,25 @@ export const useVirtualGrid = <TData,>({
 
   const rowVirtualizer = useVirtualizer({
     count: centerRows.length,
+    indexAttribute: virtualIndexAttributeName,
     getScrollElement: () => gridRef.current,
     estimateSize: () => defaultRowHeight,
     overscan: 3,
     enabled: enableRowVirtualization,
   });
+
+  resizeRowRef.current = ({ elements, height }: HeightChangeEvent) => {
+    const element = elements?.values().next().value;
+    if (!element) {
+      return;
+    }
+    const virtualIndexRaw = element.getAttribute(virtualIndexAttributeName);
+    const virtualIndex = virtualIndexRaw ? parseInt(virtualIndexRaw, 10) : null;
+    if (virtualIndex === null) {
+      return;
+    }
+    rowVirtualizer.resizeItem(virtualIndex, height);
+  };
 
   const measureGrid = useCallback(() => {
     columnVirtualizer.measure();
@@ -107,5 +130,6 @@ export const useVirtualGrid = <TData,>({
     columnVirtualizer,
     measureGrid,
     scrollTo,
+    virtualIndexAttributeName,
   };
 };

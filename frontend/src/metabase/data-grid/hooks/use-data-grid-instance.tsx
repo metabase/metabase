@@ -21,14 +21,19 @@ import { usePrevious, useUpdateEffect } from "react-use";
 import _ from "underscore";
 
 import {
+  DATASET_INDEX_ATTRIBUTE_NAME,
   MIN_COLUMN_WIDTH,
   TRUNCATE_LONG_CELL_WIDTH,
+  VIRTUAL_INDEX_ATTRIBUTE_NAME,
 } from "metabase/data-grid/constants";
 import { useBodyCellMeasure } from "metabase/data-grid/hooks/use-body-cell-measure";
 import { useColumnResizeObserver } from "metabase/data-grid/hooks/use-column-resize-observer";
 import { useColumnsReordering } from "metabase/data-grid/hooks/use-columns-reordering";
 import { useMeasureColumnWidths } from "metabase/data-grid/hooks/use-measure-column-widths";
-import { useRowHeights } from "metabase/data-grid/hooks/use-row-heights";
+import {
+  type HeightChangeEvent,
+  useRowHeights,
+} from "metabase/data-grid/hooks/use-row-heights";
 import { useVirtualGrid } from "metabase/data-grid/hooks/use-virtual-grid";
 import type {
   DataGridColumnType,
@@ -93,6 +98,8 @@ export const useDataGridInstance = <TData, TValue>({
   measurementRenderWrapper,
   getRowId = defaultGetRowId,
 }: DataGridOptions<TData, TValue>): DataGridInstance<TData> => {
+  const datasetIndexAttributeName = DATASET_INDEX_ATTRIBUTE_NAME;
+  const virtualIndexAttributeName = VIRTUAL_INDEX_ATTRIBUTE_NAME;
   const gridRef = useRef<HTMLDivElement>(null);
 
   const utilityColumns = useMemo(
@@ -251,19 +258,20 @@ export const useDataGridInstance = <TData, TValue>({
       pinnedColumnsCount: pinnedLeftColumnsCount + utilityColumns.length,
     });
 
-  const {
-    tableRef,
-    virtualGridRef,
-    getRowHeight,
-    rowMeasureRef,
-    remeasureAll,
-    rowSizingMap,
-  } = useRowHeights({
-    data,
-    defaultRowHeight,
-    wrappedColumnsOptions,
-    measureBodyCellDimensions,
-  });
+  const resizeRowRef = useRef<(event: HeightChangeEvent) => void>();
+
+  const { tableRef, getRowHeight, rowMeasureRef, remeasureAll, rowSizingMap } =
+    useRowHeights({
+      data,
+      defaultRowHeight,
+      wrappedColumnsOptions,
+      measureBodyCellDimensions,
+      datasetIndexAttributeName,
+      onHeightChange: useCallback(
+        (event: HeightChangeEvent) => resizeRowRef.current?.(event),
+        [],
+      ),
+    });
 
   const rowPinning = useRowPinningByCount({
     top: pinnedTopRowsCount,
@@ -306,10 +314,11 @@ export const useDataGridInstance = <TData, TValue>({
     table,
     defaultRowHeight,
     enableRowVirtualization,
+    resizeRowRef,
+    virtualIndexAttributeName,
   });
 
   tableRef.current = table;
-  virtualGridRef.current = virtualGrid;
 
   const measureColumnWidths = useMeasureColumnWidths(
     table,
@@ -574,6 +583,7 @@ export const useDataGridInstance = <TData, TValue>({
     getPinnedColumns,
     getPinnedRows,
     rowMeasureRef,
+    datasetIndexAttributeName,
     enablePagination,
     sorting,
   };

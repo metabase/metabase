@@ -23,6 +23,8 @@ export interface DataGridRowProps<TData> extends DataGridStylesProps {
   zoomedRowIndex: number | undefined;
   pinnedRowsCount: number;
   selection: DataGridSelection;
+  datasetIndexAttributeName: string;
+  virtualIndexAttributeName: string;
   onBodyCellClick?: (
     event: React.MouseEvent<HTMLDivElement>,
     rowIndex: number,
@@ -37,6 +39,8 @@ export const DataGridRow = <TData,>({
   pinnedRowsCount,
   zoomedRowIndex,
   selection,
+  datasetIndexAttributeName,
+  virtualIndexAttributeName,
   onBodyCellClick,
   classNames,
   styles,
@@ -48,8 +52,10 @@ export const DataGridRow = <TData,>({
       role="row"
       key={row.origin.id}
       ref={rowMeasureRef}
-      data-dataset-index={row.origin.index}
-      data-index={row.virtualItem?.index}
+      {...{
+        [datasetIndexAttributeName]: row.origin.index,
+        [virtualIndexAttributeName]: row.virtualItem?.index,
+      }}
       data-allow-page-break-after="true"
       data-row-selected={row.origin.getIsSelected()}
       className={cx(

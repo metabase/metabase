@@ -309,6 +309,8 @@ export interface DataGridInstance<TData> {
   getPinnedRows: () => DataGridRowType<TData>[];
   getPinnedColumns: () => DataGridColumnType<TData>[];
   getCenterColumns: () => DataGridColumnType<TData>[];
+  datasetIndexAttributeName: string;
+  rowMeasureRef: (element: HTMLDivElement | null) => void;
   onHeaderCellClick?: (
     event: React.MouseEvent<HTMLDivElement>,
     columnId?: string,
@@ -318,7 +320,6 @@ export interface DataGridInstance<TData> {
     rowIndex: number,
     columnId: string,
   ) => void;
-  rowMeasureRef: (element: HTMLDivElement | null) => void;
   onAddColumnClick?: React.MouseEventHandler<HTMLButtonElement>;
   onWheel?: React.UIEventHandler<HTMLDivElement>;
 }

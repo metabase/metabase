@@ -62,6 +62,7 @@ export const DataGrid = function DataGrid<TData>({
   getCenterRows,
   getPinnedColumns,
   getCenterColumns,
+  datasetIndexAttributeName,
   rowMeasureRef,
   emptyState,
   zoomedRowIndex,
@@ -78,6 +79,7 @@ export const DataGrid = function DataGrid<TData>({
     columnVirtualizer,
     virtualPaddingLeft,
     virtualPaddingRight,
+    virtualIndexAttributeName,
   } = virtualGrid;
 
   const forceUpdate = useForceUpdate();
@@ -139,6 +141,8 @@ export const DataGrid = function DataGrid<TData>({
       pinnedRowsCount={pinnedRows.length}
       rowMeasureRef={rowMeasureRef}
       columns={columns}
+      datasetIndexAttributeName={datasetIndexAttributeName}
+      virtualIndexAttributeName={virtualIndexAttributeName}
       zoomedRowIndex={zoomedRowIndex}
       selection={selection}
       onBodyCellClick={onBodyCellClick}

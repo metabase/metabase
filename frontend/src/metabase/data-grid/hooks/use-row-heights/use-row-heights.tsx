@@ -2,10 +2,12 @@ import type { RowData, Table } from "@tanstack/react-table";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 
 import type { ColumnOptions } from "../../types";
-import type { VirtualGrid } from "../use-virtual-grid";
 
-import type { RowIndices, RowSizingState, UseRowHeightsResult } from "./types";
-import { getRowIndices } from "./utils";
+import type {
+  HeightChangeEvent,
+  RowSizingState,
+  UseRowHeightsResult,
+} from "./types";
 
 type UseRowHeightsProps<TData extends RowData, TValue> = {
   data: TData[];
@@ -15,6 +17,8 @@ type UseRowHeightsProps<TData extends RowData, TValue> = {
     text: React.ReactNode,
     width?: number,
   ) => { width: number; height: number };
+  datasetIndexAttributeName: string;
+  onHeightChange?: (event: HeightChangeEvent) => void;
 };
 
 export const useRowHeights = <TData extends RowData, TValue>({
@@ -22,10 +26,10 @@ export const useRowHeights = <TData extends RowData, TValue>({
   defaultRowHeight,
   wrappedColumnsOptions,
   measureBodyCellDimensions,
+  datasetIndexAttributeName,
+  onHeightChange,
 }: UseRowHeightsProps<TData, TValue>): UseRowHeightsResult<TData> => {
   const tableRef = useRef<Table<TData>>();
-  const virtualGridRef = useRef<VirtualGrid>();
-
   const rowHeightsCache = useRef<RowSizingState>(new Map());
   const [rowSizingMap, setRowSizingMap] = useState<RowSizingState>(new Map());
   const flushRafRef = useRef<number | null>(null);
@@ -84,6 +88,14 @@ export const useRowHeights = <TData extends RowData, TValue>({
     [defaultRowHeight],
   );
 
+  const getRowIndices = useCallback(
+    (element: Element): number | null => {
+      const indexRaw = element.getAttribute(datasetIndexAttributeName);
+      return indexRaw ? parseInt(indexRaw, 10) : null;
+    },
+    [datasetIndexAttributeName],
+  );
+
   const updateRowHeight = useCallback(
     (index: number): number => {
       const height = measureRowHeight(index);
@@ -98,16 +110,15 @@ export const useRowHeights = <TData extends RowData, TValue>({
   );
 
   const remeasureRow = useCallback(
-    ({ index, virtualIndex }: RowIndices) => {
+    (index: number | null) => {
       if (index === null) {
         return;
       }
       const height = updateRowHeight(index);
-      if (virtualIndex !== null) {
-        virtualGridRef.current?.rowVirtualizer.resizeItem(virtualIndex, height);
-      }
+      const elements = elementsByRowIndex.current.get(index);
+      onHeightChange?.({ index, height, elements });
     },
-    [updateRowHeight],
+    [updateRowHeight, onHeightChange],
   );
 
   const recalculate = useCallback(
@@ -117,7 +128,7 @@ export const useRowHeights = <TData extends RowData, TValue>({
         remeasureRow(indices);
       }
     },
-    [remeasureRow],
+    [remeasureRow, getRowIndices],
   );
 
   const remountElements = useCallback(() => {
@@ -144,20 +155,17 @@ export const useRowHeights = <TData extends RowData, TValue>({
     }
   }, []);
 
-  const watchElement = useCallback(
-    (element: Element, { index }: RowIndices) => {
-      if (index === null) {
-        return;
-      }
-      const rowElements = elementsByRowIndex.current.get(index) ?? new Set();
-      elementsByRowIndex.current.set(index, rowElements);
-      if (!rowElements.has(element)) {
-        rowElements.add(element);
-        resizeObserverRef.current?.observe(element);
-      }
-    },
-    [],
-  );
+  const watchElement = useCallback((element: Element, index: number | null) => {
+    if (index === null) {
+      return;
+    }
+    const rowElements = elementsByRowIndex.current.get(index) ?? new Set();
+    elementsByRowIndex.current.set(index, rowElements);
+    if (!rowElements.has(element)) {
+      rowElements.add(element);
+      resizeObserverRef.current?.observe(element);
+    }
+  }, []);
 
   const rowMeasureRef = useCallback(
     (element: Element | null) => {
@@ -169,7 +177,7 @@ export const useRowHeights = <TData extends RowData, TValue>({
       watchElement(element, indices);
       remeasureRow(indices);
     },
-    [remeasureRow, unwatchUnmountedElements, watchElement],
+    [remeasureRow, unwatchUnmountedElements, watchElement, getRowIndices],
   );
 
   const remeasureAll = useCallback(() => {
@@ -179,7 +187,7 @@ export const useRowHeights = <TData extends RowData, TValue>({
         remeasureRow(indices);
       }
     }
-  }, [remeasureRow]);
+  }, [remeasureRow, getRowIndices]);
 
   useLayoutEffect(() => {
     resizeObserverRef.current = new ResizeObserver(recalculate);
@@ -195,7 +203,6 @@ export const useRowHeights = <TData extends RowData, TValue>({
   return {
     tableRef,
     rowSizingMap,
-    virtualGridRef,
     rowMeasureRef,
     getRowHeight,
     remeasureAll,

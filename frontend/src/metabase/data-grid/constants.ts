@@ -10,3 +10,5 @@ export const PINNED_ROW_Z_INDEX = 1;
 export const DEFAULT_FONT_SIZE = "12.5px";
 export const FOOTER_HEIGHT = 30;
 export const PINNED_BORDER_SEPARATOR_WIDTH = 3;
+export const DATASET_INDEX_ATTRIBUTE_NAME = "data-dataset-index";
+export const VIRTUAL_INDEX_ATTRIBUTE_NAME = "data-index";
