@@ -138,7 +138,7 @@ describe("EmbeddingHub", () => {
 
     expect(configureSsoLink).toHaveAttribute(
       "href",
-      "https://www.metabase.com/docs/latest/embedding/embedded-analytics-js.html?utm_source=product&utm_medium=docs&utm_campaign=embedding_hub&utm_content=secure-embeds&source_plan=oss#set-up-sso",
+      "https://www.metabase.com/docs/latest/embedding/authentication.html?utm_source=product&utm_medium=docs&utm_campaign=embedding_hub&utm_content=secure-embeds&source_plan=oss#setting-up-jwt-sso",
     );
   });
 
