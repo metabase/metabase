@@ -77,11 +77,11 @@ jobs:
         version:
           - name: MariaDB 10.6 with pgvector pg17
             junit-name: semantic-search-tests-mariadb-10-6
-            mariadb-image: circleci/mariadb:10.6
+            mariadb-image: metabase/mariadb:10.6 # https://github.com/metabase/metabase-mariadb-docker-image
             pgvector-image: pgvector/pgvector:pg17
           - name: MariaDB Latest with pgvector pg17
             junit-name: semantic-search-tests-mariadb-latest
-            mariadb-image: circleci/mariadb:latest
+            mariadb-image: mariadb:latest
             pgvector-image: pgvector/pgvector:pg17
         job:
           - name: Semantic Search Tests
@@ -104,15 +104,15 @@ jobs:
         ports:
           - "3306:3306"
         env:
-          MYSQL_ALLOW_EMPTY_PASSWORD: true
-          MYSQL_DATABASE: circle_test
+          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: true
+          MARIADB_DATABASE: mb_test
     env:
       CI: 'true'
       DRIVERS: mysql
       MB_DB_TYPE: mysql
       MB_DB_HOST: localhost
       MB_DB_PORT: 3306
-      MB_DB_DBNAME: circle_test
+      MB_DB_DBNAME: mb_test
       MB_DB_USER: root
       MB_MYSQL_TEST_USER: root
       MB_PGVECTOR_DB_URL: 'jdbc:postgres://localhost:5432/mb_semantic_search?user=postgres&password=postgres'
@@ -151,7 +151,7 @@ jobs:
         version:
           - name: MySQL 8.4 with pgvector pg17
             junit-name: semantic-search-tests-mysql-8-4
-            mysql-image: cimg/mysql:8.4
+            mysql-image: mysql:8.4
             pgvector-image: pgvector/pgvector:pg17
           - name: MySQL Latest with pgvector pg17
             junit-name: semantic-search-tests-mysql-latest
@@ -179,14 +179,14 @@ jobs:
           - "3306:3306"
         env:
           MYSQL_ALLOW_EMPTY_PASSWORD: true
-          MYSQL_DATABASE: circle_test
+          MYSQL_DATABASE: mb_test
     env:
       CI: 'true'
       DRIVERS: mysql
       MB_DB_TYPE: mysql
       MB_DB_HOST: localhost
       MB_DB_PORT: 3306
-      MB_DB_DBNAME: circle_test
+      MB_DB_DBNAME: mb_test
       MB_DB_USER: root
       MB_MYSQL_TEST_USER: root
       MB_PGVECTOR_DB_URL: 'jdbc:postgres://localhost:5432/mb_semantic_search?user=postgres&password=postgres'

@@ -43,12 +43,15 @@ export function trackTransformCreate({
 
 export function trackTransformCreated({
   transformId,
+  isIncremental,
 }: {
   transformId: TransformId;
+  isIncremental: boolean;
 }) {
   trackSimpleEvent({
     event: "transform_created",
     target_id: transformId,
+    event_detail: isIncremental ? "incremental" : undefined,
   });
 }
 
@@ -67,6 +70,21 @@ export function trackTransformRunTagsUpdated({
     event_detail: added ? "tag_added" : "tag_removed",
     target_id: transformId,
     result,
+  });
+}
+
+export function trackTransformJobCreated({
+  result,
+  jobId,
+}: {
+  result: "success" | "failure";
+  jobId?: TransformJobId;
+}) {
+  trackSimpleEvent({
+    event: "transform_job_created",
+    triggered_from: "transform_job_new",
+    result,
+    target_id: jobId ?? null,
   });
 }
 

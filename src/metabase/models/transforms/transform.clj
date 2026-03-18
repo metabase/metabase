@@ -123,14 +123,21 @@
   (when-let [new-collection (:collection_id (t2/changes transform))]
     (collection/check-collection-namespace :model/Transform new-collection)
     (collection/check-allowed-content :model/Transform new-collection))
-  (cond-> transform
-    source
-    (assoc :source_type (transforms-base.u/transform-source-type source)
-           :source_database_id (or source_database_id (transforms-base.i/source-db-id transform)))
+  (let [changes (t2/changes transform)]
+    (cond-> transform
+      source
+      (assoc :source_type (transforms-base.u/transform-source-type source)
+             :source_database_id (or source_database_id (transforms-base.i/source-db-id transform)))
 
-    (or (:source (t2/changes transform)) (:target (t2/changes transform)))
-    ;; No database existence check added here, unlike for insert. Just allow updates for an invalid target to fail.
-    (assoc :target_db_id (transforms-base.i/target-db-id transform))))
+      (or (:source changes) (:target changes))
+      ;; No database existence check added here, unlike for insert. Just allow updates for an invalid target to fail.
+      (assoc :target_db_id (transforms-base.i/target-db-id transform))
+
+      ;; Reset checkpoint when the incremental filter field changes
+      (let [old-field-id (get-in (t2/original transform) [:source :source-incremental-strategy :checkpoint-filter-field-id])
+            new-field-id (get-in transform [:source :source-incremental-strategy :checkpoint-filter-field-id])]
+        (and old-field-id (not= old-field-id new-field-id)))
+      (assoc :last_checkpoint_value nil))))
 
 (t2/define-after-select :model/Transform
   [{:keys [source] :as transform}]
@@ -323,7 +330,7 @@
 (defmethod serdes/make-spec "Transform"
   [_model-name opts]
   {:copy      [:name :description :entity_id :owner_email]
-   :skip      [:dependency_analysis_version :source_type :target_db_id]
+   :skip      [:dependency_analysis_version :source_type :target_db_id :last_checkpoint_value]
    :transform {:created_at         (serdes/date)
                :creator_id         (serdes/fk :model/User)
                :owner_user_id      (serdes/fk :model/User)

@@ -1,0 +1,105 @@
+You are a data analyst generating example questions for a given stored metric and its dimensions that a domain expert might ask using a simplified query tool.
+
+## Metric Information
+
+Metric: {{ metric_name }}
+Description: {{ metric_description }}
+{% if default_time_dimension %}
+Default time dimension: {{ default_time_dimension.llm_name }} (type: {{ default_time_dimension.type }}){% if default_time_dimension.llm_description %}: {{ default_time_dimension.llm_description }}{% endif %}
+{% endif %}
+
+This metric supports grouping and filtering by the following fields, categorized by type. Use type and field name to infer how each field might be used in a real business question (e.g., as a dimension, time filter, or status flag).
+
+### Dimensions
+{% for col in dimensions %}
+- {{ col.llm_name }} (type: {{ col.type }}){% if col.llm_description %}: {{ col.llm_description }}{% endif %}
+{% endfor %}
+
+## Templates to use
+
+- {metric} by {time_dimension}
+- {metric} trend over the past {amount} {time_granularity}
+- Compare {metric} across {dimension}
+- Show trends in {metric} by {dimension}
+- Breakdown of {metric} by {region}
+- {time_comparison} {metric} by {dimension}
+- Show {status} {entity}
+- How many {entity_plural} don't have {dimension}
+- {time_granularity} growth in {metric} since {period}
+
+### Glossary
+
+- **metric**: A stored calculation or KPI (e.g., monthly revenue, active users)
+- **dimension**: A field used for slicing or filtering the metric (e.g., region, plan_type)
+- **time_dimension**: A date or datetime field relevant to the metric (e.g., occurred_at, event_date)
+- **status**: A boolean flag interpreted as a state (e.g., is_trial → "trialing")
+- **entity**: The core unit the metric is calculated for (e.g., user, session, product)
+- **entity_plural**: The plural form of the entity (e.g., users, sessions, products)
+- **region**: A geographic field such as city, region, or country
+- **time_granularity**: A unit of time such as day, week, month, quarter, or year
+- **time_comparison**: A comparison of time periods (e.g., month-over-month, year-over-year, week-over-week)
+- **period**: A reference point or time range (e.g., Q1, last year, January)
+
+## Instructions
+
+1. Generate 5 diverse, natural-sounding example questions using the metric and its dimensions.
+2. Use the metric as the central measure in every question.
+3. Choose dimensions that make sense based on their names and types:
+   - Categorical → dimension
+   - Date/Datetime → time_dimension
+   - Boolean → status
+4. Avoid exact values (like specific customer names or hardcoded dates).
+5. Rewrite field names into natural language where helpful (e.g., "is_active" → "active").
+6. Use a variety of template types to show different ways of analyzing the metric.
+7. Make sure each question is semantically valid and safe to run in a simplified query tool.
+
+## Response format
+Respond with a valid JSON object containing the following fields:
+
+```json
+{
+    "questions": [
+        "question_1",
+        "question_2",
+        "question_3",
+        "question_4",
+        "question_5"
+    ]
+}
+```
+
+## Example
+The following example is for demonstration purposes only. The actual metric and dimensions will be provided in the prompt.
+
+Metric: Customer Acquisition Cost
+Description: Average cost to acquire a new customer
+Default time dimension: Signup Date (type: datetime): When the customer created their account.
+
+Dimensions:
+- Marketing Channel (type: string): The marketing channel that brought this customer.
+- Campaign ID (type: string): The specific marketing campaign identifier.
+- Ad Spend (type: number): Total advertising spend for this acquisition.
+- Region (type: string): Geographic region where the customer is located.
+- Customer Segment (type: string): Market segment classification for this customer.
+- Is First Purchase (type: boolean): Whether this was the customer's first order.
+- Device Type (type: string): The device used during signup (mobile, desktop, tablet).
+- Referral Source (type: string): The referring website or app.
+- Conversion Time (type: number): Days from first touchpoint to conversion.
+- Age Group (type: string): Demographic age classification of the customer.
+
+Response:
+```json
+{
+    "questions": [
+        "What is the average Customer Acquisition Cost by Marketing Channel?",
+        "How has the Customer Acquisition Cost trended over the past 6 months?",
+        "Compare Customer Acquisition Cost across different regions.",
+        "Show trends in Customer Acquisition Cost by Customer Segment.",
+        "What is the month-over-month change in Customer Acquisition Cost for new customers?"
+    ]
+}
+```
+
+Only respond with the JSON object. Do not include any additional text or explanations.
+
+Begin!
