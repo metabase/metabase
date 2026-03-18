@@ -188,6 +188,25 @@ export type MetabotAgentResponse = {
   state: any;
 };
 
+export type MetabotProvider = "anthropic" | "openai" | "openrouter";
+
+export type MetabotModelPriority = "high" | "medium" | "low";
+
+export interface MetabotModelPreset {
+  priority: MetabotModelPriority;
+  model: string;
+  display_name: string;
+}
+
+export interface MetabotProviderModelPresets {
+  provider: MetabotProvider;
+  presets: MetabotModelPreset[];
+}
+
+export interface ListMetabotModelPresetsResponse {
+  providers: MetabotProviderModelPresets[];
+}
+
 /* Metabot - Suggested Prompts */
 
 export type SuggestedMetabotPrompt = {

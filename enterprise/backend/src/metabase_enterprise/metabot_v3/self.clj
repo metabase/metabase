@@ -33,11 +33,25 @@
     (throw (ex-info (str "Unknown LLM provider: " provider)
                     {:provider provider}))))
 
+(defn- resolve-model-lister [provider]
+  ;; a `case` inside of function instead of a map so that with-redefs work well
+  (case provider
+    "anthropic"  claude/list-models
+    "openai"     openai/list-models
+    "openrouter" openrouter/list-models
+    (throw (ex-info (str "Unknown LLM provider: " provider)
+                    {:provider provider}))))
+
 (defn- parse-provider-model [s]
   (let [[prov model] (str/split s #"/" 2)]
     {:provider  prov
      :stream-fn (resolve-adapter prov)
      :model     model}))
+
+(defn list-models
+  "List available models for a provider using its configured API key."
+  [provider]
+  ((resolve-model-lister provider)))
 
 ;;; General LLM calling
 ;; Matches the Python ai-service retry behavior:

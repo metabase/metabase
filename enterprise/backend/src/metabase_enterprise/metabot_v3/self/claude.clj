@@ -182,6 +182,34 @@
      :description  doc
      :input_schema (mjs/transform params {:additionalProperties false})}))
 
+(defn list-models
+  "List available Anthropic models using the configured API key."
+  []
+  (let [token (llm/ee-anthropic-api-key)]
+    (when (str/blank? token)
+      (throw (ex-info "No Anthropic API key is set" {:api-error true})))
+    (try
+      (let [res (http/get (str (llm/ee-anthropic-api-base-url) "/v1/models")
+                          {:as      :json
+                           :headers {"x-api-key"         token
+                                     "anthropic-version" "2023-06-01"
+                                     "content-type"      "application/json"}})]
+        {:models (mapv #(select-keys % [:id :display_name]) (reverse (sort-by :created_at (get-in res [:body :data]))))})
+      (catch Exception e
+        (if-let [res (some-> (ex-data e)
+                             json/decode-body)]
+          (let [status (:status res)
+                msg    (case (int status)
+                         401 "Anthropic API key expired or invalid"
+                         403 "Anthropic API key has not enough permissions"
+                         404 "Anthropic API is telling us we cannot access this URL anymore?"
+                         429 "Anthropic API has rate limited us"
+                         500 "Anthropic API is not working but not saying why"
+                         529 "Anthropic API is overloaded and is asking us to wait"
+                         "Unhandled error accessing Anthropic API")]
+            (throw (ex-info msg (assoc res :api-error true) e)))
+          (throw e))))))
+
 (mu/defn claude-raw
   "Perform a streaming request to Claude API."
   [{:keys [model system input tools schema tool_choice temperature max-tokens]

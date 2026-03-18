@@ -1,5 +1,6 @@
 import type {
   DeleteSuggestedMetabotPromptRequest,
+  ListMetabotModelPresetsResponse,
   MetabotFeedback,
   MetabotGenerateContentRequest,
   MetabotGenerateContentResponse,
@@ -24,6 +25,15 @@ export const metabotApi = EnterpriseApi.injectEndpoints({
         listTag("metabot"),
         ...(result?.items || []).map((metabot) => idTag("metabot", metabot.id)),
       ],
+    }),
+    listMetabotModelPresets: builder.query<
+      ListMetabotModelPresetsResponse,
+      void
+    >({
+      query: () => ({
+        method: "GET",
+        url: "/api/ee/metabot-v3/model-presets",
+      }),
     }),
     updateMetabot: builder.mutation<
       MetabotInfo,
@@ -112,6 +122,7 @@ export const metabotApi = EnterpriseApi.injectEndpoints({
 
 export const {
   useListMetabotsQuery,
+  useListMetabotModelPresetsQuery,
   useUpdateMetabotMutation,
   useGetSuggestedMetabotPromptsQuery,
   useDeleteSuggestedMetabotPromptMutation,

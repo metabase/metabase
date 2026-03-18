@@ -3,6 +3,8 @@
   (:require
    [clojure.core.async :as a]
    [metabase-enterprise.api.routes.common :as ee.api.routes]
+   [clojure.string :as str]
+   [metabase-enterprise.llm.settings :as llm.settings]
    [metabase-enterprise.metabot-v3.agent.core :as agent]
    [metabase-enterprise.metabot-v3.api.document]
    [metabase-enterprise.metabot-v3.api.metabot]
@@ -271,6 +273,27 @@
     (catch Exception e
       (log/error e "Failed to submit feedback to Harbormaster")
       (throw e))))
+
+(def ^:private model-presets-response-schema
+  [:map
+   [:providers
+    [:sequential
+     [:map
+      [:provider [:enum "anthropic" "openai" "openrouter"]]
+      [:presets
+       [:sequential
+        [:map
+         [:priority [:enum "high" "medium" "low"]]
+         [:model :string]
+         [:display_name :string]]]]]]]])
+
+(api.macros/defendpoint :get "/model-presets"
+  :- model-presets-response-schema
+  "List backend-defined Metabot model presets for each provider."
+  [_route-params
+   _query-params]
+  (api/check-superuser)
+  {:providers (llm.settings/metabot-model-presets)})
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/metabot-v3` routes."

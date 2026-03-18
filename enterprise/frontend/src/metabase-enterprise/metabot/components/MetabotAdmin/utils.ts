@@ -4,6 +4,36 @@ import { P, isMatching } from "ts-pattern";
 
 import { useSelector } from "metabase/lib/redux";
 import { getLocation } from "metabase/selectors/routing";
+import type { MetabotProvider } from "metabase-types/api";
+
+export type MetabotProviderOption = {
+  value: MetabotProvider;
+  label: string;
+  apiKeyPlaceholder: string;
+  addKeyUrl: string;
+};
+
+export const PROVIDER_OPTIONS: Record<MetabotProvider, MetabotProviderOption> =
+  {
+    anthropic: {
+      value: "anthropic",
+      label: "Anthropic",
+      apiKeyPlaceholder: "sk-ant-api03-...",
+      addKeyUrl: "https://console.anthropic.com/settings/keys",
+    },
+    openai: {
+      value: "openai",
+      label: "OpenAI",
+      apiKeyPlaceholder: "sk-proj-...",
+      addKeyUrl: "https://platform.openai.com/api-keys",
+    },
+    openrouter: {
+      value: "openrouter",
+      label: "OpenRouter",
+      apiKeyPlaceholder: "sk-or-v1-...",
+      addKeyUrl: "https://openrouter.ai/keys",
+    },
+  };
 
 export function useMetabotIdPath() {
   const location = useSelector(getLocation);

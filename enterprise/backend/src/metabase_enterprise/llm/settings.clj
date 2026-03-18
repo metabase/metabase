@@ -25,6 +25,13 @@
   :sensitive? true
   :visibility :settings-manager
   :export? false
+  :setter     (fn [new-value]
+                (let [trimmed (when (string? new-value)
+                                (not-empty (str/trim new-value)))]
+                  (when (and trimmed (not (str/starts-with? trimmed "sk-")))
+                    (throw (ex-info (tru "Invalid OpenAI API key format. Key must start with ''sk-''.")
+                                    {:status-code 400})))
+                  (setting/set-value-of-type! :string :ee-openai-api-key trimmed)))
   :doc false)
 
 (defsetting ee-anthropic-api-base-url
@@ -40,6 +47,13 @@
   :sensitive? true
   :visibility :settings-manager
   :export? false
+  :setter     (fn [new-value]
+                (let [trimmed (when (string? new-value)
+                                (not-empty (str/trim new-value)))]
+                  (when (and trimmed (not (str/starts-with? trimmed "sk-ant-")))
+                    (throw (ex-info (tru "Invalid Anthropic API key format. Key must start with ''sk-ant-''.")
+                                    {:status-code 400})))
+                  (setting/set-value-of-type! :string :ee-anthropic-api-key trimmed)))
   :doc false)
 
 (defsetting ee-openrouter-api-base-url
@@ -55,11 +69,58 @@
   :sensitive? true
   :visibility :settings-manager
   :export? false
+  :setter     (fn [new-value]
+                (let [trimmed (when (string? new-value)
+                                (not-empty (str/trim new-value)))]
+                  (when (and trimmed (not (str/starts-with? trimmed "sk-or-v1-")))
+                    (throw (ex-info (tru "Invalid OpenRouter API key format. Key must start with ''sk-or-v1-''.")
+                                    {:status-code 400})))
+                  (setting/set-value-of-type! :string :ee-openrouter-api-key trimmed)))
   :doc false)
 
 (def ^:private supported-metabot-providers
   "Set of supported LLM provider prefixes for the `ee-ai-metabot-provider` setting."
   #{"anthropic" "openai" "openrouter"})
+
+(def ^:private metabot-provider-order
+  ["anthropic" "openai" "openrouter"])
+
+(def ^:private metabot-model-preset-map
+  {"anthropic"  [{:priority     "high"
+                  :model        "claude-opus-4-5"
+                  :display_name "Claude Opus 4.5"}
+                 {:priority     "medium"
+                  :model        "claude-sonnet-4-5"
+                  :display_name "Claude Sonnet 4.5"}
+                 {:priority     "low"
+                  :model        "claude-haiku-4-5"
+                  :display_name "Claude Haiku 4.5"}]
+   "openai"     [{:priority     "high"
+                  :model        "gpt-4.1"
+                  :display_name "GPT-4.1"}
+                 {:priority     "medium"
+                  :model        "gpt-4.1-mini"
+                  :display_name "GPT-4.1 mini"}
+                 {:priority     "low"
+                  :model        "gpt-4.1-nano"
+                  :display_name "GPT-4.1 nano"}]
+   "openrouter" [{:priority     "high"
+                  :model        "anthropic/claude-opus-4-5"
+                  :display_name "Claude Opus 4.5"}
+                 {:priority     "medium"
+                  :model        "google/gemini-2.5-flash"
+                  :display_name "Gemini 2.5 Flash"}
+                 {:priority     "low"
+                  :model        "anthropic/claude-haiku-4-5"
+                  :display_name "Claude Haiku 4.5"}]})
+
+(defn metabot-model-presets
+  "Return backend-defined Metabot model presets grouped by provider."
+  []
+  (mapv (fn [provider]
+          {:provider provider
+           :presets  (get metabot-model-preset-map provider [])})
+        metabot-provider-order))
 
 (defn- validate-metabot-provider!
   "Validate that `value` has the format `provider/model` with a supported provider prefix.
@@ -112,6 +173,32 @@
   :visibility :settings-manager
   :default    true
   :export?    false
+  :doc        false)
+
+(defn- token-configured?
+  [token]
+  (boolean (and (string? token)
+                (not (str/blank? token)))))
+
+(defn- metabot-provider-prefix []
+  (some-> (ee-ai-metabot-provider)
+          (str/split #"/" 2)
+          first))
+
+(defn- -ee-ai-metabot-configured? []
+  (case (metabot-provider-prefix)
+    "anthropic"  (token-configured? (ee-anthropic-api-key))
+    "openai"     (token-configured? (ee-openai-api-key))
+    "openrouter" (token-configured? (ee-openrouter-api-key))
+    false))
+
+(defsetting ee-ai-metabot-configured?
+  "Whether the API key for the selected Metabot provider is configured."
+  :type       :boolean
+  :visibility :public
+  :setter     :none
+  :export?    false
+  :getter     #'-ee-ai-metabot-configured?
   :doc        false)
 
 (defsetting ee-ai-features-enabled

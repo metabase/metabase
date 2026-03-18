@@ -307,6 +307,42 @@
         (finally
           (.stop llm-server))))))
 
+(deftest model-presets-endpoint-test
+  (mt/with-premium-features #{:metabot-v3}
+    (testing "GET /api/ee/metabot-v3/model-presets returns backend-defined presets"
+      (is (= {:providers [{:provider "anthropic"
+                           :presets  [{:priority     "high"
+                                       :model        "claude-opus-4-5-20251101"
+                                       :display_name "Claude Opus 4.5"}
+                                      {:priority     "medium"
+                                       :model        "claude-sonnet-4-5-20250929"
+                                       :display_name "Claude Sonnet 4.5"}
+                                      {:priority     "low"
+                                       :model        "claude-haiku-4-5"
+                                       :display_name "Claude Haiku 4.5"}]}
+                          {:provider "openai"
+                           :presets  [{:priority     "high"
+                                       :model        "gpt-4.1"
+                                       :display_name "GPT-4.1"}
+                                      {:priority     "medium"
+                                       :model        "gpt-4.1-mini"
+                                       :display_name "GPT-4.1 mini"}
+                                      {:priority     "low"
+                                       :model        "gpt-4.1-nano"
+                                       :display_name "GPT-4.1 nano"}]}
+                          {:provider "openrouter"
+                           :presets  [{:priority     "high"
+                                       :model        "anthropic/claude-opus-4-5"
+                                       :display_name "Claude Opus 4.5"}
+                                      {:priority     "medium"
+                                       :model        "google/gemini-2.5-flash"
+                                       :display_name "Gemini 2.5 Flash"}
+                                      {:priority     "low"
+                                       :model        "anthropic/claude-haiku-4-5"
+                                       :display_name "Claude Haiku 4.5"}]}]}
+             (mt/user-http-request :crowberto :get 200 "ee/metabot-v3/model-presets")))
+      (mt/user-http-request :rasta :get 403 "ee/metabot-v3/model-presets"))))
+
 (deftest feedback-endpoint-test
   (mt/with-premium-features #{:metabot-v3}
     (mt/with-random-premium-token! [premium-token]

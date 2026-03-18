@@ -509,7 +509,9 @@ interface AdminSettings {
 }
 interface SettingsManagerSettings {
   "bcc-enabled?": boolean;
-  "ee-openai-api-key"?: string;
+  "ee-anthropic-api-key"?: string | null;
+  "ee-openai-api-key"?: string | null;
+  "ee-openrouter-api-key"?: string | null;
   "openai-api-key": string | null;
   "openai-available-models"?: OpenAiModel[];
   "openai-model": string | null;
@@ -541,6 +543,7 @@ interface PublicSettings {
   "custom-homepage": boolean;
   "custom-homepage-dashboard": DashboardId | null;
   "development-mode?": boolean;
+  "ee-ai-metabot-configured?"?: boolean | null;
   "ee-ai-features-enabled"?: boolean;
   "email-configured?": boolean;
   "embedding-app-origin": string | null;
@@ -710,8 +713,11 @@ export interface EnterpriseSettings extends Settings {
   "no-object-illustration"?: IllustrationSettingValue;
   "no-object-illustration-custom"?: string;
   "landing-page"?: string;
+  "ee-ai-metabot-configured?"?: boolean | null;
   "ee-ai-features-enabled"?: boolean;
-  "ee-openai-api-key"?: string;
+  "ee-anthropic-api-key"?: string | null;
+  "ee-openai-api-key"?: string | null;
+  "ee-openrouter-api-key"?: string | null;
   "ee-openai-model"?: string;
   "session-timeout": TimeoutValue | null;
   "search-engine": SearchEngineSettingValue | null;
@@ -765,6 +771,7 @@ export interface EnterpriseSettings extends Settings {
   "python-storage-s-3-path-style-access"?: boolean | null;
   "python-runner-timeout-seconds"?: number | null;
   "python-runner-test-run-timeout-seconds"?: number | null;
+  "ee-ai-metabot-provider"?: string | null;
   "llm-anthropic-api-key"?: string | null;
   "llm-anthropic-model": string;
   "metabot-slack-signing-secret"?: string | null;

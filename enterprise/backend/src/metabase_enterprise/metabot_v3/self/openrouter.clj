@@ -95,6 +95,39 @@
                 :description doc
                 :parameters  (mjs/transform params {:additionalProperties false})}}))
 
+(defn list-models
+  "List available OpenRouter models using the configured API key."
+  []
+  (let [token (llm/ee-openrouter-api-key)]
+    (when (str/blank? token)
+      (throw (ex-info "No OpenRouter API key is set" {:api-error true})))
+    (try
+      (let [res (http/get (str (llm/ee-openrouter-api-base-url) "/v1/models")
+                          {:as      :json
+                           :headers {"Authorization" (str "Bearer " token)
+                                     "Content-Type"  "application/json"
+                                     "HTTP-Referer"  "https://metabase.com"
+                                     "X-Title"       "Metabase"}})]
+        {:models (mapv (fn [model]
+                         {:id           (:id model)
+                          :display_name (or (:name model) (:id model))})
+                       (sort-by :id (get-in res [:body :data])))})
+      (catch Exception e
+        (if-let [res (some-> (ex-data e) json/decode-body)]
+          (let [status (:status res)
+                msg    (case (int status)
+                         401 "OpenRouter API key expired or invalid"
+                         402 "OpenRouter: insufficient credits"
+                         403 "OpenRouter API key has insufficient permissions"
+                         404 "OpenRouter: model listing endpoint unavailable"
+                         429 "OpenRouter: rate limited"
+                         500 "OpenRouter: internal server error"
+                         502 "OpenRouter: upstream provider error"
+                         503 "OpenRouter: service unavailable"
+                         "Unhandled error accessing OpenRouter API")]
+            (throw (ex-info msg (assoc res :api-error true) e)))
+          (throw e))))))
+
 ;;; Streaming response → AISDK v5 chunks
 
 (defn openrouter->aisdk-chunks-xf
