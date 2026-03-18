@@ -17,7 +17,7 @@ on:
 
 jobs:
   setup-oss:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     outputs:
       modules: ${{ steps.get-modules.outputs.modules }}
     steps:
@@ -31,7 +31,7 @@ jobs:
     needs: setup-oss
     # don't run this workflow on a cron for forks
     if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     strategy:
       fail-fast: false
@@ -64,7 +64,7 @@ jobs:
           flags: back-end
 
   setup-ee:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     outputs:
       modules: ${{ steps.get-modules.outputs.modules }}
     steps:
@@ -78,7 +78,7 @@ jobs:
     needs: setup-ee
     # don't run this workflow on a cron for forks
     if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     strategy:
       fail-fast: false
