@@ -411,7 +411,9 @@
         ;; Build a map of [d s t] => id for every table that has been synced since the output row was written.
         fallback-map     (merge
                           (ws.impl/table-ids-fallbacks :global_schema :global_table :global_table_id all-outputs)
-                          (ws.impl/table-ids-fallbacks :isolated_schema :isolated_table :isolated_table_id all-outputs))]
+                          (ws.impl/table-ids-fallbacks :isolated_schema :isolated_table :isolated_table_id all-outputs))
+        table-ids        (keep :isolated_table_id all-outputs)
+        active-table-ids (t2/select-fn-set :id [:model/Table :id] :id [:in table-ids] :active true)]
     {:inputs  (sort-by (juxt :db_id :schema :table) inputs)
      :outputs (sort-by
                (juxt :db_id (comp (juxt :schema :table) :global))
@@ -427,7 +429,8 @@
                    :isolated {:transform_id ref_id
                               :schema       isolated_schema
                               :table        isolated_table
-                              :table_id     (or isolated_table_id (get fallback-map [db_id isolated_schema isolated_table]))}})
+                              :table_id     (or isolated_table_id (get fallback-map [db_id isolated_schema isolated_table]))
+                              :active       (contains? active-table-ids isolated_table_id)}})
                 ;; External transform outputs
                 (for [{:keys [transform_id db_id global_schema global_table global_table_id
                               isolated_schema isolated_table isolated_table_id]} external-outputs]
@@ -439,7 +442,8 @@
                    :isolated {:transform_id transform_id
                               :schema       isolated_schema
                               :table        isolated_table
-                              :table_id     (or isolated_table_id (get fallback-map [db_id isolated_schema isolated_table]))}})))}))
+                              :table_id     (or isolated_table_id (get fallback-map [db_id isolated_schema isolated_table]))
+                              :active       (contains? active-table-ids isolated_table_id)}})))}))
 
 (defn get-workspace-log
   "Handler body for GET /:ws-id/log."
