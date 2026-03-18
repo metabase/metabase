@@ -630,26 +630,31 @@
 
 (declare resolve-from-previous-stage-or-source)
 
+(def ^:private ^:dynamic *in-deduplicated-column-resolution?* false)
+
 (defn- resolve-nonexistent-deduplicated-column-name
-  "Resolve a ref like `CATEGORY_2` to `CATEGORY` if the query only has the latter."
+  "Resolve a ref like `CATEGORY_2` to `CATEGORY` if the query only has the latter.
+  Uses a dynamic guard to prevent mutual recursion with [[resolve-from-previous-stage-or-source]]
+  which could cause a StackOverflowError for large suffixes (e.g. `name_5000`)."
   [query stage-number id-or-name]
-  (when (string? id-or-name)
+  (when (and (string? id-or-name)
+             (not *in-deduplicated-column-resolution?*))
     (when-let [[_match original-name suffix] (re-matches #"^(\w+)_([1-9]\d*)$" id-or-name)]
-      (let [suffix     (parse-long suffix)
-            new-suffix (dec suffix)
-            ;; e.g. `CATEGORY_3` becomes `CATEGORY_2`; `CATEGORY_2` becomes `CATEGORY`
-            new-name   (if (<= new-suffix 1)
-                         original-name
-                         (str original-name \_ new-suffix))]
-        (log/debugf "Failed to resolve %s, trying to resolve Field %s instead..." (pr-str id-or-name) (pr-str new-name))
-        (let [resolved (resolve-from-previous-stage-or-source query stage-number new-name)]
-          (if (::fallback-metadata? resolved)
-            (do
-              (log/debugf "Failed to resolve %s as %s" (pr-str id-or-name) (pr-str new-name))
-              nil)
-            (do
-              (log/debugf "Successfully resolved %s as %s" (pr-str id-or-name) (pr-str new-name))
-              resolved)))))))
+      (binding [*in-deduplicated-column-resolution?* true]
+        (loop [current-suffix (dec (parse-long suffix))]
+          (let [new-name (if (<= current-suffix 1)
+                           original-name
+                           (str original-name \_ current-suffix))]
+            (log/debugf "Failed to resolve %s, trying to resolve Field %s instead..." (pr-str id-or-name) (pr-str new-name))
+            (let [resolved (resolve-from-previous-stage-or-source query stage-number new-name)]
+              (if (::fallback-metadata? resolved)
+                (do
+                  (log/debugf "Failed to resolve %s as %s" (pr-str id-or-name) (pr-str new-name))
+                  (when (> current-suffix 1)
+                    (recur (dec current-suffix))))
+                (do
+                  (log/debugf "Successfully resolved %s as %s" (pr-str id-or-name) (pr-str new-name))
+                  resolved)))))))))
 
 (mu/defn- resolve-from-previous-stage-or-source :- ::lib.metadata.calculation/visible-column
   [query        :- ::lib.schema/query
