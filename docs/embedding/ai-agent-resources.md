@@ -14,6 +14,11 @@ Agents can read the docs you're reading now (and many agents have already read o
 - [Summary of embedding docs, with links](https://www.metabase.com/docs/llms.txt).
 - [The full embedding docs](https://www.metabase.com/docs/llms-embedding-full.txt).
 
+If you're on a specific version (e.g., v0.58), you can use versioned llms.txt files scoped to that version's docs:
+
+- `https://www.metabase.com/docs/v0.58/llms.txt`
+- `https://www.metabase.com/docs/v0.58/llms-embedding-full.txt`
+
 ## Agent skills
 
 We've developed some [agent skills](https://github.com/metabase/agent-skills) to give your AI agents step-by-step playbooks for specific embedding tasks.
