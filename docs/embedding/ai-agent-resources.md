@@ -7,18 +7,6 @@ summary: Agent skills and llms.txt to help AI coding agents embed Metabase in yo
 
 If you use an AI coding agent, you can give the agent Metabase-specific context to help with embedding setup, upgrades, and migrations.
 
-## llms.txt
-
-Agents can read the docs you're reading now (and many agents have already read our docs), but we also publish llms.txts so that you can give your AI agent:
-
-- [Summary of embedding docs, with links](https://www.metabase.com/docs/llms.txt).
-- [The full embedding docs](https://www.metabase.com/docs/llms-embedding-full.txt).
-
-If you're on a specific version (e.g., v0.58), you can use versioned llms.txt files scoped to that version's docs:
-
-- `https://www.metabase.com/docs/v0.58/llms.txt`
-- `https://www.metabase.com/docs/v0.58/llms-embedding-full.txt`
-
 ## Agent skills
 
 We've developed some [agent skills](https://github.com/metabase/agent-skills) to give your AI agents step-by-step playbooks for specific embedding tasks.
@@ -35,9 +23,21 @@ We've developed some [agent skills](https://github.com/metabase/agent-skills) to
 
 Browse all skills on the [agent skills repo](https://github.com/metabase/agent-skills).
 
+## llms.txt
+
+Agents can read the docs you're reading now (and many agents have already read our docs), but we also publish llms.txts so that you can give your AI agent:
+
+- [Summary of embedding docs, with links](https://www.metabase.com/docs/llms.txt).
+- [The full embedding docs](https://www.metabase.com/docs/llms-embedding-full.txt).
+
+If you're on a specific version (e.g., v0.58), you can use versioned llms.txt files scoped to that version's docs:
+
+- `https://www.metabase.com/docs/v0.58/llms.txt`
+- `https://www.metabase.com/docs/v0.58/llms-embedding-full.txt`
+
 ## Agents are not magic
 
-Always review and validate the changes made by agents. Check that your application builds, tests pass, and the embedding works as expected before committing.
+Always review and validate the changes made by agents. Check that your application builds, tests pass, and the embedding works as expected before committing anything.
 
 ## Further reading
 
