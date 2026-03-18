@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.dependencies.events]
-   [metabase-enterprise.dependencies.task.backfill :as dependencies.backfill]
    [metabase-enterprise.replacement.execute :as replacement.execute]
    [metabase-enterprise.replacement.models.replacement-run :as replacement-run]
    [metabase-enterprise.replacement.protocols :as replacement.protocols]
@@ -130,10 +129,9 @@
                        {:dashboard_id dashboard-id :card_id mbql-child-1-id}]
 
           (mt/with-model-cleanup [:model/ReplacementRun :model/Dependency]
-            ;; Populate dependencies via events + backfill
+            ;; Populate dependencies via events
             (doseq [card [old-model mbql-child-1 mbql-child-2 native-child grandchild grandchild-native]]
               (events/publish-event! :event/card-create {:object card :user-id (mt/user->id :crowberto)}))
-            (while (#'dependencies.backfill/backfill-dependencies!))
 
             (let [response (mt/user-http-request :crowberto :post 202 "ee/replacement/replace-source"
                                                  {:source_entity_id   old-id
@@ -199,7 +197,6 @@
                                              :name          "Child card"}]
         (mt/with-model-cleanup [:model/ReplacementRun :model/Dependency]
           (events/publish-event! :event/card-create {:object child-card :user-id (mt/user->id :crowberto)})
-          (while (#'dependencies.backfill/backfill-dependencies!))
           ;; Insert a fake active run to simulate one already running
           (let [run (replacement-run/create-run! :card old-id :card new-id (mt/user->id :crowberto))]
             (replacement-run/start-run! (:id run)))
@@ -231,7 +228,6 @@
                                              :name          "Child Card"}]
         (mt/with-model-cleanup [:model/ReplacementRun :model/Dependency]
           (events/publish-event! :event/card-create {:object child-card :user-id (mt/user->id :crowberto)})
-          (while (#'dependencies.backfill/backfill-dependencies!))
           (let [response (mt/user-http-request :crowberto :post 202 "ee/replacement/replace-source"
                                                {:source_entity_id   old-id
                                                 :source_entity_type :card
@@ -264,7 +260,6 @@
                                              :name          "Child card"}]
         (mt/with-model-cleanup [:model/ReplacementRun :model/Dependency]
           (events/publish-event! :event/card-create {:object child-card :user-id (mt/user->id :crowberto)})
-          (while (#'dependencies.backfill/backfill-dependencies!))
           (let [response  (mt/user-http-request :crowberto :post 202 "ee/replacement/replace-source"
                                                 {:source_entity_id   old-id
                                                  :source_entity_type :card
