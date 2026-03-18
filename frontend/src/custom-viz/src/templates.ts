@@ -119,8 +119,10 @@ function metabaseNotifyReload() {
   };
 }
 
+const isWatch = process.argv.includes("--watch");
+
 export default defineConfig({
-  plugins: [metabaseVizExternals(), metabaseNotifyReload()],
+  plugins: [metabaseVizExternals(), ...(isWatch ? [metabaseNotifyReload()] : [])],
   build: {
     outDir: "dist",
     lib: {
