@@ -8,16 +8,25 @@ interface UpdateButtonProps {
   defaultValue: unknown;
   isValueRequired: boolean;
   isValid?: boolean;
+  positional?: boolean;
 }
 
 export function UpdateFilterButton(props: UpdateButtonProps) {
-  const { value, unsavedValue, defaultValue, isValueRequired, isValid } = props;
+  const {
+    value,
+    unsavedValue,
+    defaultValue,
+    isValueRequired,
+    isValid,
+    positional,
+  } = props;
 
   const { label, isDisabled } = getUpdateButtonProps(
     value,
     unsavedValue,
     defaultValue,
     isValueRequired,
+    positional,
   );
 
   return (

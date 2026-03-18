@@ -74,10 +74,10 @@ export function getDefaultValuePopulatedParameters(
 
 // Needed because parameter values might be arrays
 // in which case order of elements isn't guaranteed
-export function areParameterValuesIdentical(a, b) {
+export function areParameterValuesIdentical(a, b, positional = false) {
   return _.isEqual(
-    Array.isArray(a) ? a.slice().sort() : a,
-    Array.isArray(b) ? b.slice().sort() : b,
+    Array.isArray(a) && !positional ? a.slice().sort() : a,
+    Array.isArray(b) && !positional ? b.slice().sort() : b,
   );
 }
 
