@@ -12,15 +12,6 @@ import {
 
 import { idsToObjectMap } from "./utils";
 
-// import { getDatabases, getTables, getFields, getSegments } from "metabase/selectors/metadata";
-
-export {
-  getShallowDatabases as getDatabases,
-  getShallowTables as getTables,
-  getShallowFields as getFields,
-  getShallowSegments as getSegments,
-} from "metabase/selectors/metadata";
-
 export const getUser = (state, props) => state.currentUser;
 
 export const getSegmentId = (state, props) =>

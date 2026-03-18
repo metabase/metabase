@@ -421,6 +421,8 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
     });
 
     it("should load the embedded Metabot component", () => {
+      cy.request("PUT", "/api/setting/use-native-agent", { value: true });
+
       H.visitCustomHtmlPage(`
       ${H.getNewEmbedScriptTag()}
       ${H.getNewEmbedConfigurationScript()}
@@ -432,7 +434,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
         cy.findByText("Ask questions to AI.").should("be.visible");
         cy.findByPlaceholderText("Ask AI a question...").type("Foo{enter}");
         cy.findByText(
-          "Metabot is currently offline. Please try again later.",
+          "Sorry, an error occurred: No OpenRouter API key is set. If this persists, please contact your administrator.",
         ).should("be.visible");
 
         cy.log(

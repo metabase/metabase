@@ -2740,6 +2740,7 @@ describe("scenarios > admin > transforms > jobs", () => {
   beforeEach(() => {
     H.restore("postgres-writable");
     H.resetTestTable({ type: "postgres", table: "many_schemas" });
+    H.resetSnowplow();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
@@ -2756,6 +2757,14 @@ describe("scenarios > admin > transforms > jobs", () => {
 
       H.DataStudio.Jobs.editor().button("Save").click();
       cy.wait("@createJob");
+
+      cy.log("verify transform_job_created event was tracked");
+      H.expectUnstructuredSnowplowEvent({
+        event: "transform_job_created",
+        triggered_from: "transform_job_new",
+        result: "success",
+      });
+
       H.undoToast().findByText("New job created").should("be.visible");
 
       H.DataStudio.Jobs.editor().within(() => {
@@ -2781,6 +2790,14 @@ describe("scenarios > admin > transforms > jobs", () => {
       H.popover().findByText("daily").click();
       H.DataStudio.Jobs.editor().button("Save").click();
       cy.wait("@createJob");
+
+      cy.log("verify transform_job_created event was tracked");
+      H.expectUnstructuredSnowplowEvent({
+        event: "transform_job_created",
+        triggered_from: "transform_job_new",
+        result: "success",
+      });
+
       H.undoToast().findByText("New job created").should("be.visible");
 
       H.DataStudio.Jobs.editor().within(() => {
