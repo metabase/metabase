@@ -121,7 +121,7 @@ jobs:
       timeout-minutes: 5
 
   verify-docker-pull-arm:
-    runs-on: arm-ubuntu-24-2core
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     needs: containerize
     if: contains(needs.containerize.outputs.platforms, 'linux/arm64')
     timeout-minutes: 15
