@@ -1,9 +1,13 @@
 (ns metabase-enterprise.metabot-v3.util
   (:require
+   [clojure.data.xml :as xml]
    [clojure.set :as set]
+   [clojure.string :as str]
    [clojure.walk :as walk]
    [metabase.util :as u]
    [metabase.util.json :as json]))
+
+(set! *warn-on-reflection* true)
 
 (defn- safe-case-updater
   [f]
@@ -40,11 +44,17 @@
 
 (def prefix-type "AI SDK prefix to type" (set/map-invert type-prefix))
 
+(defn parse-aisdk-line
+  "Parse a single AI SDK stream line into [type content].
+   Each line has a 2-char type prefix followed by a JSON payload."
+  [line]
+  [(get prefix-type (subs line 0 2)) (json/decode+kw (subs line 2))])
+
 (defn aisdk->messages
   "Convert AI SDK line format into an array of parsed messages."
   [role lines]
   (into [] (comp
-            (map (fn [line] [(get prefix-type (subs line 0 2)) (json/decode+kw (subs line 2))]))
+            (map parse-aisdk-line)
             (partition-by first)
             (mapcat (fn [block]
                       (let [type (ffirst block)]
@@ -73,5 +83,19 @@
                                                   :finish_reason (:finishReason v)
                                                   :usage         (-> (:usage v)
                                                                      (dissoc :promptTokens :completionTokens))})
-                                               block))))))
+                                               block)
+                          ;; START_STEP and FINISH_STEP are metadata, not stored as messages
+                          (:START_STEP
+                           :FINISH_STEP)  [])))))
         lines))
+
+(defn xml
+  "Format hiccup-like data structure to an XML string"
+  [& bits]
+  (let [fmt (fn [v]
+              (let [res ^String (xml/indent-str (xml/sexp-as-element v))]
+                (cond-> res
+                  ;; strip preamble
+                  (str/starts-with? res "<?xml") (subs (inc (.indexOf res "\n"))))))]
+    (->> (map fmt bits)
+         (str/join "\n"))))

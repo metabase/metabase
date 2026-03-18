@@ -7,7 +7,7 @@ import {
   COLUMN_SPLIT_SETTING,
   multiLevelPivot,
   pivot,
-} from "metabase/lib/data_grid";
+} from "metabase/visualizations/lib/data_grid";
 import { TYPE } from "metabase-lib/v1/types/constants";
 
 const dimension = (i) => ({

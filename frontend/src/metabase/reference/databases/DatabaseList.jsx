@@ -12,9 +12,10 @@ import CS from "metabase/css/core/index.css";
 import { connect } from "metabase/lib/redux";
 import * as metadataActions from "metabase/redux/metadata";
 import { NoDatabasesEmptyState } from "metabase/reference/databases/NoDatabasesEmptyState";
+import { getShallowDatabases as getDatabases } from "metabase/selectors/metadata";
 
 import ReferenceHeader from "../components/ReferenceHeader";
-import { getDatabases, getError, getLoading } from "../selectors";
+import { getError, getLoading } from "../selectors";
 
 const mapStateToProps = (state, props) => ({
   entities: getDatabases(state, props),
