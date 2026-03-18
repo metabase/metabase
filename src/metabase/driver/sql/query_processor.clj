@@ -13,6 +13,7 @@
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
    [metabase.driver.sql.query-processor.deprecated :as sql.qp.deprecated]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -1887,8 +1888,8 @@
 (defmethod unwrap-value-literal :sql
   [_driver maybe-value-form]
   (lib.util.match/match-lite maybe-value-form
-                             [:value x & _] x
-                             _              maybe-value-form))
+    [:value x & _] x
+    _              maybe-value-form))
 
 (defmethod ->honeysql [:sql :!=]
   [driver [_ field value]]
