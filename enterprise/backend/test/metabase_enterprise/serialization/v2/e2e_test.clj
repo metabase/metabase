@@ -16,6 +16,7 @@
    [metabase.test :as mt]
    [metabase.test.generate :as test-gen]
    [metabase.util.yaml :as yaml]
+   [metabase.warehouses.models.database :as models.database]
    [reifyhealth.specmonstah.core :as rs]
    [toucan2.core :as t2])
   (:import
@@ -27,7 +28,8 @@
 ;; `reindex!` below is ok in a parallel test since it's not actually executing anything
 #_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (use-fixtures :each (fn [thunk]
-                      (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
+                      (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)
+                                                  models.database/assert-not-h2! (constantly nil)]
                         (thunk))))
 
 (defn- dir->contents-set [p ^File dir]
