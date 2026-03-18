@@ -9,6 +9,7 @@ import { b64_to_utf8 } from "metabase/lib/encoding";
 import type { Card } from "metabase-types/api";
 
 /**
+ * @internal Not part of the public API yet. Do not use in external integrations.
  * @interface
  * @expand
  * @category AdHocQuestion
