@@ -84,11 +84,14 @@
                        :model/Field     _            {:table_id table1  :name "foo"}
                        :model/Table     {table2 :id} {:schema   schema  :name "python_output"}
                        :model/Field     _            {:table_id table2  :name "bar"}
+                       ;; SQL transform that depends on orders table
                        :model/Transform {t1 :id}     (sql-tx {:database (mt/id)
                                                               :type     "query"
                                                               :query    {:source-table (mt/id :orders)}}
                                                              "sql_output")
+                       ;; Python transform that depends on the SQL transform's output
                        :model/Transform {t2 :id}     (py-tx [(transforms.tu/source-table-entry "sql_output" table1)] "python_output")
+                       ;; Another SQL transform that depends on the Python transform's output
                        :model/Transform {t3 :id}     (sql-tx {:database (mt/id)
                                                               :type     "query"
                                                               :query    {:source-table table2}}      "final_output")]

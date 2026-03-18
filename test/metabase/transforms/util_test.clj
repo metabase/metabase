@@ -374,7 +374,6 @@
                 (is (= transform-id
                        (t2/select-one-fn :transform_id :model/Table :id table-id)))))))))))
 
-
 (deftest transform-hydration-test
   (testing "hydrating :transform on a table"
     (mt/with-premium-features #{:transforms-basic}
