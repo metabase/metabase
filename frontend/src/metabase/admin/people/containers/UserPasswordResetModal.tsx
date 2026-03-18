@@ -101,7 +101,7 @@ const UserPasswordResetModalInner = ({
     return (
       <ConfirmModal
         opened
-        title={t`${user.common_name}’s password has been reset`}
+        title={t`${user.common_name}'s password has been reset`}
         onConfirm={onClose}
         confirmButtonProps={{ color: "brand", variant: "filled" }}
         confirmButtonText={t`Done`}
@@ -109,7 +109,7 @@ const UserPasswordResetModalInner = ({
         onClose={onClose}
         message={
           <>
-            <Text pb="lg">{t`Here’s a temporary password they can use to log in and then change their password.`}</Text>
+            <Text pb="lg">{t`Here's a temporary password they can use to log in and then change their password.`}</Text>
             <PasswordReveal password={temporaryPassword} />
           </>
         }
@@ -120,7 +120,7 @@ const UserPasswordResetModalInner = ({
   return (
     <Modal
       opened
-      title={t`Reset ${user.common_name}’s password?`}
+      title={t`Reset ${user.common_name}'s password?`}
       onClose={onClose}
       size="lg"
     >
