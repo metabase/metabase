@@ -55,7 +55,7 @@
                     ;; this following test flakes in CI for unknown reasons
                     ;;"http://0xc0000200"                        true
                     ;; Classpath resources are NOT valid when env var is not set
-                    "app/assets/geojson/world.json"            false
+                    "test.geojson"                             false
                     ;; Other files are not
                     "./README.md"                              false
                     "file:///tmp"                              false
