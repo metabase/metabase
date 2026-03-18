@@ -31,6 +31,8 @@
    [metabase.logger.api]
    [metabase.login-history.api]
    [metabase.measures.api]
+   [metabase.metabot-v3.api]
+   [metabase.metabot-v3.tools.api]
    [metabase.metrics.api]
    [metabase.model-persistence.api]
    [metabase.native-query-snippets.api]
@@ -179,6 +181,8 @@
    "/login-history"        (+auth 'metabase.login-history.api)
    "/measure"              (+auth 'metabase.measures.api)
    "/metric"               (+auth 'metabase.metrics.api)
+   "/metabot"              metabase.metabot-v3.api/routes
+   "/metabot/tools"        metabase.metabot-v3.tools.api/routes
    "/model-index"          (+auth 'metabase.indexed-entities.api)
    "/native-query-snippet" (+auth 'metabase.native-query-snippets.api)
    "/notification"         metabase.notification.api/notification-routes
