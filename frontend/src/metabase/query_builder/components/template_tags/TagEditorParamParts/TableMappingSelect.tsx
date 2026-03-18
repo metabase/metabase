@@ -1,7 +1,9 @@
+import { useId } from "react";
 import { t } from "ttag";
 
+import S from "metabase/parameters/components/RequiredParamToggle/RequiredParamToggle.module.css";
 import { SchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
-import { Group, HoverCard, Icon, Switch, Text } from "metabase/ui";
+import { Box, Group, HoverCard, Icon, Switch, Text } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { TableId, TemplateTag } from "metabase-types/api";
 
@@ -24,6 +26,7 @@ export function TableMappingSelect({
 }: TableMappingSelectProps) {
   const tableId = tag["table-id"];
   const isEmpty = tableId == null;
+  const id = useId();
 
   return (
     <>
@@ -46,27 +49,31 @@ export function TableMappingSelect({
         />
       </InputContainer>
       <InputContainer>
-        <Group gap="xs">
+        <Group gap="sm">
           <Switch
-            id={`emit-alias-toggle-${tag.id}`}
-            label={t`Emit table alias`}
+            id={id}
             checked={tag["emit-alias"] ?? true}
             onChange={(e) => onChangeEmitAlias(e.currentTarget.checked)}
           />
-          <HoverCard>
-            <HoverCard.Target>
-              <Icon
-                c="text-secondary"
-                name="info"
-                data-testid="emit-alias-info-icon"
-              />
-            </HoverCard.Target>
-            <HoverCard.Dropdown>
-              <Text p="md" maw="24rem">
-                {t`When enabled, the table reference will include an alias matching the variable name.`}
-              </Text>
-            </HoverCard.Dropdown>
-          </HoverCard>
+          <Box>
+            <label className={S.SettingRequiredLabel} htmlFor={id}>
+              {t`Use variable name as alias`}
+              <HoverCard>
+                <HoverCard.Target>
+                  <Icon
+                    c="text-secondary"
+                    name="info"
+                    data-testid="emit-alias-info-icon"
+                  />
+                </HoverCard.Target>
+                <HoverCard.Dropdown>
+                  <Text p="md" maw="24rem">
+                    {t`You can refer to this table by the variable name in other parts of the query.`}
+                  </Text>
+                </HoverCard.Dropdown>
+              </HoverCard>
+            </label>
+          </Box>
         </Group>
       </InputContainer>
     </>
