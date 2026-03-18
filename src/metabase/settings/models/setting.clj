@@ -490,15 +490,14 @@
   Should be called during startup after all settings are registered."
   []
   (doseq [[_ setting] @registered-settings
-          :let [deprecated-name (:deprecated-name setting)]
-          :when deprecated-name
+          :when (:deprecated-name setting)
           :when (and (allows-site-wide-values? setting)
                      (allows-setting-via-env? setting))
-          :let [primary-v (env/env (setting-env-map-name setting))
-                legacy-v  (env/env (setting-env-map-name deprecated-name))]
+          :let [legacy-v (env/env (setting-env-map-name (:deprecated-name setting)))]
           :when (seq legacy-v)]
     (let [primary-env (env-var-name setting)
-          legacy-env  (env-var-name deprecated-name)]
+          legacy-env  (env-var-name (:deprecated-name setting))
+          primary-v   (env/env (setting-env-map-name setting))]
       (cond
         (and (seq primary-v) (not= primary-v legacy-v))
         (log/warnf "%s and deprecated %s have conflicting values; using %s. Remove %s."

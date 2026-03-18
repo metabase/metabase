@@ -95,12 +95,6 @@
       (str "> DEPRECATED: " deprecated)
       "> DEPRECATED")))
 
-(defn- format-deprecated-name
-  "Shows the deprecated env var name that still works as a fallback."
-  [env-var]
-  (when-let [deprecated-name (:deprecated-name env-var)]
-    (str "Deprecated env var: `" (setting/env-var-name deprecated-name) "`")))
-
 (def paid-message
   "Used to mark an env var that requires a paid plan."
   "> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.")
@@ -160,7 +154,6 @@
                             ;; Like `- Default: 100`
                             (format-list [(format-type env-var)
                                           (format-default env-var)
-                                          (format-deprecated-name env-var)
                                           (format-export env-var)
                                           (format-config-name env-var)])
                             (format-description env-var)
