@@ -6,6 +6,7 @@ import type {
   CollectionItemModel,
   Dataset,
   Field,
+  NativeQuerySnippet,
   ParameterValuesMap,
   TimelineEventId,
 } from "metabase-types/api";
@@ -21,6 +22,16 @@ export type InitialChartSettingState = {
 export type ForeignKeyReference = {
   status: number;
   value: number;
+};
+
+type Position = {
+  row: number;
+  column: number;
+};
+
+export type Range = {
+  start: Position;
+  end: Position;
 };
 
 export interface QueryBuilderUIControls {
@@ -49,10 +60,16 @@ export interface QueryBuilderUIControls {
   showSidebarTitle: boolean;
   modal: QueryModalType | null;
   modalContext: TimelineEventId | null;
+  modalSnippet?:
+    | NativeQuerySnippet
+    | Partial<Omit<NativeQuerySnippet, "id">>
+    | null;
   dataReferenceStack: null;
   highlightedNativeQueryLineNumbers: number[];
   isShowingListViewConfiguration: boolean;
   scrollToLastColumn?: boolean;
+  questionDetailsTimelineDrawerState: string;
+  nativeEditorSelectedRange: Range[];
 }
 
 export interface QueryBuilderLoadingControls {
@@ -95,4 +112,6 @@ export interface QueryBuilderState {
     cardId?: number;
     serializedCard: string;
   } | null;
+
+  visibleTimelineEventIds: TimelineEventId[];
 }
