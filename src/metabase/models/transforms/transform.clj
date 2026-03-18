@@ -245,6 +245,9 @@
   transform)
 
 (t2/define-before-delete :model/Transform [transform]
+  ;; TODO (Chris 2026-03-19) -- Once we have indexed FKs pointing from both global and workspace transforms
+  ;; to their target table, we should consider synchronously deleting orphaned provisional table rows
+  ;; (tables that have never been physically materialized). See gc-transform-target-tables! for the batch equivalent.
   (events/publish-event! :event/delete-transform {:id (:id transform)})
   (search.core/delete! :model/Transform [(str (:id transform))])
   transform)
