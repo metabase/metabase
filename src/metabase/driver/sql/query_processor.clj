@@ -2032,7 +2032,7 @@
 (defn- apply-source-query
   "Handle a `:source-query` clause by adding a recursive `SELECT` or native query. If the source query has ambiguous
   column names, use a `WITH` statement to rename the source columns. At the time of this writing, all source queries
-  are aliased as `source`."
+  are aliased as `__mb_source`."
   [driver honeysql-form {{:keys [native params] persisted :persisted-info/native :as source-query} :source-query
                          source-metadata :source-metadata}]
   (let [table-alias (->honeysql driver (h2x/identifier :table-alias source-query-alias))
