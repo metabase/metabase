@@ -14,6 +14,7 @@ import {
   getLeftHeaderWidths,
   isColumnValid,
   isFormattablePivotColumn,
+  leftHeaderCellSizeAndPositionGetter,
   updateValueWithCurrentColumns,
 } from "./utils";
 
@@ -353,6 +354,35 @@ describe("Visualizations > Visualizations > PivotTable > utils", () => {
         { values: ["bar1", "bar2"], hasSubtotal: false },
         { values: ["baz1"], hasSubtotal: true },
       ]);
+    });
+  });
+
+  describe("leftHeaderCellSizeAndPositionGetter", () => {
+    it("should return the correct width for a subtotal", () => {
+      const result = leftHeaderCellSizeAndPositionGetter(
+        { depth: 1, maxDepthBelow: 0, isSubtotal: true } as HeaderItem,
+        [100, 100, 100],
+        [0, 1, 2],
+      );
+      expect(result.width).toBe(200);
+    });
+
+    it("should return the correct width for a non-subtotal", () => {
+      const result = leftHeaderCellSizeAndPositionGetter(
+        { depth: 1, maxDepthBelow: 1, isSubtotal: false } as HeaderItem,
+        [100, 100, 100],
+        [0, 1, 2],
+      );
+      expect(result.width).toBe(100);
+    });
+
+    it("non-subtotal widths should not increase when columns are collapsed", () => {
+      const result = leftHeaderCellSizeAndPositionGetter(
+        { depth: 1, maxDepthBelow: 0, isSubtotal: false } as HeaderItem,
+        [100, 100, 100],
+        [0, 1, 2],
+      );
+      expect(result.width).toBe(100);
     });
   });
 });
