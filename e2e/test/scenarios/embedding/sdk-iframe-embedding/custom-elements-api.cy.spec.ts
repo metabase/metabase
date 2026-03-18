@@ -570,8 +570,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
   });
 
   describe("<metabase-adhoc>", () => {
-    // Simple Orders query: SELECT * FROM orders — used for basic rendering tests.
-    // Produces column headers like "ID", "Total", etc. but no title (no aggregation).
+    // Has column headers like "ID", "Total", etc. but no aggregation.
     const ordersQuery = btoa(
       JSON.stringify({
         database: 1,
@@ -580,9 +579,8 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
       }),
     );
 
-    // Orders query with aggregation: Max of Quantity, grouped by Product ID.
-    // Produces the title "Max of Quantity by Product ID" for with-title tests.
-    const ordersAggQuery = btoa(
+    // Produces the title "Max of Quantity by Product ID"
+    const maxQuantityQuery = btoa(
       JSON.stringify({
         database: 1,
         type: "query",
@@ -609,7 +607,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
       H.visitCustomHtmlPage(`
       ${H.getNewEmbedScriptTag()}
       ${H.getNewEmbedConfigurationScript()}
-      <metabase-adhoc query="${ordersAggQuery}" with-title />
+      <metabase-adhoc query="${maxQuantityQuery}" with-title />
       `);
 
       H.getSimpleEmbedIframeContent()
@@ -621,7 +619,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
       H.visitCustomHtmlPage(`
       ${H.getNewEmbedScriptTag()}
       ${H.getNewEmbedConfigurationScript()}
-      <metabase-adhoc query="${ordersAggQuery}" with-title="false" />
+      <metabase-adhoc query="${maxQuantityQuery}" with-title="false" />
       `);
 
       H.getSimpleEmbedIframeContent()
