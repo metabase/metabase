@@ -1,8 +1,9 @@
+import type { FormattingColumn } from "metabase/visualizations/types";
 import { isCurrency, isPercentage } from "metabase-lib/v1/types/utils/isa";
-import type { ColumnSettings, DatasetColumn } from "metabase-types/api";
+import type { ColumnSettings } from "metabase-types/api";
 
 export function getDefaultNumberStyle(
-  column: DatasetColumn,
+  column: FormattingColumn,
   columnSettings: ColumnSettings,
 ) {
   if (isCurrency(column) && columnSettings["currency"]) {
