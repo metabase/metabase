@@ -3112,7 +3112,7 @@
           (is (nil? (t2/select-one-fn :table_id :workspace_input_external :id wie-no-match-id))))
         (migrate!)
         (testing "Provisional metabase_table created for transform target"
-          (let [provisional (first (t2/query {:select [:active :transform_target :data_source :display_name]
+          (let [provisional (first (t2/query {:select [:active :transform_target :data_source :data_authority :display_name]
                                               :from   [:metabase_table]
                                               :where  [:and
                                                        [:= :db_id db-id]
@@ -3122,6 +3122,7 @@
             (is (false? (:active provisional)))
             (is (true? (:transform_target provisional)))
             (is (= "metabase-transform" (:data_source provisional)))
+            (is (= "computed" (:data_authority provisional)))
             (is (= "New Target Table" (:display_name provisional)))))
         (testing "workspace_output FKs backfilled"
           (is (= table-id (t2/select-one-fn :global_table_id :workspace_output :id wo-id)))

@@ -2057,12 +2057,21 @@
   ;; If the table already exists (active or inactive), do nothing. Otherwise, insert a transform target row.
   ;;
   ;; Similarly, backfill workspace_output rows missing global_table_id or isolated_table_id.
-  (let [;; Simple humanization: replace _ with space, capitalize words
-        humanize (fn [s]
-                   (when s
-                     (->> (str/split s #"_")
-                          (map str/capitalize)
-                          (str/join " "))))
+  (let [;; Reproduces humanization/name->human-readable-name :simple (can't call library code in migrations)
+        acronyms  #{"id" "url" "ip" "uid" "uuid" "guid"}
+        cap-word  (fn [word]
+                    (let [lower (lower-case-en word)]
+                      (if (contains? acronyms lower)
+                        (upper-case-en word)
+                        (if (= word (upper-case-en word))
+                          (str/capitalize word)
+                          (str (str/capitalize (subs word 0 1)) (subs word 1))))))
+        humanize  (fn [s]
+                    (when (seq s)
+                      (let [result (str/join " " (for [part  (str/split s #"[-_\s]+")
+                                                       :when (not (str/blank? part))]
+                                                   (cap-word part)))]
+                        (if (str/blank? result) s result))))
         find-table-id (fn [db-id schema table-name]
                         (:id (first (t2/query {:select [:id]
                                                :from   [:metabase_table]
@@ -2084,6 +2093,7 @@
                                                         :active              false
                                                         :transform_target    true
                                                         :data_source         "metabase-transform"
+                                                        :data_authority      "computed"
                                                         :initial_sync_status "complete"
                                                         :created_at          :%now
                                                         :updated_at          :%now}]})

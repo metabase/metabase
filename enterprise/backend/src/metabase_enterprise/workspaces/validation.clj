@@ -18,7 +18,6 @@
    | external-downstream | not-run       | Output hasn't been created, external transforms need it        |
    | external-downstream | removed-field | Field was removed that external transforms reference           |"
   (:require
-   [clojure.string :as str]
    [metabase-enterprise.workspaces.types :as ws.t]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -79,29 +78,30 @@
 (defn- workspace-outputs
   "Get all workspace outputs with their global and isolated table info.
    Includes both workspace transform outputs and enclosed external transform outputs.
-   Joins with metabase_table to get the active status of each isolated table."
+   Enriches each output with :isolated_active from the referenced metabase_table."
   [workspace-id]
   ;; TODO (Chris 2026-02-02) -- rather fetch all this as an input to graph analysis, and save it in [[graph]].
-  ;; t2/query bypasses model transforms, so we trim ref_id manually (char(36) pads with spaces).
-  (let [ws-outputs  (map #(update % :ref_id str/trim)
-                         (t2/query {:select [:wo.id :wo.ref_id :wo.db_id
-                                             :wo.global_schema :wo.global_table :wo.global_table_id
-                                             :wo.isolated_schema :wo.isolated_table :wo.isolated_table_id
-                                             [:t.active :isolated_active]]
-                                    :from   [[:workspace_output :wo]]
-                                    :left-join [[:metabase_table :t] [:= :wo.isolated_table_id :t.id]]
-                                    :where  [:= :wo.workspace_id workspace-id]}))
+  (let [ws-outputs  (t2/select [:model/WorkspaceOutput
+                                :id :ref_id :db_id
+                                :global_schema :global_table :global_table_id
+                                :isolated_schema :isolated_table :isolated_table_id]
+                               :workspace_id workspace-id)
         ;; External outputs use transform_id (int) instead of ref_id (string)
         ;; Map transform_id to ref_id for compatibility with the rest of the validation code
         ext-outputs (map #(assoc % :ref_id (:transform_id %) :external? true)
-                         (t2/query {:select [:woe.id :woe.transform_id :woe.db_id
-                                             :woe.global_schema :woe.global_table :woe.global_table_id
-                                             :woe.isolated_schema :woe.isolated_table :woe.isolated_table_id
-                                             [:t.active :isolated_active]]
-                                    :from   [[:workspace_output_external :woe]]
-                                    :left-join [[:metabase_table :t] [:= :woe.isolated_table_id :t.id]]
-                                    :where  [:= :woe.workspace_id workspace-id]}))]
-    (concat ws-outputs ext-outputs)))
+                         (t2/select [:model/WorkspaceOutputExternal
+                                     :id :transform_id :db_id
+                                     :global_schema :global_table :global_table_id
+                                     :isolated_schema :isolated_table :isolated_table_id]
+                                    :workspace_id workspace-id))
+        all-outputs (concat ws-outputs ext-outputs)
+        ;; We could avoid this extra query by using a JOIN, but we'd need to define a derived model for this to preserve
+        ;; the model transforms (e.g. char(36) trimming on ref_id), and that feels excessive for a single query.
+        active-ids  (t2/select-fn-set :id [:model/Table :id]
+                                      :id [:in (keep :isolated_table_id all-outputs)]
+                                      :active true)]
+    (for [output all-outputs]
+      (assoc output :isolated_active (contains? active-ids (:isolated_table_id output))))))
 
 (defn- ids-for-type [entities desired-node-type]
   (for [{:keys [node-type id]} entities, :when (= node-type desired-node-type)] id))
