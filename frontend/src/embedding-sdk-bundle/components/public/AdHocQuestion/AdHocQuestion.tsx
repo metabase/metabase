@@ -1,6 +1,10 @@
 import { useMemo } from "react";
+import { t } from "ttag";
 
-import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
+import {
+  SdkError,
+  withPublicComponentWrapper,
+} from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import {
   SdkQuestion,
   type SdkQuestionProps,
@@ -39,15 +43,23 @@ export type AdHocQuestionProps = Omit<
 };
 
 const AdHocQuestionInner = ({ query, ...props }: AdHocQuestionProps) => {
-  const deserializedCard = useMemo((): Card => {
-    const decodedQuery = JSON.parse(b64_to_utf8(query));
+  const deserializedCard = useMemo((): Card | null => {
+    try {
+      const decodedQuery = JSON.parse(b64_to_utf8(query));
 
-    return {
-      display: "table",
-      dataset_query: decodedQuery,
-      visualization_settings: {},
-    } as Card;
+      return {
+        display: "table",
+        dataset_query: decodedQuery,
+        visualization_settings: {},
+      } as Card;
+    } catch {
+      return null;
+    }
   }, [query]);
+
+  if (!deserializedCard) {
+    return <SdkError message={t`Question not found`} />;
+  }
 
   return (
     <SdkQuestion
