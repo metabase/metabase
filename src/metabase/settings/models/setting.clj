@@ -443,7 +443,7 @@
   [setting-nm]
   (str/replace (name setting-nm) #"[^a-zA-Z0-9_-]*" ""))
 
-(defn- env-var-name
+(defn env-var-name
   "Get the env var corresponding to `setting-definition-or-name`. (This is used primarily for documentation purposes)."
   ^String [setting-definition-or-name]
   (str "MB_" (-> (setting-name setting-definition-or-name)

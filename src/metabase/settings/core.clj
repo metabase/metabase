@@ -94,6 +94,7 @@
   default-value
   defsetting
   disabled-for-db-reasons
+  env-var-name
   env-var-value
   export?
   get
