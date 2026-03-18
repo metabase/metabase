@@ -246,14 +246,14 @@ export const leftHeaderCellSizeAndPositionGetter = (
   leftHeaderWidths: number[],
   rowIndexes: number[],
 ) => {
-  const { offset, span, depth, maxDepthBelow } = item;
+  const { offset, span, depth, maxDepthBelow, isSubtotal } = item;
 
   const columnsToSpan = rowIndexes.length - depth - maxDepthBelow;
 
-  // add up all the widths of the columns, other than itself, that this cell spans
-  const spanWidth = sumArray(
-    leftHeaderWidths.slice(depth + 1, depth + columnsToSpan),
-  );
+  // for subtotals, add up all the widths of the columns, other than itself, that this cell spans
+  const spanWidth = isSubtotal
+    ? sumArray(leftHeaderWidths.slice(depth + 1, depth + columnsToSpan))
+    : 0;
   const columnPadding = depth === 0 ? LEFT_HEADER_LEFT_SPACING : 0;
   const columnWidth = leftHeaderWidths[depth];
 
