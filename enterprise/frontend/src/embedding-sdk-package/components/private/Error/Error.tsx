@@ -1,7 +1,7 @@
 import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 // eslint-disable-next-line metabase/no-external-references-for-sdk-package-code
-import { colors } from "metabase/lib/colors/colors";
+import { colors } from "metabase/ui/colors/colors";
 
 type Props = {
   message: string;

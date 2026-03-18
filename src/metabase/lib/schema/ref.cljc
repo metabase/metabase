@@ -56,7 +56,7 @@
   [:and
    [:merge
     {:encode/serialize (fn [opts]
-                         (let [;; These keys were previously in metabase.lib.* namespaces and stripped
+                         (let [ ;; These keys were previously in metabase.lib.* namespaces and stripped
                                ;; by the (= namespace "lib") check. After renaming to :lib/* they'd
                                ;; survive serialization, so exclude them explicitly.
                                exclude (set (vals common/deprecated-lib-key-renames))]

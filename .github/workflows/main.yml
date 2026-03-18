@@ -6,7 +6,7 @@ on:
       - labeled
 jobs:
   on-issue-labeled:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     if: |
       contains(github.event.issue.labels.*.name, 'Type:New Feature')

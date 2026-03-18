@@ -15,6 +15,12 @@
 
 (set! *warn-on-reflection* true)
 
+(defn source-table-entry
+  "Build a full source-table-entry from alias + table_id by looking up database_id and schema."
+  [alias table-id]
+  (let [{:keys [db_id schema]} (t2/select-one [:model/Table :db_id :schema] :id table-id)]
+    {:alias alias :table_id table-id :database_id db_id :schema schema}))
+
 (defn drop-target!
   "Drop transform target `target` and clean up its metadata.
    `target` can be a string or a map. If `target` is a string, type :table is assumed.
@@ -146,6 +152,23 @@
           (:started :running) (do (Thread/sleep 100) (recur))
           (throw (ex-info (format "Transform run failed with status %s" status)
                           {:resp resp :status status})))))))
+
+(defn wait-for-field
+  "Wait for a field with `field-name` to appear as active on the table named `table-name`.
+   Useful after schema changes where sync runs asynchronously."
+  [table-name field-name timeout-ms]
+  (let [timer (u/start-timer)]
+    (loop []
+      (let [table  (t2/select-one :model/Table :name table-name :db_id (mt/id))
+            field  (when table
+                     (t2/select-one :model/Field :table_id (:id table) :name field-name :active true))]
+        (cond
+          field    field
+          (> (u/since-ms timer) timeout-ms)
+          (throw (ex-info (format "Field %s on table %s did not appear after %dms" field-name table-name timeout-ms)
+                          {:table-name table-name :field-name field-name :timeout-ms timeout-ms}))
+          :else    (do (Thread/sleep 200)
+                       (recur)))))))
 
 (defn get-test-schema
   "Get the schema from the products table in the test dataset.

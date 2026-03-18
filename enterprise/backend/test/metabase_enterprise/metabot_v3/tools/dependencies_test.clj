@@ -7,6 +7,7 @@
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
+   [metabase.transforms.test-util :as transforms.tu]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -243,7 +244,7 @@
                     (is (not (contains? broken-question-ids restricted-card-id)))))))))))))
 
 (deftest check-transform-dependencies-python-bypass-test
-  (mt/with-premium-features #{:transforms :transforms-python}
+  (mt/with-premium-features #{:transforms-basic :transforms-python}
     (testing "Python transforms bypass dependency checking"
       (mt/with-test-user :crowberto
         (mt/with-temp [:model/Transform {python-transform-id :id}
@@ -251,13 +252,13 @@
                         :source {:type "python"
                                  :body "print('hello')"
                                  :source-database (mt/id)
-                                 :source-tables {:test (t2/select-one-pk :model/Table :db_id (mt/id))}}
+                                 :source-tables [(transforms.tu/source-table-entry "test" (t2/select-one-pk :model/Table :db_id (mt/id)))]}
                         :target {:type "table"
                                  :schema "public"
                                  :name "python_transform_table"}}]
           (let [modified-source {:type "python"
                                  :body "print('modified')"
-                                 :source-tables {:test (t2/select-one-pk :model/Table :db_id (mt/id))}}
+                                 :source-tables [(transforms.tu/source-table-entry "test" (t2/select-one-pk :model/Table :db_id (mt/id)))]}
                 result (metabot.dependencies/check-transform-dependencies
                         {:id python-transform-id
                          :source modified-source})]

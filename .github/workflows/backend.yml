@@ -14,7 +14,7 @@ concurrency:
 jobs:
   be-linter-clj-kondo:
     if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     name: Clj-Kondo
     steps:
@@ -26,7 +26,7 @@ jobs:
 
   be-linter-eastwood:
     if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     name: Eastwood
     steps:
@@ -36,9 +36,21 @@ jobs:
       - run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood
         name: Run Eastwood linter
 
+  be-linter-eastwood-test:
+    if: ${{ !inputs.skip }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 30
+    name: Eastwood (test)
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+      - run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood/test
+        name: Run Eastwood linter on tests
+
   be-tests:
     if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
       fail-fast: false
@@ -155,7 +167,7 @@ jobs:
   # as `:dev` dependencies). See #27009 for more context.
   be-check:
     if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     strategy:
       matrix:
@@ -171,7 +183,7 @@ jobs:
 
   be-cljfmt:
     if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     name: Cljfmt
     steps:
@@ -184,12 +196,13 @@ jobs:
   be-tests-result:
     needs:
       - be-linter-eastwood
+      - be-linter-eastwood-test
       - be-linter-clj-kondo
       - be-cljfmt
       - be-check
       - be-tests
     if: always() && !cancelled()
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     env:
       needs: ${{ toJson(needs) }}

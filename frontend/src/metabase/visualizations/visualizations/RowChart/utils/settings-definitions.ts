@@ -2,9 +2,10 @@ import { t } from "ttag";
 
 import { GRAPH_GOAL_SETTINGS } from "metabase/visualizations/lib/settings/goal";
 import { getDefaultDimensionLabel } from "metabase/visualizations/lib/settings/graph";
+import type { VisualizationSettingsDefinitions } from "metabase/visualizations/types";
 import type { Series, VisualizationSettings } from "metabase-types/api";
 
-export const ROW_CHART_SETTINGS = {
+export const ROW_CHART_SETTINGS: VisualizationSettingsDefinitions = {
   "stackable.stack_type": {
     get section() {
       return t`Display`;
@@ -15,7 +16,7 @@ export const ROW_CHART_SETTINGS = {
     index: 1,
     widget: "radio",
     default: null,
-    props: {
+    getProps: () => ({
       options: [
         {
           get name() {
@@ -36,7 +37,7 @@ export const ROW_CHART_SETTINGS = {
           value: "normalized",
         },
       ],
-    },
+    }),
   },
   ...GRAPH_GOAL_SETTINGS,
   "graph.x_axis.scale": {
@@ -89,7 +90,7 @@ export const ROW_CHART_SETTINGS = {
     },
     index: 3,
     widget: "select",
-    props: {
+    getProps: () => ({
       options: [
         {
           get name() {
@@ -104,7 +105,7 @@ export const ROW_CHART_SETTINGS = {
           value: true,
         },
       ],
-    },
+    }),
     default: true,
   },
   "graph.y_axis.axis_enabled": {
@@ -119,7 +120,7 @@ export const ROW_CHART_SETTINGS = {
       return t`X-axis`;
     },
     widget: "select",
-    props: {
+    getProps: () => ({
       options: [
         {
           get name() {
@@ -134,7 +135,7 @@ export const ROW_CHART_SETTINGS = {
           value: true,
         },
       ],
-    },
+    }),
     default: true,
   },
   "graph.y_axis.auto_range": {
@@ -288,7 +289,7 @@ export const ROW_CHART_SETTINGS = {
     getHidden: (_series: Series, vizSettings: VisualizationSettings) =>
       vizSettings["graph.show_values"] !== true ||
       vizSettings["stackable.stack_type"] === "normalized",
-    props: {
+    getProps: () => ({
       options: [
         {
           get name() {
@@ -303,7 +304,7 @@ export const ROW_CHART_SETTINGS = {
           value: "full",
         },
       ],
-    },
+    }),
     default: "full",
     readDependencies: ["graph.show_values"],
   },

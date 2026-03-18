@@ -1,4 +1,4 @@
-import { getColorsForValues } from "metabase/lib/colors/charts";
+import { getColorsForValues } from "metabase/ui/colors/charts";
 import type { VisualizationSettings } from "metabase-types/api";
 
 import type { Series } from "../components/RowChart/types";

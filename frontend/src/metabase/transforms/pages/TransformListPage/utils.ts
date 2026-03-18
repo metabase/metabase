@@ -1,4 +1,9 @@
+import { t } from "ttag";
+
 import { getCollectionIcon } from "metabase/entities/collections/utils";
+import { getLibQuery } from "metabase/transforms/utils";
+import * as Lib from "metabase-lib";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Collection, CollectionId, Transform } from "metabase-types/api";
 
 import {
@@ -6,6 +11,40 @@ import {
   getCollectionNodeId,
   getTransformNodeId,
 } from "./types";
+
+export function getIncrementalWarning(
+  transform: Transform,
+  metadata: Metadata,
+): string | undefined {
+  const isIncremental = transform.target.type === "table-incremental";
+  if (!isIncremental) {
+    return undefined;
+  }
+
+  const isNative = transform.source_type === "native";
+  if (isNative) {
+    const libQuery = getLibQuery(transform.source, metadata);
+    const hasTableTag = libQuery
+      ? Object.values(Lib.templateTags(libQuery)).some(
+          (tag) => tag.type === "table" && tag["table-id"] != null,
+        )
+      : false;
+
+    if (!hasTableTag) {
+      return t`Incremental transform with a native query requires a table variable. Please add a table variable to the query and update the checkpoint field.`;
+    }
+  }
+
+  const checkpointFieldId =
+    transform.source["source-incremental-strategy"]?.[
+      "checkpoint-filter-field-id"
+    ];
+  if (!checkpointFieldId) {
+    return t`Incremental transform is enabled but no checkpoint field is selected. Please select a checkpoint field in the transform settings.`;
+  }
+
+  return undefined;
+}
 
 export function buildTreeData(
   collections: Collection[] | undefined,

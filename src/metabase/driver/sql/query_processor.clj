@@ -19,7 +19,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :as perf :refer [some mapv every? select-keys empty? not-empty]]
+   [metabase.util.performance :as perf :refer [empty? every? mapv not-empty select-keys some]]
    [toucan2.pipeline :as t2.pipeline])
   (:import
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
@@ -998,7 +998,7 @@
           (keep (fn [[direction expr]]
                   (if (aggregation? expr)
                     (let [[_aggregation index] expr
-                          agg (unwrap-aggregation-option (aggregations index))]
+                          agg                  (unwrap-aggregation-option (aggregations index))]
                       (when-not (contains-clause? #{:cum-count :cum-sum :offset} agg)
                         [(->honeysql driver agg) direction]))
                     [(->honeysql driver expr) direction])))
@@ -1008,28 +1008,32 @@
   "Order by the first breakout, then partition by all the other ones. See #42003 and
   https://metaboat.slack.com/archives/C05MPF0TM3L/p1714084449574689 for more info."
   [driver inner-query]
-  (let [breakouts (remove
-                   (comp driver-api/qp.util.transformations.nest-breakouts.externally-remapped-field
-                         #(nth % 2))
-                   (:breakout inner-query))
-        group-bys (:group-by (apply-top-level-clause driver :breakout {} inner-query))
+  (let [breakouts            (into []
+                                   (remove
+                                    (comp driver-api/qp.util.transformations.nest-breakouts.externally-remapped-field
+                                          #(nth % 2)))
+                                   (:breakout inner-query))
+        group-bys            (:group-by (apply-top-level-clause driver :breakout {} inner-query))
         finest-temp-breakout (driver-api/finest-temporal-breakout-index breakouts 2)
-        partition-exprs (when (> (count breakouts) 1)
-                          (if finest-temp-breakout
-                            (m/remove-nth finest-temp-breakout group-bys)
-                            (butlast group-bys)))
-        order-bys (over-order-bys driver (:aggregation inner-query)
-                                  (remove
-                                   (comp driver-api/qp.util.transformations.nest-breakouts.externally-remapped-field
-                                         #(nth % 2)
-                                         second)
-                                   (:order-by inner-query)))]
+        partition-exprs      (when (> (count breakouts) 1)
+                               (if finest-temp-breakout
+                                 (m/remove-nth finest-temp-breakout group-bys)
+                                 (butlast group-bys)))
+        order-bys            (remove
+                              (comp driver-api/qp.util.transformations.nest-breakouts.externally-remapped-field
+                                    #(nth % 2)
+                                    second)
+                              (:order-by inner-query))
+        order-bys            (over-order-bys driver
+                                             (:aggregation inner-query)
+                                             order-bys)]
     (merge
      (when (seq partition-exprs)
        {:partition-by (mapv (fn [expr]
                               [expr])
                             partition-exprs)})
-     {:order-by order-bys})))
+     (when (seq order-bys)
+       {:order-by order-bys}))))
 
 (defn- window-aggregation-over-expr-for-query-without-breakouts [driver inner-query]
   (when-let [order-bys (not-empty (:order-by (apply-top-level-clause driver :order-by {} inner-query)))]
@@ -1046,14 +1050,15 @@
              window-aggregation-over-expr-for-query-with-breakouts
 
              (seq (:order-by *inner-query*))
-             window-aggregation-over-expr-for-query-without-breakouts
-
-             :else
-             (throw (ex-info (tru "Window function requires either breakouts or order by in the query")
-                             {:type  driver-api/qp.error-type.invalid-query
-                              :query *inner-query*})))
-         m (f driver *inner-query*)]
-     (-> [:over [expr (merge m additional-hsql)]]
+             window-aggregation-over-expr-for-query-without-breakouts)
+         m (when f
+             (-> (f driver *inner-query*)
+                 (merge additional-hsql)))]
+     (-> (if (seq m)
+           [:over [expr m]]
+           (do
+             (log/debug "OVER contains no GROUP BYs or ORDER BYs, falling back to returning NULL")
+             [:inline nil]))
          (h2x/with-database-type-info (h2x/database-type expr))))))
 
 (defn- format-rows-unbounded-preceding [_clause _args]
@@ -1452,16 +1457,25 @@
     ;; -> [[::h2x/identifier ...] [[::h2x/identifier ...]]]
     ;; -> SELECT date_extract(\"x\", 'month') AS \"x\"
 
-  `clause` will be wrapped in a ::cast if ::add-cast is found in the `clause` options
+    `clause` will be wrapped in a ::cast if ::add-cast is found in the `clause` options
 
     ;; Honey SQL 2
     (as [:expression \"x\" {:base-type :type/Boolean, ::add-cast :bit}])
     ;; -> [[::h2x/typed [:cast ... [:raw \"bit\"]] {:database-type \"bit\"}] [[::h2x/identifier ...]]]
-    ;; -> SELECT CAST(1 AS bit) AS \"x\""
+    ;; -> SELECT CAST(1 AS bit) AS \"x\"
+
+    `clause` will be wrapped in a ::case if ::wrap-in-case is found in the `clause` options
+
+    ;; Honey SQL 2
+    (as [:expression \"x\" {:base-type :type/Boolean, ::wrap-in-case true}])
+    ;; -> [:case [:> ... ...] [:inline 1] :else [:inline 0]]
+    ;; -> SELECT CASE WHEN ... > ... THEN 1 ELSE 0 END AS \"x\""
   [driver clause & _unique-name-fn]
-  (let [cast-type     (-> clause driver-api/field-options ::add-cast)
-        wrap-cast     #(vector ::cast % cast-type)
-        maybe-cast    #(cond-> % cast-type wrap-cast)
+  (let [{cast-type ::add-cast
+         wrap-in-case? ::wrap-in-case} (driver-api/field-options clause)
+        maybe-cast    #(cond-> %
+                         wrap-in-case? (as-> <> (vector ::wrap-in-case <>))
+                         cast-type     (as-> <> (vector ::cast <> cast-type)))
         honeysql-form (->honeysql driver (maybe-cast clause))
         field-alias   (field-clause->alias driver clause)]
     (if field-alias

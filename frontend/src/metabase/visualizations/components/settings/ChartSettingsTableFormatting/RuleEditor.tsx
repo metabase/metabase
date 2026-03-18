@@ -295,7 +295,11 @@ const RuleEditorValueInput = ({
   onChange: (rule: ColumnFormattingSetting) => void;
   disabled?: boolean;
 }) => {
-  if (!hasOperand) {
+  if (
+    !hasOperand ||
+    typeof rule.value === "boolean" ||
+    typeof rule.value === "object"
+  ) {
     return null;
   }
 

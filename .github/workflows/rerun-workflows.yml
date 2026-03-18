@@ -9,7 +9,7 @@ on:
 jobs:
   rerun-on-failure:
     name: 'Re-run ''${{ github.event.workflow_run.name }}'' workflow'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     # Do not re-run scheduled workflow runs
     if: github.event.workflow_run.conclusion == 'failure' && github.event.workflow_run.event != 'schedule'
     env:
@@ -40,11 +40,19 @@ jobs:
             const BRANCH = process.env.BRANCH_NAME;
 
             if (ATTEMPT <= MAX_ATTEMPTS) {
-              github.rest.actions.reRunWorkflowFailedJobs({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                run_id: ${{ github.event.workflow_run.id }},
-              });
+              try {
+                await github.rest.actions.reRunWorkflowFailedJobs({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  run_id: ${{ github.event.workflow_run.id }},
+                });
+              } catch (error) {
+                if (error.status === 403) {
+                  console.log(`Skipping re-run: ${error.message}`);
+                } else {
+                  throw error;
+                }
+              }
             } else if (!BRANCH.includes('backport-')) {
               // notify slack of repeated failure
               const { WebClient } = require('@slack/web-api');

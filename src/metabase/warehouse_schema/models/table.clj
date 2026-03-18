@@ -110,25 +110,21 @@
                                :status-code 400}))))
           (some-> value name))})
 
-(def ^:private transform-data-layer
-  {:in  (:in mi/transform-keyword)
-   :out (comp (some-fn data-layers
-                       ;; some databases may retain prior medallion values
-                       ;; this is due to race conditions with migrations (migration runs can contend with running writes)
-                       ;; e.g. we saw the prior values retained for the sync of a new search index table in stats.
-                       ;; we might later have a second migration and risk removing this map or find a better way
-                       ;; to make breaking enum migrations.
-                       {:copper :hidden
-                        :bronze :final
-                        :silver :final
-                        :gold   :final}
-                       identity)
-              (:out mi/transform-keyword))})
+(def ^:private legacy-data-layer->current
+  "Map old medallion data_layer values to current values.
+   Used to handle values from pre-v59 databases or serialization exports."
+  {:copper :hidden
+   :bronze :final
+   :silver :final
+   :gold   :final})
 
 (t2/deftransforms :model/Table
   {:entity_type     mi/transform-keyword
    :visibility_type mi/transform-keyword
-   :data_layer      (mi/transform-validator transform-data-layer (partial mi/assert-optional-enum data-layers))
+   :data_layer      (mi/transform-validator-with-fixes
+                     mi/transform-keyword
+                     (partial mi/assert-optional-enum data-layers)
+                     (some-fn legacy-data-layer->current identity))
    :field_order     mi/transform-keyword
    :data_source     (mi/transform-validator mi/transform-keyword (partial mi/assert-optional-enum data-sources))
    ;; Warning: by using a transform to handle unexpected enum values, serialization becomes lossy
@@ -379,8 +375,10 @@
    column-or-exp      :- :any
    user-info          :- perms/UserInfo
    permission-mapping :- perms/PermissionMapping
-   & [{:keys [include-published-via-collection?]}]]
-  (let [{:keys [clause with]} (perms/visible-table-filter-with-cte column-or-exp user-info permission-mapping)]
+   & [{:keys [include-published-via-collection? active-only?]}]]
+  (let [opts (cond-> {}
+               (some? active-only?) (assoc :active-only? active-only?))
+        {:keys [clause with]} (perms/visible-table-filter-with-cte column-or-exp user-info permission-mapping opts)]
     (if-let [published-clause (and include-published-via-collection?
                                    (perms/published-table-visible-clause column-or-exp user-info))]
       {:clause [:or clause
@@ -388,7 +386,8 @@
                  [:in column-or-exp (perms/visible-table-filter-select
                                      :id
                                      user-info
-                                     {:perms/view-data :unrestricted})]
+                                     {:perms/view-data :unrestricted}
+                                     opts)]
                  published-clause]]
        :with with}
       {:clause clause

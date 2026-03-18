@@ -18,6 +18,7 @@
    [metabase.server.middleware.session :as mw.session]
    [metabase.server.middleware.settings-cache :as mw.settings-cache]
    [metabase.server.middleware.ssl :as mw.ssl]
+   [metabase.server.middleware.trace :as mw.trace]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [ring.core.protocols :as ring.protocols]
@@ -80,6 +81,7 @@
         #'mw.mp-cache/wrap-metadata-provider-cache   ; initializes the Lib-BE metadata provider cache
         #'wrap-keyword-params                        ; converts string keys in :params to keyword keys
         #'wrap-params                                ; parses GET and POST params as :query-params/:form-params and both as :params
+        #'mw.auth/verify-slack-request               ; looks for requests from slack and assocs a :slack/validated? on the request if valid
         #'mw.misc/maybe-set-site-url                 ; set the value of `site-url` if it hasn't been set yet
         #'mw.session/reset-session-timeout           ; Resets the timeout cookie for user activity to [[metabase.request.cookies/session-timeout]]
         #'mw.session/bind-current-user               ; Binds *current-user* and *current-user-id* if :metabase-user-id is non-nil
@@ -94,6 +96,7 @@
         #'mw.misc/add-content-type                   ; Adds a Content-Type header for any response that doesn't already have one
         #'mw.misc/disable-streaming-buffering        ; Add header to streaming (async) responses so nginx doesn't buffer keepalive bytes
         #'wrap-gzip                                  ; GZIP response if client can handle it
+        #'mw.trace/wrap-trace                         ; Create root OpenTelemetry span per request (after request-id is available)
         #'mw.request-id/wrap-request-id              ; Add a unique request ID to the request
         #'mw.misc/bind-request                       ; bind `metabase.middleware.misc/*request*` for the duration of the request
         #'mw.ssl/redirect-to-https-middleware

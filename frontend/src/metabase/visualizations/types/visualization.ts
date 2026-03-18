@@ -2,16 +2,18 @@ import type { ComponentType, ReactNode } from "react";
 
 import type { OptionsType } from "metabase/lib/formatting/types";
 import type { IconName, IconProps } from "metabase/ui";
-import type { Mode } from "metabase/visualizations/click-actions/Mode";
+import type { ColorGetter } from "metabase/ui/colors/types";
 import type {
   TextHeightMeasurer,
   TextWidthMeasurer,
 } from "metabase/visualizations/shared/types/measure-text";
 import type {
   ClickActionModeGetter,
+  ClickActionsMode,
   ClickObject,
   QueryClickActionsMode,
 } from "metabase/visualizations/types";
+import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
@@ -23,6 +25,7 @@ import type {
   DatasetData,
   RawSeries,
   RowValue,
+  RowValues,
   Series,
   SeriesSettings,
   SingleSeries,
@@ -55,10 +58,13 @@ export interface Padding {
   right: number;
 }
 
-export type Formatter = (value: unknown, options?: OptionsType) => string;
+export type Formatter = (
+  value: RowValue,
+  options?: OptionsType,
+) => string | null;
 export type TableCellFormatter = (value: RowValue) => ReactNode;
 
-export type ColorGetter = (colorName: string) => string;
+export type Extent = [number, number];
 
 export interface RenderingContext {
   getColor: ColorGetter;
@@ -134,6 +140,7 @@ export interface VisualizationProps {
   rawSeries: RawSeries;
   visualizerRawSeries?: RawSeries;
   settings: ComputedVisualizationSettings;
+  autoAdjustSettings?: boolean;
   hiddenSeries?: Set<string>;
   headerIcon?: IconProps | null;
   errorIcon?: IconName | null;
@@ -153,6 +160,7 @@ export interface VisualizationProps {
   isMobile: boolean;
   isSettings: boolean;
   showAllLegendItems?: boolean;
+  hideLegend?: boolean;
   isRawTable?: boolean;
   scrollToLastColumn?: boolean;
   hovered?: HoveredObject | null;
@@ -181,6 +189,7 @@ export interface VisualizationProps {
   onRenderError: (error?: string) => void;
   onActionDismissal: () => void;
   onChangeCardAndRun?: OnChangeCardAndRun | null;
+  onBrush?: ((range: { start: number; end: number }) => void) | null;
   onHoverChange: (hoverObject?: HoveredObject | null) => void;
   onVisualizationClick: (clickObject: ClickObject | null) => void;
   onUpdateVisualizationSettings: (
@@ -226,7 +235,7 @@ export type VisualizationPassThroughProps = {
     index: number,
     theme: unknown,
   ) => ReactNode;
-  mode?: ClickActionModeGetter | Mode | QueryClickActionsMode;
+  mode?: ClickActionModeGetter | ClickActionsMode | QueryClickActionsMode;
   renderEmptyMessage?: boolean;
 
   // frontend/src/metabase/dashboard/components/DashCard/DashCardVisualization.tsx
@@ -335,13 +344,6 @@ export type VisualizationSettingDefinition<
       : ComputedVisualizationSettings,
     extra?: SettingsExtra,
   ) => TValue;
-  getDisabled?: (
-    object: T,
-    settings: T extends DatasetColumn
-      ? ColumnSettings
-      : ComputedVisualizationSettings,
-    extra?: SettingsExtra,
-  ) => boolean;
   getSection?: (
     object: T,
     settings: T extends DatasetColumn
@@ -350,9 +352,7 @@ export type VisualizationSettingDefinition<
     extra?: SettingsExtra,
   ) => string;
   autoOpenWhenUnset?: boolean;
-  disabled?: boolean;
   default?: TValue;
-  marginBottom?: string;
   noPadding?: boolean;
   value?: TValue;
   set?: boolean;
@@ -365,7 +365,6 @@ export type VisualizationSettingDefinition<
   ) => string;
   persistDefault?: boolean;
   inline?: boolean;
-  props?: Partial<TProps>;
   getProps?: (
     object: T,
     vizSettings: T extends DatasetColumn
@@ -390,8 +389,13 @@ export type CompleteVisualizationSettingDefinition<
   T = unknown,
   TValue = unknown,
   TProps extends Record<string, unknown> = Record<string, unknown>,
-> = VisualizationSettingDefinition<T, TValue, TProps> & {
+> = Omit<
+  VisualizationSettingDefinition<T, TValue, TProps>,
+  "getMarginBottom" | "getProps"
+> & {
   id: string;
+  marginBottom?: string;
+  props: Partial<TProps>;
 };
 
 export type DatasetColumnSettingDefinition<
@@ -432,6 +436,7 @@ export type VisualizationSettingsDefinitions<
   color?: SingleSeriesSettingDefinition<Value, Props>;
   column?: DatasetColumnSettingDefinition<Value, Props>;
   column_settings?: DatasetColumnSettingDefinition<Value, Props>;
+  column_title?: DatasetColumnSettingDefinition<Value, Props>;
   currency?: DatasetColumnSettingDefinition<Value, Props>;
   currency_in_header?: DatasetColumnSettingDefinition<Value, Props>;
   currency_style?: DatasetColumnSettingDefinition<Value, Props>;
@@ -447,6 +452,8 @@ export type VisualizationSettingsDefinitions<
   >;
   "graph.colors"?: SeriesSettingDefinition<Value, Props>;
   "graph.dimensions"?: SeriesSettingDefinition<Value, Props>;
+  "graph.goal_label"?: SeriesSettingDefinition<Value, Props>;
+  "graph.goal_value"?: SeriesSettingDefinition<Value, Props>;
   "graph.metrics"?: SeriesSettingDefinition<Value, Props>;
   "graph.label_value_frequency"?: SeriesSettingDefinition<
     Value,
@@ -466,6 +473,7 @@ export type VisualizationSettingsDefinitions<
     ChartSettingSeriesOrderProps
   >;
   "graph.series_order_dimension"?: SeriesSettingDefinition<Value, Props>;
+  "graph.show_goal"?: SeriesSettingDefinition<Value, Props>;
   "graph.show_mean"?: SeriesSettingDefinition<Value, Props>;
   "graph.show_stack_values"?: SeriesSettingDefinition<Value, Props>;
   "graph.show_trendline"?: SeriesSettingDefinition<Value, Props>;
@@ -616,4 +624,12 @@ export type VisualizationDefinition = {
   ) => void | never;
   isLiveResizable?: (series: Series) => boolean;
   onDisplayUpdate?: (settings: VisualizationSettings) => VisualizationSettings;
+};
+
+export type PivotedRowValues = RowValues & {
+  _dimension?: Lib.ClickObjectDimension; // present in pivoted data
+};
+
+export type PivotedDatasetColumn = DatasetColumn & {
+  _dimension?: Lib.ClickObjectDimension; // present in pivoted data
 };

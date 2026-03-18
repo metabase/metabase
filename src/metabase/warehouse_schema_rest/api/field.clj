@@ -8,13 +8,11 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
    [metabase.parameters.field :as parameters.field]
-   [metabase.query-processor :as qp]
    [metabase.request.core :as request]
    [metabase.sync.core :as sync]
    [metabase.types.core :as types]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
-   [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema.field :as schema.field]
@@ -23,9 +21,7 @@
    [metabase.warehouse-schema.models.field-user-settings :as schema.field-user-settings]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.xrays.core :as xrays]
-   [toucan2.core :as t2])
-  (:import
-   (java.text NumberFormat)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -54,6 +50,21 @@
    {include-editable-data-model? :include_editable_data_model} :- [:map
                                                                    [:include_editable_data_model {:default false} ms/BooleanValue]]]
   (schema.field/get-field id {:include-editable-data-model? include-editable-data-model?}))
+
+(defn- check-field-in-same-database!
+  "Check that `target-field-id` is a valid field in the same database as `source-field-id`. Throws a 400 if
+   the target field does not exist or belongs to a different database. Uses a single query."
+  [source-field-id target-field-id param-name]
+  (let [result (first (t2/query {:select [[:source_t.db_id :source_db_id]
+                                          [:target_t.db_id :target_db_id]]
+                                 :from   [[(t2/table-name :model/Field) :sf]]
+                                 :join   [[(t2/table-name :model/Table) :source_t] [:= :sf.table_id :source_t.id]
+                                          [(t2/table-name :model/Field) :tf] [:= :tf.id target-field-id]
+                                          [(t2/table-name :model/Table) :target_t] [:= :tf.table_id :target_t.id]]
+                                 :where  [:= :sf.id source-field-id]}))]
+    (api/checkp result param-name "Invalid target field")
+    (api/checkp (= (:source_db_id result) (:target_db_id result))
+                param-name "Target field must belong to the same database")))
 
 (defn- clear-dimension-on-fk-change! [{:keys [dimensions], :as _field}]
   (doseq [{dimension-id :id, dimension-type :type} dimensions]
@@ -153,11 +164,9 @@
         removed-fk?        (removed-fk-semantic-type? (:semantic_type field) new-semantic-type)
         fk-target-field-id (get body :fk_target_field_id (:fk_target_field_id field))]
 
-    ;; validate that fk_target_field_id is a valid Field
-    ;; TODO - we should also check that the Field is within the same database as our field
+    ;; validate that fk_target_field_id is a valid Field in the same database
     (when fk-target-field-id
-      (api/checkp (t2/exists? :model/Field :id fk-target-field-id)
-                  :fk_target_field_id "Invalid target field"))
+      (check-field-in-same-database! id fk-target-field-id :fk_target_field_id))
     (when (and display-name
                (not removed-fk?)
                (not= (:display_name field) display-name))
@@ -227,6 +236,8 @@
                  (and (= dimension-type "external")
                       human-readable-field-id))
              [400 "Foreign key based remappings require a human readable field id"])
+  (when human-readable-field-id
+    (check-field-in-same-database! id human-readable-field-id :human_readable_field_id))
   (if-let [dimension (t2/select-one :model/Dimension :field_id id)]
     (t2/update! :model/Dimension (u/the-id dimension)
                 {:type                    dimension-type
@@ -338,12 +349,6 @@
 
 ;;; --------------------------------------------------- Searching ----------------------------------------------------
 
-(defn- table-id [field]
-  (u/the-id (:table_id field)))
-
-(defn- db-id [field]
-  (u/the-id (t2/select-one-fn :db_id :model/Table :id (table-id field))))
-
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -364,43 +369,6 @@
     (api/check-403 (mi/can-read? search-field))
     (parameters.field/search-values field search-field value (request/limit))))
 
-(defn remapped-value
-  "Search for one specific remapping where the value of `field` exactly matches `value`. Returns a pair like
-
-      [<value-of-field> <value-of-remapped-field>]
-
-   if a match is found.
-
-   For example, with the Sample Database, you could find the name of the Person with ID 20 as follows:
-
-      (remapped-value <PEOPLE.ID Field> <PEOPLE.NAME Field> 20)
-      ;; -> [20 \"Peter Watsica\"]"
-  [field remapped-field value]
-  (try
-    (let [field   (parameters.field/follow-fks field)
-          results (qp/process-query
-                   {:database (db-id field)
-                    :type     :query
-                    :query    {:source-table (table-id field)
-                               :filter       [:= [:field (u/the-id field) nil] value]
-                               :fields       [[:field (u/the-id field) nil]
-                                              [:field (u/the-id remapped-field) nil]]
-                               :limit        1}})]
-      ;; return first row if it exists
-      (first (get-in results [:data :rows])))
-    ;; as with fn above this error can usually be safely ignored which is why log level is log/debug
-    (catch Throwable e
-      (log/debug e "Error searching for remapping")
-      nil)))
-
-(defn parse-query-param-value-for-field
-  "Parse a `value` passed as a URL query param in a way appropriate for the `field` it belongs to. E.g. for text Fields
-  the value doesn't need to be parsed; for numeric Fields we should parse it as a number."
-  [field ^String value]
-  (if (isa? (:base_type field) :type/Number)
-    (.parse (NumberFormat/getInstance) value)
-    value))
-
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -414,8 +382,8 @@
                        [:value ms/NonBlankString]]]
   (let [field          (api/read-check :model/Field id)
         remapped-field (api/read-check :model/Field remapped-id)
-        value          (parse-query-param-value-for-field field value)]
-    (remapped-value field remapped-field value)))
+        value          (parameters.field/parse-query-param-value-for-field field value)]
+    (parameters.field/remapped-value field remapped-field value)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
