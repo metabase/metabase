@@ -18,14 +18,13 @@ on:
 
 jobs:
   repro-bot:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     permissions:
       contents: read
       issues: read
       id-token: write
     if: |
-      (github.event_name == 'push') ||
       (github.event_name == 'issues' && github.event.label.name == '.Run Repro Bot' && github.event.issue.state == 'open') ||
       (github.event_name == 'workflow_dispatch')
 
@@ -34,12 +33,12 @@ jobs:
         id: issue
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "number=${{ github.event.inputs.issue_number }}" >> $GITHUB_OUTPUT
-          elif [ "${{ github.event_name }}" = "push" ]; then
-            echo "number=70292" >> $GITHUB_OUTPUT
+            ISSUE_NUMBER="${{ github.event.inputs.issue_number }}"
           else
-            echo "number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
+            ISSUE_NUMBER="${{ github.event.issue.number }}"
           fi
+          echo "number=$ISSUE_NUMBER" >> $GITHUB_OUTPUT
+          echo "Issue: https://github.com/${{ github.repository }}/issues/$ISSUE_NUMBER"
 
       - uses: actions/checkout@v4
       - uses: ./.github/actions/prepare-backend
@@ -54,10 +53,13 @@ jobs:
           path: repro-bot
 
       - name: Pre-clone metabase bare git repo
-        run: git clone --bare .git repro-bot/git/metabase
+        run: git clone --bare "https://github.com/${{ github.repository }}.git" repro-bot/git/metabase
 
       - name: Capture Node.js path for MCP subprocesses
         run: echo "NODE_BIN_DIR=$(dirname $(which node))" >> $GITHUB_ENV
+
+      - name: Pre-install MCP server dependencies
+        run: uv sync --directory repro-bot/mcp
 
       - name: Install playwright-cli
         run: |
@@ -99,11 +101,12 @@ jobs:
           jq -n \
             --arg uv "$UV_PATH" \
             --arg key "$LINEAR_API_KEY" \
+            --arg workspace "${{ github.workspace }}" \
             '{
               mcpServers: {
                 "metabase-repro": {
                   command: $uv,
-                  args: ["run", "--directory", "mcp", "--with", "fastmcp", "python", "-m", "metabase_repro"]
+                  args: ["run", "--directory", ($workspace + "/repro-bot/mcp"), "--with", "fastmcp", "python", "-m", "metabase_repro"]
                 },
                 "linear-server": {
                   url: "https://mcp.linear.app/mcp",
@@ -131,12 +134,16 @@ jobs:
           CLAUDE_WORKING_DIR: ${{ github.workspace }}/repro-bot
           MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.PR_ENV_MB_PREMIUM_EMBEDDING_TOKEN }}
           GITHUB_ACTIONS_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          REPRO_NODE_MODULES_DIR: ${{ github.workspace }}/node_modules
         timeout-minutes: 30
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY_REPRO_BOT }}
           github_token: ${{ steps.claude-app-token.outputs.token }}
           prompt: |
-            Read and follow the instructions in .claude/commands/repro.md to investigate this GitHub issue:
+            IMPORTANT: Your working directory is the repo root, but repro-bot lives in the `repro-bot/` subdirectory.
+            First, run `cd ${{ github.workspace }}/repro-bot` to change into the repro-bot directory before doing anything else.
+
+            Then read and follow the instructions in .claude/commands/repro.md to investigate this GitHub issue:
             https://github.com/${{ github.repository }}/issues/${{ steps.issue.outputs.number }}
 
             ## CI Environment Notes
@@ -227,9 +234,7 @@ jobs:
             mcp__linear-server__get_issue,
             mcp__linear-server__list_comments,
             mcp__linear-server__list_issues,
-            mcp__linear-server__list_issue_labels,
-            mcp__linear-server__save_comment,
-            mcp__linear-server__save_issue"
+            mcp__linear-server__save_comment"
             --disallowedTools "Bash(git push*),Bash(rm -rf /*)"
 
       - name: Verify repro-bot completed successfully
@@ -259,8 +264,8 @@ jobs:
           name: repro-bot-${{ steps.issue.outputs.number }}
           if-no-files-found: ignore
           path: |
-            repro/*/SUGGESTIONS.md
-            repro/*/*.log
-            repro/*/*.patch
-            repro/*/playwright/**
+            repro-bot/repro/*/SUGGESTIONS.md
+            repro-bot/repro/*/*.log
+            repro-bot/repro/*/*.patch
+            repro-bot/repro/*/playwright/**
             ${{ steps.claude.outputs.execution_file }}

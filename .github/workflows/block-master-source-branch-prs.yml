@@ -5,7 +5,7 @@ on:
 
 jobs:
   check-source-branch:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     steps:
       - name: Block master branch PRs
         if: github.head_ref == 'master'

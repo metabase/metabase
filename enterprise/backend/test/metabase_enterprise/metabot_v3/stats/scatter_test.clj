@@ -8,36 +8,36 @@
 
 (deftest ^:parallel compute-series-stats-empty-test
   (testing "empty/nil series returns minimal result"
-    (is (=? {:data_points 0
-             :x_summary nil?
-             :y_summary nil?}
+    (is (=? {:data-points 0
+             :x-summary nil?
+             :y-summary nil?}
             (#'scatter/compute-series-stats [] [])))))
 
 (deftest ^:parallel compute-series-stats-nil-filtered-test
   (testing "nil x or y values are filtered out"
     ;; only [1,4] is fully valid
-    (is (=? {:data_points 1}
+    (is (=? {:data-points 1}
             (#'scatter/compute-series-stats [1 nil 3] [4 5 nil])))))
 
 (deftest ^:parallel compute-series-stats-one-valid-pair-test
   (testing "< 2 valid pairs gives no correlation or regression"
-    (is (=? {:data_points  1
+    (is (=? {:data-points  1
              :correlation  (symbol "nil #_\"key is not present.\"")
              :regression   (symbol "nil #_\"key is not present.\"")}
             (#'scatter/compute-series-stats [1] [2])))))
 
 (deftest ^:parallel compute-series-stats-two-valid-pairs-test
   (testing "2 valid pairs gives correlation but no regression (< 3)"
-    (is (=? {:data_points 2
+    (is (=? {:data-points 2
              :correlation {:coefficient 1.0 :strength :strong :direction :positive}
              :regression  (symbol "nil #_\"key is not present.\"")}
             (#'scatter/compute-series-stats [1 2] [3 4])))))
 
 (deftest ^:parallel compute-series-stats-perfect-positive-correlation-test
   (testing "perfect positive correlation"
-    (is (=? {:data_points 5
+    (is (=? {:data-points 5
              :correlation {:coefficient 1.0 :strength :strong :direction :positive}
-             :regression  {:slope 2.0 :r_squared 1.0}}
+             :regression  {:slope 2.0 :r-squared 1.0}}
             (#'scatter/compute-series-stats [1 2 3 4 5] [2 4 6 8 10])))))
 
 (deftest ^:parallel compute-series-stats-perfect-negative-correlation-test
@@ -63,13 +63,13 @@
 (deftest ^:parallel compute-series-stats-constant-x-test
   (testing "constant x-values result in regression returning nil gracefully"
     ;; correlation will be NaN (constant x). regression may fail but should not throw.
-    (is (=? {:data_points 4}
+    (is (=? {:data-points 4}
             (#'scatter/compute-series-stats [5 5 5 5] [1 2 3 4])))))
 
 (deftest ^:parallel compute-series-stats-summaries-test
   (testing "x and y summaries computed correctly"
-    (is (=? {:x_summary {:min 1.0 :max 3.0}
-             :y_summary {:min 10.0 :max 30.0}}
+    (is (=? {:x-summary {:min 1.0 :max 3.0}
+             :y-summary {:min 10.0 :max 30.0}}
             (#'scatter/compute-series-stats [1 2 3] [10 20 30])))))
 
 (deftest ^:parallel compute-scatter-stats-multi-series-test
@@ -82,13 +82,13 @@
                              :x {:name "x" :type "number"}
                              :y {:name "y" :type "number"}
                              :display_name "S2"}}]
-      (is (=? {:chart_type    :scatter
-               :series_count  2
-               :series        {"S1" {:data_points 3
+      (is (=? {:chart-type    :scatter
+               :series-count  2
+               :series        {"S1" {:data-points 3
                                      :correlation {:coefficient 1.0
                                                    :strength :strong
                                                    :direction :positive}}
-                               "S2" {:data_points 3
+                               "S2" {:data-points 3
                                      :correlation {:coefficient -1.0
                                                    :strength :strong
                                                    :direction :negative}}}
@@ -99,22 +99,22 @@
   (testing "regression intercept computed correctly for y = 2x + 10"
     (is (=? {:regression {:slope     (=?/approx [2.0 0.001])
                           :intercept (=?/approx [10.0 0.001])
-                          :r_squared (=?/approx [1.0 0.001])}}
+                          :r-squared (=?/approx [1.0 0.001])}}
             (#'scatter/compute-series-stats [1 2 3 4 5] [12 14 16 18 20])))))
 
 (deftest ^:parallel compute-series-stats-constant-y-test
   (testing "constant y-values: NaN correlation is handled gracefully (nil correlation)"
     ;; Y has no variance; correlation is NaN, should be absent
-    (is (=? {:data_points  5
+    (is (=? {:data-points  5
              :correlation  (symbol "nil #_\"key is not present.\"")}
             (#'scatter/compute-series-stats [1 2 3 4 5] [50 50 50 50 50])))))
 
 (deftest ^:parallel compute-series-stats-float-values-test
   (testing "float x and y values handled correctly"
-    (is (=? {:data_points 5
-             :x_summary {:min (=?/approx [1.5 0.001])
+    (is (=? {:data-points 5
+             :x-summary {:min (=?/approx [1.5 0.001])
                          :max (=?/approx [5.5 0.001])}
-             :y_summary {:min (=?/approx [10.1 0.001])
+             :y-summary {:min (=?/approx [10.1 0.001])
                          :max (=?/approx [50.5 0.001])}}
             (#'scatter/compute-series-stats
              [1.5 2.5 3.5 4.5 5.5]

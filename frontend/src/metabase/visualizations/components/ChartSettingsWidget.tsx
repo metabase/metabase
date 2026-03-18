@@ -12,7 +12,6 @@ type Props = {
   description?: string;
   hint?: string;
   hidden?: boolean;
-  disabled?: boolean;
   widget?: string | ComponentType<{ id: string }>;
   inline?: boolean;
   marginBottom?: string;
@@ -29,7 +28,6 @@ const ChartSettingsWidget = ({
   description,
   hint,
   hidden,
-  disabled,
   variant = "default",
   inline = false,
   marginBottom = undefined,
@@ -49,7 +47,6 @@ const ChartSettingsWidget = ({
     <Root
       hidden={hidden}
       noPadding={noPadding}
-      disabled={disabled}
       className={cx({
         [FormS.FormField]: isFormField,
         [PopoverS.FormField]: isFormField,

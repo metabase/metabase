@@ -290,7 +290,7 @@
   ([a-query expression-position] (expressionable-columns a-query -1 expression-position))
   ([a-query             :- ::lib.schema/query
     stage-number        :- [:maybe :int]
-    expression-position :- [:maybe ::lib.schema.common/int-greater-than-or-equal-to-zero]]
+    expression-position :- [:maybe nat-int?]]
    (lib.expression/expressionable-columns a-query stage-number expression-position)))
 
 (mu/defn expressions-metadata :- [:maybe [:sequential ::lib.schema.metadata/column]]
