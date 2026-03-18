@@ -177,7 +177,12 @@ export const getCartesianChartModel = (
     renderingContext,
   );
 
-  const { leftAxisModel, rightAxisModel, seriesExtents } = getYAxesModels(
+  const {
+    leftAxisModel,
+    rightAxisModel,
+    seriesExtents,
+    splitPanelYAxisModels,
+  } = getYAxesModels(
     seriesModels,
     dataset,
     transformedDataset,
@@ -211,6 +216,7 @@ export const getCartesianChartModel = (
     xAxisModel,
     leftAxisModel,
     rightAxisModel,
+    splitPanelYAxisModels,
     seriesExtents,
     trendLinesModel,
     seriesLabelsFormatters,

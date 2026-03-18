@@ -1,5 +1,5 @@
 import type { EChartsOption } from "echarts";
-import type { EChartsCoreOption, EChartsType } from "echarts/core";
+import type { EChartsType } from "echarts/core";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useLatest } from "react-use";
 
@@ -46,8 +46,8 @@ import type { CardId } from "metabase-types/api";
 import { useTooltipMouseLeave } from "./use-tooltip-mouse-leave";
 import { getHoveredEChartsSeriesDataKeyAndIndex } from "./utils";
 
-function getSplitPanelGrids(option: EChartsCoreOption) {
-  const { grid } = option as EChartsOption;
+function getSplitPanelGrids(option: EChartsOption) {
+  const { grid } = option;
   return Array.isArray(grid) && grid.length > 1 ? grid : null;
 }
 
@@ -56,7 +56,7 @@ export const useChartEvents = (
   containerRef: React.RefObject<HTMLDivElement>,
   chartModel: BaseCartesianChartModel,
   timelineEventsModel: TimelineEventsModel | null,
-  option: EChartsCoreOption,
+  option: EChartsOption,
   renderingContext: RenderingContext,
   {
     card,

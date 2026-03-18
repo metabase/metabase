@@ -1,9 +1,5 @@
 import type { EChartsCoreOption } from "echarts/core";
-import type {
-  GridOption,
-  XAXisOption,
-  YAXisOption,
-} from "echarts/types/dist/shared";
+import type { XAXisOption, YAXisOption } from "echarts/types/dist/shared";
 import type { OptionSourceData } from "echarts/types/src/util/types";
 
 import type {
@@ -16,24 +12,14 @@ import { X_AXIS_DATA_KEY } from "../../constants/dataset";
 import type { ChartLayout } from "../../layout/types";
 import type { ScatterPlotModel } from "../../model/types";
 import {
+  buildGridAndSeriesOption,
   buildPerPanelXAxes,
   buildPerPanelYAxes,
-  buildSplitPanelGoalSeries,
-  buildSplitPanelGrid,
-  buildSplitPanelOverrides,
   getSharedEChartsOptions,
-  getSplitPanelTimelineEventsYExtent,
-  remapTrendLinesToPanels,
 } from "../../option";
 import { buildAxes, buildDimensionAxis } from "../../option/axis";
-import {
-  getGoalLineParams,
-  getGoalLineSeriesOption,
-} from "../../option/goal-line";
-import { getTrendLinesOption } from "../../option/trend-line";
 import type { EChartsSeriesOption } from "../../option/types";
 import { getSeriesYAxisIndex } from "../../option/utils";
-import { getTimelineEventsSeries } from "../../timeline-events/option";
 import type { TimelineEventsModel } from "../../timeline-events/types";
 
 import { buildEChartsScatterSeries } from "./series";
@@ -49,11 +35,12 @@ export function getScatterPlotOption(
   renderingContext: RenderingContext,
 ): EChartsCoreOption {
   const hasTimelineEvents = timelineEventsModel != null;
+  const isSplitPanels = chartLayout.panelHeight != null;
+
   const visibleSeries = chartModel.seriesModels.filter(
     (series) => series.visible,
   );
   const panelCount = visibleSeries.length;
-  const isSplitPanels = chartLayout.panelHeight != null;
 
   const dataSeriesOptions: EChartsSeriesOption[] = visibleSeries.map(
     (seriesModel, index) =>
@@ -68,45 +55,15 @@ export function getScatterPlotOption(
       ),
   );
 
-  const baseGoalSeriesOption = getGoalLineSeriesOption(
-    getGoalLineParams(chartModel),
+  const { grid, seriesOption, splitPanelOverrides } = buildGridAndSeriesOption(
+    chartModel,
+    chartLayout,
+    timelineEventsModel,
+    selectedTimelineEventsIds,
     settings,
     renderingContext,
-  );
-
-  const goalSeriesOption = isSplitPanels
-    ? buildSplitPanelGoalSeries(baseGoalSeriesOption, panelCount)
-    : baseGoalSeriesOption;
-
-  const trendSeriesOption = isSplitPanels
-    ? remapTrendLinesToPanels(chartModel, visibleSeries)
-    : getTrendLinesOption(chartModel);
-
-  const splitPanelYExtent = isSplitPanels
-    ? getSplitPanelTimelineEventsYExtent(chartLayout, panelCount)
-    : undefined;
-
-  const timelineEventsSeries = hasTimelineEvents
-    ? getTimelineEventsSeries(
-        timelineEventsModel,
-        selectedTimelineEventsIds,
-        renderingContext,
-        splitPanelYExtent,
-      )
-    : null;
-
-  const seriesOption = [
     dataSeriesOptions,
-    goalSeriesOption,
-    trendSeriesOption,
-    isSplitPanels && timelineEventsSeries
-      ? {
-          ...timelineEventsSeries,
-          xAxisIndex: panelCount - 1,
-          yAxisIndex: panelCount - 1,
-        }
-      : timelineEventsSeries,
-  ].flatMap((option) => option ?? []);
+  );
 
   const dimensions = [
     X_AXIS_DATA_KEY,
@@ -136,13 +93,10 @@ export function getScatterPlotOption(
     });
   }
 
-  let grid: GridOption | GridOption[];
   let xAxis: XAXisOption | XAXisOption[];
   let yAxis: YAXisOption[];
 
   if (isSplitPanels) {
-    grid = buildSplitPanelGrid(chartLayout, panelCount);
-
     const baseXAxis = buildDimensionAxis(
       chartModel,
       chartWidth,
@@ -154,14 +108,12 @@ export function getScatterPlotOption(
 
     xAxis = buildPerPanelXAxes(baseXAxis, panelCount, renderingContext);
     yAxis = buildPerPanelYAxes(
-      visibleSeries,
       chartModel,
       chartLayout,
       settings,
       renderingContext,
     );
   } else {
-    grid = { ...chartLayout.padding, outerBoundsMode: "none" };
     const axes = buildAxes(
       chartModel,
       chartWidth,
@@ -173,15 +125,6 @@ export function getScatterPlotOption(
     xAxis = axes.xAxis;
     yAxis = axes.yAxis;
   }
-
-  const splitPanelOverrides = isSplitPanels
-    ? buildSplitPanelOverrides(
-        chartModel,
-        chartLayout,
-        panelCount,
-        renderingContext,
-      )
-    : {};
 
   return {
     ...getSharedEChartsOptions(isAnimated, renderingContext),

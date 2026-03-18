@@ -771,17 +771,46 @@ describe("scenarios > visualizations > line chart", () => {
       cy.findByText("8").should("be.visible");
     });
 
+    H.splitPanelAxisLines().should("have.length", 2);
+
     H.cartesianChartCircleWithColor("#88BF4D");
     H.cartesianChartCircleWithColor("#A989C5");
+
+    // Change series color while split panels are active
+    H.leftSidebar().findByText("Data").click();
+    H.openSeriesSettings("Sum of Total");
+
+    H.popover().within(() => {
+      cy.findByTestId("color-selector-button").button().click();
+    });
+
+    H.popover()
+      .should("have.length", 2)
+      .last()
+      .within(() => {
+        cy.findByLabelText("#EF8C8C").realClick();
+      });
+
+    H.popover().within(() => {
+      cy.icon("bar").click();
+    });
+
+    H.popover().within(() => {
+      cy.findByText("Formatting").click();
+      cy.findByPlaceholderText("$").type("$").blur();
+    });
 
     H.leftSidebar().within(() => {
       cy.button("Done").click();
     });
 
+    H.echartsContainer().findByText("$60,000").should("be.visible");
+
+    // Tooltip
     H.cartesianChartCircle().first().trigger("mousemove");
     H.assertEChartsTooltip({
       rows: [
-        { name: "Sum of Total", value: "52.76" },
+        { name: "Sum of Total", value: "$52.76" },
         { name: "Average of Quantity", value: "2" },
       ],
       blurAfter: true,
@@ -793,7 +822,7 @@ describe("scenarios > visualizations > line chart", () => {
       .trigger("mousemove", 180, 200)
       .trigger("mouseup", 400, 200);
 
-    H.cartesianChartCircleWithColor("#88BF4D");
+    H.chartPathWithFillColor("#EF8C8C").should("be.visible");
     H.cartesianChartCircleWithColor("#A989C5");
   });
 });

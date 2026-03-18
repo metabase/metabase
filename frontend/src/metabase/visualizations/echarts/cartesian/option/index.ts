@@ -17,7 +17,6 @@ import type {
   BaseCartesianChartModel,
   CartesianChartModel,
   SeriesModel,
-  YAxisModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import {
   buildAxes,
@@ -157,31 +156,20 @@ export const ensureRoomForLabels = (
   }),
 });
 
-export const getCartesianChartOption = (
-  chartModel: CartesianChartModel,
+export function buildGridAndSeriesOption(
+  chartModel: BaseCartesianChartModel,
   chartLayout: ChartLayout,
   timelineEventsModel: TimelineEventsModel | null,
   selectedTimelineEventsIds: TimelineEventId[],
   settings: ComputedVisualizationSettings,
-  chartWidth: number,
-  isAnimated: boolean,
   renderingContext: RenderingContext,
-): EChartsCoreOption => {
+  dataSeriesOptions: EChartsSeriesOption[],
+) {
   const visibleSeries = chartModel.seriesModels.filter(
     (series) => series.visible,
   );
   const panelCount = visibleSeries.length;
   const isSplitPanels = chartLayout.panelHeight != null;
-  const hasTimelineEvents = timelineEventsModel != null;
-
-  // Series (shared — buildEChartsSeries handles split panels via chartLayout)
-  const dataSeriesOptions = buildEChartsSeries(
-    chartModel,
-    settings,
-    chartWidth,
-    chartLayout,
-    renderingContext,
-  );
 
   const baseGoalSeriesOption = getGoalLineSeriesOption(
     getGoalLineParams(chartModel),
@@ -201,14 +189,15 @@ export const getCartesianChartOption = (
     ? getSplitPanelTimelineEventsYExtent(chartLayout, panelCount)
     : undefined;
 
-  const timelineEventsSeries = hasTimelineEvents
-    ? getTimelineEventsSeries(
-        timelineEventsModel,
-        selectedTimelineEventsIds,
-        renderingContext,
-        splitPanelYExtent,
-      )
-    : null;
+  const timelineEventsSeries =
+    timelineEventsModel != null
+      ? getTimelineEventsSeries(
+          timelineEventsModel,
+          selectedTimelineEventsIds,
+          renderingContext,
+          splitPanelYExtent,
+        )
+      : null;
 
   const seriesOption = [
     dataSeriesOptions,
@@ -223,12 +212,62 @@ export const getCartesianChartOption = (
       : timelineEventsSeries,
   ].flatMap((option) => option ?? []);
 
-  // Grid
   const grid: GridOption | GridOption[] = isSplitPanels
     ? buildSplitPanelGrid(chartLayout, panelCount)
     : { ...chartLayout.padding, outerBoundsMode: "none" };
 
-  // Axes
+  const splitPanelOverrides = isSplitPanels
+    ? buildSplitPanelOverrides(
+        chartModel,
+        chartLayout,
+        panelCount,
+        renderingContext,
+      )
+    : {};
+
+  return {
+    grid,
+    seriesOption,
+    splitPanelOverrides,
+  };
+}
+
+export const getCartesianChartOption = (
+  chartModel: CartesianChartModel,
+  chartLayout: ChartLayout,
+  timelineEventsModel: TimelineEventsModel | null,
+  selectedTimelineEventsIds: TimelineEventId[],
+  settings: ComputedVisualizationSettings,
+  chartWidth: number,
+  isAnimated: boolean,
+  renderingContext: RenderingContext,
+): EChartsCoreOption => {
+  const hasTimelineEvents = timelineEventsModel != null;
+  const isSplitPanels = chartLayout.panelHeight != null;
+
+  const dataSeriesOptions = buildEChartsSeries(
+    chartModel,
+    settings,
+    chartWidth,
+    chartLayout,
+    renderingContext,
+  );
+
+  const { grid, seriesOption, splitPanelOverrides } = buildGridAndSeriesOption(
+    chartModel,
+    chartLayout,
+    timelineEventsModel,
+    selectedTimelineEventsIds,
+    settings,
+    renderingContext,
+    dataSeriesOptions,
+  );
+
+  const visibleSeries = chartModel.seriesModels.filter(
+    (series) => series.visible,
+  );
+  const panelCount = visibleSeries.length;
+
   let xAxis: XAXisOption | XAXisOption[];
   let yAxis: YAXisOption[];
 
@@ -256,7 +295,6 @@ export const getCartesianChartOption = (
 
     xAxis = buildPerPanelXAxes(baseXAxis, panelCount, renderingContext);
     yAxis = buildPerPanelYAxes(
-      visibleSeries,
       chartModel,
       chartLayout,
       settings,
@@ -279,15 +317,6 @@ export const getCartesianChartOption = (
     xAxis = axes.xAxis;
     yAxis = axes.yAxis;
   }
-
-  const splitPanelOverrides = isSplitPanels
-    ? buildSplitPanelOverrides(
-        chartModel,
-        chartLayout,
-        panelCount,
-        renderingContext,
-      )
-    : {};
 
   return {
     ...getSharedEChartsOptions(isAnimated, renderingContext),
@@ -467,35 +496,15 @@ export function buildSplitPanelYAxisLabel(
 }
 
 export function buildPerPanelYAxes(
-  visibleSeries: SeriesModel[],
   chartModel: BaseCartesianChartModel,
   chartLayout: ChartLayout,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ): YAXisOption[] {
   const yTicksWidth = chartLayout.ticksDimensions.yTicksWidthLeft;
-  const defaultFormatter = (value: unknown) => String(value);
+  const panelAxisModels = chartModel.splitPanelYAxisModels ?? [];
 
-  return visibleSeries.map((seriesModel, index) => {
-    const extent = chartModel.seriesExtents[seriesModel.dataKey] ?? [0, 0];
-
-    const axisModel: YAxisModel = chartModel.leftAxisModel
-      ? {
-          ...chartModel.leftAxisModel,
-          extent,
-          seriesKeys: [seriesModel.dataKey],
-          label: undefined,
-        }
-      : {
-          extent,
-          column: seriesModel.column,
-          seriesKeys: [seriesModel.dataKey],
-          formatter: defaultFormatter,
-          formatGoal: defaultFormatter,
-          label: undefined,
-          isNormalized: false,
-        };
-
+  return panelAxisModels.map((axisModel, index) => {
     return {
       ...buildMetricAxis(
         axisModel,

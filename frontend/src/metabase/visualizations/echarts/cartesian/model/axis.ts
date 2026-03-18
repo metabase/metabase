@@ -391,7 +391,7 @@ function calculateNonStackedExtent(
 
 const NORMALIZED_RANGE: Extent = [0, 1];
 
-const getYAxisFormatter = (
+export const getYAxisFormatter = (
   column: DatasetColumn,
   settings: ComputedVisualizationSettings,
   stackType: StackType,
@@ -508,6 +508,7 @@ interface YAxisModelOptions {
   stackType?: StackType;
   formattingOptions?: OptionsType;
   gridSize?: VisualizationGridSize;
+  showLabel?: boolean;
 }
 
 export function getYAxisModel(
@@ -523,6 +524,7 @@ export function getYAxisModel(
     stackType = null,
     formattingOptions,
     gridSize,
+    showLabel = true,
   } = options;
 
   if (seriesKeys.length === 0) {
@@ -536,7 +538,7 @@ export function getYAxisModel(
     stackType,
   );
   const column = columnByDataKey[seriesKeys[0]];
-  const label = getYAxisLabel(seriesNames, settings);
+  const label = showLabel ? getYAxisLabel(seriesNames, settings) : undefined;
   const formatter = getYAxisFormatter(
     column,
     settings,
@@ -614,37 +616,64 @@ export function getYAxesModels(
     (stackModel) => stackModel.axis === "left",
   );
 
+  const leftAxisModel = getYAxisModel(
+    leftAxisSeriesKeys,
+    leftAxisSeriesNames,
+    transformedDataset,
+    settings,
+    columnByDataKey,
+    {
+      stackModels: leftStackModels,
+      stackType: settings["stackable.stack_type"] ?? null,
+      formattingOptions: { compact: isCompactFormatting },
+      gridSize,
+    },
+  );
+
+  const rightAxisModel = getYAxisModel(
+    rightAxisSeriesKeys,
+    rightAxisSeriesNames,
+    transformedDataset,
+    settings,
+    columnByDataKey,
+    {
+      stackModels: rightStackModels,
+      stackType:
+        settings["stackable.stack_type"] === "normalized"
+          ? null
+          : (settings["stackable.stack_type"] ?? null),
+      formattingOptions: { compact: isCompactFormatting },
+      gridSize,
+    },
+  );
+
+  const seriesExtents = getDatasetExtents(seriesDataKeys, transformedDataset);
+
+  const splitPanelYAxisModels = settings["graph.split_panels"]
+    ? seriesModels
+        .filter((seriesModel) => seriesModel.visible)
+        .map((seriesModel) =>
+          getYAxisModel(
+            [seriesModel.dataKey],
+            [seriesModel.name],
+            transformedDataset,
+            settings,
+            columnByDataKey,
+            {
+              formattingOptions: { compact: isCompactFormatting },
+              gridSize,
+              showLabel: false,
+            },
+          ),
+        )
+        .filter(isNotNull)
+    : undefined;
+
   return {
-    leftAxisModel: getYAxisModel(
-      leftAxisSeriesKeys,
-      leftAxisSeriesNames,
-      transformedDataset,
-      settings,
-      columnByDataKey,
-      {
-        stackModels: leftStackModels,
-        stackType: settings["stackable.stack_type"] ?? null,
-        formattingOptions: { compact: isCompactFormatting },
-        gridSize,
-      },
-    ),
-    rightAxisModel: getYAxisModel(
-      rightAxisSeriesKeys,
-      rightAxisSeriesNames,
-      transformedDataset,
-      settings,
-      columnByDataKey,
-      {
-        stackModels: rightStackModels,
-        stackType:
-          settings["stackable.stack_type"] === "normalized"
-            ? null
-            : (settings["stackable.stack_type"] ?? null),
-        formattingOptions: { compact: isCompactFormatting },
-        gridSize,
-      },
-    ),
-    seriesExtents: getDatasetExtents(seriesDataKeys, transformedDataset),
+    leftAxisModel,
+    rightAxisModel,
+    seriesExtents,
+    splitPanelYAxisModels,
   };
 }
 

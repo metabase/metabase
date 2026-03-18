@@ -33,6 +33,7 @@ export interface ChartLayoutInput {
   xAxisModel: XAxisModel;
   leftAxisModel: YAxisModel | null;
   rightAxisModel: YAxisModel | null;
+  splitPanelYAxisModels?: YAxisModel[];
   yAxisScaleTransforms: NumericAxisScaleTransforms;
   transformedDataset?: ChartDataset;
   dataset?: ChartDataset;
@@ -789,7 +790,6 @@ export const getChartLayout = (
   if (isSplitPanels) {
     return computeSplitPanelLayout(
       input,
-      visibleSeries,
       settings,
       hasTimelineEvents,
       width,
@@ -842,34 +842,22 @@ export const getChartLayout = (
 
 const computeSplitPanelLayout = (
   input: ChartLayoutInput,
-  visibleSeries: SeriesModel[],
   settings: ComputedVisualizationSettings,
   hasTimelineEvents: boolean,
   width: number,
   height: number,
   renderingContext: RenderingContext,
 ): ChartLayout => {
-  const panelCount = visibleSeries.length;
-  const seriesExtents = input.seriesExtents ?? {};
-
-  const yAxisTickWidths: number[] = [];
-  if (input.leftAxisModel) {
-    for (const series of visibleSeries) {
-      const extent = seriesExtents[series.dataKey] ?? [0, 0];
-      const tempAxisModel: YAxisModel = {
-        ...input.leftAxisModel,
-        extent,
-        seriesKeys: [series.dataKey],
-      };
-      const tickWidth = getYAxisTicksWidth(
-        tempAxisModel,
-        input.yAxisScaleTransforms,
-        settings,
-        renderingContext,
-      );
-      yAxisTickWidths.push(tickWidth);
-    }
-  }
+  const panelAxisModels = input.splitPanelYAxisModels ?? [];
+  const panelCount = panelAxisModels.length;
+  const yAxisTickWidths: number[] = panelAxisModels.map((axisModel) =>
+    getYAxisTicksWidth(
+      axisModel,
+      input.yAxisScaleTransforms,
+      settings,
+      renderingContext,
+    ),
+  );
 
   const maxYTicksWidth =
     yAxisTickWidths.length > 0
@@ -901,10 +889,7 @@ const computeSplitPanelLayout = (
 
   const padding = getChartPadding(
     singleAxisInput,
-    {
-      ...settings,
-      "graph.x_axis.axis_enabled": axisEnabledSetting,
-    },
+    settings,
     ticksDimensions,
     axisEnabledSetting,
     width,
