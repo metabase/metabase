@@ -570,7 +570,6 @@ const MetabaseAdHocElement = createCustomElement("metabase-adhoc", [
   "query",
   "with-title",
   "with-downloads",
-  "drills",
   "is-save-enabled",
 ]);
 
