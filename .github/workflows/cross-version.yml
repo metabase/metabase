@@ -74,6 +74,16 @@ jobs:
           cd cross-version
           ./test.sh --source "${{ matrix.source }}" --target "${{ matrix.target }}"
 
+      - name: Upload Cypress Artifacts upon failure
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: cypress-recording-${{ matrix.source }}-${{ matrix.target }}
+          path: |
+            ./cypress
+            ./logs/test.log
+          if-no-files-found: ignore
+
       - name: Show logs on failure
         if: failure()
         run: |
@@ -105,6 +115,16 @@ jobs:
         run: |
           cd cross-version
           ./test.sh --source "${{ inputs.source_version }}" --target "${{ inputs.target_version }}"
+
+      - name: Upload Cypress Artifacts upon failure
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: cypress-recording-${{ inputs.source_version }}-${{ inputs.target_version }}
+          path: |
+            ./cypress
+            ./logs/test.log
+          if-no-files-found: ignore
 
       - name: Show logs on failure
         if: failure()
