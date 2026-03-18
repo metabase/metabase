@@ -266,6 +266,7 @@ function setup(
       viewPreviousObjectDetail={() => null}
       viewNextObjectDetail={() => null}
       closeObjectDetail={() => null}
+      isDashboard={false}
       {...options}
     />,
   );

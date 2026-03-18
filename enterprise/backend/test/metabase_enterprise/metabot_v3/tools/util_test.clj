@@ -10,6 +10,66 @@
    [metabase.permissions.models.permissions :as perms]
    [metabase.test :as mt]))
 
+(deftest ^:parallel schedule->schedule-map-test
+  (testing "hourly schedule"
+    (is (= {:schedule_type  "hourly"
+            :schedule_hour  nil
+            :schedule_day   nil
+            :schedule_frame nil}
+           (metabot-v3.tools.util/schedule->schedule-map
+            {:frequency :hourly}))))
+  (testing "daily schedule"
+    (is (= {:schedule_type  "daily"
+            :schedule_hour  9
+            :schedule_day   nil
+            :schedule_frame nil}
+           (metabot-v3.tools.util/schedule->schedule-map
+            {:frequency :daily
+             :hour      9}))))
+  (testing "weekly schedule"
+    (is (= {:schedule_type  "weekly"
+            :schedule_hour  8
+            :schedule_day   "mon"
+            :schedule_frame nil}
+           (metabot-v3.tools.util/schedule->schedule-map
+            {:frequency   :weekly
+             :hour        8
+             :day-of-week :monday}))))
+  (testing "weekly schedule truncates day name to 3 chars"
+    (is (= "wed"
+           (:schedule_day
+            (metabot-v3.tools.util/schedule->schedule-map
+             {:frequency   :weekly
+              :hour        10
+              :day-of-week :wednesday})))))
+  (testing "monthly schedule with first-mon"
+    (is (= {:schedule_type  "monthly"
+            :schedule_hour  6
+            :schedule_day   "mon"
+            :schedule_frame "first"}
+           (metabot-v3.tools.util/schedule->schedule-map
+            {:frequency    :monthly
+             :hour         6
+             :day-of-month :first-mon}))))
+  (testing "monthly schedule with last-fri"
+    (is (= {:schedule_type  "monthly"
+            :schedule_hour  17
+            :schedule_day   "fri"
+            :schedule_frame "last"}
+           (metabot-v3.tools.util/schedule->schedule-map
+            {:frequency    :monthly
+             :hour         17
+             :day-of-month :last-fri}))))
+  (testing "monthly schedule with mid"
+    (is (= {:schedule_type  "monthly"
+            :schedule_hour  12
+            :schedule_day   nil
+            :schedule_frame "mid"}
+           (metabot-v3.tools.util/schedule->schedule-map
+            {:frequency    :monthly
+             :hour         12
+             :day-of-month :mid})))))
+
 (deftest metabot-scope-query-test
   (testing "metabot-scope-query with collection hierarchy"
     (mt/dataset test-data

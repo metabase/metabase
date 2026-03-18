@@ -12,6 +12,7 @@ export const openSharingMenu = (menuItemText?: string) => {
 
 export const removeNotificationHandlerChannel = (channel: string) => {
   modal()
+    .findByTestId("alert-configured-channel")
     .findByText(channel)
     .closest('[data-testid="channel-block"]')
     .findByTestId("remove-channel-button")

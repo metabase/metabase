@@ -7,6 +7,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
+   [metabase.transforms.test-util :as transforms.tu]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -95,8 +96,8 @@
 (deftest ^:parallel analyze-entity-python-transform-test
   (testing "analyze-entity extracts dependencies from a python transform"
     (let [transform {:source {:type          "python"
-                              :source-tables [{:alias "orders"   :table_id (mt/id :orders)}
-                                              {:alias "products" :table_id (mt/id :products)}]
+                              :source-tables [(transforms.tu/source-table-entry "orders" (mt/id :orders))
+                                              (transforms.tu/source-table-entry "products" (mt/id :products))]
                               :body          "def transform(orders, products): return orders"}
                      :target {:database (mt/id)
                               :schema   "public"
