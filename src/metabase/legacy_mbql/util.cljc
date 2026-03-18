@@ -483,7 +483,8 @@
   (cond-> clause
     (mbql.preds/FieldOrExpressionDef? clause) desugar-expression))
 
-(mu/defn desugar-filter-clause :- ::mbql.s/Filter
+;; TODO(rileythomp, 2026-03-18): Make schemas work with mbql4 and mbql5
+(mu/defn desugar-filter-clause ; :- ::mbql.s/Filter
   "Rewrite various 'syntatic sugar' filter clauses like `:time-interval` and `:inside` as simpler, logically
   equivalent clauses. This can be used to simplify the number of filter clauses that need to be supported by anything
   that needs to enumerate all the possible filter types (such as driver query processor implementations, or the
@@ -492,7 +493,7 @@
   DEPRECATED: This will be removed in a future release. Use [[metabase.lib.core/desugar-filter-clause]] instead going
   forward."
   {:deprecated "0.57.0"}
-  [filter-clause :- ::mbql.s/Filter]
+  [filter-clause #_#_:- ::mbql.s/Filter]
   #_{:clj-kondo/ignore [:deprecated-var]}
   (-> filter-clause
       desugar-current-relative-datetime

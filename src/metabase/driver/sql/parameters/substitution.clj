@@ -15,6 +15,7 @@
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.dates :as params.dates]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.operators :as params.ops]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.lib.core :as lib]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
@@ -324,7 +325,9 @@
             (update x :replacement-snippet
                     (partial str (field->identifier driver field param-type value) " ")))
           (->honeysql [form]
-            (sql.qp/->honeysql driver form))]
+            (cond->> form
+              (isa? driver/hierarchy driver :sql-mbql5) (lib/->pMBQL)
+              true (sql.qp/->honeysql driver)))]
     (cond
       (params.ops/operator? param-type)
       #_{:clj-kondo/ignore [:deprecated-var]}

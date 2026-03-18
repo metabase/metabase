@@ -32,6 +32,7 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :refer [get-in]]))
 
+;; TODO(rileythomp, 2026-03-18): For mbql5, options should always be at the front
 (defn- variadic-opts-first
   "Some clauses, like `:contains`, have optional `options` last in their binary form, and required options first in
   variadic form."

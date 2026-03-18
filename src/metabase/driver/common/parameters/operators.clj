@@ -12,7 +12,6 @@
   {:deprecated "0.57.0"}
   (:refer-clojure :exclude [get-in])
   (:require
-   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -26,6 +25,7 @@
  [qp.params.ops
   operator?])
 
+;; TODO(rileythomp, 2026-03-18): For mbql5, options should always be at the front
 (defn- operator-options-fn
   [param-type]
   (get-in lib.schema.parameter/types [param-type :options-fn]
@@ -65,10 +65,11 @@
                        :field-id    (second field)
                        :type        qp.error-type/invalid-parameter})))))
 
-(mu/defn to-clause :- ::mbql.s/Filter
+;; TODO(rileythomp, 2026-03-18): Make schemas work with mbql4 and mbql5
+(mu/defn to-clause ; :- ::mbql.s/Filter
   "Convert an operator style parameter into an mbql clause. Will also do arity checks and throws an ex-info with
   `:type qp.error-type/invalid-parameter` if arity is incorrect."
-  [param :- ::lib.schema.parameter/parameter]
+  [param #_#_:- ::lib.schema.parameter/parameter]
   (let [{param-type :type, [a b :as param-value] :value, [_ field] :target, options :options} (#'qp.params.ops/normalize-param param)]
     (verify-type-and-arity field param-type param-value)
     #_{:clj-kondo/ignore [:deprecated-var]}
