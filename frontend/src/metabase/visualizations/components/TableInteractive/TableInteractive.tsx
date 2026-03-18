@@ -26,6 +26,7 @@ import {
   useMemoizedCallback,
 } from "metabase/common/hooks/use-memoized-callback";
 import DashboardS from "metabase/css/dashboard.module.css";
+import { useTransientColumnVisibility } from "metabase/dashboard/components/DashCard/TransientColumnVisibilityContext";
 import { DataGrid, type DataGridStylesProps } from "metabase/data-grid";
 import {
   FOOTER_HEIGHT,
@@ -188,9 +189,46 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   const isDashcardViewTable = isDashboard && !isSettings;
   const [sorting, setSorting] = useState<SortingState>([]);
 
+  const columnVisibility = useTransientColumnVisibility();
+  const isClientSideColumnHidingEnabled =
+    isDashcardViewTable &&
+    !isPivoted &&
+    settings["table.allow_column_hiding"] !== false;
+  const hiddenColumnIds = useMemo(
+    () => columnVisibility?.hiddenColumnIds ?? new Set<string>(),
+    [columnVisibility?.hiddenColumnIds],
+  );
+
   const tc = useTranslateContent();
 
   const { rows, cols } = data;
+
+  useEffect(() => {
+    if (isClientSideColumnHidingEnabled && columnVisibility) {
+      columnVisibility.setAllColumns(
+        cols.map((col, i) => ({
+          id: col.name,
+          name: getColumnTitle(i),
+        })),
+      );
+      columnVisibility.showAllColumns();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cols, isClientSideColumnHidingEnabled]);
+
+  const handleHideColumn = useCallback(
+    (columnId: string) => {
+      if (!columnVisibility || !isClientSideColumnHidingEnabled) {
+        return;
+      }
+      const visibleCount = cols.length - columnVisibility.hiddenColumnIds.size;
+      if (visibleCount <= 1) {
+        return;
+      }
+      columnVisibility.hideColumn(columnId);
+    },
+    [cols.length, columnVisibility, isClientSideColumnHidingEnabled],
+  );
 
   const getColumnSortDirection = useMemo(() => {
     if (!isClientSideSortingEnabled) {
@@ -545,6 +583,10 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
               columnIndex={columnIndex}
               theme={theme}
               renderTableHeader={renderTableHeader}
+              onHideColumn={
+                isClientSideColumnHidingEnabled ? handleHideColumn : undefined
+              }
+              columnId={id}
             />
           );
         },
@@ -601,7 +643,23 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     isDashboard,
     tc,
     getInfoPopoversDisabledRef,
+    isClientSideColumnHidingEnabled,
+    handleHideColumn,
   ]);
+
+  const visibleColumnsOptions = useMemo(() => {
+    if (!isClientSideColumnHidingEnabled || hiddenColumnIds.size === 0) {
+      return columnsOptions;
+    }
+    return columnsOptions.filter(col => !hiddenColumnIds.has(col.id));
+  }, [columnsOptions, hiddenColumnIds, isClientSideColumnHidingEnabled]);
+
+  const visibleColumnOrder = useMemo(() => {
+    if (!isClientSideColumnHidingEnabled || hiddenColumnIds.size === 0) {
+      return columnOrder;
+    }
+    return columnOrder.filter(id => !hiddenColumnIds.has(id));
+  }, [columnOrder, hiddenColumnIds, isClientSideColumnHidingEnabled]);
 
   const handleColumnResize = useCallback(
     (columnName: string, width: number) => {
@@ -714,9 +772,9 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     data: rows,
     rowId,
     sorting,
-    columnOrder,
+    columnOrder: visibleColumnOrder,
     columnSizingMap,
-    columnsOptions,
+    columnsOptions: visibleColumnsOptions,
     theme: dataGridTheme,
     onColumnResize: handleColumnResize,
     onColumnReorder: handleColumnReordering,

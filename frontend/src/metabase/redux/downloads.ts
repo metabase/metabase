@@ -364,12 +364,16 @@ const getInternalDashcardParams = (
   type: string,
   result: Dataset,
   exportParams: ExportParams,
+  visualizationSettings?: VisualizationSettings,
 ): DownloadQueryResultsParams => ({
   method: "POST",
   url: `/api/dashboard/${dashboardId}/dashcard/${dashcardId}/card/${cardId}/query/${type}`,
   body: {
     parameters: result?.json_query?.parameters ?? [],
     ...exportParams,
+    ...(visualizationSettings
+      ? { visualization_settings: visualizationSettings }
+      : {}),
   },
 });
 
@@ -501,6 +505,7 @@ const getDatasetParams = ({
       type,
       result,
       exportParams,
+      visualizationSettings,
     );
   }
 

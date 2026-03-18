@@ -314,7 +314,8 @@
   all valid options."
   [card-id :- ::lib.schema.id/card
    export-format
-   & {:keys [parameters constraints context dashboard-id dashcard-id middleware qp make-run ignore-cache]
+   & {:keys [parameters constraints context dashboard-id dashcard-id middleware qp make-run ignore-cache
+             visualization-settings]
       :or   {constraints (qp.constraints/default-query-constraints)
              context     :question
              ;; param `make-run` can be used to control how the query is ran, e.g. if you need to customize the `context`
@@ -332,7 +333,9 @@
                               dashcard-id)
                      (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id))
         card-viz   (:visualization_settings card)
-        merged-viz (m/deep-merge card-viz dash-viz)
+        merged-viz (cond-> (m/deep-merge card-viz dash-viz)
+                     ;; Allow request-body overrides (e.g. transient column hiding) to take precedence
+                     visualization-settings (m/deep-merge visualization-settings))
         ;; We need to check this here because dashcards don't get selected until this point
         qp         (if (= :pivot (:display card))
                      qp.pivot/run-pivot-query

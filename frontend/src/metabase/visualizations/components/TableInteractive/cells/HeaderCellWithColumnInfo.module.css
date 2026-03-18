@@ -2,3 +2,14 @@
   width: auto;
   overflow: hidden;
 }
+
+.hideButton {
+  opacity: 0;
+  transition: opacity 150ms ease;
+  flex-shrink: 0;
+  margin-left: 4px;
+}
+
+[role="columnheader"]:hover .hideButton {
+  opacity: 1;
+}

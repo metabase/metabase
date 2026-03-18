@@ -1426,35 +1426,39 @@
                                                                 [:card-id       ms/PositiveInt]
                                                                 [:export-format ::qp.schema/export-format]]
    _query-params
-   {:keys          [parameters]
+   {:keys          [parameters visualization_settings]
     format-rows?   :format_rows
     pivot-results? :pivot_results}
    :- [:map
-       [:parameters    {:optional true} [:maybe [:or
-                                                 [:sequential ParameterWithID]
-                                                 ;; support <form> encoded params for backwards compatibility... see
-                                                 ;; https://metaboat.slack.com/archives/C010L1Z4F9S/p1738003606875659
-                                                 ms/JSONString]]]
-       [:format_rows   {:default false} ms/BooleanValue]
-       [:pivot_results {:default false} ms/BooleanValue]]]
+       [:parameters             {:optional true} [:maybe [:or
+                                                          [:sequential ParameterWithID]
+                                                          ;; support <form> encoded params for backwards compatibility... see
+                                                          ;; https://metaboat.slack.com/archives/C010L1Z4F9S/p1738003606875659
+                                                          ms/JSONString]]]
+       [:visualization_settings {:optional true} [:maybe [:or :map ms/JSONString]]]
+       [:format_rows            {:default false} ms/BooleanValue]
+       [:pivot_results          {:default false} ms/BooleanValue]]]
   (m/mapply qp.dashboard/process-query-for-dashcard
-            {:dashboard-id  dashboard-id
-             :card-id       card-id
-             :dashcard-id   dashcard-id
-             :export-format export-format
-             :parameters    (cond-> parameters
-                              (string? parameters) json/decode+kw)
-             :context       (api.dataset/export-format->context export-format)
-             :constraints   nil
-             ;; TODO -- passing this `:middleware` map is a little repetitive, need to think of a way to not have to
-             ;; specify this all over the codebase any time we want to do a query with an export format. Maybe this
-             ;; should be the default if `export-format` isn't `:api`?
-             :middleware    {:process-viz-settings?  true
-                             :skip-results-metadata? true
-                             :ignore-cached-results? true
-                             :format-rows?           format-rows?
-                             :pivot?                 pivot-results?
-                             :js-int-to-string?      false}}))
+            (cond-> {:dashboard-id  dashboard-id
+                     :card-id       card-id
+                     :dashcard-id   dashcard-id
+                     :export-format export-format
+                     :parameters    (cond-> parameters
+                                     (string? parameters) json/decode+kw)
+                     :context       (api.dataset/export-format->context export-format)
+                     :constraints   nil
+                     ;; TODO -- passing this `:middleware` map is a little repetitive, need to think of a way to not have to
+                     ;; specify this all over the codebase any time we want to do a query with an export format. Maybe this
+                     ;; should be the default if `export-format` isn't `:api`?
+                     :middleware    {:process-viz-settings?  true
+                                    :skip-results-metadata? true
+                                    :ignore-cached-results? true
+                                    :format-rows?           format-rows?
+                                    :pivot?                 pivot-results?
+                                    :js-int-to-string?      false}}
+              visualization_settings (assoc :visualization-settings
+                                            (cond-> visualization_settings
+                                              (string? visualization_settings) json/decode+kw)))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
