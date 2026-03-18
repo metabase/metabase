@@ -629,6 +629,30 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
         .should("not.exist");
     });
 
+    it("should show download button when with-downloads is true", () => {
+      H.visitCustomHtmlPage(`
+      ${H.getNewEmbedScriptTag()}
+      ${H.getNewEmbedConfigurationScript()}
+      <metabase-adhoc query="${ordersQuery}" with-downloads />
+      `);
+
+      H.getSimpleEmbedIframeContent()
+        .findByLabelText("download icon")
+        .should("be.visible");
+    });
+
+    it("should hide download button when with-downloads is false", () => {
+      H.visitCustomHtmlPage(`
+      ${H.getNewEmbedScriptTag()}
+      ${H.getNewEmbedConfigurationScript()}
+      <metabase-adhoc query="${ordersQuery}" with-downloads="false" />
+      `);
+
+      H.getSimpleEmbedIframeContent()
+        .findByLabelText("download icon")
+        .should("not.exist");
+    });
+
     it("should show the save button when is-save-enabled is true", () => {
       H.visitCustomHtmlPage(`
       ${H.getNewEmbedScriptTag()}
