@@ -14,6 +14,7 @@ export * from "./oidc";
 export * from "./replacement";
 export * from "./saml";
 export * from "./scim";
+export * from "./search";
 export * from "./support-access-grants";
 export * from "./table";
 export * from "./tags";

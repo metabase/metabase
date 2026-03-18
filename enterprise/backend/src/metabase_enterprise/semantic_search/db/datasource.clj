@@ -1,6 +1,6 @@
 (ns metabase-enterprise.semantic-search.db.datasource
   (:require
-   [environ.core :refer [env]]
+   [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase.connection-pool :as connection-pool]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc])
@@ -13,9 +13,8 @@
   "Atom to hold the pooled JDBC data source for the semantic search database."
   (atom nil))
 
-(def db-url
-  "The database URL used to connect to pgvector"
-  (env :mb-pgvector-db-url))
+(defn db-url []
+  (semantic.settings/ee-pgvector-db-url))
 
 ;; See metabase.app-db.connection-pool-setup for more details on these properties
 ;; TODO: not sure if we need the MetabaseConnectionCustomizer like in the app DB connection pool setup
@@ -32,8 +31,9 @@
 (defn- build-db-config
   "Build database configuration from environment variables"
   []
-  (if db-url
-    {:jdbcUrl db-url}
+  (if-let [jdbc-url (db-url)]
+    {:jdbcUrl jdbc-url}
+    ;; TODO
     (throw (ex-info "MB_PGVECTOR_DB_URL environment variable is required for semantic search" {}))))
 
 (defn init-db!
@@ -65,7 +65,8 @@
 
 (comment
   ;; docker-compose.yml
-  (.doReset #'db-url "jdbc:postgres://localhost:55432/mb_semantic_search?user=postgres&password=postgres")
+  (with-redefs [db-url (constantly "jdbc:postgres://localhost:55432/mb_semantic_search?user=postgres&password=postgres")]
+    (init-db!))
   (init-db!)
   (test-connection!))
 

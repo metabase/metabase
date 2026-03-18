@@ -93,3 +93,8 @@
                      (simple/repeat-forever)))
                    (triggers/start-now))]
       (task/schedule-task! job trigger))))
+
+(defn ensure-scheduled!
+  []
+  (when-not (task/job-exists? collector-job-key)
+    (task/init! ::SemanticMetricCollector)))

@@ -3,7 +3,7 @@ import { EnterpriseApi } from "./api";
 export const searchApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
     getSemanticSearchStatus: builder.query<
-      { indexed_count: number; total_est: number },
+      { indexed_count?: number; total_est?: number },
       void
     >({
       query: () => ({
@@ -11,7 +11,16 @@ export const searchApi = EnterpriseApi.injectEndpoints({
         url: "/api/ee/semantic-search/status",
       }),
     }),
+    reInitSemanticSearch: builder.mutation<{ message?: unknown }, void>({
+      query: () => ({
+        method: "POST",
+        url: "/api/ee/semantic-search/re-init",
+      }),
+    }),
   }),
 });
 
-export const { useGetSemanticSearchStatusQuery } = searchApi;
+export const {
+  useGetSemanticSearchStatusQuery,
+  useReInitSemanticSearchMutation,
+} = searchApi;

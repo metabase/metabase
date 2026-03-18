@@ -9,6 +9,15 @@
   "The set of valid embedding provider names."
   #{"ai-service" "openai" "ollama"})
 
+(defsetting ee-pgvector-db-url
+  (deferred-tru "The PostgreSQL database URL for the pgvector extension")
+  ;; TODO?
+  :encryption :no
+  :visibility :settings-manager
+  :type :string
+  :export? false
+  :doc false)
+
 (defsetting ee-embedding-provider
   (deferred-tru "The embedding provider to use (`openai`, `ollama`, or `ai-service`)")
   :encryption :no

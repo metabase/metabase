@@ -778,6 +778,10 @@ export interface EnterpriseSettings extends Settings {
   "slack-connect-enabled"?: boolean | null;
   "slack-connect-client-id"?: string | null;
   "slack-connect-client-secret"?: string | null;
+  "ee-pgvector-db-url"?: string | null;
+  "ee-embedding-provider"?: string | null;
+  "ee-embedding-model"?: string | null;
+  "ee-embedding-model-dimensions"?: number | null;
   /**
    * @deprecated
    */
