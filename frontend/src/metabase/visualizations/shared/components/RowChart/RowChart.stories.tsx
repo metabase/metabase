@@ -1,10 +1,10 @@
 import type { StoryFn } from "@storybook/react";
 
 import { SdkVisualizationWrapper } from "__support__/storybook";
-import { color } from "metabase/lib/colors";
 import { measureTextWidth } from "metabase/lib/measure-text";
 import { getStaticChartTheme } from "metabase/static-viz/components/RowChart/theme";
 import { Box } from "metabase/ui";
+import { color } from "metabase/ui/colors";
 import { useRowChartTheme } from "metabase/visualizations/visualizations/RowChart/utils/theme";
 
 import { RowChart, type RowChartProps } from "./RowChart";

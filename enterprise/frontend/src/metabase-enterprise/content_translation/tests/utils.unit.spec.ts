@@ -444,7 +444,7 @@ describe("content translation utils", () => {
 
     it("should return the original series if no translations are available", () => {
       const series = createMockSeries();
-      const result = translateFieldValuesInSeries(series, leaveUntranslated);
+      const result = translateFieldValuesInSeries(leaveUntranslated)(series);
       expect(result).toEqual(series);
     });
 
@@ -462,7 +462,7 @@ describe("content translation utils", () => {
       ];
       series[0].data.rows = [["a", "b"]];
 
-      const result = translateFieldValuesInSeries(series, mockTC);
+      const result = translateFieldValuesInSeries(mockTC)(series);
 
       expect(result[0].data.rows).toEqual([
         ["mock translation of a", "mock translation of b"],
@@ -481,7 +481,7 @@ describe("content translation utils", () => {
 
     it("translates card names in a series", () => {
       const series = createMockSeries([{ name: "a" }, { name: "b" }]);
-      const result = translateCardNames(series, mockTC);
+      const result = translateCardNames(mockTC)(series);
       expect(result[0].card.name).toEqual("mock translation of a");
     });
   });

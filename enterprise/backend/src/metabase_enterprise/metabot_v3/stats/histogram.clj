@@ -122,18 +122,18 @@
          total       (reduce + 0.0 valid-ys)]
      (if (or (zero? n)
              (zero? total))
-       {:estimated_summary {:weighted_mean 0 :weighted_std_dev 0 :data_range 0}
-        :total_count       0
-        :data_points       n
-        :bin_data          []
-        :distribution      {:estimated_percentiles {}
-                            :estimated_quartiles   {:q1 0 :median 0 :q3 0 :iqr 0}}
-        :structure         {:mode_bin           nil
-                            :peak_count         0
-                            :concentration_top3 0.0
-                            :gap_count          0
-                            :empty_bin_ratio    0.0
-                            :bin_count          n}}
+       {:estimated-summary {:weighted-mean 0 :weighted-std-dev 0 :data-range 0}
+        :total-count       0
+        :data-points       n
+        :bin-data          []
+        :distribution      {:estimated-percentiles {}
+                            :estimated-quartiles   {:q1 0 :median 0 :q3 0 :iqr 0}}
+        :structure         {:mode-bin           nil
+                            :peak-count         0
+                            :concentration-top3 0.0
+                            :gap-count          0
+                            :empty-bin-ratio    0.0
+                            :bin-count          n}}
        (let [;; Sort by x for cumulative operations
              sorted-pairs (sort-by first (map vector valid-xs valid-ys))
              sorted-xs    (mapv first sorted-pairs)
@@ -160,22 +160,22 @@
              mode-idx     (.indexOf ^java.util.List sorted-ys max-count)
              top3         (reduce + (take 3 (sort > sorted-ys)))
              zero-bins    (count (filter zero? sorted-ys))]
-         {:estimated_summary {:weighted_mean    wmean
-                              :weighted_std_dev wstd
-                              :data_range       (- max-x min-x)}
-          :total_count       (long total)
-          :data_points       n
-          :bin_data          (mapv vector sorted-xs sorted-ys)
-          :distribution      (cond-> {:estimated_percentiles percentiles
-                                      :estimated_quartiles   {:q1 q1 :median med :q3 q3 :iqr (- q3 q1)}}
-                               wskew (assoc :weighted_skewness wskew)
-                               wkurt (assoc :weighted_kurtosis wkurt))
-          :structure         {:mode_bin           [(nth sorted-xs mode-idx) max-count]
-                              :peak_count         (count-peaks sorted-ys)
-                              :concentration_top3 (/ top3 total)
-                              :gap_count          (count-gaps sorted-ys)
-                              :empty_bin_ratio    (/ (double zero-bins) n)
-                              :bin_count          n}})))))
+         {:estimated-summary {:weighted-mean    wmean
+                              :weighted-std-dev wstd
+                              :data-range       (- max-x min-x)}
+          :total-count       (long total)
+          :data-points       n
+          :bin-data          (mapv vector sorted-xs sorted-ys)
+          :distribution      (cond-> {:estimated-percentiles percentiles
+                                      :estimated-quartiles   {:q1 q1 :median med :q3 q3 :iqr (- q3 q1)}}
+                               wskew (assoc :weighted-skewness wskew)
+                               wkurt (assoc :weighted-kurtosis wkurt))
+          :structure         {:mode-bin           [(nth sorted-xs mode-idx) max-count]
+                              :peak-count         (count-peaks sorted-ys)
+                              :concentration-top3 (/ top3 total)
+                              :gap-count          (count-gaps sorted-ys)
+                              :empty-bin-ratio    (/ (double zero-bins) n)
+                              :bin-count          n}})))))
 
 (mu/defn compute-histogram-stats :- ::stats.types/histogram-stats
   "Compute statistics for histogram data.

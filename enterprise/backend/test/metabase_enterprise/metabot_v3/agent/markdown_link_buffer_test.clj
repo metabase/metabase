@@ -1,7 +1,8 @@
 (ns metabase-enterprise.metabot-v3.agent.markdown-link-buffer-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.metabot-v3.agent.markdown-link-buffer :as mlb]))
+   [metabase-enterprise.metabot-v3.agent.markdown-link-buffer :as mlb]
+   [metabase.system.core :as system]))
 
 (defn- process
   "Process text through a fresh state with given queries/charts context.
@@ -139,6 +140,46 @@
     (let [[output flushed] (process "[Model](metabase://model/1) and [Google](https://google.com)")]
       (is (= "[Model](/model/1) and [Google](https://google.com)" output))
       (is (= "" flushed)))))
+
+;;; Slack link resolution tests
+
+(deftest resolve-slack-link-test
+  (testing "resolves Slack-format metabase:// links"
+    (with-redefs [system/site-url (constantly "https://metabase.example.com")]
+      (let [[output flushed] (process "<metabase://model/123|My Model>")]
+        (is (= "<https://metabase.example.com/model/123|My Model>" output))
+        (is (= "" flushed)))))
+
+  (testing "resolves Slack link without link text"
+    (with-redefs [system/site-url (constantly "https://metabase.example.com")]
+      (let [[output flushed] (process "<metabase://dashboard/456>")]
+        (is (= "<https://metabase.example.com/dashboard/456>" output))
+        (is (= "" flushed)))))
+
+  (testing "falls back to link text for unresolvable Slack link"
+    (let [[output flushed] (process "<metabase://query/unknown|My Query>")]
+      (is (= "My Query" output))
+      (is (= "" flushed)))))
+
+(deftest slack-link-buffering-test
+  (testing "buffers incomplete Slack-format links"
+    (with-redefs [system/site-url (constantly "https://metabase.example.com")]
+      (let [[outputs flushed] (process-chunks ["Check <metabase://mod" "el/123|My Model>"])]
+        (is (= "Check " (first outputs)))
+        (is (re-find #"metabase\.example\.com/model/123" (second outputs)))
+        (is (= "" flushed)))))
+
+  (testing "does NOT buffer regular < characters"
+    (let [[output flushed] (process "x < y and z > w")]
+      (is (= "x < y and z > w" output))
+      (is (= "" flushed)))))
+
+(deftest mixed-link-formats-test
+  (testing "resolves both markdown and Slack-format links in same text"
+    (with-redefs [system/site-url (constantly "https://metabase.example.com")]
+      (let [[output flushed] (process "[Model](/model/1) and <metabase://dashboard/2|Dashboard>")]
+        (is (= "[Model](/model/1) and <https://metabase.example.com/dashboard/2|Dashboard>" output))
+        (is (= "" flushed))))))
 
 ;;; with-context tests
 

@@ -18,6 +18,8 @@
 (def todo-list-type "AI-SDK data type for todo lists." "todo_list")
 (def code-edit-type "AI-SDK data type for code edits." "code_edit")
 (def transform-suggestion-type "AI-SDK data type for transform suggestions." "transform_suggestion")
+(def adhoc-viz-type "AI-SDK data type for ad-hoc visualizations." "adhoc_viz")
+(def static-viz-type "AI-SDK data type for static visualizations." "static_viz")
 
 ;;; Query URL Encoding
 
@@ -90,6 +92,31 @@
    :data-type transform-suggestion-type
    :version 1
    :data suggestion})
+
+(defn adhoc-viz-part
+  "Create an ADHOC_VIZ data part for streaming.
+  Value should be a map with :query (dataset query), :link (question URL),
+  and optionally :title and :display.
+
+  This matches Python AI Service's:
+  ai_sdk.create_data_part(data_type=AISDKDataTypes.ADHOC_VIZ, version=1, value=adhoc_viz_value)"
+  [value]
+  {:type :data
+   :data-type adhoc-viz-type
+   :version 1
+   :data value})
+
+(defn static-viz-part
+  "Create a STATIC_VIZ data part for streaming.
+  Value should be a map with :entity_id (int) for the saved question or metric to render.
+
+  This matches Python AI Service's:
+  ai_sdk.create_data_part(data_type=AISDKDataTypes.STATIC_VIZ, version=1, value={\"entity_id\": entity_id})"
+  [value]
+  {:type :data
+   :data-type static-viz-type
+   :version 1
+   :data value})
 
 ;;; Reaction Conversion
 
