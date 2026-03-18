@@ -158,7 +158,7 @@ export const GRAPH_DATA_SETTINGS: VisualizationSettingsDefinitions = {
       return t`Data`;
     },
     widget: ChartSettingSeriesOrder,
-    marginBottom: "1rem",
+    getMarginBottom: () => "1rem",
     useRawSeries: true,
     getValue: (rawSeries, settings) => {
       const seriesModels = getSeriesModelsForSettings(rawSeries, settings);
@@ -427,7 +427,7 @@ export const GRAPH_TREND_SETTINGS: VisualizationSettingsDefinitions = {
     },
     useRawSeries: true,
     inline: true,
-    marginBottom: "1rem",
+    getMarginBottom: () => "1rem",
   },
 };
 
@@ -443,7 +443,7 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS: VisualizationSettingsDefinitions = {
     getHidden: (series, vizSettings) => !canHaveDataLabels(series, vizSettings),
     getDefault: getDefaultShowDataLabels,
     inline: true,
-    marginBottom: "1rem",
+    getMarginBottom: () => "1rem",
   },
   "graph.label_value_frequency": {
     get section() {
@@ -1056,7 +1056,7 @@ export const BOXPLOT_SETTINGS: VisualizationSettingsDefinitions<
     widget: "toggle",
     getDefault: () => false,
     inline: true,
-    marginBottom: "1rem",
+    getMarginBottom: () => "1rem",
   },
   "boxplot.show_values_mode": {
     get section() {
