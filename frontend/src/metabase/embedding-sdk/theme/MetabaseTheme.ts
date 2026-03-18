@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 
-import type { ColorName } from "metabase/lib/colors/types";
+import type { ColorName } from "metabase/ui/colors/types";
 
 import type { DeepPartial } from "../types/utils";
 

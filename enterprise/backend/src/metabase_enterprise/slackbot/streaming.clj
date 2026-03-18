@@ -207,6 +207,10 @@
                                               {:type  (:data-type part)
                                                :value (:data part)}))
 
+                                   :error
+                                   (when on-text
+                                     (on-text "Something went wrong. Please try again."))
+
                                    nil)
                                  nil)))]
     (transduce dispatch-xf (constantly nil) nil
