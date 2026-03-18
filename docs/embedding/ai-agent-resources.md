@@ -22,11 +22,11 @@ The [Metabase agent skills pack](https://github.com/metabase/agent-skills) gives
 
 | Skill                           | Description                                                                                  |
 | ------------------------------- | -------------------------------------------------------------------------------------------- |
-| SDK version upgrade             | Upgrade your modular embedding SDK, including changelog checks and breaking change handling. |
-| Full app → modular embedding    | Migrate from full app embedding to modular embedding.                                        |
-| Modular embedding → SDK (React) | Migrate from script-based modular embedding to the React SDK.                                |
-| Static → guest embeds           | Migrate from static (signed) embeds to guest embeds.                                         |
-| SSO for embeds                  | Set up SSO authentication for embedded Metabase. _(In development.)_                         |
+| [SDK version upgrade](https://skillsmp.com/skills/metabase-agent-skills-skills-metabase-modular-embedding-version-upgrade-skill-md) | Upgrade your modular embedding SDK, including changelog checks and breaking change handling. |
+| [Full app → modular embedding](https://skillsmp.com/skills/metabase-agent-skills-skills-metabase-full-app-to-modular-embedding-upgrade-skill-md) | Migrate from full app embedding to modular embedding. |
+| [Modular embedding → SDK (React)](https://skillsmp.com/skills/metabase-agent-skills-skills-metabase-modular-embedding-to-modular-embedding-sdk-upgrade-skill-md) | Migrate from script-based modular embedding to the React SDK. |
+| [Static → guest embeds](https://skillsmp.com/skills/metabase-agent-skills-skills-metabase-static-embedding-to-guest-embedding-upgrade-skill-md) | Migrate from static (signed) embeds to guest embeds. |
+| [SSO for embeds](https://skillsmp.com/skills/metabase-agent-skills-skills-metabase-embedding-sso-implementation-skill-md) | Set up SSO authentication for embedded Metabase. _(In development.)_ |
 
 Browse all skills on the [Skills Marketplace](https://skillsmp.com/skills/metabase-agent-skills-skills-metabase-modular-embedding-version-upgrade-skill-md).
 
