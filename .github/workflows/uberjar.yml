@@ -12,6 +12,7 @@ on:
     branches:
       - master
       - internal-tools
+      - ai-service-port
     paths-ignore:
       # config files
       - ".**"
