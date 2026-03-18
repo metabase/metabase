@@ -27,26 +27,24 @@
   :default    true
   :audit      :getter)
 
-(defn builtin-geojson-definitions
-  "Map of built-in GeoJSON entries, independent of whether they are enabled."
-  []
-  {:us_states       {:name        "United States"
-                     :url         "app/assets/geojson/us-states.json"
-                     :region_key  "STATE"
-                     :region_name "NAME"
-                     :builtin     true}
-   :world_countries {:name        "World"
-                     :url         "app/assets/geojson/world.json"
-                     :region_key  "ISO_A2"
-                     :region_name "NAME"
-                     :builtin     true}})
-
 (defn builtin-geojson
   "Default GeoJSON maps when [[default-maps-enabled]]."
   []
   (if (default-maps-enabled)
-    (builtin-geojson-definitions)
+    {:us_states       {:name        "United States"
+                       :url         "app/assets/geojson/us-states.json"
+                       :region_key  "STATE"
+                       :region_name "NAME"
+                       :builtin     true}
+     :world_countries {:name        "World"
+                       :url         "app/assets/geojson/world.json"
+                       :region_key  "ISO_A2"
+                       :region_name "NAME"
+                       :builtin     true}}
     {}))
+
+(def ^:private builtin-geojson-urls
+  (set (map :url (builtin-geojson))))
 
 (def ^:private CustomGeoJSON
   [:map-of :keyword [:map {:closed true}
@@ -100,12 +98,18 @@
            (valid-host? url)))
     (catch Throwable _ false)))
 
-(defn valid-geojson-url?
+(defn valid-geojson-resource-path?
   "Whether GeoJSON `url` points to a valid resource. Does not check whether the contents are valid GeoJSON or not.
-   Classpath resources are only allowed when MB_ALLOW_CLASSPATH_GEOJSON is true."
+   User-defined classpath resources are only allowed when MB_ALLOW_CLASSPATH_GEOJSON is true."
   [url]
   (or (and (allow-classpath-geojson?)
-           (io/resource url))
+           (boolean (io/resource url)))
+      (contains? builtin-geojson-urls url)))
+
+(defn valid-geojson-url?
+  "Whether GeoJSON `url` points to a valid resource or "
+  [url]
+  (or (valid-geojson-resource-path? url)
       (valid-url? url)))
 
 (defn- valid-geojson-urls?
