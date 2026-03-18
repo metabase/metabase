@@ -1,13 +1,11 @@
 (ns metabase.search.appdb.core
   (:require
    [clojure.string :as str]
-   [environ.core :as env]
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
-   [metabase.mq.core :as mq]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.appdb.scoring :as search.scoring]
    [metabase.search.appdb.specialization.postgres :as specialization.postgres]
@@ -20,7 +18,6 @@
    [metabase.search.settings :as search.settings]
    [metabase.search.spec :as search.spec]
    [metabase.search.util :as search.util]
-   [metabase.settings.core :as setting]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
@@ -148,15 +145,6 @@
 
   (tracing/with-span :search "search.appdb.query" {:search/query-length (count search-string)}
     (try
-      (when (setting/string->boolean (:mb-experimental-search-block-on-queue env/env))
-        ;; wait for a bit for the queue to be drained
-        (let [pending-updates #(mq/queue-length :queue/search-reindex)]
-          (when-not (u/poll {:thunk       pending-updates
-                             :done?       zero?
-                             :timeout-ms  2000
-                             :interval-ms 100})
-            (log/warn "Returning search results even though they may be stale. Queue size:" (pending-updates)))))
-
       (let [weights (search.config/weights search-ctx)
             scorers (search.scoring/scorers search-ctx)
             query   (->> (search.index/search-query search-string search-ctx [:legacy_input])

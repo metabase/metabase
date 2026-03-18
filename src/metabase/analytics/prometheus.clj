@@ -593,8 +593,7 @@
                          {:description "Full agent loop duration (ms)"
                           :labels [:profile-id]
                           ;; 100ms -> 10 minutes
-                          :buckets [100 500 1000 5000 10000 30000 60000 120000 300000 600000]})])
-                          :buckets [1 5 10 25 50 100 250 500 1000 2500 5000 10000 30000]})
+                          :buckets [100 500 1000 5000 10000 30000 60000 120000 300000 600000]})
 
    ;; messaging metrics
    (prometheus/counter :metabase-mq/queue-messages-published
