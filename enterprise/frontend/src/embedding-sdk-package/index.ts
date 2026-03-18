@@ -11,6 +11,7 @@ EMBEDDING_SDK_CONFIG.isEmbeddingSdk = true;
 defineBuildInfo("METABASE_EMBEDDING_SDK_PACKAGE_BUILD_INFO");
 defineGlobalDependencies();
 
+export { AdHocQuestion } from "./components/public/AdHocQuestion";
 export { CollectionBrowser } from "./components/public/CollectionBrowser";
 export { CreateQuestion } from "./components/public/CreateQuestion";
 export { CreateDashboardModal } from "./components/public/CreateDashboardModal";
@@ -69,6 +70,7 @@ export {
   type InteractiveQuestionComponents,
   type InteractiveQuestionProps,
 } from "embedding-sdk-bundle/components/public/InteractiveQuestion";
+export { type AdHocQuestionProps } from "embedding-sdk-bundle/components/public/AdHocQuestion";
 export { type MetabotQuestionProps } from "embedding-sdk-bundle/components/public/MetabotQuestion";
 export {
   type StaticQuestionProps,
