@@ -131,7 +131,7 @@ jobs:
   embedding-sdk-bundle-size-check:
     if: inputs.bundle-size-check
     continue-on-error: true
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     env:
       BUNDLE_SIZE_THRESHOLD_PERCENT: 2

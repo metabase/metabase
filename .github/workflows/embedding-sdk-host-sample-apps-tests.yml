@@ -201,7 +201,7 @@ jobs:
     if: |
       !cancelled() && needs.get-sample-apps-data.result == 'success' &&
       (github.ref == 'refs/heads/master' || github.base_ref == 'master')
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 45
     name: e2e-sample-app-shoppy-e2e-tests-${{ matrix.environment }}-bundle
     env:
@@ -264,7 +264,7 @@ jobs:
       !cancelled() && needs.get-sample-apps-data.result == 'success' &&
       github.event_name == 'push' &&
       github.ref == 'refs/heads/master'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 45
     name: e2e-shoppy-synthetic-monitoring-tests
     env:
