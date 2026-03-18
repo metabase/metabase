@@ -1,6 +1,5 @@
 import type { Row } from "@tanstack/react-table";
 import {
-  type ComponentProps,
   type PropsWithChildren,
   useCallback,
   useEffect,
@@ -31,6 +30,7 @@ import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { type NamedUser, getUserName } from "metabase/lib/user";
 import { PLUGIN_REMOTE_SYNC, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
+import { getMetadata } from "metabase/selectors/metadata";
 import { CreateTransformMenu } from "metabase/transforms/components/CreateTransformMenu";
 import { ListEmptyState } from "metabase/transforms/components/ListEmptyState";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
@@ -52,7 +52,11 @@ import {
 import { CollectionRowMenu } from "./CollectionRowMenu";
 import S from "./TransformListPage.module.css";
 import { type TreeNode, getCollectionNodeId, isCollectionNode } from "./types";
-import { buildTreeData, getDefaultExpandedIds } from "./utils";
+import {
+  buildTreeData,
+  getDefaultExpandedIds,
+  getIncrementalWarning,
+} from "./utils";
 
 const getNodeId = (node: TreeNode) => node.id;
 const getSubRows = (node: TreeNode) => node.children;
@@ -137,9 +141,21 @@ export const TransformListPage = ({
   const isLoading =
     isLoadingCollections || isLoadingTransforms || isLoadingDatabases;
   const error = collectionsError ?? transformsError;
+  const metadata = useSelector(getMetadata);
   const shouldShowPythonTransformsUpsell = useSelector(
     getShouldShowPythonTransformsUpsell,
   );
+
+  const warningsByTransformId = useMemo(() => {
+    const warnings = new Map<number, string>();
+    for (const transform of transforms ?? []) {
+      const warning = getIncrementalWarning(transform, metadata);
+      if (warning) {
+        warnings.set(transform.id, warning);
+      }
+    }
+    return warnings;
+  }, [transforms, metadata]);
 
   const treeData = useMemo(() => {
     const data = buildTreeData(collections, transforms);
@@ -176,16 +192,6 @@ export const TransformListPage = ({
   );
 
   const columnDefs = useMemo<TreeTableColumnDef<TreeNode>[]>(() => {
-    type EllipsifiedProps = ComponentProps<
-      typeof EntityNameCell
-    >["ellipsifiedProps"];
-    const unreadableTransformEllipsifiedProps: EllipsifiedProps = {
-      alwaysShowTooltip: true,
-      tooltipProps: {
-        openDelay: 300,
-        label: t`Sorry, you don’t have permission to see that.`,
-      },
-    };
     return [
       {
         id: "name",
@@ -194,26 +200,12 @@ export const TransformListPage = ({
         minWidth: 280,
         maxAutoWidth: 800,
         enableSorting: true,
-        cell: ({ row }) => {
-          const isLibraryWithoutFeature =
-            row.original.nodeType === "library" && !hasPythonTransformsFeature;
-          return (
-            <Group gap="sm" wrap="nowrap" miw={0}>
-              <EntityNameCell
-                data-testid="tree-node-name"
-                icon={row.original.icon}
-                iconColor={getNodeIconColor(row.original)}
-                name={row.original.name}
-                ellipsifiedProps={
-                  isRowDisabled(row)
-                    ? unreadableTransformEllipsifiedProps
-                    : undefined
-                }
-              />
-              {isLibraryWithoutFeature && <UpsellGem.New size={14} />}
-            </Group>
-          );
-        },
+        cell: ({ row }) =>
+          getNameCell({
+            row,
+            hasPythonTransformsFeature,
+            warningsByTransformId,
+          }),
       },
       {
         id: "owner",
@@ -287,7 +279,7 @@ export const TransformListPage = ({
           ) : null,
       },
     ];
-  }, [hasPythonTransformsFeature]);
+  }, [hasPythonTransformsFeature, warningsByTransformId]);
 
   const getRowHref = useCallback((row: Row<TreeNode>) => {
     if (isRowDisabled(row)) {
@@ -388,3 +380,56 @@ export const TransformListPage = ({
     </PageContainer>
   );
 };
+
+function getNameCell({
+  row,
+  hasPythonTransformsFeature,
+  warningsByTransformId,
+}: {
+  row: Row<TreeNode>;
+  hasPythonTransformsFeature: boolean;
+  warningsByTransformId: Map<number, string>;
+}) {
+  const getTooltipProps = (message: string | undefined) => {
+    if (!message) {
+      return undefined;
+    }
+
+    return {
+      alwaysShowTooltip: true,
+      tooltipProps: {
+        openDelay: 300,
+        label: message,
+      },
+    };
+  };
+
+  const getWarningMessage = () => {
+    if (isRowDisabled(row)) {
+      return t`Sorry, you don’t have permission to see that.`;
+    }
+
+    if (row.original.transformId) {
+      return warningsByTransformId.get(row.original.transformId);
+    }
+    return undefined;
+  };
+
+  const isLibraryWithoutFeature =
+    row.original.nodeType === "library" && !hasPythonTransformsFeature;
+
+  const hasWarning = !!getWarningMessage();
+
+  return (
+    <Group gap="sm" wrap="nowrap" miw={0}>
+      <EntityNameCell
+        data-testid="tree-node-name"
+        icon={hasWarning ? "warning" : row.original.icon}
+        iconColor={hasWarning ? "warning" : getNodeIconColor(row.original)}
+        name={row.original.name}
+        ellipsifiedProps={{ ...getTooltipProps(getWarningMessage()) }}
+      />
+      {isLibraryWithoutFeature && <UpsellGem.New size={14} />}
+    </Group>
+  );
+}

@@ -39,7 +39,7 @@ jobs:
   be-linter-eastwood-test:
     if: ${{ !inputs.skip }}
     runs-on: ubuntu-22.04
-    timeout-minutes: 20
+    timeout-minutes: 30
     name: Eastwood (test)
     steps:
       - uses: actions/checkout@v4

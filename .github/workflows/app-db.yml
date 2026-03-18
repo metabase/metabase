@@ -20,14 +20,14 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - name: MariaDB 10.2
-            junit-name: be-tests-mariadb-10-2-ee
-            image: circleci/mariadb:10.2.23
+          - name: MariaDB 10.6
+            junit-name: be-tests-mariadb-10-6-ee
+            image: metabase/mariadb:10.6 # https://github.com/metabase/metabase-mariadb-docker-image
             env:
               enable-ssl-tests: 'false'
           - name: MariaDB Latest
             junit-name: be-tests-mariadb-latest-ee
-            image: circleci/mariadb:latest
+            image: mariadb:latest
             env:
               enable-ssl-tests: 'false'
         job:
@@ -57,8 +57,8 @@ jobs:
         ports:
           - "3306:3306"
         env:
-          MYSQL_ALLOW_EMPTY_PASSWORD: true
-          MYSQL_DATABASE: circle_test
+          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: true
+          MARIADB_DATABASE: mb_test
     env:
       # Only run old migrations tests on pushes to master or release branches. All other branches should skip tests
       # with the tag `mb/old-migrations-test`. `__ADDITIONAL_EXCLUDED_TAG__` is not used anywhere outside of splicing
@@ -81,7 +81,7 @@ jobs:
       MB_DB_TYPE: mysql
       MB_DB_HOST: localhost
       MB_DB_PORT: 3306
-      MB_DB_DBNAME: circle_test
+      MB_DB_DBNAME: mb_test
       MB_DB_USER: root
       MB_MYSQL_TEST_USER: root
       #
@@ -100,7 +100,7 @@ jobs:
       MB_MYSQL_SSL_TEST_USER: metabase
       MB_MYSQL_SSL_TEST_PASSWORD: ${{ secrets.MYSQL_RDS_SSL_INSTANCE_PASSWORD }}
     # for historic reasons (I don't want to mess around with required jobs) the job name should be something like
-    # "be-tests-mariadb-10-2-ee (0)"
+    # "be-tests-mariadb-10-6-ee (0)"
     name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
     steps:
       - uses: actions/checkout@v4
@@ -134,9 +134,9 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - name: MySQL 8.0
-            junit-name: be-tests-mysql-8-0-ee
-            image: cimg/mysql:8.0
+          - name: MySQL 8.4
+            junit-name: be-tests-mysql-8-4-ee
+            image: mysql:8.4
             env:
               enable-ssl-tests: 'false'
               enable-aws-iam-tests: 'false'
@@ -174,7 +174,7 @@ jobs:
           - "3306:3306"
         env:
           MYSQL_ALLOW_EMPTY_PASSWORD: true
-          MYSQL_DATABASE: circle_test
+          MYSQL_DATABASE: mb_test
     env:
       # Only run old migrations tests on pushes to master or release branches. All other branches should skip tests
       # with the tag `mb/old-migrations-test`. `__ADDITIONAL_EXCLUDED_TAG__` is not used anywhere outside of splicing
@@ -197,7 +197,7 @@ jobs:
       MB_DB_TYPE: mysql
       MB_DB_HOST: localhost
       MB_DB_PORT: 3306
-      MB_DB_DBNAME: circle_test
+      MB_DB_DBNAME: mb_test
       MB_DB_USER: root
       MB_MYSQL_TEST_USER: root
       #
@@ -224,7 +224,7 @@ jobs:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_AURORA_IAM_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_AURORA_IAM_SECRET_ACCESS_KEY }}
     # for historic reasons (I don't want to mess around with required jobs) the job name should be something like
-    # "be-tests-mariadb-10-2-ee (0)"
+    # "be-tests-mariadb-10-6-ee (0)"
     name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
     steps:
       - uses: actions/checkout@v4
@@ -258,9 +258,9 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - name: Postgres 12.x
+          - name: Postgres 14.x
             junit-name: postgres-ee
-            docker-image: postgres:12-alpine
+            docker-image: postgres:14-alpine
             env:
               enable-ssl-tests: 'false'
               enable-aws-iam-tests: 'false'
