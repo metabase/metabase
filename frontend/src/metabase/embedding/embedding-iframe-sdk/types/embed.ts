@@ -194,6 +194,24 @@ export interface MetabotEmbedOptions {
   token?: never;
 }
 
+export interface AdHocEmbedOptions {
+  componentName: "metabase-adhoc";
+
+  /** Base64-encoded MBQL query */
+  query: string;
+
+  withTitle?: boolean;
+  withDownloads?: boolean;
+  drills?: boolean;
+  isSaveEnabled?: boolean;
+
+  // incompatible options
+  template?: never;
+  questionId?: never;
+  dashboardId?: never;
+  token?: never;
+}
+
 type CollectionBrowserEntityTypes =
   | "collection"
   | "dashboard"
@@ -232,7 +250,8 @@ export type SdkIframeEmbedTemplateSettings =
   | QuestionEmbedOptions
   | ExplorationEmbedOptions
   | BrowserEmbedOptions
-  | MetabotEmbedOptions;
+  | MetabotEmbedOptions
+  | AdHocEmbedOptions;
 
 /** Settings used by the sdk embed route */
 export type SdkIframeEmbedSettings = Omit<
@@ -250,6 +269,7 @@ export type SdkIframeEmbedElementSettings = SdkIframeEmbedBaseSettings &
       })
     | BrowserEmbedOptions
     | MetabotEmbedOptions
+    | AdHocEmbedOptions
   );
 
 export type SdkIframeEmbedEvent = { type: "ready" };
@@ -263,4 +283,5 @@ export type SdkIframeEmbedSettingKey =
   | keyof SdkIframeQuestionEmbedSettings
   | keyof ExplorationEmbedOptions
   | keyof BrowserEmbedOptions
-  | keyof MetabotEmbedOptions;
+  | keyof MetabotEmbedOptions
+  | keyof AdHocEmbedOptions;

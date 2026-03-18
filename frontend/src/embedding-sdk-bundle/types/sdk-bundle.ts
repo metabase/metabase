@@ -1,5 +1,6 @@
 import type { JSXElementConstructor } from "react";
 
+import type { AdHocQuestion } from "embedding-sdk-bundle/components/public/AdHocQuestion/AdHocQuestion";
 import type { CollectionBrowser } from "embedding-sdk-bundle/components/public/CollectionBrowser";
 import type { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import type { CreateDashboardModal } from "embedding-sdk-bundle/components/public/CreateDashboardModal";
@@ -42,6 +43,7 @@ export type MetabaseEmbeddingSdkBundleExports = PublicExports &
   SchemaValidationUtils;
 
 export type PublicExports = {
+  AdHocQuestion: InternalComponent<typeof AdHocQuestion>;
   CollectionBrowser: InternalComponent<typeof CollectionBrowser>;
   CreateDashboardModal: InternalComponent<typeof CreateDashboardModal>;
   CreateQuestion: InternalComponent<typeof CreateQuestion>;

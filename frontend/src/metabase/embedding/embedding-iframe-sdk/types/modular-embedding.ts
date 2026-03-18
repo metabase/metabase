@@ -299,6 +299,50 @@ export interface MetabaseMetabotAttributes {
 }
 
 /**
+ * Attributes for the `<metabase-adhoc>` web component.
+ *
+ * Embeds an ad-hoc query result without requiring a saved question.
+ * Provide a base64-encoded MBQL query via the `query` attribute.
+ * Only available for authenticated (SSO) modular embeds.
+ */
+export interface MetabaseAdHocAttributes {
+  /**
+   * Base64-encoded MBQL query to run as an ad-hoc question.
+   *
+   * The query should be a JSON object encoded in base64. For example:
+   * ```
+   * btoa(JSON.stringify({
+   *   "lib/type": "mbql/query",
+   *   "database": 2,
+   *   "stages": [{ "lib/type": "mbql.stage/mbql", "source-table": 73 }]
+   * }))
+   * ```
+   */
+  query: string;
+
+  /**
+   * Whether to show the question title in the embed.
+   *
+   * @defaultValue true
+   */
+  "with-title"?: boolean;
+
+  /**
+   * Whether to show download buttons for question results.
+   *
+   * @defaultValue `true` on OSS/Starter, `false` on Pro/Enterprise
+   */
+  "with-downloads"?: boolean;
+
+  /**
+   * Whether to enable drill-through on the question.
+   *
+   * @defaultValue true
+   */
+  drills?: boolean;
+}
+
+/**
  * Used to enforce types in frontend/src/metabase/embedding/embedding-iframe-sdk/embed.ts
  *
  * @internal
@@ -308,4 +352,5 @@ export interface ComponentToAttributes {
   "metabase-dashboard": MetabaseDashboardAttributes;
   "metabase-browser": MetabaseBrowserAttributes;
   "metabase-metabot": MetabaseMetabotAttributes;
+  "metabase-adhoc": MetabaseAdHocAttributes;
 }

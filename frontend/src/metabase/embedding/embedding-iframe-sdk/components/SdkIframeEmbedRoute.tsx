@@ -5,6 +5,7 @@ import { PublicComponentStylesWrapper } from "embedding-sdk-bundle/components/pr
 import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { SdkBreadcrumbsProvider } from "embedding-sdk-bundle/components/private/SdkBreadcrumbs";
 import { SdkInternalNavigationProvider } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/SdkInternalNavigationProvider";
+import { AdHocQuestion } from "embedding-sdk-bundle/components/public/AdHocQuestion";
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { MetabotQuestion } from "embedding-sdk-bundle/components/public/MetabotQuestion";
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
@@ -286,6 +287,22 @@ const SdkIframeEmbedView = ({
             layout={settings.layout}
             isSaveEnabled={settings.isSaveEnabled}
             targetCollection={settings.targetCollection}
+            height="100%"
+          />
+        ),
+      )
+      .with(
+        {
+          componentName: "metabase-adhoc",
+          query: P.nonNullable,
+        },
+        (settings) => (
+          <AdHocQuestion
+            key={rerenderKey}
+            query={settings.query}
+            title={settings.withTitle ?? true}
+            withDownloads={settings.withDownloads}
+            isSaveEnabled={settings.isSaveEnabled ?? false}
             height="100%"
           />
         ),
