@@ -22,12 +22,12 @@ jobs:
         version:
           - name: MariaDB 10.2
             junit-name: be-tests-mariadb-10-2-ee
-            image: circleci/mariadb:10.2.23
+            image: mariadb:10.2.23
             env:
               enable-ssl-tests: 'false'
           - name: MariaDB Latest
             junit-name: be-tests-mariadb-latest-ee
-            image: circleci/mariadb:latest
+            image: mariadb:latest
             env:
               enable-ssl-tests: 'false'
         job:
@@ -136,7 +136,7 @@ jobs:
         version:
           - name: MySQL 8.0
             junit-name: be-tests-mysql-8-0-ee
-            image: cimg/mysql:8.0
+            image: mysql:8.0
             env:
               enable-ssl-tests: 'false'
               enable-aws-iam-tests: 'false'
