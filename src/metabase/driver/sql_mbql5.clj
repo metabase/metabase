@@ -25,35 +25,43 @@
       driver-api/add-alias-info
       :stages))
 
-(defn- compile-stage [driver stage]
+(defn- stage->honeysql [driver stage]
   (if (= (:lib/type stage) :mbql.stage/native)
     (sql.qp/sql-source-query (:native stage) (:params stage))
     (binding [sql.qp/*inner-query* stage]
       (#'sql.qp/apply-top-level-clauses driver {} stage))))
 
-(defn- compile-stages [driver stages]
-  (reduce (fn [hsql-form stage]
-            (let [compiled-stage (compile-stage driver stage)]
-              (if hsql-form
-                ;; When there's a previous stage, we need to:
-                ;; 1. Add the :from clause with the previous stage
-                ;; 2. Re-apply add-default-select so it uses the correct table alias
-                ;; The compiled-stage may have :select [[:*]] from add-default-select,
-                ;; but we need :select [[:raw "\"source\".*"]] based on the :from alias
-                (let [table-alias (sql.qp/->honeysql driver (h2x/identifier :table-alias sql.qp/source-query-alias))
-                      with-from (assoc compiled-stage :from [[hsql-form [table-alias]]])
-                      ;; Clear the default select if it's just :* so add-default-select can recompute it
-                      cleared (if (= (:select with-from) [[:*]])
-                                (dissoc with-from :select)
-                                with-from)]
-                  (#'sql.qp/add-default-select driver cleared))
-                compiled-stage)))
-          nil
-          stages))
+(defn- stages->honeysql [driver stages]
+  (first
+   (reduce
+    (fn [[prev-hsql prev-stage] stage]
+      (let [stage-hsql (stage->honeysql driver stage)]
+        (if prev-hsql
+          ;; When there's a previous stage, we need to:
+          ;; 1. Add the :from clause with the previous stage
+          ;; 2. Re-apply add-default-select so it uses the correct table alias
+          ;; The stage-hsql may have :select [[:*]] from add-default-select,
+          ;; but we need :select [[:raw "\"source\".*"]] based on the :from alias
+          (let [table-alias (sql.qp/->honeysql driver (h2x/identifier :table-alias sql.qp/source-query-alias))
+                columns-metadata (get-in prev-stage [:lib/stage-metadata :columns])
+                desired-aliases (mapv :lib/desired-column-alias columns-metadata)
+                cur-hsql (cond-> (assoc stage-hsql :from [[prev-hsql [table-alias]]])
+                           (sql.qp/needs-cte-for-duplicate-cols? columns-metadata)
+                           (assoc :with [[[sql.qp/source-query-alias {:columns (mapv #(h2x/identifier :field %) desired-aliases)}]
+                                          prev-hsql]]
+                                  :from [[table-alias]])
+
+                           ;; Clear the default select if it's just :* so add-default-select can recompute it
+                           (= (:select stage-hsql) [[:*]])
+                           (dissoc :select))]
+            [(#'sql.qp/add-default-select driver cur-hsql) stage])
+          [stage-hsql stage])))
+    [nil nil]
+    stages)))
 
 (defmethod sql.qp/->honeysql [:sql-mbql5 ::sql.qp/mbql]
   [driver [_ stages]]
-  (compile-stages driver stages))
+  (stages->honeysql driver stages))
 
 (defmethod sql.qp/apply-top-level-clause [:sql-mbql5 :filters]
   [driver _ honeysql-form {:keys [filters]}]
@@ -65,7 +73,7 @@
 
 (defmethod sql.qp/join-source :sql-mbql5
   [driver {:keys [stages]}]
-  (compile-stages driver stages))
+  (stages->honeysql driver stages))
 
 ;; TODO(rileythomp): Add schemas like in the :sql impl
 (mu/defmethod sql.qp/join->honeysql :sql-mbql5

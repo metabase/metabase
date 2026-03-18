@@ -2142,6 +2142,17 @@
 
 (declare apply-clauses)
 
+(defn needs-cte-for-duplicate-cols?
+  [source-metadata]
+  (let [source-aliases (mapv :lib/source-column-alias source-metadata)
+        desired-aliases (mapv :lib/desired-column-alias source-metadata)]
+    (and (seq desired-aliases)
+         (> (count desired-aliases) 1)
+         (apply distinct? desired-aliases)
+         (every? string? desired-aliases)
+         (> (count source-aliases) 1)
+         (not (apply distinct? source-aliases)))))
+
 (defn- apply-source-query
   "Handle a `:source-query` clause by adding a recursive `SELECT` or native query. If the source query has ambiguous
   column names, use a `WITH` statement to rename the source columns. At the time of this writing, all source queries
@@ -2158,18 +2169,10 @@
 
                         :else
                         (apply-clauses driver {} source-query))
-        source-aliases (mapv :lib/source-column-alias source-metadata)
-        desired-aliases (mapv :lib/desired-column-alias source-metadata)
-        duplicate-source-aliases? (and (> (count source-aliases) 1)
-                                       (not (apply distinct? source-aliases)))
-        needs-columns? (and (seq desired-aliases)
-                            (> (count desired-aliases) 1)
-                            duplicate-source-aliases?
-                            (apply distinct? desired-aliases)
-                            (every? string? desired-aliases))]
+        desired-aliases (mapv :lib/desired-column-alias source-metadata)]
     (merge
      honeysql-form
-     (if needs-columns?
+     (if (needs-cte-for-duplicate-cols? source-metadata)
         ;; HoneySQL cannot expand [::h2x/identifier :table "source"] in the with alias.
         ;; This is ok since we control the alias.
        {:with [[[source-query-alias {:columns (mapv #(h2x/identifier :field %) desired-aliases)}]
