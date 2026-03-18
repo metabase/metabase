@@ -192,6 +192,11 @@
                     (cron/cron-schedule "0 0 3 * * ? *")))]
       (task/schedule-task! job trigger))))
 
+(defn ensure-scheduled!
+  []
+  (when-not (task/job-exists? cleanup-job-key)
+    (task/init! ::SemanticIndexCleanup)))
+
 (comment
   (task/job-exists? cleanup-job-key)
   (task/trigger-now! cleanup-job-key))

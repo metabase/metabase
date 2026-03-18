@@ -67,3 +67,14 @@
                          (simple/with-interval-in-milliseconds (.toMillis run-frequency))
                          (simple/repeat-forever))))]
       (task/schedule-task! job trigger))))
+
+(defn ensure-scheduled!
+  []
+  (when-not (task/job-exists? indexer-job-key)
+    (task/init! ::SemanticSearchIndexer)))
+
+(defn trigger-now!
+  []
+  (ensure-scheduled!)
+  (when (task/job-exists? indexer-job-key)
+    (task/trigger-now! indexer-job-key)))

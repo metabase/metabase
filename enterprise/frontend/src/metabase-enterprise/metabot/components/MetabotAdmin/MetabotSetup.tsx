@@ -4,15 +4,18 @@ import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
-import { useSetting } from "metabase/common/hooks";
+import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
 import { Accordion, Stack, Text, Title } from "metabase/ui";
 
+import { MetabotEmbeddingProviderSection } from "./MetabotEmbeddingProviderSection";
 import { MetabotNavPane } from "./MetabotNavPane";
 import { MetabotProviderSection } from "./MetabotProviderSection";
+import { MetabotSemanticSearchSection } from "./MetabotSemanticSearchSection";
 
 export function MetabotSetup() {
   const dispatch = useDispatch();
+  const hasSemanticSearchFeature = useHasTokenFeature("semantic_search");
   const isHosted = useSetting("is-hosted?");
 
   useEffect(() => {
@@ -43,6 +46,23 @@ export function MetabotSetup() {
             </Accordion.Panel>
           </Accordion.Item>
         </Accordion>
+
+        {hasSemanticSearchFeature && (
+          <Accordion.Item value="semantic">
+            <Accordion.Control>
+              <Title order={4}>{t`Semantic Search`}</Title>
+            </Accordion.Control>
+            <Accordion.Panel>
+              <Stack gap="md" p="md">
+                <Text size="sm" c="text-secondary">
+                  {t`Optionally add semantic search for more accurate data discovery.`}
+                </Text>
+                <MetabotEmbeddingProviderSection />
+                <MetabotSemanticSearchSection />
+              </Stack>
+            </Accordion.Panel>
+          </Accordion.Item>
+        )}
       </SettingsSection>
     </AdminSettingsLayout>
   );

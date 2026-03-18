@@ -38,6 +38,11 @@
                    (triggers/with-identity repair-trigger-key)
                    (triggers/start-now)
                    (triggers/with-schedule
-                  ;; Run hourly at minute 15
+                   ;; Run hourly at minute 15
                     (cron/cron-schedule "0 15 * * * ? *")))]
       (task/schedule-task! job trigger))))
+
+(defn ensure-scheduled!
+  []
+  (when-not (task/job-exists? repair-job-key)
+    (task/init! ::SemanticIndexRepair)))

@@ -31,7 +31,7 @@
   :feature :semantic-search
   []
   (and
-   (some? semantic.db.datasource/db-url)
+   (some? (semantic.db.datasource/db-url))
    (semantic.settings/semantic-search-enabled)))
 
 (defenterprise results

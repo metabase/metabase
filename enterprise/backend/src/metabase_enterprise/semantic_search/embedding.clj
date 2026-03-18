@@ -36,6 +36,20 @@
       (str/replace #"_{2,}" "_")
       (str/replace #"^_+|_+$" "")))
 
+(defn- summarize-openai-error
+  [e]
+  (let [{:keys [status body]} (ex-data e)
+        parsed-body           (when (string? body)
+                                (try
+                                  (json/decode body true)
+                                  (catch Exception _
+                                    body)))
+        error-body            (if (map? parsed-body)
+                                (or (:error parsed-body) parsed-body)
+                                parsed-body)]
+    {:status status
+     :error  error-body}))
+
 (defn clean-provider-name
   "Clean up a provider names for use in index names."
   [provider-name]
@@ -239,7 +253,10 @@
                       e)))
     (catch Exception e
       (log/error e (str provider " embeddings API call failed")
-                 {:documents (count texts) :tokens (count-tokens-batch texts)})
+                 (merge
+                  {:documents (count texts)
+                   :tokens    (count-tokens-batch texts)}
+                  (summarize-openai-error e)))
       (throw e))))
 
 ;;;; Embedding-service provider

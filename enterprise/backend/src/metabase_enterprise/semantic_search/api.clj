@@ -5,10 +5,13 @@
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
+   [metabase-enterprise.semantic-search.init :as semantic.init]
+   [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.permissions.core :as perms]
-   [metabase.search.ingestion :as search.ingestion]))
+   [metabase.search.ingestion :as search.ingestion]
+   [metabase.search.semantic.core :as semantic-search]))
 
 (def ^:private indexible-items-count
   (memoize/ttl search.ingestion/search-items-count
@@ -44,6 +47,23 @@
         {})
       (catch Exception e
         (throw (ex-info "Error fetching semantic search index status" {} e))))))
+
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :post "/re-init"
+  "Blow away the semantic search index, re-create it, and re-populate it."
+  []
+  (api/check-superuser)
+  (semantic.init/ensure-runtime-tasks-started!)
+  (if (semantic-search/supported?)
+    (do
+      (semantic-search/init! (search.ingestion/searchable-documents)
+                             {:force-reset? true})
+      (semantic.init/trigger-indexer-now!)
+      {:message "semantic reindex triggered"})
+    (throw (ex-info "Semantic search is not supported for this installation." {:status-code 501}))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/semantic-search` routes."
