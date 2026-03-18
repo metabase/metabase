@@ -182,7 +182,7 @@
                                 :id     456}}
             source        {:type          "python"
                            :body          "import pandas as pd"
-                           :source-tables [{:alias "orders" :table_id 123}]}]
+                           :source-tables [{:alias "orders" :table_id 123 :database_id 1 :schema "public"}]}]
         (is (= [{:alias "orders" :database_id 1
                  :schema "ws_isolated_123" :table "orders_isolated" :table_id 456}]
                (:source-tables (remap-python-source table-mapping source))))))
@@ -221,7 +221,7 @@
                            :body          "import pandas as pd"
                            :source-tables [{:alias "orders" :database_id 1
                                             :schema "public" :table "orders" :table_id 123}
-                                           {:alias "customers" :table_id 789}]}]
+                                           {:alias "customers" :table_id 789 :database_id 1 :schema "public"}]}]
         (is (= [{:alias "orders" :database_id 1
                  :schema "ws_isolated_123" :table "orders_isolated" :table_id 456}
                 {:alias "customers" :database_id 1

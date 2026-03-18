@@ -7,12 +7,16 @@ import type {
   SingleSeries,
   VisualizationDisplay,
 } from "metabase-types/api";
-import { createMockDatasetData } from "metabase-types/api/mocks";
+import {
+  createMockDatasetData,
+  createMockSingleSeries,
+} from "metabase-types/api/mocks";
 
 import { leaveUntranslated } from "./use-translate-content";
 import {
   translateColumnDisplayName,
   translateFieldValuesInSeries,
+  translateSeriesNames,
 } from "./utils";
 
 registerVisualizations();
@@ -41,9 +45,8 @@ describe("translateFieldValuesInSeries", () => {
     ];
 
     const result = translateFieldValuesInSeries(
-      series,
       mockTranslateWithoutTranslations,
-    );
+    )(series);
 
     expect(result).toBe(series);
   });
@@ -55,9 +58,8 @@ describe("translateFieldValuesInSeries", () => {
       } as SingleSeries,
     ];
 
-    const result = translateFieldValuesInSeries(
+    const result = translateFieldValuesInSeries(mockTranslateWithTranslations)(
       series,
-      mockTranslateWithTranslations,
     );
 
     expect(result).toEqual([
@@ -80,9 +82,8 @@ describe("translateFieldValuesInSeries", () => {
       } as SingleSeries,
     ];
 
-    const result = translateFieldValuesInSeries(
+    const result = translateFieldValuesInSeries(mockTranslateWithTranslations)(
       series,
-      mockTranslateWithTranslations,
     ) as MaybeTranslatedSeries;
 
     expect(result[0].data?.rows).toEqual([
@@ -109,9 +110,8 @@ describe("translateFieldValuesInSeries", () => {
       } as SingleSeries,
     ];
 
-    const result = translateFieldValuesInSeries(
+    const result = translateFieldValuesInSeries(mockTranslateWithTranslations)(
       series,
-      mockTranslateWithTranslations,
     ) as MaybeTranslatedSeries;
 
     expect(result[0].data?.rows).toEqual([
@@ -146,9 +146,8 @@ describe("translateFieldValuesInSeries", () => {
       ];
 
       const result = translateFieldValuesInSeries(
-        series,
         mockTranslateWithTranslations,
-      ) as MaybeTranslatedSeries;
+      )(series) as MaybeTranslatedSeries;
 
       expect(result[0].data?.rows).toEqual([
         ["translated_Apple", 10],
@@ -175,9 +174,8 @@ describe("translateFieldValuesInSeries", () => {
       ];
 
       const result = translateFieldValuesInSeries(
-        series,
         mockTranslateWithTranslations,
-      ) as MaybeTranslatedSeries;
+      )(series) as MaybeTranslatedSeries;
 
       expect(result[0].data?.rows).toEqual([
         ["translated_apple", 10],
@@ -219,9 +217,8 @@ describe("translateFieldValuesInSeries", () => {
       ];
 
       const result = translateFieldValuesInSeries(
-        series,
         mockTranslateWithTranslations,
-      ) as MaybeTranslatedSeries;
+      )(series) as MaybeTranslatedSeries;
 
       expect(result[0].data?.rows).toEqual([
         ["translated_Apple", 100, 30],
@@ -248,9 +245,8 @@ describe("translateFieldValuesInSeries", () => {
       ];
 
       const result = translateFieldValuesInSeries(
-        series,
         mockTranslateWithTranslations,
-      ) as MaybeTranslatedSeries;
+      )(series) as MaybeTranslatedSeries;
 
       expect(result[0].data?.rows).toEqual([
         ["translated_Apple", 100, 30],
@@ -274,9 +270,8 @@ describe("translateFieldValuesInSeries", () => {
       } as SingleSeries,
     ];
 
-    const result = translateFieldValuesInSeries(
+    const result = translateFieldValuesInSeries(mockTranslateWithTranslations)(
       series,
-      mockTranslateWithTranslations,
     ) as MaybeTranslatedSeries;
 
     expect(result).toHaveLength(2);
@@ -293,9 +288,8 @@ describe("translateFieldValuesInSeries", () => {
       } as SingleSeries,
     ];
 
-    const result = translateFieldValuesInSeries(
+    const result = translateFieldValuesInSeries(mockTranslateWithTranslations)(
       series,
-      mockTranslateWithTranslations,
     ) as MaybeTranslatedSeries;
 
     expect(result[0].data?.rows).toEqual([]);
@@ -696,5 +690,142 @@ describe("translateColumnDisplayName", () => {
         expect(result).toBe(expected);
       },
     );
+  });
+});
+
+describe("translateSeriesNames", () => {
+  it("should return original series unchanged when tc has no translations", () => {
+    const series: Series = [
+      createMockSingleSeries({
+        visualization_settings: {
+          series_settings: { metric1: { title: "Revenue" } },
+          "graph.metrics": ["metric1"],
+        },
+      }),
+    ];
+
+    const result = translateSeriesNames(mockTranslateWithoutTranslations)(
+      series,
+    );
+
+    expect(result).toBe(series);
+  });
+
+  it("should return series item unchanged when visualization_settings has no series_settings", () => {
+    const series: Series = [
+      createMockSingleSeries({
+        visualization_settings: {
+          "graph.metrics": ["metric1"],
+        },
+      }),
+    ];
+
+    const result = translateSeriesNames(mockTranslateWithTranslations)(series);
+
+    expect(result[0]).toBe(series[0]);
+  });
+
+  it("should return series item unchanged when visualization_settings has no graph.metrics", () => {
+    const series: Series = [
+      createMockSingleSeries({
+        visualization_settings: {
+          series_settings: { metric1: { title: "Revenue" } },
+        },
+      }),
+    ];
+
+    const result = translateSeriesNames(mockTranslateWithTranslations)(series);
+
+    expect(result[0]).toBe(series[0]);
+  });
+
+  it("should translate titles of metric series settings", () => {
+    const series: Series = [
+      createMockSingleSeries({
+        visualization_settings: {
+          series_settings: {
+            metric1: { title: "Revenue" },
+            metric2: { title: "Profit" },
+          },
+          "graph.metrics": ["metric1", "metric2"],
+        },
+      }),
+    ];
+
+    const result = translateSeriesNames(mockTranslateWithTranslations)(series);
+
+    expect(
+      result[0].card.visualization_settings.series_settings?.metric1?.title,
+    ).toBe("translated_Revenue");
+    expect(
+      result[0].card.visualization_settings.series_settings?.metric2?.title,
+    ).toBe("translated_Profit");
+  });
+
+  it("should skip metrics without corresponding series_settings entry", () => {
+    const series: Series = [
+      createMockSingleSeries({
+        visualization_settings: {
+          series_settings: {
+            metric1: { title: "Revenue" },
+          },
+          "graph.metrics": ["metric1", "metric_missing"],
+        },
+      }),
+    ];
+
+    const result = translateSeriesNames(mockTranslateWithTranslations)(series);
+
+    expect(
+      result[0].card.visualization_settings.series_settings?.metric1?.title,
+    ).toBe("translated_Revenue");
+    expect(
+      result[0].card.visualization_settings.series_settings?.metric_missing,
+    ).toBeUndefined();
+  });
+
+  it("should preserve other settings properties like color", () => {
+    const series: Series = [
+      createMockSingleSeries({
+        visualization_settings: {
+          series_settings: {
+            metric1: { title: "Revenue", color: "#ff0000" },
+          },
+          "graph.metrics": ["metric1"],
+        },
+      }),
+    ];
+
+    const result = translateSeriesNames(mockTranslateWithTranslations)(series);
+
+    const settings =
+      result[0].card.visualization_settings.series_settings?.metric1;
+    expect(settings?.title).toBe("translated_Revenue");
+    expect(settings?.color).toBe("#ff0000");
+  });
+
+  it("should preserve settings for non-metric keys", () => {
+    const series: Series = [
+      createMockSingleSeries({
+        visualization_settings: {
+          series_settings: {
+            metric1: { title: "Revenue" },
+            non_metric: { title: "Other", color: "#00ff00" },
+          },
+          "graph.metrics": ["metric1"],
+        },
+      }),
+    ];
+
+    const result = translateSeriesNames(mockTranslateWithTranslations)(series);
+
+    expect(
+      result[0].card.visualization_settings.series_settings?.metric1?.title,
+    ).toBe("translated_Revenue");
+    // non_metric should be preserved untouched
+    const nonMetric =
+      result[0].card.visualization_settings.series_settings?.non_metric;
+    expect(nonMetric?.title).toBe("Other");
+    expect(nonMetric?.color).toBe("#00ff00");
   });
 });

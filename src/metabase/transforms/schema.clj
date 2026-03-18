@@ -1,7 +1,7 @@
 (ns metabase.transforms.schema
   (:require
-   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.schema :as queries.schema]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.malli.registry :as mr]
@@ -10,11 +10,7 @@
 (mr/def ::checkpoint-strategy
   [:map
    [:type [:= "checkpoint"]]
-   ;; for native
-   [:checkpoint-filter {:optional true} :string]
-   ;; for mbql and python
-   [:checkpoint-filter-unique-key {:optional true}
-    ::lib.schema/column-unique-key]])
+   [:checkpoint-filter-field-id {:optional true} ::lib.schema.id/field]])
 
 (mr/def ::source-incremental-strategy
   [:multi {:dispatch :type}
@@ -31,12 +27,7 @@
     [:map
      [:source-database {:optional true} :int]
      ;; NB: if source is checkpoint, only one table allowed
-     ;; decode/normalize: convert FE map format to vec and enrich with DB metadata
-     [:source-tables   [:sequential {:decode/normalize (fn [st]
-                                                         (if (map? st)
-                                                           (transforms-base.u/source-tables-map->vec st)
-                                                           st))}
-                        ::transforms-base.u/source-table-entry]]
+     [:source-tables   [:sequential ::transforms-base.u/source-table-entry]]
      [:type {:decode/normalize lib.schema.common/normalize-keyword} [:= :python]]
      [:body :string]
      [:source-incremental-strategy {:optional true} ::source-incremental-strategy]]]])

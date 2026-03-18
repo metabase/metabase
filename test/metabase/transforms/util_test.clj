@@ -224,17 +224,19 @@
           (is (= (:id t1) (:table_id (second result)))))))))
 
 (deftest resolve-source-tables-test
-  (testing "resolve-source-tables returns {alias -> table_id} map from vec input"
+  (testing "resolve-source-tables returns entries with :table_id filled in"
     (mt/with-temp [:model/Database db {}
                    :model/Table    t1 {:db_id (:id db) :name "table_one" :schema nil}
                    :model/Table    t2 {:db_id (:id db) :name "table_two" :schema nil}]
       (testing "resolves entry with table_id"
-        (let [source-tables [{:alias "t" :database_id (:id db) :schema nil :table "table_one" :table_id (:id t1)}]]
-          (is (= {"t" (:id t1)} (transforms-base.u/resolve-source-tables source-tables)))))
+        (let [source-tables [{:alias "t" :database_id (:id db) :schema nil :table "table_one" :table_id (:id t1)}]
+              result        (transforms-base.u/resolve-source-tables source-tables)]
+          (is (= (:id t1) (:table_id (first result))))))
 
       (testing "looks up table_id for entry without it"
-        (let [source-tables [{:alias "t" :database_id (:id db) :schema nil :table "table_one"}]]
-          (is (= {"t" (:id t1)} (transforms-base.u/resolve-source-tables source-tables)))))
+        (let [source-tables [{:alias "t" :database_id (:id db) :schema nil :table "table_one"}]
+              result        (transforms-base.u/resolve-source-tables source-tables)]
+          (is (= (:id t1) (:table_id (first result))))))
 
       (testing "throws for non-existent table"
         (let [source-tables [{:alias "t" :database_id (:id db) :schema nil :table "nonexistent"}]]
@@ -247,10 +249,11 @@
                                 (transforms-base.u/resolve-source-tables source-tables)))))
 
       (testing "handles multiple entries"
-        (let [source-tables [{:alias "t1" :table_id (:id t1)}
-                             {:alias "t2" :database_id (:id db) :schema nil :table "table_two"}]]
-          (is (= {"t1" (:id t1) "t2" (:id t2)}
-                 (transforms-base.u/resolve-source-tables source-tables))))))))
+        (let [source-tables [{:alias "t1" :table_id (:id t1) :database_id (:id db) :schema nil}
+                             {:alias "t2" :database_id (:id db) :schema nil :table "table_two"}]
+              result        (transforms-base.u/resolve-source-tables source-tables)]
+          (is (= (:id t1) (:table_id (first result))))
+          (is (= (:id t2) (:table_id (second result)))))))))
 
 (deftest source-tables-readable?-test
   (testing "source-tables-readable? function"
@@ -363,9 +366,8 @@
             ;; so it sets transform_id on the target table.
             (with-redefs [transforms-base.i/execute-base!                            (constantly {:status :succeeded})
                           transforms-base.u/sync-target!                             (constantly nil)
-                          transforms-base.u/execute-secondary-index-ddl-if-required! (constantly nil)
-                          transforms.u/run-cancelable-transform!                     (fn [_run-id _driver _details run-fn & _opts]
-                                                                                       (run-fn (a/promise-chan)))]
+                          transforms.u/run-cancelable-transform!                     (fn [_run-id _transform _driver _details run-fn & _opts]
+                                                                                       (run-fn (a/promise-chan) nil))]
               (transforms.execute/execute! transform {:run-method :manual})
               (is (= transform-id
                      (t2/select-one-fn :transform_id :model/Table :id table-id))))))))))
@@ -399,7 +401,7 @@
       (mt/with-premium-features #{:transforms-basic}
         (let [transform {:source {:type  "query"
                                   :query (lib/query (mt/metadata-provider) (mt/mbql-query venues))}}
-              {:keys [query]} (transforms-base.u/compile-source transform)]
+              {:keys [query]} (transforms-base.u/compile-source transform (transforms-base.u/get-source-range-params transform))]
           (is (string? query))
           (is (not (re-find #"(?i)\bLIMIT\b" query))
               (str "Expected no LIMIT clause in compiled SQL, got: " query)))))))

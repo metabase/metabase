@@ -53,8 +53,7 @@
    [:python
     [:map {:closed true}
      [:source-database {:optional true} :int]
-     [:source-tables   [:sequential {:decode/normalize transforms-base.u/normalize-source-tables-structure}
-                        [:map [:alias [:string {:min 1}]] [:table_id :int]]]]
+     [:source-tables   [:sequential ::transforms-base.u/source-table-entry]]
      [:type [:= "python"]]
      [:body :string]]]])
 
@@ -193,9 +192,7 @@
   (-> (select-model-malli-keys :model/WorkspaceTransform WorkspaceTransform workspace-transform-alias)
       (t2/select-one :workspace_id ws-id :ref_id tx-id)
       api/check-404
-      attach-isolated-target
-      ;; TODO (Ngoc 2026-03-04) -- remove when FE sends/expects array format for source-tables
-      transforms/source-tables-vec->map-for-fe))
+      attach-isolated-target))
 
 (defn create-workspace-transform!
   "Shared logic for creating a new workspace transform.
@@ -236,9 +233,7 @@
           transform (ws.common/add-to-changeset! api/*current-user-id* workspace :transform global-id body
                                                  :ref-id ref-id)]
       (-> (select-malli-keys WorkspaceTransform workspace-transform-alias transform)
-          attach-isolated-target
-          ;; TODO (Ngoc 2026-03-04) -- remove when FE sends/expects array format for source-tables
-          transforms/source-tables-vec->map-for-fe))))
+          attach-isolated-target))))
 
 ;;; ---------------------------------------- Pending inputs ----------------------------------------
 

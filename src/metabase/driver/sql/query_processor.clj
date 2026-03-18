@@ -13,7 +13,6 @@
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
    [metabase.driver.sql.query-processor.deprecated :as sql.qp.deprecated]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -1042,30 +1041,14 @@
         [(->honeysql driver agg) direction]))
     [(->honeysql driver expr) direction]))
 
-(defn- pivot-query-group-constant-expression?
-  "Whether this is a reference to the `pivot-group` constant expression added
-  by [[metabase.query-processor.pivot/add-pivot-group-breakout]]; if it is, we can safely exclude it from `GROUP BY`
-  and `ORDER BY` when generating an `OVER` window expression, since it is a constant value. (Some databases like
-  Redshift aren't happy if they include constant expressions in `OVER`).
-
-  See [[metabase.query-processor.pivot-test/offset-pivot-test]] for a test that fails if this is removed."
-  [expr]
-  (lib.util.match/match-lite expr
-    [(_ :guard #{:field :expression}) (_name :guard string?) (_opts :guard :qp.pivot/pivot-grouping?)]
-    true))
-
 (defn- over-order-bys
   "Returns a vector containing the `aggregations` specified by `order-bys` compiled to
   honeysql expressions for `driver` suitable for ordering in the over clause of a window function."
   [driver aggregations order-bys]
   (let [aggregations (vec aggregations)]
     (into []
-          (comp (remove (fn [[_direction expr]]
-                          (when (pivot-query-group-constant-expression? expr)
-                            (log/debugf "Excluding %s from ORDER BY in OVER expression since it is a constant" (pr-str expr))
-                            true)))
-                (keep (fn [clause]
-                        (->honeysql driver [::over-order-bys aggregations clause]))))
+          (keep (fn [clause]
+                  (->honeysql driver [::over-order-bys aggregations clause])))
           order-bys)))
 
 (defmulti remapped-order-by?
@@ -1103,14 +1086,8 @@
   https://metaboat.slack.com/archives/C05MPF0TM3L/p1714084449574689 for more info."
   [driver inner-query]
   (let [breakouts (into []
-                        (comp
-                         (remove
-                          (partial remapped-breakout? driver))
-                         (remove (fn [expr]
-                                   (when (pivot-query-group-constant-expression? expr)
-                                     (log/debugf "Excluding %s from GROUP BY in OVER expression since it is a constant"
-                                                 (pr-str expr))
-                                     true))))
+                        (remove
+                         (partial remapped-breakout? driver))
                         (:breakout inner-query))
         group-bys (:group-by (apply-top-level-clause driver :breakout {} inner-query))
         finest-temp-breakout (finest-temporal-breakout-idx driver breakouts)
@@ -1145,14 +1122,10 @@
              window-aggregation-over-expr-for-query-with-breakouts
 
              (seq (:order-by *inner-query*))
-             window-aggregation-over-expr-for-query-without-breakouts
-
-             :else
-             (throw (ex-info (tru "Window function requires either breakouts or order by in the query")
-                             {:type  driver-api/qp.error-type.invalid-query
-                              :query *inner-query*})))
-         m (-> (f driver *inner-query*)
-               (merge additional-hsql))]
+             window-aggregation-over-expr-for-query-without-breakouts)
+         m (when f
+             (-> (f driver *inner-query*)
+                 (merge additional-hsql)))]
      (-> (if (seq m)
            [:over [expr m]]
            (do
@@ -1914,8 +1887,8 @@
 (defmethod unwrap-value-literal :sql
   [_driver maybe-value-form]
   (lib.util.match/match-lite maybe-value-form
-    [:value x & _] x
-    _              maybe-value-form))
+                             [:value x & _] x
+                             _              maybe-value-form))
 
 (defmethod ->honeysql [:sql :!=]
   [driver [_ field value]]

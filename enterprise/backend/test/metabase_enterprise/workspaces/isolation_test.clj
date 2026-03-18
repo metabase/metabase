@@ -7,6 +7,7 @@
    [metabase-enterprise.workspaces.util :as ws.u]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.test :as mt]
@@ -203,3 +204,63 @@
                    database
                    nil))
             "Should succeed when test-table is nil")))))
+
+;;; Identifier quoting tests for grant-workspace-read-access!
+
+(defn- with-pg-isolation!
+  "Set up Postgres workspace isolation manually and call f with [workspace conn-spec].
+   Tears down isolation resources afterward."
+  [f]
+  (let [database    (mt/db)
+        test-ws     {:id   (str (random-uuid))
+                     :name "_test_quoting_"}
+        init-result (driver/init-workspace-isolation! :postgres database test-ws)
+        workspace   (merge test-ws init-result)
+        conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+    (try
+      (f workspace conn-spec)
+      (finally
+        (driver/destroy-workspace-isolation! :postgres database workspace)))))
+
+(defn- pg-create-table!
+  "Create a table in Postgres using properly-escaped DDL."
+  [conn-spec schema table-name]
+  (let [qs (sql.u/quote-name :postgres :schema schema)
+        qt (sql.u/quote-name :postgres :table table-name)]
+    (jdbc/execute! conn-spec [(format "CREATE TABLE %s.%s (id INT)" qs qt)])))
+
+(defn- pg-drop-schema!
+  [conn-spec schema]
+  (jdbc/execute! conn-spec [(format "DROP SCHEMA IF EXISTS %s CASCADE"
+                                    (sql.u/quote-name :postgres :schema schema))]))
+
+(deftest grant-workspace-read-access-escapes-table-names-test
+  (mt/test-driver :postgres
+    (testing "table names with embedded delimiter are properly quoted"
+      (with-pg-isolation!
+        (fn [workspace conn-spec]
+          (let [ws-schema (:schema workspace)
+                evil-name "evil\"table"]
+            (pg-create-table! conn-spec ws-schema evil-name)
+            (is (driver/grant-workspace-read-access!
+                 :postgres (mt/db) workspace
+                 [{:schema ws-schema :name evil-name}])
+                "GRANT should succeed for table names with embedded quotes")))))))
+
+(deftest grant-workspace-read-access-escapes-schema-names-test
+  (mt/test-driver :postgres
+    (testing "schema names with embedded delimiter are properly quoted"
+      (with-pg-isolation!
+        (fn [workspace conn-spec]
+          (let [evil-schema "evil\"schema"
+                table-name  "normal_table"]
+            (jdbc/execute! conn-spec [(format "CREATE SCHEMA %s"
+                                              (sql.u/quote-name :postgres :schema evil-schema))])
+            (try
+              (pg-create-table! conn-spec evil-schema table-name)
+              (is (driver/grant-workspace-read-access!
+                   :postgres (mt/db) workspace
+                   [{:schema evil-schema :name table-name}])
+                  "GRANT should succeed for schema names with embedded quotes")
+              (finally
+                (pg-drop-schema! conn-spec evil-schema)))))))))

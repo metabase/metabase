@@ -7,7 +7,7 @@ on:
 
 jobs:
   harvest:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     permissions:
       contents: read
     steps:

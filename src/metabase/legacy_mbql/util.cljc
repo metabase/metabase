@@ -612,8 +612,8 @@
    (aggregation-at-index query index 0))
 
   ([query         :- ::mbql.s/Query
-    index         :- ::lib.schema.common/int-greater-than-or-equal-to-zero
-    nesting-level :- ::lib.schema.common/int-greater-than-or-equal-to-zero]
+    index         :- nat-int?
+    nesting-level :- nat-int?]
    (if (zero? nesting-level)
      (or (nth (get-in query [:query :aggregation]) index)
          (throw (ex-info (i18n/tru "No aggregation at index: {0}" index) {:index index})))

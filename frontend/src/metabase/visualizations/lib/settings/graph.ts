@@ -1,7 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/colors";
 import {
   getMaxDimensionsSupported,
   getMaxMetricsSupported,
@@ -158,7 +158,7 @@ export const GRAPH_DATA_SETTINGS: VisualizationSettingsDefinitions = {
       return t`Data`;
     },
     widget: ChartSettingSeriesOrder,
-    marginBottom: "1rem",
+    getMarginBottom: () => "1rem",
     useRawSeries: true,
     getValue: (rawSeries, settings) => {
       const seriesModels = getSeriesModelsForSettings(rawSeries, settings);
@@ -317,7 +317,7 @@ export const STACKABLE_SETTINGS: VisualizationSettingsDefinitions = {
       return t`Stacking`;
     },
     widget: "radio",
-    props: {
+    getProps: () => ({
       options: [
         {
           get name() {
@@ -338,7 +338,7 @@ export const STACKABLE_SETTINGS: VisualizationSettingsDefinitions = {
           value: "normalized",
         },
       ],
-    },
+    }),
     isValid: (series, settings) => {
       const seriesDisplays = getSeriesDisplays(series, settings);
 
@@ -427,7 +427,7 @@ export const GRAPH_TREND_SETTINGS: VisualizationSettingsDefinitions = {
     },
     useRawSeries: true,
     inline: true,
-    marginBottom: "1rem",
+    getMarginBottom: () => "1rem",
   },
 };
 
@@ -443,7 +443,7 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS: VisualizationSettingsDefinitions = {
     getHidden: (series, vizSettings) => !canHaveDataLabels(series, vizSettings),
     getDefault: getDefaultShowDataLabels,
     inline: true,
-    marginBottom: "1rem",
+    getMarginBottom: () => "1rem",
   },
   "graph.label_value_frequency": {
     get section() {
@@ -474,7 +474,7 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS: VisualizationSettingsDefinitions = {
 
       return !canHaveDataLabels(series, vizSettings);
     },
-    props: {
+    getProps: () => ({
       options: [
         {
           get name() {
@@ -489,7 +489,7 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS: VisualizationSettingsDefinitions = {
           value: "all",
         },
       ],
-    },
+    }),
     getDefault: getDefaultDataLabelsFrequency,
     readDependencies: ["graph.show_values"],
   },
@@ -517,7 +517,7 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS: VisualizationSettingsDefinitions = {
         vizSettings,
       );
     },
-    props: {
+    getProps: () => ({
       options: [
         {
           get name() {
@@ -538,7 +538,7 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS: VisualizationSettingsDefinitions = {
           value: "all",
         },
       ],
-    },
+    }),
     getDefault: (_series, settings) => getDefaultShowStackValues(settings),
     readDependencies: ["graph.show_values", "stackable.stack_type"],
   },
@@ -553,7 +553,7 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS: VisualizationSettingsDefinitions = {
     getHidden: (series, vizSettings) => {
       return !canHaveDataLabels(series, vizSettings);
     },
-    props: {
+    getProps: () => ({
       options: [
         {
           get name() {
@@ -574,7 +574,7 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS: VisualizationSettingsDefinitions = {
           value: "full",
         },
       ],
-    },
+    }),
     getDefault: (_series, vizSettings) => {
       const columnSettings = vizSettings["column_settings"];
       if (columnSettings) {
@@ -732,7 +732,7 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
     },
     index: 3,
     widget: "select",
-    props: {
+    getProps: () => ({
       options: [
         {
           get name() {
@@ -765,7 +765,7 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
           value: "rotate-90",
         },
       ],
-    },
+    }),
     default: true,
   },
   "graph.y_axis.axis_enabled": {
@@ -780,7 +780,7 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
       return t`Y-axis`;
     },
     widget: "select",
-    props: {
+    getProps: () => ({
       options: [
         {
           get name() {
@@ -795,7 +795,7 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
           value: true,
         },
       ],
-    },
+    }),
     default: true,
   },
   "graph.y_axis.unpin_from_zero": {
@@ -995,14 +995,14 @@ export const BOXPLOT_SETTINGS: VisualizationSettingsDefinitions<
     },
     widget: "radio",
     default: "tukey",
-    props: {
+    getProps: () => ({
       get options() {
         return [
           { name: t`1.5 × interquartile range`, value: "tukey" },
           { name: t`Min/Max`, value: "min-max" },
         ];
       },
-    },
+    }),
   },
   "boxplot.points_mode": {
     get section() {
@@ -1056,7 +1056,7 @@ export const BOXPLOT_SETTINGS: VisualizationSettingsDefinitions<
     widget: "toggle",
     default: false,
     inline: true,
-    marginBottom: "1rem",
+    getMarginBottom: () => "1rem",
   },
   "boxplot.show_values_mode": {
     get section() {
@@ -1068,7 +1068,7 @@ export const BOXPLOT_SETTINGS: VisualizationSettingsDefinitions<
     widget: "segmentedControl",
     default: "median",
     getHidden: (_series, vizSettings) => !vizSettings["graph.show_values"],
-    props: {
+    getProps: () => ({
       options: [
         {
           get name() {
@@ -1083,7 +1083,7 @@ export const BOXPLOT_SETTINGS: VisualizationSettingsDefinitions<
           value: "all",
         },
       ],
-    },
+    }),
     readDependencies: ["graph.show_values"],
   },
   "graph.label_value_frequency": {
@@ -1097,10 +1097,10 @@ export const BOXPLOT_SETTINGS: VisualizationSettingsDefinitions<
     default: "fit",
     inline: true,
     getHidden: (_series, vizSettings) => !vizSettings["graph.show_values"],
-    props: {
+    getProps: () => ({
       checkedValue: "fit",
       uncheckedValue: "all",
-    },
+    }),
     readDependencies: ["graph.show_values"],
   },
   "graph.label_value_formatting": {
@@ -1113,7 +1113,7 @@ export const BOXPLOT_SETTINGS: VisualizationSettingsDefinitions<
     widget: "segmentedControl",
     default: "compact",
     getHidden: (_series, vizSettings) => !vizSettings["graph.show_values"],
-    props: {
+    getProps: () => ({
       options: [
         {
           get name() {
@@ -1128,7 +1128,7 @@ export const BOXPLOT_SETTINGS: VisualizationSettingsDefinitions<
           value: "full",
         },
       ],
-    },
+    }),
     readDependencies: ["graph.show_values"],
   },
 };

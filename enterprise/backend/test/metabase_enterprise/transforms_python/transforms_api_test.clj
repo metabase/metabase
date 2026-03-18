@@ -149,7 +149,7 @@
               (let [original           {:name   "Gadget Products"
                                         :source {:type  "python"
                                                  :source-database (mt/id)
-                                                 :source-tables [{:alias "transforms_customers" :table_id (mt/id :transforms_customers)}]
+                                                 :source-tables [(transforms.tu/source-table-entry "transforms_customers" (mt/id :transforms_customers))]
                                                  :body  (str "import pandas as pd\n"
                                                              "\n"
                                                              "def transform():\n"
@@ -223,7 +223,7 @@
                                           :source {:type            "python"
                                                    :body            (program->source program)
                                                    :source-database (mt/id)
-                                                   :source-tables   [{:alias "test" :table_id (t2/select-one-pk :model/Table :db_id (mt/id))}]}
+                                                   :source-tables   [(transforms.tu/source-table-entry "test" (t2/select-one-pk :model/Table :db_id (mt/id)))]}
                                           :target (assoc target :database (mt/id))})))
 
             (block-on-run [{:keys [expect-status]} target transform-id]
@@ -329,7 +329,7 @@
                      :model/Transform transform {:name "Python Transform Cross DB"
                                                  :source {:type "python"
                                                           :source-database (mt/id)
-                                                          :source-tables [{:alias "test" :table_id (t2/select-one-pk :model/Table :db_id (mt/id))}]
+                                                          :source-tables [(transforms.tu/source-table-entry "test" (t2/select-one-pk :model/Table :db_id (mt/id)))]
                                                           :body "def transform():\n    pass"}
                                                  :target {:type "table"
                                                           :schema "PUBLIC"
@@ -353,7 +353,7 @@
                                    :source {:type            "python"
                                             :body            (str/join "\n" program)
                                             :source-database (mt/id)
-                                            :source-tables   [{:alias "transforms_customers" :table_id (mt/id :transforms_customers)}]}
+                                            :source-tables   [(transforms.tu/source-table-entry "transforms_customers" (mt/id :transforms_customers))]}
                                    :target (assoc target :database (mt/id))}))
 
           ;; using clojure-ey coordination with promises (I know j.u.c could be better here)
@@ -526,7 +526,7 @@
               (let [initial-transform {:name   "Schema Change Integration Test"
                                        :source {:type            "python"
                                                 :source-database (mt/id)
-                                                :source-tables   [{:alias "test" :table_id (t2/select-one-pk :model/Table :db_id (mt/id))}]
+                                                :source-tables   [(transforms.tu/source-table-entry "test" (t2/select-one-pk :model/Table :db_id (mt/id)))]
                                                 :body            (str "import pandas as pd\n"
                                                                       "\n"
                                                                       "def transform():\n"
@@ -545,7 +545,7 @@
                 (let [updated-transform (assoc initial-transform
                                                :source {:type            "python"
                                                         :source-database (mt/id)
-                                                        :source-tables   [{:alias "test" :table_id (t2/select-one-pk :model/Table :db_id (mt/id))}]
+                                                        :source-tables   [(transforms.tu/source-table-entry "test" (t2/select-one-pk :model/Table :db_id (mt/id)))]
                                                         :body            (str "import pandas as pd\n"
                                                                               "\n"
                                                                               "def transform():\n"
@@ -558,8 +558,9 @@
                 (transforms.tu/test-run transform-id)
                 (transforms.tu/wait-for-transform-completion transform-id 10000)
 
-                ;; hmmm, looks like QP needs a bit more time to update metadata
-                (Thread/sleep 2000)
+                ;; Sync runs asynchronously after succeed-started-run!, so wait for
+                ;; the new "friend" field to appear in metadata before querying.
+                (transforms.tu/wait-for-field table-name "friend" 10000)
                 (let [updated-rows (transforms.tu/table-rows table-name)]
                   (is (= [["Alice" "Bob"] ["Bob" "Alice"]] updated-rows)
                       "Updated data should show Alice/Bob with friends instead of ages"))))))))))

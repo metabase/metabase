@@ -23,6 +23,7 @@
    [metabase.premium-features.defenterprise :refer [defenterprise]]
    [metabase.premium-features.settings :as premium-features.settings]
    [metabase.settings.core :as setting]
+   [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.json :as json]
@@ -189,8 +190,7 @@
                      :throw-exceptions false
                      ;; socket is data transfer, connection is handshake and create connection timeout
                      :socket-timeout     5000     ;; in milliseconds
-                     :connection-timeout 2000     ;; in milliseconds
-                     })))
+                     :connection-timeout 2000})))     ;; in milliseconds
 
 (defn- fetch-token-and-parse-body
   [token base-url site-uuid]
@@ -218,19 +218,20 @@
   []
   (when-let [token (premium-features.settings/premium-embedding-token)]
     (when (mr/validate [:re RemoteCheckedToken] token)
-      (let [site-uuid (premium-features.settings/site-uuid-for-premium-features-token-checks)
-            stats (-> (metering-stats)
-                      ;; for backwards compatibility, we send values as strings
-                      (update-vals str))]
-        (try
-          (http/post (metering-url token token-check-url)
-                     {:body (json/encode (merge stats
-                                                {:site-uuid site-uuid
-                                                 :mb-version (:tag config/mb-version-info)}))
-                      :content-type :json
-                      :throw-exceptions false})
-          (catch Throwable e
-            (log/error e "Error sending metering events")))))))
+      (tracing/with-span :tasks "metering.send-events" {}
+        (let [site-uuid (premium-features.settings/site-uuid-for-premium-features-token-checks)
+              stats (-> (metering-stats)
+                        ;; for backwards compatibility, we send values as strings
+                        (update-vals str))]
+          (try
+            (http/post (metering-url token token-check-url)
+                       {:body (json/encode (merge stats
+                                                  {:site-uuid site-uuid
+                                                   :mb-version (:tag config/mb-version-info)}))
+                        :content-type :json
+                        :throw-exceptions false})
+            (catch Throwable e
+              (log/error e "Error sending metering events"))))))))
 
 ;;;;;;;;;;;;;;;;;;;; Airgap Tokens ;;;;;;;;;;;;;;;;;;;;
 
@@ -422,47 +423,47 @@
                 result))]
       (reify TokenChecker
         (-check-token [_ token]
-          (let [token-hash  (hash-token token)
-                local-entry (get @local-cache token-hash)
-                db-row      (read-cache-from-db token-hash)
-                now         (t/instant)]
-            (if (and local-entry
-                     db-row
-                     (= (:result-hash local-entry) (:token_status_hash db-row)))
-              ;; Local cache matches DB hash — check TTLs
-              (let [age-start (:updated-at local-entry)]
-                (cond
-                  ;; Fresh (< soft-ttl): return local value
-                  (t/before? now (t/plus age-start soft-ttl))
-                  (:result local-entry)
+          (if-not (app-db/db-is-set-up?)
+            (-check-token token-checker token)
+            (let [token-hash  (hash-token token)
+                  local-entry (get @local-cache token-hash)
+                  db-row      (read-cache-from-db token-hash)
+                  now         (t/instant)]
+              (if (and local-entry
+                       db-row
+                       (= (:result-hash local-entry) (:token_status_hash db-row)))
+                ;; Local cache matches DB hash — check TTLs
+                (let [age-start (:updated-at local-entry)]
+                  (cond
+                    ;; Fresh (< soft-ttl): return local value
+                    (t/before? now (t/plus age-start soft-ttl))
+                    (:result local-entry)
 
-                  ;; Stale (soft..hard): return local + async refresh
-                  (t/before? now (t/plus age-start hard-ttl))
-                  (do
-                    (when (compare-and-set! refresh-in-progress? false true)
-                      (future
-                        (try
-                          (do-refresh! token token-hash)
-                          (catch Exception e
-                            (log/error e "Background premium features refresh failed"))
-                          (finally
-                            (reset! refresh-in-progress? false)
-                            (when-let [after *testing-only-call-after-refresh*]
-                              (after))))))
-                    (:result local-entry))
+                    ;; Stale (soft..hard): return local + async refresh
+                    (t/before? now (t/plus age-start hard-ttl))
+                    (do
+                      (when (compare-and-set! refresh-in-progress? false true)
+                        (future
+                          (try
+                            (do-refresh! token token-hash)
+                            (catch Exception e
+                              (log/error e "Background premium features refresh failed"))
+                            (finally
+                              (reset! refresh-in-progress? false)
+                              (when-let [after *testing-only-call-after-refresh*]
+                                (after))))))
+                      (:result local-entry))
 
-                  ;; Expired (> hard-ttl): synchronous refresh
-                  :else
-                  (do-refresh! token token-hash)))
+                    ;; Expired (> hard-ttl): synchronous refresh
+                    :else
+                    (do-refresh! token token-hash)))
 
-              ;; No local cache, no DB row, or hash mismatch: synchronous fetch
-              (do-refresh! token token-hash))))
+                ;; No local cache, no DB row, or hash mismatch: synchronous fetch
+                (do-refresh! token token-hash)))))
         (-clear-cache! [_]
           (reset! local-cache {})
-          (try
-            (clear-db-cache!)
-            (catch Exception e
-              (log/warn e "Failed to clear premium features cache table")))
+          (when (app-db/db-is-set-up?)
+            (clear-db-cache!))
           (-clear-cache! token-checker))))))
 
 (defn local-cached-token-checker
