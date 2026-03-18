@@ -8,7 +8,6 @@
   (:require
    [clojure.string :as str]
    [metabase.metabot.agent.links :as links]
-   [metabase.system.core :as system]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -28,29 +27,6 @@
    (assoc state :queries queries :charts charts))
   ([state queries charts link-registry-atom]
    (assoc state :queries queries :charts charts :link-registry-atom link-registry-atom)))
-
-;;; Slack Link Resolution
-
-(def ^:private slack-link-pattern
-  "Regex matching a complete Slack-format link <metabase://type/id|text>."
-  #"<(metabase://[^>|]+)(?:\|([^>]*))?>")
-
-(defn- resolve-slack-link
-  "Resolve a single Slack-format metabase:// link match. Returns the replacement string."
-  [queries charts [_ url link-text]]
-  (if-let [resolved (links/resolve-metabase-uri url queries charts)]
-    (let [absolute-url (str (system/site-url) resolved)]
-      (if link-text
-        (str "<" absolute-url "|" link-text ">")
-        (str "<" absolute-url ">")))
-    (do
-      (log/warn "Failed to resolve Slack link URL" {:url url})
-      (or link-text url))))
-
-(defn- resolve-slack-links
-  "Resolve all Slack-format metabase:// links in text."
-  [text queries charts]
-  (str/replace text slack-link-pattern (partial resolve-slack-link queries charts)))
 
 ;;; Buffering Logic
 
@@ -78,7 +54,7 @@
     (when idx
       (let [suffix (subs text idx)]
         ;; Only buffer if there's no closing > (i.e., the link is incomplete)
-        (when-not (re-find slack-link-pattern suffix)
+        (when-not (re-find links/slack-link-pattern suffix)
           idx)))))
 
 (defn- find-potential-link-start
@@ -100,7 +76,7 @@
   (let [text        (str buffer chunk)
         ;; Resolve complete markdown links, then Slack-format links
         resolved    (-> (links/resolve-links text (:queries state) (:charts state) (:link-registry-atom state))
-                        (resolve-slack-links (:queries state) (:charts state)))
+                        (links/resolve-slack-links (:queries state) (:charts state)))
         ;; Then check for incomplete link at the end
         split-point (find-potential-link-start resolved)]
     (if split-point

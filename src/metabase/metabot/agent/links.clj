@@ -5,6 +5,7 @@
    [buddy.core.codecs :as codecs]
    [clojure.string :as str]
    [metabase.lib.core :as lib]
+   [metabase.system.core :as system]
    [metabase.util.json :as json]
    [metabase.util.log :as log]))
 
@@ -175,6 +176,29 @@
                    (if-let [original (get registry-map url)]
                      (str "[" link-text "](" original ")")
                      whole)))))
+
+;;; Slack Link Processing
+
+(def slack-link-pattern
+  "Regex matching a complete Slack-format link <metabase://type/id|text>."
+  #"<(metabase://[^>|]+)(?:\|([^>]*))?>")
+
+(defn- resolve-slack-link
+  "Resolve a single Slack-format metabase:// link match. Returns the replacement string."
+  [queries charts [_ url link-text]]
+  (if-let [resolved (resolve-metabase-uri url queries charts)]
+    (let [absolute-url (str (system/site-url) resolved)]
+      (if link-text
+        (str "<" absolute-url "|" link-text ">")
+        (str "<" absolute-url ">")))
+    (do
+      (log/warn "Failed to resolve Slack link URL" {:url url})
+      (or link-text url))))
+
+(defn resolve-slack-links
+  "Resolve all Slack-format metabase:// links in text."
+  [text queries charts]
+  (str/replace text slack-link-pattern (partial resolve-slack-link queries charts)))
 
 (defn resolve-links-xf
   "Transducer that resolves metabase:// links in text parts.

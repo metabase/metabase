@@ -5,7 +5,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.metabot.agent.links :as links]))
+   [metabase.metabot.agent.links :as links]
+   [metabase.test :as mt]))
 
 ;;; resolve-metabase-uri tests
 
@@ -468,3 +469,40 @@
           resolved      (links/resolve-links original queries-state {} registry)
           inverted      (links/invert-links resolved @registry)]
       (is (= original inverted)))))
+
+;;; Slack link resolution tests
+
+(deftest resolve-slack-links-entity-links-test
+  (testing "resolves Slack-format metabase:// entity links"
+    (mt/with-temporary-setting-values [site-url "https://metabase.example.com"]
+      (is (= "<https://metabase.example.com/model/123|My Model>"
+             (links/resolve-slack-links "<metabase://model/123|My Model>" {} {})))
+      (is (= "<https://metabase.example.com/dashboard/456>"
+             (links/resolve-slack-links "<metabase://dashboard/456>" {} {}))))))
+
+(deftest resolve-slack-links-query-links-test
+  (testing "resolves Slack-format metabase://query links"
+    (mt/with-temporary-setting-values [site-url "https://metabase.example.com"]
+      (let [query   (lib.tu/venues-query)
+            result  (links/resolve-slack-links "<metabase://query/q1|Results>" {"q1" query} {})]
+        (is (str/starts-with? result "<https://metabase.example.com/question#"))
+        (is (str/ends-with? result "|Results>"))))))
+
+(deftest resolve-slack-links-multiple-test
+  (testing "resolves multiple Slack-format links"
+    (mt/with-temporary-setting-values [site-url "https://mb.test"]
+      (is (= "<https://mb.test/model/1|Model A> and <https://mb.test/metric/2|Metric B>"
+             (links/resolve-slack-links "<metabase://model/1|Model A> and <metabase://metric/2|Metric B>" {} {}))))))
+
+(deftest ^:parallel resolve-slack-links-unresolvable-test
+  (testing "falls back to link text for unresolvable Slack link"
+    (is (= "My Query"
+           (links/resolve-slack-links "<metabase://query/unknown|My Query>" {} {}))))
+  (testing "falls back to URL for unresolvable Slack link without text"
+    (is (= "metabase://query/unknown"
+           (links/resolve-slack-links "<metabase://query/unknown>" {} {})))))
+
+(deftest ^:parallel resolve-slack-links-no-links-test
+  (testing "passes through text without Slack links"
+    (is (= "plain text" (links/resolve-slack-links "plain text" {} {})))
+    (is (= "x < y" (links/resolve-slack-links "x < y" {} {})))))
