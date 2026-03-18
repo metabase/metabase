@@ -108,21 +108,17 @@ export function getScatterPlotModel(
     showWarning,
   );
 
-  const {
-    leftAxisModel,
-    rightAxisModel,
-    seriesExtents,
-    splitPanelYAxisModels,
-  } = getYAxesModels(
-    seriesModels,
-    dataset,
-    transformedDataset,
-    settings,
-    columnByDataKey,
-    false,
-    [],
-    false,
-  );
+  const { leftAxisModel, rightAxisModel, splitPanelYAxisModels } =
+    getYAxesModels(
+      seriesModels,
+      dataset,
+      transformedDataset,
+      settings,
+      columnByDataKey,
+      false,
+      [],
+      false,
+    );
 
   const trendLinesModel = getTrendLines(
     rawSeries,
@@ -147,7 +143,6 @@ export function getScatterPlotModel(
     leftAxisModel,
     rightAxisModel,
     splitPanelYAxisModels,
-    seriesExtents,
     trendLinesModel,
     bubbleSizeDomain: getBubbleSizeDomain(seriesModels, transformedDataset),
     seriesLabelsFormatters: {},

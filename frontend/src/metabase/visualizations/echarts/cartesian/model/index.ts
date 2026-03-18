@@ -177,22 +177,18 @@ export const getCartesianChartModel = (
     renderingContext,
   );
 
-  const {
-    leftAxisModel,
-    rightAxisModel,
-    seriesExtents,
-    splitPanelYAxisModels,
-  } = getYAxesModels(
-    seriesModels,
-    dataset,
-    transformedDataset,
-    settings,
-    columnByDataKey,
-    true,
-    stackModels,
-    isCompactFormatting,
-    gridSize,
-  );
+  const { leftAxisModel, rightAxisModel, splitPanelYAxisModels } =
+    getYAxesModels(
+      seriesModels,
+      dataset,
+      transformedDataset,
+      settings,
+      columnByDataKey,
+      true,
+      stackModels,
+      isCompactFormatting,
+      gridSize,
+    );
 
   const trendLinesModel = getTrendLines(
     rawSeries,
@@ -217,7 +213,6 @@ export const getCartesianChartModel = (
     leftAxisModel,
     rightAxisModel,
     splitPanelYAxisModels,
-    seriesExtents,
     trendLinesModel,
     seriesLabelsFormatters,
     stackedLabelsFormatters,

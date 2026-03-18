@@ -136,7 +136,6 @@ export const getWaterfallChartModel = (
     xAxisModel,
     leftAxisModel,
     rightAxisModel: null,
-    seriesExtents: {},
     seriesIdToDataKey: {
       [WATERFALL_TOTAL_KEY]: seriesModel.dataKey,
     },

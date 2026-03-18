@@ -7,7 +7,6 @@ import type {
   AxisFormatter,
   ChartDataset,
   NumericAxisScaleTransforms,
-  SeriesExtents,
   SeriesFormatters,
   SeriesModel,
   StackModel,
@@ -40,7 +39,6 @@ export interface ChartLayoutInput {
   seriesModels?: SeriesModel[];
   stackModels?: StackModel[];
   seriesLabelsFormatters?: SeriesFormatters;
-  seriesExtents?: SeriesExtents;
 }
 
 // Cartesian charts use `transformedDataset` (scaled/transformed values) while simpler

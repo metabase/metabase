@@ -647,8 +647,6 @@ export function getYAxesModels(
     },
   );
 
-  const seriesExtents = getDatasetExtents(seriesDataKeys, transformedDataset);
-
   const splitPanelYAxisModels = settings["graph.split_panels"]
     ? seriesModels
         .filter((seriesModel) => seriesModel.visible)
@@ -672,7 +670,6 @@ export function getYAxesModels(
   return {
     leftAxisModel,
     rightAxisModel,
-    seriesExtents,
     splitPanelYAxisModels,
   };
 }
