@@ -105,17 +105,19 @@
                            (seq used) (update :inputSchema assoc :$defs used))))))
           tools)))
 
-(defn- build-tool-index []
-  (into {} (map (juxt :name identity)) (:tools (manifest))))
+(defn- build-tool-index
+  "Build name->tool lookup from manifest tools."
+  [tools]
+  (into {} (map (juxt :name identity)) tools))
 
 (def ^:private tool-index-delay
-  (delay (build-tool-index)))
+  (delay (build-tool-index (:tools @manifest-delay))))
 
 (defn- tool-index
   "Lookup from tool name to its full manifest definition. Cached in prod, recomputed each call in dev."
   []
   (if config/is-dev?
-    (build-tool-index)
+    (build-tool-index (:tools (manifest)))
     @tool-index-delay))
 
 ;;; ------------------------------------------------- Tool Dispatch -------------------------------------------------
