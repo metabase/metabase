@@ -3542,6 +3542,16 @@
             (is (set/subset? #{["Barney's Beanery"] ["bigmista's barbecue"]}
                              (-> response :values set)))))))))
 
+(deftest param-fields-excluded-without-view-data-permission-test
+  (testing "param_fields should not include fields for tables where the user lacks view-data permission"
+    (with-card-param-values-fixtures [{:keys [field-filter-card]}]
+      (mt/with-no-data-perms-for-all-users!
+        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :blocked)
+        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
+        (let [response (mt/user-http-request :rasta :get 200
+                                             (format "card/%d" (:id field-filter-card)))]
+          (is (every? empty? (vals (:param_fields response)))))))))
+
 (deftest parameters-with-field-to-field-remapping-test
   (let [param-key "id/param"]
     (mt/with-temp
