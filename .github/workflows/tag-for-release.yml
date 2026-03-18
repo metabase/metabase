@@ -18,7 +18,7 @@ on:
 
 jobs:
   start-message:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
@@ -49,7 +49,7 @@ jobs:
             }).catch(console.error);
 
   check-version:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     outputs:
       ee: ${{ fromJson(steps.canonical_version.outputs.result).ee }}
@@ -101,7 +101,7 @@ jobs:
           return versions;
 
   check-commit:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     steps:
     - name: Check out the code to verify the release branch
@@ -134,7 +134,7 @@ jobs:
 
   tag-uberjar-for-release:
     needs: [check-version, check-commit]
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     strategy:
       matrix:

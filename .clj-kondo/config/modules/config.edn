@@ -287,6 +287,7 @@
   channel
   {:team "Gadget"
    :api  #{metabase.channel.api
+           metabase.channel.api.slack
            metabase.channel.core
            metabase.channel.email
            metabase.channel.email.messages
@@ -2043,7 +2044,8 @@
 
   enterprise/api
   {:team "UX West"
-   :api  #{metabase-enterprise.api.core}
+   :api  #{metabase-enterprise.api.core
+           metabase-enterprise.api.routes.common}
    :uses #{api
            premium-features
            util}}
@@ -2307,18 +2309,15 @@
    :api     #{metabase-enterprise.metabot-v3.api
               metabase-enterprise.metabot-v3.core
               metabase-enterprise.metabot-v3.init
-              metabase-enterprise.metabot-v3.tools.api
-              metabase-enterprise.metabot-v3.tools.deftool
-              metabase-enterprise.metabot-v3.tools.entity-details
-              metabase-enterprise.metabot-v3.tools.field-stats
-              metabase-enterprise.metabot-v3.tools.filters
-              metabase-enterprise.metabot-v3.tools.search
-              metabase-enterprise.metabot-v3.util}
+              metabase-enterprise.metabot-v3.tools.api}
+   :friends #{enterprise/agent-api
+              enterprise/slackbot}
    :uses    #{activity-feed
               analytics
               api
               app-db
               audit-app
+              channel
               collections
               config
               documents
@@ -2328,6 +2327,7 @@
               lib-be
               models
               native-query-snippets
+              notification
               parameters
               permissions
               premium-features
@@ -2346,8 +2346,10 @@
               transforms-base
               util
               warehouses
+              enterprise/api
               enterprise/dependencies
               enterprise/llm
+              enterprise/slackbot
               enterprise/transforms-python}}
 
   enterprise/permission-debug
@@ -2487,6 +2489,27 @@
            search
            setup
            util}}
+
+  enterprise/slackbot
+  {:team    "Metabot"
+   :api     #{metabase-enterprise.slackbot.init}
+   :friends #{enterprise/metabot-v3}
+   :uses    #{analytics
+              api
+              channel
+              config
+              formatter
+              lib
+              permissions
+              premium-features
+              query-processor
+              request
+              settings
+              system
+              upload
+              util
+              enterprise/metabot-v3
+              enterprise/sso}}
 
   enterprise/snippet-collections
   {:team "Querying"
