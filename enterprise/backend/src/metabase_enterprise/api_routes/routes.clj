@@ -27,7 +27,6 @@
    [metabase-enterprise.embedding-hub.api]
    [metabase-enterprise.gsheets.api :as gsheets.api]
    [metabase-enterprise.library.api]
-   [metabase-enterprise.llm.api]
    [metabase-enterprise.metabot-v3.api]
    [metabase-enterprise.metabot-v3.tools.api]
    [metabase-enterprise.oauth-server.admin-api]
@@ -49,7 +48,6 @@
    [metabase.util.i18n :refer [deferred-tru]]))
 
 (comment metabase-enterprise.advanced-config.api.logs/keep-me
-         metabase-enterprise.llm.api/keep-me
          metabase-enterprise.agent-api.api/keep-me)
 
 (def ^:private required-feature->message
