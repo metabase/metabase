@@ -29,8 +29,9 @@ export function setupParameterSearchValuesEndpoint(
   });
 }
 
-export function setupCardDataset(options: MockDatasetOpts = {}) {
-  fetchMock.post("path:/api/dataset", createMockDataset(options), {
+export function setupCardDataset(args: { dataset?: MockDatasetOpts } = {}) {
+  const { dataset } = args;
+  fetchMock.post("path:/api/dataset", createMockDataset(dataset), {
     name: "dataset-post",
   });
 }
