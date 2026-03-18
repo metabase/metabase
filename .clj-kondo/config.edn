@@ -178,6 +178,7 @@
      metabase.channel.core/send!
      metabase.driver.sql-jdbc.execute/execute-prepared-statement!
      metabase.notification.models/create-notification!
+     metabase.oauth-server.core/reset-provider!
      metabase.pulse.send/send-pulse!
      metabase-enterprise.transforms-python.python-runner-test/execute!
      ;; Workspace isolation functions are safe in parallel tests because they operate on

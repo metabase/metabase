@@ -891,9 +891,11 @@
    :api  #{metabase.mcp.api}
    :uses #{api
            config
+           oauth-server
            premium-features
            request
            server
+           system
            util}}
 
   measures
@@ -1013,6 +1015,7 @@
            legacy-mbql
            lib
            lib-be
+           oauth-server
            permissions
            query-processor
            remote-sync
@@ -1035,6 +1038,19 @@
            permissions
            premium-features
            remote-sync
+           util}}
+
+  oauth-server
+  {:team "UX West"
+   :api  #{metabase.oauth-server.api
+           metabase.oauth-server.core
+           metabase.oauth-server.init}
+   :uses #{api
+           appearance
+           models
+           premium-features
+           settings
+           system
            util}}
 
   notification
@@ -1493,6 +1509,7 @@
            embedding
            initialization-status
            lib-be
+           oauth-server
            premium-features
            query-processor
            request
@@ -2418,6 +2435,13 @@
            collections
            premium-features}}
 
+  enterprise/mcp
+  {:team    "Metabot"
+   :friends #{enterprise/oauth-server}
+   :uses    #{api
+              premium-features
+              enterprise/agent-api}}
+
   enterprise/metabot
   {:team    "Metabot"
    :api     #{metabase-enterprise.metabot.tools.api}
@@ -2433,6 +2457,15 @@
               util
               enterprise/dependencies
               enterprise/transforms-python}}
+
+  enterprise/oauth-server
+  {:team "UX West"
+   :api  #{metabase-enterprise.oauth-server.admin-api
+           metabase-enterprise.oauth-server.core}
+   :uses #{api
+           enterprise/mcp
+           premium-features
+           util}}
 
   enterprise/permission-debug
   {:team "UX West"
