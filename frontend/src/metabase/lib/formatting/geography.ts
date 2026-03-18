@@ -1,7 +1,7 @@
 import * as d3 from "d3";
 
+import { isLatitude, isLongitude } from "metabase/lib/types/isa";
 import { decimalCount } from "metabase/visualizations/lib/numeric";
-import { isLatitude, isLongitude } from "metabase-lib/v1/types/utils/isa";
 
 import type { OptionsType } from "./types";
 

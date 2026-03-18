@@ -575,15 +575,12 @@ export type PivotDrillDetails = {
   stageIndex: number;
 };
 
-export interface ClickObjectDimension {
-  value: RowValue;
-  column: DatasetColumn;
-}
-
-export interface ClickObjectDataRow {
-  col: DatasetColumn | null; // can be null for custom columns
-  value: RowValue;
-}
+// Re-exported from canonical location in metabase/lib
+// eslint-disable-next-line no-restricted-imports
+export type {
+  ClickObjectDimension,
+  ClickObjectDataRow,
+} from "metabase/lib/click-behavior-utils";
 
 export interface ClickObject {
   value?: RowValue;

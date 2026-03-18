@@ -1,6 +1,19 @@
+/* eslint-disable no-restricted-imports -- re-export stub during migration */
+import {
+  SAVED_QUESTIONS_VIRTUAL_DB_ID,
+  getQuestionVirtualTableId,
+} from "metabase/lib/saved-questions";
 import { generateSchemaId } from "metabase-lib/v1/metadata/utils/schema";
 
-export const SAVED_QUESTIONS_VIRTUAL_DB_ID = -1337;
+// Re-export from canonical location in metabase/lib
+// TODO: update all consumers to import from "metabase/lib/saved-questions" directly
+export {
+  SAVED_QUESTIONS_VIRTUAL_DB_ID,
+  isVirtualCardId,
+  getQuestionVirtualTableId,
+  getQuestionIdFromVirtualTableId,
+} from "metabase/lib/saved-questions";
+
 const ROOT_COLLECTION_VIRTUAL_SCHEMA_NAME = "Everything else";
 
 export const ROOT_COLLECTION_VIRTUAL_SCHEMA = getCollectionVirtualSchemaId({
@@ -18,22 +31,6 @@ export function getCollectionVirtualSchemaName(collection) {
 export function getCollectionVirtualSchemaId(collection) {
   const collectionName = getCollectionVirtualSchemaName(collection);
   return generateSchemaId(SAVED_QUESTIONS_VIRTUAL_DB_ID, collectionName);
-}
-
-export function getQuestionVirtualTableId(id) {
-  return `card__${id}`;
-}
-
-export function isVirtualCardId(tableId) {
-  return typeof tableId === "string" && tableId.startsWith("card__");
-}
-
-export function getQuestionIdFromVirtualTableId(tableId) {
-  if (typeof tableId !== "string") {
-    return null;
-  }
-  const id = parseInt(tableId.replace("card__", ""));
-  return Number.isSafeInteger(id) ? id : null;
 }
 
 export function convertSavedQuestionToVirtualTable(card) {

@@ -177,7 +177,7 @@ export const CreateOrEditQuestionAlertModal = ({
   const triggerOptions = useMemo(
     () =>
       getAlertTriggerOptions({
-        question,
+        card: question?.card(),
         visualizationSettings,
       }).map((trigger) => ALERT_TRIGGER_OPTIONS_MAP[trigger]),
     [question, visualizationSettings],

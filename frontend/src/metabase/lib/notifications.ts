@@ -3,17 +3,19 @@ import _ from "underscore";
 
 import type { NotificationListItem } from "metabase/account/notifications/types";
 import { cronToScheduleSettings } from "metabase/admin/performance/utils";
+import {
+  ALERT_TYPE_PROGRESS_BAR_GOAL,
+  ALERT_TYPE_ROWS,
+  ALERT_TYPE_TIMESERIES_GOAL,
+  type NotificationTriggerType,
+} from "metabase/lib/alert-constants";
 import { getEmailDomain, isEmail } from "metabase/lib/email";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting/date";
 import { formatTimeWithUnit } from "metabase/lib/formatting/time";
 import MetabaseSettings from "metabase/lib/settings";
 import { formatFrame } from "metabase/lib/time-dayjs";
-import {
-  ALERT_TYPE_PROGRESS_BAR_GOAL,
-  ALERT_TYPE_TIMESERIES_GOAL,
-} from "metabase-lib/v1/Alert";
-import type Question from "metabase-lib/v1/Question";
 import type {
+  Card,
   ChannelApiResponse,
   ChannelType,
   CreateAlertNotificationRequest,
@@ -144,14 +146,45 @@ export function alertIsValid(
   );
 }
 
+export function getAlertType(
+  card: Card | undefined,
+  visualizationSettings?: VisualizationSettings,
+): NotificationTriggerType | null {
+  if (!card) {
+    return null;
+  }
+
+  const display = card.display;
+  const isLineAreaBar =
+    display === "line" || display === "area" || display === "bar";
+
+  if (display === "progress") {
+    return ALERT_TYPE_PROGRESS_BAR_GOAL;
+  } else if (isLineAreaBar) {
+    const vizSettings = visualizationSettings ?? card.visualization_settings;
+    const goalEnabled = vizSettings["graph.show_goal"];
+    const hasSingleYAxisColumn =
+      vizSettings["graph.metrics"] &&
+      (vizSettings["graph.metrics"] as unknown[]).length === 1;
+
+    if (goalEnabled && hasSingleYAxisColumn) {
+      return ALERT_TYPE_TIMESERIES_GOAL;
+    } else {
+      return ALERT_TYPE_ROWS;
+    }
+  } else {
+    return ALERT_TYPE_ROWS;
+  }
+}
+
 function hasProperGoalForAlert({
-  question,
+  card,
   visualizationSettings,
 }: {
-  question: Question | undefined;
+  card: Card | undefined;
   visualizationSettings: VisualizationSettings;
 }): boolean {
-  const alertType = question?.alertType(visualizationSettings);
+  const alertType = getAlertType(card, visualizationSettings);
 
   if (!alertType) {
     return false;
@@ -164,14 +197,14 @@ function hasProperGoalForAlert({
 }
 
 export function getAlertTriggerOptions({
-  question,
+  card,
   visualizationSettings,
 }: {
-  question: Question | undefined;
+  card: Card | undefined;
   visualizationSettings: VisualizationSettings;
 }): NotificationCardSendCondition[] {
   const hasValidGoal = hasProperGoalForAlert({
-    question,
+    card,
     visualizationSettings,
   });
 

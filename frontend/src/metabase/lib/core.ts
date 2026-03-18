@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
+import { TYPE } from "metabase/lib/types/constants";
 import type { IconName } from "metabase/ui";
-import { TYPE } from "metabase-lib/v1/types/constants";
 import type { Field } from "metabase-types/api";
 
 interface FieldSemanticType {
