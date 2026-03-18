@@ -62,7 +62,7 @@
    response object may have been recycled and must not be touched."
   nil)
 
-(defn async-context-completed?
+(defn- async-context-completed?
   "Returns true if the async context has already been completed (by timeout, error, or worker thread).
    When true, the response object may have been recycled by Jetty and must not be touched."
   []
