@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { useMetabotEnabledEmbeddingAware } from "metabase/metabot/hooks";
-import { Card, Flex, Radio, Stack, Text } from "metabase/ui";
+import { Card, Radio, Stack, Text } from "metabase/ui";
 
 import { UPSELL_CAMPAIGN_EXPERIENCE } from "../analytics";
 import { getEmbedExperiences } from "../constants";
@@ -10,6 +10,7 @@ import { useHandleExperienceChange } from "../hooks/use-handle-experience-change
 import type { SdkIframeEmbedSetupExperience } from "../types";
 
 import { EmbeddingUpsell } from "./Common/EmbeddingUpsell";
+import { ProFeatureGate } from "./Common/ProFeatureGate";
 
 export const SelectEmbedExperienceStep = () => {
   const { isSimpleEmbedFeatureAvailable, experience, settings } =
@@ -42,22 +43,24 @@ export const SelectEmbedExperienceStep = () => {
           }
         >
           <Stack gap="md">
-            {experiences.map((experience) => (
-              <Radio
-                key={experience.value}
-                value={experience.value}
-                label={
-                  <Flex gap="xs" align="center">
-                    {experience.title}
-                  </Flex>
-                }
-                description={experience.description}
-                disabled={
-                  (!experience.supportsOss && !isSimpleEmbedFeatureAvailable) ||
-                  (!experience.supportsGuestEmbed && isGuestEmbed)
-                }
-              />
-            ))}
+            {experiences.map((experience) => {
+              const disabledForOss =
+                !experience.supportsOss && !isSimpleEmbedFeatureAvailable;
+              const disabled =
+                disabledForOss ||
+                (!experience.supportsGuestEmbed && isGuestEmbed);
+
+              return (
+                <ProFeatureGate key={experience.value} isGated={disabledForOss}>
+                  <Radio
+                    value={experience.value}
+                    label={experience.title}
+                    description={experience.description}
+                    disabled={disabled}
+                  />
+                </ProFeatureGate>
+              );
+            })}
           </Stack>
         </Radio.Group>
       </Card>

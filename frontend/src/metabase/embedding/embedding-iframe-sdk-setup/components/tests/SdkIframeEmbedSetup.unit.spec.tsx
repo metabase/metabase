@@ -149,3 +149,125 @@ describe("Embed flow > forward and backward navigation", () => {
     ).not.toBeInTheDocument();
   });
 });
+
+describe("Embed flow > Pro feature upsell indicators", () => {
+  it("shows upsell gem icons and disables Pro checkboxes for OSS users (question)", () => {
+    const mockDatabase = createMockDatabase();
+    const mockCard = createMockCard({ id: 456 });
+
+    setupDatabasesEndpoints([mockDatabase]);
+    setupCardEndpoints(mockCard);
+    setupCardQueryMetadataEndpoint(
+      mockCard,
+      createMockCardQueryMetadata({
+        databases: [mockDatabase],
+      }),
+    );
+
+    setup({
+      simpleEmbeddingEnabled: false,
+      initialState: {
+        resourceType: "question",
+        resourceId: 456,
+      },
+    });
+
+    // All Pro-gated checkboxes should be disabled with gem icons
+    const gems = screen.getAllByTestId("upsell-gem");
+    expect(gems.length).toBeGreaterThanOrEqual(4);
+
+    expect(
+      screen.getByRole("checkbox", {
+        name: "Allow people to drill through on data points",
+      }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("checkbox", { name: "Allow downloads" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("checkbox", {
+        name: "Allow people to save new questions",
+      }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("checkbox", { name: "Allow alerts" }),
+    ).toBeDisabled();
+  });
+
+  it("does not show upsell gem icons for Pro users (question)", () => {
+    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = jest.fn(() => true);
+
+    const mockDatabase = createMockDatabase();
+    const mockCard = createMockCard({ id: 456 });
+
+    setupDatabasesEndpoints([mockDatabase]);
+    setupCardEndpoints(mockCard);
+    setupCardQueryMetadataEndpoint(
+      mockCard,
+      createMockCardQueryMetadata({
+        databases: [mockDatabase],
+      }),
+    );
+
+    setup({
+      simpleEmbeddingEnabled: true,
+      initialState: {
+        resourceType: "question",
+        resourceId: 456,
+      },
+    });
+
+    expect(screen.queryByTestId("upsell-gem")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("checkbox", { name: "Allow downloads" }),
+    ).toBeEnabled();
+
+    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = () => false;
+  });
+
+  it("shows upsell gem icons and disables Pro checkboxes for OSS users (dashboard)", () => {
+    setupDatabasesEndpoints([createMockDatabase()]);
+
+    setup({
+      simpleEmbeddingEnabled: false,
+      initialState: {
+        resourceType: "dashboard",
+        resourceId: 1,
+      },
+    });
+
+    const gems = screen.getAllByTestId("upsell-gem");
+    expect(gems.length).toBeGreaterThanOrEqual(3);
+
+    expect(
+      screen.getByRole("checkbox", {
+        name: "Allow people to drill through on data points",
+      }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("checkbox", { name: "Allow downloads" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("checkbox", { name: "Allow subscriptions" }),
+    ).toBeDisabled();
+  });
+
+  it("does not show upsell gem icons for Pro users (dashboard)", async () => {
+    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = jest.fn(() => true);
+
+    setup({
+      simpleEmbeddingEnabled: true,
+    });
+
+    // Navigate to options step: Next (experience) → Next (resource)
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+
+    expect(screen.queryByTestId("upsell-gem")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("checkbox", { name: "Allow downloads" }),
+    ).toBeEnabled();
+
+    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = () => false;
+  });
+});

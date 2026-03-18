@@ -43,8 +43,7 @@ export const SelectEmbedOptionsStep = () => (
 );
 
 const BehaviorSection = () => {
-  const { isSimpleEmbedFeatureAvailable, settings, updateSettings } =
-    useSdkIframeEmbedSetupContext();
+  const { settings, updateSettings } = useSdkIframeEmbedSetupContext();
   const hasEmailSetup = useHasEmailSetup();
 
   const behaviorDocsParams = getBehaviorDocsUrlParams(settings);
@@ -89,16 +88,20 @@ const BehaviorSection = () => {
               )}
             </WithNotAvailableForOssOrGuestEmbedsGuard>
 
-            <Checkbox
-              label={t`Allow downloads`}
-              disabled={!isSimpleEmbedFeatureAvailable}
-              checked={settings.withDownloads}
-              onChange={(e) =>
-                updateSettings({
-                  withDownloads: e.target.checked,
-                } satisfies Partial<typeof settings>)
-              }
-            />
+            <WithNotAvailableForOssOrGuestEmbedsGuard>
+              {({ disabled }) => (
+                <Checkbox
+                  label={t`Allow downloads`}
+                  disabled={disabled}
+                  checked={settings.withDownloads}
+                  onChange={(e) =>
+                    updateSettings({
+                      withDownloads: e.target.checked,
+                    } satisfies Partial<typeof settings>)
+                  }
+                />
+              )}
+            </WithNotAvailableForOssOrGuestEmbedsGuard>
 
             <WithNotAvailableForOssOrGuestEmbedsGuard>
               {({ disabled }) => (
@@ -180,16 +183,20 @@ const BehaviorSection = () => {
               )}
             </WithNotAvailableForOssOrGuestEmbedsGuard>
 
-            <Checkbox
-              label={t`Allow downloads`}
-              disabled={!isSimpleEmbedFeatureAvailable}
-              checked={settings.withDownloads}
-              onChange={(e) =>
-                updateSettings({
-                  withDownloads: e.target.checked,
-                } satisfies Partial<typeof settings>)
-              }
-            />
+            <WithNotAvailableForOssOrGuestEmbedsGuard>
+              {({ disabled }) => (
+                <Checkbox
+                  label={t`Allow downloads`}
+                  disabled={disabled}
+                  checked={settings.withDownloads}
+                  onChange={(e) =>
+                    updateSettings({
+                      withDownloads: e.target.checked,
+                    } satisfies Partial<typeof settings>)
+                  }
+                />
+              )}
+            </WithNotAvailableForOssOrGuestEmbedsGuard>
 
             <WithNotAvailableForOssOrGuestEmbedsGuard>
               {({ disabled: disabledInGuestEmbedding }) => {
@@ -253,7 +260,7 @@ const BehaviorSection = () => {
         ),
       )
       .otherwise(() => null);
-  }, [hasEmailSetup, isSimpleEmbedFeatureAvailable, settings, updateSettings]);
+  }, [hasEmailSetup, settings, updateSettings]);
 
   if (behaviorSection === null) {
     return null;

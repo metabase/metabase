@@ -12,6 +12,7 @@ import { isStepWithResource } from "metabase/embedding/embedding-iframe-sdk-setu
 import { Card, Radio, Stack, Text } from "metabase/ui";
 
 import { getResourceTypeFromExperience } from "../../utils/get-resource-type-from-experience";
+import { ProFeatureGate } from "../Common/ProFeatureGate";
 
 import { DatabaseRoutingWarning } from "./DatabaseRoutingWarning";
 
@@ -66,14 +67,16 @@ export const AuthenticationSection = () => {
           <Stack gap="sm">
             <Radio value="guest-embed" label={t`Guest`} />
 
-            <Radio
-              value="sso"
-              label={
-                // eslint-disable-next-line metabase/no-literal-metabase-strings -- Public Facing string
-                t`Metabase account (SSO)`
-              }
-              disabled={!isSimpleEmbedFeatureAvailable}
-            />
+            <ProFeatureGate isGated={!isSimpleEmbedFeatureAvailable}>
+              <Radio
+                value="sso"
+                label={
+                  // eslint-disable-next-line metabase/no-literal-metabase-strings -- Public Facing string
+                  t`Metabase account (SSO)`
+                }
+                disabled={!isSimpleEmbedFeatureAvailable}
+              />
+            </ProFeatureGate>
           </Stack>
         </Radio.Group>
 
