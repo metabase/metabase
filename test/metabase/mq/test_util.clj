@@ -22,6 +22,8 @@
     `(binding [q.backend/*backend*      :queue.backend/sync
                q.impl/*listeners*       (atom {})
                q.impl/*accumulators*    (atom {})
+               mq.impl/*publish-buffer* (atom {})
+               mq.impl/*publish-buffer-ms* 0
                q.sync/*undelivered*     (atom {})
                topic.backend/*backend*  :topic.backend/sync
                topic.impl/*listeners*   (atom {})]

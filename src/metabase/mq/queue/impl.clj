@@ -9,9 +9,6 @@
   (:import
    (java.util.concurrent Executors ScheduledExecutorService TimeUnit ThreadFactory)))
 
-;; log is used by the with-queue macro expansion
-(comment log/keep-me)
-
 (set! *warn-on-reflection* true)
 
 (mr/def :metabase.mq.queue/queue-name
@@ -121,6 +118,22 @@
       (when (seq messages)
         (handle! queue-name message-bundles messages)))))
 
+;;; ------------------------------------------- Publish -------------------------------------------
+
+(defmethod mq.impl/channel-publish! "queue"
+  [queue-name messages]
+  (let [{:keys [dedup-fn max-batch-messages]} (get @*listeners* queue-name)
+        msgs (if dedup-fn (dedup-fn messages) messages)]
+    (when (seq msgs)
+      (mq.impl/buffered-publish!
+       queue-name msgs
+       (fn [qn ms]
+         (q.backend/publish! q.backend/*backend* qn ms)
+         (mq.impl/analytics-inc! :metabase-mq/queue-messages-published
+                                 {:queue (name qn)}
+                                 (count ms)))
+       max-batch-messages))))
+
 ;;; ------------------------------------------- Background message manager---------------------------------------
 
 (defonce ^:private flush-executor (atom nil))
@@ -134,9 +147,8 @@
       (catch Exception e
         (log/error e "Error flushing pending batch" {:queue queue-name})))))
 
-(defn start!
-  "Starts the background message-manager thread and triggers backend processing
-  for all registered queues."
+(defn- start-message-manager!
+  "Idempotently starts the background message-manager thread that flushes pending batches."
   []
   (let [exec (Executors/newSingleThreadScheduledExecutor
               (reify ThreadFactory
@@ -145,7 +157,13 @@
                     (.setDaemon true)))))]
     (if (compare-and-set! flush-executor nil exec)
       (.scheduleAtFixedRate exec ^Runnable flush-all-pending! 100 100 TimeUnit/MILLISECONDS)
-      (.shutdown exec)))
+      (.shutdown exec))))
+
+(defn start!
+  "Starts the background message-manager thread and triggers backend processing
+  for all registered queues."
+  []
+  (start-message-manager!)
   (q.backend/start! q.backend/*backend*))
 
 (defn stop-message-manager!
@@ -157,14 +175,7 @@
 (defn start-all!
   "Starts the message manager and all queue backends."
   []
-  (let [exec (Executors/newSingleThreadScheduledExecutor
-              (reify ThreadFactory
-                (newThread [_ r]
-                  (doto (Thread. r "mq-message-manager")
-                    (.setDaemon true)))))]
-    (if (compare-and-set! flush-executor nil exec)
-      (.scheduleAtFixedRate exec ^Runnable flush-all-pending! 100 100 TimeUnit/MILLISECONDS)
-      (.shutdown exec)))
+  (start-message-manager!)
   (doseq [be [:queue.backend/appdb :queue.backend/memory]]
     (q.backend/start! be)))
 
@@ -217,34 +228,16 @@
 (defmacro with-queue
   "Runs the body with the ability to add messages to the given queue.
   Messages are buffered and only published if the body completes successfully.
-  Accepts optional opts map with :backend to override *backend*.
   If an exception occurs, no messages are published and the exception is rethrown.
 
-  NOTE: Publishing is best-effort and not transactional with the application database.
-  If the caller's DB transaction commits but `publish!` subsequently fails, the queue
-  message will be lost. Callers that need stronger guarantees should publish within
-  the same DB transaction or use an idempotent retry strategy."
-  {:arglists '([queue-name [queue-binding] & body]
-               [queue-name opts [queue-binding] & body])}
-  [queue-name & args]
-  (let [[opts [queue-binding] & body] (if (map? (first args))
-                                        args
-                                        (cons {} args))
-        backend-expr (if-let [be (:backend opts)]
-                       be
-                       `q.backend/*backend*)]
-    `(mq.impl/with-buffer
-       (fn [msgs#]
-         (let [dedup-fn# (:dedup-fn (get @*listeners* ~queue-name))
-               msgs#     (if dedup-fn# (dedup-fn# msgs#) msgs#)]
-           (when (seq msgs#)
-             (q.backend/publish! ~backend-expr ~queue-name msgs#)
-             (mq.impl/analytics-inc! :metabase-mq/queue-messages-published
-                                     {:queue (name ~queue-name)}
-                                     (count msgs#)))))
-       "Error in queue processing, no messages will be persisted to the queue"
-       [~queue-binding]
-       ~@body)))
+  When called inside a database transaction, messages are accumulated and published
+  as a single batch after the transaction commits successfully. This prevents consumers
+  from reading uncommitted data."
+  [queue-name [queue-binding] & body]
+  `(mq.impl/run-with-channel
+    ~queue-name
+    "Error in queue processing, no messages will be persisted to the queue"
+    (fn [~queue-binding] ~@body)))
 
 (mu/defn queue-length :- :int
   "The number of message *bundles* in the queue."

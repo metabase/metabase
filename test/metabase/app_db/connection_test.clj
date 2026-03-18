@@ -134,6 +134,47 @@
             (when-not (is-transaction-exception? e)
               (throw e))))))))
 
+(deftest after-commit-returns-false-outside-transaction-test
+  (testing "after-commit! returns false when not in a transaction"
+    (is (false? (mdb.connection/after-commit! (fn []))))))
+
+(deftest after-commit-returns-true-inside-transaction-test
+  (testing "after-commit! returns true when inside a transaction"
+    (t2/with-transaction []
+      (is (true? (mdb.connection/after-commit! (fn [])))))))
+
+(deftest after-commit-callbacks-execute-after-commit-test
+  (testing "Callbacks registered via after-commit! execute after successful commit"
+    (let [result (atom [])]
+      (t2/with-transaction []
+        (mdb.connection/after-commit! (fn [] (swap! result conj :callback-1)))
+        (mdb.connection/after-commit! (fn [] (swap! result conj :callback-2)))
+        (is (= [] @result) "Callbacks should not have executed yet"))
+      (is (= [:callback-1 :callback-2] @result) "Callbacks should execute after commit"))))
+
+(deftest after-commit-callbacks-not-executed-on-rollback-test
+  (testing "Callbacks are not executed when a transaction is rolled back"
+    (let [result (atom [])]
+      (try
+        (t2/with-transaction []
+          (mdb.connection/after-commit! (fn [] (swap! result conj :should-not-run)))
+          (throw (ex-info "force rollback" {})))
+        (catch Exception _))
+      (is (= [] @result) "Callbacks should not execute on rollback"))))
+
+(deftest nested-transactions-share-after-commit-and-state-test
+  (testing "Nested transactions share the same *after-commit* and *transaction-state*"
+    (let [result (atom [])]
+      (t2/with-transaction []
+        (mdb.connection/after-commit! (fn [] (swap! result conj :outer)))
+        (let [outer-state mdb.connection/*transaction-state*]
+          (t2/with-transaction []
+            (is (identical? outer-state mdb.connection/*transaction-state*)
+                "*transaction-state* should be the same atom in nested transactions")
+            (mdb.connection/after-commit! (fn [] (swap! result conj :inner)))))
+        (is (= [] @result) "Callbacks should not have executed yet"))
+      (is (= [:outer :inner] @result) "Both callbacks should execute after outermost commit"))))
+
 (deftest ^:parallel transaction-isolation-level-test
   (testing "We should always use READ_COMMITTED for the app DB (#44505)"
     (with-open [conn (.getConnection mdb.connection/*application-db*)]

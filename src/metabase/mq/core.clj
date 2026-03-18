@@ -77,5 +77,6 @@
   []
   (reset! q.impl/*listeners* {})
   (reset! topic.impl/*listeners* {})
+  (mq.impl/shutdown!)
   (q.impl/shutdown-all!)
   (topic.impl/shutdown-all!))

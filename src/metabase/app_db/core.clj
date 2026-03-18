@@ -37,7 +37,9 @@
   db-type
   in-transaction?
   quoting-style
-  unique-identifier]
+  unique-identifier
+  after-commit!
+  transaction-state]
 
  [mdb.connection-pool-setup
   recent-activity?]

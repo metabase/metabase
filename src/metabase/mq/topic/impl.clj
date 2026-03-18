@@ -8,9 +8,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
-;; log is used by the with-topic macro expansion
-(comment log/keep-me)
-
 (set! *warn-on-reflection* true)
 
 (def ^:private locally-published-expiry-ms
@@ -148,25 +145,26 @@
   [topic-name]
   (swap! *listeners* dissoc topic-name))
 
+(defmethod mq.impl/channel-publish! "topic"
+  [topic-name messages]
+  (mq.impl/buffered-publish!
+   topic-name messages
+   (fn [tn ms] (publish! topic.backend/*backend* tn ms))
+   nil))
+
 (defmacro with-topic
   "Runs the body with the ability to add messages to the given topic.
   Messages are buffered and only published if the body completes successfully.
-  Accepts optional opts map with :backend to override *backend*.
   If an exception occurs, no messages are published and the exception is rethrown.
-  Publishing is best-effort and not transactional — if the body succeeds but
-  `publish!` throws, the body's side effects will have already occurred."
-  {:arglists '([topic-name [buffer-binding] & body]
-               [topic-name opts [buffer-binding] & body])}
-  [topic-name & args]
-  (let [[opts [buffer-binding] & body] (if (map? (first args))
-                                         args
-                                         (cons {} args))
-        backend-expr (if-let [be (:backend opts)]
-                       be
-                       `topic.backend/*backend*)]
-    `(mq.impl/with-buffer
-       (fn [msgs#]
-         (#'publish! ~backend-expr ~topic-name msgs#))
-       "Error in topic processing, no messages will be published to the topic"
-       [~buffer-binding]
-       ~@body)))
+
+  Outside a transaction, publishing is best-effort and fire-and-forget — if the body
+  succeeds but `publish!` throws, the body's side effects will have already occurred.
+
+  Inside a database transaction, messages are deferred and published as a single batch
+  after the transaction commits successfully. This prevents consumers from seeing
+  uncommitted data. If the transaction rolls back, the messages are discarded."
+  [topic-name [buffer-binding] & body]
+  `(mq.impl/run-with-channel
+    ~topic-name
+    "Error in topic processing, no messages will be published to the topic"
+    (fn [~buffer-binding] ~@body)))

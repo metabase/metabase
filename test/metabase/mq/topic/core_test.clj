@@ -1,6 +1,7 @@
 (ns metabase.mq.topic.core-test
   (:require
    [clojure.test :refer :all]
+   [metabase.app-db.connection :as app-db.conn]
    [metabase.mq.core :as mq]
    [metabase.mq.impl :as mq.impl]
    [metabase.mq.test-util :as mq.tu])
@@ -127,3 +128,127 @@
         (is (= ["new-message"] @received)))
 
       (mq/unlisten! :topic/late))))
+
+(deftest transaction-defers-topic-publish-test
+  (mq.tu/with-sync-mq
+    (let [received (atom [])]
+      (mq/listen! :topic/txn-test {}
+                  (fn [message]
+                    (swap! received conj message)))
+      (binding [app-db.conn/*after-commit*      (atom [])
+                app-db.conn/*transaction-state* (atom {})]
+        (testing "Inside a transaction, messages are accumulated, not published immediately"
+          (mq/with-topic :topic/txn-test [t]
+            (mq/put t "msg1")
+            (mq/put t "msg2"))
+          (mq/with-topic :topic/txn-test [t]
+            (mq/put t "msg3"))
+          (testing "Messages are deferred in transaction state"
+            (is (= ["msg1" "msg2" "msg3"]
+                   (get-in @app-db.conn/*transaction-state*
+                           [::mq.impl/deferred-messages :topic/txn-test]))))
+          (testing "Listener has not been called yet"
+            (is (= [] @received))))
+        (testing "After flush (simulating commit), all messages are delivered"
+          (mq.impl/flush-deferred-messages!)
+          (is (= ["msg1" "msg2" "msg3"] @received))))
+      (mq/unlisten! :topic/txn-test))))
+
+(deftest transaction-rollback-discards-topic-messages-test
+  (mq.tu/with-sync-mq
+    (let [received (atom [])]
+      (mq/listen! :topic/txn-rollback {}
+                  (fn [message]
+                    (swap! received conj message)))
+      (binding [app-db.conn/*after-commit*      (atom [])
+                app-db.conn/*transaction-state* (atom {})]
+        (testing "Messages accumulated during a failed transaction are discarded"
+          (is (thrown? Exception
+                       (mq/with-topic :topic/txn-rollback [t]
+                         (mq/put t "should-be-discarded")
+                         (throw (ex-info "boom" {})))))
+          (is (nil? (get-in @app-db.conn/*transaction-state*
+                            [::mq.impl/deferred-messages :topic/txn-rollback]))
+              "No messages should be in transaction state after exception")))
+      (mq/unlisten! :topic/txn-rollback))))
+
+(deftest outside-transaction-publishes-topic-immediately-test
+  (mq.tu/with-sync-mq
+    (let [received (atom [])]
+      (mq/listen! :topic/txn-immediate {}
+                  (fn [message]
+                    (swap! received conj message)))
+      (testing "Outside a transaction, messages are published immediately"
+        (is (nil? app-db.conn/*transaction-state*))
+        (mq/with-topic :topic/txn-immediate [t]
+          (mq/put t "msg1"))
+        (is (= ["msg1"] @received)))
+      (mq/unlisten! :topic/txn-immediate))))
+
+(deftest multiple-topics-in-transaction-test
+  (mq.tu/with-sync-mq
+    (let [received-a (atom [])
+          received-b (atom [])]
+      (mq/listen! :topic/txn-multi-a {}
+                  (fn [message] (swap! received-a conj message)))
+      (mq/listen! :topic/txn-multi-b {}
+                  (fn [message] (swap! received-b conj message)))
+      (binding [app-db.conn/*after-commit*      (atom [])
+                app-db.conn/*transaction-state* (atom {})]
+        (mq/with-topic :topic/txn-multi-a [t]
+          (mq/put t "a1")
+          (mq/put t "a2"))
+        (mq/with-topic :topic/txn-multi-b [t]
+          (mq/put t "b1"))
+        (testing "Both topics have deferred messages"
+          (is (= ["a1" "a2"]
+                 (get-in @app-db.conn/*transaction-state*
+                         [::mq.impl/deferred-messages :topic/txn-multi-a])))
+          (is (= ["b1"]
+                 (get-in @app-db.conn/*transaction-state*
+                         [::mq.impl/deferred-messages :topic/txn-multi-b]))))
+        (testing "After flush, both topics receive their messages"
+          (mq.impl/flush-deferred-messages!)
+          (is (= ["a1" "a2"] @received-a))
+          (is (= ["b1"] @received-b))))
+      (mq/unlisten! :topic/txn-multi-a)
+      (mq/unlisten! :topic/txn-multi-b))))
+
+(deftest buffering-combines-topic-messages-test
+  (mq.tu/with-sync-mq
+    (let [received (atom [])]
+      (mq/listen! :topic/buffer-test {}
+                  (fn [message] (swap! received conj message)))
+      (binding [mq.impl/*publish-buffer-ms* 100
+                mq.impl/*publish-buffer*    (atom {})]
+        (testing "buffered-publish! buffers topic messages when *publish-buffer-ms* > 0"
+          (mq/with-topic :topic/buffer-test [t]
+            (mq/put t "msg1"))
+          (mq/with-topic :topic/buffer-test [t]
+            (mq/put t "msg2"))
+          (is (empty? @received)
+              "Nothing delivered yet because buffer window hasn't elapsed")
+          (is (= ["msg1" "msg2"]
+                 (:messages (get @mq.impl/*publish-buffer* :topic/buffer-test)))
+              "Messages are buffered"))
+        (testing "After flush, all messages are delivered"
+          (swap! mq.impl/*publish-buffer*
+                 update :topic/buffer-test assoc :deadline-ms 1)
+          (mq.impl/flush-publish-buffer!)
+          (is (= ["msg1" "msg2"] @received)
+              "Both messages delivered after flush")))
+      (mq/unlisten! :topic/buffer-test))))
+
+(deftest buffering-immediate-when-zero-test
+  (mq.tu/with-sync-mq
+    (let [received (atom [])]
+      (mq/listen! :topic/buffer-zero {}
+                  (fn [message] (swap! received conj message)))
+      (testing "With *publish-buffer-ms* 0 (default in with-sync-mq), topic messages publish immediately"
+        (mq/with-topic :topic/buffer-zero [t]
+          (mq/put t "msg1"))
+        (is (= ["msg1"] @received))
+        (mq/with-topic :topic/buffer-zero [t]
+          (mq/put t "msg2"))
+        (is (= ["msg1" "msg2"] @received)))
+      (mq/unlisten! :topic/buffer-zero))))

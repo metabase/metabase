@@ -134,10 +134,33 @@
 
 (def ^:private ^:dynamic *transaction-depth* 0)
 
+(def ^:dynamic *after-commit*
+  "When non-nil, an atom containing a vector of 0-arity fns to call after the outermost transaction commits.
+  Bound to a fresh atom at the outermost transaction boundary."
+  nil)
+
+(def ^:dynamic *transaction-state*
+  "When non-nil, an atom containing a map for arbitrary per-transaction data.
+  Any subsystem can store namespaced keys here. Bound to a fresh atom at the outermost transaction boundary."
+  nil)
+
 (defn in-transaction?
   "Whether we are currently in a transaction."
   []
   (pos? *transaction-depth*))
+
+(defn after-commit!
+  "Register `f` (a 0-arity fn) to run after the current outermost transaction commits.
+  Returns true if registered, false if not currently in a transaction."
+  [f]
+  (if *after-commit*
+    (do (swap! *after-commit* conj f) true)
+    false))
+
+(defn transaction-state
+  "Returns the current transaction state atom, or nil if not in a transaction."
+  []
+  *transaction-state*)
 
 (defn- do-transaction [^java.sql.Connection connection f]
   (letfn [(thunk []
@@ -146,7 +169,14 @@
                 (let [result (f connection)]
                   (when (= *transaction-depth* 1)
                     ;; top-level transaction, commit
-                    (.commit connection))
+                    (.commit connection)
+                    ;; drain and execute after-commit callbacks
+                    (when-let [callbacks (some-> *after-commit* deref seq)]
+                      (doseq [cb callbacks]
+                        (try
+                          (cb)
+                          (catch Throwable t
+                            (log/error t "Error in after-commit callback"))))))
                   result)
                 (catch Throwable txn-e
                   (try
@@ -202,8 +232,11 @@
                     {:options options}))
 
     :else
-    (binding [*transaction-depth* (inc *transaction-depth*)]
-      (do-transaction connection f))))
+    (let [outermost? (zero? *transaction-depth*)]
+      (binding [*transaction-depth* (inc *transaction-depth*)
+                *after-commit*      (if outermost? (atom []) *after-commit*)
+                *transaction-state* (if outermost? (atom {}) *transaction-state*)]
+        (do-transaction connection f)))))
 
 (methodical/defmethod t2.pipeline/transduce-query :before :default
   "Make sure application database calls are not done inside core.async dispatch pool threads. This is done relatively
