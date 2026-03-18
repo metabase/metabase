@@ -1349,14 +1349,6 @@ function verifyTableCellContent(index: number, text: string) {
   cy.findAllByRole("gridcell").eq(index).should("have.text", text);
 }
 
-function verifyQuestionError(error: string) {
-  cy.findByTestId("query-builder-main").within(() => {
-    cy.findByText("There was a problem with your question").should("exist");
-    cy.findByText("Show error details").click();
-    cy.findByText(error).should("exist");
-  });
-}
-
 function verifyNoQuestionError() {
   cy.findByTestId("query-builder-main").within(() => {
     cy.findByText("There was a problem with your question").should("not.exist");
