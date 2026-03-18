@@ -14,6 +14,7 @@ import {
 } from "metabase/query_builder/selectors";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
+import { addFields } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import { canUserCreateQueries, getUser } from "metabase/selectors/user";
 import * as Lib from "metabase-lib";
@@ -350,6 +351,14 @@ async function handleQBInit(
   }
 
   await dispatch(loadMetadataForCard(card));
+
+  // Populate the metadata store with param_fields from the card response.
+  // This ensures field filter widgets have has_field_values even when the user
+  // lacks create-queries permission on the underlying table (GHY-1605).
+  if (card.param_fields) {
+    await dispatch(addFields(Object.values(card.param_fields).flat()));
+  }
+
   const metadata = getMetadata(getState());
 
   let question = new Question(card, metadata);

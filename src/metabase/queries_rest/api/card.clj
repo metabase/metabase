@@ -215,6 +215,7 @@
                     :can_manage_db
                     [:collection :is_personal]
                     [:moderation_reviews :moderator_details]
+                    :param_fields
                     :is_remote_synced)
         (update :dashboard #(some-> % (select-keys [:name :id :moderation_status])))
         (cond->
