@@ -41,6 +41,7 @@
    [metabase.model-persistence.init]
    [metabase.models.init]
    [metabase.notification.init]
+   [metabase.oauth-server.init]
    [metabase.parameters.init]
    [metabase.permissions.init]
    [metabase.premium-features.init]

@@ -1,0 +1,20 @@
+## Add application_type column to oauth_client for OIDC provider 0.5.0
+
+databaseChangeLog:
+  - logicalFilePath: migrations/060_update_migrations.yaml
+
+  - changeSet:
+      id: v60.2026-03-20T00:00:00
+      author: epaget
+      comment: Add application_type column to oauth_client (web or native)
+      changes:
+        - addColumn:
+            tableName: oauth_client
+            columns:
+              - column:
+                  name: application_type
+                  type: varchar(50)
+                  remarks: OAuth application type (web or native), defaults to web
+                  defaultValue: web
+                  constraints:
+                    nullable: true

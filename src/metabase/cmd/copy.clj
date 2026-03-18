@@ -126,6 +126,10 @@
     ;; 59+
     :model/Measure
     ;; 60+
+    :model/OAuthClient
+    :model/OAuthAuthorizationCode
+    :model/OAuthAccessToken
+    :model/OAuthRefreshToken
     :model/Metabot
     :model/MetabotConversation
     :model/MetabotMessage

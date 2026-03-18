@@ -8,6 +8,7 @@
    [metabase.agent-api.api :as agent-api]
    [metabase.api.common :as api]
    [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
+   [metabase.api.macros.scope :as scope]
    [metabase.config.core :as config]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.util :as u]
@@ -65,19 +66,44 @@
                  (cond-> result def-schema (assoc def-name def-schema)))))
       result)))
 
+(defn- scope-matches?
+  "Does `token-scopes` grant access to a tool with the given `tool-scope`?
+   - nil/empty token-scopes or ::scope/unrestricted → always matches
+   - nil tool-scope → always matches (tool has no scope restriction)
+   - wildcard scopes like \"agent:*\" match any tool scope starting with \"agent:\""
+  [token-scopes tool-scope]
+  (or (nil? token-scopes)
+      (empty? token-scopes)
+      (contains? token-scopes ::scope/unrestricted)
+      (nil? tool-scope)
+      (contains? token-scopes tool-scope)
+      (some (fn [s]
+              (when (string? s)
+                (when-let [prefix (when (str/ends-with? s ":*")
+                                    (subs s 0 (dec (count s))))]
+                  (str/starts-with? tool-scope prefix))))
+            token-scopes)))
+
 (defn list-tools
   "Return the tool definitions suitable for MCP `tools/list` responses.
-   Inlines referenced `$defs` into each tool's `inputSchema` so that `$ref` pointers resolve."
-  []
+   Inlines referenced `$defs` into each tool's `inputSchema` so that `$ref` pointers resolve.
+   When `token-scopes` is provided, only tools whose scope matches are included."
+  [token-scopes]
   (let [{:keys [tools $defs]} (manifest)]
-    (mapv (fn [tool]
-            (let [input (:inputSchema tool)
-                  used  (when (and (seq $defs) input)
-                          (referenced-defs input $defs))]
-              (cond-> {:name        (:name tool)
-                       :description (:description tool)
-                       :inputSchema input}
-                (seq used) (update :inputSchema assoc :$defs used))))
+    (into []
+          (comp (filter #(scope-matches? token-scopes (:scope %)))
+                (map (fn [tool]
+                       (let [input (:inputSchema tool)
+                             used  (when (and (seq $defs) input)
+                                     (referenced-defs input $defs))]
+                         (cond-> {:name        (:name tool)
+                                  :description (:description tool)
+                                  :inputSchema (cond-> input
+                                                 ;; the root object of an MCP tool inputSchema MUST be an
+                                                 ;; "object" malli.json-schema rightly doesn't set type: "object"
+                                                 ;; on a :or schema.
+                                                 (not (:type input)) (assoc :type "object"))}
+                           (seq used) (update :inputSchema assoc :$defs used))))))
           tools)))
 
 (defn- build-tool-index []
@@ -208,8 +234,11 @@
    Returns MCP content on success, or error content on failure."
   [token-scopes tool-name arguments]
   (if-let [tool-def (get (tool-index) tool-name)]
-    (try
-      (dispatch-via-agent-api tool-def arguments token-scopes)
-      (catch Exception e
-        (error-content (or (ex-message e) "Internal error"))))
+    (if-not (scope-matches? token-scopes (:scope tool-def))
+      (error-content (str "Insufficient scope to call tool: " tool-name
+                          ". Required scope: " (:scope tool-def)))
+      (try
+        (dispatch-via-agent-api tool-def arguments token-scopes)
+        (catch Exception e
+          (error-content (or (ex-message e) "Internal error")))))
     (error-content (str "Unknown tool: " tool-name))))

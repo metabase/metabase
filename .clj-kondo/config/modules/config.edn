@@ -546,6 +546,10 @@
                     :model/NotificationHandler
                     :model/NotificationRecipient
                     :model/NotificationSubscription
+                    :model/OAuthAccessToken
+                    :model/OAuthAuthorizationCode
+                    :model/OAuthClient
+                    :model/OAuthRefreshToken
                     :model/ParameterCard
                     :model/Permissions
                     :model/PermissionsGroup
@@ -1173,8 +1177,10 @@
    :uses #{agent-api
            api
            config
+           oauth-server
            request
            server
+           system
            util}}
 
   measures
@@ -1317,6 +1323,7 @@
            legacy-mbql
            lib
            lib-be
+           oauth-server
            permissions
            query-processor
            remote-sync
@@ -1403,6 +1410,23 @@
                     :model/DashboardCard
                     :model/DashboardTab
                     :model/User}}
+
+  oauth-server
+  {:team "UX West"
+   :api  #{metabase.oauth-server.api
+           metabase.oauth-server.core
+           metabase.oauth-server.init}
+   :uses #{api
+           appearance
+           models
+           settings
+           system
+           util}
+   :model-exports #{:model/OAuthAccessToken
+                    :model/OAuthAuthorizationCode
+                    :model/OAuthClient
+                    :model/OAuthRefreshToken}
+   :model-imports #{:model/User}}
 
   ;; TODO -- too many API namespaces
   parameters
@@ -1894,6 +1918,7 @@
            embedding
            initialization-status
            lib-be
+           oauth-server
            premium-features
            query-processor
            request
@@ -2930,6 +2955,7 @@
            premium-features}
    :model-imports #{:model/Card :model/Collection :model/Table}}
 
+
   enterprise/metabot
   {:team    "Metabot"
    :api     #{}
@@ -2946,6 +2972,7 @@
               enterprise/dependencies
               enterprise/transforms-python}
    :model-imports #{:model/Card :model/Transform}}
+
 
   enterprise/permission-debug
   {:team "UX West"
