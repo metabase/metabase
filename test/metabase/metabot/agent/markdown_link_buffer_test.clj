@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.lib.test-util :as lib.tu]
    [metabase.metabot.agent.markdown-link-buffer :as mlb]
-   [metabase.system.core :as system]))
+   [metabase.test :as mt]))
 
 (defn- process
   "Process text through a fresh state with given queries/charts context.
@@ -146,13 +146,13 @@
 
 (deftest resolve-slack-link-test
   (testing "resolves Slack-format metabase:// links"
-    (with-redefs [system/site-url (constantly "https://metabase.example.com")]
+    (mt/with-temporary-setting-values [site-url "https://metabase.example.com"]
       (let [[output flushed] (process "<metabase://model/123|My Model>")]
         (is (= "<https://metabase.example.com/model/123|My Model>" output))
         (is (= "" flushed)))))
 
   (testing "resolves Slack link without link text"
-    (with-redefs [system/site-url (constantly "https://metabase.example.com")]
+    (mt/with-temporary-setting-values [site-url "https://metabase.example.com"]
       (let [[output flushed] (process "<metabase://dashboard/456>")]
         (is (= "<https://metabase.example.com/dashboard/456>" output))
         (is (= "" flushed)))))
@@ -164,7 +164,7 @@
 
 (deftest slack-link-buffering-test
   (testing "buffers incomplete Slack-format links"
-    (with-redefs [system/site-url (constantly "https://metabase.example.com")]
+    (mt/with-temporary-setting-values [site-url "https://metabase.example.com"]
       (let [[outputs flushed] (process-chunks ["Check <metabase://mod" "el/123|My Model>"])]
         (is (= "Check " (first outputs)))
         (is (re-find #"metabase\.example\.com/model/123" (second outputs)))
@@ -177,7 +177,7 @@
 
 (deftest mixed-link-formats-test
   (testing "resolves both markdown and Slack-format links in same text"
-    (with-redefs [system/site-url (constantly "https://metabase.example.com")]
+    (mt/with-temporary-setting-values [site-url "https://metabase.example.com"]
       (let [[output flushed] (process "[Model](/model/1) and <metabase://dashboard/2|Dashboard>")]
         (is (= "[Model](/model/1) and <https://metabase.example.com/dashboard/2|Dashboard>" output))
         (is (= "" flushed))))))
