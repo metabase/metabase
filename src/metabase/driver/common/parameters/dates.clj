@@ -12,7 +12,6 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
-   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -42,8 +41,11 @@
   [clause unit]
   ;; legacy usages -- use Lib in new code going forward
   #_{:clj-kondo/ignore [:deprecated-var]}
-  (cond-> clause
-    (mbql.u/is-clause? :field clause) (mbql.u/with-temporal-unit unit)))
+  (if-not (mbql.u/is-clause? :field clause)
+    clause
+    (if (:lib/uuid (second clause))
+      (metabase.lib.core/with-temporal-bucket clause unit)
+      (mbql.u/with-temporal-unit clause unit))))
 
 (def ^:private relative-date-string-decoders
   [{:parser #(= % "today")
@@ -207,11 +209,11 @@
 (def ^:private all-date-string-decoders
   (concat relative-date-string-decoders absolute-date-string-decoders))
 
-(mu/defn date-string->filter :- ::mbql.s/Filter
+(mu/defn date-string->filter ; :- ::mbql.s/Filter
   "Takes a string description of a *date* (not datetime) range such as 'lastmonth' or '2016-07-15~2016-08-6', or
   an absolute date *or datetime* string, and returns a corresponding MBQL filter clause for a given field reference."
   [date-string :- :string
-   field       :- [:or ::lib.schema.id/field ::mbql.s/FieldOrExpressionRef]]
+   field       #_#_:- [:or ::lib.schema.id/field ::mbql.s/FieldOrExpressionRef]]
   #_{:clj-kondo/ignore [:deprecated-var]}
   (or (#'qp.parameters.dates/execute-decoders all-date-string-decoders :filter (mbql.u/wrap-field-id-if-needed field) date-string)
       (throw (ex-info (tru "Don''t know how to parse date string {0}" (pr-str date-string))
