@@ -68,6 +68,15 @@ const DEFAULT_VALUES: DefaultValues = {
     /** @see {@link https://github.com/metabase/metabase/blob/c8b1767e66352738553211dea3d7b1addc81da27/frontend/src/embedding-sdk-bundle/components/public/MetabotQuestion/types.ts#L17} */
     layout: "auto",
   },
+  // EMB-1452 - new component
+  adhoc: {
+    /** @see {@link https://github.com/metabase/metabase/blob/master/frontend/src/embedding-sdk-bundle/components/public/AdHocQuestion/AdHocQuestion.tsx} */
+    withDownloads: false,
+    /** @see {@link https://github.com/metabase/metabase/blob/master/frontend/src/metabase/embedding/embedding-iframe-sdk/components/SdkIframeEmbedRoute.tsx} */
+    withTitle: true,
+    /** @see {@link https://github.com/metabase/metabase/blob/master/frontend/src/metabase/embedding/embedding-iframe-sdk/components/SdkIframeEmbedRoute.tsx} */
+    isSaveEnabled: false,
+  },
 };
 
 const DEFAULT_GUEST_EMBED_VALUES: DefaultValues = merge(DEFAULT_VALUES, {
@@ -142,6 +151,9 @@ export function createEmbeddedAnalyticsJsUsage(
   );
   const metabotEmbeds = Array.from(activeEmbeds).filter(
     (element) => element.properties.componentName === "metabase-metabot",
+  );
+  const adhocEmbeds = Array.from(activeEmbeds).filter(
+    (element) => element.properties.componentName === "metabase-adhoc",
   );
 
   // Build dashboard component
@@ -385,6 +397,48 @@ export function createEmbeddedAnalyticsJsUsage(
             propertyName: "layout",
             getValue: (layout) =>
               String(layout ?? DEFAULT_VALUES.metabot.layout),
+          }),
+        },
+      ],
+    });
+  }
+
+  // Build adhoc component
+  if (adhocEmbeds.length > 0) {
+    event.components.push({
+      name: "adhoc",
+      properties: [
+        {
+          name: "with_downloads",
+          values: countPropertyValues({
+            embeds: adhocEmbeds,
+            component: "adhoc",
+            propertyName: "withDownloads",
+            getValue: (withDownloads) =>
+              String(withDownloads ?? DEFAULT_VALUES.adhoc.withDownloads),
+            allPossibleValues: ["false", "true"],
+          }),
+        },
+        {
+          name: "with_title",
+          values: countPropertyValues({
+            embeds: adhocEmbeds,
+            component: "adhoc",
+            propertyName: "withTitle",
+            getValue: (withTitle) =>
+              String(withTitle ?? DEFAULT_VALUES.adhoc.withTitle),
+            allPossibleValues: ["false", "true"],
+          }),
+        },
+        {
+          name: "is_save_enabled",
+          values: countPropertyValues({
+            embeds: adhocEmbeds,
+            component: "adhoc",
+            propertyName: "isSaveEnabled",
+            getValue: (isSaveEnabled) =>
+              String(isSaveEnabled ?? DEFAULT_VALUES.adhoc.isSaveEnabled),
+            allPossibleValues: ["false", "true"],
           }),
         },
       ],

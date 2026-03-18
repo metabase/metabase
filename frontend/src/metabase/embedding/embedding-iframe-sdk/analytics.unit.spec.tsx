@@ -1016,6 +1016,51 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
       });
     });
 
+    describe("adhoc", () => {
+      it("should track adhoc component with with_downloads, with_title, and is_save_enabled properties", () => {
+        const usage = createEmbeddedAnalyticsJsUsage(
+          new Set([
+            createEmbeddedAnalyticsJsElement("metabase-adhoc", {
+              query: "abc",
+            }),
+            createEmbeddedAnalyticsJsElement("metabase-adhoc", {
+              query: "abc",
+              "with-downloads": true,
+              "with-title": false,
+              "is-save-enabled": true,
+            }),
+          ]),
+        );
+
+        expect(usage.components).toContainEqual({
+          name: "adhoc",
+          properties: [
+            {
+              name: "with_downloads",
+              values: [
+                { group: "false", value: 1 }, // default
+                { group: "true", value: 1 },
+              ],
+            },
+            {
+              name: "with_title",
+              values: [
+                { group: "false", value: 1 },
+                { group: "true", value: 1 }, // default
+              ],
+            },
+            {
+              name: "is_save_enabled",
+              values: [
+                { group: "false", value: 1 }, // default
+                { group: "true", value: 1 },
+              ],
+            },
+          ],
+        });
+      });
+    });
+
     describe("metabot", () => {
       it("should track metabot component with layout property", () => {
         const usage = createEmbeddedAnalyticsJsUsage(
@@ -1116,7 +1161,9 @@ type Component =
   | "metabase-dashboard"
   | "metabase-question"
   | "metabase-browser"
-  | "metabase-metabot";
+  | "metabase-metabot"
+  | "metabase-adhoc";
+
 function createEmbeddedAnalyticsJsElement(
   componentName: Component,
   properties: Record<string, any> = {},
