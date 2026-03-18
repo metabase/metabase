@@ -31,14 +31,12 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [metabase-enterprise.checker.format.serdes :as serdes-format]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.models.serialization :as serdes]
-   [metabase.util.yaml :as yaml])
-  (:import
-   (java.io File)))
+   [metabase.models.serialization :as serdes]))
 
 (set! *warn-on-reflection* true)
 
@@ -136,101 +134,18 @@
 ;;; Table fields lookup: (get-in state [:table-fields table-path])
 ;;; ===========================================================================
 
-(defn- load-yaml [path]
-  (yaml/parse-string (slurp path)))
-
-(defn- quick-extract
-  "Extract a field from YAML using regex (fast) with full parse fallback."
-  [file-path field-name pattern]
-  (try
-    (let [content (slurp file-path)]
-      (if-let [[_ value] (re-find pattern content)]
-        (str/trim value)
-        (get (yaml/parse-string content) (keyword field-name))))
-    (catch Exception _ nil)))
-
-(defn- extract-name [file-path]
-  (quick-extract file-path "name" #"(?m)^name:\s*(.+)$"))
-
-(defn- extract-entity-id [file-path]
-  (quick-extract file-path "entity_id" #"(?m)^entity_id:\s*(\S+)"))
-
 (defn- build-file-index!
-  "Traverse export directory once to build path -> file mappings."
+  "Traverse export directory once to build path -> file mappings.
+   Uses serdes-format/build-file-index and merges into state."
   [export-dir]
-  ;; Index databases, tables, and fields
-  (let [db-dir (io/file export-dir "databases")]
-    (when (.exists db-dir)
-      (doseq [^File db-folder (.listFiles db-dir)
-              :when (.isDirectory db-folder)
-              :let [folder-name (.getName db-folder)
-                    db-yaml-file (io/file db-folder (str folder-name ".yaml"))]
-              :when (.exists db-yaml-file)
-              :let [db-name folder-name]]
-        ;; Index database
-        (swap! state assoc-in [:db-name->file db-name] (.getPath db-yaml-file))
-        ;; Index tables and fields - two possible structures:
-        ;; 1. With schemas: databases/<db>/schemas/<schema>/tables/<table>/
-        ;; 2. Without schemas: databases/<db>/tables/<table>/ (schema is null in paths)
-        (let [schemas-dir (io/file db-folder "schemas")
-              tables-dir-no-schema (io/file db-folder "tables")]
-          ;; Handle databases with schemas
-          (when (.exists schemas-dir)
-            (doseq [^File schema-dir (.listFiles schemas-dir)
-                    :when (.isDirectory schema-dir)
-                    :let [schema-name (.getName schema-dir)
-                          tables-dir (io/file schema-dir "tables")]
-                    :when (.exists tables-dir)
-                    ^File table-dir (.listFiles tables-dir)
-                    :when (.isDirectory table-dir)
-                    :let [table-name (.getName table-dir)
-                          ;; todo: what about cloud dbs with pattern:
-                          ;; [ catalog db-name schema tablename ]
-                          table-path [db-name schema-name table-name]
-                          table-yaml (io/file table-dir (str table-name ".yaml"))]]
-              ;; Index table
-              (when (.exists table-yaml)
-                (swap! state assoc-in [:table-path->file table-path] (.getPath table-yaml)))
-              ;; Index fields
-              (let [fields-dir (io/file table-dir "fields")]
-                (when (.exists fields-dir)
-                  (doseq [^File field-file (.listFiles fields-dir)
-                          :when (.isFile field-file)
-                          :when (str/ends-with? (.getName field-file) ".yaml")
-                          :when (not (str/includes? (.getName field-file) "___"))
-                          :let [field-name (str/replace (.getName field-file) ".yaml" "")
-                                field-path [db-name schema-name table-name field-name]]]
-                    (swap! state assoc-in [:field-path->file field-path] (.getPath field-file)))))))
-          ;; Handle databases without schemas (tables directly under db folder)
-          (when (.exists tables-dir-no-schema)
-            (doseq [^File table-dir (.listFiles tables-dir-no-schema)
-                    :when (.isDirectory table-dir)
-                    :let [table-name (.getName table-dir)
-                          ;; Schema is nil for schema-less databases
-                          table-path [db-name nil table-name]
-                          table-yaml (io/file table-dir (str table-name ".yaml"))]]
-              ;; Index table
-              (when (.exists table-yaml)
-                (swap! state assoc-in [:table-path->file table-path] (.getPath table-yaml)))
-              ;; Index fields
-              (let [fields-dir (io/file table-dir "fields")]
-                (when (.exists fields-dir)
-                  (doseq [^File field-file (.listFiles fields-dir)
-                          :when (.isFile field-file)
-                          :when (str/ends-with? (.getName field-file) ".yaml")
-                          :when (not (str/includes? (.getName field-file) "___"))
-                          :let [field-name (str/replace (.getName field-file) ".yaml" "")
-                                ;; Schema is nil for schema-less databases
-                                field-path [db-name nil table-name field-name]]]
-                    (swap! state assoc-in [:field-path->file field-path] (.getPath field-file)))))))))))
-  ;; Index cards (separate traversal since they're in collections)
-  (doseq [^File file (file-seq (io/file export-dir))
-          :when (.isFile file)
-          :when (re-matches #".*/cards/[^/]+\.yaml$" (.getPath file))
-          :let [entity-id (extract-entity-id (.getPath file))]
-          :when entity-id]
-    (swap! state assoc-in [:card-entity-id->file entity-id] (.getPath file)))
-  (swap! state assoc :file-index-built? true :export-dir export-dir))
+  (let [index (serdes-format/build-file-index export-dir)]
+    (swap! state merge
+           {:db-name->file (:db-name->file index)
+            :table-path->file (:table-path->file index)
+            :field-path->file (:field-path->file index)
+            :card-entity-id->file (:card-entity-id->file index)
+            :file-index-built? true
+            :export-dir export-dir})))
 
 (defn- ensure-index!
   "Ensure file index is built for the given export directory."
@@ -256,7 +171,7 @@
   [db-name]
   (or (get-in @state [:databases db-name])
       (when-let [file (get-in @state [:db-name->file db-name])]
-        (let [yaml (load-yaml file)
+        (let [yaml (serdes-format/load-yaml file)
               id (get-or-assign-db-id! db-name)
               result (assoc yaml :id id)]
           (swap! state assoc-in [:databases db-name] result)
@@ -268,7 +183,7 @@
   (or (get-in @state [:tables table-path])
       (when-let [file (get-in @state [:table-path->file table-path])]
         (let [[db-name _ _] table-path
-              yaml (load-yaml file)
+              yaml (serdes-format/load-yaml file)
               id (get-or-assign-table-id! table-path)
               db-id (get-or-assign-db-id! db-name)
               result (assoc yaml :id id :db_id db-id)]
@@ -281,7 +196,7 @@
   (or (get-in @state [:fields field-path])
       (when-let [file (get-in @state [:field-path->file field-path])]
         (let [[db-name schema table-name _] field-path
-              yaml (load-yaml file)
+              yaml (serdes-format/load-yaml file)
               id (get-or-assign-field-id! field-path)
               table-id (get-or-assign-table-id! [db-name schema table-name])
               result (assoc yaml :id id :table_id table-id)]
@@ -293,7 +208,7 @@
   [entity-id]
   (or (get-in @state [:cards entity-id])
       (when-let [file (get-in @state [:card-entity-id->file entity-id])]
-        (let [yaml (load-yaml file)
+        (let [yaml (serdes-format/load-yaml file)
               id (get-or-assign-card-id! entity-id)
               result (assoc yaml :id id)]
           (swap! state assoc-in [:cards entity-id] result)

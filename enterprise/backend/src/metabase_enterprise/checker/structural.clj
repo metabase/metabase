@@ -12,10 +12,8 @@
    [malli.core :as m]
    [malli.error :as me]
    [malli.json-schema :as mjs]
-   [metabase.util.json :as json]
-   [metabase.util.yaml :as yaml])
-  (:import
-   (java.io File)))
+   [metabase-enterprise.checker.format.serdes :as serdes-format]
+   [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
 
@@ -355,7 +353,7 @@
   "Validate a YAML file against its schema. Returns nil if valid, error map if invalid."
   [schema-type file-path]
   (try
-    (let [data (yaml/parse-string (slurp file-path))
+    (let [data (serdes-format/load-yaml file-path)
           schema (get schemas schema-type)]
       (if schema
         (when-let [errors (validate schema data)]
@@ -366,32 +364,17 @@
       {:error (str "Failed to parse YAML: " (.getMessage e))
        :file file-path})))
 
-(defn- infer-entity-type
-  "Infer entity type from file path."
-  [^String path]
-  (cond
-    (re-find #"/databases/[^/]+/[^/]+\.yaml$" path) :database
-    (re-find #"/tables/[^/]+/[^/]+\.yaml$" path) :table
-    (re-find #"/fields/[^/]+\.yaml$" path) :field
-    (re-find #"/cards/[^/]+\.yaml$" path) :card
-    (re-find #"/dashboards/[^/]+\.yaml$" path) :dashboard
-    (re-find #"/collections/[^/]+/[^/]+\.yaml$" path) :collection
-    :else nil))
-
 (defn validate-export-dir
   "Validate all YAML files in an export directory.
    Returns map of {:valid count, :invalid [{:file :errors}...]}."
   [export-dir]
   (let [results (atom {:valid 0 :invalid []})]
-    (doseq [^File file (file-seq (io/file export-dir))
-            :when (.isFile file)
-            :when (str/ends-with? (.getName file) ".yaml")
-            :let [path (.getPath file)
-                  entity-type (infer-entity-type path)]
-            :when entity-type]
-      (if-let [errors (validate-yaml-file entity-type path)]
-        (swap! results update :invalid conj errors)
-        (swap! results update :valid inc)))
+    (serdes-format/walk-yaml-files
+     export-dir
+     (fn [path entity-type]
+       (if-let [errors (validate-yaml-file entity-type path)]
+         (swap! results update :invalid conj errors)
+         (swap! results update :valid inc))))
     @results))
 
 ;;; ===========================================================================
@@ -499,6 +482,8 @@
 
   ;; Export JSON schemas for LLM consumption
   (export-json-schemas! "resources/serdes-schemas")
+
+  (export-json-schemas! "/tmp/serdes-schemas")
 
   ;; Validate a single file
   (validate-yaml-file :card "export-dir/collections/cards/my-card.yaml")
