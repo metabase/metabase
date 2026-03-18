@@ -217,9 +217,6 @@ function getSettingWidget<T, TValue, TProps extends Record<string, unknown>>(
     marginBottom: settingDef.getMarginBottom
       ? settingDef.getMarginBottom(resolvedObject, computedSettings, extra)
       : settingDef.marginBottom,
-    disabled: settingDef.getDisabled
-      ? settingDef.getDisabled(resolvedObject, computedSettings, extra)
-      : (settingDef.disabled ?? false),
     props:
       getProps?.(
         resolvedObject,

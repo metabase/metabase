@@ -345,13 +345,6 @@ export type VisualizationSettingDefinition<
       : ComputedVisualizationSettings,
     extra?: SettingsExtra,
   ) => TValue;
-  getDisabled?: (
-    object: T,
-    settings: T extends DatasetColumn
-      ? ColumnSettings
-      : ComputedVisualizationSettings,
-    extra?: SettingsExtra,
-  ) => boolean;
   getSection?: (
     object: T,
     settings: T extends DatasetColumn
@@ -360,7 +353,6 @@ export type VisualizationSettingDefinition<
     extra?: SettingsExtra,
   ) => string;
   autoOpenWhenUnset?: boolean;
-  disabled?: boolean;
   default?: TValue;
   marginBottom?: string;
   noPadding?: boolean;
