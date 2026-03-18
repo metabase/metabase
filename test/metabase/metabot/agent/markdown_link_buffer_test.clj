@@ -145,18 +145,18 @@
 ;;; Slack link resolution tests
 
 (deftest resolve-slack-link-test
-  (testing "resolves Slack-format metabase:// links"
-    (mt/with-temporary-setting-values [site-url "https://metabase.example.com"]
+  (mt/with-temporary-setting-values [site-url "https://metabase.example.com"]
+    (testing "resolves Slack-format metabase:// links"
       (let [[output flushed] (process "<metabase://model/123|My Model>")]
         (is (= "<https://metabase.example.com/model/123|My Model>" output))
-        (is (= "" flushed)))))
+        (is (= "" flushed))))
 
-  (testing "resolves Slack link without link text"
-    (mt/with-temporary-setting-values [site-url "https://metabase.example.com"]
+    (testing "resolves Slack link without link text"
       (let [[output flushed] (process "<metabase://dashboard/456>")]
         (is (= "<https://metabase.example.com/dashboard/456>" output))
-        (is (= "" flushed)))))
+        (is (= "" flushed))))))
 
+(deftest ^:parallel resolve-slack-link-unresolvable-test
   (testing "falls back to link text for unresolvable Slack link"
     (let [[output flushed] (process "<metabase://query/unknown|My Query>")]
       (is (= "My Query" output))
@@ -168,16 +168,17 @@
       (let [[outputs flushed] (process-chunks ["Check <metabase://mod" "el/123|My Model>"])]
         (is (= "Check " (first outputs)))
         (is (re-find #"metabase\.example\.com/model/123" (second outputs)))
-        (is (= "" flushed)))))
+        (is (= "" flushed))))))
 
+(deftest ^:parallel slack-link-no-buffering-regular-angle-brackets-test
   (testing "does NOT buffer regular < characters"
     (let [[output flushed] (process "x < y and z > w")]
       (is (= "x < y and z > w" output))
       (is (= "" flushed)))))
 
 (deftest mixed-link-formats-test
-  (testing "resolves both markdown and Slack-format links in same text"
-    (mt/with-temporary-setting-values [site-url "https://metabase.example.com"]
+  (mt/with-temporary-setting-values [site-url "https://metabase.example.com"]
+    (testing "resolves both markdown and Slack-format links in same text"
       (let [[output flushed] (process "[Model](/model/1) and <metabase://dashboard/2|Dashboard>")]
         (is (= "[Model](/model/1) and <https://metabase.example.com/dashboard/2|Dashboard>" output))
         (is (= "" flushed))))))
