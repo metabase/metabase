@@ -143,7 +143,7 @@
     "ts-pattern": "^5.9.0",
     "ttag": "1.7.21",
     "typescript": "^5.9.2",
-    "underscore": "~1.13.3",
+    "underscore": "^1.13.8",
     "yamljs": "^0.3.0",
     "yup": "^0.32.11"
   },
@@ -238,7 +238,7 @@
     "@types/react-virtualized": "^9.22.2",
     "@types/redux-actions": "^2.6.5",
     "@types/tether": "^1.4.6",
-    "@types/underscore": "^1.11.3",
+    "@types/underscore": "^1.13.0",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
     "babel-eslint": "10.1.0",
