@@ -1,13 +1,14 @@
 (ns metabase-enterprise.checker.checker-test
   "Tests for the CI checker.
 
-   Uses real YAML fixture files from test_resources/nocommit/ci_test/ for most tests.
-   Uses inline YAML strings + custom resolvers for edge cases like unresolved refs."
+   Uses real YAML fixture files from test_resources/yaml_checks for most tests.
+   Uses in-memory sources for edge cases like unresolved refs."
   (:require
    [clojure.java.io :as io]
-   [clojure.test :refer [deftest is testing use-fixtures]]
+   [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.checker.checker :as checker]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]))
+   [metabase-enterprise.checker.format.serdes :as serdes-format]
+   [metabase-enterprise.checker.source :as source]))
 
 (set! *warn-on-reflection* true)
 
@@ -25,38 +26,28 @@
       test-fixtures-dir
       (.getPath (io/file (System/getProperty "user.dir") test-fixtures-dir)))))
 
-;;; ===========================================================================
-;;; Test Fixtures - Reset state between tests
-;;; ===========================================================================
-
-
-;; don't love this. I'm not sure a better way forward. Depends on use cases.
-(defn reset-state-fixture [f]
-  (checker/reset-state!)
-  (f)
-  (checker/reset-state!))
-
-(use-fixtures :each reset-state-fixture)
+(defn- make-test-source []
+  (serdes-format/make-source (fixtures-path)))
 
 ;;; ===========================================================================
 ;;; Tests Using Real YAML Files
 ;;; ===========================================================================
 
-(deftest file-index-test
-  (testing "File index correctly indexes databases, tables, fields, and cards"
-    (checker/build-index! (fixtures-path))
-    (let [stats (checker/file-index-stats)]
-      (is (:file-index-built? stats) "Index should be built")
-      (is (= 2 (get-in stats [:indexed :databases])) "Should have 2 databases (Test Database, SQLite DB)")
-      (is (= 4 (get-in stats [:indexed :tables])) "Should have 4 tables")
-      (is (= 11 (get-in stats [:indexed :fields])) "Should have 11 fields")
-      (is (= 5 (get-in stats [:indexed :cards])) "Should have 5 cards")
-      (is (some #{"Test Database"} (:database-names stats)) "Should include Test Database")
-      (is (some #{"SQLite DB"} (:database-names stats)) "Should include SQLite DB"))))
+(deftest source-index-test
+  (testing "Source correctly indexes databases, tables, fields, and cards"
+    (let [source (make-test-source)
+          index (serdes-format/source-index source)]
+      (is (= 2 (count (:db-name->file index))) "Should have 2 databases (Test Database, SQLite DB)")
+      (is (= 4 (count (:table-path->file index))) "Should have 4 tables")
+      (is (= 11 (count (:field-path->file index))) "Should have 11 fields")
+      (is (= 5 (count (:card-entity-id->file index))) "Should have 5 cards")
+      (is (contains? (:db-name->file index) "Test Database") "Should include Test Database")
+      (is (contains? (:db-name->file index) "SQLite DB") "Should include SQLite DB"))))
 
 (deftest simple-mbql-query-test
   (testing "Simple MBQL query on orders table validates successfully"
-    (let [results (checker/check-all-cards (fixtures-path))
+    (let [source (make-test-source)
+          results (serdes-format/check source)
           result (get results "simple-orders")]
       (is (some? result) "Card should be found")
       (is (= "Simple Orders" (:name result)) "Card name should match")
@@ -68,7 +59,8 @@
 
 (deftest native-query-test
   (testing "Native SQL query validates successfully"
-    (let [results (checker/check-all-cards (fixtures-path))
+    (let [source (make-test-source)
+          results (serdes-format/check source)
           result (get results "native-orders")]
       (is (some? result) "Card should be found")
       (is (= "Native Orders" (:name result)) "Card name should match")
@@ -77,7 +69,8 @@
 
 (deftest mbql-with-joins-test
   (testing "MBQL query with joins validates successfully"
-    (let [results (checker/check-all-cards (fixtures-path))
+    (let [source (make-test-source)
+          results (serdes-format/check source)
           result (get results "orders-with-products")]
       (is (some? result) "Card should be found")
       (is (= "Orders With Products" (:name result)) "Card name should match")
@@ -90,7 +83,8 @@
 
 (deftest all-cards-checked-test
   (testing "All cards in fixtures are checked"
-    (let [results (checker/check-all-cards (fixtures-path))]
+    (let [source (make-test-source)
+          results (serdes-format/check source)]
       (is (= 5 (count results)) "Should check all 5 cards")
       (is (contains? results "simple-orders"))
       (is (contains? results "native-orders"))
@@ -107,17 +101,18 @@
 
 (deftest schemaless-database-index-test
   (testing "Schema-less databases are indexed correctly with nil schema"
-    (checker/build-index! (fixtures-path))
-    (let [stats (checker/file-index-stats)]
+    (let [source (make-test-source)
+          index (serdes-format/source-index source)]
       ;; Should have both "Test Database" and "SQLite DB"
-      (is (= 2 (get-in stats [:indexed :databases])) "Should have 2 databases")
+      (is (= 2 (count (:db-name->file index))) "Should have 2 databases")
       ;; Test Database has 2 tables, SQLite DB has 2 tables = 4 total
-      (is (= 4 (get-in stats [:indexed :tables])) "Should have 4 tables")
-      (is (some #{"SQLite DB"} (:database-names stats)) "Should include SQLite DB"))))
+      (is (= 4 (count (:table-path->file index))) "Should have 4 tables")
+      (is (contains? (:db-name->file index) "SQLite DB") "Should include SQLite DB"))))
 
 (deftest schemaless-query-test
   (testing "Query on schema-less database validates successfully"
-    (let [results (checker/check-all-cards (fixtures-path))
+    (let [source (make-test-source)
+          results (serdes-format/check source)
           result (get results "schemaless-query")]
       (is (some? result) "Card should be found")
       (is (= "Schemaless Query" (:name result)) "Card name should match")
@@ -134,8 +129,10 @@
 
 (deftest fk-in-field-metadata-test
   (testing "FK target in field metadata is resolved to integer ID"
-    (checker/build-index! (fixtures-path))
-    (let [provider (checker/make-provider (fixtures-path))
+    (let [source (make-test-source)
+          enumerators (serdes-format/make-enumerators source)
+          session (#'checker/make-session source enumerators)
+          provider (checker/make-provider session)
           ;; Get the product_id field which has FK to products.id
           fields (metabase.lib.metadata.protocols/metadatas
                   provider {:lib/type :metadata/column})
@@ -147,7 +144,8 @@
 
 (deftest fk-in-result-metadata-test
   (testing "FK target in card result_metadata is resolved to integer ID"
-    (let [results (checker/check-all-cards (fixtures-path))
+    (let [source (make-test-source)
+          results (serdes-format/check source)
           result (get results "orders-with-fk")]
       (is (some? result) "Card should be found")
       (is (= "Orders With FK" (:name result)) "Card name should match")
@@ -156,166 +154,109 @@
       (is (empty? (:bad-refs result)) "Should not have bad refs"))))
 
 ;;; ===========================================================================
-;;; Tests Using Custom Resolvers for Edge Cases
+;;; Tests Using In-Memory Source for Edge Cases
 ;;;
-;;; These tests use the composable *resolvers* to simulate unresolved references
-;;; without needing actual broken YAML files.
+;;; Create a simple in-memory source to test unresolved references
+;;; without needing temp files.
 ;;; ===========================================================================
 
-(deftest unresolved-field-with-custom-resolver-test
-  (testing "Custom resolver that returns nil for a specific field"
-    (checker/reset-state!)
-    (let [;; Create a resolver that returns nil for a specific field path
-          custom-resolvers (assoc checker/default-resolvers
-                                  :field (fn [path]
-                                           (if (= (last path) "nonexistent_field")
-                                             nil  ; This field doesn't exist
-                                             (checker/default-resolvers :field path))))
-          provider (checker/make-provider (fixtures-path))]
-      ;; Bind custom resolvers and check a card
-      ;; The card will validate, but if we manually resolve a nonexistent field, it returns nil
-      (binding [checker/*resolvers* custom-resolvers]
-        (let [unresolved (atom [])
-              _ (binding [checker/*unresolved-refs* unresolved]
-                  ;; Try to resolve a nonexistent field - this should track it
-                  (#'checker/resolve-field-path ["Test Database" "public" "orders" "nonexistent_field"]))]
-          (is (= 1 (count @unresolved)) "Should have one unresolved ref")
-          (is (= :field (:type (first @unresolved))) "Should be a field ref"))))))
+(defn- make-memory-source
+  "Create an in-memory source with the given entities.
+   entities is a map with :databases, :tables, :fields, :cards."
+  [{:keys [databases tables fields cards]}]
+  (reify
+    source/MetadataSource
+    (resolve-database [_ db-name]
+      (get databases db-name))
+    (resolve-table [_ table-path]
+      (get tables table-path))
+    (resolve-field [_ field-path]
+      (get fields field-path))
+    (resolve-card [_ entity-id]
+      (get cards entity-id))))
 
-(deftest unresolved-table-with-custom-resolver-test
-  (testing "Custom resolver that returns nil for a specific table"
-    (checker/reset-state!)
-    (let [custom-resolvers (assoc checker/default-resolvers
-                                  :table (fn [path]
-                                           (if (= (last path) "nonexistent_table")
-                                             nil
-                                             (checker/default-resolvers :table path))))]
-      (binding [checker/*resolvers* custom-resolvers]
-        (let [unresolved (atom [])
-              _ (binding [checker/*unresolved-refs* unresolved]
-                  (#'checker/resolve-table-path ["Test Database" "public" "nonexistent_table"]))]
-          (is (= 1 (count @unresolved)) "Should have one unresolved ref")
-          (is (= :table (:type (first @unresolved))) "Should be a table ref"))))))
-
-(deftest unresolved-database-with-custom-resolver-test
-  (testing "Custom resolver that returns nil for unknown databases"
-    (checker/reset-state!)
-    (let [custom-resolvers (assoc checker/default-resolvers
-                                  :database (fn [name]
-                                              (if (= name "Unknown Database")
-                                                nil
-                                                (checker/default-resolvers :database name))))]
-      (binding [checker/*resolvers* custom-resolvers]
-        (let [unresolved (atom [])
-              _ (binding [checker/*unresolved-refs* unresolved]
-                  (#'checker/resolve-db-name "Unknown Database"))]
-          (is (= 1 (count @unresolved)) "Should have one unresolved ref")
-          (is (= :database (:type (first @unresolved))) "Should be a database ref"))))))
-
-;;; ===========================================================================
-;;; Tests Using Temporary Files for Unresolved References
-;;;
-;;; For testing actual card validation with unresolved refs, we create temp files.
-;;; ===========================================================================
-
-(def ^:private card-with-unresolved-table-yaml
-  "name: Card With Missing Table
-description: References a table that does not exist
-entity_id: unresolved-table-card
-created_at: '2026-01-01T00:00:00.000000Z'
-creator_id: test@metabase.com
-display: table
-archived: false
-query_type: query
-database_id: Test Database
-table_id:
-- Test Database
-- public
-- nonexistent_table
-dataset_query:
-  database: Test Database
-  query:
-    source-table:
-    - Test Database
-    - public
-    - nonexistent_table
-  type: query
-result_metadata: []
-serdes/meta:
-- id: unresolved-table-card
-  label: card_with_missing_table
-  model: Card
-type: question
-")
-
-(def ^:private card-with-unresolved-database-yaml
-  "name: Card With Missing Database
-description: References a database that does not exist
-entity_id: unresolved-db-card
-created_at: '2026-01-01T00:00:00.000000Z'
-creator_id: test@metabase.com
-display: table
-archived: false
-query_type: query
-database_id: Nonexistent Database
-table_id:
-- Nonexistent Database
-- public
-- orders
-dataset_query:
-  database: Nonexistent Database
-  query:
-    source-table:
-    - Nonexistent Database
-    - public
-    - orders
-  type: query
-result_metadata: []
-serdes/meta:
-- id: unresolved-db-card
-  label: card_with_missing_database
-  model: Card
-type: question
-")
-
-(defn- create-temp-card!
-  "Add a temporary card YAML to the test fixtures directory.
-   Returns the file path. Caller should delete after test."
-  [entity-id content]
-  (let [file (io/file (fixtures-path) "collections" "cards" (str entity-id "_temp.yaml"))]
-    (spit file content)
-    (.getPath file)))
+(defn- make-memory-enumerators
+  "Create enumerators for an in-memory source."
+  [{:keys [databases tables fields cards]}]
+  {:databases #(keys databases)
+   :tables    #(keys tables)
+   :fields    #(keys fields)
+   :cards     #(keys cards)})
 
 (deftest unresolved-table-in-card-test
   (testing "Card referencing nonexistent table is detected"
-    (let [temp-file (create-temp-card! "unresolved-table-card" card-with-unresolved-table-yaml)]
-      (try
-        (checker/reset-state!)
-        (let [results (checker/check-all-cards (fixtures-path))
-              result (get results "unresolved-table-card")]
-          (is (some? result) "Card should be found")
-          (is (= "Card With Missing Table" (:name result)) "Card name should match")
-          (is (seq (:unresolved result)) "Should have unresolved refs")
-          (is (some #(= :table (:type %)) (:unresolved result))
-              "Should have unresolved table ref"))
-        (finally
-          (io/delete-file temp-file true))))))
+    (let [entities {:databases {"Test Database" {:name "Test Database"
+                                                 :engine "h2"}}
+                    :tables {} ; No tables!
+                    :fields {}
+                    :cards {"test-card" {:name "Test Card"
+                                         :entity_id "test-card"
+                                         :dataset_query {:database "Test Database"
+                                                         :type "query"
+                                                         :query {:source-table ["Test Database" "public" "orders"]}}}}}
+          source (make-memory-source entities)
+          enumerators (make-memory-enumerators entities)
+          results (checker/check-cards source enumerators ["test-card"])
+          result (get results "test-card")]
+      (is (some? result) "Card should be found")
+      (is (= "Test Card" (:name result)) "Card name should match")
+      (is (seq (:unresolved result)) "Should have unresolved refs")
+      (is (some #(= :table (:type %)) (:unresolved result))
+          "Should have unresolved table ref"))))
 
 (deftest unresolved-database-in-card-test
   (testing "Card referencing nonexistent database is detected"
-    (let [temp-file (create-temp-card! "unresolved-db-card" card-with-unresolved-database-yaml)]
-      (try
-        (checker/reset-state!)
-        (let [results (checker/check-all-cards (fixtures-path))
-              result (get results "unresolved-db-card")]
-          (is (some? result) "Card should be found")
-          (is (= "Card With Missing Database" (:name result)) "Card name should match")
-          ;; Either has an error about missing database, or unresolved refs
-          (is (or (:error result)
-                  (some #(= :database (:type %)) (:unresolved result)))
-              "Should have unresolved database or error"))
-        (finally
-          (io/delete-file temp-file true))))))
+    (let [entities {:databases {} ; No databases!
+                    :tables {}
+                    :fields {}
+                    :cards {"test-card" {:name "Test Card"
+                                         :entity_id "test-card"
+                                         :dataset_query {:database "Nonexistent Database"
+                                                         :type "query"
+                                                         :query {:source-table ["Nonexistent Database" "public" "orders"]}}}}}
+          source (make-memory-source entities)
+          enumerators (make-memory-enumerators entities)
+          results (checker/check-cards source enumerators ["test-card"])
+          result (get results "test-card")]
+      (is (some? result) "Card should be found")
+      (is (= "Test Card" (:name result)) "Card name should match")
+      ;; Either has an error about missing database, or unresolved refs
+      (is (or (:error result)
+              (some #(= :database (:type %)) (:unresolved result)))
+          "Should have unresolved database or error"))))
+
+(deftest check-specific-cards-test
+  (testing "Can check specific cards by entity-id"
+    (let [source (make-test-source)
+          results (serdes-format/check-cards source ["simple-orders" "native-orders"])]
+      (is (= 2 (count results)) "Should only check 2 cards")
+      (is (contains? results "simple-orders"))
+      (is (contains? results "native-orders"))
+      (is (not (contains? results "orders-with-products"))))))
+
+;;; ===========================================================================
+;;; Results Processing Tests
+;;; ===========================================================================
+
+(deftest result-status-test
+  (testing "Result status is computed correctly"
+    (is (= :ok (checker/result-status {})))
+    (is (= :error (checker/result-status {:error "Something went wrong"})))
+    (is (= :unresolved (checker/result-status {:unresolved [{:type :table}]})))
+    (is (= :issues (checker/result-status {:bad-refs [{:type :field}]})))))
+
+(deftest summarize-results-test
+  (testing "Results are summarized correctly"
+    (let [results {"card1" {}
+                   "card2" {:error "oops"}
+                   "card3" {:unresolved [{:type :table}]}
+                   "card4" {:bad-refs [{:type :field}]}}
+          summary (checker/summarize-results results)]
+      (is (= 4 (:total summary)))
+      (is (= 1 (:ok summary)))
+      (is (= 1 (:errors summary)))
+      (is (= 1 (:unresolved summary)))
+      (is (= 1 (:issues summary))))))
 
 ;;; ===========================================================================
 ;;; REPL Helpers
@@ -325,10 +266,9 @@ type: question
   ;; Run all tests
   (clojure.test/run-tests 'metabase-enterprise.checker.checker-test)
 
-    ;; Check fixtures path
+  ;; Check fixtures path
   (fixtures-path)
-  (checker/file-index-stats)
 
   ;; Manually check all cards in fixtures
-  (checker/reset-state!)
-  (checker/check-all-cards (fixtures-path)))
+  (def source (make-test-source))
+  (serdes-format/check source))

@@ -13,6 +13,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [metabase-enterprise.checker.source :as source]
    [metabase.util.yaml :as yaml])
   (:import
    (java.io File)))
@@ -167,3 +168,96 @@
    :cards (count (:card-entity-id->file index))
    :dashboards (count (:dashboard-entity-id->file index))
    :database-names (vec (keys (:db-name->file index)))})
+
+;;; ===========================================================================
+;;; MetadataSource Implementation
+;;;
+;;; Returns raw YAML data - the checker handles conversion to lib format.
+;;; This keeps format knowledge here, lib knowledge in checker.
+;;; ===========================================================================
+
+(deftype SerdesSource [export-dir index]
+  source/MetadataSource
+  (resolve-database [_ db-name]
+    (when-let [file (get (:db-name->file index) db-name)]
+      (load-yaml file)))
+
+  (resolve-table [_ table-path]
+    (when-let [file (get (:table-path->file index) table-path)]
+      (load-yaml file)))
+
+  (resolve-field [_ field-path]
+    (when-let [file (get (:field-path->file index) field-path)]
+      (load-yaml file)))
+
+  (resolve-card [_ entity-id]
+    (when-let [file (get (:card-entity-id->file index) entity-id)]
+      (load-yaml file))))
+
+(defn make-source
+  "Create a MetadataSource for a serdes export directory."
+  [export-dir]
+  (->SerdesSource export-dir (build-file-index export-dir)))
+
+(defn source-index
+  "Get the file index from a SerdesSource."
+  [^SerdesSource source]
+  (.-index source))
+
+(defn source-export-dir
+  "Get the export directory from a SerdesSource."
+  [^SerdesSource source]
+  (.-export-dir source))
+
+;;; ===========================================================================
+;;; Enumeration (serdes-specific)
+;;;
+;;; These functions know how to list entities from the file index.
+;;; Not part of the MetadataSource protocol - enumeration is format-specific.
+;;; ===========================================================================
+
+(defn all-card-ids
+  "Get all card entity-ids from source."
+  [^SerdesSource source]
+  (keys (:card-entity-id->file (.-index source))))
+
+(defn all-database-names
+  "Get all database names from source."
+  [^SerdesSource source]
+  (keys (:db-name->file (.-index source))))
+
+(defn all-table-paths
+  "Get all table paths from source."
+  [^SerdesSource source]
+  (keys (:table-path->file (.-index source))))
+
+(defn all-field-paths
+  "Get all field paths from source."
+  [^SerdesSource source]
+  (keys (:field-path->file (.-index source))))
+
+(defn make-enumerators
+  "Create enumerators map for use with checker/check-cards."
+  [source]
+  {:databases #(all-database-names source)
+   :tables    #(all-table-paths source)
+   :fields    #(all-field-paths source)
+   :cards     #(all-card-ids source)})
+
+;;; ===========================================================================
+;;; High-level API
+;;; ===========================================================================
+
+(defn check
+  "Check all cards in a serdes export directory.
+   Returns map of entity-id -> result."
+  [^SerdesSource source]
+  (let [checker (requiring-resolve 'metabase-enterprise.checker.checker/check-cards)]
+    (checker source (make-enumerators source) (all-card-ids source))))
+
+(defn check-cards
+  "Check specific cards in a serdes export.
+   Returns map of entity-id -> result."
+  [^SerdesSource source card-ids]
+  (let [checker (requiring-resolve 'metabase-enterprise.checker.checker/check-cards)]
+    (checker source (make-enumerators source) card-ids)))

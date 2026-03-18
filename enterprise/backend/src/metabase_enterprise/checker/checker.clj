@@ -1,37 +1,22 @@
 (ns metabase-enterprise.checker.checker
-  "CI checker for serdes YAML exports.
+  "CI checker for card queries.
+
+   Validates cards using MLv2 (metabase.lib) without a database connection.
+   Works with any MetadataSource implementation.
 
    Architecture:
-   1. File Index (built once on first access)
-      - Traverses export directory to build path -> file mappings
-      - For databases/tables/fields: uses directory structure + YAML name field
-      - For cards: extracts entity_id from each card YAML file
-      - This is the only full traversal; everything else is on-demand
+   1. Source provides entity data (resolve-database, resolve-table, etc.)
+   2. Checker assigns integer IDs (lib requires them)
+   3. Checker builds a MetadataProvider from source data
+   4. lib/query and lib/find-bad-refs validate the cards
 
-   2. Lazy Loading
-      - YAML content is parsed only when an entity is accessed
-      - IDs are assigned on first reference (whether from index or query)
-      - Parsed content is cached in state
-
-   3. Reference Resolution
-      - When converting card queries, we look up paths in the file index
-      - If path exists in index: assign an ID (entity is known)
-      - If path doesn't exist: track as unresolved reference (broken ref)
-
-   4. Validation
-      - Uses lib/query and lib/find-bad-refs to validate cards
-      - Reports unresolved references (missing tables/fields/cards)
-      - Reports any structural issues found by lib
-
-   5. Composability
-      - The `*resolvers*` dynamic var allows injecting custom resolution functions
-      - Default resolvers use the file index; tests can provide alternatives
-      - Resolvers map: {:database fn, :table fn, :field fn, :card fn}
-      - Each resolver fn takes a path/name and returns an ID or nil"
+   ID assignment is necessary because lib expects integer IDs, but sources
+   use portable references (strings, paths). We maintain bidirectional mappings
+   so we can convert back to human-readable paths for error reporting."
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase-enterprise.checker.format.serdes :as serdes-format]
+   [metabase-enterprise.checker.source :as source]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -41,44 +26,39 @@
 (set! *warn-on-reflection* true)
 
 ;;; ===========================================================================
-;;; State
+;;; Session State
 ;;;
-;;; Single atom holding all state: file index, ID mappings, and cached content.
+;;; Holds ID mappings and cached conversions for a checking session.
+;;; Created fresh for each check run via make-session.
 ;;; ===========================================================================
 
-(defonce ^:private state
-  (atom nil))
+(defn- make-session
+  "Create a fresh session for checking.
 
-(defn- initial-state []
-  {:export-dir nil
-   :file-index-built? false
-
-   ;; File index: path -> file location (built once, read-only after)
-   :db-name->file {}           ; "Sample Database" -> "/path/to/Sample Database.yaml"
-   :table-path->file {}        ; ["Sample Database" "PUBLIC" "ORDERS"] -> "/path/to/ORDERS.yaml"
-   :field-path->file {}        ; ["Sample Database" "PUBLIC" "ORDERS" "ID"] -> "/path/to/ID.yaml"
-   :card-entity-id->file {}    ; "abc123" -> "/path/to/card.yaml"
-
-   ;; ID mappings: assigned on first reference, bidirectional for lookups
-   :id-counter 0
-   :db-name->id {}             :id->db-name {}
-   :table-path->id {}          :id->table-path {}
-   :field-path->id {}          :id->field-path {}
-   :card-entity-id->id {}      :id->card-entity-id {}
-
-   ;; Parsed YAML cache: loaded on demand
-   :databases {}               ; db-name -> parsed yaml with :id
-   :tables {}                  ; table-path -> parsed yaml with :id, :db_id
-   :fields {}                  ; field-path -> parsed yaml with :id, :table_id
-   :cards {}})                 ; entity-id -> parsed yaml with :id
-
-(defn reset-state!
-  "Reset all state. Call before switching export directories."
-  []
-  (reset! state (initial-state)))
-
-;; Initialize state on load
-(when-not @state (reset-state!))
+   enumerators is a map of functions for listing entities:
+   - :databases - fn [] returning seq of db-names
+   - :tables    - fn [] returning seq of table-paths
+   - :fields    - fn [] returning seq of field-paths
+   - :cards     - fn [] returning seq of card entity-ids"
+  [source enumerators]
+  (atom {:source source
+         :enumerators enumerators
+         :id-counter 0
+         ;; Forward mappings: portable ref -> integer ID
+         :db-name->id {}
+         :table-path->id {}
+         :field-path->id {}
+         :card-entity-id->id {}
+         ;; Reverse mappings: integer ID -> portable ref
+         :id->db-name {}
+         :id->table-path {}
+         :id->field-path {}
+         :id->card-entity-id {}
+         ;; Cached entity data (with :id assigned)
+         :databases {}
+         :tables {}
+         :fields {}
+         :cards {}}))
 
 ;;; ===========================================================================
 ;;; ID Assignment
@@ -87,225 +67,130 @@
 ;;; We maintain bidirectional mappings for lookups.
 ;;; ===========================================================================
 
-(defn- next-id! []
-  (:id-counter (swap! state update :id-counter inc)))
+(defn- next-id! [session]
+  (:id-counter (swap! session update :id-counter inc)))
 
-(defn- assign-id! [forward-key reverse-key path-or-name]
-  (or (get-in @state [forward-key path-or-name])
-      (let [id (next-id!)]
-        (swap! state #(-> %
-                          (assoc-in [forward-key path-or-name] id)
-                          (assoc-in [reverse-key id] path-or-name)))
+(defn- assign-id! [session forward-key reverse-key path-or-name]
+  (or (get-in @session [forward-key path-or-name])
+      (let [id (next-id! session)]
+        (swap! session #(-> %
+                            (assoc-in [forward-key path-or-name] id)
+                            (assoc-in [reverse-key id] path-or-name)))
         id)))
 
-(defn- get-or-assign-db-id! [db-name]
-  (assign-id! :db-name->id :id->db-name db-name))
+(defn- get-or-assign-db-id! [session db-name]
+  (assign-id! session :db-name->id :id->db-name db-name))
 
-(defn- get-or-assign-table-id! [table-path]
-  (assign-id! :table-path->id :id->table-path table-path))
+(defn- get-or-assign-table-id! [session table-path]
+  (assign-id! session :table-path->id :id->table-path table-path))
 
-(defn- get-or-assign-field-id! [field-path]
-  (assign-id! :field-path->id :id->field-path field-path))
+(defn- get-or-assign-field-id! [session field-path]
+  (assign-id! session :field-path->id :id->field-path field-path))
 
-(defn- get-or-assign-card-id! [entity-id]
-  (assign-id! :card-entity-id->id :id->card-entity-id entity-id))
-
-;;; ===========================================================================
-;;; File Index
-;;;
-;;; Built once on first access. Maps paths to file locations.
-;;;
-;;; NOTE: Currently indexes all databases/tables/fields upfront. This could be
-;;; optimized to lazy-load on demand since paths are predictable:
-;;;   databases/<db>/schemas/<schema>/tables/<table>/fields/<field>.yaml
-;;;
-;;; Cards must be indexed (entity_id doesn't map to a predictable path).
-;;; Tables/fields could be resolved on-demand and cached. For "list all fields
-;;; in table X" we'd do a directory listing at that point.
-;;;
-;;; If memory becomes a concern for large exports, consider:
-;;; - Lazy loading with LRU/bounded cache for parsed YAML
-;;; - Only index cards, resolve table/field paths on demand
-;;;
-;;; TODO: The "get all fields for table" lookup in metadatas is O(n) over all
-;;; fields. Restructure to nest fields under tables:
-;;;   :table-fields {table-path {field-name -> file}}
-;;; Field-path lookup: (get-in state [:table-fields (pop path) (peek path)])
-;;; Table fields lookup: (get-in state [:table-fields table-path])
-;;; ===========================================================================
-
-(defn- build-file-index!
-  "Traverse export directory once to build path -> file mappings.
-   Uses serdes-format/build-file-index and merges into state."
-  [export-dir]
-  (let [index (serdes-format/build-file-index export-dir)]
-    (swap! state merge
-           {:db-name->file (:db-name->file index)
-            :table-path->file (:table-path->file index)
-            :field-path->file (:field-path->file index)
-            :card-entity-id->file (:card-entity-id->file index)
-            :file-index-built? true
-            :export-dir export-dir})))
-
-(defn- ensure-index!
-  "Ensure file index is built for the given export directory."
-  [export-dir]
-  (when (or (not (:file-index-built? @state))
-            (not= export-dir (:export-dir @state)))
-    (reset-state!)
-    (build-file-index! export-dir)))
-
-(defn build-index!
-  "Build file index for the given export directory. Resets state if switching directories."
-  [export-dir]
-  (ensure-index! export-dir))
+(defn- get-or-assign-card-id! [session entity-id]
+  (assign-id! session :card-entity-id->id :id->card-entity-id entity-id))
 
 ;;; ===========================================================================
-;;; Lazy Entity Loading
+;;; Entity Loading
 ;;;
-;;; Load and cache YAML content on demand.
+;;; Load from source and cache with assigned IDs.
 ;;; ===========================================================================
 
-(defn- ensure-database!
-  "Load database if not cached. Returns parsed YAML with :id, or nil."
-  [db-name]
-  (or (get-in @state [:databases db-name])
-      (when-let [file (get-in @state [:db-name->file db-name])]
-        (let [yaml (serdes-format/load-yaml file)
-              id (get-or-assign-db-id! db-name)
-              result (assoc yaml :id id)]
-          (swap! state assoc-in [:databases db-name] result)
+(defn- load-database!
+  "Load database from source, assign ID, cache. Returns data with :id or nil."
+  [session db-name]
+  (or (get-in @session [:databases db-name])
+      (when-let [data (source/resolve-database (:source @session) db-name)]
+        (let [id (get-or-assign-db-id! session db-name)
+              result (assoc data :id id)]
+          (swap! session assoc-in [:databases db-name] result)
           result))))
 
-(defn- ensure-table!
-  "Load table if not cached. Returns parsed YAML with :id and :db_id, or nil."
-  [table-path]
-  (or (get-in @state [:tables table-path])
-      (when-let [file (get-in @state [:table-path->file table-path])]
+(defn- load-table!
+  "Load table from source, assign ID and db_id, cache."
+  [session table-path]
+  (or (get-in @session [:tables table-path])
+      (when-let [data (source/resolve-table (:source @session) table-path)]
         (let [[db-name _ _] table-path
-              yaml (serdes-format/load-yaml file)
-              id (get-or-assign-table-id! table-path)
-              db-id (get-or-assign-db-id! db-name)
-              result (assoc yaml :id id :db_id db-id)]
-          (swap! state assoc-in [:tables table-path] result)
+              id (get-or-assign-table-id! session table-path)
+              db-id (get-or-assign-db-id! session db-name)
+              result (assoc data :id id :db_id db-id)]
+          (swap! session assoc-in [:tables table-path] result)
           result))))
 
-(defn- ensure-field!
-  "Load field if not cached. Returns parsed YAML with :id and :table_id, or nil."
-  [field-path]
-  (or (get-in @state [:fields field-path])
-      (when-let [file (get-in @state [:field-path->file field-path])]
+(defn- load-field!
+  "Load field from source, assign ID and table_id, cache."
+  [session field-path]
+  (or (get-in @session [:fields field-path])
+      (when-let [data (source/resolve-field (:source @session) field-path)]
         (let [[db-name schema table-name _] field-path
-              yaml (serdes-format/load-yaml file)
-              id (get-or-assign-field-id! field-path)
-              table-id (get-or-assign-table-id! [db-name schema table-name])
-              result (assoc yaml :id id :table_id table-id)]
-          (swap! state assoc-in [:fields field-path] result)
+              id (get-or-assign-field-id! session field-path)
+              table-id (get-or-assign-table-id! session [db-name schema table-name])
+              result (assoc data :id id :table_id table-id)]
+          (swap! session assoc-in [:fields field-path] result)
           result))))
 
-(defn- ensure-card!
-  "Load card if not cached. Returns parsed YAML with :id, or nil."
-  [entity-id]
-  (or (get-in @state [:cards entity-id])
-      (when-let [file (get-in @state [:card-entity-id->file entity-id])]
-        (let [yaml (serdes-format/load-yaml file)
-              id (get-or-assign-card-id! entity-id)
-              result (assoc yaml :id id)]
-          (swap! state assoc-in [:cards entity-id] result)
+(defn- load-card!
+  "Load card from source, assign ID, cache."
+  [session entity-id]
+  (or (get-in @session [:cards entity-id])
+      (when-let [data (source/resolve-card (:source @session) entity-id)]
+        (let [id (get-or-assign-card-id! session entity-id)
+              result (assoc data :id id)]
+          (swap! session assoc-in [:cards entity-id] result)
           result))))
 
 ;;; ===========================================================================
 ;;; Reference Resolution
 ;;;
-;;; When converting queries, resolve paths to IDs.
-;;; Track unresolved references for reporting.
-;;;
-;;; Resolvers are composable: bind *resolvers* to customize resolution behavior.
+;;; Resolve portable refs to IDs, tracking unresolved ones.
 ;;; ===========================================================================
+
+(def ^:dynamic *session*
+  "Current checking session."
+  nil)
 
 (def ^:dynamic *unresolved-refs*
   "Bound to an atom during query conversion to collect unresolved references."
   nil)
 
-(defn- default-resolve-field
-  "Default field resolver using file index."
-  [field-path]
-  (or (get-in @state [:field-path->id field-path])
-      (when (get-in @state [:field-path->file field-path])
-        (get-or-assign-field-id! field-path))))
-
-(defn- default-resolve-table
-  "Default table resolver using file index."
-  [table-path]
-  (or (get-in @state [:table-path->id table-path])
-      (when (get-in @state [:table-path->file table-path])
-        (get-or-assign-table-id! table-path))))
-
-(defn- default-resolve-database
-  "Default database resolver using file index."
-  [db-name]
-  (or (get-in @state [:db-name->id db-name])
-      (when (get-in @state [:db-name->file db-name])
-        (get-or-assign-db-id! db-name))))
-
-(defn- default-resolve-card
-  "Default card resolver using file index."
-  [entity-id]
-  (or (get-in @state [:card-entity-id->id entity-id])
-      (when (get-in @state [:card-entity-id->file entity-id])
-        (get-or-assign-card-id! entity-id))))
-
-(def default-resolvers
-  "Default resolvers that use the file index."
-  {:field    default-resolve-field
-   :table    default-resolve-table
-   :database default-resolve-database
-   :card     default-resolve-card})
-
-(def ^:dynamic *resolvers*
-  "Map of resolver functions. Each resolver takes a path/name and returns an ID or nil.
-   Keys: :field, :table, :database, :card
-   Bind this to customize resolution behavior in tests."
-  default-resolvers)
-
-(defn- resolve-field-path
-  "Resolve a field path to an ID. Returns ID if path exists, nil otherwise.
-   Tracks unresolved references when *unresolved-refs* is bound."
-  [field-path]
+(defn- resolve-field-path [field-path]
   (when field-path
-    (or ((:field *resolvers*) field-path)
+    (or (get-in @*session* [:field-path->id field-path])
+        (when (source/resolve-field (:source @*session*) field-path)
+          (get-or-assign-field-id! *session* field-path))
         (do (when *unresolved-refs*
               (swap! *unresolved-refs* conj {:type :field :path field-path}))
             nil))))
 
-(defn- resolve-table-path
-  "Resolve a table path to an ID. Returns ID if path exists, nil otherwise."
-  [table-path]
+(defn- resolve-table-path [table-path]
   (when table-path
-    (or ((:table *resolvers*) table-path)
+    (or (get-in @*session* [:table-path->id table-path])
+        (when (source/resolve-table (:source @*session*) table-path)
+          (get-or-assign-table-id! *session* table-path))
         (do (when *unresolved-refs*
               (swap! *unresolved-refs* conj {:type :table :path table-path}))
             nil))))
 
-(defn- resolve-db-name
-  "Resolve a database name to an ID. Returns ID if db exists, nil otherwise."
-  [db-name]
+(defn- resolve-db-name [db-name]
   (when db-name
-    (or ((:database *resolvers*) db-name)
+    (or (get-in @*session* [:db-name->id db-name])
+        (when (source/resolve-database (:source @*session*) db-name)
+          (get-or-assign-db-id! *session* db-name))
         (do (when *unresolved-refs*
               (swap! *unresolved-refs* conj {:type :database :name db-name}))
             nil))))
 
-(defn- resolve-card-entity-id
-  "Resolve a card entity-id to an ID. Returns ID if card exists, nil otherwise."
-  [entity-id]
+(defn- resolve-card-entity-id [entity-id]
   (when entity-id
-    (or ((:card *resolvers*) entity-id)
+    (or (get-in @*session* [:card-entity-id->id entity-id])
+        (when (source/resolve-card (:source @*session*) entity-id)
+          (get-or-assign-card-id! *session* entity-id))
         (do (when *unresolved-refs*
               (swap! *unresolved-refs* conj {:type :card :entity-id entity-id}))
             nil))))
 
-;; Serdes import functions for query conversion
+;; Serdes import callbacks - these are called by serdes/import-mbql
 (defn- import-field-fk [path] (resolve-field-path path))
 (defn- import-table-fk [path] (resolve-table-path path))
 (defn- import-fk [entity-id model]
@@ -314,9 +199,7 @@
     (do (when *unresolved-refs*
           (swap! *unresolved-refs* conj {:type :unknown :model model :entity-id entity-id}))
         nil)))
-(defn- import-fk-keyed
-  "Handle keyed lookups (e.g., Database by name). Returns nil to avoid DB queries."
-  [portable model field]
+(defn- import-fk-keyed [portable model field]
   (case [model field]
     [:model/Database :name] (resolve-db-name portable)
     (do (when *unresolved-refs*
@@ -324,7 +207,10 @@
         nil)))
 
 ;;; ===========================================================================
-;;; YAML to lib Metadata Conversion
+;;; Data Conversion (serdes YAML -> lib metadata)
+;;;
+;;; These functions know about serdes YAML format. A different source format
+;;; would need different converters.
 ;;; ===========================================================================
 
 (defn- yaml->database-metadata [yaml]
@@ -361,7 +247,6 @@
            :active (if (contains? yaml :active) (:active yaml) true)
            :visibility-type (some-> (:visibility_type yaml) keyword)
            :position (:position yaml)}
-    ;; Resolve FK target if present
     (vector? (:fk_target_field_id yaml))
     (as-> m (if-let [fk-id (resolve-field-path (:fk_target_field_id yaml))]
               (assoc m :fk-target-field-id fk-id)
@@ -380,32 +265,24 @@
                 serdes/*import-fk-keyed* import-fk-keyed]
         (serdes/import-mbql query)))))
 
-(defn- field-ref-has-nil?
-  "Check if a converted field_ref contains nil (unresolved reference)."
-  [ref]
+(defn- field-ref-has-nil? [ref]
   (and (vector? ref) (= :field (first ref)) (nil? (second ref))))
 
-(defn- convert-result-metadata-column
-  "Convert a result_metadata column, removing unresolved refs to pass validation."
-  [col]
+(defn- convert-result-metadata-column [col]
   (binding [serdes/*import-field-fk* import-field-fk
             serdes/*import-table-fk* import-table-fk
             serdes/*import-fk* import-fk
             serdes/*import-fk-keyed* import-fk-keyed]
     (cond-> col
-      ;; Convert :id, remove if unresolved
       (vector? (:id col))
       (as-> c (if-let [id (import-field-fk (:id col))]
                 (assoc c :id id) (dissoc c :id)))
-      ;; Convert :table_id, remove if unresolved
       (vector? (:table_id col))
       (as-> c (if-let [id (import-table-fk (:table_id col))]
                 (assoc c :table_id id) (dissoc c :table_id)))
-      ;; Convert :fk_target_field_id, remove if unresolved
       (vector? (:fk_target_field_id col))
       (as-> c (if-let [id (import-field-fk (:fk_target_field_id col))]
                 (assoc c :fk_target_field_id id) (dissoc c :fk_target_field_id)))
-      ;; Convert :field_ref, remove if contains nil
       (:field_ref col)
       (as-> c (let [ref (serdes/import-mbql (:field_ref col))]
                 (if (field-ref-has-nil? ref) (dissoc c :field_ref) (assoc c :field_ref ref)))))))
@@ -420,16 +297,13 @@
   "Convert card YAML to lib metadata. Tracks unresolved refs in ::unresolved-refs."
   [yaml]
   (let [unresolved (atom [])
-        ;; Resolve table_id
         table-id (when-let [t (:table_id yaml)]
                    (if (vector? t)
                      (binding [*unresolved-refs* unresolved] (resolve-table-path t))
                      t))
-        ;; Resolve database from query
         db-name (get-in yaml [:dataset_query :database])
         db-id (when (string? db-name)
                 (binding [*unresolved-refs* unresolved] (resolve-db-name db-name)))
-        ;; Convert query and result metadata
         dataset-query (binding [*unresolved-refs* unresolved]
                         (convert-dataset-query (:dataset_query yaml)))
         result-metadata (binding [*unresolved-refs* unresolved]
@@ -448,70 +322,82 @@
 
 ;;; ===========================================================================
 ;;; Metadata Provider
+;;;
+;;; Implements lib.metadata.protocols for use with lib/query.
 ;;; ===========================================================================
 
-(deftype YamlMetadataProvider [export-dir]
+(defn- session-source [session]
+  (:source @session))
+
+(defn- session-enumerator [session key]
+  (get-in @session [:enumerators key]))
+
+(deftype SourceMetadataProvider [session]
   lib.metadata.protocols/MetadataProvider
   (database [_this]
-    (ensure-index! export-dir)
-    (when-let [db-name (first (keys (:db-name->file @state)))]
-      (when-let [yaml (ensure-database! db-name)]
-        (yaml->database-metadata yaml))))
+    (binding [*session* session]
+      ;; Get first database from source
+      (when-let [db-name (first ((session-enumerator session :databases)))]
+        (when-let [data (load-database! session db-name)]
+          (yaml->database-metadata data)))))
 
   (metadatas [_this {:keys [lib/type id table-id]}]
-    (ensure-index! export-dir)
-    (case type
-      :metadata/table
-      (if id
-        (for [tid id
-              :let [path (get-in @state [:id->table-path tid])]
-              :when path
-              :let [yaml (ensure-table! path)]
-              :when yaml]
-          (yaml->table-metadata yaml))
-        (for [path (keys (:table-path->file @state))
-              :let [yaml (ensure-table! path)]
-              :when yaml]
-          (yaml->table-metadata yaml)))
-
-      :metadata/column
-      (cond
-        id (for [fid id
-                 :let [path (get-in @state [:id->field-path fid])]
+    ;; Use vec to force eager evaluation while *session* is bound
+    (binding [*session* session]
+      (case type
+        :metadata/table
+        (vec
+         (if id
+           (for [tid id
+                 :let [path (get-in @session [:id->table-path tid])]
                  :when path
-                 :let [yaml (ensure-field! path)]
-                 :when yaml]
-             (yaml->field-metadata yaml))
-        table-id (let [tpath (get-in @state [:id->table-path table-id])
-                       [db schema tbl] tpath]
-                   (when tpath
-                     (for [[fpath _] (:field-path->file @state)
-                           ;; here's the linear scan mentioned in the todo on line 128
-                           :when (and (= db (first fpath))
-                                      (= schema (second fpath))
-                                      (= tbl (nth fpath 2)))
-                           :let [yaml (ensure-field! fpath)]
-                           :when yaml]
-                       (yaml->field-metadata yaml))))
-        :else (for [path (keys (:field-path->file @state))
-                    :let [yaml (ensure-field! path)]
-                    :when yaml]
-                (yaml->field-metadata yaml)))
+                 :let [data (load-table! session path)]
+                 :when data]
+             (yaml->table-metadata data))
+           (for [path ((session-enumerator session :tables))
+                 :let [data (load-table! session path)]
+                 :when data]
+             (yaml->table-metadata data))))
 
-      :metadata/card
-      (if id
-        (for [cid id
-              :let [eid (get-in @state [:id->card-entity-id cid])]
-              :when eid
-              :let [yaml (ensure-card! eid)]
-              :when yaml]
-          (yaml->card-metadata yaml))
-        (for [eid (keys (:card-entity-id->file @state))
-              :let [yaml (ensure-card! eid)]
-              :when yaml]
-          (yaml->card-metadata yaml)))
+        :metadata/column
+        (vec
+         (cond
+           id (for [fid id
+                    :let [path (get-in @session [:id->field-path fid])]
+                    :when path
+                    :let [data (load-field! session path)]
+                    :when data]
+                (yaml->field-metadata data))
+           table-id (let [tpath (get-in @session [:id->table-path table-id])
+                          [db schema tbl] tpath]
+                      (when tpath
+                        (for [fpath ((session-enumerator session :fields))
+                              :when (and (= db (first fpath))
+                                         (= schema (second fpath))
+                                         (= tbl (nth fpath 2)))
+                              :let [data (load-field! session fpath)]
+                              :when data]
+                          (yaml->field-metadata data))))
+           :else (for [path ((session-enumerator session :fields))
+                       :let [data (load-field! session path)]
+                       :when data]
+                   (yaml->field-metadata data))))
 
-      nil))
+        :metadata/card
+        (vec
+         (if id
+           (for [cid id
+                 :let [eid (get-in @session [:id->card-entity-id cid])]
+                 :when eid
+                 :let [data (load-card! session eid)]
+                 :when data]
+             (yaml->card-metadata data))
+           (for [eid ((session-enumerator session :cards))
+                 :let [data (load-card! session eid)]
+                 :when data]
+             (yaml->card-metadata data))))
+
+        nil)))
 
   (setting [_this _key] nil)
 
@@ -525,10 +411,9 @@
   (clear-cache! [_this] nil))
 
 (defn make-provider
-  "Create a metadata provider for the export directory."
-  [export-dir]
-  (ensure-index! export-dir)
-  (->YamlMetadataProvider export-dir))
+  "Create a MetadataProvider for checking cards from source."
+  [session]
+  (->SourceMetadataProvider session))
 
 ;;; ===========================================================================
 ;;; Card Validation
@@ -536,32 +421,29 @@
 
 (defn- id->path
   "Convert an integer ID back to a human-readable path string."
-  [id id-type]
+  [session id id-type]
   (case id-type
-    :table (some->> (get-in @state [:id->table-path id]) (str/join "."))
-    :field (some->> (get-in @state [:id->field-path id]) (str/join "."))
-    :card (when-let [eid (get-in @state [:id->card-entity-id id])]
-            (or (:name (get-in @state [:cards eid])) eid))
-    :database (get-in @state [:id->db-name id])
+    :table (some->> (get-in @session [:id->table-path id]) (str/join "."))
+    :field (some->> (get-in @session [:id->field-path id]) (str/join "."))
+    :card (when-let [eid (get-in @session [:id->card-entity-id id])]
+            (or (:name (get-in @session [:cards eid])) eid))
+    :database (get-in @session [:id->db-name id])
     nil))
 
 (declare extract-refs-from-card)
 
 (defn- extract-refs-from-query
-  "Extract table/field/card references from a query."
-  ([query] (extract-refs-from-query query nil #{}))
-  ([query provider visited]
+  ([session query] (extract-refs-from-query session query nil #{}))
+  ([session query provider visited]
    (let [table-ids (lib/all-source-table-ids query)
          card-ids (lib/all-source-card-ids query)
          cols (try (lib/returned-columns query) (catch Exception _ nil))
-         ;; Direct refs
-         tables (mapv #(id->path % :table) table-ids)
-         fields (when cols (->> cols (keep :id) (mapv #(id->path % :field))))
-         cards (mapv #(id->path % :card) card-ids)
-         ;; Transitive refs from source cards
+         tables (mapv #(id->path session % :table) table-ids)
+         fields (when cols (->> cols (keep :id) (mapv #(id->path session % :field))))
+         cards (mapv #(id->path session % :card) card-ids)
          transitive (when provider
                       (for [cid card-ids :when (not (visited cid))]
-                        (extract-refs-from-card provider cid (conj visited cid))))
+                        (extract-refs-from-card session provider cid (conj visited cid))))
          all-tables (into (vec (remove nil? tables)) (mapcat :tables transitive))
          all-fields (into (vec (remove nil? fields)) (mapcat :fields transitive))
          all-cards (into (vec (remove nil? cards)) (mapcat :source-cards transitive))]
@@ -569,50 +451,63 @@
       :fields (vec (distinct all-fields))
       :source-cards (vec (distinct all-cards))})))
 
-(defn- extract-refs-from-card [provider card-id visited]
+(defn- extract-refs-from-card [session provider card-id visited]
   (try
     (when-let [card (lib.metadata/card provider card-id)]
       (when-let [dq (:dataset-query card)]
-        (extract-refs-from-query (lib/query provider dq) provider visited)))
+        (extract-refs-from-query session (lib/query provider dq) provider visited)))
     (catch Exception _ {:tables [] :fields [] :source-cards []})))
 
-(defn check-all-cards
-  "Validate all cards in the export. Returns map of entity-id -> results."
-  [export-dir]
-  (let [provider (make-provider export-dir)]
+(defn check-card
+  "Check a single card. Returns result map with :name, :refs, :unresolved, :bad-refs, :error."
+  [session provider entity-id]
+  (binding [*session* session]
+    (let [data (load-card! session entity-id)
+          card-id (:id data)
+          card-meta (yaml->card-metadata data)]
+      (if-let [missing-db (::unresolved-database card-meta)]
+        {:card-id card-id
+         :name (:name data)
+         :entity-id entity-id
+         :unresolved (into [{:type :database :name missing-db}]
+                           (::unresolved-refs card-meta))
+         :error (str "Unknown database: " missing-db)}
+        (try
+          (let [card (lib.metadata/card provider card-id)
+                query (lib/query provider (:dataset-query card))
+                refs (extract-refs-from-query session query provider #{card-id})
+                bad-refs (lib/find-bad-refs query)]
+            {:card-id card-id
+             :name (:name data)
+             :entity-id entity-id
+             :refs refs
+             :unresolved (::unresolved-refs card-meta)
+             :bad-refs bad-refs})
+          (catch Exception e
+            {:card-id card-id
+             :name (:name data)
+             :entity-id entity-id
+             :unresolved (::unresolved-refs card-meta)
+             :error (.getMessage e)}))))))
+
+(defn check-cards
+  "Check multiple cards from source. Returns map of entity-id -> result.
+
+   enumerators is a map of functions for listing entities (used by MetadataProvider):
+   - :databases - fn [] returning seq of db-names
+   - :tables    - fn [] returning seq of table-paths
+   - :fields    - fn [] returning seq of field-paths
+   - :cards     - fn [] returning seq of card entity-ids"
+  [source enumerators card-ids]
+  (let [session (make-session source enumerators)
+        provider (make-provider session)]
     (into {}
-          (for [entity-id (keys (:card-entity-id->file @state))
-                :let [yaml (ensure-card! entity-id)
-                      card-id (:id yaml)
-                      card-meta (yaml->card-metadata yaml)]]
-            [entity-id
-             (if-let [missing-db (::unresolved-database card-meta)]
-               {:card-id card-id
-                :name (:name yaml)
-                :entity-id entity-id
-                :file (get-in @state [:card-entity-id->file entity-id])
-                :unresolved (into [{:type :database :name missing-db}]
-                                  (::unresolved-refs card-meta))
-                :error (str "Unknown database: " missing-db)}
-               (try
-                 (let [card (lib.metadata/card provider card-id)
-                       query (lib/query provider (:dataset-query card))
-                       refs (extract-refs-from-query query provider #{card-id})
-                       bad-refs (lib/find-bad-refs query)]
-                   {:card-id card-id
-                    :name (:name yaml)
-                    :entity-id entity-id
-                    :file (get-in @state [:card-entity-id->file entity-id])
-                    :refs refs
-                    :unresolved (::unresolved-refs card-meta)
-                    :bad-refs bad-refs})
-                 (catch Exception e
-                   {:card-id card-id
-                    :name (:name yaml)
-                    :entity-id entity-id
-                    :file (get-in @state [:card-entity-id->file entity-id])
-                    :unresolved (::unresolved-refs card-meta)
-                    :error (.getMessage e)})))]))))
+          (for [eid card-ids]
+            [eid (check-card session provider eid)]))))
+
+;;; ===========================================================================
+;;; Results Processing
+;;; ===========================================================================
 
 (defn result-status
   "Compute the status of a single card result."
@@ -642,8 +537,7 @@
   "Format a single card result as a human-readable string."
   [[entity-id result]]
   (let [lines (transient [(str "=== " (:name result) " [" entity-id "] ===")
-                          (str "  Card ID: " (:card-id result))
-                          (str "  File: " (:file result))])
+                          (str "  Card ID: " (:card-id result))])
         {:keys [tables fields source-cards]} (:refs result)]
     (when (seq tables)
       (conj! lines (str "  Tables: " (str/join ", " tables))))
@@ -672,53 +566,17 @@
       (.write w (str (format-result entry) "\n\n"))))
   (println "Results written to:" output-file))
 
-;;; ===========================================================================
-;;; Public API & Debugging
-;;; ===========================================================================
-
-(defn file-index-stats
-  "Get statistics about the current file index."
-  []
-  (let [s @state]
-    {:file-index-built? (:file-index-built? s)
-     :export-dir (:export-dir s)
-     :indexed {:databases (count (:db-name->file s))
-               :tables (count (:table-path->file s))
-               :fields (count (:field-path->file s))
-               :cards (count (:card-entity-id->file s))}
-     :loaded {:databases (count (:databases s))
-              :tables (count (:tables s))
-              :fields (count (:fields s))
-              :cards (count (:cards s))}
-     :database-names (vec (keys (:db-name->file s)))}))
-
-(defn check
-  "Validate all cards in export-dir. Resets state and rebuilds index first.
-   Returns results map keyed by entity-id."
-  [export-dir]
-  (reset-state!)
-  (check-all-cards export-dir))
-
-(defn cli
-  [{:keys [export output]}]
-  (assert (string? export) "Export directory must be a string")
-  (assert (string? output) "Output directory must be a string")
-  (require 'clojure.pprint)
-  (spit output
-        (with-out-str (clojure.pprint/pprint (check-all-cards export)))))
-
 (comment
-  (write-results! (check "export-dir") "/tmp/realized.txt")
-  (reset-state!)
-  (file-index-stats)
+  (require '[metabase-enterprise.checker.format.serdes :as serdes-format])
 
-  ;; Check all cards, get structured results
-  (def results (check "export-dir"))
+  ;; Check a serdes export
+  (def source (serdes-format/make-source "export-dir"))
+  (def results (serdes-format/check source))
   (summarize-results results)
-  (results-by-status results)
 
-  ;; Write human-readable report
-  (write-results! results "/tmp/ci-check-results.txt")
+  ;; Check specific cards
+  (def enumerators (serdes-format/make-enumerators source))
+  (check-cards source enumerators ["card-entity-id-1" "card-entity-id-2"])
 
-  ;; Filter to just errors/issues
-  (filter (comp #{:error :issues} result-status second) results))
+  ;; Write report
+  (write-results! results "/tmp/check-results.txt"))

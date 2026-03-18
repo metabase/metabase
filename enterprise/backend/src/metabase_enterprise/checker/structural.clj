@@ -377,6 +377,12 @@
          (swap! results update :valid inc))))
     @results))
 
+(defn validate-entity
+  "Validate entity data against schema. Returns nil if valid, error map if invalid."
+  [entity-type data]
+  (when-let [schema (get schemas entity-type)]
+    (validate schema data)))
+
 ;;; ===========================================================================
 ;;; JSON Schema Export
 ;;; ===========================================================================

@@ -1,6 +1,6 @@
 # Checker Module
 
-Validates serdes exports without a running Metabase instance or database.
+Validates card queries without a running Metabase instance or database.
 
 ## Running Tests
 
@@ -8,23 +8,65 @@ Validates serdes exports without a running Metabase instance or database.
 clj -X:dev:test:ee:ee-dev :module enterprise/checker
 ```
 
+## Architecture
+
+Two protocols separate concerns:
+
+```
+Checker --> EntityResolver (source.clj)
+                 ^
+                 |
+       +---------+---------+
+       |         |         |
+    Memory    File       AppDb
+    (reify)   Resolver   (future)
+                 |
+                 v
+            FolderLayout (future)
+                 ^
+                 |
+          +------+------+
+          |             |
+       Serdes        Simple
+       (current)     (future)
+```
+
+**EntityResolver** - What the checker needs: "Does this reference exist? Give me its data."
+
+**FolderLayout** - How file-based formats work: "Given a reference, find it in the directory."
+
+Currently serdes format combines both in `format/serdes.clj`. See `DESIGN.md` for the planned separation.
+
 ## Namespaces
+
+### `checker.source` - EntityResolver Protocol
+
+```clojure
+(defprotocol MetadataSource
+  (resolve-database [this db-name])
+  (resolve-table [this table-path])    ; table-path is [db schema table]
+  (resolve-field [this field-path])    ; field-path is [db schema table field]
+  (resolve-card [this entity-id]))
+```
+
+Each returns entity data or nil. The checker doesn't know where data comes from.
 
 ### `checker.checker` - Query Validation
 
-Validates card queries using MLv2 (`metabase.lib`). Builds a `MetadataProvider` from YAML files so `lib/query` and `lib/find-bad-refs` work without a database.
+Validates card queries using MLv2 (`metabase.lib`).
 
 **Public API:**
-- `(check export-dir)` - Validate all cards, return `{entity-id -> result}`
-- `(summarize-results results)` - Count by status: `:ok`, `:error`, `:unresolved`, `:issues`
+- `(check-cards source enumerators card-ids)` - Validate specific cards
+- `(make-provider session)` - Create a MetadataProvider for lib
+- `(summarize-results results)` - Count by status
 - `(write-results! results file)` - Human-readable report
 
 **How it works:**
-1. Calls `format.serdes/build-file-index` to map paths to files
-2. Assigns integer IDs to entities on first reference
-3. Converts YAML to lib metadata format on demand
-4. Resolves portable refs (e.g., `["DB" "schema" "table"]`) to IDs during query conversion
-5. Tracks unresolved refs separately from lib validation errors
+1. Creates a session with source + enumerators
+2. Assigns integer IDs to entities (lib requires them)
+3. Builds MetadataProvider that calls source on demand
+4. Uses `lib/query` and `lib/find-bad-refs` to validate
+5. Tracks unresolved refs separately from lib errors
 
 ### `checker.structural` - Schema Validation
 
@@ -33,58 +75,64 @@ Fast structural validation using Malli schemas. No query processing, just shape 
 **Public API:**
 - `(check export-dir)` - Validate all YAML files, print summary
 - `(validate schema data)` - Validate data against a Malli schema
-- `(export-json-schemas! dir)` - Export schemas as JSON Schema for external tools
-
-**Schemas defined:** `Database`, `Table`, `Field`, `Card`, `Dashboard`, `Collection`
+- `(export-json-schemas! dir)` - Export schemas as JSON Schema
 
 Includes typo detection - if you have `nname` instead of `name`, it tells you.
 
-### `checker.format.serdes` - File Index
+### `checker.format.serdes` - Serdes Format
 
-Knows the serdes directory layout. Used by both checkers.
+Implements `MetadataSource` for serdes export directories. Knows the baroque serdes layout.
 
 **Public API:**
-- `(build-file-index export-dir)` - Returns index map with:
-  - `:db-name->file` - `"Sample Database"` → file path
-  - `:table-path->file` - `["DB" "schema" "table"]` → file path
-  - `:field-path->file` - `["DB" "schema" "table" "field"]` → file path
-  - `:card-entity-id->file` - `"abc123"` → file path
-- `(load-yaml path)` - Parse YAML file
-- `(walk-yaml-files export-dir f)` - Call `(f path entity-type)` for each YAML
-- `(infer-entity-type path)` - Returns `:database`, `:table`, `:field`, `:card`, etc.
+- `(make-source export-dir)` - Create source for a serdes export
+- `(check source)` - Check all cards in source
+- `(check-cards source card-ids)` - Check specific cards
+- `(make-enumerators source)` - Create enumerators for checker
 
-## Adding a New Export Format
-
-Create a new namespace under `format/` (e.g., `format.json`, `format.api`).
-
-**Required functions:**
-
-```clojure
-(defn build-file-index [source]
-  ;; Return map with these keys:
-  {:db-name->file {}           ; string -> file/url
-   :table-path->file {}        ; [db schema table] -> file/url
-   :field-path->file {}        ; [db schema table field] -> file/url
-   :card-entity-id->file {}})  ; entity-id -> file/url
-
-(defn load-yaml [path]
-  ;; Return parsed data as Clojure map
-  )
+**Directory layout:**
+```
+databases/<db-name>/<db-name>.yaml
+databases/<db-name>/schemas/<schema>/tables/<table>/<table>.yaml
+databases/<db-name>/schemas/<schema>/tables/<table>/fields/<field>.yaml
+collections/<eid>_<slug>/cards/<eid>_<slug>.yaml
 ```
 
-The checker doesn't care where data comes from. It just needs:
-1. An index mapping identifiers to locations
-2. A way to load content from those locations
+## Usage
 
-**Key constraint:** Table paths are `[db-name schema-name table-name]` where `schema-name` can be `nil` for schema-less databases (SQLite, etc.). Field paths extend this with field name.
+```clojure
+(require '[metabase-enterprise.checker.format.serdes :as serdes-format])
 
-## Assumptions
+;; Check all cards in a serdes export
+(def source (serdes-format/make-source "export-dir"))
+(def results (serdes-format/check source))
+(checker/summarize-results results)
 
-- One database per export (first one found is used for the metadata provider)
-- Entity IDs are unique within their type
-- Portable references in queries follow serdes format: `["DB" "schema" "table"]` for tables, `["DB" "schema" "table" "field"]` for fields
-- Cards reference databases by name string, not ID
+;; Check specific cards
+(serdes-format/check-cards source ["card-entity-id-1" "card-entity-id-2"])
+```
+
+For tests, use in-memory sources:
+
+```clojure
+(defn make-memory-source [{:keys [databases tables fields cards]}]
+  (reify source/MetadataSource
+    (resolve-database [_ db-name] (get databases db-name))
+    (resolve-table [_ path] (get tables path))
+    (resolve-field [_ path] (get fields path))
+    (resolve-card [_ eid] (get cards eid))))
+```
 
 ## Load Time
 
-Current load time is ~8 seconds due to `metabase.lib.core` and `metabase.models.serialization`. The lib dependency is required for query validation. The models dependency could be extracted (~3.5s savings) but isn't prioritized yet.
+~8 seconds due to `metabase.lib.core` and `metabase.models.serialization`.
+
+- lib is required for query validation
+- models could be extracted (~3.5s savings) - tracked in Linear
+
+## Future Work
+
+See `DESIGN.md` for planned improvements:
+- Separate FolderLayout protocol for file organization
+- Simple LLM-friendly format with flat structure
+- Multi-entity files (`cards.yaml` with array)
+- AppDb resolver for running instances
