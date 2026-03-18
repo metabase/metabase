@@ -202,7 +202,6 @@ export interface AdHocEmbedOptions {
 
   withTitle?: boolean;
   withDownloads?: boolean;
-  drills?: boolean;
   isSaveEnabled?: boolean;
 
   // incompatible options

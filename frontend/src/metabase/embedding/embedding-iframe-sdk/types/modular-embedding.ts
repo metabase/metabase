@@ -335,13 +335,6 @@ export interface MetabaseAdHocAttributes {
   "with-downloads"?: boolean;
 
   /**
-   * Whether to enable drill-through on the question.
-   *
-   * @defaultValue true
-   */
-  drills?: boolean;
-
-  /**
    * Whether the save button is enabled.
    *
    * @defaultValue false
