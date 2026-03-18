@@ -355,22 +355,26 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/with-premium-features #{:transforms-basic}
         (let [target {:type "table" :schema nil :name "test_output_table"}]
+          ;; The Transform after-insert hook creates a provisional table for the target,
+          ;; so we don't need to create one explicitly.
           (mt/with-temp [:model/Transform {transform-id :id :as transform}
                          {:target target
                           :source {:type  "query"
-                                   :query (lib/query (mt/metadata-provider) (mt/mbql-query venues))}}
-                         :model/Table {table-id :id} {:db_id (mt/id) :name "test_output_table" :schema nil}]
-            ;; Mock execute-base! to return success without actually running a query,
-            ;; run-cancelable-transform! to bypass schema creation / cancellation infra,
-            ;; and sync/indexes to skip driver calls. complete-execution! runs normally
-            ;; so it sets transform_id on the target table.
-            (with-redefs [transforms-base.i/execute-base!                            (constantly {:status :succeeded})
-                          transforms-base.u/sync-target!                             (constantly nil)
-                          transforms.u/run-cancelable-transform!                     (fn [_run-id _transform _driver _details run-fn & _opts]
-                                                                                       (run-fn (a/promise-chan) nil))]
-              (transforms.execute/execute! transform {:run-method :manual})
-              (is (= transform-id
-                     (t2/select-one-fn :transform_id :model/Table :id table-id))))))))))
+                                   :query (lib/query (mt/metadata-provider) (mt/mbql-query venues))}}]
+            (let [table-id (t2/select-one-fn :id :model/Table :db_id (mt/id) :name "test_output_table" :schema nil)]
+              ;; Mock execute-base! to return success without actually running a query,
+              ;; run-cancelable-transform! to bypass schema creation / cancellation infra,
+              ;; and sync/indexes to skip driver calls. complete-execution! runs normally
+              ;; so it sets transform_id on the target table.
+              (with-redefs [transforms-base.i/execute-base!                            (constantly {:status :succeeded})
+                            transforms-base.u/sync-target!                             (constantly nil)
+                            transforms-base.u/execute-secondary-index-ddl-if-required! (constantly nil)
+                            transforms.u/run-cancelable-transform!                     (fn [_run-id _driver _details run-fn & _opts]
+                                                                                         (run-fn (a/promise-chan)))]
+                (transforms.execute/execute! transform {:run-method :manual})
+                (is (= transform-id
+                       (t2/select-one-fn :transform_id :model/Table :id table-id)))))))))))
+
 
 (deftest transform-hydration-test
   (testing "hydrating :transform on a table"
