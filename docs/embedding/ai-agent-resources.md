@@ -11,12 +11,12 @@ If you use an AI coding agent, you can give the agent Metabase-specific context 
 
 Agents can read the docs you're reading now (and many agents have already read our docs), but we also publish llms.txts so that you can give your AI agent:
 
-- [Summary of docs, with links](https://www.metabase.com/docs/llms.txt).
-- [The full docs](https://www.metabase.com/docs/llms-embedding-full.txt).
+- [Summary of embedding docs, with links](https://www.metabase.com/docs/llms.txt).
+- [The full embedding docs](https://www.metabase.com/docs/llms-embedding-full.txt).
 
 ## Agent skills
 
-The [Metabase agent skills pack](https://github.com/metabase/agent-skills) gives your AI agent step-by-step playbooks for specific embedding tasks.
+We've developed some [agent skills](https://github.com/metabase/agent-skills) to give your AI agents step-by-step playbooks for specific embedding tasks.
 
 ### Available skills
 
@@ -32,10 +32,11 @@ Browse all skills on the [agent skills repo](https://github.com/metabase/agent-s
 
 ## Agents are not magic
 
-Always review and validate the changes made by a skill. Check that your application builds, tests pass, and the embedding works as expected before committing.
+Always review and validate the changes made by agents. Check that your application builds, tests pass, and the embedding works as expected before committing.
 
 ## Further reading
 
 - [Embedding introduction](./introduction.md)
 - [Modular embedding SDK](./sdk/introduction.md)
 - [Upgrading the modular embedding SDK](./sdk/upgrade.md)
+- [Agent skills repo](https://github.com/metabase/agent-skills)
