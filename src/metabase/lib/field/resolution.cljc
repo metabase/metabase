@@ -661,22 +661,25 @@
    stage-number :- :int
    id-or-name   :- ::id-or-name]
   (log/debugf "Resolving %s from previous stage, source table, or source card" (pr-str id-or-name))
-  (let [col (or (resolve-from-previous-stage-or-source* query stage-number id-or-name)
-                (do
-                  (log/debugf "Failed to resolve Field %s in stage %s. Trying other methods..." (pr-str id-or-name) (pr-str stage-number))
-                  (resolve-ref-missing-join-alias query stage-number id-or-name))
-                ;; if we haven't found a match yet try getting metadata from the metadata provider if this is a
-                ;; Field ID ref. It's likely a ref that makes little or no sense (e.g. wrong table) but we can
-                ;; let QP code worry about that.
-                (fallback-metadata-for-field query stage-number id-or-name)
-                ;; try looking in the expressions in this stage to see if someone incorrectly used a field ref for an
-                ;; expression.
-                (maybe-resolve-expression-in-current-stage query stage-number id-or-name)
+  (let [col (or ;; Allow nested dedup resolution for other columns encountered through card resolution,
+                ;; join resolution, etc. Only the direct dedup call below should be blocked by the guard.
+             (binding [*in-deduplicated-column-resolution?* false]
+               (or (resolve-from-previous-stage-or-source* query stage-number id-or-name)
+                   (do
+                     (log/debugf "Failed to resolve Field %s in stage %s. Trying other methods..." (pr-str id-or-name) (pr-str stage-number))
+                     (resolve-ref-missing-join-alias query stage-number id-or-name))
+                      ;; if we haven't found a match yet try getting metadata from the metadata provider if this is a
+                      ;; Field ID ref. It's likely a ref that makes little or no sense (e.g. wrong table) but we can
+                      ;; let QP code worry about that.
+                   (fallback-metadata-for-field query stage-number id-or-name)
+                      ;; try looking in the expressions in this stage to see if someone incorrectly used a field ref for an
+                      ;; expression.
+                   (maybe-resolve-expression-in-current-stage query stage-number id-or-name)))
                 ;; if that fails and this is a deduplicated name like `CATEGORY_2` then try looking for `CATEGORY` and
-                ;; so forth
-                (resolve-nonexistent-deduplicated-column-name query stage-number id-or-name)
+                ;; so forth. The *in-deduplicated-column-resolution?* guard prevents re-entry here.
+             (resolve-nonexistent-deduplicated-column-name query stage-number id-or-name)
                 ;; if we STILL can't find a match, return made-up fallback metadata.
-                (fallback-metadata id-or-name))]
+             (fallback-metadata id-or-name))]
     (when col
       (merge-metadata [col (additional-metadata-from-source-card query stage-number col)]))))
 
