@@ -145,12 +145,11 @@
               ["./bin/mage ci-test-repl app-db/be-tests-mysql" "Start REPL for a specific job"]
               ["./bin/mage ci-test-repl -n app-db/be-tests-mysql" "Dry run: print commands without executing"]]
    :requires [[mage.bgrabow.ci-test-repl :as ci-test-repl]]
-   :task (let [args     *command-line-args*
-               dry-run? (boolean (some #{"-n" "--dry-run"} args))
-               rest-args (remove #{"-n" "--dry-run"} args)
-               wj       (first rest-args)
-               [workflow job] (when wj (clojure.string/split wj (re-pattern "/") 2))]
-           (ci-test-repl/ci-test-repl {:workflow workflow :job job :dry-run? dry-run?}))}
+   :options [["-n" "--dry-run" "Print docker, env, and clojure commands without executing"]]
+   :task (task!
+          (let [wj (first (:arguments parsed))
+                [workflow job] (when wj (clojure.string/split wj (re-pattern "/") 2))]
+            (ci-test-repl/ci-test-repl {:workflow workflow :job job :dry-run? (:dry-run (:options parsed))})))}
 
   nrepl
   {:doc "Starts the babashka nrepl: helpful for mage development"
