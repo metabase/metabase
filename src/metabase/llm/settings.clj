@@ -5,6 +5,18 @@
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]))
 
+(defn- trimmed-string
+  [value]
+  (when (string? value)
+    (not-empty (str/trim value))))
+
+(defn- set-prefixed-api-key!
+  [setting-key prefix invalid-message new-value]
+  (let [trimmed (trimmed-string new-value)]
+    (when (and trimmed (not (str/starts-with? trimmed prefix)))
+      (throw (ex-info invalid-message {:status-code 400})))
+    (setting/set-value-of-type! :string setting-key trimmed)))
+
 ;;; ------------------------------------------------- Anthropic -------------------------------------------------
 
 (defsetting llm-anthropic-api-key
@@ -13,13 +25,10 @@
   :visibility       :settings-manager
   :export?          false
   :deprecated-name  :ee-anthropic-api-key
-  :setter           (fn [new-value]
-                      (let [trimmed (when (string? new-value)
-                                      (not-empty (str/trim new-value)))]
-                        (when (and trimmed (not (str/starts-with? trimmed "sk-ant-")))
-                          (throw (ex-info (tru "Invalid Anthropic API key format. Key must start with ''sk-ant-''.")
-                                          {:status-code 400})))
-                        (setting/set-value-of-type! :string :llm-anthropic-api-key trimmed)))
+  :setter           (partial set-prefixed-api-key!
+                             :llm-anthropic-api-key
+                             "sk-ant-"
+                             (tru "Invalid Anthropic API key format. Key must start with ''sk-ant-''."))
   :doc false)
 
 (defsetting llm-anthropic-api-key-configured?
@@ -82,7 +91,11 @@
   :visibility       :settings-manager
   :export?          false
   :deprecated-name  :ee-openai-api-key
-  :doc              false)
+  :setter           (partial set-prefixed-api-key!
+                             :llm-openai-api-key
+                             "sk-"
+                             (tru "Invalid OpenAI API key format. Key must start with ''sk-''."))
+  :doc               false)
 
 ;;; ------------------------------------------------- OpenRouter ------------------------------------------------
 
@@ -101,6 +114,10 @@
   :visibility       :settings-manager
   :export?          false
   :deprecated-name  :ee-openrouter-api-key
+  :setter           (partial set-prefixed-api-key!
+                             :llm-openrouter-api-key
+                             "sk-or-v1-"
+                             (tru "Invalid OpenRouter API key format. Key must start with ''sk-or-v1-''."))
   :doc              false)
 
 ;;; -------------------------------------------------- General --------------------------------------------------

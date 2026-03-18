@@ -5,9 +5,12 @@ import type {
   MetabotGenerateContentResponse,
   MetabotId,
   MetabotInfo,
+  MetabotProvider,
+  MetabotSettingsResponse,
   MetabotSlackSettings,
   SuggestedMetabotPromptsRequest,
   SuggestedMetabotPromptsResponse,
+  UpdateMetabotSettingsRequest,
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
@@ -24,6 +27,29 @@ export const metabotApi = EnterpriseApi.injectEndpoints({
         listTag("metabot"),
         ...(result?.items || []).map((metabot) => idTag("metabot", metabot.id)),
       ],
+    }),
+    getMetabotSettings: builder.query<
+      MetabotSettingsResponse,
+      { provider: MetabotProvider }
+    >({
+      query: ({ provider }) => ({
+        method: "GET",
+        url: "/api/metabot/settings",
+        params: { provider },
+      }),
+      providesTags: () => [listTag("llm-models"), "session-properties"],
+    }),
+    updateMetabotSettings: builder.mutation<
+      MetabotSettingsResponse,
+      UpdateMetabotSettingsRequest
+    >({
+      query: (body) => ({
+        method: "PUT",
+        url: "/api/metabot/settings",
+        body,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [listTag("llm-models"), "session-properties"]),
     }),
     updateMetabot: builder.mutation<
       MetabotInfo,
@@ -111,7 +137,9 @@ export const metabotApi = EnterpriseApi.injectEndpoints({
 });
 
 export const {
+  useGetMetabotSettingsQuery,
   useListMetabotsQuery,
+  useUpdateMetabotSettingsMutation,
   useUpdateMetabotMutation,
   useGetSuggestedMetabotPromptsQuery,
   useDeleteSuggestedMetabotPromptMutation,

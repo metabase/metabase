@@ -3,8 +3,10 @@ import fetchMock, { type UserRouteConfig } from "fetch-mock";
 import type {
   MetabotId,
   MetabotInfo,
+  MetabotSettingsResponse,
   SuggestedMetabotPrompt,
   SuggestedMetabotPromptsResponse,
+  UpdateMetabotSettingsRequest,
 } from "metabase-types/api";
 
 export function setupMetabotsEndpoints(
@@ -122,4 +124,27 @@ export function setupMetabotSlackSettingsEndpointWithError(
       name: SLACK_SETTINGS_ROUTE_NAME,
     },
   );
+}
+
+export function setupMetabotSettingsEndpoint({
+  provider,
+  response,
+}: {
+  provider: UpdateMetabotSettingsRequest["provider"];
+  response: MetabotSettingsResponse;
+}) {
+  fetchMock.get(`path:/api/metabot/settings?provider=${provider}`, response);
+}
+
+export function setupUpdateMetabotSettingsEndpoint(
+  response: MetabotSettingsResponse,
+) {
+  fetchMock.put("path:/api/metabot/settings", response);
+}
+
+export function setupUpdateMetabotSettingsEndpointWithError(
+  status: number,
+  body: string,
+) {
+  fetchMock.put("path:/api/metabot/settings", { status, body });
 }

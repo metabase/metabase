@@ -35,6 +35,7 @@ import {
   createMockMetabotInfo,
   createMockSettings,
 } from "metabase-types/api/mocks";
+import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import { MetabotAdminPage } from "./MetabotAdminPage";
 import * as hooks from "./utils";
@@ -100,7 +101,8 @@ const setup = async (
   metabots = defaultMetabots,
   seedCollections = defaultSeedCollections,
   error = false,
-  settings = createMockSettings(),
+  settings = createMockSettings({ "llm-metabot-configured?": true }),
+  waitForPageLoad = true,
 ) => {
   mockGetBoundingClientRect();
   mockPathParam(initialPathParam);
@@ -128,17 +130,22 @@ const setup = async (
     }),
   );
 
-  renderWithProviders(
+  const view = renderWithProviders(
     <Route path="/admin/metabot*" component={MetabotAdminPage} />,
     {
       withRouter: true,
       initialRoute: `/admin/metabot/${initialPathParam}`,
+      storeInitialState: {
+        settings: createMockSettingsState(settings),
+      },
     },
   );
 
-  if (!error) {
+  if (!error && waitForPageLoad) {
     await screen.findByText(/Configure/);
   }
+
+  return view;
 };
 
 const enabledToggle = () => screen.findByTestId("metabot-enabled-toggle");
@@ -152,6 +159,35 @@ describe("MetabotAdminPage", () => {
   it("should render the page", async () => {
     await setup();
     expect(screen.getByText(/Configure Metabot/)).toBeInTheDocument();
+  });
+
+  it("should redirect to setup if not configured", async () => {
+    const { history } = await setup(
+      FIXED_METABOT_IDS.DEFAULT,
+      defaultMetabots,
+      defaultSeedCollections,
+      false,
+      createMockSettings({ "llm-metabot-configured?": false }),
+      false,
+    );
+
+    await waitFor(() => {
+      expect(history?.getCurrentLocation()?.pathname).toBe(
+        "/admin/metabot/setup",
+      );
+    });
+  });
+
+  it("should not redirect to setup if configured", async () => {
+    const { history } = await setup(
+      FIXED_METABOT_IDS.DEFAULT,
+      defaultMetabots,
+      defaultSeedCollections,
+      false,
+      createMockSettings({ "llm-metabot-configured?": true }),
+    );
+
+    expect(history?.getCurrentLocation()?.pathname).toBe("/admin/metabot/1");
   });
 
   it("should toggle default metabot enabled state", async () => {

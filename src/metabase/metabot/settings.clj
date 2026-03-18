@@ -136,3 +136,36 @@
   :export?          false
   :deprecated-name  :ee-ai-metabot-internal-tasks-enabled?
   :doc              false)
+
+(defn- token-configured?
+  [token]
+  (boolean (and (string? token)
+                (not (str/blank? token)))))
+
+(defn configured-provider-api-key
+  [provider]
+  (case provider
+    "anthropic"  (llm-anthropic-api-key)
+    "openai"     (llm-openai-api-key)
+    "openrouter" (llm-openrouter-api-key)
+    nil))
+
+(defn- metabot-provider-prefix []
+  (some-> (llm-metabot-provider)
+          (str/split #"/" 2)
+          first))
+
+(defn- -llm-metabot-configured? []
+  (some-> (metabot-provider-prefix)
+          configured-provider-api-key
+          token-configured?
+          boolean))
+
+(defsetting llm-metabot-configured?
+  "Whether the API key for the selected Metabot provider is configured."
+  :type       :boolean
+  :visibility :public
+  :setter     :none
+  :export?    false
+  :getter     #'-llm-metabot-configured?
+  :doc        false)
