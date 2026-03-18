@@ -27,6 +27,7 @@ import { getBehaviorDocsUrlParams } from "../utils/get-behavior-docs-url-params"
 import { ColorCustomizationSection } from "./Appearance/ColorCustomizationSection";
 import { SimpleThemeSwitcherSection } from "./Appearance/SimpleThemeSwitcherSection";
 import { EmbeddingUpsell } from "./Common/EmbeddingUpsell";
+import { ProFeatureGate } from "./Common/ProFeatureGate";
 import { WithNotAvailableForOssOrGuestEmbedsGuard } from "./Common/WithNotAvailableForOssOrGuestEmbedsGuard";
 import { LegacyStaticEmbeddingAlert } from "./LegacyStaticEmbeddingAlert";
 import { MetabotLayoutSetting } from "./MetabotLayoutSetting";
@@ -43,7 +44,8 @@ export const SelectEmbedOptionsStep = () => (
 );
 
 const BehaviorSection = () => {
-  const { settings, updateSettings } = useSdkIframeEmbedSetupContext();
+  const { isSimpleEmbedFeatureAvailable, settings, updateSettings } =
+    useSdkIframeEmbedSetupContext();
   const hasEmailSetup = useHasEmailSetup();
 
   const behaviorDocsParams = getBehaviorDocsUrlParams(settings);
@@ -88,20 +90,18 @@ const BehaviorSection = () => {
               )}
             </WithNotAvailableForOssOrGuestEmbedsGuard>
 
-            <WithNotAvailableForOssOrGuestEmbedsGuard>
-              {({ disabled }) => (
-                <Checkbox
-                  label={t`Allow downloads`}
-                  disabled={disabled}
-                  checked={settings.withDownloads}
-                  onChange={(e) =>
-                    updateSettings({
-                      withDownloads: e.target.checked,
-                    } satisfies Partial<typeof settings>)
-                  }
-                />
-              )}
-            </WithNotAvailableForOssOrGuestEmbedsGuard>
+            <ProFeatureGate isGated={!isSimpleEmbedFeatureAvailable}>
+              <Checkbox
+                label={t`Allow downloads`}
+                disabled={!isSimpleEmbedFeatureAvailable}
+                checked={settings.withDownloads}
+                onChange={(e) =>
+                  updateSettings({
+                    withDownloads: e.target.checked,
+                  } satisfies Partial<typeof settings>)
+                }
+              />
+            </ProFeatureGate>
 
             <WithNotAvailableForOssOrGuestEmbedsGuard>
               {({ disabled }) => (
@@ -183,20 +183,18 @@ const BehaviorSection = () => {
               )}
             </WithNotAvailableForOssOrGuestEmbedsGuard>
 
-            <WithNotAvailableForOssOrGuestEmbedsGuard>
-              {({ disabled }) => (
-                <Checkbox
-                  label={t`Allow downloads`}
-                  disabled={disabled}
-                  checked={settings.withDownloads}
-                  onChange={(e) =>
-                    updateSettings({
-                      withDownloads: e.target.checked,
-                    } satisfies Partial<typeof settings>)
-                  }
-                />
-              )}
-            </WithNotAvailableForOssOrGuestEmbedsGuard>
+            <ProFeatureGate isGated={!isSimpleEmbedFeatureAvailable}>
+              <Checkbox
+                label={t`Allow downloads`}
+                disabled={!isSimpleEmbedFeatureAvailable}
+                checked={settings.withDownloads}
+                onChange={(e) =>
+                  updateSettings({
+                    withDownloads: e.target.checked,
+                  } satisfies Partial<typeof settings>)
+                }
+              />
+            </ProFeatureGate>
 
             <WithNotAvailableForOssOrGuestEmbedsGuard>
               {({ disabled: disabledInGuestEmbedding }) => {
@@ -260,7 +258,7 @@ const BehaviorSection = () => {
         ),
       )
       .otherwise(() => null);
-  }, [hasEmailSetup, settings, updateSettings]);
+  }, [hasEmailSetup, isSimpleEmbedFeatureAvailable, settings, updateSettings]);
 
   if (behaviorSection === null) {
     return null;
