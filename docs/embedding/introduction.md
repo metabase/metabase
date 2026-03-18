@@ -2,7 +2,7 @@
 title: Embedding introduction
 summary: Different ways you can embed charts and dashboards, or all of Metabase, in your app.
 redirect_from:
-  - /docs/latest/administration-guide/13-embedding
+- /docs/latest/administration-guide/13-embedding
 ---
 
 # Embedding introduction
@@ -67,11 +67,11 @@ If you'd like to share your data with the good people of the internet, admins ca
 | Charts and dashboards                                                                                                | ✅                                   | ✅                                    | ✅                                    | ✅                                  | ✅                                     |
 | [Filter widgets](https://www.metabase.com/glossary/filter-widget)                                                    | ✅                                   | ✅                                    | ✅                                    | ✅                                  | ✅                                     |
 | Export results\*                                                                                                     | ✅                                   | ✅                                    | ✅                                    | ✅                                  | ✅                                     |
-| [Locked filters](./static-embedding-parameters.md#restricting-data-in-a-static-embed-with-locked-parameters)          | ❌                                   | ❌                                    | ✅                                    | ❌                                  | ❌                                     |
+| [Locked filters](./static-embedding-parameters.md#restricting-data-in-a-static-embed-with-locked-parameters)         | ❌                                   | ❌                                    | ✅                                    | ❌                                  | ❌                                     |
 | [Data segregation](../permissions/embedding.md)                                                                      | ✅                                   | ✅                                    | ❌                                    | ✅                                  | ❌                                     |
 | [Drill-through menu](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through) | ✅                                   | ✅                                    | ❌                                    | ✅                                  | ❌                                     |
 | [Query builder](../questions/query-builder/editor.md)                                                                | ✅                                   | ✅                                    | ❌                                    | ✅                                  | ❌                                     |
-| [Basic appearance customization](../configuring-metabase/appearance.md)\*\*                                          | ✅                                   | ✅                                    | ✅                                    | ✅                                  | ✅                                     |
+| [Basic appearance customization](../configuring-metabase/appearance.md)\_\_                                          | ✅                                   | ✅                                    | ✅                                    | ✅                                  | ✅                                     |
 | [Advanced theming](./appearance.md)                                                                                  | ✅                                   | ✅                                    | ❌                                    | ❌                                  | ❌                                     |
 | [Usage analytics](../usage-and-performance-tools/usage-analytics.md)                                                 | ✅                                   | ✅                                    | ❌                                    | ✅                                  | ❌                                     |
 | Embed individual Metabase components                                                                                 | ✅                                   | ✅                                    | ❌                                    | ❌                                  | ❌                                     |
@@ -82,7 +82,11 @@ If you'd like to share your data with the good people of the internet, admins ca
 
 \* Each embedding type allows data downloads by default, but only [Pro and Enterprise](https://www.metabase.com/pricing/) plans can disable data downloads.
 
-\*\* Requires a [Pro and Enterprise](https://www.metabase.com/pricing/) plan for any embedding type.
+\_\_ Requires a [Pro and Enterprise](https://www.metabase.com/pricing/) plan for any embedding type.
+
+## Resources for AI agents
+
+If you're using an AI agent to help you embed Metabase in your app, check out [AI agent resources](./ai-agent-resources.md).
 
 ## Further reading
 
