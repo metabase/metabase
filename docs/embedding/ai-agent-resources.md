@@ -9,7 +9,7 @@ If you use an AI coding agent, you can give the agent Metabase-specific context 
 
 ## llms.txt
 
-Agents can read the docs you're reading now (and many agents have already read our docs), but we also publish llms.txts to that you can give your AI agent:
+Agents can read the docs you're reading now (and many agents have already read our docs), but we also publish llms.txts so that you can give your AI agent:
 
 - [Summary of docs, with links](https://www.metabase.com/docs/llms.txt).
 - [The full docs](https://www.metabase.com/docs/llms-embedding-full.txt).
@@ -28,7 +28,7 @@ The [Metabase agent skills pack](https://github.com/metabase/agent-skills) gives
 | [Static → guest embeds](https://skillsmp.com/skills/metabase-agent-skills-skills-metabase-static-embedding-to-guest-embedding-upgrade-skill-md) | Migrate from static (signed) embeds to guest embeds. |
 | [SSO for embeds](https://skillsmp.com/skills/metabase-agent-skills-skills-metabase-embedding-sso-implementation-skill-md) | Set up SSO authentication for embedded Metabase. _(In development.)_ |
 
-Browse all skills on the [Skills Marketplace](https://skillsmp.com/skills/metabase-agent-skills-skills-metabase-modular-embedding-version-upgrade-skill-md).
+Browse all skills on the [agent skills repo](https://github.com/metabase/agent-skills).
 
 ## Agents are not magic
 
