@@ -12,10 +12,12 @@ import { Flex, Text } from "metabase/ui";
 
 import { MetabotAISetup } from "./MetabotAISetup";
 import { MetabotAnalyticsPage } from "./MetabotAnalyticsPage";
+import { MetabotCustomizePage } from "./MetabotCustomizePage";
+import { MetabotGuidesPage } from "./MetabotGuidesPage";
 import { MetabotPermissionsPage } from "./MetabotPermissionsPage";
 import { MetabotSettingsPage } from "./MetabotSettingsPage";
 
-export type MetabotTab = "analytics" | "settings" | "permissions";
+export type MetabotTab = "analytics" | "settings" | "permissions" | "customize" | "guides";
 
 export function getAdminRoutes() {
   return [
@@ -38,7 +40,8 @@ function MetabotAdminPage() {
     );
   }
 
-  const useFullWidth = activeTab === "analytics" || activeTab === "permissions";
+  const useFullWidth =
+    activeTab === "analytics" || activeTab === "permissions";
 
   return (
     <AdminSettingsLayout
@@ -82,6 +85,18 @@ function MetabotNavPane({
           active={activeTab === "permissions"}
           onClick={() => onTabChange("permissions")}
         />
+        <AdminNavItem
+          icon="palette"
+          label={t`Customize`}
+          active={activeTab === "customize"}
+          onClick={() => onTabChange("customize")}
+        />
+        <AdminNavItem
+          icon="document"
+          label={t`Guides`}
+          active={activeTab === "guides"}
+          onClick={() => onTabChange("guides")}
+        />
       </AdminNavWrapper>
     </Flex>
   );
@@ -95,5 +110,9 @@ function MetabotTabContent({ tab }: { tab: MetabotTab }) {
       return <MetabotSettingsPage />;
     case "permissions":
       return <MetabotPermissionsPage />;
+    case "customize":
+      return <MetabotCustomizePage />;
+    case "guides":
+      return <MetabotGuidesPage />;
   }
 }

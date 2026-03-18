@@ -5,11 +5,14 @@ import { EChartsRenderer } from "metabase/visualizations/components/EChartsRende
 import {
   Box,
   Flex,
+  Select,
   SimpleGrid,
   Stack,
   Text,
   Title,
 } from "metabase/ui";
+
+import { TIME_RANGE_OPTIONS } from "./MetabotAnalyticsPage";
 
 // --- Fake data generators ---
 
@@ -153,8 +156,12 @@ function ChartCard({
 // --- Main component ---
 
 export function MetabotConversationStats({
+  timeRange,
+  onTimeRangeChange,
   onDrillDown,
 }: {
+  timeRange: string;
+  onTimeRangeChange: (value: string | null) => void;
   onDrillDown: (filters: Record<string, string>) => void;
 }) {
   const totals = useMemo(() => {
@@ -312,69 +319,126 @@ export function MetabotConversationStats({
     }
   };
 
-  return (
-    <Stack gap="lg">
-      <SimpleGrid cols={5} spacing="md">
-        <ScalarCard
-          label={t`Conversations`}
-          value={totals.conversations.toLocaleString()}
-          trend={t`+12% vs last 30d`}
-        />
-        <ScalarCard
-          label={t`Tokens`}
-          value={`${(totals.tokens / 1_000_000).toFixed(1)}M`}
-          trend={t`+8% vs last 30d`}
-        />
-        <ScalarCard
-          label={t`Messages`}
-          value={totals.messages.toLocaleString()}
-          trend={t`+15% vs last 30d`}
-        />
-        <ScalarCard
-          label={t`Cost`}
-          value={`$${totals.cost.toFixed(2)}`}
-          trend={t`+5% vs last 30d`}
-        />
-        <ScalarCard
-          label={t`Connection Failures`}
-          value={totals.failures.toLocaleString()}
-        />
-      </SimpleGrid>
+  const dailyTokensOption = useMemo(
+    () => ({
+      tooltip: {
+        trigger: "axis",
+        valueFormatter: (v: number) => v.toLocaleString(),
+      },
+      grid: { left: 60, right: 20, top: 10, bottom: 30 },
+      xAxis: {
+        type: "category",
+        data: SEED_DAILY.map((d) => d.day.slice(5)),
+        axisLabel: { fontSize: 11 },
+      },
+      yAxis: {
+        type: "value",
+        axisLabel: {
+          fontSize: 11,
+          formatter: (v: number) => `${(v / 1000).toFixed(0)}k`,
+        },
+      },
+      series: [
+        {
+          type: "line",
+          data: SEED_DAILY.map((d) => d.tokens),
+          smooth: true,
+          lineStyle: { color: "#F9D45C", width: 2 },
+          itemStyle: { color: "#F9D45C" },
+          areaStyle: { color: "rgba(249,212,92,0.1)" },
+        },
+      ],
+    }),
+    [],
+  );
 
-      <SimpleGrid cols={2} spacing="md">
+  return (
+    <Stack gap="xl">
+      {/* Trends */}
+      <Stack gap="lg">
+        <Flex justify="space-between" align="center">
+          <Title order={4}>{t`Trends`}</Title>
+          <Select
+            value={timeRange}
+            onChange={onTimeRangeChange}
+            data={TIME_RANGE_OPTIONS}
+            w={180}
+          />
+        </Flex>
+        <SimpleGrid cols={5} spacing="md">
+          <ScalarCard
+            label={t`Conversations`}
+            value={totals.conversations.toLocaleString()}
+            trend={t`+12% vs last 30d`}
+          />
+          <ScalarCard
+            label={t`Tokens`}
+            value={`${(totals.tokens / 1_000_000).toFixed(1)}M`}
+            trend={t`+8% vs last 30d`}
+          />
+          <ScalarCard
+            label={t`Messages`}
+            value={totals.messages.toLocaleString()}
+            trend={t`+15% vs last 30d`}
+          />
+          <ScalarCard
+            label={t`Cost`}
+            value={`$${totals.cost.toFixed(2)}`}
+            trend={t`+5% vs last 30d`}
+          />
+          <ScalarCard
+            label={t`Connection Failures`}
+            value={totals.failures.toLocaleString()}
+          />
+        </SimpleGrid>
+      </Stack>
+
+      {/* Conversations */}
+      <Stack gap="lg">
+        <Title order={4}>{t`Conversations`}</Title>
         <ChartCard
           title={t`Conversations by day`}
           option={dailyConversationsOption}
           onPointClick={handleDailyClick}
         />
+        <SimpleGrid cols={2} spacing="md">
+          <ChartCard
+            title={t`Conversations by user`}
+            option={byUserOption}
+            height={300}
+            onPointClick={handleUserClick}
+          />
+          <ChartCard
+            title={t`Conversations by group`}
+            option={byGroupOption}
+            height={240}
+            onPointClick={handleGroupClick}
+          />
+        </SimpleGrid>
         <ChartCard
-          title={t`Cost by day`}
-          option={dailyCostOption}
-          onPointClick={handleDailyClick}
-        />
-      </SimpleGrid>
-
-      <SimpleGrid cols={2} spacing="md">
-        <ChartCard
-          title={t`Conversations by user`}
-          option={byUserOption}
-          height={300}
-          onPointClick={handleUserClick}
-        />
-        <ChartCard
-          title={t`Conversations by group`}
-          option={byGroupOption}
+          title={t`Conversations by profile`}
+          option={byProfileOption}
           height={240}
-          onPointClick={handleGroupClick}
+          onPointClick={handleProfileClick}
         />
-      </SimpleGrid>
+      </Stack>
 
-      <ChartCard
-        title={t`Conversations by profile`}
-        option={byProfileOption}
-        height={240}
-        onPointClick={handleProfileClick}
-      />
+      {/* Costs and usage */}
+      <Stack gap="lg">
+        <Title order={4}>{t`Costs and usage`}</Title>
+        <SimpleGrid cols={2} spacing="md">
+          <ChartCard
+            title={t`Cost by day`}
+            option={dailyCostOption}
+            onPointClick={handleDailyClick}
+          />
+          <ChartCard
+            title={t`Token usage by day`}
+            option={dailyTokensOption}
+            onPointClick={handleDailyClick}
+          />
+        </SimpleGrid>
+      </Stack>
     </Stack>
   );
 }

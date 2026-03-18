@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { Box, Flex, SegmentedControl, Select, Stack } from "metabase/ui";
+import { Stack, Tabs } from "metabase/ui";
 
 import { MetabotConversationDetail } from "./MetabotConversationDetail";
 import { MetabotConversationList } from "./MetabotConversationList";
@@ -30,31 +30,26 @@ export function MetabotAnalyticsPage() {
 
   return (
     <Stack gap="lg" p="xl">
-      <Flex justify="space-between" align="center">
-        <SegmentedControl
-          value={activeTab}
-          onChange={(value) => {
-            if (value === "stats") {
-              setView({ tab: "stats" });
-            } else {
-              setView({ tab: "conversations" });
-            }
-          }}
-          data={[
-            { value: "stats", label: t`Conversation Stats` },
-            { value: "conversations", label: t`Conversations` },
-          ]}
-        />
-        <Select
-          value={timeRange}
-          onChange={(value) => value && setTimeRange(value)}
-          data={TIME_RANGE_OPTIONS}
-          w={180}
-        />
-      </Flex>
+      <Tabs
+        value={activeTab}
+        onChange={(value) => {
+          if (value === "stats") {
+            setView({ tab: "stats" });
+          } else {
+            setView({ tab: "conversations" });
+          }
+        }}
+      >
+        <Tabs.List>
+          <Tabs.Tab value="stats">{t`Conversation Stats`}</Tabs.Tab>
+          <Tabs.Tab value="conversations">{t`Conversations`}</Tabs.Tab>
+        </Tabs.List>
+      </Tabs>
 
       {view.tab === "stats" && (
         <MetabotConversationStats
+          timeRange={timeRange}
+          onTimeRangeChange={(value) => value && setTimeRange(value)}
           onDrillDown={(filters) =>
             setView({ tab: "conversations", filters })
           }

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -10,6 +11,7 @@ import {
   Stack,
   Text,
   Title,
+  UnstyledButton,
 } from "metabase/ui";
 
 // --- Fake conversation detail ---
@@ -332,6 +334,60 @@ function MetadataCard({
   );
 }
 
+function CollapsibleToolCall({ toolCall }: { toolCall: ToolCall }) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <Box
+      ml="sm"
+      style={{
+        borderLeft: "2px solid var(--mb-color-border)",
+      }}
+    >
+      <UnstyledButton
+        onClick={() => setExpanded((prev) => !prev)}
+        p="sm"
+        w="100%"
+      >
+        <Flex align="center" gap="xs">
+          <Icon
+            name={expanded ? "chevrondown" : "chevronright"}
+            size={12}
+          />
+          <Icon name="gear" size={12} />
+          <Text size="xs" fw={600} c="text-secondary">
+            {toolCall.name}
+          </Text>
+        </Flex>
+      </UnstyledButton>
+      {expanded && (
+        <Box px="sm" pb="sm">
+          <Text
+            size="xs"
+            c="text-secondary"
+            style={{
+              fontFamily: 'Monaco, Menlo, "Courier New", monospace',
+              fontSize: "0.6875rem",
+            }}
+          >
+            {toolCall.input}
+          </Text>
+          <Text
+            size="xs"
+            mt={4}
+            style={{
+              fontFamily: 'Monaco, Menlo, "Courier New", monospace',
+              fontSize: "0.6875rem",
+            }}
+          >
+            {toolCall.result}
+          </Text>
+        </Box>
+      )}
+    </Box>
+  );
+}
+
 function MessageBubble({ message }: { message: Message }) {
   const isUser = message.role === "user";
   return (
@@ -370,41 +426,7 @@ function MessageBubble({ message }: { message: Message }) {
         )}
       </Flex>
       {message.toolCalls?.map((tc, i) => (
-        <Box
-          key={i}
-          ml="sm"
-          p="sm"
-          style={{
-            borderLeft: "2px solid var(--mb-color-border)",
-          }}
-        >
-          <Flex align="center" gap="xs" mb={4}>
-            <Icon name="gear" size={12} />
-            <Text size="xs" fw={600} c="text-secondary">
-              {tc.name}
-            </Text>
-          </Flex>
-          <Text
-            size="xs"
-            c="text-secondary"
-            style={{
-              fontFamily: 'Monaco, Menlo, "Courier New", monospace',
-              fontSize: "0.6875rem",
-            }}
-          >
-            {tc.input}
-          </Text>
-          <Text
-            size="xs"
-            mt={4}
-            style={{
-              fontFamily: 'Monaco, Menlo, "Courier New", monospace',
-              fontSize: "0.6875rem",
-            }}
-          >
-            {tc.result}
-          </Text>
-        </Box>
+        <CollapsibleToolCall key={i} toolCall={tc} />
       ))}
     </Stack>
   );

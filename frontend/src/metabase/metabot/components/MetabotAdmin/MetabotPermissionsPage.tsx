@@ -1,23 +1,20 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 
 import {
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
-import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import {
   Box,
-  Button,
   Checkbox,
   Flex,
-  Icon,
   NumberInput,
-  Paper,
+  SegmentedControl,
   Select,
   Stack,
+  Tabs,
   Text,
   Textarea,
-  TextInput,
 } from "metabase/ui";
 
 // --- Fake user groups ---
@@ -121,17 +118,27 @@ const thCenter: React.CSSProperties = {
 export function MetabotPermissionsPage() {
   return (
     <Stack gap="xl" style={{ margin: 32 }}>
-      <PerGroupControls />
+      <Tabs defaultValue="permissions">
+        <Tabs.List>
+          <Tabs.Tab value="permissions">{t`Permissions`}</Tabs.Tab>
+          <Tabs.Tab value="usage-limits">{t`Usage limits`}</Tabs.Tab>
+        </Tabs.List>
 
-      <TotalInstanceLimits />
+        <Tabs.Panel value="permissions">
+          <Stack gap="xl" mt="xl">
+            <PerGroupControls />
+          </Stack>
+        </Tabs.Panel>
 
-      <PerGroupLimits />
-
-      <PerUserLimits />
-
-      <CustomizeMetabot />
-
-      <QuotaErrorMessage />
+        <Tabs.Panel value="usage-limits">
+          <Stack gap="xl" mt="xl">
+            <TotalInstanceLimits />
+            <PerGroupLimits />
+            <PerUserLimits />
+            <QuotaErrorMessage />
+          </Stack>
+        </Tabs.Panel>
+      </Tabs>
     </Stack>
   );
 }
@@ -352,6 +359,7 @@ function PerUserLimits() {
 // --- Per-Group Limits ---
 
 function PerGroupLimits() {
+  const [limitType, setLimitType] = useState<keyof Limits>("conversations");
   const [groupLimits, setGroupLimits] = useState<Record<string, Limits>>(
     () => {
       const initial: Record<string, Limits> = {};
@@ -362,98 +370,88 @@ function PerGroupLimits() {
     },
   );
 
-  const updateGroupLimit = (
-    group: string,
-    field: keyof Limits,
-    value: number | "",
-  ) => {
+  const updateGroupLimit = (group: string, value: number | "") => {
     setGroupLimits((prev) => ({
       ...prev,
-      [group]: { ...prev[group], [field]: value },
+      [group]: { ...prev[group], [limitType]: value },
     }));
   };
+
+  const columnLabel =
+    limitType === "conversations"
+      ? t`Max conversations`
+      : limitType === "tokens"
+        ? t`Max tokens`
+        : t`Max cost ($)`;
+
+  const inputProps =
+    limitType === "cost"
+      ? { decimalScale: 2, prefix: "$" }
+      : limitType === "tokens"
+        ? { thousandSeparator: "," }
+        : {};
 
   return (
     <SettingsSection
       title={t`Per-group (total) limits`}
       description={t`Monthly aggregate limits for each group. When a group's total usage hits these limits, all members are blocked.`}
     >
-      <Box
-        style={{
-          border: "1px solid var(--mb-color-border)",
-          borderRadius: "var(--mb-radius-md, 8px)",
-          overflow: "auto",
-          backgroundColor: "var(--mb-color-background-primary)",
-        }}
-      >
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead>
-            <tr>
-              <th style={thStyle}>{t`Group`}</th>
-              <th style={thStyle}>{t`Max conversations`}</th>
-              <th style={thStyle}>{t`Max tokens`}</th>
-              <th style={thStyle}>{t`Max cost ($)`}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {GROUPS.map((group) => {
-              const gl = groupLimits[group];
-              return (
+      <Stack gap="md">
+        <Stack gap="xs">
+          <Text size="sm" fw={500}>{t`How do you want to limit groups?`}</Text>
+          <SegmentedControl
+            value={limitType}
+            onChange={(value) => setLimitType(value as keyof Limits)}
+            data={[
+              { value: "conversations", label: t`Total conversations` },
+              { value: "tokens", label: t`Tokens` },
+              { value: "cost", label: t`Cost ($)` },
+            ]}
+          />
+        </Stack>
+        <Box
+          style={{
+            border: "1px solid var(--mb-color-border)",
+            borderRadius: "var(--mb-radius-md, 8px)",
+            overflow: "auto",
+            backgroundColor: "var(--mb-color-background-primary)",
+          }}
+        >
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr>
+                <th style={thStyle}>{t`Group`}</th>
+                <th style={{ ...thStyle, textAlign: "right" }}>{columnLabel}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {GROUPS.map((group) => (
                 <tr key={group}>
                   <td style={tdStyle}>
                     <Text fw={group === "All Users" ? 600 : 400}>
                       {group}
                     </Text>
                   </td>
-                  <td style={tdStyle}>
+                  <td style={{ ...tdStyle, textAlign: "right" }}>
                     <NumberInput
                       placeholder={t`Unlimited`}
-                      value={gl.conversations}
+                      value={groupLimits[group][limitType]}
                       onChange={(val) =>
-                        updateGroupLimit(
-                          group,
-                          "conversations",
-                          val as number | "",
-                        )
+                        updateGroupLimit(group, val as number | "")
                       }
                       min={0}
                       size="xs"
-                      w={140}
-                    />
-                  </td>
-                  <td style={tdStyle}>
-                    <NumberInput
-                      placeholder={t`Unlimited`}
-                      value={gl.tokens}
-                      onChange={(val) =>
-                        updateGroupLimit(group, "tokens", val as number | "")
-                      }
-                      min={0}
-                      size="xs"
-                      w={140}
-                      thousandSeparator=","
-                    />
-                  </td>
-                  <td style={tdStyle}>
-                    <NumberInput
-                      placeholder={t`Unlimited`}
-                      value={gl.cost}
-                      onChange={(val) =>
-                        updateGroupLimit(group, "cost", val as number | "")
-                      }
-                      min={0}
-                      size="xs"
-                      w={140}
-                      decimalScale={2}
-                      prefix="$"
+                      w={160}
+                      ml="auto"
+                      {...inputProps}
                     />
                   </td>
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </Box>
+              ))}
+            </tbody>
+          </table>
+        </Box>
+      </Stack>
     </SettingsSection>
   );
 }
@@ -469,195 +467,6 @@ function TotalInstanceLimits() {
       description={t`Monthly global limits for the entire Metabase instance. When these are hit, Metabot is disabled for all users until the next month.`}
     >
       <LimitsInputs limits={limits} onChange={setLimits} />
-    </SettingsSection>
-  );
-}
-
-// --- Icon Upload ---
-
-function IconUpload({
-  value,
-  onChange,
-}: {
-  value: string | null;
-  onChange: (dataUrl: string | null) => void;
-}) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) {
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => {
-      onChange(reader.result as string);
-    };
-    reader.readAsDataURL(file);
-    e.target.value = "";
-  };
-
-  return (
-    <Box>
-      <SettingHeader
-        id="metabot-icon"
-        title={t`Metabot's icon`}
-        description={t`Upload a custom icon for Metabot. For best results, use an SVG or PNG with a transparent background.`}
-      />
-      <Paper
-        p="md"
-        withBorder
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: "1rem",
-        }}
-      >
-        <Box
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: "var(--mb-radius-sm, 4px)",
-            border: "1px solid var(--mb-color-border)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            overflow: "hidden",
-            backgroundColor: "var(--mb-color-background-secondary)",
-          }}
-        >
-          {value ? (
-            <img
-              src={value}
-              alt="Metabot icon"
-              style={{
-                maxWidth: "100%",
-                maxHeight: "100%",
-                objectFit: "contain",
-              }}
-            />
-          ) : (
-            <Icon name="insight" size={20} />
-          )}
-        </Box>
-        <Flex gap="sm">
-          <Button
-            variant="default"
-            size="xs"
-            onClick={() => fileInputRef.current?.click()}
-          >
-            {value ? t`Change` : t`Upload`}
-          </Button>
-          {value && (
-            <Button
-              variant="subtle"
-              size="xs"
-              c="text-secondary"
-              onClick={() => onChange(null)}
-            >
-              {t`Reset to default`}
-            </Button>
-          )}
-        </Flex>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/svg+xml,image/png,image/jpeg"
-          style={{ display: "none" }}
-          onChange={handleFileChange}
-        />
-      </Paper>
-    </Box>
-  );
-}
-
-// --- Overrides ---
-
-function CustomizeMetabot() {
-  const [name, setName] = useState("Metabot");
-  const [iconDataUrl, setIconDataUrl] = useState<string | null>(null);
-  const [toneGuide, setToneGuide] = useState(
-    "Be helpful, concise, and professional. Use plain language. Avoid jargon unless the user uses it first.",
-  );
-  const [globalMd, setGlobalMd] = useState(
-    "# Metabot Instructions\n\nYou are a helpful data analyst assistant. When answering questions:\n- Always explain your reasoning\n- Cite specific tables and columns\n- Suggest follow-up questions when appropriate",
-  );
-  const [perUserMd, setPerUserMd] = useState("");
-
-  return (
-    <SettingsSection
-      title={t`Customize Metabot`}
-      description={t`Customize Metabot's identity and behavior instructions.`}
-    >
-      <Stack gap="lg">
-        <TextInput
-          label={t`Metabot's name`}
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          w={240}
-          size="sm"
-        />
-
-        <IconUpload value={iconDataUrl} onChange={setIconDataUrl} />
-
-        <Box>
-          <SettingHeader
-            id="tone-guide"
-            title={t`Tone guide`}
-            description={t`Instructions for how Metabot should communicate with users.`}
-          />
-          <Textarea
-            value={toneGuide}
-            onChange={(e) => setToneGuide(e.target.value)}
-            minRows={12}
-            maxRows={12}
-            size="sm"
-          />
-        </Box>
-
-        <Box>
-          <SettingHeader
-            id="global-metabot-md"
-            title={t`Global Metabot.md`}
-            description={t`Markdown instructions included in every Metabot conversation. Use this to provide context about your data, business rules, or preferred query patterns.`}
-          />
-          <Textarea
-            value={globalMd}
-            onChange={(e) => setGlobalMd(e.target.value)}
-            minRows={12}
-            maxRows={12}
-            size="sm"
-            styles={{
-              input: {
-                fontFamily: 'Monaco, Menlo, "Courier New", monospace',
-                fontSize: "0.8125rem",
-              },
-            }}
-          />
-        </Box>
-
-        <Box>
-          <SettingHeader
-            id="per-user-metabot-md"
-            title={t`Per-user Metabot.md`}
-            description={t`Template for user-specific instructions. Users can customize their own version of this. Use {user_name} and {user_group} as placeholders.`}
-          />
-          <Textarea
-            placeholder={t`e.g., Focus on {user_group} metrics and KPIs when answering questions.`}
-            value={perUserMd}
-            onChange={(e) => setPerUserMd(e.target.value)}
-            minRows={12}
-            maxRows={12}
-            size="sm"
-            styles={{
-              input: {
-                fontFamily: 'Monaco, Menlo, "Courier New", monospace',
-                fontSize: "0.8125rem",
-              },
-            }}
-          />
-        </Box>
-      </Stack>
     </SettingsSection>
   );
 }
