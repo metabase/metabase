@@ -478,12 +478,10 @@
                (allows-setting-via-env? setting))
       (if-let [v (env/env (setting-env-map-name setting))]
         ;; primary env var is set — return it only if non-empty
-        (when (seq v) v)
+        (not-empty v)
         ;; primary env var is absent — try deprecated name
         (when-let [deprecated-name (:deprecated-name setting)]
-          (let [legacy-v (env/env (setting-env-map-name deprecated-name))]
-            (when (seq legacy-v)
-              legacy-v)))))))
+          (not-empty (env/env (setting-env-map-name deprecated-name))))))))
 
 (defn log-deprecated-env-var-usage!
   "Log warnings for any settings currently using a deprecated env var name.
@@ -493,17 +491,17 @@
           :when (:deprecated-name setting)
           :when (and (allows-site-wide-values? setting)
                      (allows-setting-via-env? setting))
-          :let [legacy-v (env/env (setting-env-map-name (:deprecated-name setting)))]
-          :when (seq legacy-v)]
+          :let [legacy-v (not-empty (env/env (setting-env-map-name (:deprecated-name setting))))]
+          :when legacy-v]
     (let [primary-env (env-var-name setting)
           legacy-env  (env-var-name (:deprecated-name setting))
-          primary-v   (env/env (setting-env-map-name setting))]
+          primary-v   (not-empty (env/env (setting-env-map-name setting)))]
       (cond
-        (and (seq primary-v) (not= primary-v legacy-v))
+        (and primary-v (not= primary-v legacy-v))
         (log/warnf "%s and deprecated %s have conflicting values; using %s. Remove %s."
                    primary-env legacy-env primary-env legacy-env)
 
-        (seq primary-v)
+        primary-v
         (log/warnf "%s and deprecated %s are both set. Remove %s."
                    primary-env legacy-env legacy-env)
 
