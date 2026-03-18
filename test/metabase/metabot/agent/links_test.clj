@@ -382,6 +382,13 @@
       (is (= "[Results](metabase://query/q1)"
              (links/invert-links text registry))))))
 
+(deftest ^:parallel invert-links-only-replaces-inside-markdown-links-test
+  (testing "does not replace URLs that appear outside of markdown link syntax"
+    (let [registry {"/model/123" "metabase://model/123"}
+          text     "Visit /model/123 or see [Model](/model/123) for details"]
+      (is (= "Visit /model/123 or see [Model](metabase://model/123) for details"
+             (links/invert-links text registry))))))
+
 ;;; Round-trip tests
 
 (deftest ^:parallel round-trip-entity-links-test

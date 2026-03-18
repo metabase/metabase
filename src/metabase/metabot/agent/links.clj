@@ -161,6 +161,7 @@
 (defn invert-links
   "Replace resolved URLs with their original metabase:// URIs.
 
+  Only replaces URLs that appear inside `[text](url)` markdown syntax.
   `registry-map` is a map of {resolved-url original-metabase-uri}.
 
   Returns `text` unchanged if `registry-map` is empty or nil."
@@ -169,10 +170,11 @@
           (empty? text)
           (empty? registry-map))
     text
-    (reduce-kv (fn [txt resolved original]
-                 (str/replace txt resolved original))
-               text
-               registry-map)))
+    (str/replace text link-pattern
+                 (fn [[whole link-text url]]
+                   (if-let [original (get registry-map url)]
+                     (str "[" link-text "](" original ")")
+                     whole)))))
 
 (defn resolve-links-xf
   "Transducer that resolves metabase:// links in text parts.
