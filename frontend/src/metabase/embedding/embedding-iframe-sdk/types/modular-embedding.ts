@@ -340,6 +340,13 @@ export interface MetabaseAdHocAttributes {
    * @defaultValue true
    */
   drills?: boolean;
+
+  /**
+   * Whether the save button is enabled.
+   *
+   * @defaultValue false
+   */
+  "is-save-enabled"?: boolean;
 }
 
 /**
