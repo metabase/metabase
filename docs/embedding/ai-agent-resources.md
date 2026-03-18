@@ -1,6 +1,6 @@
 ---
 title: AI agent resources for embedding
-summary: LLM.txt and agent skills to help AI coding agents with Metabase embedding.
+summary: Agent skills and llms.txt to help AI coding agents embed Metabase in your app.
 ---
 
 # AI agent resources for embedding
