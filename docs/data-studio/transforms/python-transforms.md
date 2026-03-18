@@ -120,7 +120,7 @@ To make a Python transform incremental:
 
 1. Go to the transform's page in **Data studio > Transforms**.
 2. Switch to **Settings** tab.
-3. In **Column to check for new values**, select the column in one of the source tables that Metabase should check to determine which values are new. See [Prerequisites for incremental transforms](./transforms-overview.md#prerequisites-for-incremental-transforms) for more information on the requirements for that column.
+3. In **Column to check for new values**, select the column in one of the source tables that Metabase should check to determine which values are new. Only some columns are eligible. See [prerequisites for incremental transforms](./transforms-overview.md#prerequisites-for-incremental-transforms).
 
 ## Current limitations of Python transforms
 

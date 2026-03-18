@@ -52,9 +52,9 @@ When you run the query, Metabase replaces the variable with the selected table's
 
 ## Reference table variables
 
-There are two ways you can choose to refer to the table variable in the rest of the query
+There are two ways you can refer to the table variable in the rest of the query:
 
-1. If you want to use variable's name, you'll need to toggle _on_ **Emit table alias** in variable's settings. Your queries will look like this:
+1. If you want to use the variable's name, you'll need to toggle _on_ **Emit table alias** in the variable's settings. Your queries will look like this:
 
    ```sql
    {% raw %}
@@ -67,7 +67,7 @@ There are two ways you can choose to refer to the table variable in the rest of 
    {% endraw %}
    ```
 
-2. If you want to use an alias other than the variable's name, you must toggle **Emit table alias** _off_ and specify explicit aliases. This is helpful when you already have a long query with existing aliases, and you just want to swap the table for a table variable. Your queries will look like this:
+2. If you want to specify an alias, you must toggle **Emit table alias** _off_ and manually add aliases to your query. You may want to specify your own alias if you already have a long query with existing aliases, and you just want to swap the table for a table variable. Your queries will look like this:
 
    ```sql
    {% raw %}

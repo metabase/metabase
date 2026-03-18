@@ -107,7 +107,7 @@ For a transform to run incrementally, you'll need to pick a column ("checkpoint"
 
 #### Use table variables for incremental SQL transforms
 
-If you built your transform in the graphical query builder, you can skip right to [marking transform as incremental](#mark-transform-as-incremental).
+If you built your transform in the graphical query builder, you can skip right to [marking the transform as incremental](#mark-transform-as-incremental).
 
 If you are writing your incremental transform in raw SQL, you'll need to add a [table variable](../../questions/native-editor/table-variables.md) into your SQL code, with the table variable replacing the table with the checkpoint column.
 
@@ -126,7 +126,9 @@ To make this transform incrementally load the data based on new values of `order
 
 1. Add a table variable, for example `{{orders_var}}` replacing `orders` in the `FROM` statement;
 2. In the table variable settings, connect the table variable to the `orders` table;
-3. Replace other references with either the name of the table variable (if you have "Emit table alias" toggled on in variable's setting) or your own handcrafted alias for the variable.
+3. Replace other references to the table in your query with either:
+    - The name of the table variable (if you have "Emit table alias" toggled on in variable's setting).
+    - Your own handcrafted alias for the variable.
 
 So your query will look like this:
 
@@ -139,9 +141,9 @@ FROM
    {{orders_var}} JOIN products on orders_var.product_id = products.id
 ```
 
-with `orders_var` connected to the `orders` table in variable settings, and "Emit table aliases" toggled on.
+In this query,`orders_var` is connected to the `orders` table in variable settings, and "Emit table aliases" toggled on in the variables sidebar.
 
-Once your query has table aliases, you can mark transform as incremental using the `orders.id` column in the transform's settings.
+Once your query has table aliases, you can mark the transform as incremental using the `orders.id` column in the transform's settings.
 
 #### Mark transform as incremental
 
@@ -149,4 +151,4 @@ To make a query transform incremental:
 
 1. Go to the transform's page in **Data studio > Transforms**.
 2. Switch to **Settings** tab.
-3. In **Column to check for new values**, select the column that Metabase should check to determine which values are new. See [Prerequisites for incremental transforms](./transforms-overview.md#prerequisites-for-incremental-transforms) for more information on the requirements for that column.
+3. In **Column to check for new values**, select the column in one of the source tables that Metabase should check to determine which values are new. Only some columns are eligible. See [prerequisites for incremental transforms](./transforms-overview.md#prerequisites-for-incremental-transforms).
