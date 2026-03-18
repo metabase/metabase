@@ -357,37 +357,35 @@
 (defn- init-agent
   "Initialize agent state."
   [{:keys [messages state metabot-id profile-id context tracking-opts]}]
-  (let [context            (assign-context-ids context)
-        profile            (or (profiles/get-profile profile-id)
-                               (throw (ex-info "Unknown profile" {:profile-id profile-id})))
-        capabilities       (get context :capabilities #{})
-        base-tools         (profiles/get-tools-for-profile profile-id capabilities)
-        seeded             (-> (or state {})
-                               (seed-state context)
-                               (seed-chart-configs context))
-        memory             (-> (memory/initialize messages seeded context)
-                               (memory/load-queries-from-state seeded)
-                               (memory/load-charts-from-state seeded)
-                               (memory/load-transforms-from-state seeded)
-                               (memory/load-todos-from-state seeded)
-                               (memory/load-link-registry-from-state seeded))
-        link-registry-atom (atom (get-in memory [:state :link-registry] {}))
-        memory-atom        (atom memory)
-        tools              (agent-tools/wrap-tools-with-state base-tools memory-atom metabot-id)]
+  (let [context      (assign-context-ids context)
+        profile      (or (profiles/get-profile profile-id)
+                         (throw (ex-info "Unknown profile" {:profile-id profile-id})))
+        capabilities (get context :capabilities #{})
+        base-tools   (profiles/get-tools-for-profile profile-id capabilities)
+        seeded       (-> (or state {})
+                         (seed-state context)
+                         (seed-chart-configs context))
+        memory       (-> (memory/initialize messages seeded context)
+                         (memory/load-queries-from-state seeded)
+                         (memory/load-charts-from-state seeded)
+                         (memory/load-transforms-from-state seeded)
+                         (memory/load-todos-from-state seeded)
+                         (memory/load-link-registry-from-state seeded))
+        memory-atom  (atom memory)
+        tools        (agent-tools/wrap-tools-with-state base-tools memory-atom metabot-id)]
     (log/info "Starting agent" {:profile  profile-id
                                 :tools    (count tools)
                                 :max-iter (:max-iterations profile)
                                 :msgs     (count messages)})
-    {:profile            profile
-     :tools              tools
-     :context            context
-     :memory-atom        memory-atom
-     :link-registry-atom link-registry-atom
-     :tracking-opts      (merge {:profile-id profile-id
-                                 :request-id (str (random-uuid))
-                                 :source     "metabot_agent"
-                                 :tag        "agent"}
-                                tracking-opts)}))
+    {:profile       profile
+     :tools         tools
+     :context       context
+     :memory-atom   memory-atom
+     :tracking-opts (merge {:profile-id profile-id
+                            :request-id (str (random-uuid))
+                            :source     "metabot_agent"
+                            :tag        "agent"}
+                           tracking-opts)}))
 
 (defn- initial-loop-state
   "Create initial loop state from agent config and reduction context."
@@ -399,11 +397,8 @@
    :status     :continue
    :usage-atom usage-atom})
 
-(defn- final-state-part [memory link-registry-atom]
-  {:type :data
-   :data-type "state"
-   :version 1
-   :data (assoc (memory/get-state memory) :link-registry @link-registry-atom)})
+(defn- final-state-part [memory]
+  {:type :data, :data-type "state", :version 1, :data (memory/get-state memory)})
 
 (defn- error-part [^Exception e]
   {:type :error, :error {:message (.getMessage e), :type (str (type e)), :data (ex-data e)}})
@@ -429,11 +424,13 @@
   [{:keys [agent rf result iteration usage-atom] :as loop-state}]
   (with-span :debug {:name      :metabot.agent/loop-step
                      :iteration iteration}
-    (let [{:keys [profile tools context memory-atom tracking-opts link-registry-atom]} agent
-          max-iter      (:max-iterations profile 10)
-          tracking-opts (assoc tracking-opts :iteration iteration)
-          parts-atom    (atom [])
-          llm-call      (call-llm @memory-atom context profile tools iteration tracking-opts link-registry-atom)
+    (let [{:keys [profile tools context memory-atom tracking-opts]} agent
+          max-iter           (:max-iterations profile 10)
+          tracking-opts      (assoc tracking-opts :iteration iteration)
+          memory             @memory-atom
+          parts-atom         (atom [])
+          link-registry-atom (atom (get-in memory [:state :link-registry] {}))
+          llm-call           (call-llm memory context profile tools iteration tracking-opts link-registry-atom)
           xf         (comp (accumulate-usage-xf usage-atom)
                            (u/tee-xf parts-atom))
           ;; We use `reduce` instead of `transduce` because rf is the outer reducing
@@ -442,6 +439,8 @@
           ;; entire agent loop, not after every iteration.
           result'    (reduce (xf rf) result llm-call)
           parts      @parts-atom]
+      ;; Sync link registry back to memory after streaming completes
+      (swap! memory-atom assoc-in [:state :link-registry] @link-registry-atom)
       ;; Capture response for debug log
       (when *debug-log*
         (debug-log! {:iteration iteration
@@ -451,7 +450,7 @@
                      :all-parts parts}))
       (log/debug "Iteration" {:n iteration :parts-count (count parts)})
       (if (empty? parts)
-        (assoc loop-state :status :done :result (rf result (final-state-part @memory-atom link-registry-atom)))
+        (assoc loop-state :status :done :result (rf result (final-state-part @memory-atom)))
         (do
           (log/debug "Got parts" {:count (count parts) :types (mapv :type parts)})
           (swap! memory-atom update-memory parts)
@@ -469,7 +468,7 @@
                            :reason     (finish-reason iteration max-iter parts)})
                 (assoc loop-state
                        :status :done
-                       :result (rf result' (final-state-part @memory-atom link-registry-atom))))))))))
+                       :result (rf result' (final-state-part @memory-atom))))))))))
 
 ;;; Public API
 
