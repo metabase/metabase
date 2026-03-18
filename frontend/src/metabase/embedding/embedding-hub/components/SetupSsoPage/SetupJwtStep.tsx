@@ -7,7 +7,11 @@ import { useSetting, useToast } from "metabase/common/hooks";
 import { UtilApi } from "metabase/services";
 import { Button, Group, Stack, Text, TextInput } from "metabase/ui";
 
-export const SetupJwtStep = ({ onSuccess }: { onSuccess: () => void }) => {
+export const SetupJwtStep = ({
+  onSuccess,
+}: {
+  onSuccess: (token: string) => void;
+}) => {
   const [sendToast] = useToast();
   const [updateSettings, { isLoading }] = useUpdateSettingsMutation();
 
@@ -35,7 +39,7 @@ export const SetupJwtStep = ({ onSuccess }: { onSuccess: () => void }) => {
         "jwt-group-sync": true,
       }).unwrap();
 
-      onSuccess();
+      onSuccess(token);
     } catch (error) {
       sendToast({
         icon: "warning",

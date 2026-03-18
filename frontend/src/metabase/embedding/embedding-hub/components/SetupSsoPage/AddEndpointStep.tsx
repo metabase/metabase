@@ -3,14 +3,21 @@
 import { jt, t } from "ttag";
 
 import { CopyButton } from "metabase/common/components/CopyButton";
-import { useDocsUrl, useSetting } from "metabase/common/hooks";
+import { useDocsUrl } from "metabase/common/hooks";
 import { Anchor, Button, Group, Stack, Text, TextInput } from "metabase/ui";
 
 import S from "./SetupSsoPage.module.css";
 
-export const AddEndpointStep = ({ onDone }: { onDone: () => void }) => {
-  const jwtSharedSecret = useSetting("jwt-shared-secret");
-
+export const AddEndpointStep = ({
+  jwtSharedSecret,
+  onDone,
+}: {
+  /** The plaintext JWT signing key as returned by the generation step.
+   *  Passed in from the parent rather than read from session properties,
+   *  because the setting is write-only after initial generation. */
+  jwtSharedSecret: string | null;
+  onDone: () => void;
+}) => {
   // TODO(EMB-1337): replace this with standalone JWT backend docs page.
   const { url: jwtDocsUrl } = useDocsUrl("embedding/authentication");
 

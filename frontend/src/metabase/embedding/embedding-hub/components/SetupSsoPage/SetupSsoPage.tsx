@@ -23,6 +23,17 @@ export const SetupSsoPage = () => {
   // UI-only confirmation state for step 2
   const [isAddEndpointConfirmed, setIsAddEndpointConfirmed] = useState(false);
 
+  // Hold the generated JWT secret in memory so AddEndpointStep can display it
+  // without re-reading it from session properties (where it will be masked).
+  const [generatedJwtSecret, setGeneratedJwtSecret] = useState<string | null>(
+    null,
+  );
+
+  const handleJwtSetupSuccess = (token: string) => {
+    setGeneratedJwtSecret(token);
+    stepperRef.current?.goToNextStep();
+  };
+
   const handleAddEndpointDone = () => {
     setIsAddEndpointConfirmed(true);
     stepperRef.current?.goToNextStep();
@@ -61,14 +72,17 @@ export const SetupSsoPage = () => {
           stepId="setup-jwt"
           title={t`Set up JWT authentication`}
         >
-          <SetupJwtStep onSuccess={() => stepperRef.current?.goToNextStep()} />
+          <SetupJwtStep onSuccess={handleJwtSetupSuccess} />
         </OnboardingStepper.Step>
 
         <OnboardingStepper.Step
           stepId="add-endpoint"
           title={t`Add a new endpoint to your app`}
         >
-          <AddEndpointStep onDone={handleAddEndpointDone} />
+          <AddEndpointStep
+            jwtSharedSecret={generatedJwtSecret}
+            onDone={handleAddEndpointDone}
+          />
         </OnboardingStepper.Step>
 
         <OnboardingStepper.Step
