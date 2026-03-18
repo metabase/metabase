@@ -257,6 +257,7 @@ export const useDataGridInstance = <TData, TValue>({
     getRowHeight,
     rowMeasureRef,
     remeasureAll,
+    rowSizingMap,
   } = useRowHeights({
     data,
     defaultRowHeight,
@@ -269,7 +270,7 @@ export const useDataGridInstance = <TData, TValue>({
     data,
     getRowId,
     gridRef,
-    topRowHeights: [],
+    rowSizingMap,
   });
 
   const table = useReactTable({

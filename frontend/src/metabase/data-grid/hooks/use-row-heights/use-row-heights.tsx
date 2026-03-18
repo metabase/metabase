@@ -1,5 +1,5 @@
 import type { RowData, Table } from "@tanstack/react-table";
-import { useCallback, useLayoutEffect, useRef } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 
 import type { ColumnOptions } from "../../types";
 import type { VirtualGrid } from "../use-virtual-grid";
@@ -27,8 +27,22 @@ export const useRowHeights = <TData extends RowData, TValue>({
   const virtualGridRef = useRef<VirtualGrid>();
 
   const rowHeightsCache = useRef<Map<number, number>>(new Map());
+  const [rowSizingMap, setRowSizingMap] = useState<Map<number, number>>(
+    new Map(),
+  );
+  const flushRafRef = useRef<number | null>(null);
   const elementsByRowIndex = useRef<Map<number, Set<Element>>>(new Map());
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
+
+  const scheduleFlush = useCallback(() => {
+    if (flushRafRef.current !== null) {
+      return;
+    }
+    flushRafRef.current = requestAnimationFrame(() => {
+      flushRafRef.current = null;
+      setRowSizingMap(new Map(rowHeightsCache.current));
+    });
+  }, []);
 
   const measureRowHeight = useCallback(
     (index: number) => {
@@ -75,10 +89,14 @@ export const useRowHeights = <TData extends RowData, TValue>({
   const updateRowHeight = useCallback(
     (index: number): number => {
       const height = measureRowHeight(index);
+      const prev = rowHeightsCache.current.get(index);
       rowHeightsCache.current.set(index, height);
+      if (prev !== height) {
+        scheduleFlush();
+      }
       return height;
     },
-    [measureRowHeight],
+    [measureRowHeight, scheduleFlush],
   );
 
   const remeasureRow = useCallback(
@@ -168,14 +186,17 @@ export const useRowHeights = <TData extends RowData, TValue>({
   useLayoutEffect(() => {
     resizeObserverRef.current = new ResizeObserver(recalculate);
     remountElements();
-
     return () => {
       resizeObserverRef.current?.disconnect();
+      if (flushRafRef.current !== null) {
+        cancelAnimationFrame(flushRafRef.current);
+      }
     };
   }, [recalculate, remountElements]);
 
   return {
     tableRef,
+    rowSizingMap,
     virtualGridRef,
     rowMeasureRef,
     getRowHeight,
