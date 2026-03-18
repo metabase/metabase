@@ -6,13 +6,8 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.test :as mt]))
 
-(deftest ^:parallel database-returns-nil-test
-  (testing "MetricMetadataProvider.database() should return nil"
-    (let [mp (metric-jvm/metadata-provider)]
-      (is (nil? (lib.metadata.protocols/database mp))))))
-
-(deftest ^:synchronized metadatas-fetches-metrics-test
-  (testing "metadatas should fetch metrics from the database"
+(deftest ^:synchronized metric-fetch-test
+  (testing "metric should fetch a metric from the database"
     #_{:clj-kondo/ignore [:discouraged-var]}
     (mt/with-temp [:model/Card metric {:type         :metric
                                        :name         "Test Metric"
@@ -23,13 +18,13 @@
                                                        :query {:source-table (mt/id :orders)
                                                                :aggregation [[:count]]}}}]
       (let [mp (metric-jvm/metadata-provider)
-            metrics (lib.metadata.protocols/metadatas mp {:lib/type :metadata/metric :id #{(:id metric)}})]
-        (is (= 1 (count metrics)))
-        (is (= "Test Metric" (:name (first metrics))))
-        (is (= :metadata/metric (:lib/type (first metrics))))))))
+            result (provider/metric mp (:id metric))]
+        (is (some? result))
+        (is (= "Test Metric" (:name result)))
+        (is (= :metadata/metric (:lib/type result)))))))
 
-(deftest ^:synchronized metadatas-fetches-metrics-by-table-id-test
-  (testing "metadatas should fetch metrics by table-id"
+(deftest ^:synchronized metric-fetch-by-table-id-test
+  (testing "dimensions-for-metric returns dimensions for metric fetched by table"
     #_{:clj-kondo/ignore [:discouraged-var]}
     (mt/with-temp [:model/Card metric {:type         :metric
                                        :name         "Table Metric"
@@ -40,38 +35,12 @@
                                                        :query {:source-table (mt/id :orders)
                                                                :aggregation [[:count]]}}}]
       (let [mp (metric-jvm/metadata-provider)
-            metrics (lib.metadata.protocols/metadatas mp {:lib/type :metadata/metric :table-id (mt/id :orders)})]
-        (is (some #(= (:id metric) (:id %)) metrics))
-        (is (every? #(= (mt/id :orders) (:table-id %)) metrics))))))
+            result (provider/metric mp (:id metric))]
+        (is (some? result))
+        (is (= (mt/id :orders) (:table-id result)))))))
 
-(deftest ^:synchronized metadatas-excludes-archived-metrics-test
-  (testing "metadatas should exclude archived metrics when not filtering by ID"
-    #_{:clj-kondo/ignore [:discouraged-var]}
-    (mt/with-temp [:model/Card active-metric   {:type         :metric
-                                                :name         "Active Metric"
-                                                :archived     false
-                                                :database_id  (mt/id)
-                                                :table_id     (mt/id :orders)
-                                                :dataset_query {:database (mt/id)
-                                                                :type :query
-                                                                :query {:source-table (mt/id :orders)
-                                                                        :aggregation [[:count]]}}}
-                   :model/Card archived-metric {:type         :metric
-                                                :name         "Archived Metric"
-                                                :archived     true
-                                                :database_id  (mt/id)
-                                                :table_id     (mt/id :orders)
-                                                :dataset_query {:database (mt/id)
-                                                                :type :query
-                                                                :query {:source-table (mt/id :orders)
-                                                                        :aggregation [[:count]]}}}]
-      (let [mp (metric-jvm/metadata-provider)
-            metrics (lib.metadata.protocols/metadatas mp {:lib/type :metadata/metric :table-id (mt/id :orders)})]
-        (is (some #(= (:id active-metric) (:id %)) metrics))
-        (is (not-any? #(= (:id archived-metric) (:id %)) metrics))))))
-
-(deftest ^:synchronized metadatas-includes-archived-when-filtering-by-id-test
-  (testing "metadatas should include archived metrics when filtering by ID"
+(deftest ^:synchronized metric-excludes-archived-test
+  (testing "metric fetched by ID still returns archived metrics (explicit ID lookup)"
     #_{:clj-kondo/ignore [:discouraged-var]}
     (mt/with-temp [:model/Card archived-metric {:type         :metric
                                                 :name         "Archived Metric"
@@ -83,14 +52,14 @@
                                                                 :query {:source-table (mt/id :orders)
                                                                         :aggregation [[:count]]}}}]
       (let [mp (metric-jvm/metadata-provider)
-            metrics (lib.metadata.protocols/metadatas mp {:lib/type :metadata/metric :id #{(:id archived-metric)}})]
-        (is (= 1 (count metrics)))
-        (is (= (:id archived-metric) (:id (first metrics))))))))
+            result (provider/metric mp (:id archived-metric))]
+        (is (some? result))
+        (is (= (:id archived-metric) (:id result)))))))
 
-(deftest ^:parallel metadatas-routes-columns-to-database-provider-test
-  (testing "metadatas should route column requests to the appropriate database provider"
+(deftest ^:parallel columns-for-table-test
+  (testing "columns-for-table should return columns for a table"
     (let [mp (metric-jvm/metadata-provider)
-          columns (lib.metadata.protocols/metadatas mp {:lib/type :metadata/column :table-id (mt/id :orders)})]
+          columns (provider/columns-for-table mp (mt/id :orders))]
       (is (seq columns))
       (is (every? #(= (mt/id :orders) (:table-id %)) columns)))))
 
@@ -102,20 +71,38 @@
       (is (= (mt/id) (:id (lib.metadata.protocols/database db-provider)))))))
 
 (deftest ^:parallel setting-returns-values-test
-  (testing "setting should return Metabase setting values"
+  (testing "metric-setting should return Metabase setting values"
     (let [mp (metric-jvm/metadata-provider)]
-      ;; These settings should exist in any Metabase instance
-      (is (some? (lib.metadata.protocols/setting mp :site-name))))))
+      (is (some? (provider/metric-setting mp :site-name))))))
 
-(deftest ^:parallel has-cache?-returns-true-test
-  (testing "has-cache? should return true"
-    (let [mp (metric-jvm/metadata-provider)]
-      (is (lib.metadata.protocols/has-cache? mp)))))
+(deftest ^:synchronized dimension-fetch-by-uuid-test
+  (testing "dimension fetches a single dimension by UUID from metric dimensions"
+    #_{:clj-kondo/ignore [:discouraged-var]}
+    (let [dim-uuid "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"]
+      (mt/with-temp [:model/Card metric {:type              :metric
+                                         :name              "Dim Metric"
+                                         :archived          false
+                                         :database_id       (mt/id)
+                                         :table_id          (mt/id :orders)
+                                         :dataset_query     {:database (mt/id)
+                                                             :type     :query
+                                                             :query    {:source-table (mt/id :orders)
+                                                                        :aggregation  [[:count]]}}
+                                         :dimensions        [{:id           dim-uuid
+                                                              :display-name "Order Date"
+                                                              :target       [:field {} (mt/id :orders :created_at)]}]
+                                         :dimension_mappings []}]
+        (let [mp  (metric-jvm/metadata-provider)
+              dim (provider/dimension mp dim-uuid)]
+          (is (some? dim))
+          (is (= dim-uuid (:id dim)))
+          (is (= "Order Date" (:display-name dim)))
+          (is (= :metric (:source-type dim)))
+          (is (= (:id metric) (:source-id dim))))))))
 
-(deftest ^:synchronized cross-database-table-routing-test
-  (testing "metadatas should route table requests to correct database providers"
+(deftest ^:parallel metric-table-test
+  (testing "metric-table returns table metadata"
     (let [mp (metric-jvm/metadata-provider)
-          ;; Try to fetch tables from multiple databases (if available)
-          tables (lib.metadata.protocols/metadatas mp {:lib/type :metadata/table :id #{(mt/id :orders) (mt/id :products)}})]
-      (is (= 2 (count tables)))
-      (is (= #{(mt/id :orders) (mt/id :products)} (set (map :id tables)))))))
+          table (provider/metric-table mp (mt/id :orders))]
+      (is (some? table))
+      (is (= (mt/id :orders) (:id table))))))

@@ -11,11 +11,11 @@
    [metabase.lib-metric.display-info :as lib-metric.display-info]
    [metabase.lib-metric.filter :as lib-metric.filter]
    [metabase.lib-metric.metadata.js :as lib-metric.metadata.js]
+   [metabase.lib-metric.metadata.provider :as lib-metric.provider]
    [metabase.lib-metric.projection :as lib-metric.projection]
    [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.lib-metric.types.isa :as types.isa]
    [metabase.lib.field :as lib.field]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.util :as u]
    [metabase.util.memoize :as memoize]
    [metabase.util.number :as u.number]
@@ -167,18 +167,14 @@
    Accepts a MetadataProviderable (either a MetadataProvider or MetricDefinition).
    Returns nil if not found."
   [providerable metric-id]
-  (first (lib.metadata.protocols/metadatas
-          (->metadata-provider providerable)
-          {:lib/type :metadata/metric, :id #{metric-id}})))
+  (lib-metric.provider/metric (->metadata-provider providerable) metric-id))
 
 (defn ^:export measureMetadata
   "Get metadata for the Measure with `measure-id`.
    Accepts a MetadataProviderable (either a MetadataProvider or MetricDefinition).
    Returns nil if not found."
   [providerable measure-id]
-  (first (lib.metadata.protocols/metadatas
-          (->metadata-provider providerable)
-          {:lib/type :metadata/measure, :id #{measure-id}})))
+  (lib-metric.provider/measure (->metadata-provider providerable) measure-id))
 
 (defn ^:export fromMetricMetadata
   "Create a MetricDefinition from metric metadata.
@@ -210,9 +206,7 @@
   "Get the table ID of the source measure, or null if not measure-based."
   [definition]
   (when-let [measure-id (lib-metric.definition/source-measure-id definition)]
-    (:table-id (first (lib.metadata.protocols/metadatas
-                       (->metadata-provider definition)
-                       {:lib/type :metadata/measure, :id #{measure-id}})))))
+    (:table-id (lib-metric.provider/measure (->metadata-provider definition) measure-id))))
 
 (defn ^:export sourceInstances
   "Get expression leaf instances as JS arrays.
@@ -807,11 +801,7 @@
         table-id (:table-id mapping)
         field-id (lib-metric.dimension/dimension-target->field-id target)]
     (when (and metadata-provider field-id table-id)
-      (first (lib.metadata.protocols/metadatas
-              metadata-provider
-              {:lib/type :metadata/column
-               :table-id table-id
-               :id       #{field-id}})))))
+      (lib-metric.provider/column metadata-provider table-id field-id))))
 
 (defn ^:export dimensionValuesInfo
   "Get dimension values info. Prefers has-field-values stored directly on the

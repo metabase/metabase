@@ -2,18 +2,20 @@
   "Functions for building AST nodes from MetricDefinitions."
   (:require
    [metabase.lib-metric.dimension :as lib-metric.dimension]
+   [metabase.lib-metric.metadata.provider :as lib-metric.provider]
    [metabase.lib-metric.operators :as operators]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.util :as lib.util]
    [metabase.util.performance :as perf]))
 
 ;;; -------------------- Helper Functions --------------------
 
 (defn- ensure-pmbql
-  "Ensure query is in pMBQL format. Converts legacy MBQL if needed."
-  [metadata-provider mbql-query]
-  (lib/query metadata-provider mbql-query))
+  "Ensure query is in pMBQL format. Converts legacy MBQL if needed.
+   Uses database-provider-for-table to get a standard MetadataProvider for lib/query."
+  [metadata-provider table-id mbql-query]
+  (let [db-provider (lib-metric.provider/database-provider-for-table metadata-provider table-id)]
+    (lib/query db-provider mbql-query)))
 
 ;;; -------------------- Primitive Node Construction --------------------
 
@@ -368,19 +370,17 @@
         _          (when-not leaf-type
                      (throw (ex-info "Arithmetic metric math expressions are not yet supported in AST builder"
                                      {:expression expression})))
-        ;; Load metadata from provider
-        source-type (case leaf-type :metric :source/metric :measure :source/measure)
-        metadata-type (case leaf-type :metric :metadata/metric :measure :metadata/measure)
-        metadata   (first (lib.metadata.protocols/metadatas
-                           metadata-provider
-                           {:lib/type metadata-type :id #{leaf-id}}))
-        ;; Load dimensions/mappings from source metadata
+        source-type    (case leaf-type :metric :source/metric :measure :source/measure)
+        metadata       (case leaf-type
+                         :metric  (lib-metric.provider/metric metadata-provider leaf-id)
+                         :measure (lib-metric.provider/measure metadata-provider leaf-id))
         dimensions         (lib-metric.dimension/get-persisted-dimensions metadata)
         dimension-mappings (lib-metric.dimension/get-persisted-dimension-mappings metadata)
         raw-query          (case leaf-type
                              :metric  (:dataset-query metadata)
                              :measure (:definition metadata))
-        pmbql-query        (ensure-pmbql metadata-provider raw-query)
+        table-id           (or (:table-id metadata) (lib.util/source-table-id raw-query))
+        pmbql-query        (ensure-pmbql metadata-provider table-id raw-query)
         ;; Extract flat filters for this leaf's UUID
         leaf-filters       (into []
                                  (comp (filter #(= leaf-uuid (:lib/uuid %)))

@@ -13,6 +13,15 @@
    {:id 4 :name "Archived Metric" :table-id 10 :type :metric :archived true :lib/type :metadata/metric}
    {:id 5 :name "Card Metric" :table-id nil :source-card-id 100 :type :metric :archived false :lib/type :metadata/metric}])
 
+(def ^:private mock-measures
+  [{:id 10 :name "Rev Measure" :table-id 10 :lib/type :metadata/measure}
+   {:id 20 :name "User Measure" :table-id 20 :lib/type :metadata/measure}])
+
+(def ^:private mock-dimensions
+  [{:id "dim-1" :name "Category" :metric-id 1 :measure-id nil :table-id 10 :lib/type :metadata/dimension}
+   {:id "dim-2" :name "Created At" :metric-id 1 :measure-id nil :table-id 10 :lib/type :metadata/dimension}
+   {:id "dim-3" :name "Amount" :metric-id nil :measure-id 10 :table-id 10 :lib/type :metadata/dimension}])
+
 (def ^:private mock-tables
   {10 {:id 10 :name "orders" :db-id 1 :lib/type :metadata/table}
    20 {:id 20 :name "users" :db-id 2 :lib/type :metadata/table}
@@ -35,36 +44,35 @@
 
 ;;; -------------------------------------------------- Mock Provider --------------------------------------------------
 
-(defn- mock-metric-fetcher
-  "Mock metric fetcher that filters mock-metrics based on spec."
-  [{id-set :id, name-set :name, :keys [table-id card-id], :as _spec}]
-  (let [active-only? (not (or id-set name-set))]
-    (into []
-          (comp
-           (if id-set
-             (filter #(contains? id-set (:id %)))
-             identity)
-           (if name-set
-             (filter #(contains? name-set (:name %)))
-             identity)
-           (if table-id
-             (filter #(and (= (:table-id %) table-id)
-                           (nil? (:source-card-id %))))
-             identity)
-           (if card-id
-             (filter #(= (:source-card-id %) card-id))
-             identity)
-           (if active-only?
-             (filter #(not (:archived %)))
-             identity)
-           (filter #(= (:type %) :metric)))
-          mock-metrics)))
+(defn- mock-metric-fn [metric-id]
+  (some #(when (= (:id %) metric-id) %) mock-metrics))
 
-(defn- mock-table->db-fn [table-id]
-  (get table->db-id table-id))
+(defn- mock-measure-fn [measure-id]
+  (some #(when (= (:id %) measure-id) %) mock-measures))
+
+(defn- mock-dimension-fn [dimension-uuid]
+  (some #(when (= (:id %) dimension-uuid) %) mock-dimensions))
+
+(defn- mock-dims-for-metric-fn [metric-id]
+  (filterv #(= (:metric-id %) metric-id) mock-dimensions))
+
+(defn- mock-dims-for-measure-fn [measure-id]
+  (filterv #(= (:measure-id %) measure-id) mock-dimensions))
+
+(defn- mock-dims-for-table-fn [table-id]
+  (filterv #(= (:table-id %) table-id) mock-dimensions))
+
+(defn- mock-cols-for-table-fn [table-id]
+  (get mock-columns table-id []))
+
+(defn- mock-table-fn [table-id]
+  (get mock-tables table-id))
+
+(defn- mock-setting-fn [k]
+  (get mock-settings k))
 
 (defn- mock-db-provider
-  "Create a mock database provider that returns tables and columns for that db."
+  "Create a mock database provider."
   [db-id]
   (reify lib.metadata.protocols/MetadataProvider
     (database [_this]
@@ -87,93 +95,90 @@
     (setting [_this k]
       (get mock-settings k))))
 
-(defn- mock-setting-fn [k]
-  (get mock-settings k))
+(defn- mock-db-provider-for-table [table-id]
+  (when-let [db-id (get table->db-id table-id)]
+    (mock-db-provider db-id)))
 
 (defn- create-mock-provider []
   (provider/metric-context-metadata-provider
-   mock-metric-fetcher
-   mock-table->db-fn
-   mock-db-provider
-   mock-setting-fn))
+   {:metric-fn           mock-metric-fn
+    :measure-fn          mock-measure-fn
+    :dimension-fn        mock-dimension-fn
+    :dims-for-metric-fn  mock-dims-for-metric-fn
+    :dims-for-measure-fn mock-dims-for-measure-fn
+    :dims-for-table-fn   mock-dims-for-table-fn
+    :cols-for-table-fn   mock-cols-for-table-fn
+    :col-fn              (fn [table-id field-id]
+                           (some #(when (= (:id %) field-id) %)
+                                 (mock-cols-for-table-fn table-id)))
+    :table-fn            mock-table-fn
+    :setting-fn          mock-setting-fn
+    :db-provider-fn      mock-db-provider-for-table}))
 
 ;;; -------------------------------------------------- Tests --------------------------------------------------
 
-(deftest ^:parallel database-returns-nil-test
-  (testing "database() should return nil for MetricContextMetadataProvider"
+(deftest ^:parallel metric-fetch-test
+  (testing "metric fetches by ID"
     (let [mp (create-mock-provider)]
-      (is (nil? (lib.metadata.protocols/database mp))))))
+      (is (= "Revenue" (:name (provider/metric mp 1))))
+      (is (nil? (provider/metric mp 999))))))
 
-(deftest ^:parallel metadatas-fetches-all-active-metrics-test
-  (testing "metadatas should fetch all active metrics when no filters specified"
-    (let [mp (create-mock-provider)
-          metrics (lib.metadata.protocols/metadatas mp {:lib/type :metadata/metric})]
-      (is (= 4 (count metrics)))
-      (is (every? #(= :metric (:type %)) metrics))
-      (is (not-any? :archived metrics)))))
+(deftest ^:parallel measure-fetch-test
+  (testing "measure fetches by ID"
+    (let [mp (create-mock-provider)]
+      (is (= "Rev Measure" (:name (provider/measure mp 10))))
+      (is (nil? (provider/measure mp 999))))))
 
-(deftest ^:parallel metadatas-fetches-metrics-by-id-test
-  (testing "metadatas should fetch metrics by ID"
-    (let [mp (create-mock-provider)
-          metrics (lib.metadata.protocols/metadatas mp {:lib/type :metadata/metric :id #{1 2}})]
-      (is (= 2 (count metrics)))
-      (is (= #{1 2} (set (map :id metrics)))))))
+(deftest ^:parallel dimension-fetch-test
+  (testing "dimension fetches by UUID"
+    (let [mp (create-mock-provider)]
+      (is (= "Category" (:name (provider/dimension mp "dim-1"))))
+      (is (nil? (provider/dimension mp "dim-nonexistent"))))))
 
-(deftest ^:parallel metadatas-fetches-metrics-by-table-id-test
-  (testing "metadatas should fetch metrics by table-id (excludes card-based metrics)"
-    (let [mp (create-mock-provider)
-          metrics (lib.metadata.protocols/metadatas mp {:lib/type :metadata/metric :table-id 10})]
-      (is (= 2 (count metrics)))
-      (is (every? #(= 10 (:table-id %)) metrics))
-      (is (every? #(nil? (:source-card-id %)) metrics)))))
+(deftest ^:parallel dimensions-for-metric-test
+  (testing "dimensions-for-metric returns dims for a given metric"
+    (let [mp (create-mock-provider)]
+      (is (= 2 (count (provider/dimensions-for-metric mp 1))))
+      (is (= 0 (count (provider/dimensions-for-metric mp 999)))))))
 
-(deftest ^:parallel metadatas-fetches-metrics-by-card-id-test
-  (testing "metadatas should fetch metrics by card-id"
-    (let [mp (create-mock-provider)
-          metrics (lib.metadata.protocols/metadatas mp {:lib/type :metadata/metric :card-id 100})]
-      (is (= 1 (count metrics)))
-      (is (= 100 (:source-card-id (first metrics)))))))
+(deftest ^:parallel dimensions-for-measure-test
+  (testing "dimensions-for-measure returns dims for a given measure"
+    (let [mp (create-mock-provider)]
+      (is (= 1 (count (provider/dimensions-for-measure mp 10))))
+      (is (= 0 (count (provider/dimensions-for-measure mp 999)))))))
 
-(deftest ^:parallel metadatas-fetches-archived-metrics-when-id-specified-test
-  (testing "metadatas should include archived metrics when fetching by ID"
-    (let [mp (create-mock-provider)
-          metrics (lib.metadata.protocols/metadatas mp {:lib/type :metadata/metric :id #{4}})]
-      (is (= 1 (count metrics)))
-      (is (= 4 (:id (first metrics))))
-      (is (true? (:archived (first metrics)))))))
+(deftest ^:parallel dimensions-for-table-test
+  (testing "dimensions-for-table returns all dims mapped to a table"
+    (let [mp (create-mock-provider)]
+      (is (= 3 (count (provider/dimensions-for-table mp 10))))
+      (is (= 0 (count (provider/dimensions-for-table mp 999)))))))
 
-(deftest ^:parallel metadatas-routes-columns-to-db-provider-test
-  (testing "metadatas should route column requests to the appropriate database provider"
+(deftest ^:parallel columns-for-table-test
+  (testing "columns-for-table routes to appropriate columns"
     (let [mp (create-mock-provider)
-          columns (lib.metadata.protocols/metadatas mp {:lib/type :metadata/column :table-id 10})]
+          columns (provider/columns-for-table mp 10)]
       (is (= 2 (count columns)))
       (is (every? #(= 10 (:table-id %)) columns)))))
 
-(deftest ^:parallel metadatas-routes-columns-returns-empty-without-table-id-test
-  (testing "metadatas should return empty for columns without table-id"
-    (let [mp (create-mock-provider)
-          columns (lib.metadata.protocols/metadatas mp {:lib/type :metadata/column})]
-      (is (empty? columns)))))
+(deftest ^:parallel column-test
+  (testing "column returns a single column by table-id and field-id"
+    (let [mp (create-mock-provider)]
+      (is (= "amount" (:name (provider/column mp 10 101))))
+      (is (nil? (provider/column mp 10 999)))
+      (is (nil? (provider/column mp 999 101))))))
 
-(deftest ^:parallel metadatas-routes-tables-by-id-test
-  (testing "metadatas should route table requests and group by database"
-    (let [mp (create-mock-provider)
-          tables (lib.metadata.protocols/metadatas mp {:lib/type :metadata/table :id #{10 20}})]
-      (is (= 2 (count tables)))
-      (is (= #{10 20} (set (map :id tables)))))))
-
-(deftest ^:parallel metadatas-returns-empty-for-tables-without-ids-test
-  (testing "metadatas should return empty for table requests without specific IDs"
-    (let [mp (create-mock-provider)
-          tables (lib.metadata.protocols/metadatas mp {:lib/type :metadata/table})]
-      (is (empty? tables)))))
+(deftest ^:parallel metric-table-test
+  (testing "metric-table returns table metadata"
+    (let [mp (create-mock-provider)]
+      (is (= "orders" (:name (provider/metric-table mp 10))))
+      (is (nil? (provider/metric-table mp 999))))))
 
 (deftest ^:parallel setting-returns-values-test
-  (testing "setting should return setting values"
+  (testing "metric-setting returns setting values"
     (let [mp (create-mock-provider)]
-      (is (= "Test Site" (lib.metadata.protocols/setting mp :site-name)))
-      (is (true? (lib.metadata.protocols/setting mp :enable-nested-queries)))
-      (is (nil? (lib.metadata.protocols/setting mp :nonexistent-setting))))))
+      (is (= "Test Site" (provider/metric-setting mp :site-name)))
+      (is (true? (provider/metric-setting mp :enable-nested-queries)))
+      (is (nil? (provider/metric-setting mp :nonexistent-setting))))))
 
 (deftest ^:parallel database-provider-for-table-returns-provider-test
   (testing "database-provider-for-table should return the database provider for a table"
@@ -187,71 +192,10 @@
     (let [mp (create-mock-provider)]
       (is (nil? (provider/database-provider-for-table mp 999))))))
 
-;;; -------------------------------------------------- Cache Tests --------------------------------------------------
-
-(deftest cached-metadatas-returns-cached-metrics-test
-  (testing "cached-metadatas should return metrics from cache"
-    (let [mp (create-mock-provider)
-          ;; First fetch to populate cache (metadatas stores in cache internally via fetcher)
-          _ (lib.metadata.protocols/metadatas mp {:lib/type :metadata/metric :id #{1}})
-          ;; Store a metric manually
-          _ (lib.metadata.protocols/store-metadata! mp {:id 1 :name "Cached" :lib/type :metadata/metric})
-          cached (lib.metadata.protocols/cached-metadatas mp :metadata/metric [1])]
-      (is (= 1 (count cached)))
-      (is (= "Cached" (:name (first cached)))))))
-
-(deftest ^:parallel has-cache?-returns-true-test
-  (testing "has-cache? should return true"
+(deftest ^:parallel metric-metadata-provider?-test
+  (testing "metric-metadata-provider? returns true for our provider"
     (let [mp (create-mock-provider)]
-      (is (lib.metadata.protocols/has-cache? mp)))))
-
-(deftest clear-cache!-clears-cache-test
-  (testing "clear-cache! should clear the cache"
-    (let [mp (create-mock-provider)]
-      (lib.metadata.protocols/store-metadata! mp {:id 1 :name "Test" :lib/type :metadata/metric})
-      (is (= 1 (count (lib.metadata.protocols/cached-metadatas mp :metadata/metric [1]))))
-      (lib.metadata.protocols/clear-cache! mp)
-      (is (empty? (lib.metadata.protocols/cached-metadatas mp :metadata/metric [1]))))))
-
-(deftest cache-value!-and-cached-value-work-test
-  (testing "cache-value! and cached-value should work for arbitrary values"
-    (let [mp (create-mock-provider)]
-      (lib.metadata.protocols/cache-value! mp :my-key {:some "value"})
-      (is (= {:some "value"} (lib.metadata.protocols/cached-value mp :my-key :not-found)))
-      (is (= :not-found (lib.metadata.protocols/cached-value mp :other-key :not-found))))))
-
-(deftest store-and-retrieve-measure-via-cache-test
-  (testing "store-metadata! and cached-metadatas work for measures"
-    (let [mp      (create-mock-provider)
-          measure {:id 10 :name "Revenue Measure" :lib/type :metadata/measure}]
-      (lib.metadata.protocols/store-metadata! mp measure)
-      (let [cached (lib.metadata.protocols/cached-metadatas mp :metadata/measure [10])]
-        (is (= 1 (count cached)))
-        (is (= "Revenue Measure" (:name (first cached)))))
-      (testing "does not return measure when asking for metric"
-        (is (empty? (lib.metadata.protocols/cached-metadatas mp :metadata/metric [10])))))))
-
-(deftest store-and-retrieve-dimension-via-cache-test
-  (testing "store-metadata! and cached-metadatas work for dimensions"
-    (let [mp        (create-mock-provider)
-          dimension {:id 20 :name "Date Dimension" :lib/type :metadata/dimension}]
-      (lib.metadata.protocols/store-metadata! mp dimension)
-      (let [cached (lib.metadata.protocols/cached-metadatas mp :metadata/dimension [20])]
-        (is (= 1 (count cached)))
-        (is (= "Date Dimension" (:name (first cached)))))
-      (testing "does not return dimension when asking for measure"
-        (is (empty? (lib.metadata.protocols/cached-metadatas mp :metadata/measure [20])))))))
-
-(deftest clear-cache!-clears-all-types-test
-  (testing "clear-cache! clears metrics, measures, and dimensions"
-    (let [mp (create-mock-provider)]
-      (lib.metadata.protocols/store-metadata! mp {:id 1 :name "M" :lib/type :metadata/metric})
-      (lib.metadata.protocols/store-metadata! mp {:id 2 :name "Meas" :lib/type :metadata/measure})
-      (lib.metadata.protocols/store-metadata! mp {:id 3 :name "Dim" :lib/type :metadata/dimension})
-      (is (= 1 (count (lib.metadata.protocols/cached-metadatas mp :metadata/metric [1]))))
-      (is (= 1 (count (lib.metadata.protocols/cached-metadatas mp :metadata/measure [2]))))
-      (is (= 1 (count (lib.metadata.protocols/cached-metadatas mp :metadata/dimension [3]))))
-      (lib.metadata.protocols/clear-cache! mp)
-      (is (empty? (lib.metadata.protocols/cached-metadatas mp :metadata/metric [1])))
-      (is (empty? (lib.metadata.protocols/cached-metadatas mp :metadata/measure [2])))
-      (is (empty? (lib.metadata.protocols/cached-metadatas mp :metadata/dimension [3]))))))
+      (is (provider/metric-metadata-provider? mp))))
+  (testing "metric-metadata-provider? returns false for other things"
+    (is (not (provider/metric-metadata-provider? {})))
+    (is (not (provider/metric-metadata-provider? nil)))))

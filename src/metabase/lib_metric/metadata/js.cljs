@@ -9,6 +9,7 @@
    [metabase.lib-metric.dimension :as lib-metric.dimension]
    [metabase.lib-metric.metadata.provider :as provider]
    [metabase.lib.js.metadata :as js-metadata]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.util :as u]))
 
 (defn- object-get [obj k]
@@ -38,20 +39,6 @@
                       [id metric]))))
           (js-keys metrics-data))))
 
-(defn- filter-metrics
-  "Filter parsed metrics according to metadata-spec.
-   Works with metrics from the metrics API (metabase.metrics.api)."
-  [metrics {id-set :id, name-set :name, :as _metadata-spec}]
-  (into []
-        (comp
-         (if id-set
-           (filter #(contains? id-set (:id %)))
-           identity)
-         (if name-set
-           (filter #(contains? name-set (:name %)))
-           identity))
-        (vals metrics)))
-
 (defn- parse-measure
   "Parse a single measure from JS object to Clojure map.
    Expects measures from the measures API, not Card-based measures."
@@ -75,27 +62,7 @@
                       [id measure]))))
           (js-keys measures-data))))
 
-(defn- filter-measures
-  "Filter parsed measures according to metadata-spec."
-  [measures {id-set :id, name-set :name, :keys [table-id], :as _metadata-spec}]
-  (let [active-only? (not (or id-set name-set))]
-    (into []
-          (comp
-           (if id-set
-             (filter #(contains? id-set (:id %)))
-             identity)
-           (if name-set
-             (filter #(contains? name-set (:name %)))
-             identity)
-           (if table-id
-             (filter #(= (:table-id %) table-id))
-             identity)
-           (if active-only?
-             (filter #(not (:archived %)))
-             identity))
-          (vals measures))))
-
-;;; ------------------------------------------------- Dimension Fetching -------------------------------------------------
+;;; ------------------------------------------------- Dimension Parsing -------------------------------------------------
 
 (defn- parse-dimension
   "Parse a single dimension, converting keys to kebab-case keywords and type values to keywords.
@@ -139,21 +106,11 @@
 (defn- extract-all-dimensions
   "Extract all dimensions from parsed metrics and measures."
   [parsed-metrics parsed-measures]
-  (concat
-   (mapcat #(extract-dimensions-from-entity % :metric) (vals parsed-metrics))
-   (mapcat #(extract-dimensions-from-entity % :measure) (vals parsed-measures))))
+  (vec (concat
+        (mapcat #(extract-dimensions-from-entity % :metric) (vals parsed-metrics))
+        (mapcat #(extract-dimensions-from-entity % :measure) (vals parsed-measures)))))
 
-(defn- filter-dimensions
-  "Filter dimensions according to metadata-spec."
-  [dimensions {id-set :id, :keys [metric-id measure-id table-id]}]
-  (cond->> dimensions
-    id-set      (filter #(contains? id-set (:id %)))
-    metric-id   (filter #(and (= :metric (:source-type %))
-                              (= metric-id (:source-id %))))
-    measure-id  (filter #(and (= :measure (:source-type %))
-                              (= measure-id (:source-id %))))
-    table-id    (filter #(= table-id (get-in % [:dimension-mapping :table-id])))
-    true        vec))
+;;; ------------------------------------------------- Provider Construction -------------------------------------------------
 
 (defn metadata-provider
   "Create a MetricMetadataProvider from JS/Redux data.
@@ -163,33 +120,49 @@
    - `measures-data` - JS object with measure definitions (optional, can be nil)
    - `metadata` - Full JS metadata object (passed to js-metadata/metadata-provider for each db)
    - `table->db-id` - Clojure map of table-id -> database-id
-   - `settings` - JS object with Metabase settings
-
-   The returned provider:
-   - Returns nil for database() since there's no single database context
-   - Routes metric requests to the pre-loaded metrics data
-   - Routes measure requests to the pre-loaded measures data if provided
-   - Routes dimension requests to dimensions extracted from metrics/measures
-   - Routes table/column requests to database-specific providers"
+   - `settings` - JS object with Metabase settings"
   [metrics-data measures-data metadata table->db-id settings]
-  (let [parsed-metrics (parse-metrics metrics-data)
+  (let [parsed-metrics  (parse-metrics metrics-data)
         parsed-measures (parse-measures measures-data)
-        all-dimensions (extract-all-dimensions parsed-metrics parsed-measures)
+        all-dimensions  (extract-all-dimensions parsed-metrics parsed-measures)
         db-provider-cache (atom {})
-        db-provider-fn (fn [db-id]
-                         (if-let [cached (get @db-provider-cache db-id)]
-                           cached
-                           ;; js-metadata/metadata-provider takes db-id and the full metadata object
-                           (let [provider (js-metadata/metadata-provider db-id metadata)]
-                             (swap! db-provider-cache assoc db-id provider)
-                             provider)))
-        setting-fn (fn [setting-key]
-                     (some-> settings (object-get (name setting-key))))]
+        get-db-provider (fn [db-id]
+                          (if-let [cached (get @db-provider-cache db-id)]
+                            cached
+                            (let [provider (js-metadata/metadata-provider db-id metadata)]
+                              (swap! db-provider-cache assoc db-id provider)
+                              provider)))
+        setting-fn      (fn [setting-key]
+                          (some-> settings (object-get (name setting-key))))
+        db-provider-for-table (fn [table-id]
+                                (when-let [db-id (get table->db-id table-id)]
+                                  (get-db-provider db-id)))]
     (provider/metric-context-metadata-provider
-     (fn [spec] (filter-metrics parsed-metrics spec))
-     (when parsed-measures
-       (fn [spec] (filter-measures parsed-measures spec)))
-     (fn [spec] (filter-dimensions all-dimensions spec))
-     (fn [table-id] (get table->db-id table-id))
-     db-provider-fn
-     setting-fn)))
+     {:metric-fn           (fn [metric-id] (get parsed-metrics metric-id))
+      :measure-fn          (fn [measure-id] (get parsed-measures measure-id))
+      :dimension-fn        (fn [dimension-uuid]
+                             (some #(when (= dimension-uuid (:id %)) %) all-dimensions))
+      :dims-for-metric-fn  (fn [metric-id]
+                             (filterv #(and (= :metric (:source-type %))
+                                            (= metric-id (:source-id %)))
+                                      all-dimensions))
+      :dims-for-measure-fn (fn [measure-id]
+                             (filterv #(and (= :measure (:source-type %))
+                                            (= measure-id (:source-id %)))
+                                      all-dimensions))
+      :dims-for-table-fn   (fn [table-id]
+                             (filterv #(= table-id (get-in % [:dimension-mapping :table-id]))
+                                      all-dimensions))
+      :cols-for-table-fn   (fn [table-id]
+                             (when-let [provider (db-provider-for-table table-id)]
+                               (lib.metadata.protocols/fields provider table-id)))
+      :col-fn              (fn [table-id field-id]
+                             (when-let [provider (db-provider-for-table table-id)]
+                               (first (lib.metadata.protocols/metadatas provider {:lib/type :metadata/column
+                                                                                  :table-id table-id
+                                                                                  :id       #{field-id}}))))
+      :table-fn            (fn [table-id]
+                             (when-let [provider (db-provider-for-table table-id)]
+                               (lib.metadata.protocols/table provider table-id)))
+      :setting-fn          setting-fn
+      :db-provider-fn      db-provider-for-table})))
