@@ -25,6 +25,7 @@ import { usePageTitle } from "metabase/hooks/use-page-title";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
 import { useRouter } from "metabase/router";
+import { useSelector } from "metabase/lib/redux";
 import { ListEmptyState } from "metabase/transforms/components/ListEmptyState";
 import {
   Anchor,
@@ -41,6 +42,7 @@ import {
   useTreeTableInstance,
 } from "metabase/ui";
 import type { Collection, CollectionId } from "metabase-types/api";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 
 import { LibraryEmptyState } from "../components/LibraryEmptyState";
 
@@ -56,6 +58,13 @@ interface EmptyStateActionProps {
 }
 
 function EmptyStateAction({ data, onPublishTable }: EmptyStateActionProps) {
+  const remoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
+
+  // Don't show any actions in read-only mode
+  if (remoteSyncReadOnly) {
+    return null;
+  }
+
   if (data.sectionType === "data") {
     return (
       <Anchor

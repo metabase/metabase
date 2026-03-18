@@ -149,6 +149,54 @@ describe("scenarios > data studio > library", () => {
     });
   });
 
+  describe("read-only mode", () => {
+    it("should hide +New button and empty state actions in read-only mode (UXW-3341)", () => {
+      H.restore();
+      cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
+      H.setupGitSync();
+
+      // Create library first
+      H.createLibrary();
+
+      // Set up git remote sync in read-only mode
+      cy.request("PUT", "/api/setting/remote-sync-enabled", { value: true });
+      cy.request("PUT", "/api/setting/remote-sync-type", {
+        value: "read-only",
+      });
+
+      // Visit library page
+      H.DataStudio.Library.visit();
+
+      cy.log("Verify +New button is not visible");
+      H.DataStudio.Library.newButton().should("not.exist");
+
+      cy.log("Verify Data section empty state action is not visible");
+      H.DataStudio.Library.libraryPage()
+        .findByText("Cleaned, pre-transformed data sources ready for exploring")
+        .should("be.visible");
+      H.DataStudio.Library.libraryPage()
+        .findByRole("button", { name: "Publish a table" })
+        .should("not.exist");
+
+      cy.log("Verify Metrics section empty state action is not visible");
+      H.DataStudio.Library.libraryPage()
+        .findByText("Standardized calculations with known dimensions")
+        .should("be.visible");
+      H.DataStudio.Library.libraryPage()
+        .findByRole("link", { name: "New metric" })
+        .should("not.exist");
+
+      cy.log("Verify SQL snippets section empty state action is not visible");
+      H.DataStudio.Library.libraryPage()
+        .findByText("Reusable bits of code that save your time")
+        .should("be.visible");
+      H.DataStudio.Library.libraryPage()
+        .findByRole("link", { name: "New snippet" })
+        .should("not.exist");
+    });
+  });
+
   describe("empty state", () => {
     it("should show empty states with interactions when sections are empty", () => {
       H.createLibrary();
