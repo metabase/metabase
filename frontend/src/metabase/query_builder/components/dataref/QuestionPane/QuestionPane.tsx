@@ -140,9 +140,7 @@ export const QuestionPane = ({
           <FieldList
             fields={table.fields}
             onFieldClick={(field) => {
-              if (typeof field.id === "number") {
-                onItemClick({ type: "field", id: field.id });
-              }
+              onItemClick({ type: "field", field });
             }}
           />
         )}

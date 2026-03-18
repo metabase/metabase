@@ -1,8 +1,8 @@
+import type Field from "metabase-lib/v1/metadata/Field";
 import type {
   CardId,
   ConcreteTableId,
   DatabaseId,
-  FieldId,
   SchemaName,
 } from "metabase-types/api";
 
@@ -57,5 +57,5 @@ export type DataReferenceQuestionItem = {
 
 export type DataReferenceFieldItem = {
   type: "field";
-  id: FieldId;
+  field: Field;
 };
