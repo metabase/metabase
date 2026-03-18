@@ -4,7 +4,7 @@ import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import type { ColumnOptions } from "../../types";
 import type { VirtualGrid } from "../use-virtual-grid";
 
-import type { RowIndices, UseRowHeightsResult } from "./types";
+import type { RowIndices, RowSizingState, UseRowHeightsResult } from "./types";
 import { getRowIndices } from "./utils";
 
 type UseRowHeightsProps<TData extends RowData, TValue> = {
@@ -26,10 +26,8 @@ export const useRowHeights = <TData extends RowData, TValue>({
   const tableRef = useRef<Table<TData>>();
   const virtualGridRef = useRef<VirtualGrid>();
 
-  const rowHeightsCache = useRef<Map<number, number>>(new Map());
-  const [rowSizingMap, setRowSizingMap] = useState<Map<number, number>>(
-    new Map(),
-  );
+  const rowHeightsCache = useRef<RowSizingState>(new Map());
+  const [rowSizingMap, setRowSizingMap] = useState<RowSizingState>(new Map());
   const flushRafRef = useRef<number | null>(null);
   const elementsByRowIndex = useRef<Map<number, Set<Element>>>(new Map());
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
