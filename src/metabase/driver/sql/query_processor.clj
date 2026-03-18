@@ -1726,7 +1726,8 @@
   "Generate pattern to match against in like clause. Lowercasing for case insensitive matching also happens here."
   [driver
    pre
-   [type _ :as arg]
+   ;; TODO(rileythomp, 2026-03-18): Add back the schema here
+   [type _ :as arg] #_#_:- StringValueOrFieldOrExpression
    post
    {:keys [case-sensitive] :or {case-sensitive true} :as _options}]
   (if (= :value type)

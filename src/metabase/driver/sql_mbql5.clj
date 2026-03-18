@@ -1,6 +1,6 @@
 (ns metabase.driver.sql-mbql5
   "Driver for opt in mbql 5 compilation."
-  (:refer-clojure :exclude [mapv  empty?])
+  (:refer-clojure :exclude [mapv  empty? get-in])
   (:require
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
@@ -13,7 +13,7 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv empty?]]))
+   [metabase.util.performance :refer [mapv empty? get-in]]))
 
 (driver/register! :sql-mbql5, :parent :sql, :abstract? true)
 
