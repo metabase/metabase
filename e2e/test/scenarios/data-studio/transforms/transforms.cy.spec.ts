@@ -1537,7 +1537,7 @@ LIMIT
           def transform(foo):
             return pd.DataFrame([{"foo": 42 }])
         `,
-            sourceTables: { foo: id },
+            sourceTables: pythonSourceTables("foo", id),
             visitTransform: true,
           });
         },
@@ -1575,7 +1575,7 @@ LIMIT
               def transform(foo):
                 return pd.DataFrame([{"foo": 42 }])
             `,
-              sourceTables: { foo: id },
+              sourceTables: pythonSourceTables("foo", id),
               visitTransform: true,
             });
           },
@@ -1615,7 +1615,7 @@ LIMIT
               def transform(foo):
                 return pd.DataFrame([{"foo": 42 }])
             `,
-              sourceTables: { foo: id },
+              sourceTables: pythonSourceTables("foo", id),
               visitTransform: true,
             });
           },
@@ -1651,7 +1651,7 @@ LIMIT
               def transform(foo):
                 return pd.DataFrame([{"foo": 42 }])
             `,
-              sourceTables: { foo: id },
+              sourceTables: pythonSourceTables("foo", id),
               visitTransform: true,
             });
           },
@@ -3530,7 +3530,7 @@ describe(
             print("Hello, world!")
             return pd.DataFrame([{"foo": common.useful_calculation(40, 2) }])
         `,
-            sourceTables: { foo: id },
+            sourceTables: pythonSourceTables("foo", id),
             visitTransform: true,
           });
         },
@@ -3572,7 +3572,7 @@ describe(
               def transform(foo):
                 return pd.DataFrame([{"foo": 42}])
             `,
-            sourceTables: { foo: id },
+            sourceTables: pythonSourceTables("foo", id),
             visitTransform: true,
           });
         },
@@ -3846,6 +3846,20 @@ function createPythonTransform(opts: {
     targetSchema: TARGET_SCHEMA,
     ...opts,
   });
+}
+
+function pythonSourceTables(
+  alias: string,
+  tableId: number,
+): PythonTransformTableAliases {
+  return [
+    {
+      alias,
+      table_id: tableId,
+      database_id: WRITABLE_DB_ID,
+      schema: TARGET_SCHEMA,
+    },
+  ];
 }
 
 function visitTableQuestion({
