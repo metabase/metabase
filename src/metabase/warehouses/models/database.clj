@@ -578,6 +578,21 @@
   ;; ["databases" "db_name" "db_name"] directory for the database with same-named file inside.
   ["databases" name name])
 
+(defn assert-not-h2!
+  "Validate db is not h2 for serialization import"
+  [ingested]
+  (when (= :h2 (keyword (:engine ingested)))
+    (throw (ex-info "h2 is not supported for serialization import"
+                    {:engine (:engine ingested) :name (:name ingested)}))))
+
+(defmethod serdes/load-one! "Database"
+  [ingested maybe-local]
+  (assert-not-h2! ingested)
+  (serdes/default-load-one! (cond-> ingested
+                              (:details ingested)            (update :details driver/sanitize-db-details)
+                              (:write_data_details ingested) (update :write_data_details driver/sanitize-db-details))
+                            maybe-local))
+
 (def ^{:arglists '([table-id])} table-id->database-id
   "Retrieve the `Database` ID for the given table-id."
   (mdb/memoize-for-application-db
