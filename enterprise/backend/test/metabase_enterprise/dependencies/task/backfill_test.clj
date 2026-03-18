@@ -334,4 +334,3 @@
         (assert-processed :card card-id)
         (is (t2/exists? :model/Dependency :from_entity_type :card :from_entity_id card-id
                         :to_entity_type :table :to_entity_id (mt/id :orders)))))))
-
