@@ -160,11 +160,12 @@
       ;; test flakes after 45 seconds with `mt/user-http-request` times out. And presumably other clients have similar
       ;; issues. This ensures we give a good error message in this case.
       (with-open [server (non-responding-server)]
-        (let [never-responds-url (str "http://localhost:" (-port server))]
-          (testing "error is returned if URL connection fails"
-            (is (= "GeoJSON URL failed to load"
-                   (mt/user-http-request :crowberto :get 400 "geojson"
-                                         :url never-responds-url)))))))))
+        (with-redefs [geojson.settings/valid-geojson-url? (constantly true)]
+          (let [never-responds-url (str "http://localhost:" (-port server))]
+            (testing "error is returned if URL connection fails"
+              (is (= "GeoJSON URL failed to load"
+                     (mt/user-http-request :crowberto :get 400 "geojson"
+                                           :url never-responds-url))))))))))
 
 (deftest key-proxy-endpoint-test
   (with-geojson-mocks
