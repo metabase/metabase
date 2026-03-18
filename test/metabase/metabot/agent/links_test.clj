@@ -2,6 +2,8 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
+   [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.metabot.agent.links :as links]))
 
@@ -10,7 +12,7 @@
 (deftest ^:parallel resolve-metabase-uri-query-links-test
   (testing "resolves query links"
     (let [query-id      "abc-123"
-          query         {:database 1 :type :query :query {:source-table 1}}
+          query         (lib.tu/venues-query)
           queries-state {query-id query}
           charts-state  {}
           result        (links/resolve-metabase-uri "metabase://query/abc-123" queries-state charts-state)]
@@ -50,7 +52,7 @@
   (testing "resolves chart links using chart state"
     (let [query-id      "query-abc"
           chart-id      "chart-123"
-          query         {:database 1 :type :query :query {:source-table 1}}
+          query         (lib.tu/venues-query)
           queries-state {query-id query}
           charts-state  {chart-id {:query-id query-id :chart-type :bar}}
           result (links/resolve-metabase-uri "metabase://chart/chart-123" queries-state charts-state)]
@@ -61,7 +63,7 @@
   (testing "falls back to query when chart link uses query ID"
     ;; LLM sometimes uses metabase://chart/ when it should use metabase://query/
     (let [query-id      "qp_6a8c1d99-6f46-4ebb-9b7e-2fcad97a7f1c"
-          query         {:database 1 :type :query :query {:source-table 1}}
+          query         (lib.tu/venues-query)
           queries-state {query-id query}
           charts-state  {}
           result (links/resolve-metabase-uri (str "metabase://chart/" query-id) queries-state charts-state)]
@@ -73,7 +75,7 @@
 (deftest ^:parallel resolve-links-markdown-test
   (testing "resolves metabase:// links in markdown"
     (let [query-id "test-query"
-          query {:database 1 :type :query :query {:source-table 1}}
+          query (lib.tu/venues-query)
           queries-state {query-id query}
           charts-state {}
           text "Check out [My Results](metabase://query/test-query) for details."
@@ -144,7 +146,7 @@
 (deftest ^:parallel resolve-links-xf-with-transduce-test
   (testing "transducer works with transduce"
     (let [query-id "q1"
-          query {:database 1 :type :query :query {:source-table 1}}
+          query (lib.tu/venues-query)
           queries-state {query-id query}
           parts [{:type :text :text "[Query](metabase://query/q1)"}]
           result (transduce (links/resolve-links-xf queries-state {} (atom {}))
@@ -245,7 +247,7 @@
   (testing "resolves chart links correctly with state"
     (let [query-id      "q-abc-123"
           chart-id      "chart-xyz-789"
-          query         {:database 1 :type :query :query {:source-table 1}}
+          query         (lib.tu/venues-query)
           queries-state {query-id query}
           charts-state  {chart-id {:query-id query-id :chart-type :bar}}
           result        (links/resolve-metabase-uri (str "metabase://chart/" chart-id) queries-state charts-state)]
@@ -260,7 +262,7 @@
 (deftest ^:parallel chart-link-falls-back-to-query-test
   (testing "chart link falls back to query when chart-id matches query-id"
     (let [query-id      "shared-id-123"
-          query         {:database 1 :type :query :query {:source-table 1}}
+          query         (lib.tu/venues-query)
           queries-state {query-id query}
           charts-state  {}
           result        (links/resolve-metabase-uri (str "metabase://chart/" query-id) queries-state charts-state)]
@@ -280,7 +282,7 @@
 (deftest ^:parallel query-link-valid-query-test
   (testing "resolves query links with valid query in state"
     (let [query-id      "test-query-id"
-          query         {:database 1 :type :query :query {:source-table 1}}
+          query         (lib.tu/venues-query)
           queries-state {query-id query}
           result        (links/resolve-metabase-uri (str "metabase://query/" query-id) queries-state {})]
       (is (string? result))
@@ -293,11 +295,10 @@
 (deftest ^:parallel query-link-complex-nested-structure-test
   (testing "handles query with complex nested structure"
     (let [query-id      "complex-query"
-          query         {:database 1
-                         :type     :query
-                         :query    {:source-table 1
-                                    :joins        [{:fields :all :source-table 2}]
-                                    :filter       [:= [:field 1 nil] "test"]}}
+          query         (-> (lib.tu/venues-query)
+                            (lib/join (-> (lib/join-clause (meta/table-metadata :categories))
+                                          (lib/with-join-fields :all)))
+                            (lib/filter (lib/= (meta/field-metadata :venues :name) "test")))
           queries-state {query-id query}
           result        (links/resolve-metabase-uri (str "metabase://query/" query-id) queries-state {})]
       (is (string? result))
@@ -308,7 +309,7 @@
 (deftest ^:parallel multiple-different-link-types-test
   (testing "processes multiple different link types in same text"
     (let [query-id "q1"
-          query {:database 1 :type :query :query {:source-table 1}}
+          query (lib.tu/venues-query)
           queries-state {query-id query}
           text "See [Model](metabase://model/1), [Metric](metabase://metric/2), and [Query](metabase://query/q1)"
           result (links/resolve-links text queries-state {} (atom {}))]
@@ -336,7 +337,7 @@
 (deftest ^:parallel uuid-entity-ids-test
   (testing "handles entity IDs that look like UUIDs"
     (let [query-id      "550e8400-e29b-41d4-a716-446655440000"
-          query         {:database 1 :type :query :query {:source-table 1}}
+          query         (lib.tu/venues-query)
           queries-state {query-id query}
           result        (links/resolve-metabase-uri (str "metabase://query/" query-id) queries-state {})]
       (is (string? result)))))
@@ -344,7 +345,7 @@
 (deftest ^:parallel nano-id-entity-ids-test
   (testing "handles nano-id style identifiers"
     (let [query-id      "puL95JSvym3k23W1UUuog"
-          query         {:database 1 :type :query :query {:source-table 1}}
+          query         (lib.tu/venues-query)
           queries-state {query-id query}
           result        (links/resolve-metabase-uri (str "metabase://query/" query-id) queries-state {})]
       (is (string? result)))))
