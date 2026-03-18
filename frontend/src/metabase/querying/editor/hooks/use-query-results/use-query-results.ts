@@ -4,7 +4,7 @@ import { useLazyGetAdhocQueryQuery } from "metabase/api";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
-import type { DatasetQuery } from "metabase-types/api";
+import type { Dataset, DatasetQuery } from "metabase-types/api";
 
 import type { QueryEditorUiState } from "../../types";
 
@@ -60,9 +60,10 @@ export function useQueryResults(
       parameters: normalizeParameters(question.parameters()),
     });
     abortRef.current = action.abort;
-    const { data: lastRunResult = null } = await action;
+    const { data, error } = await action;
     abortRef.current = undefined;
 
+    const lastRunResult = data ?? (hasDataset(error) ? error.data : null);
     onChangeUiState({ ...uiState, lastRunResult, lastRunQuery });
   };
 
@@ -84,4 +85,8 @@ export function useQueryResults(
     runQuery,
     cancelQuery,
   };
+}
+
+function hasDataset(value: unknown): value is { data: Dataset } {
+  return typeof value === "object" && value !== null && "data" in value;
 }
