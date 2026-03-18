@@ -24,6 +24,7 @@
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.api :as api.dataset]
    [metabase.query-processor.card :as qp.card]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.request.core :as request]
@@ -1012,7 +1013,9 @@
   [{:keys [card-id param-key]} :- [:map
                                    [:card-id   ms/PositiveInt]
                                    [:param-key ::lib.schema.parameter/id]]]
-  (queries/card-param-values (api/read-check :model/Card card-id) param-key))
+  ;; If a user can read the card, then they can lookup filter values.
+  (binding [qp.perms/*param-values-query* true]
+    (queries/card-param-values (api/read-check :model/Card card-id) param-key)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -1029,7 +1032,8 @@
                                          [:card-id   ms/PositiveInt]
                                          [:param-key ::lib.schema.parameter/id]
                                          [:query     ms/NonBlankString]]]
-  (queries/card-param-values (api/read-check :model/Card card-id) param-key query))
+  (binding [qp.perms/*param-values-query* true]
+    (queries/card-param-values (api/read-check :model/Card card-id) param-key query)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -1044,5 +1048,6 @@
                               [:id ::lib.schema.id/card]
                               [:param-key ::lib.schema.parameter/id]]
    {:keys [value]}        :- [:map [:value :string]]]
-  (-> (api/read-check :model/Card id)
-      (queries/card-param-remapped-value param-key (codec/url-decode value))))
+  (binding [qp.perms/*param-values-query* true]
+    (-> (api/read-check :model/Card id)
+        (queries/card-param-remapped-value param-key (codec/url-decode value)))))
