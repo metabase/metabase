@@ -386,7 +386,7 @@ export const SPLIT_PANELS_SETTINGS: VisualizationSettingsDefinitions = {
     widget: "toggle",
     default: false,
     inline: true,
-    marginBottom: "1rem",
+    getMarginBottom: () => "1rem",
     getHidden: (series, settings) => {
       const displays = series.map(
         (single) => settings.series?.(single).display,
