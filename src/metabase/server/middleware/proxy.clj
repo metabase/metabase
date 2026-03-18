@@ -15,9 +15,10 @@
   (config/config-str :mb-remote-api-url))
 
 (defn- api-call?
-  "Is this ring request an API call (does path start with `/api`)?"
+  "Is this ring request an API call (exact `/api` or path starts with `/api/`)?"
   [{:keys [^String uri]}]
-  (str/starts-with? uri "/api"))
+  (or (= uri "/api")
+      (str/starts-with? uri "/api/")))
 
 (defn- build-target-url
   "Build the full URL for the remote backend."
@@ -37,14 +38,47 @@
     :options http/options
     http/get))
 
+(def ^:private allowed-proxy-request-headers
+  #{"accept"
+    "accept-language"
+    "authorization"
+    "content-type"
+    "cookie"
+    "user-agent"})
+
+(def ^:private blocked-proxy-request-headers
+  #{"connection"
+    "content-length"
+    "forwarded"
+    "host"
+    "proxy-authenticate"
+    "proxy-authorization"
+    "te"
+    "trailer"
+    "transfer-encoding"
+    "upgrade"
+    "x-real-ip"})
+
+(defn- blocked-proxy-request-header?
+  [header-name]
+  (or (contains? blocked-proxy-request-headers header-name)
+      (str/starts-with? header-name "x-forwarded-")
+      (str/starts-with? header-name "proxy-")))
+
 (defn- proxy-headers
-  "Filter and prepare headers for proxying. Remove hop-by-hop headers and rewrite origin."
+  "Filter and prepare headers for proxying using an explicit allowlist and origin rewrite."
   [headers]
-  (-> headers
-      (dissoc "host" "content-length" "transfer-encoding" "connection")
-      ;; Set origin to remote backend so cookies get set properly
-      (assoc "origin" (remote-api-url))
-      (dissoc "referer")))
+  (let [forwarded-headers
+        (reduce-kv
+         (fn [result header-name value]
+           (let [normalized-name (u/lower-case-en (name header-name))]
+             (if (and (contains? allowed-proxy-request-headers normalized-name)
+                      (not (blocked-proxy-request-header? normalized-name)))
+               (assoc result normalized-name value)
+               result)))
+         {}
+         headers)]
+    (assoc forwarded-headers "origin" (remote-api-url))))
 
 (defn- rewrite-set-cookie
   "Remove domain and secure attributes from Set-Cookie header so cookies work on localhost."
@@ -84,6 +118,29 @@
        ;; Remove Secure for localhost and set SameSite=Lax
        "; SameSite=Lax"))
 
+(def ^:private localhost-hosts
+  #{"127.0.0.1" "::1" "localhost"})
+
+(defn- strip-port
+  [host]
+  (cond
+    (nil? host)
+    nil
+
+    (str/starts-with? host "[")
+    (or (second (re-find #"^\[([^\]]+)\](?::\d+)?$" host)) host)
+
+    (> (count (re-seq #":" host)) 1)
+    host
+
+    :else
+    (first (str/split host #":" 2))))
+
+(defn- localhost-request?
+  [{:keys [headers server-name]}]
+  (let [host (or (get headers "host") server-name)]
+    (contains? localhost-hosts (some-> host strip-port u/lower-case-en))))
+
 (defn- add-cookies-to-headers
   "Convert clj-http :cookies map to Set-Cookie headers."
   [headers cookies]
@@ -92,9 +149,17 @@
       (assoc headers "Set-Cookie" set-cookie-headers))
     headers))
 
+(defn- rewrite-response-headers
+  [request raw-headers cookies]
+  (let [localhost? (localhost-request? request)]
+    (cond-> (dissoc raw-headers "transfer-encoding" "content-encoding")
+      localhost? rewrite-response-cookies
+      (and localhost? (seq cookies)) (add-cookies-to-headers cookies))))
+
 (defn- proxy-request
   "Proxy a request to the remote backend and return the response."
-  [{:keys [request-method uri query-string headers body]}]
+  {:arglists '([request])}
+  [{:keys [request-method uri query-string headers body], :as request}]
   (let [target-url (build-target-url uri query-string)
         http-fn    (request-method->clj-http-fn request-method)
         opts       (cond-> {:headers          (proxy-headers headers)
@@ -107,19 +172,16 @@
       (let [response (http-fn target-url opts)
             raw-headers (:headers response)
             cookies (:cookies response)
-            rewritten-headers (-> raw-headers
-                                  (dissoc "transfer-encoding" "content-encoding")
-                                  rewrite-response-cookies
-                                  (add-cookies-to-headers cookies))]
-        (log/infof "Proxy %s %s -> %s, cookies: %s"
-                   (name request-method) uri (:status response) (pr-str cookies))
+            rewritten-headers (rewrite-response-headers request raw-headers cookies)]
+        (log/infof "Proxy %s %s -> %s (cookies-returned=%d)"
+                   (name request-method) uri (:status response) (count cookies))
         {:status  (:status response)
          :headers rewritten-headers
          :body    (:body response)})
       (catch Exception e
         (log/errorf e "Error proxying request to %s" target-url)
         {:status 502
-         :body   (str "Proxy error: " (.getMessage e))}))))
+         :body   "Proxy error"}))))
 
 (defn wrap-remote-api-proxy
   "Middleware that proxies API requests to a remote backend when MB_REMOTE_API_URL is set.
