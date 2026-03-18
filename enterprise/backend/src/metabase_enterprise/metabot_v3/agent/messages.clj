@@ -135,8 +135,22 @@
   (->> (:parts step)
        (filter #(#{:text :tool-input :tool-output} (:type %)))))
 
+(defn- messages-with-injected-context
+  "Returns messages from memory and injects context into the most recent one."
+  [context memory]
+  (let [all-messages (memory/get-input-messages memory)
+        [input-messages [most-recent-message]] (split-at (dec (count all-messages))  all-messages)]
+    (if-not (and (= :user (-> most-recent-message :role))
+                 (< 0 (count all-messages)))
+      all-messages
+      (let [enriched-context (user-context/enrich-context-for-template context)]
+        (conj (vec input-messages)
+              (update most-recent-message :content (partial prompts/inject-context enriched-context)))))))
+
 (defn build-message-history
   "Build the conversation history as a flat sequence of AISDK parts.
+
+  Injects the context into the most recent user message.
 
   Returns a vector of items that are either:
   - `{:role :user, :content \"...\"}` for user messages
@@ -145,8 +159,8 @@
   - `{:type :tool-output, :id ..., :result ...}` for tool results
 
   Each LLM adapter converts this to its own wire format."
-  [memory]
-  (let [input-messages (memory/get-input-messages memory)
+  [context memory]
+  (let [input-messages (messages-with-injected-context context memory)
         steps          (memory/get-steps memory)
         input-parts    (mapcat input-message->parts input-messages)
         step-parts     (mapcat step->parts steps)

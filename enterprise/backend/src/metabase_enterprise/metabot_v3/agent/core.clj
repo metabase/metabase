@@ -204,7 +204,7 @@
   [memory context profile tools iteration tracking-opts]
   (let [model        (:model profile)
         system-msg   (messages/build-system-message context profile tools)
-        input-parts  (messages/build-message-history memory)
+        input-parts  (messages/build-message-history context memory)
         llm-opts     (cond-> {}
                        (:required-tool-call? profile) (assoc :tool-choice "required"))]
     (when *debug-log*

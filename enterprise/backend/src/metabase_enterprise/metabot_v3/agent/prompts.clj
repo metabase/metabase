@@ -155,6 +155,13 @@
                                    "llm_representations.selmer"
                                    load-llm-representations-template)))
 
+(defn get-cached-message-injection-template
+  "Get the message injection template from cache or load it."
+  []
+  (:template (cached-load-template "message-injection"
+                                   "message_injection.selmer"
+                                   load-llm-representations-template)))
+
 (defn clear-cache!
   "Clear the template cache. Useful for development/testing."
   []
@@ -227,6 +234,17 @@
       (do
         (log/error "System prompt template not found:" template-name)
         "You are Metabot, a data analysis assistant for Metabase."))))
+
+(defn inject-context
+  "Prepends a formatted context to a string, message."
+  [context str*]
+  (let [;; Injection is performed only when the hardcoded keys are present in in context to avoid
+        ;; insertion e.g. isertion of blank xml tags.
+        injection (when (some #(string? (not-empty (get context %)))
+                              [:viewing_context :current_time :current_user_info])
+                    (selmer/render (get-cached-message-injection-template)
+                                   context))]
+    (str injection str*)))
 
 (comment
   ;; Development examples
