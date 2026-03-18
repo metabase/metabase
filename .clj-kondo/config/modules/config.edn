@@ -187,6 +187,7 @@
            metabase.api.docs
            metabase.api.init
            metabase.api.macros
+           metabase.api.macros.defendpoint.tools-manifest
            metabase.api.macros.scope
            metabase.api.open-api
            metabase.api.response
@@ -883,6 +884,16 @@
            channel
            request
            settings
+           util}}
+
+  mcp
+  {:team "Metabot"
+   :api  #{metabase.mcp.api}
+   :uses #{api
+           config
+           premium-features
+           request
+           server
            util}}
 
   measures
@@ -2412,6 +2423,7 @@
    :api     #{metabase-enterprise.metabot.tools.api}
    :friends #{enterprise/agent-api
               slackbot
+              mcp
               metabot}
    :uses    #{api
               lib-be
