@@ -23,6 +23,7 @@ import _ from "underscore";
 import {
   DATASET_INDEX_ATTRIBUTE_NAME,
   MIN_COLUMN_WIDTH,
+  ROW_HEIGHT,
   TRUNCATE_LONG_CELL_WIDTH,
   VIRTUAL_INDEX_ATTRIBUTE_NAME,
 } from "metabase/data-grid/constants";
@@ -81,7 +82,7 @@ export const useDataGridInstance = <TData, TValue>({
   pinnedLeftColumnsCount = 0,
   pinnedTopRowsCount = 0,
   sorting,
-  defaultRowHeight = 36,
+  defaultRowHeight = ROW_HEIGHT,
   minGridWidth: minGridWidthProp,
   rowId,
   truncateLongCellWidth = TRUNCATE_LONG_CELL_WIDTH,
