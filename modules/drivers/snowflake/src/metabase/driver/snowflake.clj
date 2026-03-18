@@ -39,10 +39,10 @@
    [ring.util.codec :as codec])
   (:import
    (java.io File)
+   (java.net URI URLDecoder)
    (java.sql Connection DatabaseMetaData ResultSet ResultSetMetaData Types)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
-   (java.util Properties)
-   (net.snowflake.client.jdbc SnowflakeConnectString SnowflakeSQLException)))
+   (net.snowflake.client.api.exception SnowflakeSQLException)))
 
 (set! *warn-on-reflection* true)
 
@@ -139,14 +139,31 @@
   (when raw-name
     (str "\"" (str/replace raw-name "\"" "\"\"") "\"")))
 
+(def ^:private snowflake-url-prefix "jdbc:snowflake://")
+
 (defn connection-str->parameters
   "Get map of parameters from Snowflake `conn-str`, where keys are uppercase string parameter names and values
-  are strings. Returns nil when string is invalid."
+  are strings. Returns nil when string is invalid.
+  This is based on the implementation of SnowflakeConnectString.parse in https://github.com/snowflakedb/snowflake-jdbc"
   [conn-str]
-  (let [^SnowflakeConnectString conn-str* (SnowflakeConnectString/parse conn-str (Properties.))]
-    (if-not (.isValid conn-str*)
-      (log/warn "Invalid connection string.")
-      (.getParameters conn-str*))))
+  (when (and conn-str (str/starts-with? conn-str snowflake-url-prefix))
+    (let [after-prefix (subs conn-str (count snowflake-url-prefix))
+          after-prefix' (if (or (str/starts-with? after-prefix "http://")
+                                (str/starts-with? after-prefix "https://"))
+                          after-prefix
+                          (subs conn-str (str/index-of conn-str "snowflake:")))
+          uri (URI. after-prefix')]
+      (when-let [query-data (.getRawQuery uri)]
+        (->> (str/split query-data #"&")
+             (keep (fn [param]
+                     (let [key-val (str/split param #"=")]
+                       (if-not (= 2 (count key-val))
+                         (log/warnf "Invalid Snowflake connection URI parameter: '%s'" param)
+                         (let [[k v] key-val]
+                           [(u/upper-case-en (URLDecoder/decode ^String k "UTF-8"))
+                            (URLDecoder/decode ^String v "UTF-8")])))))
+             (into {})
+             not-empty)))))
 
 (defn- maybe-add-role-to-spec-url
   "Maybe add role to `spec`'s `:connection-uri`. This is necessary for rsa auth to work, because at the time of writing
@@ -213,7 +230,7 @@
   (let [upcase-not-nil (fn [s] (when s (u/upper-case-en s)))]
     ;; it appears to be the case that their JDBC driver ignores `db` -- see my bug report at
     ;; https://support.snowflake.net/s/question/0D50Z00008WTOMCSA5/
-    (-> (merge {:classname                                  "net.snowflake.client.jdbc.SnowflakeDriver"
+    (-> (merge {:classname                                  "net.snowflake.client.api.driver.SnowflakeDriver"
                 :subprotocol                                "snowflake"
                 :client_metadata_request_use_connection_ctx true
                 :ssl                                        true
@@ -1066,14 +1083,19 @@
     (when-not role-name
       (throw (ex-info "Workspace isolation is not properly initialized - missing role name"
                       {:workspace-id (:id workspace) :step :grant})))
-    ;; Grant USAGE on each unique schema first (required to access tables within)
-    (doseq [schema (distinct (map :schema tables))]
-      (jdbc/execute! conn-spec [(format "GRANT USAGE ON SCHEMA \"%s\".\"%s\" TO ROLE \"%s\""
-                                        db-name schema role-name)]))
-    ;; Grant SELECT on each specific table
-    (doseq [table tables]
-      (jdbc/execute! conn-spec [(format "GRANT SELECT ON TABLE \"%s\".\"%s\".\"%s\" TO ROLE \"%s\""
-                                        db-name (:schema table) (:name table) role-name)]))))
+    (let [qdb (sql.u/quote-name :snowflake :schema db-name)
+          qr  (sql.u/quote-name :snowflake :field role-name)]
+      ;; Grant USAGE on each unique schema first (required to access tables within)
+      (doseq [schema (distinct (map :schema tables))]
+        (jdbc/execute! conn-spec [(format "GRANT USAGE ON SCHEMA %s.%s TO ROLE %s"
+                                          qdb (sql.u/quote-name :snowflake :schema schema) qr)]))
+      ;; Grant SELECT on each specific table
+      (doseq [table tables]
+        (jdbc/execute! conn-spec [(format "GRANT SELECT ON TABLE %s.%s.%s TO ROLE %s"
+                                          qdb
+                                          (sql.u/quote-name :snowflake :schema (:schema table))
+                                          (sql.u/quote-name :snowflake :table (:name table))
+                                          qr)])))))
 
 (defmethod driver/llm-sql-dialect-resource :snowflake [_]
   "llm/prompts/dialects/snowflake.md")

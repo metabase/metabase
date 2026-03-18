@@ -66,25 +66,22 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
     title: t`Align`,
     widget: "select",
     default: "left",
-    props: {
+    getProps: () => ({
       options: [
         {
-          // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
           name: t`Left`,
           value: "left",
         },
         {
-          // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
           name: t`Right`,
           value: "right",
         },
         {
-          // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
           name: t`Justify`,
           value: "justify",
         },
       ],
-    },
+    }),
   },
   "sankey.show_edge_labels": {
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
@@ -101,16 +98,13 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     title: t`Auto formatting`,
     widget: "segmentedControl",
-    props: {
+    getProps: () => ({
       options: [
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         { name: t`Auto`, value: "auto" },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         { name: t`Compact`, value: "compact" },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         { name: t`Full`, value: "full" },
       ],
-    },
+    }),
     getHidden: (_series, vizSettings) => {
       return !vizSettings["sankey.show_edge_labels"];
     },
@@ -123,16 +117,13 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
     title: t`Edge color`,
     widget: "segmentedControl",
     default: "source",
-    props: {
+    getProps: () => ({
       options: [
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         { name: t`Gray`, value: "gray" },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         { name: t`Source`, value: "source" },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         { name: t`Target`, value: "target" },
       ],
-    },
+    }),
   },
 };
 

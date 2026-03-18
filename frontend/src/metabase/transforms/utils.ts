@@ -21,8 +21,6 @@ import type {
   TransformSource,
 } from "metabase-types/api";
 
-import { CHECKPOINT_TEMPLATE_TAG } from "./constants";
-
 export function parseTimestampWithTimezone(
   timestamp: string,
   systemTimezone: string | undefined,
@@ -258,11 +256,7 @@ export function getValidationResult(query: Lib.Query): ValidationResult {
   return { isValid: Lib.canSave(query, "question") };
 }
 
-const ALLOWED_TEMPLATE_TYPES = new Set([
-  "card",
-  "snippet",
-  CHECKPOINT_TEMPLATE_TAG,
-]);
+const ALLOWED_TEMPLATE_TYPES = new Set(["card", "snippet", "table"]);
 
 function validateTemplateTag(tag: TemplateTag): ValidationResult {
   // Allow snippets, cards, and the special transform variables ({checkpoint})
