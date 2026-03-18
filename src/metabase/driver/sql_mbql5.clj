@@ -242,8 +242,8 @@
   [_driver field opts]
   [:field
    (merge {:lib/uuid (str (random-uuid))
-           :base-type                     (:base-type field)
+           :base-type (:base-type field)
            driver-api/qp.add.source-table (:table-id field)
-           ::compiling-field-filter?      true}
+           ::sql.params.substitution/compiling-field-filter? true}
           opts)
    (:id field)])

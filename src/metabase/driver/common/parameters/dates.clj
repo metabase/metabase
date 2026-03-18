@@ -13,6 +13,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.core :as lib]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.parameters.dates :as qp.parameters.dates]
    [metabase.util.i18n :refer [tru]]
@@ -43,7 +44,7 @@
   (if-not (mbql.u/is-clause? :field clause)
     clause
     (if (:lib/uuid (second clause))
-      (metabase.lib.core/with-temporal-bucket clause unit)
+      (lib/with-temporal-bucket clause unit)
       (mbql.u/with-temporal-unit clause unit))))
 
 (def ^:private relative-date-string-decoders

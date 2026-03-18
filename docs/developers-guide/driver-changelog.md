@@ -4,6 +4,24 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.60.0
+
+- Added the following driver multimethods to support the MBQL5 compilation migration:
+  - `make-clause` - Returns an MBQL clause without any options
+  - `make-clause-with-opts` - Returns an MBQL clause with the given options
+  - `field->clause` - Returns an MBQL `:field` clause with the given options
+  - `add-interval` - Wrapper around `add-interval-honeysql-form`
+  - `remapped-order-by?` - Wrapper around `qp.util.transformations.nest-breakouts.externally-remapped-field`
+  - `expression-by-name` - Gets an expression from a query or stage (`*inner-query`) by name
+  - `clause-value-idx` - Returns the index of the value in a clause
+  - `field-clause->alias` - Wrapper around `sql.qp/field-clause->alias*`
+  - `finest-temporal-breakout-idx` - Wrapper around `driver-api/finest-temporal-breakout-index`
+  - `unwrap-value-literal` - Gets the literal value from an MBQL value clause
+  - `remapped-breakout?` - Wrapper around `driver-api/qp.util.transformations.nest-breakouts.externally-remapped-field`
+  - `literal-text-value?` - Wrapper to destructure options from MBQL clause
+  These methods have implementations for the :sql and :sql-mbql5 drivers, other drives should not need to implement these methods.
+  These methods will eventually be deprecated in favour of the :sql-mbql5 implementation once all drivers have been migrated.
+
 ## Metabase 0.59.0
 
 - Added `sql-jdbc.execute/db-type-name` multimethod. Override this method to customize how your SQL JDBC driver

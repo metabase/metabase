@@ -266,6 +266,7 @@
     {:replacement-snippet     snippet
      :prepared-statement-args args}))
 
+;; TODO(rileythomp, 2026-03-16): Replace this with `make-clause-with-opts`
 (defmulti field->clause
   "Return an mbql field clause"
   {:added "0.60.0" :arglists '([driver field opts])}

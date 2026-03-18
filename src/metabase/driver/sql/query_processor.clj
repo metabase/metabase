@@ -1879,6 +1879,7 @@
        [:= (->honeysql driver field-arg) nil]]
       honeysql-clause)))
 
+;; TODO(rileythomp, 2026-03-18): Replace this with a match for mbql4 vs mbql5
 (defmulti unwrap-value-literal
   "Extract value literal from `:value` form or returns form as is if not a `:value` form."
   {:added "0.59.0" :arglists '([driver maybe-value-form])}
@@ -2143,6 +2144,7 @@
 (declare apply-clauses)
 
 (defn needs-cte-for-duplicate-cols?
+  "Determines if the source query has ambiguous columns names"
   [source-metadata]
   (let [source-aliases (mapv :lib/source-column-alias source-metadata)
         desired-aliases (mapv :lib/desired-column-alias source-metadata)]
@@ -2246,13 +2248,9 @@
   of [[driver/mbql->native]] (actual multimethod definition is in [[metabase.driver.sql]]."
   [driver      :- :keyword
    outer-query :- :map]
-  (try
-    (let [honeysql-form (mbql->honeysql driver outer-query)
-          [sql & args]  (format-honeysql driver honeysql-form)]
-      {:query sql, :params args})
-    (catch Throwable e
-      (tap> e)
-      (throw e))))
+  (let [honeysql-form (mbql->honeysql driver outer-query)
+        [sql & args]  (format-honeysql driver honeysql-form)]
+    {:query sql, :params args}))
 
 ;;;; Transforms
 

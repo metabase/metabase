@@ -18,10 +18,10 @@
 
 (deftest ^:parallel field->field-filter-clause-test
   (is (=? [:field
-           (meta/id :venues :id)
            {:base-type                                                           :type/BigInteger
             :metabase.query-processor.util.add-alias-info/source-table           (meta/id :venues)
-            :metabase.driver.sql.parameters.substitution/compiling-field-filter? true}]
+            :metabase.driver.sql.parameters.substitution/compiling-field-filter? true}
+           (meta/id :venues :id)]
           (#'sql.params.substitution/field->field-filter-clause
            :h2
            (meta/field-metadata :venues :id)
