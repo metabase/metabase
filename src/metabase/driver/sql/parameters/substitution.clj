@@ -367,7 +367,7 @@
   [driver field alias replacement-snippet-info]
   (if (str/blank? alias)
     replacement-snippet-info
-    (let [[old-name] (->> (field->clause field nil)
+    (let [[old-name] (->> (field->clause driver field nil)
                           (sql.qp/->honeysql driver)
                           (sql.qp/format-honeysql driver))]
       (update replacement-snippet-info :replacement-snippet str/replace old-name alias))))
@@ -413,8 +413,8 @@
         (honeysql->replacement-snippet-info
          driver
          (sql.qp/->honeysql driver
-                            (field->clause field (when (not= value params/no-value)
-                                                   {:temporal-unit (keyword value)}))))]
+                            (field->clause driver field (when (not= value params/no-value)
+                                                          {:temporal-unit (keyword value)}))))]
     (replace-alias driver field alias replacement-snippet-info)))
 
 (defmethod ->replacement-snippet-info [:sql ReferencedTableQuery]
