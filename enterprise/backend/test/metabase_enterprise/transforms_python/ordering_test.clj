@@ -38,8 +38,8 @@
 
 (deftest python-transform-basic-dependencies-test
   (testing "Python transforms with source-tables dependencies are extracted correctly"
-    (mt/with-temp [:model/Transform {t1 :id} (py-tx [{:alias "orders"   :table_id (mt/id :orders)}
-                                                     {:alias "products" :table_id (mt/id :products)}])]
+    (mt/with-temp [:model/Transform {t1 :id} (py-tx [(transforms.tu/source-table-entry "orders" (mt/id :orders))
+                                                     (transforms.tu/source-table-entry "products" (mt/id :products))])]
       (is (= #{{:table (mt/id :orders)}
                {:table (mt/id :products)}}
              (transform-deps-for-db (t2/select-one :model/Transform :id t1)))))))
@@ -51,8 +51,8 @@
         (ws.table/gc-transform-target-tables!)
         (mt/with-temp [:model/Table     {table1 :id} {:schema schema    :name "output_1"}
                        :model/Field     _            {:table_id table1  :name "foo"}
-                       :model/Transform {t1 :id}     (py-tx [{:alias "orders"   :table_id (mt/id :orders)}] "output_1")
-                       :model/Transform {t2 :id}     (py-tx [{:alias "output_1" :table_id table1}] "output_2")]
+                       :model/Transform {t1 :id}     (py-tx [(transforms.tu/source-table-entry "orders" (mt/id :orders))] "output_1")
+                       :model/Transform {t2 :id}     (py-tx [(transforms.tu/source-table-entry "output_1" table1)] "output_2")]
           (is (= {t1 #{}
                   t2 #{t1}}
                  (ordering/transform-ordering (t2/select :model/Transform :id [:in [t1 t2]])))))))))
@@ -66,10 +66,10 @@
                        :model/Field     _            {:table_id table1  :name "foo"}
                        :model/Table     {table2 :id} {:schema   schema  :name "output_2"}
                        :model/Field     _            {:table_id table2  :name "bar"}
-                       :model/Transform {t1 :id}     (py-tx [{:alias "orders"   :table_id (mt/id :orders)}]   "output_1")
-                       :model/Transform {t2 :id}     (py-tx [{:alias "products" :table_id (mt/id :products)}] "output_2")
-                       :model/Transform {t3 :id}     (py-tx [{:alias "output_1" :table_id table1}
-                                                             {:alias "output_2" :table_id table2}]            "final_output")]
+                       :model/Transform {t1 :id}     (py-tx [(transforms.tu/source-table-entry "orders" (mt/id :orders))]     "output_1")
+                       :model/Transform {t2 :id}     (py-tx [(transforms.tu/source-table-entry "products" (mt/id :products))] "output_2")
+                       :model/Transform {t3 :id}     (py-tx [(transforms.tu/source-table-entry "output_1" table1)
+                                                             (transforms.tu/source-table-entry "output_2" table2)]             "final_output")]
           (is (= {t1 #{}
                   t2 #{}
                   t3 #{t1 t2}}
@@ -88,7 +88,7 @@
                                                               :type     "query"
                                                               :query    {:source-table (mt/id :orders)}}
                                                              "sql_output")
-                       :model/Transform {t2 :id}     (py-tx [{:alias "sql_output" :table_id table1}] "python_output")
+                       :model/Transform {t2 :id}     (py-tx [(transforms.tu/source-table-entry "sql_output" table1)] "python_output")
                        :model/Transform {t3 :id}     (sql-tx {:database (mt/id)
                                                               :type     "query"
                                                               :query    {:source-table table2}}      "final_output")]
