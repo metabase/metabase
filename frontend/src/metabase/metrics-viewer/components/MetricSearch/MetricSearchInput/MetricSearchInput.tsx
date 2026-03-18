@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { CodeMirror } from "metabase/common/components/CodeMirror";
-import { Flex, Popover } from "metabase/ui";
+import { Button, Flex, Popover } from "metabase/ui";
 import type { ProjectionClause } from "metabase-lib/metric";
 
 import type { ExpressionToken } from "../../../types/operators";
@@ -87,11 +87,6 @@ export function MetricSearchInput({
 
   const editorRef = useRef<ReactCodeMirrorRef>(null);
   const pendingFocusRef = useRef(false);
-  // lastCommittedText is the formula text from the last committed (run) query.
-  // isDirty is computed by comparing editText to this value — no separate dirty state needed.
-  const [lastCommittedText, setLastCommittedText] = useState("");
-  const lastCommittedTextRef = useRef(lastCommittedText);
-  lastCommittedTextRef.current = lastCommittedText;
   // Refs for reading latest values in callbacks without stale closures
   const editTextRef = useRef(editText);
   editTextRef.current = editText;
@@ -103,9 +98,13 @@ export function MetricSearchInput({
   const isEditingSessionActiveRef = useRef(false);
 
   const handleRunRef = useRef<() => void>(() => {});
+  // Text captured at focus time — used to detect whether the user actually
+  // changed the expression and therefore needs to click "Run" to commit.
+  const [textAtFocus, setTextAtFocus] = useState("");
+  const textAtFocusRef = useRef(textAtFocus);
+  textAtFocusRef.current = textAtFocus;
 
-  // Dirty when the current edit text differs from the last committed text
-  // const isDirty = editText !== lastCommittedText;
+  console.log("MetricSearchInput", textAtFocus, "|||", editText);
 
   // Remove unnecessary parentheses per item (only when not actively editing)
   useEffect(() => {
@@ -182,6 +181,7 @@ export function MetricSearchInput({
   }, [isFocused]);
 
   const handleInputFocus = useCallback(() => {
+    console.log("handleInputFocus");
     // If an editing session is already active (e.g. focus returning from a
     // dropdown item click via view.focus()), do not reset the text or the
     // committed baseline.
@@ -190,9 +190,9 @@ export function MetricSearchInput({
     }
     isEditingSessionActiveRef.current = true;
     const fullText = buildFullTextLegacy(tokens, selectedMetrics);
+    setTextAtFocus(fullText);
     setIsFocused(true);
     setEditText(fullText);
-    setLastCommittedText(fullText);
     setValidationError(null);
     // After CodeMirror renders the initial text, move the caret to the end.
     setTimeout(() => {
@@ -207,6 +207,7 @@ export function MetricSearchInput({
 
   /** Commits the current text: parses tokens, removes unreferenced metrics, and collapses. */
   const commitAndCollapse = useCallback(() => {
+    console.log("commitAndCollapse");
     const finalTokens = parseFullTextLegacy(
       editTextRef.current,
       selectedMetricsRef.current,
@@ -246,52 +247,52 @@ export function MetricSearchInput({
     setIsOpen(false);
     setCurrentWord("");
     setEditText("");
-    setLastCommittedText("");
     setValidationError(null);
   }, [onRemoveMetric, onTokensChange]);
 
   const handleInputBlur = useCallback(() => {
+    console.log("handleInputBlur");
+    // If the text hasn't changed since focus, collapse back to pills view
+    // without requiring the user to click "Run".
+    if (editTextRef.current === textAtFocusRef.current) {
+      isEditingSessionActiveRef.current = false;
+      setIsFocused(false);
+      setIsOpen(false);
+      setCurrentWord("");
+      setEditText("");
+      setValidationError(null);
+      return;
+    }
+
+    // Text was modified — validate on blur but do NOT commit.
+    // The expression is only executed when the user explicitly clicks "Run".
     const currentTokens = parseFullTextLegacy(
       editTextRef.current,
       selectedMetricsRef.current,
     );
     const error = validateExpressionLegacy(currentTokens);
-    if (error) {
-      // Invalid formula — stay in focused/editing mode and show the error.
-      // Do NOT close the dropdown here: if blur was caused by the user clicking
-      // a dropdown item, the click must still fire so handleSelect can run.
-      setValidationError(error);
-      return;
-    }
+    setValidationError(error);
+  }, []);
+
+  const handleChange = useCallback((newText: string) => {
+    console.log("handleChange");
+    setEditText(newText);
     setValidationError(null);
-    commitAndCollapse();
-  }, [commitAndCollapse]);
 
-  const handleChange = useCallback(
-    (newText: string) => {
-      setEditText(newText);
-      setValidationError(null);
-
-      // Re-parse tokens from the updated text
-      const newTokens = parseFullTextLegacy(newText, selectedMetrics);
-      onTokensChange(newTokens);
-
-      // Extract the word at the cursor for the dropdown search
-      const view = editorRef.current?.view;
-      const cursorPos = view?.state.selection.main.head ?? newText.length;
-      const { word, start: wordStart } = getWordAtCursor(newText, cursorPos);
-      // Anchor the dropdown at the word's left edge / line bottom in the viewport
-      if (view) {
-        const coords = view.coordsAtPos(wordStart);
-        if (coords) {
-          setAnchorRect({ left: coords.left, top: coords.bottom });
-        }
+    // Extract the word at the cursor for the dropdown search
+    const view = editorRef.current?.view;
+    const cursorPos = view?.state.selection.main.head ?? newText.length;
+    const { word, start: wordStart } = getWordAtCursor(newText, cursorPos);
+    // Anchor the dropdown at the word's left edge / line bottom in the viewport
+    if (view) {
+      const coords = view.coordsAtPos(wordStart);
+      if (coords) {
+        setAnchorRect({ left: coords.left, top: coords.bottom });
       }
-      setCurrentWord(word);
-      setIsOpen(true);
-    },
-    [selectedMetrics, onTokensChange],
-  );
+    }
+    setCurrentWord(word);
+    setIsOpen(true);
+  }, []);
 
   const handleSelect = useCallback(
     (metric: SelectedMetric) => {
@@ -322,16 +323,6 @@ export function MetricSearchInput({
 
       onAddMetric(metric);
 
-      // Compute the optimistic updated metrics list so we can parse immediately
-      const existingIndex = selectedMetrics.findIndex(
-        (m) => m.id === metric.id && m.sourceType === metric.sourceType,
-      );
-      const updatedMetrics =
-        existingIndex !== -1 ? selectedMetrics : [...selectedMetrics, metric];
-
-      const newTokens = parseFullTextLegacy(newText, updatedMetrics);
-      onTokensChange(newTokens);
-
       setCurrentWord("");
       setIsOpen(false);
 
@@ -346,7 +337,7 @@ export function MetricSearchInput({
         }
       }, 0);
     },
-    [editText, selectedMetrics, onAddMetric, onTokensChange],
+    [editText, onAddMetric],
   );
 
   // Remove one item (pill) by index
@@ -402,6 +393,7 @@ export function MetricSearchInput({
   );
 
   const handleContainerClick = useCallback(() => {
+    console.log("handleContainerClick");
     const view = editorRef.current?.view;
     if (view) {
       view.focus();
@@ -648,17 +640,18 @@ export function MetricSearchInput({
           </>
         )}
       </Flex>
-      {/*{isDirty && (*/}
-      {/*  <Button*/}
-      {/*    variant="filled"*/}
-      {/*    size="xs"*/}
-      {/*    data-testid="run-expression-button"*/}
-      {/*    onClick={(e: React.MouseEvent) => {*/}
-      {/*      e.stopPropagation();*/}
-      {/*      handleRun();*/}
-      {/*    }}*/}
-      {/*  >{t`Run`}</Button>*/}
-      {/*)}*/}
+      {isFocused && !pendingFocusRef.current && editText !== textAtFocus && (
+        <Button
+          variant="filled"
+          size="xs"
+          disabled={!!validationError}
+          data-testid="run-expression-button"
+          onClick={(e: React.MouseEvent) => {
+            e.stopPropagation();
+            handleRun();
+          }}
+        >{t`Run`}</Button>
+      )}
     </Flex>
   );
 }

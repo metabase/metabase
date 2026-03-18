@@ -308,7 +308,7 @@ describe("expanded view (focused text input)", () => {
 // ── Blur / unfocus behavior ─────────────────────────────────────────────────
 
 describe("blur behavior", () => {
-  it("returns to collapsed view after blur when text is unchanged", async () => {
+  it("collapses back to pill view on blur when text is unchanged", async () => {
     const revenue = makeMetric(1, "Revenue");
     const { user } = setup({
       tokens: [m(0)],
@@ -324,15 +324,14 @@ describe("blur behavior", () => {
       ).toBeInTheDocument();
     });
 
-    // Blur without editing — text unchanged, collapse is immediate (no timeout)
+    // Blur without editing — should collapse back to pill view
     await user.tab();
 
-    await waitFor(() => {
-      expect(
-        screen.queryByTestId("metrics-viewer-search-input"),
-      ).not.toBeInTheDocument();
-      expect(screen.getByTestId("metric-pill")).toBeInTheDocument();
-    });
+    // Editor should no longer be visible, pill should be back
+    expect(
+      screen.queryByTestId("metrics-viewer-search-input"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId("metric-pill")).toBeInTheDocument();
   });
 
   it("stays focused after blur when formula is invalid", async () => {
@@ -355,7 +354,7 @@ describe("blur behavior", () => {
     );
   });
 
-  it("collapses and commits on blur when formula is valid (even if changed)", async () => {
+  it("does not collapse or commit on blur when formula is valid", async () => {
     const onTokensChange = jest.fn();
     const { user } = setup({
       tokens: [m(0), op("+"), m(1)],
@@ -372,10 +371,10 @@ describe("blur behavior", () => {
 
     await user.tab();
 
-    // Valid formula — should collapse immediately
-    await waitFor(() => {
-      expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
-    });
+    // Valid formula — should stay in editing mode (only Run commits)
+    expect(screen.getByRole("textbox")).toBeInTheDocument();
+    // onTokensChange should NOT have been called — blur does not commit
+    expect(onTokensChange).not.toHaveBeenCalled();
   });
 
   it("shows the Run button when formula is dirty", async () => {
@@ -392,16 +391,36 @@ describe("blur behavior", () => {
     expect(screen.getByTestId("run-expression-button")).toBeInTheDocument();
   });
 
-  it("does not show the Run button when formula is unchanged", async () => {
+  it("does not show the Run button when focused if formula is unchanged", async () => {
     const { user } = setup({ tokens: [m(0), op("+"), m(1)] });
 
     await user.click(screen.getByTestId("metric-expression-pill"));
     expect(await screen.findByRole("textbox")).toBeInTheDocument();
 
-    // No edits — not dirty
+    // Run button should NOT be visible when formula hasn't changed
     expect(
       screen.queryByTestId("run-expression-button"),
     ).not.toBeInTheDocument();
+  });
+
+  it("collapses back to pills on blur when formula is unchanged", async () => {
+    const onTokensChange = jest.fn();
+    const { user } = setup({
+      tokens: [m(0), op("+"), m(1)],
+      onTokensChange,
+    });
+
+    await user.click(screen.getByTestId("metric-expression-pill"));
+    expect(await screen.findByRole("textbox")).toBeInTheDocument();
+
+    // Blur without changing text
+    await user.tab();
+
+    // Should collapse back to pill view
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+    expect(screen.getByTestId("metric-expression-pill")).toBeInTheDocument();
+    // onTokensChange should NOT have been called
+    expect(onTokensChange).not.toHaveBeenCalled();
   });
 });
 
@@ -596,7 +615,7 @@ describe("removing pills", () => {
 // ── Typing / onChange ───────────────────────────────────────────────────────
 
 describe("typing in the text input", () => {
-  it("calls onTokensChange as the user types", async () => {
+  it("does not call onTokensChange as the user types (deferred to Run)", async () => {
     const onTokensChange = jest.fn();
     const { user } = setup({
       tokens: [],
@@ -606,7 +625,8 @@ describe("typing in the text input", () => {
     const input = screen.getByRole("textbox");
     await user.type(input, "R");
 
-    expect(onTokensChange).toHaveBeenCalled();
+    // onTokensChange should NOT be called during typing — only on Run
+    expect(onTokensChange).not.toHaveBeenCalled();
   });
 
   it("opens the search dropdown on input", async () => {
@@ -644,13 +664,11 @@ describe("typing in the text input", () => {
 // ── Auto-comma (metric selection from dropdown) ──────────────────────────────
 
 describe("auto-comma on metric selection", () => {
-  it("inserts a separator token when selecting a metric after a close-paren", async () => {
-    const onTokensChange = jest.fn();
+  it("inserts a comma in the text when selecting a metric after a close-paren", async () => {
     const onAddMetric = jest.fn();
 
     const { user } = setup({
       tokens: [m(0), op("+"), m(1)],
-      onTokensChange,
       onAddMetric,
     });
 
@@ -677,19 +695,17 @@ describe("auto-comma on metric selection", () => {
       expect.objectContaining({ id: 99, name: "New Metric" }),
     );
 
-    // The final onTokensChange call should contain a separator token
-    const calls = onTokensChange.mock.calls;
-    const lastTokens = calls[calls.length - 1][0] as ExpressionToken[];
-    const hasSeparator = lastTokens.some((t) => t.type === "separator");
-    expect(hasSeparator).toBe(true);
+    // The editor text should contain a comma (auto-inserted separator)
+    await waitFor(() => {
+      const editorText = screen.getByRole("textbox").textContent ?? "";
+      expect(editorText).toContain(", New Metric");
+    });
   });
 
   it("does not insert extra comma when selecting after an operator", async () => {
-    const onTokensChange = jest.fn();
     const onAddMetric = jest.fn();
     const { user } = setup({
       tokens: [],
-      onTokensChange,
       onAddMetric,
     });
 
@@ -702,10 +718,11 @@ describe("auto-comma on metric selection", () => {
     // Select a metric — should NOT insert a comma since last char is "+"
     await user.click(screen.getByRole("button", { name: "select-new-metric" }));
 
-    const calls = onTokensChange.mock.calls;
-    const lastTokens = calls[calls.length - 1][0] as ExpressionToken[];
-    const hasSeparator = lastTokens.some((t) => t.type === "separator");
-    expect(hasSeparator).toBe(false);
+    // The editor text should NOT contain a comma before the new metric
+    await waitFor(() => {
+      const editorText = screen.getByRole("textbox").textContent ?? "";
+      expect(editorText).not.toContain(",");
+    });
   });
 });
 
