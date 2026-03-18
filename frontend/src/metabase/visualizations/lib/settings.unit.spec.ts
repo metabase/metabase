@@ -101,27 +101,12 @@ describe("settings framework", () => {
         {
           id: "foo",
           title: "Foo",
-          disabled: false,
           hidden: false,
           props: {},
           value: "foo",
           set: true,
         },
       ]);
-    });
-
-    it("should return disabled widget when `disabled` is true", () => {
-      const defs = { foo: { widget: "input", disabled: true } };
-      const widgets = getSettingsWidgets(defs, {}, {}, mockObject, () => {});
-      expect(widgets[0].disabled).toEqual(true);
-    });
-
-    it("should return disabled widget when `getDisabled` returns true", () => {
-      const getDisabled = jest.fn().mockReturnValue(true);
-      const defs = { foo: { widget: "input", getDisabled } };
-      const widgets = getSettingsWidgets(defs, {}, {}, mockObject, () => {});
-      expect(widgets[0].disabled).toEqual(true);
-      expect(getDisabled.mock.calls).toEqual([[mockObject, {}, {}]]);
     });
 
     it("should return hidden widget when `hidden` is true", () => {

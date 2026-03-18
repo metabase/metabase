@@ -40,7 +40,7 @@ const mockPythonTransform = createMockTransform({
     type: "python",
     body: "def transform(): pass",
     "source-database": DATABASE_ID,
-    "source-tables": {},
+    "source-tables": [],
   },
 });
 

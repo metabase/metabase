@@ -300,7 +300,7 @@ function SourceStrategyFields({
 function getIsPythonTransformWithMultipleTables(source: TransformSource) {
   const isPythonTransform = source.type === "python";
   const isMultiTablePythonTransform =
-    isPythonTransform && Object.keys(source["source-tables"]).length > 1;
+    isPythonTransform && source["source-tables"].length > 1;
 
   return isMultiTablePythonTransform;
 }

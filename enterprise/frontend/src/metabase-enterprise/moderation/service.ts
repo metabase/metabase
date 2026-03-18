@@ -1,9 +1,9 @@
 import { c, t } from "ttag";
 import _ from "underscore";
 
-import type { ColorName } from "metabase/lib/colors/types";
 import { ModerationReviewApi } from "metabase/services";
 import type { IconName } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 import type Question from "metabase-lib/v1/Question";
 import type { BaseUser, ModerationReview, User } from "metabase-types/api";
 
