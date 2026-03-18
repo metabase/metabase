@@ -127,39 +127,22 @@ export const DashCardMenu = ({
           canEdit={canEdit}
         />
         {openUnderlyingQuestionItems && (
-          <Menu
-            closeOnEscape
-            position="right"
-            shadow="md"
-            trapFocus
-            trigger="click-hover"
-            width={200}
-          >
-            <Menu.Target>
-              <Menu.Item
+          <Menu.Sub position="right" shadow="md">
+            <Menu.Sub.Target>
+              <Menu.Sub.Item
                 fw="bold"
-                styles={{
-                  // styles needed to override the hover styles
-                  // as hovering is bugged for submenus
-                  // this'll be much better in v8
-                  item: {
-                    backgroundColor: "transparent",
-                    color: "var(--mb-color-text-primary)",
-                  },
-                  itemSection: {
-                    color: "var(--mb-color-text-primary)",
-                  },
-                }}
                 leftSection={<Icon name="external" aria-hidden />}
-                rightSection={<Icon name="chevronright" aria-hidden />}
               >
                 {t`View question(s)`}
-              </Menu.Item>
-            </Menu.Target>
-            <Menu.Dropdown data-testid="dashcard-menu-open-underlying-question">
+              </Menu.Sub.Item>
+            </Menu.Sub.Target>
+            <Menu.Sub.Dropdown
+              data-testid="dashcard-menu-open-underlying-question"
+              style={{ maxWidth: "15rem" }}
+            >
               {openUnderlyingQuestionItems}
-            </Menu.Dropdown>
-          </Menu>
+            </Menu.Sub.Dropdown>
+          </Menu.Sub>
         )}
       </>
     );
