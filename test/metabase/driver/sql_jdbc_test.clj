@@ -254,11 +254,9 @@
         ;; nil value handling
         [[uuid]] (lib/!= col nil)
         []       (lib/= col nil))
-      (let [col-ref (cond-> (lib/ref col)
-                      (not (isa? driver/hierarchy driver/*driver* :sql-mbql5)) lib/->legacy-MBQL)
-            field (if (isa? driver/hierarchy driver/*driver* :sql-mbql5)
-                    (get col-ref 2)
-                    (second col-ref))]
+      (let [field (get (lib/ref col) 2)
+            col-ref (cond-> (lib/ref col)
+                      (not (isa? driver/hierarchy driver/*driver* :sql-mbql5)) lib/->legacy-MBQL)]
         (testing ":= uses indexable query"
           (is (=? [:= [:metabase.util.honey-sql-2/identifier :field [field]]
                    (some-fn #(= uuid %)
@@ -266,11 +264,13 @@
                                  [:cast (str uuid) [:raw "uuid"]]
                                  {:database-type "uuid"}]
                                 %))]
-                  (sql.qp/->honeysql
-                   driver/*driver*
-                   (if (isa? driver/hierarchy driver/*driver* :sql-mbql5)
-                     [:= {} col-ref [:value {:base-type :type/UUID} (str uuid)]]
-                     [:= col-ref [:value {:base_type :type/UUID} (str uuid)]]))))
+                  (let [opts (if (isa? driver/hierarchy driver/*driver* :sql-mbql5)
+                               {:base-type :type/UUID}
+                               {:base_type :type/UUID})]
+                    (sql.qp/->honeysql
+                     driver/*driver*
+                     (sql.qp/make-clause driver/*driver* := col-ref
+                                         (sql.qp/make-clause-with-opts driver/*driver* :value opts (str uuid)))))))
           (is (=? [:= [:metabase.util.honey-sql-2/identifier :field [field]]
                    (some-fn #(= uuid %)
                             #(= [:metabase.util.honey-sql-2/typed
@@ -279,9 +279,7 @@
                                 %))]
                   (sql.qp/->honeysql
                    driver/*driver*
-                   (if (isa? driver/hierarchy driver/*driver* :sql-mbql5)
-                     [:= {} col-ref uuid]
-                     [:= col-ref uuid])))))))))
+                   (sql.qp/make-clause driver/*driver* := col-ref uuid)))))))))
 
 (deftest query-canceled-test?
   (testing "walks a chain of exceptions"
