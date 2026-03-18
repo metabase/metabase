@@ -129,7 +129,6 @@ const ThumbsStaticVizComponent = (
         alignItems: "center",
         width,
         height,
-        fontSize: "10rem",
       }}
     >
       {emoji}
