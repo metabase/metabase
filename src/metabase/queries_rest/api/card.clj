@@ -1014,6 +1014,9 @@
   [{:keys [card-id param-key]} :- [:map
                                    [:card-id   ms/PositiveInt]
                                    [:param-key ::lib.schema.parameter/id]]]
+  ;; Bind *param-values-query* so that the QP only checks view-data permission (not create-queries) when fetching
+  ;; field values. Users who can read the Card should be able to use its field filter dropdowns. This matches the
+  ;; behavior of the equivalent dashboard param-values endpoint.
   (binding [qp.perms/*param-values-query* true]
     (queries/card-param-values (api/read-check :model/Card card-id) param-key)))
 
@@ -1032,6 +1035,7 @@
                                          [:card-id   ms/PositiveInt]
                                          [:param-key ::lib.schema.parameter/id]
                                          [:query     ms/NonBlankString]]]
+  ;; See comment above on the non-search variant.
   (binding [qp.perms/*param-values-query* true]
     (queries/card-param-values (api/read-check :model/Card card-id) param-key query)))
 

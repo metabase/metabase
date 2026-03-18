@@ -87,6 +87,10 @@
   "Search for values of a field given by `field-id` that contain `query`."
   [field-id     :- ::lib.schema.id/field
    query-string :- [:maybe :string]]
+  ;; When *param-values-query* is true, we skip the read-check on the Field because the caller has already
+  ;; verified that the user can read the Card. Table/Field read-checks require create-queries permission,
+  ;; which is too restrictive for users who should be able to use field filter dropdowns on saved questions.
+  ;; We still check-404 to ensure the Field exists.
   (let [field        (if qp.perms/*param-values-query*
                        (api/check-404 (t2/select-one :model/Field :id field-id))
                        (api/read-check (t2/select-one :model/Field :id field-id)))
