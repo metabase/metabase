@@ -337,7 +337,14 @@
 (defn- normalize-parameter
   [param]
   (when (map? param)
-    (lib.schema.common/normalize-map param)))
+    (let [param (lib.schema.common/normalize-map param)]
+      (case (keyword (:type param))
+        :number/between
+        (let [[l u] (:value param)]
+          (cond-> param
+            (and l (nil? u)) (assoc :type :number/>=, :value [l])
+            (and u (nil? l)) (assoc :type :number/<=, :value [u])))
+        param))))
 
 (mr/def ::id
   [:schema
