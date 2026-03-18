@@ -16,6 +16,7 @@ databaseChangeLog:
               - column:
                   name: id
                   type: int
+                  remarks: Auto-incrementing primary key
                   autoIncrement: true
                   constraints:
                     primaryKey: true
@@ -59,21 +60,25 @@ databaseChangeLog:
               - column:
                   name: token_endpoint_auth_method
                   type: varchar(50)
+                  remarks: OAuth token endpoint auth method (e.g. client_secret_basic)
                   constraints:
                     nullable: true
               - column:
                   name: client_name
                   type: varchar(255)
+                  remarks: Human-readable client name
                   constraints:
                     nullable: true
               - column:
                   name: client_uri
                   type: ${text.type}
+                  remarks: URL of the client home page
                   constraints:
                     nullable: true
               - column:
                   name: logo_uri
                   type: ${text.type}
+                  remarks: URL of the client logo image
                   constraints:
                     nullable: true
               - column:
@@ -104,12 +109,14 @@ databaseChangeLog:
               - column:
                   name: created_at
                   type: ${timestamp_type}
+                  remarks: Timestamp of client registration
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
               - column:
                   name: updated_at
                   type: ${timestamp_type}
+                  remarks: Timestamp of last client update
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
@@ -137,6 +144,7 @@ databaseChangeLog:
               - column:
                   name: id
                   type: int
+                  remarks: Auto-incrementing primary key
                   autoIncrement: true
                   constraints:
                     primaryKey: true
@@ -162,6 +170,7 @@ databaseChangeLog:
               - column:
                   name: redirect_uri
                   type: ${text.type}
+                  remarks: Redirect URI for this authorization
                   constraints:
                     nullable: false
               - column:
@@ -173,6 +182,7 @@ databaseChangeLog:
               - column:
                   name: nonce
                   type: varchar(255)
+                  remarks: OIDC nonce value
                   constraints:
                     nullable: true
               - column:
@@ -202,6 +212,7 @@ databaseChangeLog:
               - column:
                   name: created_at
                   type: ${timestamp_type}
+                  remarks: Timestamp of code creation
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
@@ -253,6 +264,7 @@ databaseChangeLog:
               - column:
                   name: id
                   type: int
+                  remarks: Auto-incrementing primary key
                   autoIncrement: true
                   constraints:
                     primaryKey: true
@@ -272,6 +284,7 @@ databaseChangeLog:
               - column:
                   name: client_id
                   type: varchar(255)
+                  remarks: The OAuth client_id
                   constraints:
                     nullable: false
               - column:
@@ -301,6 +314,7 @@ databaseChangeLog:
               - column:
                   name: created_at
                   type: ${timestamp_type}
+                  remarks: Timestamp of token creation
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
@@ -352,6 +366,7 @@ databaseChangeLog:
               - column:
                   name: id
                   type: int
+                  remarks: Auto-incrementing primary key
                   autoIncrement: true
                   constraints:
                     primaryKey: true
@@ -371,6 +386,7 @@ databaseChangeLog:
               - column:
                   name: client_id
                   type: varchar(255)
+                  remarks: The OAuth client_id
                   constraints:
                     nullable: false
               - column:
@@ -400,6 +416,7 @@ databaseChangeLog:
               - column:
                   name: created_at
                   type: ${timestamp_type}
+                  remarks: Timestamp of token creation
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
