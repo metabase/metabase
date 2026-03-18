@@ -14,7 +14,7 @@
    [metabase.util :as u]
    [metabase.util.json :as json])
   (:import
-   (java.io ByteArrayOutputStream)
+   (java.io ByteArrayOutputStream OutputStream)
    (java.net URLEncoder)
    (metabase.server.streaming_response StreamingResponse)))
 
@@ -132,21 +132,61 @@
   [message]
   {:content [{:type "text" :text message}] :isError true})
 
-(defn- capture-streaming-response
-  "Execute a StreamingResponse in-process by writing to a ByteArrayOutputStream,
-   then parse the JSON output and return it as MCP text content.
+(def ^:private control-char-escapes
+  "Pre-computed \\uXXXX escape byte arrays for control characters 0x00-0x1F."
+  (mapv (fn [b] (.getBytes (format "\\u%04x" b) "UTF-8"))
+        (range 0x20)))
 
-   NOTE: This intentionally bypasses the normal StreamingResponse lifecycle (thread pool,
-   gzip, donechan delivery) because the agent-api streaming functions only write JSON to
-   the output stream and don't depend on `streaming-response/*response*` or other
-   infrastructure bindings. BOT-1120 tracks streaming MCP responses without buffering
-   in memory, which will replace this approach."
+(defn- escape-byte!
+  "Write a single byte to `out`, applying JSON string escaping for quotes, backslashes,
+   and control characters. All other bytes (including multibyte UTF-8) pass through as-is."
+  [^OutputStream out b]
+  (cond
+    (= b (int \"))    (do (.write out (int \\)) (.write out (int \")))
+    (= b (int \\))    (do (.write out (int \\)) (.write out (int \\)))
+    (<= 0 b 0x1F)     (let [^bytes esc (control-char-escapes b)]
+                        (.write out esc 0 (alength esc)))
+    :else              (.write out (int b))))
+
+(defn json-string-escaping-output-stream
+  "Wraps an OutputStream to escape bytes that are illegal inside a JSON string value
+   (quotes, backslashes, control characters). Works at the byte level so multibyte
+   UTF-8 sequences pass through untouched. close() flushes but does not close the
+   underlying stream, so the caller can append suffix bytes afterward."
+  ^OutputStream [^OutputStream underlying]
+  (proxy [OutputStream] []
+    (write
+      ([x]
+       (if (int? x)
+         (escape-byte! underlying (unchecked-int x))
+         (let [^bytes ba x]
+           (.write ^OutputStream this ba (int 0) (alength ba)))))
+      ([ba offset length]
+       (let [^bytes ba ba
+             end       (int (+ offset length))]
+         (loop [i (int offset)]
+           (when (< i end)
+             (escape-byte! underlying (Byte/toUnsignedInt (aget ba i)))
+             (recur (inc i)))))))
+    (flush []
+      (.flush underlying))
+    (close []
+      (.flush underlying))))
+
+(defn materialize-streaming-response
+  "Batch-request fallback: execute a StreamingResponse in-process by writing to a
+   ByteArrayOutputStream, then parse the JSON output and return it as MCP text content.
+   Used only when the result must be materialized (e.g. for JSON-RPC batch responses).
+   Non-batch requests stream directly in `api.clj` to avoid buffering."
   [^StreamingResponse response]
-  (let [baos (ByteArrayOutputStream.)
+  (let [baos         (ByteArrayOutputStream.)
         canceled-chan (a/promise-chan)
-        f (.f response)]
-    (f baos canceled-chan)
-    (text-content (json/decode+kw (.toString baos "UTF-8")))))
+        f            (.f response)]
+    (try
+      (f baos canceled-chan)
+      (text-content (json/decode+kw (.toString baos "UTF-8")))
+      (catch Throwable e
+        (error-content (or (ex-message e) "Internal error"))))))
 
 (defn- deliver-agent-api-response
   "Dispatch to agent API routes and deliver response to promise."
@@ -162,7 +202,8 @@
 
 (defn- invoke-agent-api
   "Invoke an Agent API endpoint with a synthetic Ring request.
-   Returns MCP content (text-content on success, error-content on failure).
+   Returns MCP content maps on success, error-content on failure, or the raw
+   StreamingResponse when the endpoint returns one (for streaming tool results).
 
    Propagates `token-scopes` from the original MCP request so that scope restrictions
    are preserved through the synthetic request."
@@ -172,7 +213,7 @@
     (let [response (deref result 30000 {:status 504 :body {:message "Timeout"}})]
       (cond
         (instance? StreamingResponse (:body response))
-        (capture-streaming-response (:body response))
+        (:body response)
 
         (= 200 (:status response))
         (text-content (:body response))
@@ -232,7 +273,10 @@
   "Dispatch an MCP `tools/call` request to the appropriate handler.
    `token-scopes` from the original MCP session are propagated to the synthetic
    agent-api request so that scope restrictions are preserved.
-   Returns MCP content on success, or error content on failure."
+
+   Returns MCP content maps for non-streaming results, or the raw StreamingResponse
+   for streaming results (e.g. execute_query). The caller is responsible for wrapping
+   streaming results in the appropriate transport envelope."
   [token-scopes tool-name arguments]
   (if-let [tool-def (get (tool-index) tool-name)]
     (if-not (scope-matches? token-scopes (:scope tool-def))
