@@ -431,7 +431,10 @@ describe("DatabasePane", () => {
       const tableElement = screen.getByText("Table 1");
       await userEvent.click(tableElement);
 
-      expect(onItemClick).toHaveBeenCalledWith("table", table1);
+      expect(onItemClick).toHaveBeenCalledWith({
+        type: "table",
+        id: table1.id,
+      });
     });
 
     it("should call onItemClick with correct type ('question') and item for models", async () => {
@@ -458,7 +461,10 @@ describe("DatabasePane", () => {
       const modelText = screen.getByText("Model 1");
       await userEvent.click(modelText);
 
-      expect(onItemClick).toHaveBeenCalledWith("question", model1);
+      expect(onItemClick).toHaveBeenCalledWith({
+        type: "question",
+        id: model1.id,
+      });
     });
 
     it("should call onBack callback when back button is clicked", async () => {
