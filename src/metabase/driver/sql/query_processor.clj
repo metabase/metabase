@@ -1726,7 +1726,7 @@
   "Generate pattern to match against in like clause. Lowercasing for case insensitive matching also happens here."
   [driver
    pre
-   [type maybe-opts :as arg]
+   [type _ :as arg]
    post
    {:keys [case-sensitive] :or {case-sensitive true} :as _options}]
   (if (= :value type)
@@ -1734,7 +1734,7 @@
                                                   (not case-sensitive) u/lower-case-en))
          (->honeysql driver)
          (transform-literal-like-pattern-honeysql driver))
-    (let [expr (->honeysql driver (into [:concat] (remove nil?) [maybe-opts pre arg post]))]
+    (let [expr (->honeysql driver (make-clause driver :concat pre arg post))]
       (if case-sensitive
         expr
         [:lower expr]))))
