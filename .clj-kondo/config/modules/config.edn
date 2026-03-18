@@ -1112,13 +1112,17 @@
   llm
   {:team "Metabot"
    :api  #{metabase.llm.api
-           metabase.llm.init}
+           metabase.llm.init
+           metabase.llm.settings}
    :uses #{analytics
+           analyze
            api
            driver
            lib
            lib-be
            models
+           parameters
+           query-processor
            request
            settings
            sql-tools
@@ -1915,7 +1919,8 @@
   {:team "UX West"
    :api  #{metabase.sso.api
            metabase.sso.core
-           metabase.sso.init}
+           metabase.sso.init
+           metabase.sso.settings}
    :uses #{api
            auth-identity
            config
@@ -2497,7 +2502,7 @@
            server
            util
            enterprise/api
-           enterprise/metabot-v3
+           enterprise/metabot
            enterprise/workspaces}
    :model-imports #{:model/User}}
 
@@ -2506,7 +2511,7 @@
    :api  #{metabase-enterprise.ai-entity-analysis.api}
    :uses #{api
            premium-features
-           enterprise/metabot-v3}}
+           enterprise/metabot}}
 
   enterprise/ai-sql-fixer
   {:team "Metabot"
@@ -2517,7 +2522,7 @@
            lib-be
            query-processor
            util
-           enterprise/metabot-v3}}
+           enterprise/metabot}}
 
   enterprise/ai-sql-generation
   {:team "Metabot"
@@ -2525,7 +2530,7 @@
    :uses #{api
            driver
            util
-           enterprise/metabot-v3}}
+           enterprise/metabot}}
 
   enterprise/analytics
   {:team "UX West"
@@ -2841,28 +2846,15 @@
            premium-features}
    :model-imports #{:model/Card :model/Collection :model/Table}}
 
-  enterprise/llm
-  {:team "Metabot"
-   :api  #{metabase-enterprise.llm.api
-           metabase-enterprise.llm.init
-           metabase-enterprise.llm.settings}
-   :uses #{analytics
-           analyze
-           api
-           parameters
-           query-processor
-           settings
-           util}
-   :model-imports #{:model/Dashboard}}
-
-  enterprise/metabot-v3
+  metabot
   {:team    "Metabot"
-   :api     #{metabase-enterprise.metabot-v3.api
-              metabase-enterprise.metabot-v3.core
-              metabase-enterprise.metabot-v3.init
-              metabase-enterprise.metabot-v3.tools.api}
-   :friends #{enterprise/agent-api
-              enterprise/slackbot}
+   :api     #{metabase.metabot.api
+              metabase.metabot.core
+              metabase.metabot.init
+              metabase.metabot.tools.api
+              metabase.metabot.tools.util}
+   :friends #{agent-api
+              slackbot}
    :uses    #{activity-feed
               analytics
               api
@@ -2876,6 +2868,54 @@
               legacy-mbql
               lib
               lib-be
+              llm
+              models
+              native-query-snippets
+              notification
+              parameters
+              permissions
+              premium-features
+              pulse
+              query-processor
+              request
+              search
+              server
+              settings
+              sql-tools
+              store-api
+              sync
+              system
+              task
+              transforms
+              transforms-base
+              util
+              warehouses
+              slackbot}}
+
+  enterprise/metabot
+  {:team    "Metabot"
+   :api     #{metabase-enterprise.metabot.api
+              metabase-enterprise.metabot.core
+              metabase-enterprise.metabot.init
+              metabase-enterprise.metabot.tools.api}
+   :friends #{enterprise/agent-api
+              enterprise/slackbot
+              metabot}
+   :uses    #{activity-feed
+              analytics
+              api
+              app-db
+              audit-app
+              channel
+              collections
+              config
+              documents
+              driver
+              legacy-mbql
+              lib
+              lib-be
+              llm
+              metabot
               models
               native-query-snippets
               notification
@@ -2899,7 +2939,6 @@
               warehouses
               enterprise/api
               enterprise/dependencies
-              enterprise/llm
               enterprise/slackbot
               enterprise/transforms-python}
    :model-exports #{:model/Metabot
@@ -3061,6 +3100,7 @@
            app-db
            config
            connection-pool
+           llm
            models
            permissions
            premium-features
@@ -3068,9 +3108,7 @@
            settings
            task
            tracing
-           util
-           enterprise/llm}
-   :model-imports #{:model/Card :model/Collection :model/ModelIndex}}
+           util}}
 
   enterprise/serialization
   {:team "Querying"
@@ -3095,31 +3133,26 @@
            util}
    :model-imports #{:model/Card :model/Collection :model/Dashboard :model/User}}
 
-  enterprise/slackbot
+  slackbot
   {:team    "Metabot"
-   :api     #{metabase-enterprise.slackbot.init}
-   :friends #{enterprise/metabot-v3}
+   :api     #{metabase.slackbot.init}
+   :friends #{metabot}
    :uses    #{analytics
               api
               channel
               config
               formatter
               lib
+              metabot
               permissions
               premium-features
               query-processor
               request
               settings
+              sso
               system
               upload
-              util
-              enterprise/metabot-v3
-              enterprise/sso}
-   :model-imports #{:model/AuthIdentity
-                    :model/Card
-                    :model/Database
-                    :model/MetabotMessage
-                    :model/User}}
+              util}}
 
   enterprise/snippet-collections
   {:team "Querying"
