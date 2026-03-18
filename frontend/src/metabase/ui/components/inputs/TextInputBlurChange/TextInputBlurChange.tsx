@@ -54,7 +54,7 @@ export function TextInputBlurChange<T extends TextInputProps = TextInputProps>({
     (event: FocusEvent<HTMLInputElement>) => {
       onBlur?.(event);
 
-      if (onBlurChange && (value || "") !== event.target.value) {
+      if (onBlurChange && String(value ?? "") !== event.target.value) {
         onBlurChange(event);
         setInternalValue(normalize(event.target.value) ?? undefined);
       }
@@ -73,7 +73,7 @@ export function TextInputBlurChange<T extends TextInputProps = TextInputProps>({
   );
 
   useUnmountLayout(() => {
-    const lastPropsValue = value || "";
+    const lastPropsValue = String(value ?? "");
     const currentValue = ref.current?.value || "";
 
     if (onBlurChange && ref.current && lastPropsValue !== currentValue) {
