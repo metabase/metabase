@@ -476,15 +476,15 @@
   (testing "resolves Slack-format metabase:// entity links"
     (mt/with-temporary-setting-values [site-url "https://metabase.example.com"]
       (is (= "<https://metabase.example.com/model/123|My Model>"
-             (links/resolve-slack-links "<metabase://model/123|My Model>" {} {})))
+             (links/resolve-slack-links "<metabase://model/123|My Model>" {} {} (atom {}))))
       (is (= "<https://metabase.example.com/dashboard/456>"
-             (links/resolve-slack-links "<metabase://dashboard/456>" {} {}))))))
+             (links/resolve-slack-links "<metabase://dashboard/456>" {} {} (atom {})))))))
 
 (deftest resolve-slack-links-query-links-test
   (testing "resolves Slack-format metabase://query links"
     (mt/with-temporary-setting-values [site-url "https://metabase.example.com"]
       (let [query   (lib.tu/venues-query)
-            result  (links/resolve-slack-links "<metabase://query/q1|Results>" {"q1" query} {})]
+            result  (links/resolve-slack-links "<metabase://query/q1|Results>" {"q1" query} {} (atom {}))]
         (is (str/starts-with? result "<https://metabase.example.com/question#"))
         (is (str/ends-with? result "|Results>"))))))
 
@@ -492,17 +492,108 @@
   (testing "resolves multiple Slack-format links"
     (mt/with-temporary-setting-values [site-url "https://mb.test"]
       (is (= "<https://mb.test/model/1|Model A> and <https://mb.test/metric/2|Metric B>"
-             (links/resolve-slack-links "<metabase://model/1|Model A> and <metabase://metric/2|Metric B>" {} {}))))))
+             (links/resolve-slack-links "<metabase://model/1|Model A> and <metabase://metric/2|Metric B>" {} {} (atom {})))))))
 
 (deftest ^:parallel resolve-slack-links-unresolvable-test
   (testing "falls back to link text for unresolvable Slack link"
     (is (= "My Query"
-           (links/resolve-slack-links "<metabase://query/unknown|My Query>" {} {}))))
+           (links/resolve-slack-links "<metabase://query/unknown|My Query>" {} {} (atom {})))))
   (testing "falls back to URL for unresolvable Slack link without text"
     (is (= "metabase://query/unknown"
-           (links/resolve-slack-links "<metabase://query/unknown>" {} {})))))
+           (links/resolve-slack-links "<metabase://query/unknown>" {} {} (atom {}))))))
 
 (deftest ^:parallel resolve-slack-links-no-links-test
   (testing "passes through text without Slack links"
-    (is (= "plain text" (links/resolve-slack-links "plain text" {} {})))
-    (is (= "x < y" (links/resolve-slack-links "x < y" {} {})))))
+    (is (= "plain text" (links/resolve-slack-links "plain text" {} {} (atom {}))))
+    (is (= "x < y" (links/resolve-slack-links "x < y" {} {} (atom {}))))))
+
+;;; Slack link registry recording tests
+
+(deftest resolve-slack-links-records-entity-links-in-registry-test
+  (testing "records resolved Slack entity links in registry atom"
+    (mt/with-temporary-setting-values [site-url "https://metabase.example.com"]
+      (let [registry (atom {})
+            _result  (links/resolve-slack-links "<metabase://model/123|My Model> and <metabase://metric/456>"
+                                                {} {} registry)]
+        (is (= {"https://metabase.example.com/model/123"  "metabase://model/123"
+                "https://metabase.example.com/metric/456" "metabase://metric/456"}
+               @registry))))))
+
+(deftest resolve-slack-links-records-query-links-in-registry-test
+  (testing "records resolved Slack query links in registry atom"
+    (mt/with-temporary-setting-values [site-url "https://metabase.example.com"]
+      (let [registry (atom {})
+            query    (lib.tu/venues-query)
+            result   (links/resolve-slack-links "<metabase://query/q1|Results>" {"q1" query} {} registry)
+            url      (second (re-find #"<([^|>]+)" result))]
+        (is (= 1 (count @registry)))
+        (is (= "metabase://query/q1" (get @registry url)))))))
+
+(deftest ^:parallel resolve-slack-links-does-not-record-failed-resolutions-test
+  (testing "does not record failed Slack resolutions"
+    (let [registry (atom {})
+          _result  (links/resolve-slack-links "<metabase://query/nonexistent|Missing>" {} {} registry)]
+      (is (empty? @registry)))))
+
+;;; invert-slack-links tests
+
+(deftest ^:parallel invert-slack-links-replaces-resolved-urls-test
+  (testing "replaces resolved absolute URLs with original metabase URIs"
+    (let [registry {"https://metabase.example.com/model/123"  "metabase://model/123"
+                    "https://metabase.example.com/metric/456" "metabase://metric/456"}
+          text     "<https://metabase.example.com/model/123|Model> and <https://metabase.example.com/metric/456|Metric>"]
+      (is (= "<metabase://model/123|Model> and <metabase://metric/456|Metric>"
+             (links/invert-slack-links text registry))))))
+
+(deftest ^:parallel invert-slack-links-without-link-text-test
+  (testing "inverts Slack links that have no display text"
+    (let [registry {"https://metabase.example.com/dashboard/1" "metabase://dashboard/1"}
+          text     "<https://metabase.example.com/dashboard/1>"]
+      (is (= "<metabase://dashboard/1>"
+             (links/invert-slack-links text registry))))))
+
+(deftest ^:parallel invert-slack-links-unchanged-for-empty-registry-test
+  (testing "returns text unchanged for empty registry"
+    (let [text "<https://metabase.example.com/model/123|Model>"]
+      (is (= text (links/invert-slack-links text {})))
+      (is (= text (links/invert-slack-links text nil))))))
+
+(deftest ^:parallel invert-slack-links-nil-input-test
+  (testing "returns non-string input unchanged"
+    (is (nil? (links/invert-slack-links nil {"https://a.com/b" "metabase://b"})))))
+
+(deftest ^:parallel invert-slack-links-no-matching-entries-test
+  (testing "handles registry entries that don't match text"
+    (let [text "no links here"]
+      (is (= text
+             (links/invert-slack-links text {"https://a.com/model/1" "metabase://model/1"}))))))
+
+;;; Slack round-trip tests
+
+(deftest round-trip-slack-entity-links-test
+  (testing "round-trip: resolve then invert returns original text for Slack entity links"
+    (mt/with-temporary-setting-values [site-url "https://metabase.example.com"]
+      (let [original "<metabase://model/123|My Model> and <metabase://dashboard/456|Dash>"
+            registry (atom {})
+            resolved (links/resolve-slack-links original {} {} registry)
+            inverted (links/invert-slack-links resolved @registry)]
+        (is (= original inverted))))))
+
+(deftest round-trip-slack-query-links-test
+  (testing "round-trip: resolve then invert for Slack query links"
+    (mt/with-temporary-setting-values [site-url "https://metabase.example.com"]
+      (let [query    (lib.tu/venues-query)
+            original "<metabase://query/q1|Results>"
+            registry (atom {})
+            resolved (links/resolve-slack-links original {"q1" query} {} registry)
+            inverted (links/invert-slack-links resolved @registry)]
+        (is (= original inverted))))))
+
+(deftest round-trip-slack-no-text-links-test
+  (testing "round-trip: resolve then invert for Slack links without display text"
+    (mt/with-temporary-setting-values [site-url "https://metabase.example.com"]
+      (let [original "<metabase://dashboard/789>"
+            registry (atom {})
+            resolved (links/resolve-slack-links original {} {} registry)
+            inverted (links/invert-slack-links resolved @registry)]
+        (is (= original inverted))))))

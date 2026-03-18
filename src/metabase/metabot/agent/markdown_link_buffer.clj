@@ -76,7 +76,7 @@
   (let [text        (str buffer chunk)
         ;; Resolve complete markdown links, then Slack-format links
         resolved    (-> (links/resolve-links text (:queries state) (:charts state) (:link-registry-atom state))
-                        (links/resolve-slack-links (:queries state) (:charts state)))
+                        (links/resolve-slack-links (:queries state) (:charts state) (:link-registry-atom state)))
         ;; Then check for incomplete link at the end
         split-point (find-potential-link-start resolved)]
     (if split-point

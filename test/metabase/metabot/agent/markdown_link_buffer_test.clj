@@ -14,6 +14,15 @@
    (let [[state output] (mlb/step (mlb/with-context mlb/initial-state queries charts (atom {})) text)]
      [output (mlb/flush-state state)])))
 
+(defn- process-with-registry
+  "Like `process` but returns [output flushed registry-map]."
+  ([text] (process-with-registry text {} {}))
+  ([text queries] (process-with-registry text queries {}))
+  ([text queries charts]
+   (let [registry (atom {})
+         [state output] (mlb/step (mlb/with-context mlb/initial-state queries charts registry) text)]
+     [output (mlb/flush-state state) @registry])))
+
 (defn- process-chunks
   "Process multiple chunks through state, returns [outputs flushed]."
   ([chunks] (process-chunks chunks {} {}))
@@ -182,6 +191,27 @@
       (let [[output flushed] (process "[Model](/model/1) and <metabase://dashboard/2|Dashboard>")]
         (is (= "[Model](/model/1) and <https://metabase.example.com/dashboard/2|Dashboard>" output))
         (is (= "" flushed))))))
+
+;;; Slack link registry recording tests
+
+(deftest resolve-slack-link-records-in-registry-test
+  (mt/with-temporary-setting-values [site-url "https://metabase.example.com"]
+    (testing "records resolved Slack links in registry"
+      (let [[_output _flushed registry] (process-with-registry "<metabase://model/123|My Model>")]
+        (is (= {"https://metabase.example.com/model/123" "metabase://model/123"}
+               registry))))
+
+    (testing "records multiple Slack links in registry"
+      (let [[_output _flushed registry] (process-with-registry
+                                         "<metabase://model/1|A> and <metabase://dashboard/2|B>")]
+        (is (= {"https://metabase.example.com/model/1"     "metabase://model/1"
+                "https://metabase.example.com/dashboard/2" "metabase://dashboard/2"}
+               registry))))))
+
+(deftest ^:parallel resolve-slack-link-does-not-record-failed-in-registry-test
+  (testing "does not record failed Slack resolutions in registry"
+    (let [[_output _flushed registry] (process-with-registry "<metabase://query/unknown|Missing>")]
+      (is (empty? registry)))))
 
 ;;; with-context tests
 

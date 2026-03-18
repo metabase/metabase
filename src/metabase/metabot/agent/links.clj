@@ -159,6 +159,23 @@
                          link-text))
                      (str "[" link-text "](" url ")"))))))
 
+;;; Link Inversion
+
+(defn- invert-matched-links
+  "Replace resolved URLs with original metabase:// URIs using pattern matching.
+  `match->url` extracts the URL from a regex match.
+  `rebuild` reconstructs the link syntax given [match-groups original-uri]."
+  [text pattern match->url rebuild registry-map]
+  (if (or (not (string? text))
+          (empty? text)
+          (empty? registry-map))
+    text
+    (str/replace text pattern
+                 (fn [match]
+                   (if-let [original (get registry-map (match->url match))]
+                     (rebuild match original)
+                     (first match))))))
+
 (defn invert-links
   "Replace resolved URLs with their original metabase:// URIs.
 
@@ -167,15 +184,12 @@
 
   Returns `text` unchanged if `registry-map` is empty or nil."
   [text registry-map]
-  (if (or (not (string? text))
-          (empty? text)
-          (empty? registry-map))
-    text
-    (str/replace text link-pattern
-                 (fn [[whole link-text url]]
-                   (if-let [original (get registry-map url)]
-                     (str "[" link-text "](" original ")")
-                     whole)))))
+  (invert-matched-links text
+                        link-pattern
+                        (fn [[_ _ url]] url)
+                        (fn [[_ link-text _] original]
+                          (str "[" link-text "](" original ")"))
+                        registry-map))
 
 ;;; Slack Link Processing
 
@@ -185,9 +199,10 @@
 
 (defn- resolve-slack-link
   "Resolve a single Slack-format metabase:// link match. Returns the replacement string."
-  [queries charts [_ url link-text]]
+  [queries charts link-registry-atom [_ url link-text]]
   (if-let [resolved (resolve-metabase-uri url queries charts)]
     (let [absolute-url (str (system/site-url) resolved)]
+      (swap! link-registry-atom assoc absolute-url url)
       (if link-text
         (str "<" absolute-url "|" link-text ">")
         (str "<" absolute-url ">")))
@@ -196,9 +211,34 @@
       (or link-text url))))
 
 (defn resolve-slack-links
-  "Resolve all Slack-format metabase:// links in text."
-  [text queries charts]
-  (str/replace text slack-link-pattern (partial resolve-slack-link queries charts)))
+  "Resolve all Slack-format metabase:// links in text.
+
+  `link-registry-atom` is an atom of {absolute-url original-metabase-uri}.
+  Every successful resolution is recorded so that resolved URLs can later
+  be inverted back to metabase:// URIs (see [[invert-slack-links]])."
+  [text queries charts link-registry-atom]
+  (str/replace text slack-link-pattern (partial resolve-slack-link queries charts link-registry-atom)))
+
+(def ^:private slack-url-link-pattern
+  "Regex matching a Slack-format link <url|text> with any HTTP(S) URL."
+  #"<(https?://[^>|]+)(?:\|([^>]*))?>")
+
+(defn invert-slack-links
+  "Replace resolved absolute URLs with their original metabase:// URIs in Slack-format links.
+
+  Only replaces URLs that appear inside `<url|text>` Slack link syntax.
+  `registry-map` is a map of {resolved-absolute-url original-metabase-uri}.
+
+  Returns `text` unchanged if `registry-map` is empty or nil."
+  [text registry-map]
+  (invert-matched-links text
+                        slack-url-link-pattern
+                        (fn [[_ url _]] url)
+                        (fn [[_ _ link-text] original]
+                          (if link-text
+                            (str "<" original "|" link-text ">")
+                            (str "<" original ">")))
+                        registry-map))
 
 (defn resolve-links-xf
   "Transducer that resolves metabase:// links in text parts.

@@ -207,10 +207,14 @@
     (mapv (fn [part]
             (cond
               (and (= (:type part) :text) (string? (:text part)))
-              (update part :text links/invert-links registry-map)
+              (-> part
+                  (update :text links/invert-links registry-map)
+                  (update :text links/invert-slack-links registry-map))
 
               (and (= (:role part) :user) (string? (:content part)))
-              (update part :content links/invert-links registry-map)
+              (-> part
+                  (update :content links/invert-links registry-map)
+                  (update :content links/invert-slack-links registry-map))
 
               :else part))
           parts)))
