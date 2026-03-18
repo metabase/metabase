@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.dependencies.events]
+   [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase-enterprise.replacement.protocols :as replacement.protocols]
    [metabase-enterprise.replacement.runner :as replacement.runner]
    [metabase.events.core :as events]
@@ -197,6 +198,7 @@
               ;; populate dependencies
               (events/publish-event! :event/card-create {:object old-card :user-id (mt/user->id :rasta)})
               (events/publish-event! :event/card-create {:object child-card :user-id (mt/user->id :rasta)})
+              (deps.test/synchronously-run-backfill!)
 
               (testing "child card initially points to old model"
                 (is (= old-id (get-in (t2/select-one-fn :dataset_query :model/Card :id child-id)

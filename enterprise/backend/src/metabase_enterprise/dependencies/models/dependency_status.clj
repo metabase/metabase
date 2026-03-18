@@ -58,7 +58,8 @@
 
 (defn instances-for-dependency-calculation
   "Find a batch of instances of type `entity-type` and maximum size `batch-size` that need
-  dependency calculation: stale=true OR version < current OR no entry.
+  dependency calculation: stale=true OR version < current.
+  Only processes entities that have a dependency_status entry.
   Returns full entity objects. Prioritizes stale over outdated."
   [entity-type batch-size]
   (let [model (deps.dependency-types/dependency-type->model entity-type)
@@ -68,13 +69,12 @@
     (t2/select model
                {:select [table-wildcard]
                 :from table-name
-                :left-join [:dependency_status [:and
-                                                [:= :dependency_status.entity_id id-field]
-                                                [:= :dependency_status.entity_type (name entity-type)]]]
+                :inner-join [:dependency_status [:and
+                                                 [:= :dependency_status.entity_id id-field]
+                                                 [:= :dependency_status.entity_type (name entity-type)]]]
                 :where [:or
                         [:= :dependency_status.stale true]
-                        [:<
-                         [:coalesce :dependency_status.dependency_analysis_version 0]
+                        [:< :dependency_status.dependency_analysis_version
                          models.dependency/current-dependency-analysis-version]]
                 :order-by [[[:case [:= :dependency_status.stale true] [:inline 0] :else [:inline 1]]]]
                 :limit batch-size})))

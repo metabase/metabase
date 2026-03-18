@@ -51,6 +51,7 @@
     :model/DataPermissions
     :model/DatabaseRouter
     :model/Dependency
+    :model/DependencyStatus
     :model/DocumentBookmark
     :model/CollectionPermissionGraphRevision
     :model/DashboardCardSeries

@@ -7,6 +7,7 @@
    [metabase-enterprise.dependencies.models.dependency :as dependencies.model]
    [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
    [metabase-enterprise.dependencies.task.backfill :as dependencies.backfill]
+   [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase.events.core :as events]
    [metabase.task.core :as task]
    [metabase.test :as mt]
@@ -19,8 +20,7 @@
 
 (defn- backfill-all-existing-entities!
   []
-  (mt/with-premium-features #{:dependencies}
-    (while (#'dependencies.backfill/backfill-dependencies!))))
+  (deps.test/synchronously-run-backfill!))
 
 (defn- backfill-dependencies-single-trigger!
   []
@@ -335,14 +335,3 @@
         (is (t2/exists? :model/Dependency :from_entity_type :card :from_entity_id card-id
                         :to_entity_type :table :to_entity_id (mt/id :orders)))))))
 
-(deftest ^:sequential backfill-no-entry-test
-  (testing "Entities with no dependency_status entry get processed"
-    (backfill-all-existing-entities!)
-    (mt/with-premium-features #{}
-      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders)}]
-        ;; No dependency_status entry exists — the left join should still pick this up
-        ;; since coalesce(null, 0) < current version
-        (backfill-dependencies-single-trigger!)
-        (assert-processed :card card-id)
-        (is (t2/exists? :model/Dependency :from_entity_type :card :from_entity_id card-id
-                        :to_entity_type :table :to_entity_id (mt/id :orders)))))))
