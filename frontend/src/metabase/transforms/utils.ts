@@ -173,7 +173,7 @@ export type ValidationResult = {
 export function getValidationResult(query: Lib.Query): ValidationResult {
   const { isNative } = Lib.queryDisplayInfo(query);
   if (isNative) {
-    const tags = Object.values(Lib.templateTags(query));
+    const tags = Object.values(Lib.templateTags(query) ?? {});
 
     const invalidResults = tags
       .map(validateTemplateTag)

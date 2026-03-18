@@ -14,6 +14,8 @@
    :output-dir "target/cljs_release/"
    :dev        {:output-dir "target/cljs_dev/"
                 :compiler-options {:reader-features #{:cljs-dev}}}
+   :build-hooks [(shadow.build/tap-hook)
+                 (metabase.util.malli.typescript/produce-dts)]
    :compiler-options {:reader-features #{:cljs-release}
                       :source-map      true
                       :warnings        {:fn-deprecated false}}

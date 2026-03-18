@@ -13,6 +13,7 @@ import type {
 } from "metabase-types/api";
 
 import type {
+  Aggregable,
   CardMetadata,
   Clause,
   ClauseType,
@@ -26,6 +27,24 @@ import type {
   TableMetadata,
 } from "./types";
 
+function isLegacyDatasetQuery(value: unknown): value is LegacyDatasetQuery {
+  if (typeof value !== "object" || value == null || !("type" in value)) {
+    return false;
+  }
+  const type = value.type;
+  if (type === "query") {
+    return "query" in value;
+  }
+  if (type === "native") {
+    return "native" in value;
+  }
+  return false;
+}
+
+function isOpaqueDatasetQuery(value: unknown): value is OpaqueDatasetQuery {
+  return typeof value === "object" && value != null && "database" in value;
+}
+
 /**
  * Use this in combination with Lib.metadataProvider(databaseId, legacyMetadata) and
  Lib.tableOrCardMetadata(metadataProvider, tableOrCardId);
@@ -38,14 +57,20 @@ export function queryFromTableOrCardMetadata(
 }
 
 export function toLegacyQuery(query: Query): LegacyDatasetQuery {
-  return ML.legacy_query(query);
+  const legacyQuery = ML.legacy_query(query);
+  if (!isLegacyDatasetQuery(legacyQuery)) {
+    throw new TypeError(
+      "Expected legacy_query to return a legacy dataset query",
+    );
+  }
+  return legacyQuery;
 }
 
 export function withDifferentTable(query: Query, tableId: TableId): Query {
   return ML.with_different_table(query, tableId);
 }
 
-export function suggestedName(query: Query): string {
+export function suggestedName(query: Query): string | null {
   return ML.suggestedName(query);
 }
 
@@ -94,6 +119,7 @@ export function replaceClause(
   targetClause: Clause | Join,
   newClause:
     | Clause
+    | Aggregable
     | ColumnMetadata
     | MeasureMetadata
     | MetricMetadata
@@ -156,7 +182,13 @@ export function fromJsQueryAndMetadata(
 }
 
 export function toJsQuery(query: Query): OpaqueDatasetQuery {
-  return ML.to_js_query(query);
+  const jsQuery = ML.to_js_query(query);
+  if (!isOpaqueDatasetQuery(jsQuery)) {
+    throw new TypeError(
+      "Expected to_js_query to return an opaque dataset query",
+    );
+  }
+  return jsQuery;
 }
 
 export function createTestQuery(

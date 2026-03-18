@@ -99,7 +99,7 @@ export type DatasetEditorInnerProps = {
   result?: { error?: unknown } | null;
   height?: number;
   isDirty: boolean;
-  isResultDirty: boolean;
+  isResultDirty?: boolean;
   isRunning: boolean;
   setQueryBuilderMode: (
     mode: QueryBuilderMode,
@@ -320,7 +320,9 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
   } = props;
 
   const dispatch = useDispatch();
-  const { isNative, isEditable } = Lib.queryDisplayInfo(question.query());
+  const { isNative = false, isEditable = false } = Lib.queryDisplayInfo(
+    question.query(),
+  );
   const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure();
 
   const fields = useMemo(
@@ -638,7 +640,7 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
       isNative &&
       isDirty &&
       isResultDirty &&
-      Lib.rawNativeQuery(question.query()).length > 0
+      (Lib.rawNativeQuery(question.query()) ?? "").length > 0
     ) {
       return t`You must run the query before you can save this model`;
     }

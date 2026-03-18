@@ -302,7 +302,7 @@ export function getMappingOptionByTarget(
   );
 
   const normalizedTarget = normalize(target);
-  const fieldRef = normalizedTarget[1];
+  const fieldRef = (normalizedTarget as unknown[])[1] as DimensionReference;
   const [columnByTargetIndex] = Lib.findColumnIndexesFromLegacyRefs(
     query,
     stageIndex,

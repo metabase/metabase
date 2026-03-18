@@ -19,23 +19,20 @@ export function extract(
   return ML.extract(query, stageIndex, extraction);
 }
 
-export function extractionExpression(
-  query: Query,
-  stageIndex: number,
-  extraction: ColumnExtraction,
-) {
-  return ML.extraction_expression(query, stageIndex, extraction);
+export function extractionExpression(extraction: ColumnExtraction) {
+  // CLJS has unused _a-query and _stage-number params for API consistency
+  return ML.extraction_expression(null, -1, extraction);
 }
 
 export function extractionsForDrill(drill: DrillThru): ColumnExtraction[] {
-  return ML.column_extract_drill_extractions(drill);
+  return ML.column_extract_drill_extractions(drill) || [];
 }
 
 export function columnExtractions(
   query: Query,
   column: ColumnMetadata,
 ): ColumnExtraction[] {
-  return ML.column_extractions(query, column);
+  return ML.column_extractions(query, column) || [];
 }
 
 export type ColumnExtractionTag =
@@ -67,7 +64,7 @@ export function functionsUsedByExtraction(
   stageIndex: number,
   extraction: ColumnExtraction,
 ): string[] {
-  const expression = extractionExpression(query, stageIndex, extraction);
+  const expression = extractionExpression(extraction);
   const parts = expressionParts(query, stageIndex, expression);
   return walk(parts);
 }

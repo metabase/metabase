@@ -48,7 +48,7 @@ export const isZipCode: TypeFn = TYPES.zip_code_QMARK_;
 
 // TODO (Alex P 2/13/26): rename to jsColumnTypeInfo
 export function legacyColumnTypeInfo(column: JsColumnTypeInfo): ColumnTypeInfo {
-  return ML.legacy_column__GT_type_info(column);
+  return ML.legacy_column__GT_type_info(column) as ColumnTypeInfo;
 }
 
 export function isAssignableType(

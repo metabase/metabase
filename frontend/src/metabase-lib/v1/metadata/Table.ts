@@ -110,9 +110,9 @@ class Table {
 
   connectedTables(): Table[] {
     const fks = this.fks || [];
-    return fks
-      .map((fk) => fk.origin?.table)
-      .filter((table) => table != null) as Table[];
+    const isTable = (table: Table | null | undefined): table is Table =>
+      table != null;
+    return fks.map((fk) => fk.origin?.table).filter(isTable);
   }
 
   foreignTables(): Table[] {
@@ -120,10 +120,12 @@ class Table {
     if (!fields) {
       return [];
     }
+    const isTable = (table: Table | null | undefined): table is Table =>
+      table != null;
     return fields
       .filter((field) => field.isFK() && field.fk_target_field_id)
       .map((field) => this.metadata?.field(field.fk_target_field_id)?.table)
-      .filter(Boolean) as Table[];
+      .filter(isTable);
   }
 
   clone() {

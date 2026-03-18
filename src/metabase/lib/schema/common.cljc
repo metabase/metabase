@@ -100,7 +100,8 @@
 
 (mr/def ::positive-number
   [:fn
-   {:error/message "positive number"}
+   {:error/message "positive number"
+    :typescript    "number"}
    (every-pred number? pos?)])
 
 (mr/def ::uuid

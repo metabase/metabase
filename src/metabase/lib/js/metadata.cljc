@@ -12,9 +12,11 @@
    [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.normalize :as lib.normalize]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.performance :as perf]))
 
 ;;; metabase-lib/metadata/Metadata comes in an object like
@@ -626,7 +628,7 @@
               form))
           metadata))))))
 
-(defn metadata-provider
+(mu/defn metadata-provider :- ::lib.schema.metadata/metadata-providerable
   "Use a `metabase-lib/metadata/Metadata` as a [[metabase.lib.metadata.protocols/MetadataProvider]]."
   [database-id unparsed-metadata]
   #?(:cljs (lib.cache/side-channel-cache (str database-id) unparsed-metadata

@@ -7,6 +7,7 @@
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.number :as u.number]
    [metabase.util.performance :refer [some]]))
 
 (comment lib.schema.ref/keep-me)
@@ -124,6 +125,105 @@
   [:or
    ::dimension-reference
    ::metadata-dimension])
+
+;;; ------------------------------------------------- Metric Filter Parts (JS-facing) -------------------------------------------------
+;;; JS-facing shapes use camelCase keys to match objects returned from metabase.lib-metric.js helpers.
+
+(mr/def ::default-filter-operator
+  [:enum :is-null :not-null])
+
+(mr/def ::string-filter-operator
+  [:enum :is-empty :not-empty := :!= :contains :does-not-contain :starts-with :ends-with])
+
+(mr/def ::string-filter-options
+  [:map [:case-sensitive {:optional true} :boolean]])
+
+(mr/def ::number-filter-operator
+  [:enum :is-null :not-null := :!= :> :>= :< :<= :between])
+
+(mr/def ::coordinate-filter-operator
+  [:enum := :!= :> :>= :< :<= :between :inside])
+
+(mr/def ::boolean-filter-operator
+  [:enum :is-null :not-null :=])
+
+(mr/def ::specific-date-filter-operator
+  [:enum := :> :< :between])
+
+(mr/def ::exclude-date-filter-operator
+  [:enum :!= :is-null :not-null])
+
+(mr/def ::exclude-date-filter-unit
+  [:enum :hour-of-day :day-of-week :month-of-year :quarter-of-year])
+
+(mr/def ::time-filter-operator
+  [:enum :is-null :not-null :> :< :between])
+
+(mr/def ::time-interval-options
+  [:map [:include-current {:optional true} :boolean]])
+
+(mr/def ::number-filter-value
+  [:or :double [:fn {:typescript "bigint"} u.number/bigint?]])
+
+(mr/def ::string-filter-parts
+  [:any {:ts/object-of [:map
+                        [:operator ::string-filter-operator]
+                        [:dimension ::metadata-dimension]
+                        [:values [:sequential :string]]
+                        [:options ::string-filter-options]]}])
+
+(mr/def ::number-filter-parts
+  [:any {:ts/object-of [:map
+                        [:operator ::number-filter-operator]
+                        [:dimension ::metadata-dimension]
+                        [:values [:sequential ::number-filter-value]]]}])
+
+(mr/def ::coordinate-filter-parts
+  [:any {:ts/object-of [:map
+                        [:operator ::coordinate-filter-operator]
+                        [:dimension ::metadata-dimension]
+                        [:longitudeDimension [:maybe ::metadata-dimension]]
+                        [:values [:sequential ::number-filter-value]]]}])
+
+(mr/def ::boolean-filter-parts
+  [:any {:ts/object-of [:map
+                        [:operator ::boolean-filter-operator]
+                        [:dimension ::metadata-dimension]
+                        [:values [:sequential :boolean]]]}])
+
+(mr/def ::specific-date-filter-parts
+  [:any {:ts/object-of [:map
+                        [:operator ::specific-date-filter-operator]
+                        [:dimension ::metadata-dimension]
+                        [:values :any]
+                        [:hasTime :boolean]]}])
+
+(mr/def ::relative-date-filter-parts
+  [:any {:ts/object-of [:map
+                        [:dimension ::metadata-dimension]
+                        [:value :int]
+                        [:unit ::lib.schema.temporal-bucketing/unit.date-time.interval]
+                        [:offsetValue [:maybe :int]]
+                        [:offsetUnit [:maybe ::lib.schema.temporal-bucketing/unit.date-time.interval]]
+                        [:options ::time-interval-options]]}])
+
+(mr/def ::exclude-date-filter-parts
+  [:any {:ts/object-of [:map
+                        [:operator ::exclude-date-filter-operator]
+                        [:dimension ::metadata-dimension]
+                        [:unit [:maybe ::exclude-date-filter-unit]]
+                        [:values [:sequential :int]]]}])
+
+(mr/def ::time-filter-parts
+  [:any {:ts/object-of [:map
+                        [:operator ::time-filter-operator]
+                        [:dimension ::metadata-dimension]
+                        [:values :any]]}])
+
+(mr/def ::default-filter-parts
+  [:any {:ts/object-of [:map
+                        [:operator ::default-filter-operator]
+                        [:dimension ::metadata-dimension]]}])
 
 ;;; ------------------------------------------------- Filter Clause Normalization -------------------------------------------------
 ;;; Filter clauses from the API arrive with string operators and dimension refs that need normalization.

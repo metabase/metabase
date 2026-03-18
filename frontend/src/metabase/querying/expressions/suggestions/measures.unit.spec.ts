@@ -104,7 +104,7 @@ describe("suggestMeasures", () => {
     const query = Lib.createTestQuery(metadataProviderWithMeasure, {
       stages: [
         {
-          source: { type: "table", id: TABLE.id },
+          source: { type: "table", id: TABLE_ID },
         },
       ],
     });

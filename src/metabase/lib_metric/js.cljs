@@ -16,7 +16,11 @@
    [metabase.lib-metric.types.isa :as types.isa]
    [metabase.lib.field :as lib.field]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
    [metabase.util.memoize :as memoize]
    [metabase.util.number :as u.number]
    [metabase.util.time :as u.time]))
@@ -124,7 +128,7 @@
         uuid (when opts (gobject/get opts "lib/uuid"))]
     [(keyword tag) {:lib/uuid uuid} id]))
 
-(defn ^:export metadataProvider
+(mu/defn ^:export metadataProvider :- ::lib.schema.metadata/metadata-providerable
   "Create a MetricMetadataProvider from JS/Redux metadata.
 
    This provider enables building metric queries that span multiple databases.
@@ -162,7 +166,7 @@
      table->db-id
      settings)))
 
-(defn ^:export metricMetadata
+(mu/defn ^:export metricMetadata :- [:maybe ::lib.schema.metadata/metric]
   "Get metadata for the Metric with `metric-id`.
    Accepts a MetadataProviderable (either a MetadataProvider or MetricDefinition).
    Returns nil if not found."
@@ -171,7 +175,7 @@
           (->metadata-provider providerable)
           {:lib/type :metadata/metric, :id #{metric-id}})))
 
-(defn ^:export measureMetadata
+(mu/defn ^:export measureMetadata :- [:maybe ::lib.schema.metadata/measure]
   "Get metadata for the Measure with `measure-id`.
    Accepts a MetadataProviderable (either a MetadataProvider or MetricDefinition).
    Returns nil if not found."
@@ -180,7 +184,7 @@
           (->metadata-provider providerable)
           {:lib/type :metadata/measure, :id #{measure-id}})))
 
-(defn ^:export fromMetricMetadata
+(mu/defn ^:export fromMetricMetadata :- ::lib-metric.schema/metric-definition
   "Create a MetricDefinition from metric metadata.
    Accepts a MetadataProviderable (either a MetadataProvider or MetricDefinition).
    Returns opaque CLJS data (no conversion needed for TypeScript's opaque type).
@@ -188,7 +192,7 @@
   [providerable metric-metadata]
   (lib-metric.definition/from-metric-metadata (->metadata-provider providerable) metric-metadata))
 
-(defn ^:export fromMeasureMetadata
+(mu/defn ^:export fromMeasureMetadata :- ::lib-metric.schema/metric-definition
   "Create a MetricDefinition from measure metadata.
    Accepts a MetadataProviderable (either a MetadataProvider or MetricDefinition).
    Returns opaque CLJS data (no conversion needed for TypeScript's opaque type).
@@ -196,17 +200,17 @@
   [providerable measure-metadata]
   (lib-metric.definition/from-measure-metadata (->metadata-provider providerable) measure-metadata))
 
-(defn ^:export sourceMetricId
+(mu/defn ^:export sourceMetricId :- [:maybe :int]
   "Get the source metric ID from a definition, or null if measure-based."
   [definition]
   (lib-metric.definition/source-metric-id definition))
 
-(defn ^:export sourceMeasureId
+(mu/defn ^:export sourceMeasureId :- [:maybe :int]
   "Get the source measure ID from a definition, or null if metric-based."
   [definition]
   (lib-metric.definition/source-measure-id definition))
 
-(defn ^:export sourceMeasureTableId
+(mu/defn ^:export sourceMeasureTableId :- [:maybe :int]
   "Get the table ID of the source measure, or null if not measure-based."
   [definition]
   (when-let [measure-id (lib-metric.definition/source-measure-id definition)]
@@ -214,7 +218,7 @@
                        (->metadata-provider definition)
                        {:lib/type :metadata/measure, :id #{measure-id}})))))
 
-(defn ^:export sourceInstances
+(mu/defn ^:export sourceInstances :- [:any {:ts/array-of :any}]
   "Get expression leaf instances as JS arrays.
    Returns a JS array of ['metric'|'measure', {'lib/uuid': '...'}, id] arrays."
   [definition]
@@ -223,7 +227,7 @@
                  (lib-metric.definition/expression-leaves
                   (:expression definition)))))
 
-(defn ^:export filters
+(mu/defn ^:export filters :- [:any {:ts/array-of ::lib.schema.mbql-clause/clause}]
   "Get the filter clauses from a metric definition.
    1-arity: returns flat MBQL filter clauses (single-source only).
    2-arity: returns filter clauses scoped to a specific source instance."
@@ -236,7 +240,7 @@
      (to-array (map :filter (filterv #(= (:lib/uuid %) uuid)
                                      (lib-metric.definition/filters definition)))))))
 
-(defn ^:export projections
+(mu/defn ^:export projections :- [:any {:ts/array-of ::lib-metric.schema/dimension-reference}]
   "Get the projection clauses from a metric definition.
    1-arity: returns flat dimension-ref projections (single-source only).
    2-arity: returns projections scoped to a specific source metadata."
@@ -248,7 +252,7 @@
    (let [dims (lib-metric.projection/projectable-dimensions-for-source definition source-metadata)]
      (to-array (filterv :projection-positions dims)))))
 
-(defn ^:export fromJsMetricDefinition
+(mu/defn ^:export fromJsMetricDefinition :- ::lib-metric.schema/metric-definition
   "Convert a JS metric definition (from JSON) to a MetricDefinition.
 
    The JS definition should match the format accepted by POST /api/metric/dataset:
@@ -336,7 +340,7 @@
     (gobject/set obj "projection" (to-array (map expression->js projection)))
     obj))
 
-(defn ^:export toJsMetricDefinition
+(mu/defn ^:export toJsMetricDefinition :- :map
   "Convert a MetricDefinition to a JS object for JSON serialization.
 
    Produces format compatible with POST /api/metric/dataset:
@@ -355,7 +359,7 @@
       (gobject/set obj "projections" (to-array (map typed-projection->js projections))))
     obj))
 
-(defn ^:export filterableDimensions
+(mu/defn ^:export filterableDimensions :- [:any {:ts/array-of ::lib-metric.schema/metadata-dimension}]
   "Get dimensions that can be used for filtering.
    1-arity: returns dimensions for single-source definition.
    2-arity: returns dimensions scoped to a specific source instance."
@@ -366,7 +370,7 @@
    (to-array (lib-metric.filter/filterable-dimensions-for-instance
               definition (->source-instance source-instance)))))
 
-(defn ^:export filter
+(mu/defn ^:export filter :- ::lib-metric.schema/metric-definition
   "Add a filter clause to a metric definition.
    2-arity: adds filter to single-source definition.
    3-arity: adds filter scoped to a specific source instance."
@@ -378,7 +382,7 @@
          uuid (lib-metric.definition/expression-leaf-uuid inst)]
      (lib-metric.filter/add-filter definition filter-clause uuid))))
 
-(defn ^:export filterableDimensionOperators
+(mu/defn ^:export filterableDimensionOperators :- [:any {:ts/array-of :string}]
   "Get available filter operators for a dimension.
    Returns a JS array of operator keyword strings (e.g., ['=', '!=', 'contains', ...]).
    Unlike metabase.lib which wraps operators in maps, this returns simple strings."
@@ -476,117 +480,126 @@
 
 ;;; -------------------------------------------------- Filter Clause/Parts Functions --------------------------------------------------
 
-(defn ^:export stringFilterClause
+(mu/defn ^:export stringFilterClause :- ::lib.schema.mbql-clause/clause
   "Create a string filter clause from parts.
    Parts: {operator, dimension, values, options}"
-  [parts]
+  [parts :- ::lib-metric.schema/string-filter-parts]
   (lib-metric.filter/string-filter-clause (filter-parts-js->cljs parts)))
 
-(defn ^:export stringFilterParts
+(mu/defn ^:export stringFilterParts :- [:maybe ::lib-metric.schema/string-filter-parts]
   "Extract string filter parts from a clause.
    Returns {operator, dimension, values, options} or null."
-  [definition filter-clause]
+  [definition :- ::lib-metric.schema/metric-definition
+   filter-clause :- ::lib.schema.mbql-clause/clause]
   (filter-parts-cljs->js (lib-metric.filter/string-filter-parts definition filter-clause)))
 
-(defn ^:export numberFilterClause
+(mu/defn ^:export numberFilterClause :- ::lib.schema.mbql-clause/clause
   "Create a number filter clause from parts.
    Parts: {operator, dimension, values}"
-  [parts]
+  [parts :- ::lib-metric.schema/number-filter-parts]
   (lib-metric.filter/number-filter-clause (filter-parts-js->cljs parts)))
 
-(defn ^:export numberFilterParts
+(mu/defn ^:export numberFilterParts :- [:maybe ::lib-metric.schema/number-filter-parts]
   "Extract number filter parts from a clause.
    Returns {operator, dimension, values} or null."
-  [definition filter-clause]
+  [definition :- ::lib-metric.schema/metric-definition
+   filter-clause :- ::lib.schema.mbql-clause/clause]
   (filter-parts-cljs->js (lib-metric.filter/number-filter-parts definition filter-clause)))
 
-(defn ^:export coordinateFilterClause
+(mu/defn ^:export coordinateFilterClause :- ::lib.schema.mbql-clause/clause
   "Create a coordinate filter clause from parts.
    Parts: {operator, dimension, longitudeDimension, values}"
-  [parts]
+  [parts :- ::lib-metric.schema/coordinate-filter-parts]
   (lib-metric.filter/coordinate-filter-clause (filter-parts-js->cljs parts)))
 
-(defn ^:export coordinateFilterParts
+(mu/defn ^:export coordinateFilterParts :- [:maybe ::lib-metric.schema/coordinate-filter-parts]
   "Extract coordinate filter parts from a clause.
    Returns {operator, dimension, longitudeDimension, values} or null."
-  [definition filter-clause]
+  [definition :- ::lib-metric.schema/metric-definition
+   filter-clause :- ::lib.schema.mbql-clause/clause]
   (filter-parts-cljs->js (lib-metric.filter/coordinate-filter-parts definition filter-clause)))
 
-(defn ^:export booleanFilterClause
+(mu/defn ^:export booleanFilterClause :- ::lib.schema.mbql-clause/clause
   "Create a boolean filter clause from parts.
    Parts: {operator, dimension, values}"
-  [parts]
+  [parts :- ::lib-metric.schema/boolean-filter-parts]
   (lib-metric.filter/boolean-filter-clause (filter-parts-js->cljs parts)))
 
-(defn ^:export booleanFilterParts
+(mu/defn ^:export booleanFilterParts :- [:maybe ::lib-metric.schema/boolean-filter-parts]
   "Extract boolean filter parts from a clause.
    Returns {operator, dimension, values} or null."
-  [definition filter-clause]
+  [definition :- ::lib-metric.schema/metric-definition
+   filter-clause :- ::lib.schema.mbql-clause/clause]
   (filter-parts-cljs->js (lib-metric.filter/boolean-filter-parts definition filter-clause)))
 
-(defn ^:export specificDateFilterClause
+(mu/defn ^:export specificDateFilterClause :- ::lib.schema.mbql-clause/clause
   "Create a specific date filter clause from parts.
    Parts: {operator, dimension, values, hasTime}"
-  [parts]
+  [parts :- ::lib-metric.schema/specific-date-filter-parts]
   (lib-metric.filter/specific-date-filter-clause (filter-parts-js->cljs parts)))
 
-(defn ^:export specificDateFilterParts
+(mu/defn ^:export specificDateFilterParts :- [:maybe ::lib-metric.schema/specific-date-filter-parts]
   "Extract specific date filter parts from a clause.
    Returns {operator, dimension, values, hasTime} or null."
-  [definition filter-clause]
+  [definition :- ::lib-metric.schema/metric-definition
+   filter-clause :- ::lib.schema.mbql-clause/clause]
   (some-> (lib-metric.filter/specific-date-filter-parts definition filter-clause)
           (update :values (fn [values] (mapv (comp u.time/dayjs-utc->local-date u.time/coerce-to-timestamp) values)))
           filter-parts-cljs->js))
 
-(defn ^:export relativeDateFilterClause
+(mu/defn ^:export relativeDateFilterClause :- ::lib.schema.mbql-clause/clause
   "Create a relative date filter clause from parts.
    Parts: {dimension, unit, value, offsetUnit, offsetValue, options}"
-  [parts]
+  [parts :- ::lib-metric.schema/relative-date-filter-parts]
   (lib-metric.filter/relative-date-filter-clause (filter-parts-js->cljs parts)))
 
-(defn ^:export relativeDateFilterParts
+(mu/defn ^:export relativeDateFilterParts :- [:maybe ::lib-metric.schema/relative-date-filter-parts]
   "Extract relative date filter parts from a clause.
    Returns {dimension, unit, value, offsetUnit, offsetValue, options} or null."
-  [definition filter-clause]
+  [definition :- ::lib-metric.schema/metric-definition
+   filter-clause :- ::lib.schema.mbql-clause/clause]
   (filter-parts-cljs->js (lib-metric.filter/relative-date-filter-parts definition filter-clause)))
 
-(defn ^:export excludeDateFilterClause
+(mu/defn ^:export excludeDateFilterClause :- ::lib.schema.mbql-clause/clause
   "Create an exclude date filter clause from parts.
    Parts: {operator, dimension, unit, values}"
-  [parts]
+  [parts :- ::lib-metric.schema/exclude-date-filter-parts]
   (lib-metric.filter/exclude-date-filter-clause (filter-parts-js->cljs parts)))
 
-(defn ^:export excludeDateFilterParts
+(mu/defn ^:export excludeDateFilterParts :- [:maybe ::lib-metric.schema/exclude-date-filter-parts]
   "Extract exclude date filter parts from a clause.
    Returns {operator, dimension, unit, values} or null."
-  [definition filter-clause]
+  [definition :- ::lib-metric.schema/metric-definition
+   filter-clause :- ::lib.schema.mbql-clause/clause]
   (filter-parts-cljs->js (lib-metric.filter/exclude-date-filter-parts definition filter-clause)))
 
-(defn ^:export timeFilterClause
+(mu/defn ^:export timeFilterClause :- ::lib.schema.mbql-clause/clause
   "Create a time filter clause from parts.
    Parts: {operator, dimension, values}"
-  [parts]
+  [parts :- ::lib-metric.schema/time-filter-parts]
   (lib-metric.filter/time-filter-clause (filter-parts-js->cljs parts)))
 
-(defn ^:export timeFilterParts
+(mu/defn ^:export timeFilterParts :- [:maybe ::lib-metric.schema/time-filter-parts]
   "Extract time filter parts from a clause.
    Returns {operator, dimension, values} or null."
-  [definition filter-clause]
+  [definition :- ::lib-metric.schema/metric-definition
+   filter-clause :- ::lib.schema.mbql-clause/clause]
   (filter-parts-cljs->js (lib-metric.filter/time-filter-parts definition filter-clause)))
 
-(defn ^:export defaultFilterClause
+(mu/defn ^:export defaultFilterClause :- ::lib.schema.mbql-clause/clause
   "Create a default filter clause from parts.
    Parts: {operator, dimension}"
-  [parts]
+  [parts :- ::lib-metric.schema/default-filter-parts]
   (lib-metric.filter/default-filter-clause (filter-parts-js->cljs parts)))
 
-(defn ^:export defaultFilterParts
+(mu/defn ^:export defaultFilterParts :- [:maybe ::lib-metric.schema/default-filter-parts]
   "Extract default filter parts from a clause.
    Returns {operator, dimension} or null."
-  [definition filter-clause]
+  [definition :- ::lib-metric.schema/metric-definition
+   filter-clause :- ::lib.schema.mbql-clause/clause]
   (filter-parts-cljs->js (lib-metric.filter/default-filter-parts definition filter-clause)))
 
-(defn ^:export projectionableDimensions
+(mu/defn ^:export projectionableDimensions :- [:any {:ts/array-of ::lib-metric.schema/metadata-dimension}]
   "Get dimensions that can be used for projections.
    1-arity: returns dimensions for single-source definition.
    2-arity: returns dimensions scoped to a specific source metadata."
@@ -597,18 +610,18 @@
    (to-array (lib-metric.projection/projectable-dimensions-for-source
               definition source-metadata))))
 
-(defn ^:export defaultBreakoutDimensions
+(mu/defn ^:export defaultBreakoutDimensions :- [:any {:ts/array-of ::lib-metric.schema/metadata-dimension}]
   "Get dimensions corresponding to the source metric's default breakout columns."
   [definition]
   (to-array (lib-metric.projection/default-breakout-dimensions definition)))
 
-(defn ^:export dimensionReference
+(mu/defn ^:export dimensionReference :- ::lib-metric.schema/dimension-reference
   "Convert a DimensionMetadata map to a bare dimension reference [:dimension {} uuid].
    If already a reference, returns it as-is."
   [dimension]
   (lib-metric.dimension/reference dimension))
 
-(defn ^:export project
+(mu/defn ^:export project :- ::lib-metric.schema/metric-definition
   "Add a dimension reference projection to a metric definition.
    The dimension-ref must be a dimension reference (from dimensionReference,
    withTemporalBucket, or withBinning).
@@ -620,27 +633,27 @@
   ([definition dimension source-metadata]
    (lib-metric.projection/project-for-source definition dimension source-metadata)))
 
-(defn ^:export projectionDimension
+(mu/defn ^:export projectionDimension :- [:maybe ::lib-metric.schema/metadata-dimension]
   "Get the dimension metadata for a projection clause.
    Returns the dimension or null if not found."
   [definition projection]
   (lib-metric.projection/projection-dimension definition projection))
 
-(defn ^:export replaceClause
+(mu/defn ^:export replaceClause :- ::lib-metric.schema/metric-definition
   "Replace a clause in a metric definition.
    Finds the target clause by its :lib/uuid and replaces it with the new clause.
    Returns the definition unchanged if target clause is not found."
   [definition target-clause new-clause]
   (lib-metric.clause/replace-clause definition target-clause new-clause))
 
-(defn ^:export removeClause
+(mu/defn ^:export removeClause :- ::lib-metric.schema/metric-definition
   "Remove a clause from a metric definition.
    Finds the clause by its :lib/uuid and removes it from :filters or :projections.
    Returns the definition unchanged if clause is not found."
   [definition clause]
   (lib-metric.clause/remove-clause definition clause))
 
-(defn ^:export swapClauses
+(mu/defn ^:export swapClauses :- ::lib-metric.schema/metric-definition
   "Swap two clauses in a metric definition.
    Finds both clauses by their :lib/uuid and swaps their positions.
    Works within the same vector (both filters, both projections) or across vectors.
@@ -648,27 +661,27 @@
   [definition source-clause target-clause]
   (lib-metric.clause/swap-clauses definition source-clause target-clause))
 
-(defn ^:export temporalBucket
+(mu/defn ^:export temporalBucket :- [:maybe ::lib.schema.temporal-bucketing/option]
   "Get the temporal bucket for a projection clause."
   [projection]
   (lib-metric.projection/temporal-bucket projection))
 
-(defn ^:export availableTemporalBuckets
+(mu/defn ^:export availableTemporalBuckets :- [:any {:ts/array-of ::lib.schema.temporal-bucketing/option}]
   "Get available temporal buckets for a dimension."
   [definition dimension]
   (to-array (lib-metric.projection/available-temporal-buckets definition dimension)))
 
-(defn ^:export withTemporalBucket
+(mu/defn ^:export withTemporalBucket :- [:schema {:ts/same-as 0} ::lib-metric.schema/dimension-reference]
   "Apply a temporal bucket to a projection."
   [projection bucket]
   (lib-metric.projection/with-temporal-bucket projection bucket))
 
-(defn ^:export binning
+(mu/defn ^:export binning :- [:maybe ::lib-metric.schema/binning]
   "Get the binning strategy for a projection clause."
   [projection]
   (lib-metric.projection/binning projection))
 
-(defn ^:export availableBinningStrategies
+(mu/defn ^:export availableBinningStrategies :- [:any {:ts/array-of ::lib-metric.schema/binning-option}]
   "Get available binning strategies for a dimension.
    Returns an empty array if no strategies are available."
   [definition dimension]
@@ -676,117 +689,117 @@
       (or [])
       to-array))
 
-(defn ^:export withBinning
+(mu/defn ^:export withBinning :- [:schema {:ts/same-as 0} ::lib-metric.schema/dimension-reference]
   "Apply a binning strategy to a projection."
   [projection binning-strategy]
   (lib-metric.projection/with-binning projection binning-strategy))
 
-(defn ^:export isBoolean
+(mu/defn ^:export isBoolean :- :boolean
   "Check if dimension is boolean type."
   [dimension]
   (types.isa/boolean? dimension))
 
-(defn ^:export isCoordinate
+(mu/defn ^:export isCoordinate :- :boolean
   "Check if dimension is coordinate type."
   [dimension]
   (types.isa/coordinate? dimension))
 
-(defn ^:export isTemporal
+(mu/defn ^:export isTemporal :- :boolean
   "Check if dimension is temporal type."
   [dimension]
   (types.isa/temporal? dimension))
 
-(defn ^:export isDateOrDateTime
+(mu/defn ^:export isDateOrDateTime :- :boolean
   "Check if dimension is date or datetime type."
   [dimension]
   (types.isa/date-or-datetime? dimension))
 
-(defn ^:export isForeignKey
+(mu/defn ^:export isForeignKey :- :boolean
   "Check if dimension is a foreign key."
   [dimension]
   (types.isa/foreign-key? dimension))
 
-(defn ^:export isLocation
+(mu/defn ^:export isLocation :- :boolean
   "Check if dimension is a location type."
   [dimension]
   (types.isa/location? dimension))
 
-(defn ^:export isLatitude
+(mu/defn ^:export isLatitude :- :boolean
   "Check if dimension is a latitude."
   [dimension]
   (types.isa/latitude? dimension))
 
-(defn ^:export isLongitude
+(mu/defn ^:export isLongitude :- :boolean
   "Check if dimension is a longitude."
   [dimension]
   (types.isa/longitude? dimension))
 
-(defn ^:export isNumeric
+(mu/defn ^:export isNumeric :- :boolean
   "Check if dimension is numeric type."
   [dimension]
   (types.isa/numeric? dimension))
 
-(defn ^:export isPrimaryKey
+(mu/defn ^:export isPrimaryKey :- :boolean
   "Check if dimension is a primary key."
   [dimension]
   (types.isa/primary-key? dimension))
 
-(defn ^:export isStringLike
+(mu/defn ^:export isStringLike :- :boolean
   "Check if dimension is string-like type."
   [dimension]
   (types.isa/string-like? dimension))
 
-(defn ^:export isStringOrStringLike
+(mu/defn ^:export isStringOrStringLike :- :boolean
   "Check if dimension is string or string-like type."
   [dimension]
   (types.isa/string-or-string-like? dimension))
 
-(defn ^:export isTime
+(mu/defn ^:export isTime :- :boolean
   "Check if dimension is time type."
   [dimension]
   (types.isa/time? dimension))
 
-(defn ^:export isCategory
+(mu/defn ^:export isCategory :- :boolean
   "Check if dimension is a categorical type."
   [dimension]
   (types.isa/category? dimension))
 
-(defn ^:export isID
+(mu/defn ^:export isID :- :boolean
   "Check if dimension is an ID (primary key or foreign key)."
   [dimension]
   (types.isa/id? dimension))
 
-(defn ^:export isURL
+(mu/defn ^:export isURL :- :boolean
   "Check if dimension is a URL."
   [dimension]
   (types.isa/URL? dimension))
 
-(defn ^:export isEntityName
+(mu/defn ^:export isEntityName :- :boolean
   "Check if dimension is an entity name."
   [dimension]
   (types.isa/entity-name? dimension))
 
-(defn ^:export isTitle
+(mu/defn ^:export isTitle :- :boolean
   "Check if dimension is a title."
   [dimension]
   (types.isa/title? dimension))
 
-(defn ^:export isState
+(mu/defn ^:export isState :- :boolean
   "Check if dimension is a state."
   [dimension]
   (types.isa/state? dimension))
 
-(defn ^:export isCountry
+(mu/defn ^:export isCountry :- :boolean
   "Check if dimension is a country."
   [dimension]
   (types.isa/country? dimension))
 
-(defn ^:export isCity
+(mu/defn ^:export isCity :- :boolean
   "Check if dimension is a city."
   [dimension]
   (types.isa/city? dimension))
 
-(defn ^:export displayInfo
+(mu/defn ^:export displayInfo :- [:any {:ts/object-of ::lib-metric.schema/display-info}]
   "Get display info for a displayable item.
    Dispatches on :lib/type to return appropriate display info structure."
   [definition source]
@@ -808,7 +821,7 @@
                :table-id table-id
                :id       #{field-id}})))))
 
-(defn ^:export dimensionValuesInfo
+(mu/defn ^:export dimensionValuesInfo :- [:any {:ts/object-of :map}]
   "Get dimension values info. Prefers has-field-values stored directly on the
    dimension (computed during sync). Falls back to resolving the underlying field
    for backward compatibility with older dimensions that lack the key."
@@ -834,7 +847,7 @@
           :can-search-values (= :search has-fv)
           :can-remap-values  can-remap})))))
 
-(defn ^:export isSameSource
+(mu/defn ^:export isSameSource :- :boolean
   "Check if two dimensions share at least one common source.
    Returns false if either dimension has no sources."
   [dimension1 dimension2]

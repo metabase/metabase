@@ -28,8 +28,8 @@ export function expression(
 }
 
 export function withExpressionName<
-  Clause extends AggregationClause | ExpressionClause,
->(clause: Clause, newName: string): Clause {
+  T extends AggregationClause | ExpressionClause,
+>(clause: T, newName: string): T {
   return ML.with_expression_name(clause, newName);
 }
 
@@ -37,15 +37,15 @@ export function expressions(
   query: Query,
   stageIndex: number,
 ): ExpressionClause[] {
-  return ML.expressions(query, stageIndex);
+  return ML.expressions(query, stageIndex) || [];
 }
 
 export function expressionableColumns(
   query: Query,
-  stageIndex?: number,
+  stageIndex: number = -1,
   expressionIndex?: number,
 ): ColumnMetadata[] {
-  return ML.expressionable_columns(query, stageIndex, expressionIndex);
+  return ML.expressionable_columns(query, stageIndex, expressionIndex) || [];
 }
 
 export function expressionParts(
@@ -53,7 +53,22 @@ export function expressionParts(
   stageIndex: number,
   clause: AggregationClause | ExpressionClause | FilterClause | JoinCondition,
 ): ExpressionParts {
-  return ML.expression_parts(query, stageIndex, clause);
+  const parts = ML.expression_parts(query, stageIndex, clause);
+  if (!isExpressionParts(parts)) {
+    throw new TypeError("Expected expression_parts to return expression parts");
+  }
+  return parts;
+}
+
+function isExpressionParts(parts: unknown): parts is ExpressionParts {
+  return (
+    typeof parts === "object" &&
+    parts != null &&
+    "operator" in parts &&
+    typeof parts.operator === "string" &&
+    "args" in parts &&
+    Array.isArray(parts.args)
+  );
 }
 
 export function expressionClause(

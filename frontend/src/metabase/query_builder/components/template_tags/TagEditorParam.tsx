@@ -157,7 +157,7 @@ class TagEditorParamInner extends Component<
       return newConfig;
     }
 
-    const originalTag = Lib.templateTags(originalQuery)[tag.name];
+    const originalTag = Lib.templateTags(originalQuery)?.[tag.name];
     const originalParameter = originalQuestion
       .parameters()
       .find(({ id }) => id === parameter.id);
@@ -295,8 +295,10 @@ class TagEditorParamInner extends Component<
 
   setTableId = (tableId: TableId | undefined) => {
     const { tag, setTemplateTag } = this.props;
-    if (tag["table-id"] !== tableId) {
-      setTemplateTag({ ...tag, "table-id": tableId });
+    const numericTableId =
+      typeof tableId === "number" ? tableId : undefined;
+    if (tag["table-id"] !== numericTableId) {
+      setTemplateTag({ ...tag, "table-id": numericTableId });
     }
   };
 

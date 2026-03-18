@@ -10,6 +10,15 @@ import type {
   SegmentMetadata,
 } from "./types";
 
+function isFieldReference(value: unknown): value is FieldReference {
+  if (!Array.isArray(value) || value.length < 2) {
+    return false;
+  }
+
+  const [tag] = value;
+  return typeof tag === "string";
+}
+
 export function fields(query: Query, stageIndex: number): Clause[] {
   return ML.fields(query, stageIndex);
 }
@@ -57,5 +66,11 @@ export function legacyRef(
   stageIndex: number,
   column: ColumnMetadata | MetricMetadata | SegmentMetadata,
 ): FieldReference {
-  return ML.legacy_ref(query, stageIndex, column);
+  const ref = ML.legacy_ref(query, stageIndex, column);
+  if (!isFieldReference(ref)) {
+    throw new TypeError(
+      "Expected legacy_ref to return a field reference tuple",
+    );
+  }
+  return ref;
 }
