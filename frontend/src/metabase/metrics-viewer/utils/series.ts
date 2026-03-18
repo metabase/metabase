@@ -22,15 +22,17 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import type {
-  MetricDefinitionEntry,
-  MetricSourceId,
-  MetricsViewerDefinitionEntry,
-  MetricsViewerDisplayType,
-  SelectedMetric,
-  SourceColorMap,
+import {
+  type MetricDefinitionEntry,
+  type MetricExpressionId,
+  type MetricSourceId,
+  type MetricsViewerDefinitionEntry,
+  type MetricsViewerDisplayType,
+  type SelectedMetric,
+  type SourceColorMap,
+  isExpressionEntry,
+  isMetricEntry,
 } from "../types/viewer-state";
-import { isMetricEntry } from "../types/viewer-state";
 
 import {
   getDefinitionColumnName,
@@ -137,32 +139,44 @@ export function computeSourceColors(
   definitions: MetricsViewerDefinitionEntry[],
   breakoutValuesBySourceId?: Map<MetricSourceId, MetricBreakoutValuesResponse>,
 ): SourceColorMap {
-  const entries: { sourceId: MetricSourceId; keys: string[] }[] = [];
+  const entries: {
+    sourceId: MetricSourceId | MetricExpressionId;
+    keys: string[];
+  }[] = [];
 
   for (const entry of definitions) {
-    if (!isMetricEntry(entry) || !entry.definition) {
-      continue;
-    }
-    const displayName = getDefinitionName(entry.definition);
-    if (!displayName) {
-      continue;
+    if (isMetricEntry(entry)) {
+      if (!entry.definition) {
+        continue;
+      }
+
+      const displayName = getDefinitionName(entry.definition);
+      if (!displayName) {
+        continue;
+      }
+
+      const response = breakoutValuesBySourceId?.get(
+        (entry as MetricDefinitionEntry).id,
+      );
+      if (entryHasBreakout(entry) && response && response.values.length > 0) {
+        const keys = response.values.map((val) => {
+          const formatted = String(
+            formatValue(isEmpty(val) ? NULL_DISPLAY_VALUE : val, {
+              column: response.col,
+            }),
+          );
+          return definitions.length > 1
+            ? `${displayName}: ${formatted}`
+            : formatted;
+        });
+        entries.push({ sourceId: entry.id, keys });
+      } else {
+        entries.push({ sourceId: entry.id, keys: [displayName] });
+      }
     }
 
-    const response = breakoutValuesBySourceId?.get(entry.id);
-    if (entryHasBreakout(entry) && response && response.values.length > 0) {
-      const keys = response.values.map((val) => {
-        const formatted = String(
-          formatValue(isEmpty(val) ? NULL_DISPLAY_VALUE : val, {
-            column: response.col,
-          }),
-        );
-        return definitions.length > 1
-          ? `${displayName}: ${formatted}`
-          : formatted;
-      });
-      entries.push({ sourceId: entry.id, keys });
-    } else {
-      entries.push({ sourceId: entry.id, keys: [displayName] });
+    if (isExpressionEntry(entry)) {
+      entries.push({ sourceId: entry.id, keys: [entry.name] });
     }
   }
 

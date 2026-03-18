@@ -18,6 +18,7 @@ export type MetricsViewerDisplayType = Extract<
 >;
 
 export type MetricSourceId = `metric:${number}` | `measure:${number}`;
+export type MetricExpressionId = `expression:${number}`;
 
 export type MetricsViewerTabType =
   | "time"
@@ -65,7 +66,7 @@ export type MetricsViewerDefinitionEntry =
       definition: MetricDefinition | null;
     }
   | {
-      id: string; // "expression:<name>"
+      id: MetricExpressionId;
       type: "expression";
       name: string;
       tokens: ExpressionSubToken[];
@@ -128,7 +129,9 @@ export function getInitialMetricsViewerPageState(): MetricsViewerPageState {
 
 // ── Color mapping ──
 
-export type SourceColorMap = Partial<Record<MetricSourceId, string[]>>;
+export type SourceColorMap = Partial<
+  Record<MetricSourceId | MetricExpressionId, string[]>
+>;
 
 // ── Shared display types ──
 

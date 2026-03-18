@@ -2,7 +2,6 @@
   background-color: var(--mb-color-background-primary);
   border: 1px solid var(--mb-color-border);
   border-radius: var(--mantine-radius-md);
-  cursor: pointer;
   transition: background-color 150ms ease;
   max-width: 100%;
 }
