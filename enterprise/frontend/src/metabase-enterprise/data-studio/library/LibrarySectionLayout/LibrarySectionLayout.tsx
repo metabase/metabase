@@ -22,10 +22,10 @@ import {
 import type { ExpandedState } from "metabase/data-studio/data-model/components/TablePicker/types";
 import { LibraryUpsellPage } from "metabase/data-studio/upsells/pages";
 import { usePageTitle } from "metabase/hooks/use-page-title";
+import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
 import { useRouter } from "metabase/router";
-import { useSelector } from "metabase/lib/redux";
 import { ListEmptyState } from "metabase/transforms/components/ListEmptyState";
 import {
   Anchor,
@@ -41,8 +41,8 @@ import {
   TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
-import type { Collection, CollectionId } from "metabase-types/api";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
+import type { Collection, CollectionId } from "metabase-types/api";
 
 import { LibraryEmptyState } from "../components/LibraryEmptyState";
 
@@ -58,13 +58,6 @@ interface EmptyStateActionProps {
 }
 
 function EmptyStateAction({ data, onPublishTable }: EmptyStateActionProps) {
-  const remoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
-
-  // Don't show any actions in read-only mode
-  if (remoteSyncReadOnly) {
-    return null;
-  }
-
   if (data.sectionType === "data") {
     return (
       <Anchor
@@ -117,6 +110,7 @@ function LibrarySectionContent() {
     useState<CollectionId | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isPublishTableModalOpen, setIsPublishTableModalOpen] = useState(false);
+  const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
 
   const expandedIdsFromUrl = useMemo(() => {
     const rawIds = location.query?.expandedId;
@@ -263,10 +257,12 @@ function LibrarySectionContent() {
                 <Text c="text-tertiary" fz="inherit">
                   {data.description}
                 </Text>
-                <EmptyStateAction
-                  data={data}
-                  onPublishTable={() => setIsPublishTableModalOpen(true)}
-                />
+                {!isRemoteSyncReadOnly && (
+                  <EmptyStateAction
+                    data={data}
+                    onPublishTable={() => setIsPublishTableModalOpen(true)}
+                  />
+                )}
               </Flex>
             );
           }
@@ -330,7 +326,7 @@ function LibrarySectionContent() {
         },
       },
     ],
-    [setIsPublishTableModalOpen],
+    [setIsPublishTableModalOpen, isRemoteSyncReadOnly],
   );
 
   const getRowHref = useCallback(
