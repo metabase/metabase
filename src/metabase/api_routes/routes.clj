@@ -31,6 +31,7 @@
    [metabase.llm.api]
    [metabase.logger.api]
    [metabase.login-history.api]
+   [metabase.mcp.api]
    [metabase.measures.api]
    [metabase.metabot.api]
    [metabase.metabot.api.entity-analysis]
@@ -92,6 +93,7 @@
          metabase.indexed-entities.api/keep-me
          metabase.logger.api/keep-me
          metabase.login-history.api/keep-me
+         metabase.mcp.api/keep-me
          metabase.measures.api/keep-me
          metabase.metrics.api/keep-me
          metabase.model-persistence.api/keep-me
@@ -187,6 +189,7 @@
    "/llm"                  (+auth metabase.llm.api/routes)
    "/logger"               (+auth 'metabase.logger.api)
    "/login-history"        (+auth 'metabase.login-history.api)
+   "/mcp"                  metabase.mcp.api/handler
    "/measure"              (+auth 'metabase.measures.api)
    "/metabot"              metabase.metabot.api/routes
    "/metric"               (+auth 'metabase.metrics.api)

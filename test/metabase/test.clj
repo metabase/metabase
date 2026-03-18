@@ -186,6 +186,7 @@
 
  [metabase.test.util.dynamic-redefs
   dynamic-value
+  original-fn
   with-dynamic-fn-redefs]
 
  [premium-features.test-util
