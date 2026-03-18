@@ -5,7 +5,7 @@ import {
   useVirtualizer,
 } from "@tanstack/react-virtual";
 import type React from "react";
-import { useCallback, useLayoutEffect, useMemo, useRef } from "react";
+import { useCallback } from "react";
 
 import type { HeightChangeEvent } from "./use-row-heights";
 
@@ -55,19 +55,6 @@ export const useVirtualGrid = <TData,>({
     horizontal: true,
     overscan: 3,
   });
-
-  const centerColumnKey = useMemo(
-    () => centerColumns.map((c) => c.id).join(","),
-    [centerColumns],
-  );
-
-  const prevCenterColumnKey = useRef(centerColumnKey);
-  useLayoutEffect(() => {
-    if (prevCenterColumnKey.current !== centerColumnKey) {
-      prevCenterColumnKey.current = centerColumnKey;
-      columnVirtualizer.measure();
-    }
-  }, [centerColumnKey, columnVirtualizer]);
 
   const rowVirtualizer = useVirtualizer({
     count: centerRows.length,
