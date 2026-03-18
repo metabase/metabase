@@ -139,18 +139,6 @@
           (let [[db version] (:arguments parsed)]
             (start-db/start-db (:db-info (current-task)) db version)))}
 
-  ci-test-repl
-  {:doc "Start a REPL replicating a CI test job environment (Docker + env vars)"
-   :examples [["./bin/mage ci-test-repl" "Interactive selection with fzf"]
-              ["./bin/mage ci-test-repl app-db/be-tests-mysql" "Start REPL for a specific job"]
-              ["./bin/mage ci-test-repl -n app-db/be-tests-mysql" "Dry run: print commands without executing"]]
-   :requires [[mage.bgrabow.ci-test-repl :as ci-test-repl]]
-   :options [["-n" "--dry-run" "Print docker, env, and clojure commands without executing"]]
-   :task (task!
-          (let [wj (first (:arguments parsed))
-                [workflow job] (when wj (clojure.string/split wj (re-pattern "/") 2))]
-            (ci-test-repl/ci-test-repl {:workflow workflow :job job :dry-run? (:dry-run (:options parsed))})))}
-
   nrepl
   {:doc "Starts the babashka nrepl: helpful for mage development"
    :requires [[babashka.nrepl.server :as nrepl.server]
@@ -592,4 +580,16 @@
              [nil "--status" "Show current env status"]
              [nil "--slot SLOT" "Override port slot (0-99)" :parse-fn Integer/parseInt]
              [nil "--fresh" "Recreate containers from scratch"]]
-   :task (task! (jds-dev-env/dev-env! parsed))}}}
+   :task (task! (jds-dev-env/dev-env! parsed))}
+
+  -bgrabow-ci-test-repl
+  {:doc "Start a REPL replicating a CI test job environment (Docker + env vars)"
+   :examples [["./bin/mage -bgrabow-ci-test-repl" "Interactive selection with fzf"]
+              ["./bin/mage -bgrabow-ci-test-repl app-db/be-tests-mysql" "Start REPL for a specific job"]
+              ["./bin/mage -bgrabow-ci-test-repl -n app-db/be-tests-mysql" "Dry run: print commands without executing"]]
+   :requires [[mage.bgrabow.ci-test-repl :as ci-test-repl]]
+   :options [["-n" "--dry-run" "Print docker, env, and clojure commands without executing"]]
+   :task (task!
+           (let [wj (first (:arguments parsed))
+                 [workflow job] (when wj (clojure.string/split wj (re-pattern "/") 2))]
+             (ci-test-repl/ci-test-repl {:workflow workflow :job job :dry-run? (:dry-run (:options parsed))})))}}}
