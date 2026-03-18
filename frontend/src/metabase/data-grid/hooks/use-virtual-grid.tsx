@@ -14,7 +14,7 @@ interface VirtualGridProps<TData> {
   table: ReactTable<TData>;
   defaultRowHeight: number;
   enableRowVirtualization?: boolean;
-  resizeRowRef: React.MutableRefObject<
+  onResizeRowRef: React.MutableRefObject<
     ((event: HeightChangeEvent) => void) | undefined
   >;
   virtualIndexAttributeName: string;
@@ -37,7 +37,7 @@ export const useVirtualGrid = <TData,>({
   table,
   defaultRowHeight,
   enableRowVirtualization,
-  resizeRowRef,
+  onResizeRowRef,
   virtualIndexAttributeName,
 }: VirtualGridProps<TData>): VirtualGrid => {
   const centerColumns = table.getCenterLeafColumns();
@@ -65,7 +65,7 @@ export const useVirtualGrid = <TData,>({
     enabled: enableRowVirtualization,
   });
 
-  resizeRowRef.current = ({ elements, height }: HeightChangeEvent) => {
+  onResizeRowRef.current = ({ elements, height }: HeightChangeEvent) => {
     const element = elements?.values().next().value;
     if (!element) {
       return;
