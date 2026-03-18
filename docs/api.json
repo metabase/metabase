@@ -3021,6 +3021,34 @@
           "properties" : { }
         } ]
       },
+      "metabase-enterprise.metabot-v3.tools.api.create-alert-arguments" : {
+        "allOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "card_id" : {
+              "type" : "integer"
+            },
+            "schedule" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.subscription-schedule"
+            },
+            "send_condition" : {
+              "type" : "string",
+              "enum" : [ "has_result", "goal_above", "goal_below" ]
+            },
+            "send_once" : {
+              "default" : false,
+              "type" : "boolean"
+            },
+            "slack_channel" : {
+              "type" : "string"
+            }
+          },
+          "required" : [ "card_id", "send_condition", "schedule", "slack_channel" ]
+        }, {
+          "type" : "object",
+          "properties" : { }
+        } ]
+      },
       "metabase-enterprise.metabot-v3.tools.api.create-dashboard-subscription-arguments" : {
         "allOf" : [ {
           "type" : "object",
@@ -3028,14 +3056,14 @@
             "dashboard_id" : {
               "type" : "integer"
             },
-            "email" : {
-              "type" : "string"
-            },
             "schedule" : {
               "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.subscription-schedule"
+            },
+            "slack_channel" : {
+              "type" : "string"
             }
           },
-          "required" : [ "dashboard_id", "email", "schedule" ]
+          "required" : [ "dashboard_id", "slack_channel", "schedule" ]
         }, {
           "type" : "object",
           "properties" : { }
@@ -3273,23 +3301,28 @@
                 "field_id" : {
                   "type" : "string"
                 },
-                "statistics" : {
-                  "oneOf" : [ {
-                    "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.statistics"
-                  }, {
-                    "type" : "null"
-                  } ]
-                },
-                "values" : {
-                  "oneOf" : [ {
-                    "type" : "array",
-                    "items" : { }
-                  }, {
-                    "type" : "null"
-                  } ]
+                "value_metadata" : {
+                  "type" : "object",
+                  "properties" : {
+                    "field_values" : {
+                      "oneOf" : [ {
+                        "type" : "array",
+                        "items" : { }
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "statistics" : {
+                      "oneOf" : [ {
+                        "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.statistics"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  }
                 }
               },
-              "required" : [ "field_id" ]
+              "required" : [ "field_id", "value_metadata" ]
             }
           },
           "required" : [ "structured_output" ]
@@ -3408,108 +3441,6 @@
                 }
               },
               "required" : [ "type", "query_id", "query", "result_columns" ]
-            }
-          },
-          "required" : [ "structured_output" ]
-        }, {
-          "type" : "object",
-          "properties" : {
-            "output" : {
-              "type" : "string"
-            }
-          },
-          "required" : [ "output" ]
-        } ]
-      },
-      "metabase-enterprise.metabot-v3.tools.api.find-outliers-arguments" : {
-        "allOf" : [ {
-          "type" : "object",
-          "properties" : {
-            "data_source" : {
-              "allOf" : [ {
-                "anyOf" : [ {
-                  "type" : "object",
-                  "properties" : {
-                    "query" : {
-                      "type" : "object",
-                      "properties" : {
-                        "database" : {
-                          "type" : "integer"
-                        }
-                      },
-                      "required" : [ "database" ]
-                    },
-                    "query_id" : {
-                      "type" : "string"
-                    },
-                    "result_field_id" : {
-                      "type" : "string"
-                    }
-                  },
-                  "required" : [ "query", "result_field_id" ]
-                }, {
-                  "type" : "object",
-                  "properties" : {
-                    "metric_id" : {
-                      "type" : "integer"
-                    }
-                  },
-                  "required" : [ "metric_id" ]
-                }, {
-                  "type" : "object",
-                  "properties" : {
-                    "report_id" : {
-                      "type" : "integer"
-                    },
-                    "result_field_id" : {
-                      "type" : "string"
-                    }
-                  },
-                  "required" : [ "report_id", "result_field_id" ]
-                }, {
-                  "type" : "object",
-                  "properties" : {
-                    "result_field_id" : {
-                      "type" : "string"
-                    },
-                    "table_id" : {
-                      "type" : "string"
-                    }
-                  },
-                  "required" : [ "table_id", "result_field_id" ]
-                } ]
-              }, {
-                "type" : "object",
-                "properties" : { }
-              } ]
-            }
-          },
-          "required" : [ "data_source" ]
-        }, {
-          "type" : "object",
-          "properties" : { }
-        } ]
-      },
-      "metabase-enterprise.metabot-v3.tools.api.find-outliers-result" : {
-        "anyOf" : [ {
-          "type" : "object",
-          "properties" : {
-            "structured_output" : {
-              "type" : "array",
-              "items" : {
-                "type" : "object",
-                "properties" : {
-                  "dimension" : { },
-                  "value" : {
-                    "anyOf" : [ {
-                      "type" : "integer"
-                    }, {
-                      "type" : "number"
-                    } ]
-                  }
-                },
-                "required" : [ "dimension", "value" ]
-              }
             }
           },
           "required" : [ "structured_output" ]
@@ -7215,6 +7146,21 @@
         },
         "required" : [ "type", "name", "display-name", "snippet-name", "snippet-id" ]
       },
+      "metabase.legacy-mbql.schema..TemplateTag.SourceFilter" : {
+        "description" : "Schema for a single source-filter applied to a table template tag.",
+        "type" : "object",
+        "properties" : {
+          "field-id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
+          },
+          "op" : {
+            "type" : "string",
+            "enum" : [ "<=", ">", ">=", "!=", "=", "<" ]
+          },
+          "value" : { }
+        },
+        "required" : [ "field-id", "op", "value" ]
+      },
       "metabase.legacy-mbql.schema..TemplateTag.SourceQuery" : {
         "description" : "Things required by all template tag types.",
         "type" : "object",
@@ -7244,11 +7190,20 @@
           "display-name" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
           },
+          "emit-alias" : {
+            "type" : "boolean"
+          },
           "id" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.id"
           },
           "name" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "source-filters" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema..TemplateTag.SourceFilter"
+            }
           },
           "table-id" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
@@ -7332,13 +7287,6 @@
       "metabase.legacy-mbql.schema..legacy-column-metadata.qualified-keys" : {
         "type" : "object",
         "properties" : {
-          "qp.pivot/pivot-grouping?" : {
-            "oneOf" : [ {
-              "type" : "boolean"
-            }, {
-              "type" : "null"
-            } ]
-          },
           "metabase.lib.metadata.result-metadata/field-ref" : {
             "oneOf" : [ {
               "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Reference"
@@ -8058,13 +8006,6 @@
             "default" : { },
             "type" : "object",
             "properties" : {
-              "qp.pivot/pivot-grouping?" : {
-                "oneOf" : [ {
-                  "type" : "boolean"
-                }, {
-                  "type" : "null"
-                } ]
-              },
               "binning" : {
                 "$ref" : "#/components/schemas/metabase.lib.schema.binning.binning"
               },
@@ -8278,7 +8219,8 @@
               "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.SourceQuery"
             },
             "limit" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.common.int-greater-than-or-equal-to-zero"
+              "type" : "integer",
+              "minimum" : 0
             },
             "filter" : {
               "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Filter"
@@ -9036,13 +8978,6 @@
         "allOf" : [ {
           "type" : "object",
           "properties" : {
-            "qp.pivot/pivot-grouping?" : {
-              "oneOf" : [ {
-                "type" : "boolean"
-              }, {
-                "type" : "null"
-              } ]
-            },
             "metabase.lib.metadata.result-metadata/field-ref" : {
               "oneOf" : [ {
                 "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Reference"
@@ -9824,7 +9759,8 @@
               "$ref" : "#/components/schemas/metabase.lib.schema.filters"
             },
             "limit" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.common.int-greater-than-or-equal-to-zero"
+              "type" : "integer",
+              "minimum" : 0
             },
             "joins" : {
               "$ref" : "#/components/schemas/metabase.lib.schema.join.joins"
@@ -10004,17 +9940,8 @@
           "$ref" : "#/components/schemas/metabase.lib.schema.util.distinct-mbql-clauses"
         } ]
       },
-      "metabase.lib.schema.column-unique-key" : {
-        "type" : "string",
-        "pattern" : "^column-unique-key-v\\d+\\$.+$"
-      },
       "metabase.lib.schema.common.base-type" : {
         "type" : "string"
-      },
-      "metabase.lib.schema.common.int-greater-than-or-equal-to-zero" : {
-        "description" : "Schema representing an integer than must also be greater than or equal to zero.",
-        "type" : "integer",
-        "minimum" : 0
       },
       "metabase.lib.schema.common.kebab-cased-map" : { },
       "metabase.lib.schema.common.non-blank-string" : {
@@ -10089,11 +10016,13 @@
         "properties" : {
           "max-results" : {
             "description" : "Maximum number of results to allow for a query with aggregations. If `max-results-bare-rows` is unset, this\n  applies to all queries",
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.int-greater-than-or-equal-to-zero"
+            "type" : "integer",
+            "minimum" : 0
           },
           "max-results-bare-rows" : {
             "description" : "Maximum number of results to allow for a query with no aggregations. If set, this should be LOWER than\n  `:max-results`.",
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.int-greater-than-or-equal-to-zero"
+            "type" : "integer",
+            "minimum" : 0
           }
         }
       },
@@ -10398,7 +10327,7 @@
       "metabase.lib.schema.info.context" : {
         "description" : "Schema for `info.context`; used for informational purposes to record how a query was executed.",
         "type" : "string",
-        "enum" : [ "action", "ad-hoc", "agent", "cache-refresh", "collection", "map-tiles", "pulse", "dashboard-subscription", "dashboard", "question", "csv-download", "xlsx-download", "json-download", "public-dashboard", "public-question", "public-csv-download", "public-xlsx-download", "public-json-download", "embedded-dashboard", "embedded-question", "embedded-csv-download", "embedded-xlsx-download", "embedded-json-download", "table-grid", "transform-inspector" ]
+        "enum" : [ "action", "ad-hoc", "agent", "cache-refresh", "collection", "map-tiles", "pulse", "dashboard-subscription", "dashboard", "question", "csv-download", "xlsx-download", "json-download", "public-dashboard", "public-question", "public-csv-download", "public-xlsx-download", "public-json-download", "embedded-dashboard", "embedded-question", "embedded-csv-download", "embedded-xlsx-download", "embedded-json-download", "table-grid", "transform-inspector", "slackbot" ]
       },
       "metabase.lib.schema.info.hash" : {
         "type" : "string",
@@ -11092,13 +11021,6 @@
                 "type" : "null"
               } ]
             },
-            "qp.pivot/pivot-grouping?" : {
-              "oneOf" : [ {
-                "type" : "boolean"
-              }, {
-                "type" : "null"
-              } ]
-            },
             "metabase.lib.metadata.result-metadata/field-ref" : {
               "oneOf" : [ {
                 "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Reference"
@@ -11599,13 +11521,6 @@
               "fk-join-alias" : {
                 "oneOf" : [ {
                   "$ref" : "#/components/schemas/metabase.lib.schema.join.alias"
-                }, {
-                  "type" : "null"
-                } ]
-              },
-              "qp.pivot/pivot-grouping?" : {
-                "oneOf" : [ {
-                  "type" : "boolean"
                 }, {
                   "type" : "null"
                 } ]
@@ -12293,13 +12208,6 @@
           "default" : { },
           "type" : "object",
           "properties" : {
-            "qp.pivot/pivot-grouping?" : {
-              "oneOf" : [ {
-                "type" : "boolean"
-              }, {
-                "type" : "null"
-              } ]
-            },
             "binning" : {
               "$ref" : "#/components/schemas/metabase.lib.schema.binning.binning"
             },
@@ -12382,13 +12290,6 @@
           "default" : { },
           "type" : "object",
           "properties" : {
-            "qp.pivot/pivot-grouping?" : {
-              "oneOf" : [ {
-                "type" : "boolean"
-              }, {
-                "type" : "null"
-              } ]
-            },
             "binning" : {
               "$ref" : "#/components/schemas/metabase.lib.schema.binning.binning"
             },
@@ -12720,6 +12621,21 @@
           "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.disallow-dimension"
         } ]
       },
+      "metabase.lib.schema.template-tag.source-filter" : {
+        "description" : "Schema for a single source-filter applied to a table template tag.",
+        "type" : "object",
+        "properties" : {
+          "field-id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
+          },
+          "op" : {
+            "type" : "string",
+            "enum" : [ "<=", ">", ">=", "!=", "=", "<" ]
+          },
+          "value" : { }
+        },
+        "required" : [ "field-id", "op", "value" ]
+      },
       "metabase.lib.schema.template-tag.source-query" : {
         "allOf" : [ {
           "type" : "object",
@@ -12752,11 +12668,20 @@
             "display-name" : {
               "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
             },
+            "emit-alias" : {
+              "type" : "boolean"
+            },
             "id" : {
               "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.id"
             },
             "name" : {
               "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.name"
+            },
+            "source-filters" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.source-filter"
+              }
             },
             "table-id" : {
               "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
@@ -14873,19 +14798,6 @@
         "description" : "A single result metadata column as returned by the Query Processor.",
         "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.legacy-column-metadata"
       },
-      "metabase.query-processor.schema.any-query" : {
-        "description" : "Schema for a map that is in the general shape of either a legacy MBQL or MBQL 5 query. Query may not be normalized\n  yet!\n\n  This schema is not very strict because we need to handle different types of queries (legacy MBQL, pMBQL,\n  super-legacy MBQL, internal audit app queries, etc.) and it might not be normalized yet.",
-        "type" : "object",
-        "properties" : {
-          "database" : {
-            "anyOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
-            }, {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.saved-questions-virtual-database"
-            } ]
-          }
-        }
-      },
       "metabase.query-processor.schema.export-format" : {
         "description" : "Schema for valid export formats for downloading query results.",
         "type" : "string",
@@ -15780,11 +15692,8 @@
       "metabase.transforms.schema.checkpoint-strategy" : {
         "type" : "object",
         "properties" : {
-          "checkpoint-filter" : {
-            "type" : "string"
-          },
-          "checkpoint-filter-unique-key" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.column-unique-key"
+          "checkpoint-filter-field-id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
           },
           "type" : {
             "const" : "checkpoint"
@@ -29338,11 +29247,11 @@
         "tags" : [ "/api/ee/metabot-tools" ]
       }
     },
-    "/api/ee/metabot-tools/create-dashboard-subscription" : {
+    "/api/ee/metabot-tools/create-alert" : {
       "post" : {
-        "operationId" : "post-api-ee-metabot-tools-create-dashboard-subscription",
-        "summary" : "POST /api/ee/metabot-tools/create-dashboard-subscription",
-        "description" : "Create a dashboard subscription.",
+        "operationId" : "post-api-ee-metabot-tools-create-alert",
+        "summary" : "POST /api/ee/metabot-tools/create-alert",
+        "description" : "Create an alert for a saved question.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -29358,7 +29267,7 @@
                       "type" : "string",
                       "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
                     },
-                    "output" : {
+                    "error" : {
                       "type" : "string"
                     },
                     "profile_id" : {
@@ -29369,7 +29278,81 @@
                       } ]
                     }
                   },
-                  "required" : [ "output", "conversation_id" ]
+                  "required" : [ "conversation_id" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
+                "type" : "object",
+                "properties" : {
+                  "arguments" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.create-alert-arguments"
+                  },
+                  "conversation_id" : {
+                    "description" : "value must be a valid UUID.",
+                    "type" : "string",
+                    "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                  },
+                  "profile_id" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  }
+                },
+                "required" : [ "arguments", "conversation_id" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/metabot-tools" ]
+      }
+    },
+    "/api/ee/metabot-tools/create-dashboard-subscription" : {
+      "post" : {
+        "operationId" : "post-api-ee-metabot-tools-create-dashboard-subscription",
+        "summary" : "POST /api/ee/metabot-tools/create-dashboard-subscription",
+        "description" : "Create a dashboard subscription and send it to a slack channel.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
+                  "type" : "object",
+                  "properties" : {
+                    "conversation_id" : {
+                      "description" : "value must be a valid UUID.",
+                      "type" : "string",
+                      "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                    },
+                    "error" : {
+                      "type" : "string"
+                    },
+                    "profile_id" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "conversation_id" ]
                 }
               }
             }
@@ -29487,7 +29470,7 @@
       "post" : {
         "operationId" : "post-api-ee-metabot-tools-filter-records",
         "summary" : "POST /api/ee/metabot-tools/filter-records",
-        "description" : "Construct a query from a metric.",
+        "description" : "Apply filters to records from a data source (query, report, or table).",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -29532,77 +29515,6 @@
                 "properties" : {
                   "arguments" : {
                     "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.filter-records-arguments"
-                  },
-                  "conversation_id" : {
-                    "description" : "value must be a valid UUID.",
-                    "type" : "string",
-                    "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
-                  },
-                  "profile_id" : {
-                    "oneOf" : [ {
-                      "type" : "string"
-                    }, {
-                      "type" : "null"
-                    } ]
-                  }
-                },
-                "required" : [ "arguments", "conversation_id" ]
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/ee/metabot-tools" ]
-      }
-    },
-    "/api/ee/metabot-tools/find-outliers" : {
-      "post" : {
-        "operationId" : "post-api-ee-metabot-tools-find-outliers",
-        "summary" : "POST /api/ee/metabot-tools/find-outliers",
-        "description" : "Find outliers in the values provided by a data source for a given column.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
-                  "type" : "object",
-                  "properties" : {
-                    "conversation_id" : {
-                      "description" : "value must be a valid UUID.",
-                      "type" : "string",
-                      "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
-                    },
-                    "profile_id" : {
-                      "oneOf" : [ {
-                        "type" : "string"
-                      }, {
-                        "type" : "null"
-                      } ]
-                    }
-                  },
-                  "required" : [ "conversation_id" ]
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
-                "type" : "object",
-                "properties" : {
-                  "arguments" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.find-outliers-arguments"
                   },
                   "conversation_id" : {
                     "description" : "value must be a valid UUID.",
@@ -30966,6 +30878,13 @@
                     "type" : "string",
                     "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
                   },
+                  "debug" : {
+                    "oneOf" : [ {
+                      "type" : "boolean"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
                   "history" : {
                     "oneOf" : [ {
                       "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.client.schema.messages"
@@ -31005,6 +30924,114 @@
         "responses" : {
           "2XX" : {
             "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "instructions" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  },
+                  "references" : {
+                    "description" : "Value must be a map.",
+                    "type" : "object",
+                    "properties" : { }
+                  }
+                },
+                "required" : [ "instructions" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/metabot-v3/document" ]
+      }
+    },
+    "/api/ee/metabot-v3/document/native-generate-content" : {
+      "post" : {
+        "operationId" : "post-api-ee-metabot-v3-document-native-generate-content",
+        "summary" : "POST /api/ee/metabot-v3/document/native-generate-content",
+        "description" : "Create a new piece of content to insert into the document using the native Clojure agent.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "description" : {
+                      "oneOf" : [ {
+                        "type" : "string",
+                        "minLength" : 1
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "draft_card" : {
+                      "oneOf" : [ {
+                        "type" : "object",
+                        "properties" : {
+                          "database_id" : {
+                            "description" : "value must be an integer greater than zero.",
+                            "type" : "integer",
+                            "minimum" : 1
+                          },
+                          "dataset_query" : {
+                            "description" : "Value must be a map.",
+                            "type" : "object",
+                            "properties" : { }
+                          },
+                          "name" : {
+                            "type" : "string",
+                            "minLength" : 1
+                          },
+                          "parameters" : {
+                            "oneOf" : [ {
+                              "type" : "array",
+                              "items" : {
+                                "description" : "Value must be a map.",
+                                "type" : "object",
+                                "properties" : { }
+                              }
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "visualization_settings" : {
+                            "description" : "Value must be a map.",
+                            "type" : "object",
+                            "properties" : { }
+                          }
+                        },
+                        "required" : [ "name", "dataset_query", "database_id", "parameters", "visualization_settings" ]
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "error" : {
+                      "oneOf" : [ {
+                        "type" : "string",
+                        "minLength" : 1
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "draft_card", "error", "description" ]
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -31303,6 +31330,188 @@
           }
         },
         "tags" : [ "/api/ee/metabot-v3/metabot" ]
+      }
+    },
+    "/api/ee/metabot-v3/slack/events" : {
+      "post" : {
+        "operationId" : "post-api-ee-metabot-v3-slack-events",
+        "summary" : "POST /api/ee/metabot-v3/slack/events",
+        "description" : "Respond to activities in Slack",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "body" : {
+                      "type" : "string"
+                    },
+                    "headers" : {
+                      "type" : "object",
+                      "properties" : {
+                        "Content-Type" : {
+                          "const" : "text/plain"
+                        }
+                      },
+                      "required" : [ "Content-Type" ]
+                    },
+                    "status" : {
+                      "const" : 200
+                    }
+                  },
+                  "required" : [ "status", "headers", "body" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "oneOf" : [ {
+                  "type" : "object",
+                  "properties" : {
+                    "challenge" : {
+                      "type" : "string"
+                    },
+                    "type" : {
+                      "const" : "url_verification"
+                    }
+                  },
+                  "required" : [ "type", "challenge" ]
+                }, {
+                  "type" : "object",
+                  "properties" : {
+                    "event" : {
+                      "type" : "object",
+                      "properties" : {
+                        "event_ts" : {
+                          "type" : "string"
+                        },
+                        "type" : {
+                          "type" : "string"
+                        }
+                      },
+                      "required" : [ "type", "event_ts" ]
+                    },
+                    "type" : {
+                      "const" : "event_callback"
+                    }
+                  },
+                  "required" : [ "type", "event" ]
+                }, {
+                  "type" : "object",
+                  "properties" : {
+                    "type" : {
+                      "type" : "string"
+                    }
+                  },
+                  "required" : [ "type" ]
+                } ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/metabot-v3/slack" ]
+      }
+    },
+    "/api/ee/metabot-v3/slack/interactive" : {
+      "post" : {
+        "operationId" : "post-api-ee-metabot-v3-slack-interactive",
+        "summary" : "POST /api/ee/metabot-v3/slack/interactive",
+        "description" : "Handle interactive payloads from Slack (button clicks, modal submissions).",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/metabot-v3/slack" ]
+      }
+    },
+    "/api/ee/metabot-v3/slack/settings" : {
+      "put" : {
+        "operationId" : "put-api-ee-metabot-v3-slack-settings",
+        "summary" : "PUT /api/ee/metabot-v3/slack/settings",
+        "description" : "Update Metabot Slack settings atomically.\n   All credential fields must be provided together.\n   Setting values requires the metabot-v3 feature, but clearing values is always allowed.\n   slack-connect-enabled is automatically set to true when credentials are provided, nil when cleared.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "ok" : {
+                      "type" : "boolean"
+                    }
+                  },
+                  "required" : [ "ok" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "metabot-slack-signing-secret" : {
+                    "oneOf" : [ {
+                      "type" : "string",
+                      "minLength" : 1
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "slack-connect-client-id" : {
+                    "oneOf" : [ {
+                      "type" : "string",
+                      "minLength" : 1
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "slack-connect-client-secret" : {
+                    "oneOf" : [ {
+                      "type" : "string",
+                      "minLength" : 1
+                    }, {
+                      "type" : "null"
+                    } ]
+                  }
+                },
+                "required" : [ "slack-connect-client-id", "slack-connect-client-secret", "metabot-slack-signing-secret" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/metabot-v3/slack" ]
       }
     },
     "/api/ee/permission_debug" : {
@@ -40176,7 +40385,14 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.notification.models.FullyHydratedNotification"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -44987,6 +45203,88 @@
         "tags" : [ "/api/setup" ]
       }
     },
+    "/api/slack/app-info" : {
+      "get" : {
+        "operationId" : "get-api-slack-app-info",
+        "summary" : "GET /api/slack/app-info",
+        "description" : "Returns the Slack app_id and team_id. Used by the frontend to construct\n   direct links to the Slack app settings page.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "app_id" : {
+                      "oneOf" : [ {
+                        "type" : "string",
+                        "minLength" : 1
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "scopes" : {
+                      "oneOf" : [ {
+                        "type" : "object",
+                        "properties" : {
+                          "actual" : {
+                            "type" : "array",
+                            "items" : {
+                              "type" : "string"
+                            }
+                          },
+                          "extra" : {
+                            "type" : "array",
+                            "items" : {
+                              "type" : "string"
+                            }
+                          },
+                          "missing" : {
+                            "type" : "array",
+                            "items" : {
+                              "type" : "string"
+                            }
+                          },
+                          "required" : {
+                            "type" : "array",
+                            "items" : {
+                              "type" : "string"
+                            }
+                          }
+                        },
+                        "required" : [ "actual", "required", "missing", "extra" ],
+                        "additionalProperties" : false
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "team_id" : {
+                      "oneOf" : [ {
+                        "type" : "string",
+                        "minLength" : 1
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "app_id", "team_id", "scopes" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/slack" ]
+      }
+    },
     "/api/slack/bug-report" : {
       "post" : {
         "operationId" : "post-api-slack-bug-report",
@@ -45026,11 +45324,165 @@
       "get" : {
         "operationId" : "get-api-slack-manifest",
         "summary" : "GET /api/slack/manifest",
-        "description" : "Returns the YAML manifest file that should be used to bootstrap new Slack apps",
+        "description" : "Returns the JSON manifest file that should be used to bootstrap new Slack apps",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "display_information" : {
+                      "type" : "object",
+                      "properties" : {
+                        "background_color" : {
+                          "type" : "string"
+                        },
+                        "description" : {
+                          "type" : "string"
+                        },
+                        "name" : {
+                          "type" : "string"
+                        }
+                      },
+                      "required" : [ "name", "description", "background_color" ]
+                    },
+                    "features" : {
+                      "type" : "object",
+                      "properties" : {
+                        "app_home" : {
+                          "type" : "object",
+                          "properties" : {
+                            "home_tab_enabled" : {
+                              "type" : "boolean"
+                            },
+                            "messages_tab_enabled" : {
+                              "type" : "boolean"
+                            },
+                            "messages_tab_read_only_enabled" : {
+                              "type" : "boolean"
+                            }
+                          },
+                          "required" : [ "home_tab_enabled", "messages_tab_enabled", "messages_tab_read_only_enabled" ]
+                        },
+                        "assistant_view" : {
+                          "type" : "object",
+                          "properties" : {
+                            "assistant_description" : {
+                              "type" : "string"
+                            }
+                          },
+                          "required" : [ "assistant_description" ]
+                        },
+                        "bot_user" : {
+                          "type" : "object",
+                          "properties" : {
+                            "always_online" : {
+                              "type" : "boolean"
+                            },
+                            "display_name" : {
+                              "type" : "string"
+                            }
+                          },
+                          "required" : [ "display_name" ]
+                        },
+                        "slash_commands" : {
+                          "type" : "array",
+                          "items" : {
+                            "type" : "object",
+                            "properties" : {
+                              "command" : {
+                                "type" : "string"
+                              },
+                              "description" : {
+                                "type" : "string"
+                              },
+                              "should_escape" : {
+                                "type" : "boolean"
+                              },
+                              "url" : {
+                                "description" : "value must be a valid URL."
+                              }
+                            },
+                            "required" : [ "command", "url", "description", "should_escape" ]
+                          }
+                        }
+                      },
+                      "required" : [ "bot_user" ]
+                    },
+                    "oauth_config" : {
+                      "type" : "object",
+                      "properties" : {
+                        "redirect_urls" : {
+                          "type" : "array",
+                          "items" : {
+                            "description" : "value must be a valid URL."
+                          }
+                        },
+                        "scopes" : {
+                          "type" : "object",
+                          "properties" : {
+                            "bot" : {
+                              "type" : "array",
+                              "items" : {
+                                "type" : "string"
+                              }
+                            }
+                          },
+                          "required" : [ "bot" ]
+                        }
+                      },
+                      "required" : [ "scopes" ]
+                    },
+                    "settings" : {
+                      "type" : "object",
+                      "properties" : {
+                        "event_subscriptions" : {
+                          "type" : "object",
+                          "properties" : {
+                            "bot_events" : {
+                              "type" : "array",
+                              "items" : {
+                                "type" : "string"
+                              }
+                            },
+                            "request_url" : {
+                              "description" : "value must be a valid URL."
+                            }
+                          },
+                          "required" : [ "request_url", "bot_events" ]
+                        },
+                        "interactivity" : {
+                          "type" : "object",
+                          "properties" : {
+                            "is_enabled" : {
+                              "type" : "boolean"
+                            },
+                            "request_url" : {
+                              "description" : "value must be a valid URL."
+                            }
+                          },
+                          "required" : [ "is_enabled", "request_url" ]
+                        },
+                        "org_deploy_enabled" : {
+                          "type" : "boolean"
+                        },
+                        "socket_mode_enabled" : {
+                          "type" : "boolean"
+                        },
+                        "token_rotation_enabled" : {
+                          "type" : "boolean"
+                        }
+                      },
+                      "required" : [ "event_subscriptions", "interactivity", "org_deploy_enabled", "socket_mode_enabled", "token_rotation_enabled" ]
+                    }
+                  },
+                  "required" : [ "display_information", "features", "oauth_config" ]
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -47164,6 +47616,13 @@
                                 "type" : "null"
                               } ]
                             },
+                            "checkpoint_hi_value" : {
+                              "oneOf" : [ {
+                                "type" : "string"
+                              }, {
+                                "type" : "null"
+                              } ]
+                            },
                             "is_active" : {
                               "oneOf" : [ {
                                 "type" : "boolean"
@@ -47182,6 +47641,13 @@
                             "run_method" : {
                               "type" : "string"
                             },
+                            "checkpoint_lo_value" : {
+                              "oneOf" : [ {
+                                "type" : "string"
+                              }, {
+                                "type" : "null"
+                              } ]
+                            },
                             "status" : {
                               "type" : "string",
                               "enum" : [ "started", "succeeded", "failed", "timeout", "canceled", "canceling" ]
@@ -47189,6 +47655,14 @@
                             "transform_entity_id" : {
                               "oneOf" : [ {
                                 "type" : "string"
+                              }, {
+                                "type" : "null"
+                              } ]
+                            },
+                            "checkpoint_filter_field_id" : {
+                              "oneOf" : [ {
+                                "type" : "integer",
+                                "minimum" : 1
                               }, {
                                 "type" : "null"
                               } ]
@@ -47333,6 +47807,13 @@
                         } ]
                       },
                       "source" : { },
+                      "last_checkpoint_value" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
                       "target" : { },
                       "created_at" : { },
                       "creator_id" : {
@@ -47459,6 +47940,13 @@
                               "type" : "null"
                             } ]
                           },
+                          "checkpoint_hi_value" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
                           "is_active" : {
                             "oneOf" : [ {
                               "type" : "boolean"
@@ -47477,6 +47965,13 @@
                           "run_method" : {
                             "type" : "string"
                           },
+                          "checkpoint_lo_value" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
                           "status" : {
                             "type" : "string",
                             "enum" : [ "started", "succeeded", "failed", "timeout", "canceled", "canceling" ]
@@ -47484,6 +47979,14 @@
                           "transform_entity_id" : {
                             "oneOf" : [ {
                               "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "checkpoint_filter_field_id" : {
+                            "oneOf" : [ {
+                              "type" : "integer",
+                              "minimum" : 1
                             }, {
                               "type" : "null"
                             } ]
@@ -47628,6 +48131,13 @@
                       } ]
                     },
                     "source" : { },
+                    "last_checkpoint_value" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
                     "target" : { },
                     "created_at" : { },
                     "creator_id" : {
@@ -48934,112 +49444,6 @@
         "tags" : [ "/api/transform-tag" ]
       }
     },
-    "/api/transform/extract-columns" : {
-      "post" : {
-        "operationId" : "post-api-transform-extract-columns",
-        "summary" : "POST /api/transform/extract-columns",
-        "description" : "Extract column names suitable for incremental transform checkpoint filtering.\n\n  This endpoint is specifically for populating the checkpoint column dropdown in\n  incremental transforms. It only returns columns with types supported for checkpoint\n  filtering: temporal (timestamp/tz) and numeric (int/float) types.\n\n  Text, boolean, and other unsupported column types are filtered out.\n\n  The query is compiled to native SQL using [[qp.compile/compile-with-inline-parameters]],\n  which handles parameterized queries with template tags. Then extracts column names\n  and types using PreparedStatement metadata.\n\n  Returns a map with a :columns key containing a vector of column names (strings).\n  If extraction fails, returns nil for :columns.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "columns" : {
-                      "oneOf" : [ {
-                        "type" : "array",
-                        "items" : {
-                          "type" : "string"
-                        }
-                      }, {
-                        "type" : "null"
-                      } ]
-                    }
-                  },
-                  "required" : [ "columns" ]
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "query" : {
-                    "$ref" : "#/components/schemas/metabase.query-processor.schema.any-query"
-                  }
-                },
-                "required" : [ "query" ]
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/transform" ]
-      }
-    },
-    "/api/transform/is-simple-query" : {
-      "post" : {
-        "operationId" : "post-api-transform-is-simple-query",
-        "summary" : "POST /api/transform/is-simple-query",
-        "description" : "Checks if a native SQL query string is simple enough for automatic checkpoint insertion",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "is_simple" : {
-                      "type" : "boolean"
-                    },
-                    "reason" : {
-                      "type" : "string"
-                    }
-                  },
-                  "required" : [ "is_simple" ]
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "query" : {
-                    "type" : "string"
-                  }
-                },
-                "required" : [ "query" ]
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/transform" ]
-      }
-    },
     "/api/transform/run" : {
       "get" : {
         "operationId" : "get-api-transform-run",
@@ -49176,6 +49580,13 @@
                               "type" : "null"
                             } ]
                           },
+                          "checkpoint_hi_value" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
                           "is_active" : {
                             "oneOf" : [ {
                               "type" : "boolean"
@@ -49241,6 +49652,13 @@
                           "run_method" : {
                             "type" : "string"
                           },
+                          "checkpoint_lo_value" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
                           "status" : {
                             "type" : "string",
                             "enum" : [ "started", "succeeded", "failed", "timeout", "canceled", "canceling" ]
@@ -49248,6 +49666,14 @@
                           "transform_entity_id" : {
                             "oneOf" : [ {
                               "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "checkpoint_filter_field_id" : {
+                            "oneOf" : [ {
+                              "type" : "integer",
+                              "minimum" : 1
                             }, {
                               "type" : "null"
                             } ]
@@ -49335,6 +49761,13 @@
                         "type" : "null"
                       } ]
                     },
+                    "checkpoint_hi_value" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
                     "is_active" : {
                       "oneOf" : [ {
                         "type" : "boolean"
@@ -49400,6 +49833,13 @@
                     "run_method" : {
                       "type" : "string"
                     },
+                    "checkpoint_lo_value" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
                     "status" : {
                       "type" : "string",
                       "enum" : [ "started", "succeeded", "failed", "timeout", "canceled", "canceling" ]
@@ -49407,6 +49847,14 @@
                     "transform_entity_id" : {
                       "oneOf" : [ {
                         "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "checkpoint_filter_field_id" : {
+                      "oneOf" : [ {
+                        "type" : "integer",
+                        "minimum" : 1
                       }, {
                         "type" : "null"
                       } ]
@@ -49540,6 +49988,13 @@
                               "type" : "null"
                             } ]
                           },
+                          "checkpoint_hi_value" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
                           "is_active" : {
                             "oneOf" : [ {
                               "type" : "boolean"
@@ -49558,6 +50013,13 @@
                           "run_method" : {
                             "type" : "string"
                           },
+                          "checkpoint_lo_value" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
                           "status" : {
                             "type" : "string",
                             "enum" : [ "started", "succeeded", "failed", "timeout", "canceled", "canceling" ]
@@ -49565,6 +50027,14 @@
                           "transform_entity_id" : {
                             "oneOf" : [ {
                               "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "checkpoint_filter_field_id" : {
+                            "oneOf" : [ {
+                              "type" : "integer",
+                              "minimum" : 1
                             }, {
                               "type" : "null"
                             } ]
@@ -49709,6 +50179,13 @@
                       } ]
                     },
                     "source" : { },
+                    "last_checkpoint_value" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
                     "target" : { },
                     "created_at" : { },
                     "creator_id" : {
@@ -49843,6 +50320,13 @@
                               "type" : "null"
                             } ]
                           },
+                          "checkpoint_hi_value" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
                           "is_active" : {
                             "oneOf" : [ {
                               "type" : "boolean"
@@ -49861,6 +50345,13 @@
                           "run_method" : {
                             "type" : "string"
                           },
+                          "checkpoint_lo_value" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
                           "status" : {
                             "type" : "string",
                             "enum" : [ "started", "succeeded", "failed", "timeout", "canceled", "canceling" ]
@@ -49868,6 +50359,14 @@
                           "transform_entity_id" : {
                             "oneOf" : [ {
                               "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "checkpoint_filter_field_id" : {
+                            "oneOf" : [ {
+                              "type" : "integer",
+                              "minimum" : 1
                             }, {
                               "type" : "null"
                             } ]
@@ -50012,6 +50511,13 @@
                       } ]
                     },
                     "source" : { },
+                    "last_checkpoint_value" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
                     "target" : { },
                     "created_at" : { },
                     "creator_id" : {
@@ -50283,6 +50789,13 @@
                                 "type" : "null"
                               } ]
                             },
+                            "checkpoint_hi_value" : {
+                              "oneOf" : [ {
+                                "type" : "string"
+                              }, {
+                                "type" : "null"
+                              } ]
+                            },
                             "is_active" : {
                               "oneOf" : [ {
                                 "type" : "boolean"
@@ -50301,6 +50814,13 @@
                             "run_method" : {
                               "type" : "string"
                             },
+                            "checkpoint_lo_value" : {
+                              "oneOf" : [ {
+                                "type" : "string"
+                              }, {
+                                "type" : "null"
+                              } ]
+                            },
                             "status" : {
                               "type" : "string",
                               "enum" : [ "started", "succeeded", "failed", "timeout", "canceled", "canceling" ]
@@ -50308,6 +50828,14 @@
                             "transform_entity_id" : {
                               "oneOf" : [ {
                                 "type" : "string"
+                              }, {
+                                "type" : "null"
+                              } ]
+                            },
+                            "checkpoint_filter_field_id" : {
+                              "oneOf" : [ {
+                                "type" : "integer",
+                                "minimum" : 1
                               }, {
                                 "type" : "null"
                               } ]
@@ -50452,6 +50980,13 @@
                         } ]
                       },
                       "source" : { },
+                      "last_checkpoint_value" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
                       "target" : { },
                       "created_at" : { },
                       "creator_id" : {
@@ -50705,6 +51240,42 @@
                     },
                     "required" : [ "id", "workspace_merge_id", "commit_message", "workspace_id", "workspace_name", "merging_user_id", "created_at" ]
                   }
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/transform" ]
+      }
+    },
+    "/api/transform/{id}/reset-checkpoint" : {
+      "post" : {
+        "operationId" : "post-api-transform-id-reset-checkpoint",
+        "summary" : "POST /api/transform/{id}/reset-checkpoint",
+        "description" : "Reset the stored checkpoint for an incremental transform.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
                 }
               }
             }

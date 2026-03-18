@@ -28,10 +28,10 @@ import {
   isValidColorScheme,
   setUserColorSchemeAfterUpdate,
 } from "metabase/lib/color-scheme";
-import { mutateColors } from "metabase/lib/colors/colors";
-import type { ColorName } from "metabase/lib/colors/types";
 import MetabaseSettings from "metabase/lib/settings";
 import type { DisplayTheme } from "metabase/public/lib/types";
+import { mutateColors } from "metabase/ui/colors/colors";
+import type { ColorName } from "metabase/ui/colors/types";
 
 import { getThemeOverrides } from "../../../theme";
 import { ColorSchemeProvider, useColorScheme } from "../ColorSchemeProvider";

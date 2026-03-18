@@ -101,13 +101,14 @@ const getTableOrderInSources = (
 export const getAllCards = (groups: CardGroup[]): InspectorCard[] =>
   groups.flatMap((group) => group.inputCards.concat(group.outputCards));
 
+// Returns groups that have at least one visible card
 export const getVisibleGroups = (
   groups: CardGroup[],
   visibleCards: InspectorCard[],
 ): CardGroup[] => {
   const visibleCardIds = new Set(visibleCards.map(({ id }) => id));
   return groups.filter((group) => {
-    const allCards = group.inputCards.concat(group.outputCards);
-    return allCards.every(({ id }) => visibleCardIds.has(id));
+    const allCardsInGroup = group.inputCards.concat(group.outputCards);
+    return allCardsInGroup.some(({ id }) => visibleCardIds.has(id));
   });
 };

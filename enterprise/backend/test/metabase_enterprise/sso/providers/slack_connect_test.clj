@@ -40,19 +40,19 @@
     (mt/with-temporary-setting-values
       [slack-connect-client-id "test-client-id"
        slack-connect-client-secret "test-secret"]
-      (let [request {:redirect-uri "https://metabase.example.com/auth/sso"}
+      (let [request {:redirect-uri "https://metabase.example.com/auth/sso/slack-connect/callback"}
             config (#'metabase-enterprise.sso.providers.slack-connect/build-slack-oidc-config request)]
         (is (= "test-client-id" (:client-id config)))
         (is (= "test-secret" (:client-secret config)))
         (is (= "https://slack.com" (:issuer-uri config)))
         (is (= ["openid" "profile" "email"] (:scopes config)))
-        (is (= "https://metabase.example.com/auth/sso" (:redirect-uri config))))))
+        (is (= "https://metabase.example.com/auth/sso/slack-connect/callback" (:redirect-uri config))))))
 
   (testing "Returns nil when client ID is missing"
     (mt/with-temporary-setting-values
       [slack-connect-client-id nil
        slack-connect-client-secret "test-secret"]
-      (let [request {:redirect-uri "https://metabase.example.com/auth/sso"}
+      (let [request {:redirect-uri "https://metabase.example.com/auth/sso/slack-connect/callback"}
             config (#'metabase-enterprise.sso.providers.slack-connect/build-slack-oidc-config request)]
         (is (nil? config)))))
 
@@ -60,7 +60,7 @@
     (mt/with-temporary-setting-values
       [slack-connect-client-id "test-client-id"
        slack-connect-client-secret nil]
-      (let [request {:redirect-uri "https://metabase.example.com/auth/sso"}
+      (let [request {:redirect-uri "https://metabase.example.com/auth/sso/slack-connect/callback"}
             config (#'metabase-enterprise.sso.providers.slack-connect/build-slack-oidc-config request)]
         (is (nil? config))))))
 
@@ -166,7 +166,7 @@
         (let [request {:code "test-code"
                        :state "test-state"
                        :oidc-nonce "test-nonce"
-                       :redirect-uri "https://metabase.example.com/auth/sso"
+                       :redirect-uri "https://metabase.example.com/auth/sso/slack-connect/callback"
                        :authenticated-user (delay nil)}
               result (auth-identity/authenticate :provider/slack-connect request)]
           ;; The presence of :code indicates callback, so should not error even without authenticated-user
@@ -200,7 +200,7 @@
           (let [request {:code "test-code"
                          :state "test-state"
                          :oidc-nonce "test-nonce"
-                         :redirect-uri "https://metabase.example.com/auth/sso"}
+                         :redirect-uri "https://metabase.example.com/auth/sso/slack-connect/callback"}
                 result (auth-identity/authenticate :provider/slack-connect request)]
             (is (= :slack (get-in result [:user-data :sso_source])))
             (is (= "U12345678" (get-in result [:user-data :login_attributes "slack-user-id"])))
@@ -242,7 +242,7 @@
             (let [initial-session-count (t2/count :model/Session :user_id (:id user))
                   request {:code "test-code"
                            :state "test-state"
-                           :redirect-uri "https://metabase.example.com/auth/sso"
+                           :redirect-uri "https://metabase.example.com/auth/sso/slack-connect/callback"
                            :authenticated-user (delay user)
                            :device-info {:device_id "test-device" :device_description "Test Device" :ip_address "127.0.0.1" :embedded false}}
                   result (auth-identity/login! :provider/slack-connect request)]
@@ -291,7 +291,7 @@
             (try
               (let [request {:code "test-code"
                              :state "test-state"
-                             :redirect-uri "https://metabase.example.com/auth/sso"
+                             :redirect-uri "https://metabase.example.com/auth/sso/slack-connect/callback"
                              :device-info {:device_id "test-device" :device_description "Test Device" :ip_address "127.0.0.1" :embedded false}}
                     result (auth-identity/login! :provider/slack-connect request)]
                 (is (true? (:success? result)) "Login should succeed")
@@ -343,7 +343,7 @@
                                       :email "existing-slack@example.com"}})]
               (let [request {:code "test-code"
                              :state "test-state"
-                             :redirect-uri "https://metabase.example.com/auth/sso"
+                             :redirect-uri "https://metabase.example.com/auth/sso/slack-connect/callback"
                              :device-info {:device_id "test-device" :device_description "Test Device" :ip_address "127.0.0.1" :embedded false}}
                     result (auth-identity/login! :provider/slack-connect request)]
                 (is (true? (:success? result)) "Login should succeed")
@@ -391,7 +391,7 @@
               (let [initial-session-count (t2/count :model/Session :user_id (:id user))
                     request {:code "test-code"
                              :state "test-state"
-                             :redirect-uri "https://metabase.example.com/auth/sso"
+                             :redirect-uri "https://metabase.example.com/auth/sso/slack-connect/callback"
                              :authenticated-user (delay user)
                              :device-info {:device_id "test-device" :device_description "Test Device" :ip_address "127.0.0.1" :embedded false}}
                     result (auth-identity/login! :provider/slack-connect request)]

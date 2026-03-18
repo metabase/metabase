@@ -7,9 +7,9 @@ import type {
 } from "echarts/types/src/util/types";
 import _ from "underscore";
 
-import { getTextColorForBackground } from "metabase/lib/colors/palette";
 import { getObjectValues } from "metabase/lib/objects";
 import { isNotNull } from "metabase/lib/types";
+import { getTextColorForBackground } from "metabase/ui/colors/palette";
 import {
   INDEX_KEY,
   NEGATIVE_STACK_TOTAL_DATA_KEY,
