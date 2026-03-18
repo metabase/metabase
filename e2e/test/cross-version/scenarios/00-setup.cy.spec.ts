@@ -71,6 +71,9 @@ describe("Cross-version: Instance setup", () => {
     cy.request("GET", "/api/user/current").then((response) => {
       expect(response.status).to.eq(200);
       expect(response.body.email).to.eq(ADMIN_EMAIL);
+
+      // Dismiss `it's ok to play around` modal for admin
+      cy.request("PUT", `/api/user/${response.body.id}/modal/qbnewb`);
     });
 
     cy.visit("/browse/databases");
