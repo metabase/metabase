@@ -137,8 +137,7 @@
     :display-name
     :metabase.lib.query/transformation-added-base-type
     :metabase.lib.field/original-effective-type
-    :metabase.lib.field/original-temporal-unit
-    :qp.pivot/pivot-grouping?})
+    :metabase.lib.field/original-temporal-unit})
 
 (def ^:private opts-propagated-renamed-keys
   "Keys in `:field` opts that get copied into column metadata with different keys when they have non-nil values.

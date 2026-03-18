@@ -109,9 +109,7 @@
                  {:metabase.lib.field/temporal-unit unit})
                (when lib.metadata.calculation/*propagate-binning-and-bucketing*
                  (when-let [unit (lib.temporal-bucket/raw-temporal-bucket expression-ref-clause)]
-                   {:inherited-temporal-unit unit}))
-               (when-some [pivot-grouping? (:qp.pivot/pivot-grouping? opts)]
-                 {:qp.pivot/pivot-grouping? pivot-grouping?}))))))
+                   {:inherited-temporal-unit unit})))))))
 
 (defmethod lib.temporal-bucket/available-temporal-buckets-method :expression
   [query stage-number [_expression opts _expr-name, :as expr-clause]]
@@ -491,7 +489,7 @@
   4. Fields in Tables that are implicitly joinable."
 
   ([query :- ::lib.schema/query
-    expression-position :- [:maybe ::lib.schema.common/int-greater-than-or-equal-to-zero]]
+    expression-position :- [:maybe nat-int?]]
    (expressionable-columns query -1 expression-position))
 
   ([query        :- ::lib.schema/query
@@ -507,7 +505,7 @@
     ;; Clojure map, so there are plenty of possibilities to mess this up.)
     ;; Changing the legacy/wire format is probably the right way to go, but that's a bigger
     ;; endeavor.
-    expression-position :- [:maybe ::lib.schema.common/int-greater-than-or-equal-to-zero]]
+    expression-position :- [:maybe nat-int?]]
    (let [expr-name (when expression-position
                      (some-> (expressions query stage-number)
                              (nth expression-position nil)

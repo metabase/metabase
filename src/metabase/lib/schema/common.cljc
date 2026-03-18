@@ -98,12 +98,6 @@
     {:error/message "non-blank string"}
     (complement str/blank?)]])
 
-(mr/def ::int-greater-than-or-equal-to-zero
-  "Schema representing an integer than must also be greater than or equal to zero."
-  [:int
-   {:error/message "integer greater than or equal to zero"
-    :min           0}])
-
 (mr/def ::positive-number
   [:fn
    {:error/message "positive number"}
