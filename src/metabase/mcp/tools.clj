@@ -2,6 +2,7 @@
   "MCP tool dispatch. Generates tool definitions from defendpoint metadata and delegates
    tool calls to existing agent API endpoints."
   (:require
+   [clojure.core.async :as a]
    [clojure.string :as str]
    [clojure.walk :as walk]
    [metabase.agent-api.api :as agent-api]
@@ -13,11 +14,11 @@
    [metabase.util :as u]
    [metabase.util.json :as json])
   (:import
-   (java.net URLEncoder)))
+   (java.io ByteArrayOutputStream)
+   (java.net URLEncoder)
+   (metabase.server.streaming_response StreamingResponse)))
 
 (set! *warn-on-reflection* true)
-
-(comment streaming-response/keep-me) ; ensure StreamingResponse class is loaded
 
 (defn- generate-manifest
   "Generate tools manifest from agent API endpoint metadata."
@@ -129,25 +130,24 @@
   [message]
   {:content [{:type "text" :text message}] :isError true})
 
-(defn- materialize-streaming-response
+(comment streaming-response/keep-me) ; ensure StreamingResponse class is loaded
+
+(defn- capture-streaming-response
   "Execute a StreamingResponse in-process by writing to a ByteArrayOutputStream,
    then parse the JSON output and return it as MCP text content.
 
    This buffers the full response in memory (~120KB for 200 rows), which is fine for
-   the row limits we enforce. If we need to support larger results in the future,
-   we can stream the JSON-RPC envelope directly (see nm-json-rpc-streaming branch)."
+   the row limits we enforce."
   [^StreamingResponse response]
   (let [baos         (ByteArrayOutputStream.)
         canceled-chan (a/promise-chan)
         f            (.f response)]
-    (try
-      (f baos canceled-chan)
-      (text-content (json/decode+kw (.toString baos "UTF-8")))
-      (catch Throwable e
-        (error-content (or (ex-message e) "Internal error"))))))
+    (f baos canceled-chan)
+    (text-content (json/decode+kw (.toString baos "UTF-8")))))
 
 (defn- deliver-agent-api-response
-  "Dispatch to agent API routes and deliver response to promise."
+  "Dispatch to agent API routes and deliver response to promise.
+   Materializes StreamingResponse bodies in-process before delivering."
   [result method path token-scopes body]
   (agent-api/routes
    (cond-> {:request-method   method
@@ -155,7 +155,10 @@
             :metabase-user-id api/*current-user-id*
             :token-scopes     token-scopes}
      body (assoc :body body))
-   (fn [response] (deliver result response))
+   (fn [{resp-body :body :as response}]
+     (deliver result (if (instance? StreamingResponse resp-body)
+                       (capture-streaming-response resp-body)
+                       response)))
    (fn [error] (deliver result {:status 500 :body {:message (ex-message error)}}))))
 
 (defn- invoke-agent-api
@@ -168,8 +171,15 @@
   (let [result (promise)]
     (deliver-agent-api-response result method path token-scopes body)
     (let [response (deref result 30000 {:status 504 :body {:message "Timeout"}})]
-      (if (= 200 (:status response))
+      (cond
+        ;; Already materialized from a StreamingResponse
+        (:content response)
+        response
+
+        (= 200 (:status response))
         (text-content (:body response))
+
+        :else
         (error-content (or (some-> response :body :message)
                            (some-> response :body :error)
                            (str "Agent API error: " (:status response))))))))
