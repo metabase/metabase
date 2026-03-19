@@ -261,3 +261,44 @@
   [^SerdesSource source card-ids]
   (let [checker (requiring-resolve 'metabase-enterprise.checker.checker/check-cards)]
     (checker source (make-enumerators source) card-ids)))
+
+;;; ===========================================================================
+;;; CLI Entrypoint
+;;; ===========================================================================
+
+(defn cli-check-cards
+  "CLI entrypoint for checking card queries in a serdes export.
+   Prints summary and exits with code 0 on success, 1 on failures.
+   If output-file is provided, writes results to that file."
+  [export-dir output-file]
+  (let [source (make-source export-dir)
+        results (check source)
+        summarize (requiring-resolve 'metabase-enterprise.checker.checker/summarize-results)
+        format-result (requiring-resolve 'metabase-enterprise.checker.checker/format-result)
+        result-status (requiring-resolve 'metabase-enterprise.checker.checker/result-status)
+        summary (summarize results)
+        failures (filter #(not= :ok (result-status (second %))) results)]
+    ;; Write to output file if specified
+    (when output-file
+      (spit output-file (pr-str results))
+      (println "Results written to:" output-file))
+    ;; Print summary
+    (println "Card Check Results")
+    (println "==================")
+    (println "Total cards:" (:total summary))
+    (println "  OK:" (:ok summary))
+    (println "  Errors:" (:errors summary))
+    (println "  Unresolved refs:" (:unresolved summary))
+    (println "  Issues:" (:issues summary))
+    ;; Print failures
+    (when (seq failures)
+      (println "\nFailures:")
+      (println "---------")
+      (doseq [entry (sort-by (comp :name second) failures)]
+        (println)
+        (println (format-result entry))))
+    ;; Exit with appropriate code
+    (flush)
+    (System/exit (if (zero? (+ (:errors summary) (:unresolved summary) (:issues summary)))
+                   0
+                   1))))
