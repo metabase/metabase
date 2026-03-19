@@ -449,6 +449,7 @@
                                :entity_type :card
                                :entity_id   card-id})
     :notification/dashboard (when-let [dashboard-id (or (:dashboard_id payload)
+                                                        ;; TODO: :model/NotificationDashboard is not defined anywhere — investigate
                                                         (some->> payload_id
                                                                  (t2/select-one-fn :dashboard_id :model/NotificationDashboard :id)))]
                               {:run_type    :subscription

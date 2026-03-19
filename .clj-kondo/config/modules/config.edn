@@ -964,7 +964,7 @@
            util}}
 
   notification
-  {;; skip-test: references unknown :model/NotificationDashboard
+  {;; TODO: re-enable when :model/NotificationDashboard is no longer a problem
    :model-imports :skip-test
    :team "Gadget"
    :api  #{metabase.notification.api
