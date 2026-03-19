@@ -2566,16 +2566,21 @@
            util}}
 
   enterprise/transforms
+  {:team "Querying"
+   :api  #{metabase-enterprise.transforms.api}
+   :uses #{premium-features
+           enterprise/transforms-inspector}}
+
+  enterprise/transforms-inspector
   {:team "Gadget"
-   :api  #{metabase-enterprise.transforms.inspector.api
-           metabase-enterprise.transforms.inspector.core
-           metabase-enterprise.transforms.inspector.schema}
+   :api  #{metabase-enterprise.transforms-inspector.api
+           metabase-enterprise.transforms-inspector.core
+           metabase-enterprise.transforms-inspector.schema}
    :uses #{api
            driver
            events
            lib
            lib-be
-           premium-features
            query-processor
            server
            sql-tools
