@@ -8,10 +8,10 @@
    [metabase.channel.slack :as slack]
    [metabase.config.core :as config]
    [metabase.permissions.core :as perms]
-   [metabase.system.core :as system]
    [metabase.settings.core :as setting]
-   [metabase.slackbot.config :as slackbot.config]
    [metabase.slackbot.api :as slackbot]
+   [metabase.slackbot.config :as slackbot.config]
+   [metabase.system.core :as system]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -170,7 +170,9 @@
                                 [:socket_mode_enabled :boolean]
                                 [:token_rotation_enabled :boolean]]]])
 
-(defn get-slack-manifest []
+(defn get-slack-manifest
+  "Returns the Slack manifest for bootstrapping new Slack apps."
+  []
   (let [base-url (system/site-url)]
     (when-not base-url
       (throw (ex-info (tru "You must configure a site-url for Slack integration to work.") {:status-code 503})))

@@ -3,7 +3,6 @@
    [clojure.test :refer :all]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.agent.tools :as agent-tools]
-   [metabase.metabot.agent.tools.shared :as shared]
    [metabase.metabot.tools.create-chart :as create-chart-tools]
    [metabase.metabot.tools.filters :as filter-tools]))
 
@@ -209,17 +208,8 @@
       (is (= (:schema (meta #'agent-tools/create-chart-tool)) (:schema wrapped-tool)))))
 
   (testing "wrapped function receives augmented args with state"
-    (let [seen-memory (atom nil)
-          memory-atom (atom {:state {:queries {"test-query" {:db 1}}
+    (let [memory-atom (atom {:state {:queries {"test-query" {:db 1}}
                                      :charts {"test-chart" {:type :bar}}}})
-          test-tool-def {:tool-name "create_sql_query"
-                         :doc "Test tool"
-                         :schema [:=> [:cat [:map]] :any]
-                         :fn (fn [_] (reset! seen-memory shared/*memory-atom*) {:output "ok"})
-                         :prompt "test_tool.md"
-                         :capabilities #{}}
-          ;; For this test we use a raw map since we're testing wrap behavior with a map
-          ;; The wrap function also handles vars, but we can test the :fn invocation path
           wrapped (agent-tools/wrap-tools-with-state {"create_sql_query" #'agent-tools/create-sql-query-tool} memory-atom)
           wrapped-fn (get-in wrapped ["create_sql_query" :fn])]
       ;; Just verify the wrapped function is callable

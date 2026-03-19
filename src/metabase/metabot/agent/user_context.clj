@@ -5,11 +5,11 @@
   recent views, user time formatting, and SQL dialect extraction from context."
   (:require
    [clojure.string :as str]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.llm-representations :as llm-rep]
-   [metabase.lib-be.core :as lib-be]
-   [metabase.lib.core :as lib]
    [metabase.util :as u]
    [metabase.util.log :as log])
   (:import

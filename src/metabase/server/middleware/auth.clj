@@ -5,7 +5,6 @@
    [buddy.core.bytes :as bytes]
    [buddy.core.codecs :as codecs]
    [buddy.core.mac :as mac]
-   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.slackbot.settings :as slackbot.settings]))
 
 (set! *warn-on-reflection* true)

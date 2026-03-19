@@ -23,11 +23,10 @@
                     deps/check-transform-dependencies    (fn [_] {:structured_output {:success true
                                                                                       :bad_transforms []
                                                                                       :bad_questions nil}})]
-        (let [tool   (binding [shared/*memory-atom* memory-atom]
-                       (agent-transforms/write-transform-sql-tool))
-              result ((:fn tool)
-                      {:transform_id 1
-                       :edit_action {:mode "replace" :new_content "SELECT 1"}})]
+        (let [result (binding [shared/*memory-atom* memory-atom]
+                       (agent-transforms/write-transform-sql-tool
+                        {:transform_id 1
+                         :edit_action {:mode "replace" :new_content "SELECT 1"}}))]
           (is (nil? (:instructions result)))
           (is (some? (:output result))))))))
 
@@ -47,11 +46,10 @@
                                                              :bad_transforms [{:transform {:id 2 :name "Downstream Transform"}
                                                                                :errors ["Column 'total' not found"]}]
                                                              :bad_questions nil}})]
-        (let [tool   (binding [shared/*memory-atom* memory-atom]
-                       (agent-transforms/write-transform-sql-tool))
-              result ((:fn tool)
-                      {:transform_id 1
-                       :edit_action {:mode "replace" :new_content "SELECT id FROM orders"}})]
+        (let [result (binding [shared/*memory-atom* memory-atom]
+                       (agent-transforms/write-transform-sql-tool
+                        {:transform_id 1
+                         :edit_action {:mode "replace" :new_content "SELECT id FROM orders"}}))]
           (is (some? (:instructions result)))
           (is (str/includes? (:instructions result) "Dependency issues detected"))
           (is (str/includes? (:instructions result) "Broken transforms"))
@@ -77,11 +75,10 @@
                                                                               :errors ["Column 'total' not found"]}
                                                                              {:question {:id 11 :name "Monthly Summary"}
                                                                               :errors ["Column 'total' not found"]}]}})]
-        (let [tool   (binding [shared/*memory-atom* memory-atom]
-                       (agent-transforms/write-transform-sql-tool))
-              result ((:fn tool)
-                      {:transform_id 1
-                       :edit_action {:mode "replace" :new_content "SELECT id FROM orders"}})]
+        (let [result (binding [shared/*memory-atom* memory-atom]
+                       (agent-transforms/write-transform-sql-tool
+                        {:transform_id 1
+                         :edit_action {:mode "replace" :new_content "SELECT id FROM orders"}}))]
           (is (some? (:instructions result)))
           (is (str/includes? (:instructions result) "Broken questions"))
           (is (str/includes? (:instructions result) "Revenue Report"))
@@ -99,11 +96,10 @@
                        :data-parts [{:type :data :data-type "transform_suggestion" :version 1}]}]
       (with-redefs [transforms-write/write-transform-sql (fn [_] base-result)
                     deps/check-transform-dependencies    (fn [_] (throw (Exception. "DB connection failed")))]
-        (let [tool   (binding [shared/*memory-atom* memory-atom]
-                       (agent-transforms/write-transform-sql-tool))
-              result ((:fn tool)
-                      {:transform_id 1
-                       :edit_action {:mode "replace" :new_content "SELECT 1"}})]
+        (let [result (binding [shared/*memory-atom* memory-atom]
+                       (agent-transforms/write-transform-sql-tool
+                        {:transform_id 1
+                         :edit_action {:mode "replace" :new_content "SELECT 1"}}))]
           ;; Should succeed without instructions — the dep check failure is logged but not propagated
           (is (nil? (:instructions result)))
           (is (some? (:output result))))))))
@@ -118,11 +114,10 @@
                        :data-parts [{:type :data :data-type "transform_suggestion" :version 1}]}]
       (with-redefs [transforms-write/write-transform-sql (fn [_] base-result)
                     deps/check-transform-dependencies    (fn [_] (reset! dep-called? true) nil)]
-        (let [tool   (binding [shared/*memory-atom* memory-atom]
-                       (agent-transforms/write-transform-sql-tool))
-              result ((:fn tool)
-                      {:edit_action {:mode "replace" :new_content "SELECT 1"}
-                       :transform_name "New Transform"})]
+        (let [result (binding [shared/*memory-atom* memory-atom]
+                       (agent-transforms/write-transform-sql-tool
+                        {:edit_action {:mode "replace" :new_content "SELECT 1"}
+                         :transform_name "New Transform"}))]
           (is (false? @dep-called?))
           (is (nil? (:instructions result)))
           (is (some? (:output result))))))))
