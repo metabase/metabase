@@ -22,6 +22,18 @@ databaseChangeLog:
             columnName: target_table_id
 
   - changeSet:
+      id: v60.2026-03-10T00:00:00a
+      author: christruter
+      comment: Add index on transform.target_table_id
+      changes:
+        - createIndex:
+            tableName: transform
+            indexName: idx_transform_target_table_id
+            columns:
+              - column:
+                  name: target_table_id
+
+  - changeSet:
       id: v60.2026-03-10T00:00:01
       author: christruter
       comment: Add FK from transform.target_table_id to metabase_table with SET NULL
@@ -49,6 +61,18 @@ databaseChangeLog:
       rollback:
 
   - changeSet:
+      id: v60.2026-03-10T00:00:02a
+      author: christruter
+      comment: Add index on workspace_output.global_table_id
+      changes:
+        - createIndex:
+            tableName: workspace_output
+            indexName: idx_workspace_output_global_table_id
+            columns:
+              - column:
+                  name: global_table_id
+
+  - changeSet:
       id: v60.2026-03-10T00:00:03
       author: christruter
       comment: Add FK from workspace_output.global_table_id to metabase_table with SET NULL
@@ -65,6 +89,18 @@ databaseChangeLog:
             referencedTableName: metabase_table
             referencedColumnNames: id
             onDelete: SET NULL
+
+  - changeSet:
+      id: v60.2026-03-10T00:00:03a
+      author: christruter
+      comment: Add index on workspace_output.isolated_table_id
+      changes:
+        - createIndex:
+            tableName: workspace_output
+            indexName: idx_workspace_output_isolated_table_id
+            columns:
+              - column:
+                  name: isolated_table_id
 
   - changeSet:
       id: v60.2026-03-10T00:00:04
