@@ -1,4 +1,4 @@
-import { type RefObject, useEffect, useState } from "react";
+import { type RefObject, useEffect, useMemo, useState } from "react";
 
 export interface UseItemsLimiterProps {
   containerRef: RefObject<HTMLElement | null>;
@@ -16,8 +16,6 @@ export const useItemsLimiter = ({
   isEnabled = false,
 }: UseItemsLimiterProps): number => {
   const [containerSize, setContainerSize] = useState<number | null>(null);
-
-  const [effectiveCount, setEffectiveCount] = useState<number>(sizes.length);
 
   /**
    * DataGrid is rendered conditionally and containerRef.current is not stable.
@@ -46,15 +44,12 @@ export const useItemsLimiter = ({
     return () => resizeObserver.disconnect();
   }, [element, dimension]);
 
-  useEffect(() => {
+  return useMemo(() => {
     if (isEnabled || containerSize === null) {
-      return;
+      return sizes.length;
     }
-    const count = computeEffectiveCount(sizes, containerSize, maxRatio);
-    setEffectiveCount(count);
+    return computeEffectiveCount(sizes, containerSize, maxRatio);
   }, [isEnabled, sizes, containerSize, maxRatio]);
-
-  return effectiveCount;
 };
 
 const computeEffectiveCount = (

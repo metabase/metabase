@@ -36,7 +36,10 @@ export const useRowHeights = <TData extends RowData, TValue>({
   const elementsByRowIndex = useRef<Map<number, Set<Element>>>(new Map());
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
 
-  const scheduleFlush = useCallback(() => {
+  const flushToState = useCallback((sync?: boolean) => {
+    if (sync) {
+      return setRowSizingMap(new Map(rowHeightsCache.current));
+    }
     if (flushRafRef.current !== null) {
       return;
     }
@@ -97,24 +100,24 @@ export const useRowHeights = <TData extends RowData, TValue>({
   );
 
   const updateRowHeight = useCallback(
-    (index: number): number => {
+    (index: number, sync?: boolean): number => {
       const height = measureRowHeight(index);
       const prev = rowHeightsCache.current.get(index);
       rowHeightsCache.current.set(index, height);
       if (prev !== height) {
-        scheduleFlush();
+        flushToState(sync);
       }
       return height;
     },
-    [measureRowHeight, scheduleFlush],
+    [measureRowHeight, flushToState],
   );
 
   const remeasureRow = useCallback(
-    (index: number | null) => {
+    (index: number | null, sync?: boolean) => {
       if (index === null) {
         return;
       }
-      const height = updateRowHeight(index);
+      const height = updateRowHeight(index, sync);
       const elements = elementsByRowIndex.current.get(index);
       onHeightChange?.({ index, height, elements });
     },
@@ -175,7 +178,7 @@ export const useRowHeights = <TData extends RowData, TValue>({
       }
       const indices = getRowIndices(element);
       watchElement(element, indices);
-      remeasureRow(indices);
+      remeasureRow(indices, true);
     },
     [remeasureRow, unwatchUnmountedElements, watchElement, getRowIndices],
   );
