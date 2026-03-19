@@ -308,9 +308,12 @@
                joins)))
 
 (defn- pmbql-query->source-node
-  "Parse pMBQL query into source node structure using lib functions."
+  "Parse pMBQL query into source node structure using lib functions.
+   For source-card queries (metrics based on models or saved questions),
+   falls back to the table-id from the entity metadata."
   [source-type id metadata pmbql-query]
-  (let [table-id      (lib.util/source-table-id pmbql-query)
+  (let [table-id      (or (lib.util/source-table-id pmbql-query)
+                          (:table-id metadata))
         aggregation   (first (lib/aggregations pmbql-query 0))
         source-filter (extract-source-filters pmbql-query)
         source-joins  (extract-source-joins pmbql-query)]
