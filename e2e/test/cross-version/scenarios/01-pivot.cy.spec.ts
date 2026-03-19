@@ -11,8 +11,7 @@ describe("Cross-version: questions", () => {
     cy.log("Create a pivot table");
 
     H.newButton("Question").click();
-    H.popover().contains("Sample Database").click();
-    H.popover().contains("People").click();
+    H.modal().contains("People").click();
 
     cy.log("Narrow down the states that start with K (only two)");
 
