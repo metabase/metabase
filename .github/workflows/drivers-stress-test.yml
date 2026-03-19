@@ -119,7 +119,7 @@ jobs:
       MB_DB_TYPE: mysql
       MB_DB_HOST: localhost
       MB_DB_PORT: 3306
-      MB_DB_DBNAME: mb_test
+      MB_DB_DBNAME: circle_test
       MB_DB_USER: root
       MB_MYSQL_TEST_USER: root
     services:
@@ -127,9 +127,6 @@ jobs:
         image: mariadb:10.2.23
         ports:
           - "3306:3306"
-        env:
-          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: true
-          MARIADB_DATABASE: mb_test
     steps:
     - uses: actions/checkout@v4
     - name: Test MariaDB driver (10.2)
@@ -148,7 +145,7 @@ jobs:
       MB_DB_TYPE: mysql
       MB_DB_HOST: localhost
       MB_DB_PORT: 3306
-      MB_DB_DBNAME: mb_test
+      MB_DB_DBNAME: circle_test
       MB_DB_USER: root
       MB_MYSQL_TEST_USER: root
     services:
@@ -156,9 +153,6 @@ jobs:
         image: mariadb:latest
         ports:
           - "3306:3306"
-        env:
-          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: true
-          MARIADB_DATABASE: mb_test
     steps:
     - uses: actions/checkout@v4
     - name: Test MariaDB driver (latest)
@@ -314,7 +308,7 @@ jobs:
       MB_DB_TYPE: mysql
       MB_DB_HOST: localhost
       MB_DB_PORT: 3306
-      MB_DB_DBNAME: mb_test
+      MB_DB_DBNAME: circle_test
       MB_DB_USER: root
       MB_MYSQL_TEST_USER: root
     services:
@@ -322,9 +316,6 @@ jobs:
         image: mysql:8.0
         ports:
           - "3306:3306"
-        env:
-          MYSQL_ALLOW_EMPTY_PASSWORD: true
-          MYSQL_DATABASE: mb_test
     steps:
     - uses: actions/checkout@v4
     - name: Test MySQL driver (8.0)
@@ -343,7 +334,7 @@ jobs:
       MB_DB_TYPE: mysql
       MB_DB_HOST: localhost
       MB_DB_PORT: 3306
-      MB_DB_DBNAME: mb_test
+      MB_DB_DBNAME: circle_test
       MB_DB_USER: root
       MB_MYSQL_TEST_USER: root
       # set up env vars for something named "MYSQL_SSL" to run MySQL SSL tests verifying connectivity with PEM cert
@@ -472,9 +463,9 @@ jobs:
       MB_DB_TYPE: postgres
       MB_DB_PORT: 5432
       MB_DB_HOST: localhost
-      MB_DB_DBNAME: mb_test
-      MB_DB_USER: mb_test
-      MB_POSTGRESQL_TEST_USER: mb_test
+      MB_DB_DBNAME: circle_test
+      MB_DB_USER: circle_test
+      MB_POSTGRESQL_TEST_USER: circle_test
       MB_POSTGRES_SSL_TEST_SSL: true
       MB_POSTGRES_SSL_TEST_SSL_MODE: verify-full
       MB_POSTGRES_SSL_TEST_SSL_ROOT_CERT_PATH: 'test-resources/certificates/us-east-2-bundle.pem'
@@ -484,8 +475,8 @@ jobs:
         ports:
           - "5432:5432"
         env:
-          POSTGRES_USER: mb_test
-          POSTGRES_DB: mb_test
+          POSTGRES_USER: circle_test
+          POSTGRES_DB: circle_test
           POSTGRES_HOST_AUTH_METHOD: trust
     steps:
     - uses: actions/checkout@v4
