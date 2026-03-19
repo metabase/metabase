@@ -274,15 +274,15 @@
   :hierarchy #'driver/hierarchy)
 
 (mu/defmethod field->clause :sql :- driver-api/mbql.schema.field
-  [_driver field other-opts]
+  [driver field other-opts]
   (driver-api/normalize
    driver-api/mbql.schema.field
-   [:field
-    (:id field)
-    (merge {:base-type                     (:base-type field)
-            driver-api/qp.add.source-table (:table-id field)
-            ::compiling-field-filter?      true}
-           other-opts)]))
+   (sql.qp/make-clause-with-opts driver :field
+                                 (merge {:base-type                     (:base-type field)
+                                         driver-api/qp.add.source-table (:table-id field)
+                                         ::compiling-field-filter?      true}
+                                        other-opts)
+                                 (:id field))))
 
 ;; TODO(rileythomp, 2026-03-16): Update the schema to work with mbql4 and mbql5
 (mu/defn- field->field-filter-clause ; :- driver-api/mbql.schema.field

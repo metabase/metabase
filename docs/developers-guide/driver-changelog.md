@@ -15,7 +15,6 @@ title: Driver interface changelog
   - `clause-value-idx` - Returns the index of the value in a clause
   - `field-clause->alias` - Wrapper around `sql.qp/field-clause->alias*`
   - `finest-temporal-breakout-idx` - Wrapper around `driver-api/finest-temporal-breakout-index`
-  - `unwrap-value-literal` - Gets the literal value from an MBQL value clause
   - `remapped-breakout?` - Wrapper around `driver-api/qp.util.transformations.nest-breakouts.externally-remapped-field`
   - `literal-text-value?` - Wrapper to destructure options from MBQL clause
   These methods have implementations for the :sql and :sql-mbql5 drivers, other drives should not need to implement these methods.

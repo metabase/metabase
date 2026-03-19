@@ -10,7 +10,6 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.options :as lib.options]
    [metabase.lib.util :as lib.util]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [mapv empty? get-in]]))
@@ -43,11 +42,6 @@
     (fn [[prev-hsql prev-stage] stage]
       (let [stage-hsql (stage->honeysql driver stage)]
         (if prev-hsql
-          ;; When there's a previous stage, we need to:
-          ;; 1. Add the :from clause with the previous stage
-          ;; 2. Re-apply add-default-select so it uses the correct table alias
-          ;; The stage-hsql may have :select [[:*]] from add-default-select,
-          ;; but we need :select [[:raw "\"source\".*"]] based on the :from alias
           (let [table-alias (sql.qp/->honeysql driver (h2x/identifier :table-alias sql.qp/source-query-alias))
                 columns-metadata (get-in prev-stage [:lib/stage-metadata :columns])
                 desired-aliases (mapv :lib/desired-column-alias columns-metadata)
@@ -66,7 +60,7 @@
     stages)))
 
 (defmethod sql.qp/->honeysql [:sql-mbql5 ::sql.qp/mbql]
-  [driver [_ stages]]
+  [driver [_ _opts stages]]
   (stages->honeysql driver stages))
 
 (defmethod sql.qp/apply-top-level-clause [:sql-mbql5 :filters]
@@ -111,23 +105,11 @@
 
 (defmethod sql.qp/->honeysql [:sql-mbql5 :cum-count]
   [driver [_ opts expr-or-nil]]
-  ;; a cumulative count with no breakouts doesn't really mean anything, just compile it as a normal count.
-  (if (empty? (:breakout sql.qp/*inner-query*))
-    (sql.qp/->honeysql driver [:count opts expr-or-nil])
-    (#'sql.qp/cumulative-aggregation-over-rows
-     driver
-     [:sum (if expr-or-nil
-             [:count (sql.qp/->honeysql driver expr-or-nil)]
-             [:count :*])])))
+  (sql.qp/cum-count->honeysql driver expr-or-nil opts))
 
 (defmethod sql.qp/->honeysql [:sql-mbql5 :cum-sum]
   [driver [_ opts expr]]
-  ;; a cumulative sum with no breakouts doesn't really mean anything, just compile it as a normal sum.
-  (if (empty? (:breakout sql.qp/*inner-query*))
-    (sql.qp/->honeysql driver [:sum opts expr])
-    (#'sql.qp/cumulative-aggregation-over-rows
-     driver
-     [:sum [:sum (sql.qp/->honeysql driver expr)]])))
+  (sql.qp/cum-sum->honeysql driver expr opts))
 
 (defmethod sql.qp/->honeysql [:sql-mbql5 :distinct-where]
   [driver [_ opts arg pred]]
@@ -199,16 +181,10 @@
     ((get-method sql.qp/->honeysql [:sql op]) driver (into [op] (conj (vec args) opts)))))
 
 (defmethod sql.qp/field-clause->alias :sql-mbql5
-  [driver [clause-type opts id-or-name] & _unique-name-fn]
+  [driver [clause-type opts id-or-name]]
   (sql.qp/field-clause->alias* driver [clause-type id-or-name opts]))
 
 (defmethod sql.qp/clause-value-idx :sql-mbql5 [_driver] 2)
-
-(defmethod sql.qp/unwrap-value-literal :sql-mbql5
-  [_driver maybe-value-form]
-  (lib.util.match/match-lite maybe-value-form
-    [:value _opts x & _] x
-    _                    maybe-value-form))
 
 (defmethod sql.qp/remapped-order-by? :sql-mbql5
   [_driver [_dir _opts [_ opts _name]]]
@@ -240,11 +216,11 @@
   (into [tag (merge {:lib/uuid (str (random-uuid))} opts)] args))
 
 (defmethod sql.params.substitution/field->clause :sql-mbql5
-  [_driver field opts]
-  [:field
-   (merge {:lib/uuid (str (random-uuid))
-           :base-type (:base-type field)
-           driver-api/qp.add.source-table (:table-id field)
-           ::sql.params.substitution/compiling-field-filter? true}
-          opts)
-   (:id field)])
+  [driver field opts]
+  (sql.qp/make-clause-with-opts driver :field
+                                (merge {:lib/uuid (str (random-uuid))
+                                        :base-type (:base-type field)
+                                        driver-api/qp.add.source-table (:table-id field)
+                                        ::sql.params.substitution/compiling-field-filter? true}
+                                       opts)
+                                (:id field)))

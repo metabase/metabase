@@ -1172,16 +1172,21 @@
 ;;;    sum(count()) OVER (ORDER BY 1 ROWS UNBOUNDED PRECEDING)
 ;;;
 ;;; if the database supports ordering by SELECT expression position
-(defmethod ->honeysql [:sql :cum-count]
-  [driver [_cum-count expr-or-nil]]
+(defn cum-count->honeysql
+  "Implementation for `->honeysql [driver :cum-count]`"
+  [driver expr-or-nil opts]
   ;; a cumulative count with no breakouts doesn't really mean anything, just compile it as a normal count.
   (if (empty? (:breakout *inner-query*))
-    (->honeysql driver [:count expr-or-nil])
+    (->honeysql driver (make-clause-with-opts driver :count opts expr-or-nil))
     (cumulative-aggregation-over-rows
      driver
      [:sum (if expr-or-nil
              [:count (->honeysql driver expr-or-nil)]
              [:count :*])])))
+
+(defmethod ->honeysql [:sql :cum-count]
+  [driver [_cum-count expr-or-nil]]
+  (cum-count->honeysql driver expr-or-nil nil))
 
 ;;;    cum-sum(total)
 ;;;
@@ -1194,14 +1199,19 @@
 ;;;    sum(sum(total)) OVER (ORDER BY 1 ROWS UNBOUNDED PRECEDING)
 ;;;
 ;;; if the database supports ordering by SELECT expression position
-(defmethod ->honeysql [:sql :cum-sum]
-  [driver [_cum-sum expr]]
-  ;; a cumulative sum with no breakouts doesn't really mean anything, just compile it as a normal sum.
+(defn cum-sum->honeysql
+  "Implementation for `->honeysql [driver :cum-sum]`"
+  [driver expr opts]
+  ;; a cumulative count with no breakouts doesn't really mean anything, just compile it as a normal count.
   (if (empty? (:breakout *inner-query*))
-    (->honeysql driver [:sum expr])
+    (->honeysql driver (make-clause-with-opts driver :sum opts expr))
     (cumulative-aggregation-over-rows
      driver
      [:sum [:sum (->honeysql driver expr)]])))
+
+(defmethod ->honeysql [:sql :cum-sum]
+  [driver [_cum-sum expr]]
+  (cum-sum->honeysql driver expr nil))
 
 (defmethod ->honeysql [:sql :offset]
   [driver [_offset _opts expr n]]
@@ -1218,8 +1228,6 @@
 (defn- interval? [expr]
   (driver-api/is-clause? :interval expr))
 
-;; TODO(rileythomp): Just update `add-interval-honeysql-form` to take the whole clause
-;; so that we can destructure it there
 (defmulti add-interval
   "Wrapper around [[add-interval-honeysql-form]]"
   {:added "0.60.0", :arglists '([driver hsql-form op interval])}
@@ -1507,13 +1515,13 @@
 
 (defmulti field-clause->alias
   "Wrapper around [[field-clause->alias*]]"
-  {:added "0.60.0" :arglists '([driver clause & unique-name-fn])}
+  {:added "0.60.0" :arglists '([driver clause])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
 (defmethod field-clause->alias :default
-  [driver clause & unique-name-fn]
-  (field-clause->alias* driver clause unique-name-fn))
+  [driver clause]
+  (field-clause->alias* driver clause))
 
 (defn as
   "Generate HoneySQL for an `AS` form (e.g. `<form> AS <field>`) using the name information of a `clause`. The
@@ -1598,8 +1606,7 @@
   ([form]
    (rewrite-fields-to-force-using-column-aliases form {:is-breakout false}))
   ([form {is-breakout :is-breakout}]
-   (driver-api/replace-lite
-     form
+   (driver-api/replace-lite form
      [:field (opts :guard :lib/uuid) id-or-name] ;; mbql5
      [:field (force-using-column-alias-opts opts is-breakout) id-or-name]
 
@@ -1730,7 +1737,7 @@
                                                   (not case-sensitive) u/lower-case-en))
          (->honeysql driver)
          (transform-literal-like-pattern-honeysql driver))
-    (let [expr (->honeysql driver (make-clause driver :concat pre arg post))]
+    (let [expr (->honeysql driver (apply make-clause driver :concat (remove nil? [pre arg post])))]
       (if case-sensitive
         expr
         [:lower expr]))))
@@ -1739,7 +1746,7 @@
   [x]
   (let [[opts field-id] (driver-api/match-lite x
                           [:field (opts :guard :lib/uuid) field-id] [opts field-id]  ;; mbql5
-                          [:field field-id opts] [opts field-id])]
+                          [:field field-id opts] [opts field-id])] ;; mbql4
     (and (driver-api/mbql-clause? x)
          (isa? (or (:effective-type opts)
                    (when (pos-int? field-id)
@@ -1875,22 +1882,17 @@
        [:= (->honeysql driver field-arg) nil]]
       honeysql-clause)))
 
-;; TODO(rileythomp, 2026-03-18): Replace this with a match for mbql4 vs mbql5
-(defmulti unwrap-value-literal
+(defn unwrap-value-literal
   "Extract value literal from `:value` form or returns form as is if not a `:value` form."
-  {:added "0.60.0" :arglists '([driver maybe-value-form])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defmethod unwrap-value-literal :sql
-  [_driver maybe-value-form]
+  [maybe-value-form]
   (lib.util.match/match-lite maybe-value-form
+    [:value (opts :guard :lib/uuid) x & _] x
     [:value x & _] x
     _              maybe-value-form))
 
 (defmethod ->honeysql [:sql :!=]
   [driver [_ field value]]
-  (if (nil? (unwrap-value-literal driver value))
+  (if (nil? (unwrap-value-literal value))
     [:not= (->honeysql driver (maybe-cast-uuid-for-equality driver field value)) (->honeysql driver value)]
     (correct-null-behaviour driver [:not= (maybe-cast-uuid-for-equality driver field value) value])))
 
@@ -2223,7 +2225,7 @@
     (binding [driver/*driver* driver]
       (let [inner-query (preprocess driver query)]
         (log/tracef "Compiling MBQL query\n%s" (u/pprint-to-str 'magenta inner-query))
-        (u/prog1 (->honeysql driver [::mbql inner-query])
+        (u/prog1 (->honeysql driver (make-clause driver ::mbql inner-query))
           (log/debugf "\nHoneySQL Form: %s\n%s" (u/emoji "🍯") (u/pprint-to-str 'cyan <>))
           (driver-api/debug> (list '🍯 <>)))))
 
