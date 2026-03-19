@@ -84,7 +84,7 @@ export const TableListItem = ({
       className={cx(S.root, {
         [S.selected]: isSelected,
         [S.clickable]: isClickable,
-        [S.noResults]: !tableExists,
+        [S.noResults]: type === "output" && !tableExists,
       })}
       aria-label={displayName}
       onClick={isClickable ? handleTableClick : undefined}

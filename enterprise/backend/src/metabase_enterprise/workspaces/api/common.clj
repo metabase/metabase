@@ -420,7 +420,9 @@
                (concat
                 ;; Workspace transform outputs
                 (for [{:keys [ref_id db_id global_schema global_table global_table_id
-                              isolated_schema isolated_table isolated_table_id]} outputs]
+                              isolated_schema isolated_table isolated_table_id]} outputs
+                      :let [isolated_table_id (or isolated_table_id
+                                                  (get fallback-map [db_id isolated_schema isolated_table]))]]
                   {:db_id    db_id
                    :global   {:transform_id nil
                               :schema       global_schema
@@ -429,11 +431,14 @@
                    :isolated {:transform_id ref_id
                               :schema       isolated_schema
                               :table        isolated_table
-                              :table_id     (or isolated_table_id (get fallback-map [db_id isolated_schema isolated_table]))
+                              :table_id     isolated_table_id
                               :active       (contains? active-table-ids isolated_table_id)}})
+
                 ;; External transform outputs
                 (for [{:keys [transform_id db_id global_schema global_table global_table_id
-                              isolated_schema isolated_table isolated_table_id]} external-outputs]
+                              isolated_schema isolated_table isolated_table_id]} external-outputs
+                      :let [isolated_table_id (or isolated_table_id
+                                                  (get fallback-map [db_id isolated_schema isolated_table]))]]
                   {:db_id    db_id
                    :global   {:transform_id transform_id
                               :schema       global_schema
@@ -442,7 +447,7 @@
                    :isolated {:transform_id transform_id
                               :schema       isolated_schema
                               :table        isolated_table
-                              :table_id     (or isolated_table_id (get fallback-map [db_id isolated_schema isolated_table]))
+                              :table_id     isolated_table_id
                               :active       (contains? active-table-ids isolated_table_id)}})))}))
 
 (defn get-workspace-log
