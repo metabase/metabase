@@ -15170,7 +15170,7 @@
             } ]
           }
         },
-        "required" : [ "alias" ]
+        "required" : [ "alias", "database_id", "schema" ]
       },
       "metabase.transforms-inspector.schema.alert-trigger" : {
         "description" : "Definition for conditional alerts.\n   FE evaluates condition against card results and shows alert if triggered.",
@@ -17866,17 +17866,7 @@
                         "source-tables" : {
                           "type" : "array",
                           "items" : {
-                            "type" : "object",
-                            "properties" : {
-                              "alias" : {
-                                "type" : "string",
-                                "minLength" : 1
-                              },
-                              "table_id" : {
-                                "type" : "integer"
-                              }
-                            },
-                            "required" : [ "alias", "table_id" ]
+                            "$ref" : "#/components/schemas/metabase.transforms-base.util.source-table-entry"
                           }
                         },
                         "type" : {
@@ -18262,17 +18252,7 @@
                         "source-tables" : {
                           "type" : "array",
                           "items" : {
-                            "type" : "object",
-                            "properties" : {
-                              "alias" : {
-                                "type" : "string",
-                                "minLength" : 1
-                              },
-                              "table_id" : {
-                                "type" : "integer"
-                              }
-                            },
-                            "required" : [ "alias", "table_id" ]
+                            "$ref" : "#/components/schemas/metabase.transforms-base.util.source-table-entry"
                           }
                         },
                         "type" : {
@@ -34135,11 +34115,11 @@
                     } ]
                   },
                   "source_tables" : {
-                    "type" : "object",
-                    "additionalProperties" : {
-                      "type" : "integer"
+                    "type" : "array",
+                    "items" : {
+                      "$ref" : "#/components/schemas/metabase.transforms-base.util.source-table-entry"
                     },
-                    "minProperties" : 1
+                    "minItems" : 1
                   }
                 },
                 "required" : [ "code", "source_tables" ]
@@ -35814,17 +35794,7 @@
                         "source-tables" : {
                           "type" : "array",
                           "items" : {
-                            "type" : "object",
-                            "properties" : {
-                              "alias" : {
-                                "type" : "string",
-                                "minLength" : 1
-                              },
-                              "table_id" : {
-                                "type" : "integer"
-                              }
-                            },
-                            "required" : [ "alias", "table_id" ]
+                            "$ref" : "#/components/schemas/metabase.transforms-base.util.source-table-entry"
                           }
                         },
                         "type" : {
@@ -36282,17 +36252,7 @@
                         "source-tables" : {
                           "type" : "array",
                           "items" : {
-                            "type" : "object",
-                            "properties" : {
-                              "alias" : {
-                                "type" : "string",
-                                "minLength" : 1
-                              },
-                              "table_id" : {
-                                "type" : "integer"
-                              }
-                            },
-                            "required" : [ "alias", "table_id" ]
+                            "$ref" : "#/components/schemas/metabase.transforms-base.util.source-table-entry"
                           }
                         },
                         "type" : {
