@@ -48,6 +48,24 @@
   (let [task (bound-fn* f)]
     (.submit ^ExecutorService @@executor ^Callable task)))
 
+; Aspects of component management system
+; 1. Uniform start/stop interface
+; 2. Start/stop order based on dependencies
+; 3. Inject component dependencies as function arguments (instead of global references)
+
 ; Loading and using this namespace from prod namespaces should work without needing an explicit init step.
 ; Tests should be able to replace the default executor with a new instance with defined start and stop lifecycle
 ; methods that can be called at the start and end of the test to isolate its activity from other tests.
+
+; Options for installing components in global namespace
+; Dynamic vars
+;  - Friendly for concurrency
+;  - Doesn't work for some constructs (Thread.)
+; Alter-var-root
+;  - Hostile to concurrency
+;  - Works for all consumers
+;  - Replaces your dev application's component
+; with-dynamic-fn-redefs
+;  - Friendly for concurrency
+;  - Works with all multithreading constructs
+;  - Requires some wrapping/ceremony
