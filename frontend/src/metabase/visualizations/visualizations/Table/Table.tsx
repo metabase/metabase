@@ -292,7 +292,7 @@ export class Table extends Component<TableProps, TableState> {
 
       settings["text_wrapping"] = {
         title: t`Wrap text`,
-        default: false,
+        getDefault: () => false,
         widget: "toggle",
         inline: true,
         isValid: (_column, columnSettings) => {
@@ -328,7 +328,7 @@ export class Table extends Component<TableProps, TableState> {
       settings["view_as"] = {
         title: t`Display as`,
         widget: options.length === 2 ? "radio" : "select",
-        default: defaultValue,
+        getDefault: () => defaultValue,
         getProps: () => ({
           options,
         }),
@@ -341,7 +341,7 @@ export class Table extends Component<TableProps, TableState> {
       title: t`Link text`,
       widget: ChartSettingLinkUrlInput,
       hint: linkFieldsHint,
-      default: null,
+      getDefault: () => null,
       getHidden: (_, settings) =>
         settings["view_as"] !== "link" && settings["view_as"] !== "email_link",
       readDependencies: ["view_as"],
@@ -368,7 +368,7 @@ export class Table extends Component<TableProps, TableState> {
       title: t`Link URL`,
       widget: ChartSettingLinkUrlInput,
       hint: linkFieldsHint,
-      default: null,
+      getDefault: () => null,
       getHidden: (_, settings) => settings["view_as"] !== "link",
       readDependencies: ["view_as"],
       getProps: (
