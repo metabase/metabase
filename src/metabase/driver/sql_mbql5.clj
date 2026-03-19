@@ -153,27 +153,34 @@
   [driver [op {:keys [base-type effective-type]} value]]
   ((get-method sql.qp/->honeysql [:sql op]) driver [op value {:base_type base-type :effective_type effective-type}]))
 
+;; For clauses that DO NOT have their opts propogated
 (doseq [op [;; unary
             :not :asc :desc :aggregation-options :date
             :length :trim :ltrim :rtrim :upper :lower ::sql.qp/cast-to-text
             :integer :float  :floor :ceil :round :abs :log :exp :sqrt
             :avg :median :stddev :var :sum :min :max :count :distinct
-            :field :expression :datetime
             ;; binary
             := :!= :> :>= :< :<=
             :power :percentile
             :time :temporal-extract
             :absolute-datetime :relative-datetime
-            :contains :starts-with :ends-with
             ;; ternary
             :between :replace :substring
             :datetime-add :datetime-subtract :datetime-diff
             ;; n-ary
             :+ :- :* :/ :and :or :concat :coalesce]]
   (defmethod sql.qp/->honeysql [:sql-mbql5 op]
+    [driver [op _opts & args]]
+    ((get-method sql.qp/->honeysql [:sql op]) driver (into [op] args))))
+
+;; For clauses that DO have their opts propogated
+(doseq [op [;; unary
+            :field :expression :datetime
+            ;; binary
+            :contains :starts-with :ends-with]]
+  (defmethod sql.qp/->honeysql [:sql-mbql5 op]
     [driver [op opts & args]]
-    ((get-method sql.qp/->honeysql [:sql op]) driver (into [op] (cond-> (vec args)
-                                                                  opts (conj opts))))))
+    ((get-method sql.qp/->honeysql [:sql op]) driver (into [op] (cond-> (vec args) opts (conj opts))))))
 
 (defmethod sql.qp/field-clause->alias :sql-mbql5
   [driver [clause-type opts id-or-name]]

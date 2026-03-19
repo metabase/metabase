@@ -254,9 +254,11 @@
         ;; nil value handling
         [[uuid]] (lib/!= col nil)
         []       (lib/= col nil))
-      (let [field (get (lib/ref col) 2)
+      (let [mbql5-driver? (isa? driver/hierarchy driver/*driver* :sql-mbql5)
+            field (get (lib/ref col) 2)
             col-ref (cond-> (lib/ref col)
-                      (not (isa? driver/hierarchy driver/*driver* :sql-mbql5)) lib/->legacy-MBQL)]
+                      (not mbql5-driver?) lib/->legacy-MBQL)
+            opts {(if mbql5-driver? :base-type :base_type) :type/UUID}]
         (testing ":= uses indexable query"
           (is (=? [:= [:metabase.util.honey-sql-2/identifier :field [field]]
                    (some-fn #(= uuid %)
@@ -264,13 +266,10 @@
                                  [:cast (str uuid) [:raw "uuid"]]
                                  {:database-type "uuid"}]
                                 %))]
-                  (let [opts (if (isa? driver/hierarchy driver/*driver* :sql-mbql5)
-                               {:base-type :type/UUID}
-                               {:base_type :type/UUID})]
-                    (sql.qp/->honeysql
-                     driver/*driver*
-                     (sql.qp/make-clause driver/*driver* := col-ref
-                                         (sql.qp/make-clause-with-opts driver/*driver* :value opts (str uuid)))))))
+                  (sql.qp/->honeysql
+                   driver/*driver*
+                   (sql.qp/make-clause driver/*driver* := col-ref
+                                       (sql.qp/make-clause-with-opts driver/*driver* :value opts (str uuid))))))
           (is (=? [:= [:metabase.util.honey-sql-2/identifier :field [field]]
                    (some-fn #(= uuid %)
                             #(= [:metabase.util.honey-sql-2/typed
