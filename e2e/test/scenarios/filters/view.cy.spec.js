@@ -75,8 +75,7 @@ describe("scenarios > question > view", () => {
       cy.signIn("nodata");
       H.visitQuestion("@questionId");
 
-      // Filter by category and vendor
-      // TODO: this should show values and allow searching
+      // Filter by category and vendor — users with card read access can see dropdown values (#70767)
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("This question is written in SQL.");
       cy.findAllByText("VENDOR").first().click();
@@ -105,25 +104,18 @@ describe("scenarios > question > view", () => {
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Question").click();
 
-      // Filter by category and vendor
-      // TODO: this should show values and allow searching
+      // Filter by category and vendor — users with card read access can see dropdown values (#70767)
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("This question is written in SQL.");
       cy.findAllByText("VENDOR").first().click();
       H.popover().within(() => {
-        cy.findByPlaceholderText("Enter some text")
-          .focus()
-          .clear()
-          .type("Balistreri-Muller");
+        cy.findByPlaceholderText("Search the list").type("Balistreri-Muller");
         cy.findByText("Add filter").click();
       });
       cy.findAllByTestId("run-button").first().click();
       cy.findAllByText("CATEGORY").first().click();
       H.popover().within(() => {
-        cy.findByPlaceholderText("Enter some text")
-          .click()
-          .clear()
-          .type("Widget");
+        cy.findByPlaceholderText("Search the list").type("Widget");
         cy.findByText("Add filter").click();
       });
       // eslint-disable-next-line metabase/no-unsafe-element-filtering
