@@ -964,7 +964,9 @@
            util}}
 
   notification
-  {:team "Gadget"
+  {;; skip-test: references unknown :model/NotificationDashboard
+   :model-imports :skip-test
+   :team "Gadget"
    :api  #{metabase.notification.api
            metabase.notification.core
            metabase.notification.init

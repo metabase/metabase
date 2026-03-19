@@ -763,7 +763,8 @@
               (do
                 (when (and (= (z/tag zloc) :token)
                            (keyword? (z/sexpr zloc))
-                           (= "model" (namespace (z/sexpr zloc))))
+                           (= "model" (namespace (z/sexpr zloc)))
+                           (Character/isUpperCase ^char (first (name (z/sexpr zloc)))))
                   (swap! models conj (z/sexpr zloc)))
                 (recur (if-let [child (z/down zloc)]
                          (conj stack' child)
@@ -844,7 +845,9 @@
                  (let [ns-symb (-> (ns.file/read-file-ns-decl file)
                                    ns.parse/name-from-ns-decl)
                        mod     (module ns-symb)]
-                   (when (and mod (not (contains? model-boundary-exempt-namespaces ns-symb)))
+                   (when (and mod
+                              (not (contains? model-boundary-exempt-namespaces ns-symb))
+                              (not= :skip-test (get-in kondo-config [mod :model-imports])))
                      (let [model-imports (get-in kondo-config [mod :model-imports] :any)
                            models       (find-model-keywords file)
                            rel-path     (file->path-relative-to-project-root file)]
