@@ -29,7 +29,7 @@
 (defn- generate-workmux-config
   "Generate the .workmux.yaml content."
   [issue-id issue-url app-db]
-  (str "agent: mise exec -- ./bin/claude-dangerous\n"
+  (str "agent: ./bin/claude-mise\n"
        "\n"
        "post_create:\n"
        "  - mkdir -p .fixbot\n"
