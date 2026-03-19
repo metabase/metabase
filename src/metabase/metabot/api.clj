@@ -1,7 +1,13 @@
 (ns metabase.metabot.api
-  "`/api/ee/metabot-v3/` routes"
+  "`/api/metabot/` routes"
   (:require
    [clojure.core.async :as a]
+   [metabase.api.common :as api]
+   [metabase.api.macros :as api.macros]
+   [metabase.api.routes.common :refer [+auth]]
+   [metabase.api.util.handlers :as handlers]
+   [metabase.app-db.core :as app-db]
+   [metabase.config.core :as config]
    [metabase.metabot.agent.core :as agent]
    [metabase.metabot.api.document]
    [metabase.metabot.api.metabot]
@@ -14,14 +20,8 @@
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.settings :as metabot-v3.settings]
    [metabase.metabot.util :as metabot-v3.u]
-   [metabase.slackbot.api]
-   [metabase.api.common :as api]
-   [metabase.api.macros :as api.macros]
-   [metabase.api.routes.common :refer [+auth]]
-   [metabase.api.util.handlers :as handlers]
-   [metabase.app-db.core :as app-db]
-   [metabase.config.core :as config]
    [metabase.server.streaming-response :as sr]
+   [metabase.slackbot.api]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]

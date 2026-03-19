@@ -5,6 +5,7 @@
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.api.common :as api]
    [metabase.appearance.core :as appearance]
+   [metabase.sso.settings :as oss-sso-settings]
    [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
@@ -40,7 +41,7 @@
 
 (defmethod check-user-provisioning :slack-connect
   [_]
-  (maybe-throw-user-provisioning (sso-settings/slack-connect-user-provisioning-enabled)))
+  (maybe-throw-user-provisioning (oss-sso-settings/slack-connect-user-provisioning-enabled)))
 
 (defmethod check-user-provisioning :oidc
   [_]
