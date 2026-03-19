@@ -137,6 +137,14 @@ export const compareVersions = (
 };
 
 /**
+ * Get the x-version branch name for a version.
+ * e.g., v0.57.6 -> "x-version-57", HEAD -> "x-version-head"
+ */
+export const getVersionBranch = (version: string): string => {
+  return `x-version-${getMajorVersion(version)}`;
+};
+
+/**
  * Get the Docker image for a version.
  * Supports HEAD and rolling .x tags.
  */

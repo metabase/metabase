@@ -11,6 +11,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$SCRIPT_DIR"
 
 # Defaults
@@ -65,6 +66,36 @@ fi
 cli() {
   bun "$SCRIPT_DIR/cli.ts" "$@"
 }
+
+XV_SPECS_DIR="$SCRIPT_DIR/.xv-specs"
+
+# Run cross-version e2e tests for a given phase and version.
+# For HEAD, runs specs from the local tree. For other versions,
+# extracts specs from the x-version branch via git archive.
+run_e2e() {
+  local phase="$1"
+  local version="$2"
+
+  if [[ "$version" == "HEAD" ]]; then
+    log "Using local specs for HEAD"
+    "$REPO_ROOT/e2e/test/cross-version/run.sh" --phase "$phase"
+    return
+  fi
+
+  local branch dest
+  branch=$(cli branch "$version")
+  dest="$XV_SPECS_DIR/$phase"
+
+  log "Extracting specs from ${branch} → ${dest}"
+  rm -rf "$dest"
+  mkdir -p "$dest"
+  git -C "$REPO_ROOT" archive "$branch" -- e2e/test/cross-version/scenarios/ \
+    | tar x -C "$dest"
+
+  "$REPO_ROOT/e2e/test/cross-version/run.sh" --phase "$phase" \
+    --specs "$dest/e2e/test/cross-version/scenarios/**/*.cy.spec.ts"
+}
+
 
 wait_for_health() {
   local timeout="$1"
@@ -326,7 +357,7 @@ main() {
 
   log ""
   log "Step 2: Running e2e tests (@source)..."
-  "$SCRIPT_DIR/../e2e/test/cross-version/run.sh" --phase source
+  run_e2e source "$SOURCE_VERSION"
 
   log ""
   log "Step 3: Stopping SOURCE version ($SOURCE_VERSION)..."
@@ -347,7 +378,7 @@ main() {
 
     log ""
     log "Step 5: Running e2e tests (@target)..."
-    "$SCRIPT_DIR/../e2e/test/cross-version/run.sh" --phase target
+    run_e2e target "$TARGET_VERSION"
 
   else
     # Downgrade: should refuse to start, then we run migrate down
@@ -381,7 +412,7 @@ main() {
 
     log ""
     log "Step 7: Running e2e tests (@target)..."
-    "$SCRIPT_DIR/../e2e/test/cross-version/run.sh" --phase target
+    run_e2e target "$TARGET_VERSION"
   fi
 
   log ""
