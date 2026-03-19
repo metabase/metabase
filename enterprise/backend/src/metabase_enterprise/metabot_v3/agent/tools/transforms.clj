@@ -135,10 +135,13 @@
         {:output (ex-message e)}
         {:output (str "Failed to write SQL transform: " (or (ex-message e) "Unknown error"))}))))
 
+;; TODO (lbrdnk 2026-03-19): We should "enhance" those inscturctions
 (mu/defn ^{:tool-name "write_transform_python"
            :capabilities #{:feature-transforms :feature-transforms-python :permission-write-transforms}}
   write-transform-python-tool
   "Write new Python code or edit existing code for transforms.
+
+  - *Critical*: Carefully fill in the edit_action parameter key according to schema!
 
   Supports two modes:
   - edit: Targeted string replacements with partial edits
@@ -147,25 +150,45 @@
   For edit mode, provide edits as an array of {old_string, new_string, replace_all} objects.
   For replace mode, provide new_content with the complete Python code.
 
+  - *Critical*: If you do not have integer transform_id, pass the param as nil!
+
+  - *Critical*: Before using this tool you *must* check the context present in your system prompt
+    to find out what is user viewing and do the decision based on that.
+
+  - *Critical*: For a transform to work correctly it must have at least one table present in source_tables
+    - Add tables that are used in the edits into source_tables.
+    - If there are no tables to be queried add arbitrary table available from source_database.
+
   Use `get_transform_python_library_details` before writing any Python code to inspect the shared library.
   Use the shared library in your code by adding `import common` at the top of the file.
   Keep `import common` at the top of the file even if it is currently unused."
   [{:keys [transform_id edit_action thinking transform_name transform_description
-           source_database source_tables]}
+           source_database source_tables]
+    :as inin}
    :- [:map {:closed true}
        [:transform_id {:optional true} [:maybe :int]]
        [:edit_action [:map
                       [:mode [:enum "edit" "replace"]]
-                      [:edits {:optional true} [:maybe [:sequential [:map
-                                                                     [:old_string :string]
-                                                                     [:new_string :string]
-                                                                     [:replace_all {:optional true} [:maybe :boolean]]]]]]
-                      [:new_content {:optional true} [:maybe :string]]]]
+                      [:edits {:optional true}
+                       [:sequential [:map
+                                     [:old_string :string]
+                                     [:new_string :string]
+                                     [:replace_all {:optional true} :boolean]]]]
+                      [:new_content {:optional true}
+                       :string]]]
        [:thinking {:optional true} [:maybe :string]]
        [:transform_name {:optional true} [:maybe :string]]
        [:transform_description {:optional true} [:maybe :string]]
-       [:source_database {:optional true} [:maybe :int]]
-       [:source_tables {:optional true} [:maybe :map]]]]
+       [:source_database :int]
+       ;; TODO (lbrdnk 2026-03-19): FE won't work if this is empty. We should handle situation with empty transform
+       ;;                           in follow-ups.
+       [:source_tables
+        ;; search for PythonTransformTableEntry
+        [:sequential [:map
+                      [:alias :string]
+                      [:table_id :int]
+                      [:schema :string]
+                      [:database_id :int]]]]]]
   (try
     (add-output
      (transforms-write-tools/write-transform-python

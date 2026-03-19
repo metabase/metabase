@@ -68,7 +68,6 @@ def transform():
 ;; TODO (lbrdnk 2026-03-19): This is probably incomplete. Revisit! And why database is not avail on occasions?
 (defn- source-for-transform-type
   [source-type transform-name transform-description source-database source-tables]
-  (def source-database)
   (assert (pos-int? source-database))
   (case source-type
       ;; Direct mbql manipulation -- wrong
@@ -76,6 +75,11 @@ def transform():
           :query {:type :native
                   :native {:query fresh-sql-template}
                   :database source-database}}
+    :python {:type "python"
+             :body fresh-python-template
+             :source-database source-database
+             ;; TODO: ordered map actually or ordered only
+             :source-tables source-tables}
     (throw (Exception. "Only sql transform supported now."))))
 
 ;; TODO: Params
@@ -97,7 +101,7 @@ def transform():
               :database source-database
               :schema nil}
      :source (source-for-transform-type
-              :sql transform-name transform-description source-database source-tables)}))
+              source-type transform-name transform-description source-database source-tables)}))
 
 ;;; Write Transform SQL Tool
 
@@ -230,7 +234,7 @@ def transform():
                             {:agent-error? true
                              :transform-id transform_id})))
 
-        current-python (get-in current-transform [:source :query] "")
+        current-python (get-in current-transform [:source :body] "")
 
         ;; Apply edits based on mode
         new-python (case (:mode edit_action)
@@ -245,12 +249,12 @@ def transform():
 
         ;; Build suggested transform
         suggested-transform (cond-> current-transform
-                              true (assoc-in [:source :query] new-python)
-                              true (assoc-in [:source :type] "python")
-                              transform_name (assoc :name transform_name)
-                              transform_description (assoc :description transform_description)
-                              source_database (assoc-in [:source :source-database] source_database)
-                              source_tables (assoc-in [:source :source-tables] source_tables))]
+                              true (assoc-in [:source :body] new-python)
+                              #_#_true (assoc-in [:source :type] "python")
+                              #_#_transform_name (assoc :name transform_name)
+                              #_#_transform_description (assoc :description transform_description)
+                              #_#_source_database (assoc-in [:source :source-database] source_database)
+                              #_#_source_tables (assoc-in [:source :source-tables] source_tables))]
 
     ;; Store in memory if we have an ID
     (when (and transform_id memory-atom)
