@@ -1573,7 +1573,7 @@
                      2 1 123 110.93 6.1 117.03 nil "2018-05-15T08:04:04.58Z" 3]]
                    (mt/rows (qp/process-query q2))))))))))
 
-(deftest ^:parallell self-join-with-capitalized-table-test
+(deftest ^:parallel self-join-with-capitalized-table-test
   (mt/test-drivers (mt/normal-driver-select {:+features [:left-join]})
     (mt/dataset (mt/dataset-definition "self-join-db"
                                        [["TableA"
