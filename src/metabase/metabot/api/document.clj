@@ -1,5 +1,5 @@
 (ns metabase.metabot.api.document
-  "`/api/ee/metabot-v3/document` routes"
+  "`/api/metabot/document` routes"
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
@@ -174,5 +174,5 @@
   (native-generate-content body))
 
 (def ^{:arglists '([request respond raise])} routes
-  "`/api/ee/metabot-v3/document` routes."
+  "`/api/metabot/document` routes."
   (api.macros/ns-handler *ns* +auth))

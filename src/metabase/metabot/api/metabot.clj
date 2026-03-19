@@ -1,5 +1,5 @@
 (ns metabase.metabot.api.metabot
-  "`/api/ee/metabot-v3/metabot` routes"
+  "`/api/metabot/metabot` routes"
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -151,5 +151,5 @@
   api/generic-204-no-content)
 
 (def ^{:arglists '([request respond raise])} routes
-  "`/api/ee/metabot-v3/metabot` routes."
+  "`/api/metabot/metabot` routes."
   (api.macros/ns-handler *ns* +auth))

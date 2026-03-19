@@ -1,10 +1,9 @@
 (ns metabase.slackbot.config
   "Configuration, manifest, and validation helpers for slackbot."
   (:require
+   [metabase.channel.settings :as channel.settings]
    [metabase.slackbot.client :as slackbot.client]
    [metabase.slackbot.settings :as slackbot.settings]
-   [metabase.sso.settings :as sso-settings]
-   [metabase.channel.settings :as channel.settings]
    [metabase.system.core :as system]
    [metabase.util.encryption :as encryption]))
 
@@ -23,7 +22,7 @@
                          :always_online false}
               :assistant_view {:assistant_description "Your AI-powered data assistant"}
               :slash_commands [{:command "/metabot"
-                                :url (str base-url "/api/ee/metabot-v3/slack/commands")
+                                :url (str base-url "/api/metabot/slack/commands")
                                 :description "Issue a Metabot command"
                                 :should_escape false}]}
    :oauth_config {:redirect_urls [(str base-url "/auth/sso/slack-connect/callback")]
@@ -46,7 +45,7 @@
                                  "reactions:read"
                                  "reactions:write"
                                  "users:read"]}}
-   :settings {:event_subscriptions {:request_url (str base-url "/api/ee/metabot-v3/slack/events")
+   :settings {:event_subscriptions {:request_url (str base-url "/api/metabot/slack/events")
                                     :bot_events ["app_home_opened"
                                                  "app_mention"
                                                  "message.channels"
@@ -55,7 +54,7 @@
                                                  "assistant_thread_started"
                                                  "assistant_thread_context_changed"]}
               :interactivity {:is_enabled true
-                              :request_url (str base-url "/api/ee/metabot-v3/slack/interactive")}
+                              :request_url (str base-url "/api/metabot/slack/interactive")}
               :org_deploy_enabled true
               :socket_mode_enabled false
               :token_rotation_enabled false}})
@@ -65,9 +64,8 @@
   []
   (boolean
    (and (some? (system/site-url))
-        #_#_
-        (sso-settings/slack-connect-client-id)
-        (sso-settings/slack-connect-client-secret)
+        #_#_(sso-settings/slack-connect-client-id)
+          (sso-settings/slack-connect-client-secret)
         (slackbot.settings/metabot-slack-signing-secret)
         (channel.settings/unobfuscated-slack-app-token)
         (encryption/default-encryption-enabled?))))
