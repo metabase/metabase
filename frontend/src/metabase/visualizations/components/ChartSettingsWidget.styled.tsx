@@ -4,18 +4,10 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 export const Root = styled.div<{
-  noPadding?: boolean;
   inline?: boolean;
   marginBottom?: string;
   borderBottom?: boolean;
 }>`
-  ${(props) =>
-    !props.noPadding &&
-    css`
-      margin-left: 2rem;
-      margin-right: 2rem;
-    `}
-
   ${(props) =>
     props.hidden &&
     css`

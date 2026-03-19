@@ -195,7 +195,8 @@ function getSettingWidget<T, TValue, TProps extends Record<string, unknown>>(
   }
 
   const getHiddenFn = settingDef.getHidden;
-  const { getMarginBottom, getProps, ...settingDefProps } = settingDef;
+  const { getMarginBottom, getProps, getWrapperStyle, ...settingDefProps } =
+    settingDef;
 
   const section = settingDef.getSection
     ? settingDef.getSection(resolvedObject, computedSettings, extra)
@@ -223,6 +224,7 @@ function getSettingWidget<T, TValue, TProps extends Record<string, unknown>>(
       typeof settingDef.widget === "string"
         ? WIDGETS[settingDef.widget]
         : settingDef.widget,
+    style: getWrapperStyle?.(resolvedObject, computedSettings, extra),
     onChange,
     onChangeSettings, // this gives a widget access to update other settings
   };

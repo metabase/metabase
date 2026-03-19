@@ -34,8 +34,11 @@ export const GRAPH_GOAL_SETTINGS: VisualizationSettingsDefinitions = {
     },
     widget: "toggle",
     getDefault: () => false,
-    inline: true,
-    getMarginBottom: () => "1rem",
+    getWrapperStyle: () => ({
+      marginBottom: "1rem",
+      marginLeft: 0,
+      marginRight: 0,
+    }),
   },
   "graph.goal_value": {
     get section() {

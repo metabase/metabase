@@ -131,7 +131,15 @@ export function nestedSettings<
       onChangeSettings,
       extra,
     );
-    return widgets.map((widget) => ({ ...widget, noPadding: true }));
+
+    return widgets.map((widget) => ({
+      ...widget,
+      wrapperStyle: {
+        ...widget.wrapperStyle,
+        marginLeft: 0,
+        marginRight: 0,
+      },
+    }));
   }
 
   // decorate with nested settings HOC
