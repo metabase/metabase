@@ -88,6 +88,7 @@ export function ObjectDetailView({
   viewNextObjectDetail,
   closeObjectDetail,
   className,
+  isDashboard,
 }: ObjectDetailProps): JSX.Element | null {
   const [hasNotFoundError, setHasNotFoundError] = useState(false);
   const [maybeLoading, setMaybeLoading] = useState(false);
@@ -355,6 +356,7 @@ export function ObjectDetailView({
               settings={settings}
               onVisualizationClick={onVisualizationClick}
               visualizationIsClickable={visualizationIsClickable}
+              isDashboard={isDashboard}
             />
           </ObjectDetailWrapperDiv>
         )}

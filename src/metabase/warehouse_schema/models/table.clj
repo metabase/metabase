@@ -14,6 +14,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.workspaces.core :as workspaces]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -126,7 +127,10 @@
                      (partial mi/assert-optional-enum data-layers)
                      (some-fn legacy-data-layer->current identity))
    :field_order     mi/transform-keyword
-   :data_source     (mi/transform-validator mi/transform-keyword (partial mi/assert-optional-enum data-sources))
+   :data_source     (mi/transform-validator-with-fixes
+                     mi/transform-keyword
+                     (partial mi/assert-optional-enum data-sources)
+                     (some-fn keyword identity))
    ;; Warning: by using a transform to handle unexpected enum values, serialization becomes lossy
    :data_authority  transform-data-authority})
 
@@ -399,6 +403,78 @@
   [_table]
   [:schema :name (serdes/hydrated-hash :db :db_id)])
 
+;;; ----------------------------------------- Transform Target Tables -----------------------------------------------
+
+(defn upsert-transform-target-table!
+  "Ensure a metabase_table row exists for the given (db_id, schema, name) triple.
+   If the table doesn't exist, creates it as a transform target (inactive, not yet physically materialized).
+   If it already exists (active or inactive), returns its id without modification.
+   Returns the table id.
+
+   The `transform_target` column is **conservative**: it is set eagerly to `true` when a transform is
+   configured to target this table (synchronous, never stale), and cleared asynchronously when no
+   transforms reference it anymore. This means the column may have false positives (a table marked as
+   a target when no transform actually targets it) but **never false negatives** (a targeted table
+   will always have `transform_target = true`)."
+  [db-id schema table-name]
+  (app-db/update-or-insert!
+   :model/Table
+   {:db_id db-id :schema schema :name table-name}
+   (fn [existing]
+     (when-not existing
+       {:display_name        (humanization/name->human-readable-name table-name)
+        :active              false
+        :transform_target    true
+        :data_source         :metabase-transform
+        :data_authority      :computed
+        :initial_sync_status "complete"}))))
+
+(defn- remove-referenced-candidates
+  "Short-circuiting reduce: removes matched triples from triple->table."
+  [triple->table target-triples]
+  (reduce (fn [triple->table triple]
+            (if (empty? triple->table)
+              (reduced triple->table)
+              (dissoc triple->table triple)))
+          triple->table
+          target-triples))
+
+(defn gc-transform-target-tables!
+  "Deletes provisional table rows (created by [[upsert-transform-target-table!]]) that are no longer
+   referenced by any Transform or WorkspaceTransform. Safe because these rows were never active,
+   so they have no child records.
+
+   Note: this only handles *inactive* provisional tables. Active tables that were previously
+   targeted by a transform retain `transform_target = true` even after the transform is deleted.
+   A separate process to reset `transform_target` on active, unreferenced tables is not yet
+   implemented.
+
+   Future optimizations:
+   - Add target_table_id FKs to avoid scanning transform rows.
+   - Pre-filter via workspace_input/workspace_output table references."
+  []
+  (let [candidates (t2/select [:model/Table :id :db_id :schema :name]
+                              :active false :transform_target true :deactivated_at nil
+                              :data_source :metabase-transform)]
+    (when (seq candidates)
+      (let [db-ids        (into #{} (map :db_id) candidates)
+            triple->table (into {} (map (juxt (juxt :db_id :schema :name) identity)) candidates)
+            remaining     (remove-referenced-candidates
+                           triple->table
+                           (eduction
+                            (map (fn [{:keys [target target_db_id]}]
+                                   (-> target
+                                       (update :database #(or % target_db_id))
+                                       workspaces/target->triple)))
+                            (t2/reducible-select [:model/Transform :target :target_db_id] :target_db_id [:in db-ids])))
+            remaining     (when (seq remaining)
+                            (remove-referenced-candidates
+                             remaining
+                             (workspaces/reducible-target-triples db-ids)))]
+        (when-let [dead-ids (seq (mapv :id (vals remaining)))]
+          (log/infof "Deleting %d orphaned transform target table(s)" (count dead-ids))
+          (t2/delete! :model/Table :id [:in dead-ids]))))))
+
 ;;; ------------------------------------------------ Field ordering -------------------------------------------------
 
 (def field-order-rule
@@ -598,7 +674,7 @@
                :points_of_interest :caveats :show_in_getting_started :field_order :initial_sync_status :is_upload
                :database_require_filter :is_defective_duplicate :unique_table_helper :is_writable :data_authority
                :data_source :owner_email :owner_user_id :is_published]
-   :skip      [:estimated_row_count :view_count]
+   :skip      [:estimated_row_count :view_count :transform_target]
    :transform {:created_at     (serdes/date)
                :archived_at    (serdes/date)
                :deactivated_at (serdes/date)
