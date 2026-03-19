@@ -791,7 +791,7 @@
                 (let [first-child (z/down zloc)]
                   (when (and first-child
                              (= (z/tag first-child) :token)
-                             (str/ends-with? (:string-value (z/node first-child)) "/defmethod"))
+                             (some-> (:string-value (z/node first-child)) (str/ends-with? "/defmethod")))
                     (let [second-zloc (z/right first-child)
                           third-zloc  (some-> second-zloc z/right)]
                       (when (and second-zloc
