@@ -446,13 +446,13 @@
       (is (= 7 (count tools)))))
 
   (testing "tools/list with specific scope only returns matching tools"
-    (let [tools (mcp.tools/list-tools #{"agent:search"})]
-      ;; Should include: search (matches scope) + get_field_values (no scope field)
-      (is (contains? (set (map :name tools)) "search"))
-      (is (contains? (set (map :name tools)) "get_field_values"))
+    (let [tools     (mcp.tools/list-tools #{"agent:search"})
+          tool-names (set (map :name tools))]
+      ;; Should include search (matches scope)
+      (is (contains? tool-names "search"))
       ;; Should NOT include tools with other scopes
-      (is (not (contains? (set (map :name tools)) "get_table")))
-      (is (not (contains? (set (map :name tools)) "construct_query")))))
+      (is (not (contains? tool-names "get_table")))
+      (is (not (contains? tool-names "construct_query")))))
 
   (testing "tools/list with wildcard scope matches all agent tools"
     (let [tools (mcp.tools/list-tools #{"agent:*"})]

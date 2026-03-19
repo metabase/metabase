@@ -7,6 +7,7 @@
    [metabase.agent-api.api :as agent-api]
    [metabase.api.common :as api]
    [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
+   [metabase.api.macros.scope :as scope]
    [metabase.config.core :as config]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.util :as u]
@@ -36,13 +37,34 @@
     (generate-manifest)
     @manifest-delay))
 
+(defn- scope-matches?
+  "Does `token-scopes` grant access to a tool with the given `tool-scope`?
+   - nil/empty token-scopes or ::scope/unrestricted → always matches
+   - nil tool-scope → always matches (tool has no scope restriction)
+   - wildcard scopes like \"agent:*\" match any tool scope starting with \"agent:\""
+  [token-scopes tool-scope]
+  (or (nil? token-scopes)
+      (empty? token-scopes)
+      (contains? token-scopes ::scope/unrestricted)
+      (nil? tool-scope)
+      (contains? token-scopes tool-scope)
+      (some (fn [s]
+              (when (string? s)
+                (when-let [prefix (when (str/ends-with? s ":*")
+                                    (subs s 0 (- (count s) 1)))]
+                  (str/starts-with? tool-scope prefix))))
+            token-scopes)))
+
 (defn list-tools
-  "Return the tool definitions suitable for MCP `tools/list` responses."
-  []
-  (mapv (fn [tool]
-          {:name        (:name tool)
-           :description (:description tool)
-           :inputSchema (:inputSchema tool)})
+  "Return the tool definitions suitable for MCP `tools/list` responses.
+   When `token-scopes` is provided, only tools whose scope matches are included."
+  [token-scopes]
+  (into []
+        (comp (filter #(scope-matches? token-scopes (:scope %)))
+              (map (fn [tool]
+                     {:name        (:name tool)
+                      :description (:description tool)
+                      :inputSchema (:inputSchema tool)})))
         (:tools (manifest))))
 
 (defn- build-tool-index []
@@ -173,8 +195,11 @@
    Returns MCP content on success, or error content on failure."
   [token-scopes tool-name arguments]
   (if-let [tool-def (get (tool-index) tool-name)]
-    (try
-      (dispatch-via-agent-api tool-def arguments token-scopes)
-      (catch Exception e
-        (error-content (or (ex-message e) "Internal error"))))
+    (if-not (scope-matches? token-scopes (:scope tool-def))
+      (error-content (str "Insufficient scope to call tool: " tool-name
+                          ". Required scope: " (:scope tool-def)))
+      (try
+        (dispatch-via-agent-api tool-def arguments token-scopes)
+        (catch Exception e
+          (error-content (or (ex-message e) "Internal error")))))
     (error-content (str "Unknown tool: " tool-name))))
