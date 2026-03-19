@@ -215,6 +215,7 @@
            settings
            task
            task-history
+           tracing
            util}}
 
   auth-identity
@@ -286,6 +287,7 @@
   channel
   {:team "Gadget"
    :api  #{metabase.channel.api
+           metabase.channel.api.slack
            metabase.channel.core
            metabase.channel.email
            metabase.channel.email.messages
@@ -397,6 +399,7 @@
            request
            revisions
            settings
+           tracing
            transforms
            upload
            util}}
@@ -589,6 +592,7 @@
            settings
            sql-tools
            system
+           tracing
            util
            warehouse-schema
            warehouses}}
@@ -667,7 +671,8 @@
    :api  #{metabase.events.core
            metabase.events.init}
    :uses #{models
-           util}}
+           util}
+   :friends #{tracing}}
 
   formatter
   {:team "UX West"
@@ -749,6 +754,7 @@
            metabase.lib.schema.common
            metabase.lib.schema.expression
            metabase.lib.schema.expression.temporal
+           metabase.lib.schema.filter
            metabase.lib.schema.id
            metabase.lib.schema.info
            metabase.lib.schema.join
@@ -808,7 +814,6 @@
            lib
            lib-be
            models
-           premium-features
            request
            settings
            sql-tools
@@ -890,6 +895,7 @@
            system
            task
            task-history
+           tracing
            util}}
 
   models
@@ -963,6 +969,7 @@
            system
            task
            task-history
+           tracing
            users
            util}}
 
@@ -1006,6 +1013,7 @@
            premium-features
            remote-sync
            settings
+           tracing
            util
            enterprise/advanced-permissions}}
 
@@ -1051,6 +1059,7 @@
            settings
            startup
            task
+           tracing
            util}}
 
   product-feedback
@@ -1118,6 +1127,7 @@
            request
            task
            task-history
+           tracing
            util
            enterprise/advanced-permissions
            enterprise/sandbox}}
@@ -1261,6 +1271,7 @@
            server
            settings
            system
+           tracing
            users
            util}}
 
@@ -1342,6 +1353,7 @@
            settings
            startup
            task
+           tracing
            transforms
            util}}
 
@@ -1388,6 +1400,7 @@
            session
            settings
            system
+           tracing
            users
            util
            enterprise/sso}}
@@ -1409,6 +1422,7 @@
            sso
            system
            task
+           tracing
            util}}
 
   settings
@@ -1531,6 +1545,7 @@
            settings
            task
            task-history
+           tracing
            util
            warehouse-schema
            warehouses}}
@@ -1547,6 +1562,7 @@
            metabase.task.core}
    :uses #{app-db
            classloader
+           tracing
            util}}
 
   task-history
@@ -1563,6 +1579,7 @@
            query-processor
            request
            task
+           tracing
            util}}
 
   tenants
@@ -1610,6 +1627,15 @@
            models
            util}}
 
+  tracing
+  {:team "DevEx"
+   :api  #{metabase.tracing.core
+           metabase.tracing.init}
+   :uses #{events
+           settings
+           task
+           util}}
+
   transforms
   {:team "Querying"
    :api  #{metabase.transforms.core
@@ -1632,6 +1658,7 @@
            settings
            task
            task-history
+           tracing
            transforms-base
            util}
    :friends #{models
@@ -1649,7 +1676,8 @@
            lib-be
            query-processor
            sync
-           util}
+           util
+           warehouse-schema}
    :friends #{transforms
               enterprise/transforms-python
               enterprise/workspaces}}
@@ -1672,13 +1700,11 @@
            metabase.transforms-rest.api.transform-job
            metabase.transforms-rest.api.transform-tag}
    :uses #{api
-           driver
            events
            models
            query-processor
            request
            server
-           sql-tools
            transforms
            transforms-base
            transforms-inspector
@@ -1759,6 +1785,7 @@
            premium-features
            request
            sso
+           system
            tenants
            users
            util
@@ -1822,7 +1849,8 @@
            remote-sync
            search
            util
-           warehouses}}
+           warehouses
+           workspaces}}
 
   warehouse-schema-rest
   {:team "UX West"
@@ -1895,6 +1923,11 @@
            warehouse-schema
            warehouses
            enterprise/advanced-permissions}}
+
+  workspaces
+  {:team "Metabot"
+   :api  #{metabase.workspaces.core}
+   :uses #{util}}
 
   xrays
   {:team "Querying"
@@ -2019,7 +2052,8 @@
 
   enterprise/api
   {:team "UX West"
-   :api  #{metabase-enterprise.api.core}
+   :api  #{metabase-enterprise.api.core
+           metabase-enterprise.api.routes.common}
    :uses #{api
            premium-features
            util}}
@@ -2193,6 +2227,7 @@
            request
            revisions
            settings
+           sql-tools
            task
            transforms
            transforms-base
@@ -2280,15 +2315,17 @@
   enterprise/metabot-v3
   {:team    "Metabot"
    :api     #{metabase-enterprise.metabot-v3.api
-              metabase-enterprise.metabot-v3.client
               metabase-enterprise.metabot-v3.core
               metabase-enterprise.metabot-v3.init
               metabase-enterprise.metabot-v3.tools.api}
-   :friends #{enterprise/agent-api}
+   :friends #{enterprise/agent-api
+              enterprise/slackbot}
    :uses    #{activity-feed
+              analytics
               api
               app-db
               audit-app
+              channel
               collections
               config
               documents
@@ -2298,6 +2335,7 @@
               lib-be
               models
               native-query-snippets
+              notification
               parameters
               permissions
               premium-features
@@ -2314,10 +2352,12 @@
               task
               transforms
               transforms-base
-              users
               util
               warehouses
+              enterprise/api
               enterprise/dependencies
+              enterprise/llm
+              enterprise/slackbot
               enterprise/transforms-python}}
 
   enterprise/permission-debug
@@ -2433,9 +2473,9 @@
            search
            settings
            task
+           tracing
            util
-           enterprise/llm
-           enterprise/metabot-v3}}
+           enterprise/llm}}
 
   enterprise/serialization
   {:team "Querying"
@@ -2457,6 +2497,27 @@
            search
            setup
            util}}
+
+  enterprise/slackbot
+  {:team    "Metabot"
+   :api     #{metabase-enterprise.slackbot.init}
+   :friends #{enterprise/metabot-v3}
+   :uses    #{analytics
+              api
+              channel
+              config
+              formatter
+              lib
+              permissions
+              premium-features
+              query-processor
+              request
+              settings
+              system
+              upload
+              util
+              enterprise/metabot-v3
+              enterprise/sso}}
 
   enterprise/snippet-collections
   {:team "Querying"
@@ -2589,6 +2650,7 @@
            transforms
            transforms-base
            util
+           warehouse-schema
            enterprise/transforms-python}}
 
   enterprise/writable-connection

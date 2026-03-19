@@ -177,7 +177,7 @@ export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
       return t`Date separators`;
     },
     widget: "radio",
-    default: "/",
+    getDefault: () => "/",
     getProps: (_column, settings) => {
       const style = /\//.test(settings.date_style ?? "")
         ? (settings.date_style ?? "")
@@ -198,7 +198,7 @@ export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
       return t`Abbreviate days and months`;
     },
     widget: "toggle",
-    default: false,
+    getDefault: () => false,
     inline: true,
     getHidden: ({ unit }, settings) => {
       const format = getDateFormatFromStyle(
@@ -230,7 +230,7 @@ export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
       return t`Time style`;
     },
     widget: "radio",
-    default: "h:mm A",
+    getDefault: () => "h:mm A",
     getProps: (column) => ({
       options: getTimeStyleOptions(column.unit ?? "default"),
     }),
@@ -246,7 +246,7 @@ export const NUMBER_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
       return t`Style`;
     },
     widget: "select",
-    props: {
+    getProps: () => ({
       options: [
         {
           get name() {
@@ -273,7 +273,7 @@ export const NUMBER_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
           value: "currency",
         },
       ],
-    },
+    }),
     getDefault: getDefaultNumberStyle,
     // hide this for currency
     getHidden: (column, settings) =>
@@ -285,7 +285,7 @@ export const NUMBER_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
       return t`Unit of currency`;
     },
     widget: "select",
-    props: {
+    getProps: () => ({
       // FIXME: rest of these options
       options: currency.map(([_code, c]) => ({
         name: c.name,
@@ -293,7 +293,7 @@ export const NUMBER_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
       })),
       searchProp: "name",
       searchCaseSensitive: false,
-    },
+    }),
     getDefault: getDefaultCurrency,
     getHidden: (_column, settings) => settings.number_style !== "currency",
   },
@@ -343,7 +343,7 @@ export const NUMBER_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
       return t`Separator style`;
     },
     widget: "select",
-    props: {
+    getProps: () => ({
       options: [
         { name: "100,000.00", value: ".," },
         { name: "100 000,00", value: ", " },
@@ -351,7 +351,7 @@ export const NUMBER_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
         { name: "100000.00", value: "." },
         { name: "100’000.00", value: ".’" },
       ],
-    },
+    }),
     getDefault: getDefaultNumberSeparators,
   },
   decimals: {
@@ -359,42 +359,42 @@ export const NUMBER_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
       return t`Number of decimal places`;
     },
     widget: "number",
-    props: {
+    getProps: () => ({
       placeholder: "1",
       options: {
         isNonNegative: true,
         isInteger: true,
       },
-    },
+    }),
   },
   scale: {
     get title() {
       return t`Multiply by a number`;
     },
     widget: "number",
-    props: {
+    getProps: () => ({
       placeholder: "1",
-    },
+    }),
   },
   prefix: {
     get title() {
       return t`Add a prefix`;
     },
     widget: "input",
-    props: {
+    getProps: () => ({
       placeholder: "$",
-    },
+    }),
   },
   suffix: {
     get title() {
       return t`Add a suffix`;
     },
     widget: "input",
-    props: {
+    getProps: () => ({
       get placeholder() {
         return t`dollars`;
       },
-    },
+    }),
   },
   // Optimization: build a single NumberFormat object that is used by formatting.js
   _numberFormatter: {
@@ -433,9 +433,9 @@ const COMMON_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
   // markdown_template: {
   //   title: t`Markdown template`,
   //   widget: "input",
-  //   props: {
+  //   getProps: () => ({
   //     placeholder: "{{value}}",
-  //   },
+  //   }),
   // },
   column: {
     getValue: (column) => column,

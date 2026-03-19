@@ -3021,6 +3021,34 @@
           "properties" : { }
         } ]
       },
+      "metabase-enterprise.metabot-v3.tools.api.create-alert-arguments" : {
+        "allOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "card_id" : {
+              "type" : "integer"
+            },
+            "schedule" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.subscription-schedule"
+            },
+            "send_condition" : {
+              "type" : "string",
+              "enum" : [ "has_result", "goal_above", "goal_below" ]
+            },
+            "send_once" : {
+              "default" : false,
+              "type" : "boolean"
+            },
+            "slack_channel" : {
+              "type" : "string"
+            }
+          },
+          "required" : [ "card_id", "send_condition", "schedule", "slack_channel" ]
+        }, {
+          "type" : "object",
+          "properties" : { }
+        } ]
+      },
       "metabase-enterprise.metabot-v3.tools.api.create-dashboard-subscription-arguments" : {
         "allOf" : [ {
           "type" : "object",
@@ -3028,14 +3056,14 @@
             "dashboard_id" : {
               "type" : "integer"
             },
-            "email" : {
-              "type" : "string"
-            },
             "schedule" : {
               "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.subscription-schedule"
+            },
+            "slack_channel" : {
+              "type" : "string"
             }
           },
-          "required" : [ "dashboard_id", "email", "schedule" ]
+          "required" : [ "dashboard_id", "slack_channel", "schedule" ]
         }, {
           "type" : "object",
           "properties" : { }
@@ -3273,23 +3301,28 @@
                 "field_id" : {
                   "type" : "string"
                 },
-                "statistics" : {
-                  "oneOf" : [ {
-                    "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.statistics"
-                  }, {
-                    "type" : "null"
-                  } ]
-                },
-                "values" : {
-                  "oneOf" : [ {
-                    "type" : "array",
-                    "items" : { }
-                  }, {
-                    "type" : "null"
-                  } ]
+                "value_metadata" : {
+                  "type" : "object",
+                  "properties" : {
+                    "field_values" : {
+                      "oneOf" : [ {
+                        "type" : "array",
+                        "items" : { }
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "statistics" : {
+                      "oneOf" : [ {
+                        "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.statistics"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  }
                 }
               },
-              "required" : [ "field_id" ]
+              "required" : [ "field_id", "value_metadata" ]
             }
           },
           "required" : [ "structured_output" ]
@@ -3408,108 +3441,6 @@
                 }
               },
               "required" : [ "type", "query_id", "query", "result_columns" ]
-            }
-          },
-          "required" : [ "structured_output" ]
-        }, {
-          "type" : "object",
-          "properties" : {
-            "output" : {
-              "type" : "string"
-            }
-          },
-          "required" : [ "output" ]
-        } ]
-      },
-      "metabase-enterprise.metabot-v3.tools.api.find-outliers-arguments" : {
-        "allOf" : [ {
-          "type" : "object",
-          "properties" : {
-            "data_source" : {
-              "allOf" : [ {
-                "anyOf" : [ {
-                  "type" : "object",
-                  "properties" : {
-                    "query" : {
-                      "type" : "object",
-                      "properties" : {
-                        "database" : {
-                          "type" : "integer"
-                        }
-                      },
-                      "required" : [ "database" ]
-                    },
-                    "query_id" : {
-                      "type" : "string"
-                    },
-                    "result_field_id" : {
-                      "type" : "string"
-                    }
-                  },
-                  "required" : [ "query", "result_field_id" ]
-                }, {
-                  "type" : "object",
-                  "properties" : {
-                    "metric_id" : {
-                      "type" : "integer"
-                    }
-                  },
-                  "required" : [ "metric_id" ]
-                }, {
-                  "type" : "object",
-                  "properties" : {
-                    "report_id" : {
-                      "type" : "integer"
-                    },
-                    "result_field_id" : {
-                      "type" : "string"
-                    }
-                  },
-                  "required" : [ "report_id", "result_field_id" ]
-                }, {
-                  "type" : "object",
-                  "properties" : {
-                    "result_field_id" : {
-                      "type" : "string"
-                    },
-                    "table_id" : {
-                      "type" : "string"
-                    }
-                  },
-                  "required" : [ "table_id", "result_field_id" ]
-                } ]
-              }, {
-                "type" : "object",
-                "properties" : { }
-              } ]
-            }
-          },
-          "required" : [ "data_source" ]
-        }, {
-          "type" : "object",
-          "properties" : { }
-        } ]
-      },
-      "metabase-enterprise.metabot-v3.tools.api.find-outliers-result" : {
-        "anyOf" : [ {
-          "type" : "object",
-          "properties" : {
-            "structured_output" : {
-              "type" : "array",
-              "items" : {
-                "type" : "object",
-                "properties" : {
-                  "dimension" : { },
-                  "value" : {
-                    "anyOf" : [ {
-                      "type" : "integer"
-                    }, {
-                      "type" : "number"
-                    } ]
-                  }
-                },
-                "required" : [ "dimension", "value" ]
-              }
             }
           },
           "required" : [ "structured_output" ]
@@ -5558,226 +5489,6 @@
       "metabase-enterprise.support-access-grants.schema.timestamp" : {
         "anyOf" : [ { }, { } ]
       },
-      "metabase-enterprise.workspaces.api.appdb-or-ref-id" : {
-        "anyOf" : [ {
-          "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
-        }, {
-          "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.ref-id"
-        } ]
-      },
-      "metabase-enterprise.workspaces.api.graph-edge" : {
-        "type" : "object",
-        "properties" : {
-          "from_entity_id" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.api.appdb-or-ref-id"
-          },
-          "from_entity_type" : {
-            "type" : "string"
-          },
-          "to_entity_id" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.api.appdb-or-ref-id"
-          },
-          "to_entity_type" : {
-            "type" : "string"
-          }
-        },
-        "required" : [ "from_entity_id", "from_entity_type", "to_entity_id", "to_entity_type" ]
-      },
-      "metabase-enterprise.workspaces.api.graph-node" : {
-        "type" : "object",
-        "properties" : {
-          "data" : {
-            "type" : "object",
-            "properties" : { }
-          },
-          "dependents_count" : {
-            "type" : "object",
-            "additionalProperties" : {
-              "description" : "value must be an integer greater than zero.",
-              "type" : "integer",
-              "minimum" : 1
-            }
-          },
-          "id" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.api.appdb-or-ref-id"
-          },
-          "type" : {
-            "type" : "string",
-            "enum" : [ "input-table", "external-transform", "workspace-transform" ]
-          }
-        },
-        "required" : [ "id", "type", "dependents_count", "data" ]
-      },
-      "metabase-enterprise.workspaces.api.graph-node-type" : {
-        "type" : "string",
-        "enum" : [ "input-table", "external-transform", "workspace-transform" ]
-      },
-      "metabase-enterprise.workspaces.api.input-table" : {
-        "type" : "object",
-        "properties" : {
-          "db_id" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
-          },
-          "schema" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "table" : {
-            "type" : "string"
-          },
-          "table_id" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        },
-        "required" : [ "db_id", "schema", "table", "table_id" ]
-      },
-      "metabase-enterprise.workspaces.api.output-table" : {
-        "type" : "object",
-        "properties" : {
-          "db_id" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
-          },
-          "global" : {
-            "type" : "object",
-            "properties" : {
-              "schema" : {
-                "oneOf" : [ {
-                  "type" : "string"
-                }, {
-                  "type" : "null"
-                } ]
-              },
-              "table" : {
-                "type" : "string"
-              },
-              "table_id" : {
-                "oneOf" : [ {
-                  "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
-                }, {
-                  "type" : "null"
-                } ]
-              },
-              "transform_id" : {
-                "oneOf" : [ {
-                  "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
-                }, {
-                  "type" : "null"
-                } ]
-              }
-            },
-            "required" : [ "transform_id", "schema", "table", "table_id" ]
-          },
-          "isolated" : {
-            "type" : "object",
-            "properties" : {
-              "schema" : {
-                "type" : "string"
-              },
-              "table" : {
-                "type" : "string"
-              },
-              "table_id" : {
-                "oneOf" : [ {
-                  "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
-                }, {
-                  "type" : "null"
-                } ]
-              },
-              "transform_id" : {
-                "anyOf" : [ {
-                  "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.ref-id"
-                }, {
-                  "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
-                } ]
-              }
-            },
-            "required" : [ "transform_id", "schema", "table", "table_id" ]
-          }
-        },
-        "required" : [ "db_id", "global", "isolated" ]
-      },
-      "metabase-enterprise.workspaces.api.status" : {
-        "type" : "string",
-        "enum" : [ "archived", "ready", "broken", "pending", "uninitialized" ]
-      },
-      "metabase-enterprise.workspaces.api.transform-source" : {
-        "oneOf" : [ {
-          "type" : "object",
-          "properties" : {
-            "query" : {
-              "$ref" : "#/components/schemas/metabase.queries.schema.query"
-            },
-            "type" : {
-              "const" : "query"
-            }
-          },
-          "required" : [ "type", "query" ]
-        }, {
-          "type" : "object",
-          "properties" : {
-            "body" : {
-              "type" : "string"
-            },
-            "source-database" : {
-              "type" : "integer"
-            },
-            "source-tables" : {
-              "type" : "array",
-              "items" : {
-                "type" : "object",
-                "properties" : {
-                  "alias" : {
-                    "type" : "string",
-                    "minLength" : 1
-                  },
-                  "table_id" : {
-                    "type" : "integer"
-                  }
-                },
-                "required" : [ "alias", "table_id" ]
-              }
-            },
-            "type" : {
-              "const" : "python"
-            }
-          },
-          "required" : [ "source-tables", "type", "body" ],
-          "additionalProperties" : false
-        } ]
-      },
-      "metabase-enterprise.workspaces.api.transform-target" : {
-        "type" : "object",
-        "properties" : {
-          "database" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
-          },
-          "name" : {
-            "type" : "string",
-            "minLength" : 1
-          },
-          "schema" : {
-            "oneOf" : [ {
-              "type" : "string",
-              "minLength" : 1
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "type" : {
-            "type" : "string",
-            "enum" : [ "table" ]
-          }
-        },
-        "required" : [ "type", "name" ],
-        "additionalProperties" : false
-      },
       "metabase-enterprise.workspaces.types.ancestors-result" : {
         "description" : "Result of running stale ancestor transforms.",
         "type" : "object",
@@ -7435,6 +7146,21 @@
         },
         "required" : [ "type", "name", "display-name", "snippet-name", "snippet-id" ]
       },
+      "metabase.legacy-mbql.schema..TemplateTag.SourceFilter" : {
+        "description" : "Schema for a single source-filter applied to a table template tag.",
+        "type" : "object",
+        "properties" : {
+          "field-id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
+          },
+          "op" : {
+            "type" : "string",
+            "enum" : [ "<=", ">", ">=", "!=", "=", "<" ]
+          },
+          "value" : { }
+        },
+        "required" : [ "field-id", "op", "value" ]
+      },
       "metabase.legacy-mbql.schema..TemplateTag.SourceQuery" : {
         "description" : "Things required by all template tag types.",
         "type" : "object",
@@ -7464,11 +7190,20 @@
           "display-name" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
           },
+          "emit-alias" : {
+            "type" : "boolean"
+          },
           "id" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.id"
           },
           "name" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "source-filters" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema..TemplateTag.SourceFilter"
+            }
           },
           "table-id" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
@@ -7552,13 +7287,6 @@
       "metabase.legacy-mbql.schema..legacy-column-metadata.qualified-keys" : {
         "type" : "object",
         "properties" : {
-          "qp.pivot/pivot-grouping?" : {
-            "oneOf" : [ {
-              "type" : "boolean"
-            }, {
-              "type" : "null"
-            } ]
-          },
           "metabase.lib.metadata.result-metadata/field-ref" : {
             "oneOf" : [ {
               "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Reference"
@@ -8278,13 +8006,6 @@
             "default" : { },
             "type" : "object",
             "properties" : {
-              "qp.pivot/pivot-grouping?" : {
-                "oneOf" : [ {
-                  "type" : "boolean"
-                }, {
-                  "type" : "null"
-                } ]
-              },
               "binning" : {
                 "$ref" : "#/components/schemas/metabase.lib.schema.binning.binning"
               },
@@ -8498,7 +8219,8 @@
               "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.SourceQuery"
             },
             "limit" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.common.int-greater-than-or-equal-to-zero"
+              "type" : "integer",
+              "minimum" : 0
             },
             "filter" : {
               "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Filter"
@@ -9256,13 +8978,6 @@
         "allOf" : [ {
           "type" : "object",
           "properties" : {
-            "qp.pivot/pivot-grouping?" : {
-              "oneOf" : [ {
-                "type" : "boolean"
-              }, {
-                "type" : "null"
-              } ]
-            },
             "metabase.lib.metadata.result-metadata/field-ref" : {
               "oneOf" : [ {
                 "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Reference"
@@ -10044,7 +9759,8 @@
               "$ref" : "#/components/schemas/metabase.lib.schema.filters"
             },
             "limit" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.common.int-greater-than-or-equal-to-zero"
+              "type" : "integer",
+              "minimum" : 0
             },
             "joins" : {
               "$ref" : "#/components/schemas/metabase.lib.schema.join.joins"
@@ -10224,17 +9940,8 @@
           "$ref" : "#/components/schemas/metabase.lib.schema.util.distinct-mbql-clauses"
         } ]
       },
-      "metabase.lib.schema.column-unique-key" : {
-        "type" : "string",
-        "pattern" : "^column-unique-key-v\\d+\\$.+$"
-      },
       "metabase.lib.schema.common.base-type" : {
         "type" : "string"
-      },
-      "metabase.lib.schema.common.int-greater-than-or-equal-to-zero" : {
-        "description" : "Schema representing an integer than must also be greater than or equal to zero.",
-        "type" : "integer",
-        "minimum" : 0
       },
       "metabase.lib.schema.common.kebab-cased-map" : { },
       "metabase.lib.schema.common.non-blank-string" : {
@@ -10309,11 +10016,13 @@
         "properties" : {
           "max-results" : {
             "description" : "Maximum number of results to allow for a query with aggregations. If `max-results-bare-rows` is unset, this\n  applies to all queries",
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.int-greater-than-or-equal-to-zero"
+            "type" : "integer",
+            "minimum" : 0
           },
           "max-results-bare-rows" : {
             "description" : "Maximum number of results to allow for a query with no aggregations. If set, this should be LOWER than\n  `:max-results`.",
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.int-greater-than-or-equal-to-zero"
+            "type" : "integer",
+            "minimum" : 0
           }
         }
       },
@@ -10618,7 +10327,7 @@
       "metabase.lib.schema.info.context" : {
         "description" : "Schema for `info.context`; used for informational purposes to record how a query was executed.",
         "type" : "string",
-        "enum" : [ "action", "ad-hoc", "agent", "cache-refresh", "collection", "map-tiles", "pulse", "dashboard-subscription", "dashboard", "question", "csv-download", "xlsx-download", "json-download", "public-dashboard", "public-question", "public-csv-download", "public-xlsx-download", "public-json-download", "embedded-dashboard", "embedded-question", "embedded-csv-download", "embedded-xlsx-download", "embedded-json-download", "table-grid", "transform-inspector" ]
+        "enum" : [ "action", "ad-hoc", "agent", "cache-refresh", "collection", "map-tiles", "pulse", "dashboard-subscription", "dashboard", "question", "csv-download", "xlsx-download", "json-download", "public-dashboard", "public-question", "public-csv-download", "public-xlsx-download", "public-json-download", "embedded-dashboard", "embedded-question", "embedded-csv-download", "embedded-xlsx-download", "embedded-json-download", "table-grid", "transform-inspector", "slackbot" ]
       },
       "metabase.lib.schema.info.hash" : {
         "type" : "string",
@@ -11312,13 +11021,6 @@
                 "type" : "null"
               } ]
             },
-            "qp.pivot/pivot-grouping?" : {
-              "oneOf" : [ {
-                "type" : "boolean"
-              }, {
-                "type" : "null"
-              } ]
-            },
             "metabase.lib.metadata.result-metadata/field-ref" : {
               "oneOf" : [ {
                 "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Reference"
@@ -11819,13 +11521,6 @@
               "fk-join-alias" : {
                 "oneOf" : [ {
                   "$ref" : "#/components/schemas/metabase.lib.schema.join.alias"
-                }, {
-                  "type" : "null"
-                } ]
-              },
-              "qp.pivot/pivot-grouping?" : {
-                "oneOf" : [ {
-                  "type" : "boolean"
                 }, {
                   "type" : "null"
                 } ]
@@ -12513,13 +12208,6 @@
           "default" : { },
           "type" : "object",
           "properties" : {
-            "qp.pivot/pivot-grouping?" : {
-              "oneOf" : [ {
-                "type" : "boolean"
-              }, {
-                "type" : "null"
-              } ]
-            },
             "binning" : {
               "$ref" : "#/components/schemas/metabase.lib.schema.binning.binning"
             },
@@ -12602,13 +12290,6 @@
           "default" : { },
           "type" : "object",
           "properties" : {
-            "qp.pivot/pivot-grouping?" : {
-              "oneOf" : [ {
-                "type" : "boolean"
-              }, {
-                "type" : "null"
-              } ]
-            },
             "binning" : {
               "$ref" : "#/components/schemas/metabase.lib.schema.binning.binning"
             },
@@ -12940,6 +12621,21 @@
           "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.disallow-dimension"
         } ]
       },
+      "metabase.lib.schema.template-tag.source-filter" : {
+        "description" : "Schema for a single source-filter applied to a table template tag.",
+        "type" : "object",
+        "properties" : {
+          "field-id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
+          },
+          "op" : {
+            "type" : "string",
+            "enum" : [ "<=", ">", ">=", "!=", "=", "<" ]
+          },
+          "value" : { }
+        },
+        "required" : [ "field-id", "op", "value" ]
+      },
       "metabase.lib.schema.template-tag.source-query" : {
         "allOf" : [ {
           "type" : "object",
@@ -12972,11 +12668,20 @@
             "display-name" : {
               "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
             },
+            "emit-alias" : {
+              "type" : "boolean"
+            },
             "id" : {
               "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.id"
             },
             "name" : {
               "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.name"
+            },
+            "source-filters" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.source-filter"
+              }
             },
             "table-id" : {
               "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
@@ -15093,19 +14798,6 @@
         "description" : "A single result metadata column as returned by the Query Processor.",
         "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.legacy-column-metadata"
       },
-      "metabase.query-processor.schema.any-query" : {
-        "description" : "Schema for a map that is in the general shape of either a legacy MBQL or MBQL 5 query. Query may not be normalized\n  yet!\n\n  This schema is not very strict because we need to handle different types of queries (legacy MBQL, pMBQL,\n  super-legacy MBQL, internal audit app queries, etc.) and it might not be normalized yet.",
-        "type" : "object",
-        "properties" : {
-          "database" : {
-            "anyOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
-            }, {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.saved-questions-virtual-database"
-            } ]
-          }
-        }
-      },
       "metabase.query-processor.schema.export-format" : {
         "description" : "Schema for valid export formats for downloading query results.",
         "type" : "string",
@@ -15478,7 +15170,7 @@
             } ]
           }
         },
-        "required" : [ "alias" ]
+        "required" : [ "alias", "database_id", "schema" ]
       },
       "metabase.transforms-inspector.schema.alert-trigger" : {
         "description" : "Definition for conditional alerts.\n   FE evaluates condition against card results and shows alert if triggered.",
@@ -16000,11 +15692,8 @@
       "metabase.transforms.schema.checkpoint-strategy" : {
         "type" : "object",
         "properties" : {
-          "checkpoint-filter" : {
-            "type" : "string"
-          },
-          "checkpoint-filter-unique-key" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.column-unique-key"
+          "checkpoint-filter-field-id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
           },
           "type" : {
             "const" : "checkpoint"
@@ -17224,6 +16913,1619 @@
           }
         },
         "tags" : [ "/api/agent" ]
+      }
+    },
+    "/api/agent/v1/workspace/{ws-id}" : {
+      "get" : {
+        "operationId" : "get-api-agent-v1-workspace-ws-id",
+        "summary" : "GET /api/agent/v1/workspace/{ws-id}",
+        "description" : "Get a single workspace by ID.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "ws-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "collection_id" : {
+                      "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                    },
+                    "created_at" : {
+                      "type" : "string",
+                      "format" : "date-time"
+                    },
+                    "database_id" : {
+                      "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                    },
+                    "id" : {
+                      "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                    },
+                    "name" : {
+                      "type" : "string"
+                    },
+                    "status" : {
+                      "type" : "string",
+                      "enum" : [ "archived", "ready", "broken", "pending", "uninitialized" ]
+                    },
+                    "updated_at" : {
+                      "type" : "string",
+                      "format" : "date-time"
+                    }
+                  },
+                  "required" : [ "id", "name", "collection_id", "database_id", "status", "created_at", "updated_at" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/agent/v1/workspace" ]
+      }
+    },
+    "/api/agent/v1/workspace/{ws-id}/archive" : {
+      "post" : {
+        "operationId" : "post-api-agent-v1-workspace-ws-id-archive",
+        "summary" : "POST /api/agent/v1/workspace/{ws-id}/archive",
+        "description" : "Archive a workspace.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "ws-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "collection_id" : {
+                      "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                    },
+                    "created_at" : {
+                      "type" : "string",
+                      "format" : "date-time"
+                    },
+                    "database_id" : {
+                      "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                    },
+                    "id" : {
+                      "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                    },
+                    "name" : {
+                      "type" : "string"
+                    },
+                    "status" : {
+                      "type" : "string",
+                      "enum" : [ "archived", "ready", "broken", "pending", "uninitialized" ]
+                    },
+                    "updated_at" : {
+                      "type" : "string",
+                      "format" : "date-time"
+                    }
+                  },
+                  "required" : [ "id", "name", "collection_id", "database_id", "status", "created_at", "updated_at" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/agent/v1/workspace" ]
+      }
+    },
+    "/api/agent/v1/workspace/{ws-id}/external/transform" : {
+      "get" : {
+        "operationId" : "get-api-agent-v1-workspace-ws-id-external-transform",
+        "summary" : "GET /api/agent/v1/workspace/{ws-id}/external/transform",
+        "description" : "List external transforms not checked out into this workspace.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "ws-id",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+          }
+        }, {
+          "in" : "query",
+          "name" : "database-id",
+          "required" : false,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "transforms" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "checkout_disabled" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "id" : {
+                            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                          },
+                          "name" : {
+                            "type" : "string"
+                          },
+                          "source_type" : {
+                            "type" : "string"
+                          }
+                        },
+                        "required" : [ "id", "name", "source_type", "checkout_disabled" ]
+                      }
+                    }
+                  },
+                  "required" : [ "transforms" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/agent/v1/workspace" ]
+      }
+    },
+    "/api/agent/v1/workspace/{ws-id}/graph" : {
+      "get" : {
+        "operationId" : "get-api-agent-v1-workspace-ws-id-graph",
+        "summary" : "GET /api/agent/v1/workspace/{ws-id}/graph",
+        "description" : "Get the dependency graph for a workspace.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "ws-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "edges" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "from_entity_id" : {
+                            "anyOf" : [ {
+                              "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                            }, {
+                              "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.ref-id"
+                            } ]
+                          },
+                          "from_entity_type" : {
+                            "type" : "string"
+                          },
+                          "to_entity_id" : {
+                            "anyOf" : [ {
+                              "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                            }, {
+                              "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.ref-id"
+                            } ]
+                          },
+                          "to_entity_type" : {
+                            "type" : "string"
+                          }
+                        },
+                        "required" : [ "from_entity_id", "from_entity_type", "to_entity_id", "to_entity_type" ]
+                      }
+                    },
+                    "nodes" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "data" : {
+                            "type" : "object",
+                            "properties" : { }
+                          },
+                          "dependents_count" : {
+                            "type" : "object",
+                            "additionalProperties" : {
+                              "description" : "value must be an integer greater than zero.",
+                              "type" : "integer",
+                              "minimum" : 1
+                            }
+                          },
+                          "id" : {
+                            "anyOf" : [ {
+                              "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                            }, {
+                              "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.ref-id"
+                            } ]
+                          },
+                          "type" : {
+                            "type" : "string",
+                            "enum" : [ "input-table", "external-transform", "workspace-transform" ]
+                          }
+                        },
+                        "required" : [ "id", "type", "dependents_count", "data" ]
+                      }
+                    }
+                  },
+                  "required" : [ "nodes", "edges" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/agent/v1/workspace" ]
+      }
+    },
+    "/api/agent/v1/workspace/{ws-id}/input/pending" : {
+      "get" : {
+        "operationId" : "get-api-agent-v1-workspace-ws-id-input-pending",
+        "summary" : "GET /api/agent/v1/workspace/{ws-id}/input/pending",
+        "description" : "List pending input grants.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "ws-id",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "inputs" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "db_id" : {
+                            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                          },
+                          "schema" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "table" : {
+                            "type" : "string"
+                          }
+                        },
+                        "required" : [ "db_id", "schema", "table" ]
+                      }
+                    }
+                  },
+                  "required" : [ "inputs" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/agent/v1/workspace" ]
+      }
+    },
+    "/api/agent/v1/workspace/{ws-id}/log" : {
+      "get" : {
+        "operationId" : "get-api-agent-v1-workspace-ws-id-log",
+        "summary" : "GET /api/agent/v1/workspace/{ws-id}/log",
+        "description" : "Get workspace creation status and recent log entries.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "ws-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "last_completed_at" : {
+                      "oneOf" : [ { }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "logs" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "completed_at" : {
+                            "oneOf" : [ { }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "description" : { },
+                          "id" : {
+                            "description" : "value must be an integer greater than zero.",
+                            "type" : "integer",
+                            "minimum" : 1
+                          },
+                          "message" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "started_at" : { },
+                          "status" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "task" : {
+                            "type" : "string"
+                          },
+                          "updated_at" : { }
+                        },
+                        "required" : [ "id", "task", "description", "started_at", "updated_at", "completed_at", "status", "message" ]
+                      }
+                    },
+                    "status" : {
+                      "type" : "string",
+                      "enum" : [ "archived", "ready", "broken", "pending", "uninitialized" ]
+                    },
+                    "updated_at" : { },
+                    "workspace_id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    }
+                  },
+                  "required" : [ "workspace_id", "status", "updated_at", "last_completed_at", "logs" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/agent/v1/workspace" ]
+      }
+    },
+    "/api/agent/v1/workspace/{ws-id}/problem" : {
+      "get" : {
+        "operationId" : "get-api-agent-v1-workspace-ws-id-problem",
+        "summary" : "GET /api/agent/v1/workspace/{ws-id}/problem",
+        "description" : "Detect problems in the workspace.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "ws-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.problem"
+                  }
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/agent/v1/workspace" ]
+      }
+    },
+    "/api/agent/v1/workspace/{ws-id}/query" : {
+      "post" : {
+        "operationId" : "post-api-agent-v1-workspace-ws-id-query",
+        "summary" : "POST /api/agent/v1/workspace/{ws-id}/query",
+        "description" : "Execute a SQL query in the workspace's isolated database context.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "ws-id",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.query-result"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "sql" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  }
+                },
+                "required" : [ "sql" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/agent/v1/workspace" ]
+      }
+    },
+    "/api/agent/v1/workspace/{ws-id}/run" : {
+      "post" : {
+        "operationId" : "post-api-agent-v1-workspace-ws-id-run",
+        "summary" : "POST /api/agent/v1/workspace/{ws-id}/run",
+        "description" : "Execute all transforms in the workspace in dependency order.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "ws-id",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "failed" : {
+                      "type" : "array",
+                      "items" : {
+                        "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.ref-id"
+                      }
+                    },
+                    "not_run" : {
+                      "type" : "array",
+                      "items" : {
+                        "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.ref-id"
+                      }
+                    },
+                    "succeeded" : {
+                      "type" : "array",
+                      "items" : {
+                        "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.ref-id"
+                      }
+                    }
+                  },
+                  "required" : [ "succeeded", "failed", "not_run" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "stale_only" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.flag"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/agent/v1/workspace" ]
+      }
+    },
+    "/api/agent/v1/workspace/{ws-id}/table" : {
+      "get" : {
+        "operationId" : "get-api-agent-v1-workspace-ws-id-table",
+        "summary" : "GET /api/agent/v1/workspace/{ws-id}/table",
+        "description" : "Get workspace input and output tables.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "ws-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "inputs" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "db_id" : {
+                            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                          },
+                          "schema" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "table" : {
+                            "type" : "string"
+                          },
+                          "table_id" : {
+                            "oneOf" : [ {
+                              "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          }
+                        },
+                        "required" : [ "db_id", "schema", "table", "table_id" ]
+                      }
+                    },
+                    "outputs" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "db_id" : {
+                            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                          },
+                          "global" : {
+                            "type" : "object",
+                            "properties" : {
+                              "schema" : {
+                                "oneOf" : [ {
+                                  "type" : "string"
+                                }, {
+                                  "type" : "null"
+                                } ]
+                              },
+                              "table" : {
+                                "type" : "string"
+                              },
+                              "table_id" : {
+                                "oneOf" : [ {
+                                  "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                                }, {
+                                  "type" : "null"
+                                } ]
+                              },
+                              "transform_id" : {
+                                "oneOf" : [ {
+                                  "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                                }, {
+                                  "type" : "null"
+                                } ]
+                              }
+                            },
+                            "required" : [ "transform_id", "schema", "table", "table_id" ]
+                          },
+                          "isolated" : {
+                            "type" : "object",
+                            "properties" : {
+                              "schema" : {
+                                "type" : "string"
+                              },
+                              "table" : {
+                                "type" : "string"
+                              },
+                              "table_id" : {
+                                "oneOf" : [ {
+                                  "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                                }, {
+                                  "type" : "null"
+                                } ]
+                              },
+                              "transform_id" : {
+                                "anyOf" : [ {
+                                  "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.ref-id"
+                                }, {
+                                  "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                                } ]
+                              }
+                            },
+                            "required" : [ "transform_id", "schema", "table", "table_id" ]
+                          }
+                        },
+                        "required" : [ "db_id", "global", "isolated" ]
+                      }
+                    }
+                  },
+                  "required" : [ "inputs", "outputs" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/agent/v1/workspace" ]
+      }
+    },
+    "/api/agent/v1/workspace/{ws-id}/transform" : {
+      "get" : {
+        "operationId" : "get-api-agent-v1-workspace-ws-id-transform",
+        "summary" : "GET /api/agent/v1/workspace/{ws-id}/transform",
+        "description" : "List all transforms in a workspace.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "ws-id",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "transforms" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "creator_id" : {
+                            "oneOf" : [ {
+                              "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "global_id" : {
+                            "oneOf" : [ {
+                              "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "name" : {
+                            "type" : "string"
+                          },
+                          "ref_id" : {
+                            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.ref-id"
+                          },
+                          "source_type" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          }
+                        },
+                        "required" : [ "ref_id", "global_id", "name", "source_type", "creator_id" ],
+                        "additionalProperties" : false
+                      }
+                    }
+                  },
+                  "required" : [ "transforms" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/agent/v1/workspace" ]
+      },
+      "post" : {
+        "operationId" : "post-api-agent-v1-workspace-ws-id-transform",
+        "summary" : "POST /api/agent/v1/workspace/{ws-id}/transform",
+        "description" : "Create a new transform in the workspace.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "ws-id",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "last_run_at" : { },
+                    "target_stale" : {
+                      "oneOf" : [ {
+                        "type" : "boolean"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "name" : {
+                      "type" : "string"
+                    },
+                    "last_run_status" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "workspace_id" : {
+                      "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                    },
+                    "updated_at" : { },
+                    "archived_at" : { },
+                    "source" : {
+                      "type" : "object",
+                      "properties" : { }
+                    },
+                    "last_run_message" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "target" : {
+                      "type" : "object",
+                      "properties" : { }
+                    },
+                    "created_at" : { },
+                    "global_id" : {
+                      "oneOf" : [ {
+                        "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "creator_id" : {
+                      "oneOf" : [ {
+                        "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "ref_id" : {
+                      "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.ref-id"
+                    },
+                    "description" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "ref_id", "global_id", "name", "description", "source", "target", "target_stale", "workspace_id", "creator_id", "archived_at", "created_at", "updated_at", "last_run_at", "last_run_status", "last_run_message" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "description" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "name" : {
+                    "type" : "string"
+                  },
+                  "source" : {
+                    "oneOf" : [ {
+                      "type" : "object",
+                      "properties" : {
+                        "query" : {
+                          "$ref" : "#/components/schemas/metabase.queries.schema.query"
+                        },
+                        "type" : {
+                          "const" : "query"
+                        }
+                      },
+                      "required" : [ "type", "query" ]
+                    }, {
+                      "type" : "object",
+                      "properties" : {
+                        "body" : {
+                          "type" : "string"
+                        },
+                        "source-database" : {
+                          "type" : "integer"
+                        },
+                        "source-tables" : {
+                          "type" : "array",
+                          "items" : {
+                            "$ref" : "#/components/schemas/metabase.transforms-base.util.source-table-entry"
+                          }
+                        },
+                        "type" : {
+                          "const" : "python"
+                        }
+                      },
+                      "required" : [ "source-tables", "type", "body" ],
+                      "additionalProperties" : false
+                    } ]
+                  },
+                  "target" : {
+                    "type" : "object",
+                    "properties" : {
+                      "database" : {
+                        "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                      },
+                      "name" : {
+                        "type" : "string",
+                        "minLength" : 1
+                      },
+                      "schema" : {
+                        "oneOf" : [ {
+                          "type" : "string",
+                          "minLength" : 1
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "type" : {
+                        "type" : "string",
+                        "enum" : [ "table" ]
+                      }
+                    },
+                    "required" : [ "type", "name" ],
+                    "additionalProperties" : false
+                  }
+                },
+                "required" : [ "name", "source", "target" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/agent/v1/workspace" ]
+      }
+    },
+    "/api/agent/v1/workspace/{ws-id}/transform/validate/target" : {
+      "post" : {
+        "operationId" : "post-api-agent-v1-workspace-ws-id-transform-validate-target",
+        "summary" : "POST /api/agent/v1/workspace/{ws-id}/transform/validate/target",
+        "description" : "Validate the target table for a workspace transform.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "ws-id",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+          }
+        }, {
+          "in" : "query",
+          "name" : "transform-id",
+          "required" : false,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.ref-id"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "body" : {
+                      "anyOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "anyOf" : [ { }, { } ]
+                      } ]
+                    },
+                    "status" : {
+                      "type" : "integer"
+                    }
+                  },
+                  "required" : [ "status", "body" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "db_id" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                  },
+                  "target" : {
+                    "type" : "object",
+                    "properties" : {
+                      "database" : {
+                        "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                      },
+                      "name" : {
+                        "type" : "string"
+                      },
+                      "schema" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "type" : {
+                        "type" : "string"
+                      }
+                    },
+                    "required" : [ "type", "schema", "name" ]
+                  }
+                },
+                "required" : [ "target" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/agent/v1/workspace" ]
+      }
+    },
+    "/api/agent/v1/workspace/{ws-id}/transform/{tx-id}" : {
+      "get" : {
+        "operationId" : "get-api-agent-v1-workspace-ws-id-transform-tx-id",
+        "summary" : "GET /api/agent/v1/workspace/{ws-id}/transform/{tx-id}",
+        "description" : "Get a specific transform in a workspace.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "ws-id",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+          }
+        }, {
+          "in" : "path",
+          "name" : "tx-id",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.ref-id"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "last_run_at" : { },
+                    "target_stale" : {
+                      "oneOf" : [ {
+                        "type" : "boolean"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "name" : {
+                      "type" : "string"
+                    },
+                    "last_run_status" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "workspace_id" : {
+                      "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                    },
+                    "updated_at" : { },
+                    "archived_at" : { },
+                    "source" : {
+                      "type" : "object",
+                      "properties" : { }
+                    },
+                    "last_run_message" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "target" : {
+                      "type" : "object",
+                      "properties" : { }
+                    },
+                    "created_at" : { },
+                    "global_id" : {
+                      "oneOf" : [ {
+                        "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "creator_id" : {
+                      "oneOf" : [ {
+                        "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "ref_id" : {
+                      "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.ref-id"
+                    },
+                    "description" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "ref_id", "global_id", "name", "description", "source", "target", "target_stale", "workspace_id", "creator_id", "archived_at", "created_at", "updated_at", "last_run_at", "last_run_status", "last_run_message" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/agent/v1/workspace" ]
+      },
+      "put" : {
+        "operationId" : "put-api-agent-v1-workspace-ws-id-transform-tx-id",
+        "summary" : "PUT /api/agent/v1/workspace/{ws-id}/transform/{tx-id}",
+        "description" : "Update or create a transform in a workspace.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "ws-id",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+          }
+        }, {
+          "in" : "path",
+          "name" : "tx-id",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.ref-id"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "last_run_at" : { },
+                    "target_stale" : {
+                      "oneOf" : [ {
+                        "type" : "boolean"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "name" : {
+                      "type" : "string"
+                    },
+                    "last_run_status" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "workspace_id" : {
+                      "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                    },
+                    "updated_at" : { },
+                    "archived_at" : { },
+                    "source" : {
+                      "type" : "object",
+                      "properties" : { }
+                    },
+                    "last_run_message" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "target" : {
+                      "type" : "object",
+                      "properties" : { }
+                    },
+                    "created_at" : { },
+                    "global_id" : {
+                      "oneOf" : [ {
+                        "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "creator_id" : {
+                      "oneOf" : [ {
+                        "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "ref_id" : {
+                      "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.ref-id"
+                    },
+                    "description" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "ref_id", "global_id", "name", "description", "source", "target", "target_stale", "workspace_id", "creator_id", "archived_at", "created_at", "updated_at", "last_run_at", "last_run_status", "last_run_message" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "description" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "name" : {
+                    "type" : "string"
+                  },
+                  "source" : {
+                    "oneOf" : [ {
+                      "type" : "object",
+                      "properties" : {
+                        "query" : {
+                          "$ref" : "#/components/schemas/metabase.queries.schema.query"
+                        },
+                        "type" : {
+                          "const" : "query"
+                        }
+                      },
+                      "required" : [ "type", "query" ]
+                    }, {
+                      "type" : "object",
+                      "properties" : {
+                        "body" : {
+                          "type" : "string"
+                        },
+                        "source-database" : {
+                          "type" : "integer"
+                        },
+                        "source-tables" : {
+                          "type" : "array",
+                          "items" : {
+                            "$ref" : "#/components/schemas/metabase.transforms-base.util.source-table-entry"
+                          }
+                        },
+                        "type" : {
+                          "const" : "python"
+                        }
+                      },
+                      "required" : [ "source-tables", "type", "body" ],
+                      "additionalProperties" : false
+                    } ]
+                  },
+                  "target" : {
+                    "type" : "object",
+                    "properties" : {
+                      "database" : {
+                        "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                      },
+                      "name" : {
+                        "type" : "string",
+                        "minLength" : 1
+                      },
+                      "schema" : {
+                        "oneOf" : [ {
+                          "type" : "string",
+                          "minLength" : 1
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "type" : {
+                        "type" : "string",
+                        "enum" : [ "table" ]
+                      }
+                    },
+                    "required" : [ "type", "name" ],
+                    "additionalProperties" : false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/agent/v1/workspace" ]
+      },
+      "delete" : {
+        "operationId" : "delete-api-agent-v1-workspace-ws-id-transform-tx-id",
+        "summary" : "DELETE /api/agent/v1/workspace/{ws-id}/transform/{tx-id}",
+        "description" : "Delete a transform from the workspace.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "ws-id",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+          }
+        }, {
+          "in" : "path",
+          "name" : "tx-id",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.ref-id"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/agent/v1/workspace" ]
+      }
+    },
+    "/api/agent/v1/workspace/{ws-id}/transform/{tx-id}/archive" : {
+      "post" : {
+        "operationId" : "post-api-agent-v1-workspace-ws-id-transform-tx-id-archive",
+        "summary" : "POST /api/agent/v1/workspace/{ws-id}/transform/{tx-id}/archive",
+        "description" : "Mark a transform for archival.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "ws-id",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+          }
+        }, {
+          "in" : "path",
+          "name" : "tx-id",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.ref-id"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/agent/v1/workspace" ]
+      }
+    },
+    "/api/agent/v1/workspace/{ws-id}/transform/{tx-id}/dry-run" : {
+      "post" : {
+        "operationId" : "post-api-agent-v1-workspace-ws-id-transform-tx-id-dry-run",
+        "summary" : "POST /api/agent/v1/workspace/{ws-id}/transform/{tx-id}/dry-run",
+        "description" : "Dry-run a transform without persisting to the target table.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "ws-id",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+          }
+        }, {
+          "in" : "path",
+          "name" : "tx-id",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.ref-id"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.query-result"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "run_stale_ancestors" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.flag"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/agent/v1/workspace" ]
+      }
+    },
+    "/api/agent/v1/workspace/{ws-id}/transform/{tx-id}/run" : {
+      "post" : {
+        "operationId" : "post-api-agent-v1-workspace-ws-id-transform-tx-id-run",
+        "summary" : "POST /api/agent/v1/workspace/{ws-id}/transform/{tx-id}/run",
+        "description" : "Run a single transform in a workspace.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "ws-id",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+          }
+        }, {
+          "in" : "path",
+          "name" : "tx-id",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.ref-id"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.execution-result"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "run_stale_ancestors" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.flag"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/agent/v1/workspace" ]
+      }
+    },
+    "/api/agent/v1/workspace/{ws-id}/transform/{tx-id}/unarchive" : {
+      "post" : {
+        "operationId" : "post-api-agent-v1-workspace-ws-id-transform-tx-id-unarchive",
+        "summary" : "POST /api/agent/v1/workspace/{ws-id}/transform/{tx-id}/unarchive",
+        "description" : "Unmark a transform for archival.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "ws-id",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+          }
+        }, {
+          "in" : "path",
+          "name" : "tx-id",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.ref-id"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/agent/v1/workspace" ]
       }
     },
     "/api/alert" : {
@@ -27925,11 +29227,11 @@
         "tags" : [ "/api/ee/metabot-tools" ]
       }
     },
-    "/api/ee/metabot-tools/create-dashboard-subscription" : {
+    "/api/ee/metabot-tools/create-alert" : {
       "post" : {
-        "operationId" : "post-api-ee-metabot-tools-create-dashboard-subscription",
-        "summary" : "POST /api/ee/metabot-tools/create-dashboard-subscription",
-        "description" : "Create a dashboard subscription.",
+        "operationId" : "post-api-ee-metabot-tools-create-alert",
+        "summary" : "POST /api/ee/metabot-tools/create-alert",
+        "description" : "Create an alert for a saved question.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -27945,7 +29247,7 @@
                       "type" : "string",
                       "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
                     },
-                    "output" : {
+                    "error" : {
                       "type" : "string"
                     },
                     "profile_id" : {
@@ -27956,7 +29258,81 @@
                       } ]
                     }
                   },
-                  "required" : [ "output", "conversation_id" ]
+                  "required" : [ "conversation_id" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
+                "type" : "object",
+                "properties" : {
+                  "arguments" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.create-alert-arguments"
+                  },
+                  "conversation_id" : {
+                    "description" : "value must be a valid UUID.",
+                    "type" : "string",
+                    "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                  },
+                  "profile_id" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  }
+                },
+                "required" : [ "arguments", "conversation_id" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/metabot-tools" ]
+      }
+    },
+    "/api/ee/metabot-tools/create-dashboard-subscription" : {
+      "post" : {
+        "operationId" : "post-api-ee-metabot-tools-create-dashboard-subscription",
+        "summary" : "POST /api/ee/metabot-tools/create-dashboard-subscription",
+        "description" : "Create a dashboard subscription and send it to a slack channel.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
+                  "type" : "object",
+                  "properties" : {
+                    "conversation_id" : {
+                      "description" : "value must be a valid UUID.",
+                      "type" : "string",
+                      "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                    },
+                    "error" : {
+                      "type" : "string"
+                    },
+                    "profile_id" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "conversation_id" ]
                 }
               }
             }
@@ -28074,7 +29450,7 @@
       "post" : {
         "operationId" : "post-api-ee-metabot-tools-filter-records",
         "summary" : "POST /api/ee/metabot-tools/filter-records",
-        "description" : "Construct a query from a metric.",
+        "description" : "Apply filters to records from a data source (query, report, or table).",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -28119,77 +29495,6 @@
                 "properties" : {
                   "arguments" : {
                     "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.filter-records-arguments"
-                  },
-                  "conversation_id" : {
-                    "description" : "value must be a valid UUID.",
-                    "type" : "string",
-                    "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
-                  },
-                  "profile_id" : {
-                    "oneOf" : [ {
-                      "type" : "string"
-                    }, {
-                      "type" : "null"
-                    } ]
-                  }
-                },
-                "required" : [ "arguments", "conversation_id" ]
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/ee/metabot-tools" ]
-      }
-    },
-    "/api/ee/metabot-tools/find-outliers" : {
-      "post" : {
-        "operationId" : "post-api-ee-metabot-tools-find-outliers",
-        "summary" : "POST /api/ee/metabot-tools/find-outliers",
-        "description" : "Find outliers in the values provided by a data source for a given column.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
-                  "type" : "object",
-                  "properties" : {
-                    "conversation_id" : {
-                      "description" : "value must be a valid UUID.",
-                      "type" : "string",
-                      "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
-                    },
-                    "profile_id" : {
-                      "oneOf" : [ {
-                        "type" : "string"
-                      }, {
-                        "type" : "null"
-                      } ]
-                    }
-                  },
-                  "required" : [ "conversation_id" ]
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
-                "type" : "object",
-                "properties" : {
-                  "arguments" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.find-outliers-arguments"
                   },
                   "conversation_id" : {
                     "description" : "value must be a valid UUID.",
@@ -29553,6 +30858,13 @@
                     "type" : "string",
                     "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
                   },
+                  "debug" : {
+                    "oneOf" : [ {
+                      "type" : "boolean"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
                   "history" : {
                     "oneOf" : [ {
                       "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.client.schema.messages"
@@ -29592,6 +30904,114 @@
         "responses" : {
           "2XX" : {
             "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "instructions" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  },
+                  "references" : {
+                    "description" : "Value must be a map.",
+                    "type" : "object",
+                    "properties" : { }
+                  }
+                },
+                "required" : [ "instructions" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/metabot-v3/document" ]
+      }
+    },
+    "/api/ee/metabot-v3/document/native-generate-content" : {
+      "post" : {
+        "operationId" : "post-api-ee-metabot-v3-document-native-generate-content",
+        "summary" : "POST /api/ee/metabot-v3/document/native-generate-content",
+        "description" : "Create a new piece of content to insert into the document using the native Clojure agent.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "description" : {
+                      "oneOf" : [ {
+                        "type" : "string",
+                        "minLength" : 1
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "draft_card" : {
+                      "oneOf" : [ {
+                        "type" : "object",
+                        "properties" : {
+                          "database_id" : {
+                            "description" : "value must be an integer greater than zero.",
+                            "type" : "integer",
+                            "minimum" : 1
+                          },
+                          "dataset_query" : {
+                            "description" : "Value must be a map.",
+                            "type" : "object",
+                            "properties" : { }
+                          },
+                          "name" : {
+                            "type" : "string",
+                            "minLength" : 1
+                          },
+                          "parameters" : {
+                            "oneOf" : [ {
+                              "type" : "array",
+                              "items" : {
+                                "description" : "Value must be a map.",
+                                "type" : "object",
+                                "properties" : { }
+                              }
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "visualization_settings" : {
+                            "description" : "Value must be a map.",
+                            "type" : "object",
+                            "properties" : { }
+                          }
+                        },
+                        "required" : [ "name", "dataset_query", "database_id", "parameters", "visualization_settings" ]
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "error" : {
+                      "oneOf" : [ {
+                        "type" : "string",
+                        "minLength" : 1
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "draft_card", "error", "description" ]
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -29890,6 +31310,188 @@
           }
         },
         "tags" : [ "/api/ee/metabot-v3/metabot" ]
+      }
+    },
+    "/api/ee/metabot-v3/slack/events" : {
+      "post" : {
+        "operationId" : "post-api-ee-metabot-v3-slack-events",
+        "summary" : "POST /api/ee/metabot-v3/slack/events",
+        "description" : "Respond to activities in Slack",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "body" : {
+                      "type" : "string"
+                    },
+                    "headers" : {
+                      "type" : "object",
+                      "properties" : {
+                        "Content-Type" : {
+                          "const" : "text/plain"
+                        }
+                      },
+                      "required" : [ "Content-Type" ]
+                    },
+                    "status" : {
+                      "const" : 200
+                    }
+                  },
+                  "required" : [ "status", "headers", "body" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "oneOf" : [ {
+                  "type" : "object",
+                  "properties" : {
+                    "challenge" : {
+                      "type" : "string"
+                    },
+                    "type" : {
+                      "const" : "url_verification"
+                    }
+                  },
+                  "required" : [ "type", "challenge" ]
+                }, {
+                  "type" : "object",
+                  "properties" : {
+                    "event" : {
+                      "type" : "object",
+                      "properties" : {
+                        "event_ts" : {
+                          "type" : "string"
+                        },
+                        "type" : {
+                          "type" : "string"
+                        }
+                      },
+                      "required" : [ "type", "event_ts" ]
+                    },
+                    "type" : {
+                      "const" : "event_callback"
+                    }
+                  },
+                  "required" : [ "type", "event" ]
+                }, {
+                  "type" : "object",
+                  "properties" : {
+                    "type" : {
+                      "type" : "string"
+                    }
+                  },
+                  "required" : [ "type" ]
+                } ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/metabot-v3/slack" ]
+      }
+    },
+    "/api/ee/metabot-v3/slack/interactive" : {
+      "post" : {
+        "operationId" : "post-api-ee-metabot-v3-slack-interactive",
+        "summary" : "POST /api/ee/metabot-v3/slack/interactive",
+        "description" : "Handle interactive payloads from Slack (button clicks, modal submissions).",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/metabot-v3/slack" ]
+      }
+    },
+    "/api/ee/metabot-v3/slack/settings" : {
+      "put" : {
+        "operationId" : "put-api-ee-metabot-v3-slack-settings",
+        "summary" : "PUT /api/ee/metabot-v3/slack/settings",
+        "description" : "Update Metabot Slack settings atomically.\n   All credential fields must be provided together.\n   Setting values requires the metabot-v3 feature, but clearing values is always allowed.\n   slack-connect-enabled is automatically set to true when credentials are provided, nil when cleared.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "ok" : {
+                      "type" : "boolean"
+                    }
+                  },
+                  "required" : [ "ok" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "metabot-slack-signing-secret" : {
+                    "oneOf" : [ {
+                      "type" : "string",
+                      "minLength" : 1
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "slack-connect-client-id" : {
+                    "oneOf" : [ {
+                      "type" : "string",
+                      "minLength" : 1
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "slack-connect-client-secret" : {
+                    "oneOf" : [ {
+                      "type" : "string",
+                      "minLength" : 1
+                    }, {
+                      "type" : "null"
+                    } ]
+                  }
+                },
+                "required" : [ "slack-connect-client-id", "slack-connect-client-secret", "metabot-slack-signing-secret" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/metabot-v3/slack" ]
       }
     },
     "/api/ee/permission_debug" : {
@@ -32513,11 +34115,11 @@
                     } ]
                   },
                   "source_tables" : {
-                    "type" : "object",
-                    "additionalProperties" : {
-                      "type" : "integer"
+                    "type" : "array",
+                    "items" : {
+                      "$ref" : "#/components/schemas/metabase.transforms-base.util.source-table-entry"
                     },
-                    "minProperties" : 1
+                    "minItems" : 1
                   }
                 },
                 "required" : [ "code", "source_tables" ]
@@ -32618,7 +34220,8 @@
                             "type" : "string"
                           },
                           "status" : {
-                            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.api.status"
+                            "type" : "string",
+                            "enum" : [ "archived", "ready", "broken", "pending", "uninitialized" ]
                           },
                           "updated_at" : {
                             "type" : "string",
@@ -32672,9 +34275,6 @@
                 "schema" : {
                   "type" : "object",
                   "properties" : {
-                    "api_key" : {
-                      "type" : "string"
-                    },
                     "collection_id" : {
                       "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
                     },
@@ -32692,7 +34292,8 @@
                       "type" : "string"
                     },
                     "status" : {
-                      "$ref" : "#/components/schemas/metabase-enterprise.workspaces.api.status"
+                      "type" : "string",
+                      "enum" : [ "archived", "ready", "broken", "pending", "uninitialized" ]
                     },
                     "updated_at" : {
                       "type" : "string",
@@ -32820,7 +34421,8 @@
                             "type" : "string"
                           },
                           "status" : {
-                            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.api.status"
+                            "type" : "string",
+                            "enum" : [ "archived", "ready", "broken", "pending", "uninitialized" ]
                           }
                         },
                         "required" : [ "id", "name", "status", "existing" ]
@@ -32975,9 +34577,6 @@
                 "schema" : {
                   "type" : "object",
                   "properties" : {
-                    "api_key" : {
-                      "type" : "string"
-                    },
                     "collection_id" : {
                       "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
                     },
@@ -32995,7 +34594,8 @@
                       "type" : "string"
                     },
                     "status" : {
-                      "$ref" : "#/components/schemas/metabase-enterprise.workspaces.api.status"
+                      "type" : "string",
+                      "enum" : [ "archived", "ready", "broken", "pending", "uninitialized" ]
                     },
                     "updated_at" : {
                       "type" : "string",
@@ -33038,9 +34638,6 @@
                 "schema" : {
                   "type" : "object",
                   "properties" : {
-                    "api_key" : {
-                      "type" : "string"
-                    },
                     "collection_id" : {
                       "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
                     },
@@ -33058,7 +34655,8 @@
                       "type" : "string"
                     },
                     "status" : {
-                      "$ref" : "#/components/schemas/metabase-enterprise.workspaces.api.status"
+                      "type" : "string",
+                      "enum" : [ "archived", "ready", "broken", "pending", "uninitialized" ]
                     },
                     "updated_at" : {
                       "type" : "string",
@@ -33162,9 +34760,6 @@
                 "schema" : {
                   "type" : "object",
                   "properties" : {
-                    "api_key" : {
-                      "type" : "string"
-                    },
                     "collection_id" : {
                       "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
                     },
@@ -33182,7 +34777,8 @@
                       "type" : "string"
                     },
                     "status" : {
-                      "$ref" : "#/components/schemas/metabase-enterprise.workspaces.api.status"
+                      "type" : "string",
+                      "enum" : [ "archived", "ready", "broken", "pending", "uninitialized" ]
                     },
                     "updated_at" : {
                       "type" : "string",
@@ -33299,13 +34895,62 @@
                     "edges" : {
                       "type" : "array",
                       "items" : {
-                        "$ref" : "#/components/schemas/metabase-enterprise.workspaces.api.graph-edge"
+                        "type" : "object",
+                        "properties" : {
+                          "from_entity_id" : {
+                            "anyOf" : [ {
+                              "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                            }, {
+                              "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.ref-id"
+                            } ]
+                          },
+                          "from_entity_type" : {
+                            "type" : "string"
+                          },
+                          "to_entity_id" : {
+                            "anyOf" : [ {
+                              "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                            }, {
+                              "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.ref-id"
+                            } ]
+                          },
+                          "to_entity_type" : {
+                            "type" : "string"
+                          }
+                        },
+                        "required" : [ "from_entity_id", "from_entity_type", "to_entity_id", "to_entity_type" ]
                       }
                     },
                     "nodes" : {
                       "type" : "array",
                       "items" : {
-                        "$ref" : "#/components/schemas/metabase-enterprise.workspaces.api.graph-node"
+                        "type" : "object",
+                        "properties" : {
+                          "data" : {
+                            "type" : "object",
+                            "properties" : { }
+                          },
+                          "dependents_count" : {
+                            "type" : "object",
+                            "additionalProperties" : {
+                              "description" : "value must be an integer greater than zero.",
+                              "type" : "integer",
+                              "minimum" : 1
+                            }
+                          },
+                          "id" : {
+                            "anyOf" : [ {
+                              "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                            }, {
+                              "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.ref-id"
+                            } ]
+                          },
+                          "type" : {
+                            "type" : "string",
+                            "enum" : [ "input-table", "external-transform", "workspace-transform" ]
+                          }
+                        },
+                        "required" : [ "id", "type", "dependents_count", "data" ]
                       }
                     }
                   },
@@ -33572,7 +35217,8 @@
                       }
                     },
                     "status" : {
-                      "$ref" : "#/components/schemas/metabase-enterprise.workspaces.api.status"
+                      "type" : "string",
+                      "enum" : [ "archived", "ready", "broken", "pending", "uninitialized" ]
                     },
                     "updated_at" : { },
                     "workspace_id" : {
@@ -33900,13 +35546,98 @@
                     "inputs" : {
                       "type" : "array",
                       "items" : {
-                        "$ref" : "#/components/schemas/metabase-enterprise.workspaces.api.input-table"
+                        "type" : "object",
+                        "properties" : {
+                          "db_id" : {
+                            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                          },
+                          "schema" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "table" : {
+                            "type" : "string"
+                          },
+                          "table_id" : {
+                            "oneOf" : [ {
+                              "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          }
+                        },
+                        "required" : [ "db_id", "schema", "table", "table_id" ]
                       }
                     },
                     "outputs" : {
                       "type" : "array",
                       "items" : {
-                        "$ref" : "#/components/schemas/metabase-enterprise.workspaces.api.output-table"
+                        "type" : "object",
+                        "properties" : {
+                          "db_id" : {
+                            "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                          },
+                          "global" : {
+                            "type" : "object",
+                            "properties" : {
+                              "schema" : {
+                                "oneOf" : [ {
+                                  "type" : "string"
+                                }, {
+                                  "type" : "null"
+                                } ]
+                              },
+                              "table" : {
+                                "type" : "string"
+                              },
+                              "table_id" : {
+                                "oneOf" : [ {
+                                  "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                                }, {
+                                  "type" : "null"
+                                } ]
+                              },
+                              "transform_id" : {
+                                "oneOf" : [ {
+                                  "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                                }, {
+                                  "type" : "null"
+                                } ]
+                              }
+                            },
+                            "required" : [ "transform_id", "schema", "table", "table_id" ]
+                          },
+                          "isolated" : {
+                            "type" : "object",
+                            "properties" : {
+                              "schema" : {
+                                "type" : "string"
+                              },
+                              "table" : {
+                                "type" : "string"
+                              },
+                              "table_id" : {
+                                "oneOf" : [ {
+                                  "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                                }, {
+                                  "type" : "null"
+                                } ]
+                              },
+                              "transform_id" : {
+                                "anyOf" : [ {
+                                  "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.ref-id"
+                                }, {
+                                  "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                                } ]
+                              }
+                            },
+                            "required" : [ "transform_id", "schema", "table", "table_id" ]
+                          }
+                        },
+                        "required" : [ "db_id", "global", "isolated" ]
                       }
                     }
                   },
@@ -34040,10 +35771,68 @@
                     "type" : "string"
                   },
                   "source" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.workspaces.api.transform-source"
+                    "oneOf" : [ {
+                      "type" : "object",
+                      "properties" : {
+                        "query" : {
+                          "$ref" : "#/components/schemas/metabase.queries.schema.query"
+                        },
+                        "type" : {
+                          "const" : "query"
+                        }
+                      },
+                      "required" : [ "type", "query" ]
+                    }, {
+                      "type" : "object",
+                      "properties" : {
+                        "body" : {
+                          "type" : "string"
+                        },
+                        "source-database" : {
+                          "type" : "integer"
+                        },
+                        "source-tables" : {
+                          "type" : "array",
+                          "items" : {
+                            "$ref" : "#/components/schemas/metabase.transforms-base.util.source-table-entry"
+                          }
+                        },
+                        "type" : {
+                          "const" : "python"
+                        }
+                      },
+                      "required" : [ "source-tables", "type", "body" ],
+                      "additionalProperties" : false
+                    } ]
+                  },
+                  "target" : {
+                    "type" : "object",
+                    "properties" : {
+                      "database" : {
+                        "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                      },
+                      "name" : {
+                        "type" : "string",
+                        "minLength" : 1
+                      },
+                      "schema" : {
+                        "oneOf" : [ {
+                          "type" : "string",
+                          "minLength" : 1
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "type" : {
+                        "type" : "string",
+                        "enum" : [ "table" ]
+                      }
+                    },
+                    "required" : [ "type", "name" ],
+                    "additionalProperties" : false
                   }
                 },
-                "required" : [ "name", "source" ]
+                "required" : [ "name", "source", "target" ]
               }
             }
           }
@@ -34440,10 +36229,65 @@
                     "type" : "string"
                   },
                   "source" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.workspaces.api.transform-source"
+                    "oneOf" : [ {
+                      "type" : "object",
+                      "properties" : {
+                        "query" : {
+                          "$ref" : "#/components/schemas/metabase.queries.schema.query"
+                        },
+                        "type" : {
+                          "const" : "query"
+                        }
+                      },
+                      "required" : [ "type", "query" ]
+                    }, {
+                      "type" : "object",
+                      "properties" : {
+                        "body" : {
+                          "type" : "string"
+                        },
+                        "source-database" : {
+                          "type" : "integer"
+                        },
+                        "source-tables" : {
+                          "type" : "array",
+                          "items" : {
+                            "$ref" : "#/components/schemas/metabase.transforms-base.util.source-table-entry"
+                          }
+                        },
+                        "type" : {
+                          "const" : "python"
+                        }
+                      },
+                      "required" : [ "source-tables", "type", "body" ],
+                      "additionalProperties" : false
+                    } ]
                   },
                   "target" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.workspaces.api.transform-target"
+                    "type" : "object",
+                    "properties" : {
+                      "database" : {
+                        "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                      },
+                      "name" : {
+                        "type" : "string",
+                        "minLength" : 1
+                      },
+                      "schema" : {
+                        "oneOf" : [ {
+                          "type" : "string",
+                          "minLength" : 1
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "type" : {
+                        "type" : "string",
+                        "enum" : [ "table" ]
+                      }
+                    },
+                    "required" : [ "type", "name" ],
+                    "additionalProperties" : false
                   }
                 }
               }
@@ -34783,9 +36627,6 @@
                 "schema" : {
                   "type" : "object",
                   "properties" : {
-                    "api_key" : {
-                      "type" : "string"
-                    },
                     "collection_id" : {
                       "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
                     },
@@ -34803,7 +36644,8 @@
                       "type" : "string"
                     },
                     "status" : {
-                      "$ref" : "#/components/schemas/metabase-enterprise.workspaces.api.status"
+                      "type" : "string",
+                      "enum" : [ "archived", "ready", "broken", "pending", "uninitialized" ]
                     },
                     "updated_at" : {
                       "type" : "string",
@@ -38503,7 +40345,14 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.notification.models.FullyHydratedNotification"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -43314,6 +45163,88 @@
         "tags" : [ "/api/setup" ]
       }
     },
+    "/api/slack/app-info" : {
+      "get" : {
+        "operationId" : "get-api-slack-app-info",
+        "summary" : "GET /api/slack/app-info",
+        "description" : "Returns the Slack app_id and team_id. Used by the frontend to construct\n   direct links to the Slack app settings page.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "app_id" : {
+                      "oneOf" : [ {
+                        "type" : "string",
+                        "minLength" : 1
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "scopes" : {
+                      "oneOf" : [ {
+                        "type" : "object",
+                        "properties" : {
+                          "actual" : {
+                            "type" : "array",
+                            "items" : {
+                              "type" : "string"
+                            }
+                          },
+                          "extra" : {
+                            "type" : "array",
+                            "items" : {
+                              "type" : "string"
+                            }
+                          },
+                          "missing" : {
+                            "type" : "array",
+                            "items" : {
+                              "type" : "string"
+                            }
+                          },
+                          "required" : {
+                            "type" : "array",
+                            "items" : {
+                              "type" : "string"
+                            }
+                          }
+                        },
+                        "required" : [ "actual", "required", "missing", "extra" ],
+                        "additionalProperties" : false
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "team_id" : {
+                      "oneOf" : [ {
+                        "type" : "string",
+                        "minLength" : 1
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "app_id", "team_id", "scopes" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/slack" ]
+      }
+    },
     "/api/slack/bug-report" : {
       "post" : {
         "operationId" : "post-api-slack-bug-report",
@@ -43353,11 +45284,165 @@
       "get" : {
         "operationId" : "get-api-slack-manifest",
         "summary" : "GET /api/slack/manifest",
-        "description" : "Returns the YAML manifest file that should be used to bootstrap new Slack apps",
+        "description" : "Returns the JSON manifest file that should be used to bootstrap new Slack apps",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "display_information" : {
+                      "type" : "object",
+                      "properties" : {
+                        "background_color" : {
+                          "type" : "string"
+                        },
+                        "description" : {
+                          "type" : "string"
+                        },
+                        "name" : {
+                          "type" : "string"
+                        }
+                      },
+                      "required" : [ "name", "description", "background_color" ]
+                    },
+                    "features" : {
+                      "type" : "object",
+                      "properties" : {
+                        "app_home" : {
+                          "type" : "object",
+                          "properties" : {
+                            "home_tab_enabled" : {
+                              "type" : "boolean"
+                            },
+                            "messages_tab_enabled" : {
+                              "type" : "boolean"
+                            },
+                            "messages_tab_read_only_enabled" : {
+                              "type" : "boolean"
+                            }
+                          },
+                          "required" : [ "home_tab_enabled", "messages_tab_enabled", "messages_tab_read_only_enabled" ]
+                        },
+                        "assistant_view" : {
+                          "type" : "object",
+                          "properties" : {
+                            "assistant_description" : {
+                              "type" : "string"
+                            }
+                          },
+                          "required" : [ "assistant_description" ]
+                        },
+                        "bot_user" : {
+                          "type" : "object",
+                          "properties" : {
+                            "always_online" : {
+                              "type" : "boolean"
+                            },
+                            "display_name" : {
+                              "type" : "string"
+                            }
+                          },
+                          "required" : [ "display_name" ]
+                        },
+                        "slash_commands" : {
+                          "type" : "array",
+                          "items" : {
+                            "type" : "object",
+                            "properties" : {
+                              "command" : {
+                                "type" : "string"
+                              },
+                              "description" : {
+                                "type" : "string"
+                              },
+                              "should_escape" : {
+                                "type" : "boolean"
+                              },
+                              "url" : {
+                                "description" : "value must be a valid URL."
+                              }
+                            },
+                            "required" : [ "command", "url", "description", "should_escape" ]
+                          }
+                        }
+                      },
+                      "required" : [ "bot_user" ]
+                    },
+                    "oauth_config" : {
+                      "type" : "object",
+                      "properties" : {
+                        "redirect_urls" : {
+                          "type" : "array",
+                          "items" : {
+                            "description" : "value must be a valid URL."
+                          }
+                        },
+                        "scopes" : {
+                          "type" : "object",
+                          "properties" : {
+                            "bot" : {
+                              "type" : "array",
+                              "items" : {
+                                "type" : "string"
+                              }
+                            }
+                          },
+                          "required" : [ "bot" ]
+                        }
+                      },
+                      "required" : [ "scopes" ]
+                    },
+                    "settings" : {
+                      "type" : "object",
+                      "properties" : {
+                        "event_subscriptions" : {
+                          "type" : "object",
+                          "properties" : {
+                            "bot_events" : {
+                              "type" : "array",
+                              "items" : {
+                                "type" : "string"
+                              }
+                            },
+                            "request_url" : {
+                              "description" : "value must be a valid URL."
+                            }
+                          },
+                          "required" : [ "request_url", "bot_events" ]
+                        },
+                        "interactivity" : {
+                          "type" : "object",
+                          "properties" : {
+                            "is_enabled" : {
+                              "type" : "boolean"
+                            },
+                            "request_url" : {
+                              "description" : "value must be a valid URL."
+                            }
+                          },
+                          "required" : [ "is_enabled", "request_url" ]
+                        },
+                        "org_deploy_enabled" : {
+                          "type" : "boolean"
+                        },
+                        "socket_mode_enabled" : {
+                          "type" : "boolean"
+                        },
+                        "token_rotation_enabled" : {
+                          "type" : "boolean"
+                        }
+                      },
+                      "required" : [ "event_subscriptions", "interactivity", "org_deploy_enabled", "socket_mode_enabled", "token_rotation_enabled" ]
+                    }
+                  },
+                  "required" : [ "display_information", "features", "oauth_config" ]
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -45491,6 +47576,13 @@
                                 "type" : "null"
                               } ]
                             },
+                            "checkpoint_hi_value" : {
+                              "oneOf" : [ {
+                                "type" : "string"
+                              }, {
+                                "type" : "null"
+                              } ]
+                            },
                             "is_active" : {
                               "oneOf" : [ {
                                 "type" : "boolean"
@@ -45509,6 +47601,13 @@
                             "run_method" : {
                               "type" : "string"
                             },
+                            "checkpoint_lo_value" : {
+                              "oneOf" : [ {
+                                "type" : "string"
+                              }, {
+                                "type" : "null"
+                              } ]
+                            },
                             "status" : {
                               "type" : "string",
                               "enum" : [ "started", "succeeded", "failed", "timeout", "canceled", "canceling" ]
@@ -45516,6 +47615,14 @@
                             "transform_entity_id" : {
                               "oneOf" : [ {
                                 "type" : "string"
+                              }, {
+                                "type" : "null"
+                              } ]
+                            },
+                            "checkpoint_filter_field_id" : {
+                              "oneOf" : [ {
+                                "type" : "integer",
+                                "minimum" : 1
                               }, {
                                 "type" : "null"
                               } ]
@@ -45660,6 +47767,13 @@
                         } ]
                       },
                       "source" : { },
+                      "last_checkpoint_value" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
                       "target" : { },
                       "created_at" : { },
                       "creator_id" : {
@@ -45786,6 +47900,13 @@
                               "type" : "null"
                             } ]
                           },
+                          "checkpoint_hi_value" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
                           "is_active" : {
                             "oneOf" : [ {
                               "type" : "boolean"
@@ -45804,6 +47925,13 @@
                           "run_method" : {
                             "type" : "string"
                           },
+                          "checkpoint_lo_value" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
                           "status" : {
                             "type" : "string",
                             "enum" : [ "started", "succeeded", "failed", "timeout", "canceled", "canceling" ]
@@ -45811,6 +47939,14 @@
                           "transform_entity_id" : {
                             "oneOf" : [ {
                               "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "checkpoint_filter_field_id" : {
+                            "oneOf" : [ {
+                              "type" : "integer",
+                              "minimum" : 1
                             }, {
                               "type" : "null"
                             } ]
@@ -45955,6 +48091,13 @@
                       } ]
                     },
                     "source" : { },
+                    "last_checkpoint_value" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
                     "target" : { },
                     "created_at" : { },
                     "creator_id" : {
@@ -47261,112 +49404,6 @@
         "tags" : [ "/api/transform-tag" ]
       }
     },
-    "/api/transform/extract-columns" : {
-      "post" : {
-        "operationId" : "post-api-transform-extract-columns",
-        "summary" : "POST /api/transform/extract-columns",
-        "description" : "Extract column names suitable for incremental transform checkpoint filtering.\n\n  This endpoint is specifically for populating the checkpoint column dropdown in\n  incremental transforms. It only returns columns with types supported for checkpoint\n  filtering: temporal (timestamp/tz) and numeric (int/float) types.\n\n  Text, boolean, and other unsupported column types are filtered out.\n\n  The query is compiled to native SQL using [[qp.compile/compile-with-inline-parameters]],\n  which handles parameterized queries with template tags. Then extracts column names\n  and types using PreparedStatement metadata.\n\n  Returns a map with a :columns key containing a vector of column names (strings).\n  If extraction fails, returns nil for :columns.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "columns" : {
-                      "oneOf" : [ {
-                        "type" : "array",
-                        "items" : {
-                          "type" : "string"
-                        }
-                      }, {
-                        "type" : "null"
-                      } ]
-                    }
-                  },
-                  "required" : [ "columns" ]
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "query" : {
-                    "$ref" : "#/components/schemas/metabase.query-processor.schema.any-query"
-                  }
-                },
-                "required" : [ "query" ]
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/transform" ]
-      }
-    },
-    "/api/transform/is-simple-query" : {
-      "post" : {
-        "operationId" : "post-api-transform-is-simple-query",
-        "summary" : "POST /api/transform/is-simple-query",
-        "description" : "Checks if a native SQL query string is simple enough for automatic checkpoint insertion",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "is_simple" : {
-                      "type" : "boolean"
-                    },
-                    "reason" : {
-                      "type" : "string"
-                    }
-                  },
-                  "required" : [ "is_simple" ]
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "query" : {
-                    "type" : "string"
-                  }
-                },
-                "required" : [ "query" ]
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/transform" ]
-      }
-    },
     "/api/transform/run" : {
       "get" : {
         "operationId" : "get-api-transform-run",
@@ -47503,6 +49540,13 @@
                               "type" : "null"
                             } ]
                           },
+                          "checkpoint_hi_value" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
                           "is_active" : {
                             "oneOf" : [ {
                               "type" : "boolean"
@@ -47568,6 +49612,13 @@
                           "run_method" : {
                             "type" : "string"
                           },
+                          "checkpoint_lo_value" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
                           "status" : {
                             "type" : "string",
                             "enum" : [ "started", "succeeded", "failed", "timeout", "canceled", "canceling" ]
@@ -47575,6 +49626,14 @@
                           "transform_entity_id" : {
                             "oneOf" : [ {
                               "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "checkpoint_filter_field_id" : {
+                            "oneOf" : [ {
+                              "type" : "integer",
+                              "minimum" : 1
                             }, {
                               "type" : "null"
                             } ]
@@ -47662,6 +49721,13 @@
                         "type" : "null"
                       } ]
                     },
+                    "checkpoint_hi_value" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
                     "is_active" : {
                       "oneOf" : [ {
                         "type" : "boolean"
@@ -47727,6 +49793,13 @@
                     "run_method" : {
                       "type" : "string"
                     },
+                    "checkpoint_lo_value" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
                     "status" : {
                       "type" : "string",
                       "enum" : [ "started", "succeeded", "failed", "timeout", "canceled", "canceling" ]
@@ -47734,6 +49807,14 @@
                     "transform_entity_id" : {
                       "oneOf" : [ {
                         "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "checkpoint_filter_field_id" : {
+                      "oneOf" : [ {
+                        "type" : "integer",
+                        "minimum" : 1
                       }, {
                         "type" : "null"
                       } ]
@@ -47867,6 +49948,13 @@
                               "type" : "null"
                             } ]
                           },
+                          "checkpoint_hi_value" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
                           "is_active" : {
                             "oneOf" : [ {
                               "type" : "boolean"
@@ -47885,6 +49973,13 @@
                           "run_method" : {
                             "type" : "string"
                           },
+                          "checkpoint_lo_value" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
                           "status" : {
                             "type" : "string",
                             "enum" : [ "started", "succeeded", "failed", "timeout", "canceled", "canceling" ]
@@ -47892,6 +49987,14 @@
                           "transform_entity_id" : {
                             "oneOf" : [ {
                               "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "checkpoint_filter_field_id" : {
+                            "oneOf" : [ {
+                              "type" : "integer",
+                              "minimum" : 1
                             }, {
                               "type" : "null"
                             } ]
@@ -48036,6 +50139,13 @@
                       } ]
                     },
                     "source" : { },
+                    "last_checkpoint_value" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
                     "target" : { },
                     "created_at" : { },
                     "creator_id" : {
@@ -48170,6 +50280,13 @@
                               "type" : "null"
                             } ]
                           },
+                          "checkpoint_hi_value" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
                           "is_active" : {
                             "oneOf" : [ {
                               "type" : "boolean"
@@ -48188,6 +50305,13 @@
                           "run_method" : {
                             "type" : "string"
                           },
+                          "checkpoint_lo_value" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
                           "status" : {
                             "type" : "string",
                             "enum" : [ "started", "succeeded", "failed", "timeout", "canceled", "canceling" ]
@@ -48195,6 +50319,14 @@
                           "transform_entity_id" : {
                             "oneOf" : [ {
                               "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "checkpoint_filter_field_id" : {
+                            "oneOf" : [ {
+                              "type" : "integer",
+                              "minimum" : 1
                             }, {
                               "type" : "null"
                             } ]
@@ -48339,6 +50471,13 @@
                       } ]
                     },
                     "source" : { },
+                    "last_checkpoint_value" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
                     "target" : { },
                     "created_at" : { },
                     "creator_id" : {
@@ -48610,6 +50749,13 @@
                                 "type" : "null"
                               } ]
                             },
+                            "checkpoint_hi_value" : {
+                              "oneOf" : [ {
+                                "type" : "string"
+                              }, {
+                                "type" : "null"
+                              } ]
+                            },
                             "is_active" : {
                               "oneOf" : [ {
                                 "type" : "boolean"
@@ -48628,6 +50774,13 @@
                             "run_method" : {
                               "type" : "string"
                             },
+                            "checkpoint_lo_value" : {
+                              "oneOf" : [ {
+                                "type" : "string"
+                              }, {
+                                "type" : "null"
+                              } ]
+                            },
                             "status" : {
                               "type" : "string",
                               "enum" : [ "started", "succeeded", "failed", "timeout", "canceled", "canceling" ]
@@ -48635,6 +50788,14 @@
                             "transform_entity_id" : {
                               "oneOf" : [ {
                                 "type" : "string"
+                              }, {
+                                "type" : "null"
+                              } ]
+                            },
+                            "checkpoint_filter_field_id" : {
+                              "oneOf" : [ {
+                                "type" : "integer",
+                                "minimum" : 1
                               }, {
                                 "type" : "null"
                               } ]
@@ -48779,6 +50940,13 @@
                         } ]
                       },
                       "source" : { },
+                      "last_checkpoint_value" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
                       "target" : { },
                       "created_at" : { },
                       "creator_id" : {
@@ -49032,6 +51200,42 @@
                     },
                     "required" : [ "id", "workspace_merge_id", "commit_message", "workspace_id", "workspace_name", "merging_user_id", "created_at" ]
                   }
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/transform" ]
+      }
+    },
+    "/api/transform/{id}/reset-checkpoint" : {
+      "post" : {
+        "operationId" : "post-api-transform-id-reset-checkpoint",
+        "summary" : "POST /api/transform/{id}/reset-checkpoint",
+        "description" : "Reset the stored checkpoint for an incremental transform.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
                 }
               }
             }

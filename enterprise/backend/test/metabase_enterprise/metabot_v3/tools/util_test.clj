@@ -10,6 +10,66 @@
    [metabase.permissions.models.permissions :as perms]
    [metabase.test :as mt]))
 
+(deftest ^:parallel schedule->schedule-map-test
+  (testing "hourly schedule"
+    (is (= {:schedule_type  "hourly"
+            :schedule_hour  nil
+            :schedule_day   nil
+            :schedule_frame nil}
+           (metabot-v3.tools.util/schedule->schedule-map
+            {:frequency :hourly}))))
+  (testing "daily schedule"
+    (is (= {:schedule_type  "daily"
+            :schedule_hour  9
+            :schedule_day   nil
+            :schedule_frame nil}
+           (metabot-v3.tools.util/schedule->schedule-map
+            {:frequency :daily
+             :hour      9}))))
+  (testing "weekly schedule"
+    (is (= {:schedule_type  "weekly"
+            :schedule_hour  8
+            :schedule_day   "mon"
+            :schedule_frame nil}
+           (metabot-v3.tools.util/schedule->schedule-map
+            {:frequency   :weekly
+             :hour        8
+             :day-of-week :monday}))))
+  (testing "weekly schedule truncates day name to 3 chars"
+    (is (= "wed"
+           (:schedule_day
+            (metabot-v3.tools.util/schedule->schedule-map
+             {:frequency   :weekly
+              :hour        10
+              :day-of-week :wednesday})))))
+  (testing "monthly schedule with first-mon"
+    (is (= {:schedule_type  "monthly"
+            :schedule_hour  6
+            :schedule_day   "mon"
+            :schedule_frame "first"}
+           (metabot-v3.tools.util/schedule->schedule-map
+            {:frequency    :monthly
+             :hour         6
+             :day-of-month :first-mon}))))
+  (testing "monthly schedule with last-fri"
+    (is (= {:schedule_type  "monthly"
+            :schedule_hour  17
+            :schedule_day   "fri"
+            :schedule_frame "last"}
+           (metabot-v3.tools.util/schedule->schedule-map
+            {:frequency    :monthly
+             :hour         17
+             :day-of-month :last-fri}))))
+  (testing "monthly schedule with mid"
+    (is (= {:schedule_type  "monthly"
+            :schedule_hour  12
+            :schedule_day   nil
+            :schedule_frame "mid"}
+           (metabot-v3.tools.util/schedule->schedule-map
+            {:frequency    :monthly
+             :hour         12
+             :day-of-month :mid})))))
+
 (deftest metabot-scope-query-test
   (testing "metabot-scope-query with collection hierarchy"
     (mt/dataset test-data
@@ -265,3 +325,87 @@
              clojure.lang.ExceptionInfo
              #"does not match expected prefix"
              (metabot-v3.tools.util/resolve-column {:field-id "t999-0"} "t1-" columns)))))))
+
+;;; Nil handling tests - important for robustness against LLM edge cases
+
+(deftest parse-field-id-nil-handling-test
+  (testing "returns nil for nil input (no NPE)"
+    (is (nil? (metabot-v3.tools.util/parse-field-id nil))))
+
+  (testing "returns nil for empty string"
+    (is (nil? (metabot-v3.tools.util/parse-field-id ""))))
+
+  (testing "returns nil for non-string input"
+    (is (nil? (metabot-v3.tools.util/parse-field-id 123)))
+    (is (nil? (metabot-v3.tools.util/parse-field-id {:field-id "t1-0"})))
+    (is (nil? (metabot-v3.tools.util/parse-field-id [:t 1 0]))))
+
+  (testing "returns nil for invalid format strings"
+    (is (nil? (metabot-v3.tools.util/parse-field-id "invalid")))
+    (is (nil? (metabot-v3.tools.util/parse-field-id "x1-0"))) ; invalid model tag
+    (is (nil? (metabot-v3.tools.util/parse-field-id "t-1")))  ; missing model-id
+    (is (nil? (metabot-v3.tools.util/parse-field-id "t1-")))  ; missing field-index
+    (is (nil? (metabot-v3.tools.util/parse-field-id "t1")))   ; no separator
+    (is (nil? (metabot-v3.tools.util/parse-field-id "-1-0"))) ; missing model tag
+    ))
+
+(deftest resolve-column-nil-handling-test
+  (testing "throws informative error for nil field-id"
+    (let [columns [{:name "ID" :table-id 1 :type :number}]]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Invalid field_id format"
+           (metabot-v3.tools.util/resolve-column {:field-id nil} "t1-" columns)))))
+
+  (testing "throws informative error for empty field-id"
+    (let [columns [{:name "ID" :table-id 1 :type :number}]]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Invalid field_id format"
+           (metabot-v3.tools.util/resolve-column {:field-id ""} "t1-" columns)))))
+
+  (testing "throws informative error for numeric field-id"
+    (let [columns [{:name "ID" :table-id 1 :type :number}]]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Invalid field_id format"
+           (metabot-v3.tools.util/resolve-column {:field-id 123} "t1-" columns)))))
+
+  (testing "error data contains agent-error? flag for user-friendly handling"
+    (let [columns [{:name "ID" :table-id 1 :type :number}]]
+      (try
+        (metabot-v3.tools.util/resolve-column {:field-id nil} "t1-" columns)
+        (is false "Expected exception to be thrown")
+        (catch clojure.lang.ExceptionInfo e
+          (is (:agent-error? (ex-data e)))
+          (is (= nil (:field-id (ex-data e)))))))))
+
+(deftest resolve-column-edge-cases-test
+  (testing "handles empty columns vector"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"not found"
+         (metabot-v3.tools.util/resolve-column {:field-id "t1-0"} "t1-" []))))
+
+  (testing "handles columns vector with nil entries at accessed index"
+    ;; Index 0 is nil, so get returns nil and throws an error
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"not found"
+         (metabot-v3.tools.util/resolve-column {:field-id "t1-0"} "t1-" [nil {:name "NAME"}]))))
+
+  (testing "handles columns vector with nil entries at other indices"
+    ;; Access index 1 which has valid data, index 0 is nil but not accessed
+    (let [columns [nil {:name "NAME" :table-id 1 :type :string}]
+          result (metabot-v3.tools.util/resolve-column {:field-id "t1-1"} "t1-" columns)]
+      (is (some? (:column result)))
+      (is (= "NAME" (get-in result [:column :name])))))
+
+  (testing "preserves other item keys when resolving"
+    (let [columns [{:name "ID" :table-id 1 :type :number}]
+          item {:field-id "t1-0" :operation "equals" :value 42 :custom-key "preserved"}
+          result (metabot-v3.tools.util/resolve-column item "t1-" columns)]
+      (is (= "equals" (:operation result)))
+      (is (= 42 (:value result)))
+      (is (= "preserved" (:custom-key result)))
+      (is (some? (:column result))))))

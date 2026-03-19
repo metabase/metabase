@@ -3,7 +3,6 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.transforms.transform :as transform.model]
@@ -14,7 +13,6 @@
    [metabase.test :as mt]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms-rest.api.transform]
-   [metabase.transforms.crud]
    [metabase.transforms.query-test-util :as query-test-util]
    [metabase.transforms.test-dataset :as transforms-dataset]
    [metabase.transforms.test-util :refer [get-test-schema
@@ -1180,7 +1178,7 @@
                                           :query {:database (mt/id)
                                                   :type     "native"
                                                   :native   {:query "SELECT 1"}}}
-                                 :target {:type "table" :name "test_table"}})
+                                 :target {:type "table" :name (mt/random-name)}})
           (mt/user-http-request :rasta :put 403 (str "transform/" (:id transform))
                                 {:name "Updated"})
           (mt/user-http-request :rasta :delete 403 (str "transform/" (:id transform))))
@@ -1188,94 +1186,6 @@
           (mt/with-data-analyst-role! (mt/user->id :lucky)
             (mt/user-http-request :lucky :get 200 "transform")
             (mt/user-http-request :lucky :get 200 (str "transform/" (:id transform)))))))))
-
-(defmethod driver/database-supports? [::driver/driver ::extract-columns-from-query]
-  [_driver _feature _database]
-  true)
-
-(doseq [driver [:clickhouse :redshift :bigquery-cloud-sdk :snowflake]]
-  (defmethod driver/database-supports? [driver ::extract-columns-from-query]
-    [_driver _feature _database]
-    false))
-
-(deftest ^:parallel extract-columns-from-query-test
-  (mt/with-premium-features #{}
-    (testing "POST /api/transform/extract-columns"
-      (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table
-                                                             ::extract-columns-from-query]})
-        (mt/dataset transforms-dataset/transforms-test
-          (letfn [(make-native-query [sql]
-                    {:lib/type :mbql/query
-                     :database (mt/id)
-                     :stages [{:lib/type :mbql.stage/native
-                               :native sql}]})]
-            (testing "Successfully extracts columns from a simple SELECT query"
-              (let [response (mt/user-http-request :crowberto :post 200 "transform/extract-columns"
-                                                   {:query (make-native-query "SELECT id, name, category, price FROM transforms_products")})]
-                (is (= ["id" "price"] (:columns response))
-                    "Should only return numeric (id, price) columns, filtering out text columns (name, category)")))
-            (testing "Returns nil for invalid SQL"
-              (let [response (mt/user-http-request :crowberto :post 200 "transform/extract-columns"
-                                                   {:query (make-native-query "SELECT * FORM invalid_table")})]
-                (is (nil? (:columns response)))))
-            (testing "Extracts columns from query with aliases"
-              (let [response (mt/user-http-request :crowberto :post 200 "transform/extract-columns"
-                                                   {:query (make-native-query "SELECT id AS product_id, name AS product_name FROM transforms_products")})]
-                (is (= ["product_id"] (:columns response))
-                    "Should only return numeric column (id), filtering out text column (name)")))
-            (testing "Filters columns by type - only returns numeric and temporal columns"
-              (let [response (mt/user-http-request :crowberto :post 200 "transform/extract-columns"
-                                                   {:query (make-native-query "SELECT id, name, category, price, created_at FROM transforms_products")})]
-                (is (= ["id" "price" "created_at"] (:columns response))
-                    "Should return numeric (id, price) and temporal (created_at) columns, filtering out text columns (name, category)")))
-            (testing "Requires superuser permissions"
-              (is (= "You don't have permissions to do that."
-                     (mt/user-http-request :rasta :post 403 "transform/extract-columns"
-                                           {:query (make-native-query "SELECT * FROM transforms_products")}))))
-            (testing "Returns 404 for non-existent database"
-              (is (= "Not found."
-                     (mt/user-http-request :crowberto :post 404 "transform/extract-columns"
-                                           {:query {:lib/type :mbql/query
-                                                    :database 999999
-                                                    :stages [{:lib/type :mbql.stage/native
-                                                              :native "SELECT * FROM transforms_products"}]}}))))))))))
-
-(deftest ^:parallel is-simple-query-test
-  (mt/with-premium-features #{}
-    (testing "POST /api/transform/is-simple-query"
-      (testing "Returns true for simple SELECT queries"
-        (let [response (mt/user-http-request :crowberto :post 200 "transform/is-simple-query"
-                                             {:query "SELECT id, name FROM products"})]
-          (is (true? (:is_simple response)))
-          (is (nil? (:reason response)))))
-      (testing "Returns true for simple SELECT with WHERE clause"
-        (let [response (mt/user-http-request :crowberto :post 200 "transform/is-simple-query"
-                                             {:query "SELECT id, name FROM products WHERE category = 'Electronics'"})]
-          (is (true? (:is_simple response)))))
-      (testing "Returns true for simple SELECT with JOIN"
-        (let [response (mt/user-http-request :crowberto :post 200 "transform/is-simple-query"
-                                             {:query "SELECT p.id, p.name, c.name FROM products p JOIN categories c ON p.category_id = c.id"})]
-          (is (true? (:is_simple response)))))
-      (testing "Returns false for query with LIMIT"
-        (let [response (mt/user-http-request :crowberto :post 200 "transform/is-simple-query"
-                                             {:query "SELECT id, name FROM products LIMIT 10"})]
-          (is (false? (:is_simple response)))
-          (is (= "Contains a LIMIT" (:reason response)))))
-      (testing "Returns false for query with OFFSET"
-        (let [response (mt/user-http-request :crowberto :post 200 "transform/is-simple-query"
-                                             {:query "SELECT id, name FROM products OFFSET 5"})]
-          (is (false? (:is_simple response)))
-          (is (= "Contains an OFFSET" (:reason response)))))
-      (testing "Returns false for query with LIMIT and OFFSET"
-        (let [response (mt/user-http-request :crowberto :post 200 "transform/is-simple-query"
-                                             {:query "SELECT id, name FROM products LIMIT 10 OFFSET 5"})]
-          (is (false? (:is_simple response)))
-          (is (= "Contains a LIMIT" (:reason response)))))
-      (testing "Returns false for query with CTE"
-        (let [response (mt/user-http-request :crowberto :post 200 "transform/is-simple-query"
-                                             {:query "WITH category_counts AS (SELECT category, COUNT(*) as cnt FROM products GROUP BY category) SELECT * FROM category_counts"})]
-          (is (false? (:is_simple response)))
-          (is (= "Contains a CTE" (:reason response))))))))
 
 ;;; ------------------------------------------------------------
 ;;; User Attribution Tests
@@ -1410,7 +1320,7 @@
                                                                         :type "native"
                                                                         :native {:query "SELECT 1"}}}
                                                        :target {:type "table"
-                                                                :name "test_table"}}
+                                                                :name (mt/random-name)}}
                            :model/TransformTag tag1 {:name "update-tag-1"}
                            :model/TransformTag tag2 {:name "update-tag-2"}
                            :model/TransformTag tag3 {:name "update-tag-3"}]
@@ -1640,12 +1550,13 @@
             (is (= ["collection"] (:here child-coll)))
             (is (= ["transform"] (:below child-coll)))))))))
 
-(deftest native-incremental-column-type-validated-on-create-test
+(deftest incremental-column-type-validated-on-create-test
   (mt/with-premium-features #{}
-    (testing "POST /api/transform column type validation"
-      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table ::extract-columns-from-query)
+    (testing "POST /api/transform column type validation with checkpoint-filter-field-id"
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset transforms-dataset/transforms-test
-          (let [schema (get-test-schema)]
+          (let [schema (get-test-schema)
+                name-field-id (t2/select-one-pk :model/Field :name "name" :table_id (mt/id :transforms_products))]
             (testing "Rejects unsupported checkpoint column type (text)"
               (let [response (mt/user-http-request :crowberto :post 400 "transform"
                                                    {:name "Invalid Incremental Transform"
@@ -1653,20 +1564,21 @@
                                                              :query (lib/native-query (mt/metadata-provider)
                                                                                       "SELECT id, name, category, price FROM transforms_products")
                                                              :source-incremental-strategy {:type "checkpoint"
-                                                                                           :checkpoint-filter "name"}}
+                                                                                           :checkpoint-filter-field-id name-field-id}}
                                                     :target {:type "table-incremental"
                                                              :schema schema
                                                              :name "invalid_incremental"
                                                              :target-incremental-strategy {:type "append"}}})]
                 (is (string? response))
-                (is (re-find #"Only numeric and temporal" response))))))))))
+                (is (re-find #"unsupported type" response))))))))))
 
-(deftest native-incremental-column-type-validated-on-update-test
+(deftest incremental-column-type-validated-on-update-test
   (mt/with-premium-features #{}
-    (testing "PUT /api/transform column type validation"
-      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table ::extract-columns-from-query)
+    (testing "PUT /api/transform column type validation with checkpoint-filter-field-id"
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset transforms-dataset/transforms-test
-          (let [schema (get-test-schema)]
+          (let [schema (get-test-schema)
+                category-field-id (t2/select-one-pk :model/Field :name "category" :table_id (mt/id :transforms_products))]
             (with-transform-cleanup! [table-name "update_incremental_test"]
               (let [;; Create a non-incremental transform first
                     created (mt/user-http-request :crowberto :post 200 "transform"
@@ -1684,60 +1596,13 @@
                                                                  :query (lib/native-query (mt/metadata-provider)
                                                                                           "SELECT id, name, category FROM transforms_products")
                                                                  :source-incremental-strategy {:type "checkpoint"
-                                                                                               :checkpoint-filter "category"}}
+                                                                                               :checkpoint-filter-field-id category-field-id}}
                                                         :target {:type "table-incremental"
                                                                  :schema schema
                                                                  :name table-name
                                                                  :target-incremental-strategy {:type "append"}}})]
                     (is (string? response))
-                    (is (re-find #"Only numeric and temporal" response))))))))))))
-
-(deftest mbql-incremental-column-type-validated-on-create-test
-  (mt/with-premium-features #{}
-    (testing "MBQL query with checkpoint-filter-unique-key - checkpoint column type validation"
-      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table ::extract-columns-from-query)
-        (mt/dataset transforms-dataset/transforms-test
-          (let [schema (get-test-schema)]
-            (testing "Rejects unsupported checkpoint column type (text)"
-              (let [query (mt/mbql-query transforms_products)
-                    response (mt/user-http-request :crowberto :post 400 "transform"
-                                                   {:name "Invalid MBQL Incremental"
-                                                    :source {:type "query"
-                                                             :query query
-                                                             :source-incremental-strategy {:type "checkpoint"
-                                                                                           :checkpoint-filter-unique-key "column-unique-key-v1$name"}}
-                                                    :target {:type "table-incremental"
-                                                             :schema schema
-                                                             :name "invalid_mbql_incremental"
-                                                             :target-incremental-strategy {:type "append"}}})]
-                (is (string? response))
-                (is (re-find #"not supported" response))))))))))
-
-(deftest native-incremental-column-validation-when-not-extractable-test
-  (mt/with-premium-features #{}
-    (testing "Native query checkpoint column validation with text input fallback"
-      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table ::extract-columns-from-query)
-        (mt/dataset transforms-dataset/transforms-test
-          (let [schema (get-test-schema)]
-            (testing "Accepts any column if they were not extractable"
-              (with-transform-cleanup! [table-name "fallback_test_unextracted"]
-                (with-redefs [metabase.transforms.crud/extract-all-columns-from-query
-                              ;; simulate lack of driver support for extraction
-                              (fn [_driver _database-id _query] nil)]
-                  (let [response (mt/user-http-request :crowberto :post 200 "transform"
-                                                       {:name "Unextracted Column - Text Input Fallback"
-                                                        :source {:type "query"
-                                                                 :query (lib/native-query (mt/metadata-provider)
-                                                                                          "SELECT id, name, created_at FROM transforms_products")
-                                                                 :source-incremental-strategy {:type "checkpoint"
-                                                                                               ;; created_at is in the query but not in our stubbed extraction
-                                                                                               :checkpoint-filter "created_at"}}
-                                                        :target {:type "table-incremental"
-                                                                 :schema schema
-                                                                 :name table-name
-                                                                 :target-incremental-strategy {:type "append"}}})]
-                    (is (some? (:id response))
-                        "Should accept column not in extracted metadata, allowing text input fallback")))))))))))
+                    (is (re-find #"unsupported type" response))))))))))))
 
 (deftest search-filters-transform-source-types-test
   (mt/with-premium-features #{}

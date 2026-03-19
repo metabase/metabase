@@ -296,12 +296,50 @@ describe("scenarios > admin > people", () => {
       cy.findByText("Reset password").click();
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(`Reset ${normalUserName}'s password?`);
-      clickButton("Reset password");
+
+      H.modal().within(() => {
+        cy.findByText("Are you sure you want to do this?");
+        cy.button("Cancel").should("exist");
+        cy.button("Get reset link").should("exist");
+        cy.button("Reset password").click();
+      });
+
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(`${normalUserName}'s password has been reset`);
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/^temporary password$/i);
       clickButton("Done");
+      cy.location().should((loc) =>
+        expect(loc.pathname).to.eq("/admin/people"),
+      );
+    });
+
+    it("should generate a password reset link without SMTP set up", () => {
+      cy.intercept("POST", "/api/user/*/password-reset-url").as("getResetUrl");
+
+      cy.visit("/admin/people");
+      showUserOptions(normalUserName);
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Reset password").click();
+
+      H.modal().within(() => {
+        cy.findByText(`Reset ${normalUserName}'s password?`);
+        cy.button("Get reset link").click();
+      });
+
+      cy.wait("@getResetUrl");
+
+      H.modal().within(() => {
+        cy.findByText(`Password reset link for ${normalUserName}`);
+        cy.findByText(
+          "Share this link with the user. It will expire in 48 hours.",
+        );
+        cy.findByRole("textbox")
+          .invoke("val")
+          .should("contain", "reset_password");
+        cy.button("Done").click();
+      });
+
       cy.location().should((loc) =>
         expect(loc.pathname).to.eq("/admin/people"),
       );
@@ -335,7 +373,11 @@ describe("scenarios > admin > people", () => {
         cy.findByText("Reset password").click();
         // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText(`Reset ${normalUserName}'s password?`);
-        clickButton("Reset password");
+
+        H.modal().within(() => {
+          cy.button("Get reset link").should("exist");
+          cy.button("Reset password").click();
+        });
 
         H.undoToast().within(() => {
           cy.findByText(

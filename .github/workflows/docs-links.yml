@@ -7,7 +7,7 @@ on:
 jobs:
   link-checker:
     name: Check documentation links
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     permissions:
       contents: read

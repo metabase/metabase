@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.sso.test-setup :as sso.test-setup]
    [metabase.auth-identity.core :as auth-identity]
-   [metabase.config.core :as config]
+   [metabase.server.instance :as server.instance]
    [metabase.sso.oidc.state :as oidc.state]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -86,7 +86,7 @@
              (fn []
                (mt/with-temporary-setting-values
                  [oidc-providers [test-provider]
-                  site-url       (format "http://localhost:%s" (config/config-str :mb-jetty-port))]
+                  site-url       (format "http://localhost:%s" (server.instance/server-port))]
                  ~@body)))))))))
 
 ;;; -------------------------------------------------- Prerequisites Tests --------------------------------------------------
@@ -106,7 +106,7 @@
       (mt/with-additional-premium-features #{:sso-oidc}
         (mt/with-temporary-setting-values
           [oidc-providers [(assoc test-provider :enabled false)]
-           site-url           (format "http://localhost:%s" (config/config-str :mb-jetty-port))]
+           site-url           (format "http://localhost:%s" (server.instance/server-port))]
           (with-ensure-encryption!
             (with-successful-oidc!
               (let [response (mt/client-full-response :get 400 "/auth/sso/test-idp"
