@@ -67,44 +67,9 @@ cli() {
   bun "$SCRIPT_DIR/cli.ts" "$@"
 }
 
-XV_SPECS_DIR="$SCRIPT_DIR/.xv-specs"
-
-# Run cross-version e2e tests for a given phase and version.
-# For HEAD, runs specs from the local tree. For other versions,
-# extracts specs from the x-version branch via git archive.
 run_e2e() {
   local phase="$1"
-  local version="$2"
-
-  if [[ "$version" == "HEAD" ]]; then
-    log "Using local specs for HEAD"
-    "$REPO_ROOT/e2e/test/cross-version/run.sh" --phase "$phase"
-    return
-  fi
-
-  local branch ref dest
-  branch=$(cli branch "$version")
-  dest="$XV_SPECS_DIR/$phase"
-
-  # Prefer local branch, fall back to remote
-  ref="$branch"
-  if ! git -C "$REPO_ROOT" rev-parse --verify "$branch" >/dev/null 2>&1; then
-    ref="origin/$branch"
-    # Fetch if not available locally (CI only checks out the triggering branch)
-    if ! git -C "$REPO_ROOT" rev-parse --verify "$ref" >/dev/null 2>&1; then
-      log "Fetching ${branch} from origin..."
-      git -C "$REPO_ROOT" fetch origin "$branch"
-    fi
-  fi
-
-  log "Extracting specs from ${ref} → ${dest}"
-  rm -rf "$dest"
-  mkdir -p "$dest"
-  git -C "$REPO_ROOT" archive "$ref" -- e2e/test/cross-version/scenarios/ \
-    | tar x -C "$dest"
-
-  "$REPO_ROOT/e2e/test/cross-version/run.sh" --phase "$phase" \
-    --specs "$dest/e2e/test/cross-version/scenarios/**/*.cy.spec.ts"
+  "$REPO_ROOT/e2e/cross-version/run.sh" --phase "$phase"
 }
 
 
@@ -368,7 +333,7 @@ main() {
 
   log ""
   log "Step 2: Running e2e tests (@source)..."
-  run_e2e source "$SOURCE_VERSION"
+  run_e2e source
 
   log ""
   log "Step 3: Stopping SOURCE version ($SOURCE_VERSION)..."
@@ -389,7 +354,7 @@ main() {
 
     log ""
     log "Step 5: Running e2e tests (@target)..."
-    run_e2e target "$TARGET_VERSION"
+    run_e2e target
 
   else
     # Downgrade: should refuse to start, then we run migrate down
@@ -423,7 +388,7 @@ main() {
 
     log ""
     log "Step 7: Running e2e tests (@target)..."
-    run_e2e target "$TARGET_VERSION"
+    run_e2e target
   fi
 
   log ""
