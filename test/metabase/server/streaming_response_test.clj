@@ -402,6 +402,10 @@
              (reify AsyncContext
                (complete [_]
                  (deliver complete-promise true)))
+             (reify HttpServletResponse
+               (isCommitted [_] false)
+               (setStatus [_ _])
+               (setContentType [_ _]))
              (fn [_os _canceled-chan]
                (deliver task-started? true)
                (try
