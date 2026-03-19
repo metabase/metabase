@@ -126,7 +126,7 @@ export class Scalar extends Component<
       //     { name: "100.000,00", value: "de" },
       //   ],
       // }),
-      // default: "en",
+      // getDefault:() => "en",
     },
     "scalar.decimals": {
       // title: t`Number of decimal places`,

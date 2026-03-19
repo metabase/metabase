@@ -203,7 +203,6 @@ export function seriesSetting({
     axis: {
       title: t`Y-axis position`,
       widget: "segmentedControl",
-      default: null,
       getHidden: (single, _seriesSettings, extra) =>
         single.card.display === "row" ||
         extra?.settings?.["graph.split_panels"] === true,
