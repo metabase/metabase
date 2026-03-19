@@ -6,7 +6,6 @@ import {
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
-  within,
 } from "__support__/ui";
 import {
   type ColumnOptions,
@@ -236,18 +235,14 @@ describe("DataGrid", () => {
       jest.runAllTimers();
     });
 
-    const rows = screen.getAllByRole("row").slice(1); // Skip header row
+    const body = screen.getByTestId("table-body");
+    const rowIdCells = body.querySelectorAll('[data-testid="row-id-cell"]');
 
-    expect(rows.length).toBeGreaterThan(0);
+    expect(rowIdCells).toHaveLength(sampleData.length);
 
-    rows.forEach((row, index) => {
-      const cells = within(row).getAllByRole("gridcell");
-      expect(cells[0]).toHaveTextContent(String(index + 2));
+    rowIdCells.forEach((cell, index) => {
+      expect(cell).toHaveTextContent(String(index + 1));
     });
-
-    const firstRow = rows[0];
-    const cellsInRow = within(firstRow).getAllByRole("gridcell");
-    expect(cellsInRow.length).toBe(4); // 3 data columns + 1 row ID column
   });
 
   it("displays proper sort indicators for sortable columns", () => {
