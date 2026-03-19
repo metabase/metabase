@@ -29,8 +29,6 @@ export const Root = styled.div<{
       align-items: center;
     `}
 
-
-
   input {
     transition: border 0.3s;
 
