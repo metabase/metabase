@@ -195,8 +195,7 @@ function getSettingWidget<T, TValue, TProps extends Record<string, unknown>>(
   }
 
   const getHiddenFn = settingDef.getHidden;
-  const { getMarginBottom, getProps, getWrapperStyle, ...settingDefProps } =
-    settingDef;
+  const { getProps, getWrapperStyle, ...settingDefProps } = settingDef;
 
   const section = settingDef.getSection
     ? settingDef.getSection(resolvedObject, computedSettings, extra)
@@ -210,7 +209,6 @@ function getSettingWidget<T, TValue, TProps extends Record<string, unknown>>(
     hidden: getHiddenFn
       ? getHiddenFn(resolvedObject, computedSettings, extra)
       : (settingDef.hidden ?? false),
-    marginBottom: getMarginBottom?.(resolvedObject, computedSettings, extra),
     props:
       getProps?.(
         resolvedObject,

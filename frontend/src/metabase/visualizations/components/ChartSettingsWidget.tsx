@@ -14,7 +14,6 @@ type Props = {
   hidden?: boolean;
   widget?: string | ComponentType<{ id: string }>;
   inline?: boolean;
-  marginBottom?: string;
   props?: Record<string, unknown>;
   variant?: "default" | "form-field";
   dataTestId?: string;
@@ -29,7 +28,6 @@ const ChartSettingsWidget = ({
   hidden,
   variant = "default",
   inline = false,
-  marginBottom = undefined,
   widget: Widget,
   dataTestId,
   props,
@@ -48,7 +46,6 @@ const ChartSettingsWidget = ({
         [PopoverS.FormField]: isFormField,
       })}
       inline={inline}
-      marginBottom={marginBottom}
       data-testid={dataTestId ?? `chart-settings-widget-${extraWidgetProps.id}`}
       data-field-title={title}
       style={style}

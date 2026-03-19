@@ -360,13 +360,6 @@ export type VisualizationSettingDefinition<
   autoOpenWhenUnset?: boolean;
   value?: TValue;
   set?: boolean;
-  getMarginBottom?: (
-    object: T,
-    settings: T extends DatasetColumn
-      ? ColumnSettings
-      : ComputedVisualizationSettings,
-    extra?: SettingsExtra,
-  ) => string;
   persistDefault?: boolean;
   inline?: boolean;
   getProps?: (
@@ -395,10 +388,9 @@ export type CompleteVisualizationSettingDefinition<
   TProps extends Record<string, unknown> = Record<string, unknown>,
 > = Omit<
   VisualizationSettingDefinition<T, TValue, TProps>,
-  "getMarginBottom" | "getProps" | "getWrapperStyle"
+  "getProps" | "getWrapperStyle"
 > & {
   id: string;
-  marginBottom?: string;
   style?: CSSProperties;
   props: Partial<TProps>;
 };

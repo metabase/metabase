@@ -103,11 +103,13 @@ export const GRAPH_DATA_SETTINGS: VisualizationSettingsDefinitions = {
       return t`X-axis`;
     },
     widget: "fields",
-    getMarginBottom: (series, vizSettings) =>
-      vizSettings["graph.dimensions"]?.length === 2 &&
-      series.length <= MAX_SERIES
-        ? "0.5rem"
-        : "1rem",
+    getWrapperStyle: (series, vizSettings) => ({
+      marginBottom:
+        vizSettings["graph.dimensions"]?.length === 2 &&
+        series.length <= MAX_SERIES
+          ? "0.5rem"
+          : "1rem",
+    }),
     isValid: (series, vizSettings) => {
       const dimensions = vizSettings["graph.dimensions"] ?? [];
       if (dimensions.length === 0) {
