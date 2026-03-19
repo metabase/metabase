@@ -2,22 +2,17 @@ import { isFulfilled, isRejected } from "@reduxjs/toolkit";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import { METABOT_PROFILE_OVERRIDES } from "metabase/metabot/constants";
+import { useMetabotAgent } from "metabase/metabot/hooks";
 import type { UseMetabotSQLSuggestionOptions } from "metabase/metabot/hooks/use-metabot-sql-suggestion";
-import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
-import {
-  useMetabotDispatch,
-  useMetabotSelector,
-} from "metabase-enterprise/metabot/hooks/use-metabot-store";
 import {
   addDeveloperMessage,
   getMetabotSuggestedCodeEdit,
   removeSuggestedCodeEdit,
   resetConversation,
-} from "metabase-enterprise/metabot/state";
-
-import { METABOT_PROFILE_OVERRIDES } from "../constants";
-
-import { useMetabotAgent } from "./use-metabot-agent";
+} from "metabase/metabot/state";
+import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 
 type SubmitInputResult = Awaited<
   ReturnType<ReturnType<typeof useMetabotAgent>["submitInput"]>
@@ -44,8 +39,8 @@ export function useMetabotSQLSuggestion({
 
   const [hasError, setHasError] = useState(false);
 
-  const dispatch = useMetabotDispatch();
-  const source = useMetabotSelector((state) =>
+  const dispatch = useDispatch();
+  const source = useSelector((state) =>
     getMetabotSuggestedCodeEdit(state, bufferId),
   )?.value;
 

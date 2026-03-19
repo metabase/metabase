@@ -42,14 +42,6 @@ describe("NativeQueryEditor", () => {
   ) => {
     const setIsNativeEditorOpen = jest.fn();
 
-    const metabotState = {
-      conversations: {
-        omnibot: {
-          visible: isMetabotSidebarOpen,
-        },
-      },
-    };
-
     setupCollectionsEndpoints({
       collections: [],
     });
@@ -70,8 +62,12 @@ describe("NativeQueryEditor", () => {
       />,
       {
         storeInitialState: createMockState({
-          plugins: {
-            metabotPlugin: metabotState,
+          metabot: {
+            conversations: {
+              omnibot: {
+                visible: isMetabotSidebarOpen,
+              },
+            },
           },
         } as any),
       },

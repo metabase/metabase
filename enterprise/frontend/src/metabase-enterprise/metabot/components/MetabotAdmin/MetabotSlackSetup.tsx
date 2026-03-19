@@ -6,6 +6,7 @@ import * as Yup from "yup";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { BasicAdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
+import { useUpdateMetabotSlackSettingsMutation } from "metabase/api/metabot";
 import {
   useGetSlackAppInfoQuery,
   useGetSlackManifestQuery,
@@ -23,7 +24,6 @@ import {
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 import { Accordion, Button, Flex, Stack, Text } from "metabase/ui";
-import { useUpdateMetabotSlackSettingsMutation } from "metabase-enterprise/api/metabot";
 import type { SlackAppInfo } from "metabase-types/api/slack";
 
 import {

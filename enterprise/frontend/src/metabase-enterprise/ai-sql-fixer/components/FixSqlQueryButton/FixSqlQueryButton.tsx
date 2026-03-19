@@ -1,10 +1,12 @@
 import { t } from "ttag";
 
 import { useDispatch } from "metabase/lib/redux";
-import { useMetabotEnabledEmbeddingAware } from "metabase/metabot/hooks";
+import {
+  useMetabotAgent,
+  useMetabotEnabledEmbeddingAware,
+} from "metabase/metabot/hooks";
 import { setIsNativeEditorOpen } from "metabase/query_builder/actions";
 import { Button } from "metabase/ui";
-import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 
 import { trackQueryFixClicked } from "../../analytics";
 

@@ -27,7 +27,7 @@ import { waitForRequest } from "__support__/utils";
 import {
   FIXED_METABOT_ENTITY_IDS,
   FIXED_METABOT_IDS,
-} from "metabase-enterprise/metabot/constants";
+} from "metabase/metabot/constants";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type { MetabotId, RecentItem } from "metabase-types/api";
 import {

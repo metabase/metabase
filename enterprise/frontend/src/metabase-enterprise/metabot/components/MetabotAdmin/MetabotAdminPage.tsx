@@ -7,7 +7,12 @@ import { c, jt, t } from "ttag";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
-import { skipToken, useGetCollectionQuery } from "metabase/api";
+import {
+  skipToken,
+  useGetCollectionQuery,
+  useListMetabotsQuery,
+  useUpdateMetabotMutation,
+} from "metabase/api";
 import { useAdminSetting } from "metabase/api/utils/settings";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
@@ -15,6 +20,10 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
 import { useToast } from "metabase/common/hooks";
 import { getIcon } from "metabase/lib/icon";
+import {
+  FIXED_METABOT_ENTITY_IDS,
+  FIXED_METABOT_IDS,
+} from "metabase/metabot/constants";
 import {
   Box,
   Button,
@@ -25,14 +34,6 @@ import {
   Switch,
   Text,
 } from "metabase/ui";
-import {
-  useListMetabotsQuery,
-  useUpdateMetabotMutation,
-} from "metabase-enterprise/api";
-import {
-  FIXED_METABOT_ENTITY_IDS,
-  FIXED_METABOT_IDS,
-} from "metabase-enterprise/metabot/constants";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type {
   Collection,

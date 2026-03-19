@@ -3,8 +3,8 @@ import userEvent from "@testing-library/user-event";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { useDispatch } from "metabase/lib/redux";
+import { useMetabotAgent } from "metabase/metabot/hooks";
 import { setIsNativeEditorOpen } from "metabase/query_builder/actions";
-import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
@@ -25,7 +25,8 @@ jest.mock("metabase/lib/redux", () => ({
   useDispatch: jest.fn(),
 }));
 
-jest.mock("metabase-enterprise/metabot/hooks", () => ({
+jest.mock("metabase/metabot/hooks", () => ({
+  ...jest.requireActual("metabase/metabot/hooks"),
   useMetabotAgent: jest.fn(),
 }));
 

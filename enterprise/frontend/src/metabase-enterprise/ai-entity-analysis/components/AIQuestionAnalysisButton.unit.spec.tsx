@@ -1,13 +1,10 @@
-import { combineReducers } from "@reduxjs/toolkit";
 import userEvent from "@testing-library/user-event";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { mockStreamedEndpoint } from "metabase-enterprise/api/ai-streaming/test-utils";
-import { MetabotProvider } from "metabase-enterprise/metabot/context";
-import { metabotReducer } from "metabase-enterprise/metabot/state";
-import { getMetabotInitialState } from "metabase-enterprise/metabot/state/reducer-utils";
+import { mockStreamedEndpoint } from "metabase/api/ai-streaming/test-utils";
+import { MetabotProvider } from "metabase/metabot/context";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
@@ -33,24 +30,12 @@ function setup({
     }),
   });
 
-  const metabotState = getMetabotInitialState();
-
   renderWithProviders(
     <MetabotProvider>
       <AIQuestionAnalysisButton />
     </MetabotProvider>,
     {
-      storeInitialState: createMockState({
-        settings,
-        plugins: {
-          metabotPlugin: metabotState,
-        },
-      } as any),
-      customReducers: {
-        plugins: combineReducers({
-          metabotPlugin: metabotReducer,
-        }),
-      },
+      storeInitialState: createMockState({ settings }),
     },
   );
 }

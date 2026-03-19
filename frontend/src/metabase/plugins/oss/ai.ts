@@ -1,30 +1,18 @@
-import type { ActionCreatorWithOptionalPayload } from "@reduxjs/toolkit";
-import type { BaseQueryFn } from "@reduxjs/toolkit/query";
-import type { TypedUseLazyQuery } from "@reduxjs/toolkit/src/query/react/buildHooks";
 import type { ComponentType } from "react";
-import React from "react";
+import type React from "react";
 
-import type { MetabotContext } from "metabase/metabot";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import type Question from "metabase-lib/v1/Question";
 import type {
-  CollectionId,
   DashCardId,
   DatabaseId,
   GenerateSqlResponse,
-  MetabotGenerateContentRequest,
-  MetabotGenerateContentResponse,
-  MetabotSuggestedTransform,
   ReferencedEntityId,
-  SearchModel,
-  SuggestedTransform,
   Timeline,
   TimelineEvent,
-  TransformId,
   VisualizationDisplay,
 } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 export type PluginAiSqlFixer = {
   FixSqlQueryButton: ComponentType<{
@@ -56,44 +44,11 @@ export type PluginAIEntityAnalysis = {
   };
 };
 
-type PluginMetabotConfig = {
-  emptyText?: string;
-  hideSuggestedPrompts?: boolean;
-  preventClose?: boolean;
-  preventRetryMessage?: boolean;
-  suggestionModels: (SearchModel | "transform" | "user")[];
-};
-
 type PluginMetabotType = {
-  Metabot: (props: {
-    hide?: boolean;
-    config?: PluginMetabotConfig;
-  }) => React.ReactElement | null;
-  MetabotChat: (props: {
-    config?: PluginMetabotConfig;
-  }) => React.ReactElement | null;
-  defaultMetabotContextValue: MetabotContext;
-  MetabotContext: React.Context<MetabotContext>;
-  getMetabotProvider: () => ComponentType<{ children: React.ReactNode }>;
   getAdminRoutes: (() => JSX.Element[]) | null;
   getMetabotRoutes: () => React.ReactElement | null;
   getMetabotQueryBuilderRoute: () => React.ReactElement | null;
-  getNewMenuItemAIExploration: (
-    hasDataAccess: boolean,
-    collectionId?: CollectionId,
-    isMetabotEnabled?: boolean,
-  ) => React.ReactElement | undefined;
-  getMetabotVisible: (state: State, conversation_id: string) => boolean;
-  MetabotAppBarButton: ComponentType;
-  MetabotDataStudioButton: ComponentType;
-  MetabotDataStudioSidebar: ComponentType;
   MetabotSlackSetup: ComponentType;
-  useLazyMetabotGenerateContentQuery: TypedUseLazyQuery<
-    MetabotGenerateContentResponse,
-    MetabotGenerateContentRequest,
-    BaseQueryFn
-  >;
-  MetabotThinkingStyles: { [key: string]: string };
   useMetabotSQLSuggestion: (options: {
     databaseId: DatabaseId | null;
     bufferId: string;
@@ -113,13 +68,6 @@ type PluginMetabotType = {
     reset: () => void;
     suggestionModels: SuggestionModel[];
   };
-  getMetabotSuggestedTransform: (
-    state: State,
-    transformId?: TransformId,
-  ) => MetabotSuggestedTransform | undefined;
-  deactivateSuggestedTransform: ActionCreatorWithOptionalPayload<
-    SuggestedTransform["id"] | undefined
-  >;
 };
 
 const getDefaultPluginAiSqlFixer = (): PluginAiSqlFixer => ({
@@ -135,49 +83,15 @@ const getDefaultPluginAIEntityAnalysis = (): PluginAIEntityAnalysis => ({
   canAnalyzeQuestion: () => false,
   chartAnalysisRenderFormats: {},
 });
+
 export const PLUGIN_AI_ENTITY_ANALYSIS: PluginAIEntityAnalysis =
   getDefaultPluginAIEntityAnalysis();
 
-const getDefaultMetabotContextValue = (): MetabotContext => ({
-  prompt: "",
-  setPrompt: () => {},
-  promptInputRef: undefined,
-  getChatContext: () => ({}) as any,
-  registerChatContextProvider: () => () => {},
-  suggestionActions: null,
-  setSuggestionActions: () => {},
-});
-
-const defaultMetabotContextValue: MetabotContext =
-  getDefaultMetabotContextValue();
-
 const getDefaultPluginMetabot = (): PluginMetabotType => ({
-  Metabot: (_props: { hide?: boolean; config?: PluginMetabotConfig }) =>
-    null as React.ReactElement | null,
-  MetabotChat: (_props: { config?: PluginMetabotConfig }) =>
-    null as React.ReactElement | null,
-  defaultMetabotContextValue,
-  MetabotContext: React.createContext(defaultMetabotContextValue),
-  getMetabotProvider: () => {
-    return ({ children }) =>
-      React.createElement(
-        PLUGIN_METABOT.MetabotContext.Provider,
-        { value: PLUGIN_METABOT.defaultMetabotContextValue },
-        children,
-      );
-  },
   getAdminRoutes: null,
   getMetabotRoutes: () => null,
   getMetabotQueryBuilderRoute: () => null,
-  getNewMenuItemAIExploration: () => undefined,
-  getMetabotVisible: () => false,
-  MetabotAppBarButton: PluginPlaceholder,
-  MetabotDataStudioButton: PluginPlaceholder,
-  MetabotDataStudioSidebar: PluginPlaceholder,
   MetabotSlackSetup: PluginPlaceholder,
-  useLazyMetabotGenerateContentQuery:
-    (() => []) as unknown as PluginMetabotType["useLazyMetabotGenerateContentQuery"],
-  MetabotThinkingStyles: {},
   useMetabotSQLSuggestion: (options) => {
     // lazy require to avoid loading metabase/api and its cljs dependencies at
     // module init time. without this the jest unit tests will break.
@@ -187,14 +101,6 @@ const getDefaultPluginMetabot = (): PluginMetabotType => ({
     } = require("metabase/metabot/hooks/use-metabot-sql-suggestion");
     return useMetabotSQLSuggestion(options);
   },
-  getMetabotSuggestedTransform: () => undefined,
-  deactivateSuggestedTransform: (() => ({
-    type: "",
-    payload: undefined,
-    match: () => false,
-  })) as unknown as ActionCreatorWithOptionalPayload<
-    SuggestedTransform["id"] | undefined
-  >,
 });
 export const PLUGIN_METABOT: PluginMetabotType = getDefaultPluginMetabot();
 

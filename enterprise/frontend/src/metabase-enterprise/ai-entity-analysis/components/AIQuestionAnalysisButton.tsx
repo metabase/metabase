@@ -1,8 +1,10 @@
 import { t } from "ttag";
 
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
-import { useMetabotEnabledEmbeddingAware } from "metabase/metabot/hooks";
-import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
+import {
+  useMetabotAgent,
+  useMetabotEnabledEmbeddingAware,
+} from "metabase/metabot/hooks";
 
 import { trackExplainChartClicked } from "../analytics";
 

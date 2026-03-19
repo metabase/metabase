@@ -6,7 +6,7 @@ import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensio
 import type {
   DatabaseId,
   GenerateSqlResponse,
-  ReferencedEntity,
+  ReferencedEntityId,
 } from "metabase-types/api";
 
 export interface UseMetabotSQLSuggestionOptions {
@@ -32,7 +32,7 @@ export function useMetabotSQLSuggestion({
     }: {
       prompt: string;
       sourceSql?: string;
-      referencedEntities?: ReferencedEntity[];
+      referencedEntities?: ReferencedEntityId[];
     }) => {
       if (!databaseId) {
         const errText = t`No database selected.`;

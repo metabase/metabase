@@ -4,8 +4,8 @@ import {
   AdminNavItem,
   AdminNavWrapper,
 } from "metabase/admin/components/AdminNav";
+import { FIXED_METABOT_IDS } from "metabase/metabot/constants";
 import { Flex } from "metabase/ui";
-import { FIXED_METABOT_IDS } from "metabase-enterprise/metabot/constants";
 
 export function MetabotNavPane() {
   return (
