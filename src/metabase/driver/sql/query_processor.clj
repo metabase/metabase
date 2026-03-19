@@ -1044,7 +1044,7 @@
   (let [aggregations (vec aggregations)]
     (into []
           (keep (fn [clause]
-                  (->honeysql driver [::over-order-bys aggregations clause])))
+                  (->honeysql driver (make-clause driver ::over-order-bys aggregations clause))))
           order-bys)))
 
 (defmulti remapped-order-by?

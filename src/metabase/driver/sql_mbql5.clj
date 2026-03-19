@@ -101,7 +101,7 @@
                     {:clause clause, :uuid agg-uuid}))))
 
 (defmethod sql.qp/->honeysql [:sql-mbql5 ::sql.qp/over-order-bys]
-  [driver [_op aggregations [direction _opts expr]]]
+  [driver [_op _opts aggregations [direction _dir-opts expr]]]
   (if (lib.util/clause-of-type? expr :aggregation)
     (let [[_op _opts agg-uuid] expr
           aggregation (m/find-first #(= (lib.options/uuid %) agg-uuid) aggregations)]
