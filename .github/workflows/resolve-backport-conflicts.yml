@@ -126,7 +126,7 @@ jobs:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY_BACKPORT_FIX }}
           model: "claude-sonnet-4-20250514"
           max_turns: "${{ github.event.inputs.max_turns || '50' }}"
-          allowed_tools: "Read,Edit,Write,Bash(git:*),Bash(grep:*),Bash(find:*),Bash(ls:*),Bash(cat:*),Bash(clojure:*),Bash(bun run type-check-pure:*),Bash(bun run lint-eslint:*),Bash(./bin/mage cljfmt*),Glob,Grep"
+          allowed_tools: "Read,Edit,Write,Bash(git:*),Bash(grep:*),Bash(find:*),Bash(ls:*),Bash(cat:*),Bash(clojure:*),Bash(bun run type-check-pure:*),Bash(bun run lint-eslint:*),Bash(./bin/mage cljfmt:*),Glob,Grep"
           prompt: |
             You are resolving git cherry-pick merge conflicts for a Metabase backport PR.
 
