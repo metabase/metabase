@@ -7,7 +7,7 @@ import {
 import * as Urls from "metabase/lib/urls";
 import {
   PLUGIN_DEPENDENCIES,
-  PLUGIN_TRANSFORMS_INSPECTOR,
+  PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
 import type { Transform, TransformId } from "metabase-types/api";
 
@@ -36,7 +36,7 @@ function getTabs(id: TransformId): PaneHeaderTab[] {
     },
   ];
 
-  if (PLUGIN_TRANSFORMS_INSPECTOR.isEnabled) {
+  if (PLUGIN_TRANSFORMS_PYTHON.isEnabled) {
     const inspectUrl = Urls.transformInspect(id);
     tabs.push({
       label: t`Inspect`,

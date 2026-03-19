@@ -2,7 +2,6 @@ import { IndexRoute, Route } from "react-router";
 
 import {
   PLUGIN_DEPENDENCIES,
-  PLUGIN_TRANSFORMS_INSPECTOR,
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
 
@@ -40,7 +39,7 @@ export function getDataStudioTransformRoutes() {
         <Route path=":transformId/edit" component={TransformQueryPage} />
         <Route path=":transformId/run" component={TransformRunPage} />
         <Route path=":transformId/settings" component={TransformSettingsPage} />
-        {PLUGIN_TRANSFORMS_INSPECTOR.getInspectorRoutes()}
+        {PLUGIN_TRANSFORMS_PYTHON.getInspectorRoutes()}
         {PLUGIN_DEPENDENCIES.isEnabled && (
           <Route
             path=":transformId/dependencies"

@@ -131,7 +131,6 @@ export {
 } from "./oss/snippets";
 export {
   PLUGIN_TRANSFORMS,
-  PLUGIN_TRANSFORMS_INSPECTOR,
   PLUGIN_TRANSFORMS_PYTHON,
   PLUGIN_DEPENDENCIES,
   type TransformsPlugin,
