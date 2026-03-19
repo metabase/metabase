@@ -348,6 +348,7 @@
   (when-not (slackbot.config/setup-complete?)
     (log/errorf "[slackbot] Slack setup incomplete (site_url=%s sso_enabled=%s client_id=%s client_secret=%s signing_secret=%s app_token=%s encryption=%s)"
                 (boolean (system/site-url))
+                (boolean (sso-settings/slack-connect-enabled))
                 (boolean (sso-settings/slack-connect-client-id))
                 (boolean (sso-settings/slack-connect-client-secret))
                 (boolean (slackbot.settings/metabot-slack-signing-secret))
