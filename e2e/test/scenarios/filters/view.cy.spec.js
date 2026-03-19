@@ -112,7 +112,6 @@ describe("scenarios > question > view", () => {
         cy.findByPlaceholderText("Search the list").type("Balistreri-Muller");
         cy.findByText("Add filter").click();
       });
-      cy.findAllByTestId("run-button").first().click();
       cy.findAllByText("CATEGORY").first().click();
       H.popover().within(() => {
         cy.findByPlaceholderText("Search the list").type("Widget");
