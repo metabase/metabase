@@ -46,7 +46,7 @@ Analyze the issue description and comments to determine which database is needed
 
 Read the reference template at `.claude/fixbot/fixbot-agent.md` to understand the required structure.
 
-Then write a completed agent prompt to `/tmp/metabase-fixbot-<ISSUE_ID>-prompt.md` using the `Read` tool (to satisfy the read-before-write requirement — the file won't exist yet, and that's fine) followed by the `Write` tool. Do NOT use Bash `cat`/`echo` to create this file.
+Then write a completed agent prompt to `.fixbot/metabase-fixbot-<ISSUE_ID>-prompt.md` using the `Read` tool (to satisfy the read-before-write requirement — the file won't exist yet, and that's fine) followed by the `Write` tool. Do NOT use Bash `cat`/`echo` to create this file.
 
 The prompt should include:
 
@@ -69,7 +69,7 @@ Use the port computation: ports are based on a deterministic slot derived from t
 
 Run:
 ```
-./bin/mage -fixbot-auto-fix <ISSUE_ID> --app-db <DB> --prompt-file /tmp/metabase-fixbot-<ISSUE_ID>-prompt.md --branch '<BRANCH_NAME>'
+./bin/mage -fixbot-auto-fix <ISSUE_ID> --app-db <DB> --prompt-file .fixbot/metabase-fixbot-<ISSUE_ID>-prompt.md --branch '<BRANCH_NAME>'
 ```
 
 Where:

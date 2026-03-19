@@ -177,18 +177,22 @@ config:
 (defn- write-status-file!
   "Write a human-readable status file for the fixbot status pane."
   [slot app-db-kw]
-  (let [dir      (str u/project-root-directory "/.fixbot")
-        _        (.mkdirs (java.io.File. dir))
-        path     (str dir "/status.txt")
-        db-info  (case app-db-kw
-                   :postgres (str "DB=postgres:" (port-for :postgres-app slot))
-                   :mysql    (str "DB=mysql:" (port-for :mysql slot))
-                   :mariadb  (str "DB=mariadb:" (port-for :mariadb slot))
-                   :h2       "DB=h2 (embedded)")
-        content  (str "Status: " db-info
-                      " | HTTP=localhost:" (port-for :jetty slot)
-                      " | Frontend=localhost:" (port-for :frontend-dev slot)
-                      " | nREPL=" (port-for :nrepl slot))]
+  (let [dir        (str u/project-root-directory "/.fixbot")
+        _          (.mkdirs (java.io.File. dir))
+        path       (str dir "/status.txt")
+        issue-path (str dir "/issue.txt")
+        issue-line (when (.exists (java.io.File. issue-path))
+                     (str/trim (slurp issue-path)))
+        db-info    (case app-db-kw
+                     :postgres (str "DB=postgres:" (port-for :postgres-app slot))
+                     :mysql    (str "DB=mysql:" (port-for :mysql slot))
+                     :mariadb  (str "DB=mariadb:" (port-for :mariadb slot))
+                     :h2       "DB=h2 (embedded)")
+        content    (str (when (seq issue-line)
+                          (str issue-line "\n"))
+                        " | Metabase=localhost:" (port-for :jetty slot)
+                        db-info
+                        "\nEnvironment starting...")]
     (spit path content)
     (println (c/green "Wrote " path))))
 
@@ -250,10 +254,12 @@ config:
       (when (.exists (java.io.File. config-path))
         (.delete (java.io.File. config-path))
         (println (c/green "Removed " config-path))))
-    (let [status-path (str "/tmp/metabase-fixbot-" (worktree-name) "-status.txt")]
-      (when (.exists (java.io.File. status-path))
-        (.delete (java.io.File. status-path))
-        (println (c/green "Removed " status-path))))))
+    (let [fixbot-dir (str u/project-root-directory "/.fixbot")]
+      (when (.isDirectory (java.io.File. fixbot-dir))
+        (doseq [f (.listFiles (java.io.File. fixbot-dir))]
+          (.delete ^java.io.File f))
+        (.delete (java.io.File. fixbot-dir))
+        (println (c/green "Removed " fixbot-dir))))))
 
 (defn- print-status! []
   (check-docker!)

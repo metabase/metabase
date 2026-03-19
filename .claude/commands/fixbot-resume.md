@@ -43,11 +43,11 @@ If this succeeds, the session is resumed — report success and stop.
    gh pr view <NUM> --json title,body
    ```
 
-6. **Write the agent prompt** — read the reference template at `.claude/fixbot/fixbot-agent.md`, then write a completed prompt to `/tmp/metabase-fixbot-<ISSUE_ID>-prompt.md`. Include all the same content as `/fixbot` step 5 (issue details, comments, database info, credentials, workflow instructions, TDD requirements, etc.).
+6. **Write the agent prompt** — read the reference template at `.claude/fixbot/fixbot-agent.md`, then write a completed prompt to `.fixbot/metabase-fixbot-<ISSUE_ID>-prompt.md`. Include all the same content as `/fixbot` step 5 (issue details, comments, database info, credentials, workflow instructions, TDD requirements, etc.).
 
 7. **Launch the session:**
    ```
-   ./bin/mage -fixbot-auto-fix <ISSUE_ID> --app-db <DB> --prompt-file /tmp/metabase-fixbot-<ISSUE_ID>-prompt.md --branch '<BRANCH>'
+   ./bin/mage -fixbot-auto-fix <ISSUE_ID> --app-db <DB> --prompt-file .fixbot/metabase-fixbot-<ISSUE_ID>-prompt.md --branch '<BRANCH>'
    ```
 
 8. Tell the user the session was created from the existing branch.
