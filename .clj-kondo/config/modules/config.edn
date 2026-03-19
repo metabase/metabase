@@ -743,7 +743,8 @@
 
   lib
   {:team "Querying"
-   :api  #{metabase.lib.core
+   :api  #{metabase.lib.convert
+           metabase.lib.core
            metabase.lib.equality
            metabase.lib.init
            metabase.lib.metadata

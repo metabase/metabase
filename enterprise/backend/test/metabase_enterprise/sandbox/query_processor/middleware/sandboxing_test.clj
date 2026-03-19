@@ -51,14 +51,14 @@
 
   ([table-key field-key]
    (let [field-id (mt/id table-key field-key)
-         field-name (t2/select-one-fn :name :model/Field :id field-id)
-         opts {::add/source-table (mt/id table-key)
-               ::add/source-alias field-name
-               ::add/desired-alias field-name}]
+         field-name (t2/select-one-fn :name :model/Field :id field-id)]
      (qp.store/with-metadata-provider (mt/id)
        (sql.qp/->honeysql
         (or driver/*driver* :h2)
-        (sql.qp/mbql-clause-with-opts driver/*driver* :field opts field-id))))))
+        (sql.qp/mbql-clause driver/*driver*
+                            [:field field-id {::add/source-table (mt/id table-key)
+                                              ::add/source-alias field-name
+                                              ::add/desired-alias field-name}]))))))
 
 (defn- venues-category-mbql-gtap-def []
   {:query (mt/mbql-query venues)

@@ -8,6 +8,7 @@
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.options :as lib.options]
    [metabase.lib.util :as lib.util]
    [metabase.util.honey-sql-2 :as h2x]
@@ -59,8 +60,8 @@
     [nil nil]
     stages)))
 
-(defmethod sql.qp/->honeysql [:sql-mbql5 ::sql.qp/mbql]
-  [driver [_ _opts stages]]
+(defmethod sql.qp/compile-mbql :sql-mbql5
+  [driver stages]
   (stages->honeysql driver stages))
 
 (defmethod sql.qp/apply-top-level-clause [:sql-mbql5 :filters]
@@ -102,16 +103,6 @@
       (when-not (#'sql.qp/contains-clause? #{:cum-count :cum-sum :offset} aggregation)
         [(sql.qp/->honeysql driver aggregation) direction]))
     [(sql.qp/->honeysql driver expr) direction]))
-
-;; TODO(rileythomp, 2026-03-19): Check if we actually need the options here and below.
-;; If not, update the `:sql` implementations to use `mbql-clause`
-(defmethod sql.qp/->honeysql [:sql-mbql5 :cum-count]
-  [driver [_ opts expr-or-nil]]
-  (sql.qp/cum-count->honeysql driver expr-or-nil opts))
-
-(defmethod sql.qp/->honeysql [:sql-mbql5 :cum-sum]
-  [driver [_ opts expr]]
-  (sql.qp/cum-sum->honeysql driver expr opts))
 
 (defmethod sql.qp/->honeysql [:sql-mbql5 :distinct-where]
   [driver [_ opts arg pred]]
@@ -170,7 +161,9 @@
             :between :replace :substring
             :datetime-add :datetime-subtract :datetime-diff
             ;; n-ary
-            :+ :- :* :/ :and :or :concat :coalesce]]
+            :+ :- :* :/ :and :or :concat :coalesce
+            ;; cumulative functions
+            :cum-sum :cum-count]]
   (defmethod sql.qp/->honeysql [:sql-mbql5 op]
     [driver [op _opts & args]]
     ((get-method sql.qp/->honeysql [:sql op]) driver (into [op] args))))
@@ -184,9 +177,14 @@
     [driver [op opts & args]]
     ((get-method sql.qp/->honeysql [:sql op]) driver (into [op] (cond-> (vec args) opts (conj opts))))))
 
-(defmethod sql.qp/mbql-clause-with-opts :sql-mbql5
-  [_driver tag opts & args]
-  (into [tag (merge {:lib/uuid (str (random-uuid))} opts)] args))
+(defmethod sql.qp/mbql-clause :sql-mbql5
+  [driver [tag & args :as clause]]
+  (if (lib.options/uuid clause)
+    clause ;; return the clause as is if it is MBQL5
+    (if (simple-keyword? tag)
+      (lib.convert/->pMBQL clause) ;; convert the clause to MBQL5 if it's a regular MBQL4 clause
+      (into [tag {:lib/uuid (str (random-uuid))}] ;; handle custom namespaced keywords
+            (map (fn [x] (sql.qp/mbql-clause driver x))) args))))
 
 (defmethod sql.params.substitution/field->clause :sql-mbql5
   [driver field other-opts]

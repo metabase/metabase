@@ -371,20 +371,13 @@
         day-of-week-of-start-of-year (date driver :day-of-week start-of-year)]
     (h2x/- 8 day-of-week-of-start-of-year)))
 
-(defmulti mbql-clause-with-opts
-  "Returns an MBQL clause given with the given tag, arguments, and options."
-  {:added "0.60.0" :arglists '([driver tag opts & args])}
+(defmulti mbql-clause
+  "Returns an MBQL clause in the desired MBQL format of the driver."
+  {:added "0.60.0" :arglists '([driver clause])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defmethod mbql-clause-with-opts :sql
-  [_driver tag opts & args]
-  (cond-> (into [tag] args) opts (conj opts)))
-
-(defn mbql-clause
-  "Return an mbql clause given a tag and arguments"
-  [driver tag & args]
-  (apply mbql-clause-with-opts driver tag nil args))
+(defmethod mbql-clause :sql [_driver clause] clause)
 
 (defn- week-of-year
   "Calculate the week of year for `:us` or `:instance` `mode`. Returns a Honey SQL expression.
@@ -414,7 +407,7 @@
                                           (h2x/- days-till-start-of-first-full-week)
                                           (h2x// 7.0)
                                           (compiled))]
-    (->> (mbql-clause driver :ceil total-full-weeks)
+    (->> (mbql-clause driver [:ceil total-full-weeks])
          (->honeysql driver)
          (h2x/+ 1)
          (->integer driver))))
@@ -753,7 +746,7 @@
                              (apply h2x/identifier :field source-query-alias source-alias)
 
                              (literal-text-value? expression-definition)
-                             (mbql-clause driver ::expression-literal-text-value expression-definition)
+                             (mbql-clause driver [::expression-literal-text-value expression-definition])
 
                              ;; Handle raw string literals (not wrapped in :value) - needed for
                              ;; expression definitions that are just string literals, e.g. from
@@ -761,10 +754,8 @@
                              ;; the string becomes a parameter placeholder without type info,
                              ;; which some databases (like H2) can't handle.
                              (string? expression-definition)
-                             (mbql-clause driver ::expression-literal-text-value
-                                          ;; TODO(rileythomp, 2026-03-19): Should this be `:base-type` for `:sql-mbql5`?
-                                          ;; Or should `mbql-clause-with-opts :sql-mbql5` convert the option keys?
-                                          (mbql-clause-with-opts driver :value {:base_type :type/Text} expression-definition))
+                             (mbql-clause driver [::expression-literal-text-value
+                                                  [:value expression-definition {:base_type :type/Text}]])
 
                              :else
                              expression-definition))))
@@ -1043,7 +1034,7 @@
   (let [aggregations (vec aggregations)]
     (into []
           (keep (fn [clause]
-                  (->honeysql driver (mbql-clause driver ::over-order-bys aggregations clause))))
+                  (->honeysql driver (mbql-clause driver [::over-order-bys aggregations clause]))))
           order-bys)))
 
 (defmulti remapped-order-by?
@@ -1173,23 +1164,17 @@
 ;;;    sum(count()) OVER (ORDER BY 1 ROWS UNBOUNDED PRECEDING)
 ;;;
 ;;; if the database supports ordering by SELECT expression position
-(defn cum-count->honeysql
-  "Implementation for `->honeysql [driver :cum-count]`"
-  [driver expr-or-nil opts]
+(defmethod ->honeysql [:sql :cum-count]
+  [driver [_cum-count expr-or-nil]]
   ;; a cumulative count with no breakouts doesn't really mean anything, just compile it as a normal count.
   (if (empty? (:breakout *inner-query*))
-    ;; TODO(rileythomp, 2026-03-19): Determine if we need the opts here or if we can just
-    ;; use `mbql-clause`. Simplify here and cum-sum below accordingly if so.
-    (->honeysql driver (mbql-clause-with-opts driver :count opts expr-or-nil))
+    (->honeysql driver (mbql-clause driver [:count expr-or-nil]))
     (cumulative-aggregation-over-rows
      driver
+     ;; Don't call `mbql-clause` on this because this is honeysql, not MBQL
      [:sum (if expr-or-nil
              [:count (->honeysql driver expr-or-nil)]
              [:count :*])])))
-
-(defmethod ->honeysql [:sql :cum-count]
-  [driver [_cum-count expr-or-nil]]
-  (cum-count->honeysql driver expr-or-nil nil))
 
 ;;;    cum-sum(total)
 ;;;
@@ -1202,19 +1187,15 @@
 ;;;    sum(sum(total)) OVER (ORDER BY 1 ROWS UNBOUNDED PRECEDING)
 ;;;
 ;;; if the database supports ordering by SELECT expression position
-(defn cum-sum->honeysql
-  "Implementation for `->honeysql [driver :cum-sum]`"
-  [driver expr opts]
-  ;; a cumulative sum with no breakouts doesn't really mean anything, just compile it as a normal sum.
-  (if (empty? (:breakout *inner-query*))
-    (->honeysql driver (mbql-clause-with-opts driver :sum opts expr))
-    (cumulative-aggregation-over-rows
-     driver
-     [:sum [:sum (->honeysql driver expr)]])))
-
 (defmethod ->honeysql [:sql :cum-sum]
   [driver [_cum-sum expr]]
-  (cum-sum->honeysql driver expr nil))
+  ;; a cumulative sum with no breakouts doesn't really mean anything, just compile it as a normal sum.
+  (if (empty? (:breakout *inner-query*))
+    (->honeysql driver (mbql-clause driver [:sum expr]))
+    (cumulative-aggregation-over-rows
+     driver
+     ;; Don't call `mbql-clause` on this because this is honeysql, not MBQL
+     [:sum [:sum (->honeysql driver expr)]])))
 
 (defmethod ->honeysql [:sql :offset]
   [driver [_offset _opts expr n]]
@@ -1729,7 +1710,7 @@
                                                   (not case-sensitive) u/lower-case-en))
          (->honeysql driver)
          (transform-literal-like-pattern-honeysql driver))
-    (let [expr (->honeysql driver (apply mbql-clause driver :concat (remove nil? [pre arg post])))]
+    (let [expr (->honeysql driver (mbql-clause driver (into [:concat] (remove nil?) [pre arg post])))]
       (if case-sensitive
         expr
         [:lower expr]))))
@@ -1752,14 +1733,14 @@
   "For := and :!=. Comparing UUID fields against non-uuid values requires casting."
   [driver field arg]
   (if (and (uuid-field? field)
-             ;; If the arg is a uuid we are happy especially for joins (#46558)
+           ;; If the arg is a uuid we are happy especially for joins (#46558)
            (not (uuid-field? arg))
-             ;; If we could not convert the arg to a UUID then we have to cast the Field.
-             ;; This will not hit indexes, but then we're passing an arg that can only be compared textually.
+           ;; If we could not convert the arg to a UUID then we have to cast the Field.
+           ;; This will not hit indexes, but then we're passing an arg that can only be compared textually.
            (not (uuid? (->honeysql driver arg)))
-             ;; Check for inlined values
+           ;; Check for inlined values
            (not (= (:database-type (h2x/type-info (->honeysql driver arg))) "uuid")))
-    (mbql-clause driver ::cast-to-text field)
+    (mbql-clause driver [::cast-to-text field])
     field))
 
 (mu/defn maybe-cast-uuid-for-text-compare
@@ -1767,7 +1748,7 @@
    Comparing UUID fields against with these operations requires casting as the right side will have `%` for `LIKE` operations."
   [driver field]
   (if (uuid-field? field)
-    (mbql-clause driver ::cast-to-text field)
+    (mbql-clause driver [::cast-to-text field])
     field))
 
 (defmethod ->honeysql [:sql ::cast]
@@ -2205,9 +2186,15 @@
       driver-api/->legacy-MBQL
       :query))
 
-(defmethod ->honeysql [:sql ::mbql]
-  [driver [_ mbql-query]]
-  (apply-clauses driver {} mbql-query))
+(defmulti compile-mbql
+  "Compiles an MBQL inner query to HoneySQL."
+  {:added "0.60.0" :arglists '([driver mbql])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod compile-mbql :sql
+  [driver query]
+  (apply-clauses driver {} query))
 
 (mu/defn mbql->honeysql :- [:or :map [:tuple [:= :inline] :map]]
   "Build the HoneySQL form we will compile to SQL and execute."
@@ -2217,7 +2204,7 @@
     (binding [driver/*driver* driver]
       (let [inner-query (preprocess driver query)]
         (log/tracef "Compiling MBQL query\n%s" (u/pprint-to-str 'magenta inner-query))
-        (u/prog1 (->honeysql driver (mbql-clause driver ::mbql inner-query))
+        (u/prog1 (compile-mbql driver inner-query)
           (log/debugf "\nHoneySQL Form: %s\n%s" (u/emoji "🍯") (u/pprint-to-str 'cyan <>))
           (driver-api/debug> (list '🍯 <>)))))
 

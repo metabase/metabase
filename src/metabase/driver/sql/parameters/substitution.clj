@@ -269,12 +269,13 @@
 (defn field->clause*
   "Returns an MBQL `:field` clause with the relevant options for a field filter."
   [driver field other-opts]
-  (sql.qp/mbql-clause-with-opts driver :field
-                                (merge {:base-type                     (:base-type field)
-                                        driver-api/qp.add.source-table (:table-id field)
-                                        ::compiling-field-filter?      true}
-                                       other-opts)
-                                (:id field)))
+  (sql.qp/mbql-clause driver
+                      [:field
+                       (:id field)
+                       (merge {:base-type                     (:base-type field)
+                               driver-api/qp.add.source-table (:table-id field)
+                               ::compiling-field-filter?      true}
+                              other-opts)]))
 
 (defmulti field->clause
   "Wrapper around `field->clause*`"
@@ -284,8 +285,7 @@
 
 (mu/defmethod field->clause :sql :- driver-api/mbql.schema.field
   [driver field other-opts]
-  (driver-api/normalize driver-api/mbql.schema.field
-                        (field->clause* driver field other-opts)))
+  (driver-api/normalize driver-api/mbql.schema.field (field->clause* driver field other-opts)))
 
 ;; TODO(rileythomp, 2026-03-16): Update the schema to work with mbql4 and mbql5
 (mu/defn- field->field-filter-clause ; :- driver-api/mbql.schema.field

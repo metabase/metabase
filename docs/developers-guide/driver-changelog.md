@@ -7,7 +7,8 @@ title: Driver interface changelog
 ## Metabase 0.60.0
 
 - Added the following driver multimethods to support MBQL5 compilation migration:
-  - `mbql-clause-with-opts` - Returns an MBQL clause given with the given tag, arguments, and options.
+  - `compile-mbql` - Compiles an MBQL inner query to HoneySQL.
+  - `mbql-clause` - Returns an MBQL clause in the desired MBQL format of the driver.
   - `field->clause` - Returns an MBQL `:field` clause with the relevant options for a field filter.
   - `clause-value-idx` - Returns the index of the value in a clause.
   - `expression-by-name` - Gets an expression from a query or stage (`*inner-query`) by name.
