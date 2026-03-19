@@ -66,9 +66,13 @@ export function TablePane({
                 <FieldList
                   fields={table.fields}
                   onFieldClick={(field) => {
-                    if (typeof field.id === "number") {
-                      onItemClick({ type: "field", id: field.id });
-                    }
+                    onItemClick({
+                      type: "field",
+                      id:
+                        typeof field.id === "number"
+                          ? field.id
+                          : field.getUniqueId(),
+                    });
                   }}
                 />
                 {table.connectedTables() && (
