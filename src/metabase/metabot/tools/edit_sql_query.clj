@@ -2,8 +2,8 @@
   "Tool for editing existing SQL queries."
   (:require
    [clojure.string :as str]
-   [metabase.metabot.tools.sql.common :as metabot-v3.tools.sql.common]
-   [metabase.metabot.tools.sql.validation :as metabot-v3.tools.sql.validation]
+   [metabase.metabot.tools.sql.common :as metabot.tools.sql.common]
+   [metabase.metabot.tools.sql.validation :as metabot.tools.sql.validation]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
@@ -46,7 +46,7 @@
       :else
       (str/replace-first sql old_string new_string))))
 
-(mu/defn edit-sql-query :- ::metabot-v3.tools.sql.common/operation-result
+(mu/defn edit-sql-query :- ::metabot.tools.sql.common/operation-result
   "Edit an existing SQL query from in-memory state.
 
   Parameters:
@@ -76,13 +76,13 @@
 
       (let [;; Apply edits sequentially
             new-sql (reduce apply-sql-edit current-sql edits)
-            dialect (metabot-v3.tools.sql.validation/query->dialect query)
+            dialect (metabot.tools.sql.validation/query->dialect query)
 
             {:keys [valid? transpiled-sql] :as validation-result}
-            (metabot-v3.tools.sql.validation/validate-sql dialect new-sql)]
+            (metabot.tools.sql.validation/validate-sql dialect new-sql)]
         (merge {:validation-result validation-result}
                (when valid?
-                 (let [updated-query (metabot-v3.tools.sql.common/update-query-sql query transpiled-sql)]
+                 (let [updated-query (metabot.tools.sql.common/update-query-sql query transpiled-sql)]
                    {:action-result {:query-id      query-id
                                     :query-content transpiled-sql
                                     :query         updated-query

@@ -9,7 +9,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.metabot.api :as api]
    [metabase.metabot.context :as metabot-v3.context]
-   [metabase.metabot.util :as metabot-v3.u]
+   [metabase.metabot.util :as metabot.u]
    [metabase.util :as u])
   (:import
    (java.io ByteArrayOutputStream)
@@ -66,7 +66,7 @@
                                                                            :state           state})
                                                                          consume-streaming-response
                                                                          str/split-lines
-                                                                         (metabot-v3.u/aisdk->messages "assistant"))]
+                                                                         (metabot.u/aisdk->messages "assistant"))]
                                                          (run! handle-reaction result)
                                                          result)))
                                                    (catch Throwable e

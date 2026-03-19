@@ -1,12 +1,12 @@
 (ns metabase.metabot.suggested-prompts
   (:require
    [medley.core :as m]
+   [metabase.lib-be.core :as lib-be]
    [metabase.metabot.client :as metabot-v3.client]
    [metabase.metabot.example-question-generator :as native-generator]
-   [metabase.metabot.settings :as metabot-v3.settings]
-   [metabase.metabot.tools.entity-details :as metabot-v3.tools.entity-details]
-   [metabase.metabot.tools.util :as metabot-v3.tools.u]
-   [metabase.lib-be.core :as lib-be]
+   [metabase.metabot.settings :as metabot.settings]
+   [metabase.metabot.tools.entity-details :as metabot.tools.entity-details]
+   [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -43,7 +43,7 @@
   On native failure, falls back to the Python ai-service and logs the error.
   When `use-native-agent` is false, calls the Python ai-service directly."
   [payload]
-  (if (metabot-v3.settings/use-native-agent)
+  (if (metabot.settings/use-native-agent)
     (try
       (log/info "Using native generator for example questions"
                 {:table-count  (count (:tables payload))
@@ -65,7 +65,7 @@
   [metabot-id & {:as opts}]
   (let [opts (merge default-opts opts)]
     (lib-be/with-metadata-provider-cache
-      (let [{metrics :metric models :model} (->> (metabot-v3.tools.u/get-metrics-and-models metabot-id opts)
+      (let [{metrics :metric models :model} (->> (metabot.tools.u/get-metrics-and-models metabot-id opts)
                                                  (sort-by :view_count >)
                                                  (group-by :type))
             ;; Limit to 5 metrics and 5 models
@@ -73,7 +73,7 @@
             {metrics :metric, models :model}
             (->> (for [[[card-type database-id] group-cards] (group-by (juxt :type :database_id) limited-cards)
                        detail (map (fn [detail card] (assoc detail ::origin card))
-                                   (metabot-v3.tools.entity-details/cards-details card-type database-id group-cards nil)
+                                   (metabot.tools.entity-details/cards-details card-type database-id group-cards nil)
                                    group-cards)]
                    detail)
                  (group-by :type))

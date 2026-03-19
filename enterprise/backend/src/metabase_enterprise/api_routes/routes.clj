@@ -8,7 +8,7 @@
    [metabase-enterprise.action-v2.api]
    [metabase-enterprise.advanced-config.api.logs]
    [metabase-enterprise.advanced-permissions.api.routes]
-   [metabase-enterprise.agent-api.api]
+   [metabase-enterprise.agent-api.workspace :as agent-api.workspace]
    [metabase-enterprise.ai-entity-analysis.api]
    [metabase-enterprise.ai-sql-fixer.api]
    [metabase-enterprise.ai-sql-generation.api]
@@ -27,8 +27,7 @@
    [metabase-enterprise.embedding-hub.api]
    [metabase-enterprise.gsheets.api :as gsheets.api]
    [metabase-enterprise.library.api]
-   [metabase-enterprise.metabot-v3.api]
-   [metabase-enterprise.metabot-v3.tools.api]
+   [metabase-enterprise.metabot.tools.api]
    [metabase-enterprise.permission-debug.api]
    [metabase-enterprise.remote-sync.api]
    [metabase-enterprise.replacement.api]
@@ -43,16 +42,15 @@
    [metabase-enterprise.transforms.api]
    [metabase-enterprise.upload-management.api]
    [metabase-enterprise.workspaces.api]
+   [metabase.agent-api.api :as agent-api]
    [metabase.api.macros :as api.macros]
    [metabase.api.util.handlers :as handlers]
    [metabase.util.i18n :refer [deferred-tru]]))
 
-(comment metabase-enterprise.advanced-config.api.logs/keep-me
-         metabase-enterprise.agent-api.api/keep-me)
+(comment metabase-enterprise.advanced-config.api.logs/keep-me)
 
 (def ^:private required-feature->message
   {:advanced-permissions       (deferred-tru "Advanced Permissions")
-   :agent-api                  (deferred-tru "Agent API")
    :ai-sql-fixer               (deferred-tru "AI SQL Fixer")
    :ai-sql-generation          (deferred-tru "AI SQL Generation")
    :ai-entity-analysis         (deferred-tru "AI Entity Analysis")
@@ -90,7 +88,7 @@
   `/ee/<feature>/`).
 
   TODO -- Please fix them! See #22687"
-  {"/agent"             (premium-handler metabase-enterprise.agent-api.api/routes :agent-api)
+  {"/agent"             {"/v1" {"/workspace" (premium-handler (agent-api.workspace/workspace-handler agent-api/+auth) :workspaces)}}
    "/moderation-review" metabase-enterprise.content-verification.api.routes/routes
    "/mt"                metabase-enterprise.sandbox.api.routes/sandbox-routes
    "/table"             metabase-enterprise.sandbox.api.routes/sandbox-table-routes})
@@ -126,8 +124,7 @@
                                        (premium-handler :etl-connections))
    "/library"                      (premium-handler metabase-enterprise.library.api/routes :library)
    "/logs"                         (premium-handler 'metabase-enterprise.advanced-config.api.logs :audit-app)
-   "/metabot-tools"                metabase-enterprise.metabot-v3.tools.api/routes
-   "/metabot-v3"                   metabase-enterprise.metabot-v3.api/routes
+   "/metabot-tools"                metabase-enterprise.metabot.tools.api/routes
    "/permission_debug"             (premium-handler metabase-enterprise.permission-debug.api/routes :advanced-permissions)
    ;; TODO (Ngoc 2026-03-25) -- use :transforms-advanced feature flag once it exists
    "/transforms"                   (premium-handler metabase-enterprise.transforms.api/routes :transforms-python)

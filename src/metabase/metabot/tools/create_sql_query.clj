@@ -1,11 +1,11 @@
 (ns metabase.metabot.tools.create-sql-query
   "Tool for creating new SQL queries."
   (:require
-   [metabase.metabot.tools.sql.common :as metabot-v3.tools.sql.common]
-   [metabase.metabot.tools.sql.validation :as metabot-v3.tools.sql.validation]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.metabot.tools.sql.common :as metabot.tools.sql.common]
+   [metabase.metabot.tools.sql.validation :as metabot.tools.sql.validation]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -32,7 +32,7 @@
                      :database-id database-id})))
   (api/read-check :model/Database database-id))
 
-(mu/defn create-sql-query :- ::metabot-v3.tools.sql.common/operation-result
+(mu/defn create-sql-query :- ::metabot.tools.sql.common/operation-result
   "Create a new SQL query in memory.
 
   Parameters:
@@ -55,10 +55,10 @@
   ;; Validate access
   (validate-database-access database-id)
 
-  (let [dialect (metabot-v3.tools.sql.validation/database-id->dialect database-id)
+  (let [dialect (metabot.tools.sql.validation/database-id->dialect database-id)
 
         {:keys [valid? transpiled-sql] :as validation-result}
-        (metabot-v3.tools.sql.validation/validate-sql dialect sql)]
+        (metabot.tools.sql.validation/validate-sql dialect sql)]
     (merge {:validation-result validation-result}
            (when valid?
              (let [;; Create the in-memory query structure
