@@ -82,6 +82,9 @@ jobs:
           echo ""
           # First call: show human-readable output for debugging
           ./bin/mage -driver-decisions "${MAGE_ARGS[@]}"
+          echo ""
+          echo "Want to force-run a specific driver? Add a ci:run-<driver> or ci:run-all-drivers label to your PR."
+          echo "Run './bin/mage -driver-decisions -h' locally for the full list of drivers and labels."
           # Second call: output only key=value lines for GITHUB_OUTPUT
           ./bin/mage -driver-decisions "${MAGE_ARGS[@]}" --github-output-only >> $GITHUB_OUTPUT
         shell: bash
