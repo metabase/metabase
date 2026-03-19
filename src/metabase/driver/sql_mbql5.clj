@@ -118,7 +118,7 @@
 
 (defmethod sql.qp/->honeysql [:sql-mbql5 :sum-where]
   [driver [_ opts arg pred]]
-  (sql.qp/->honeysql driver [:sum  opts [:case opts [[pred arg]] 0.0]]))
+  (sql.qp/->honeysql driver [:sum opts [:case opts [[pred arg]] 0.0]]))
 
 (defmethod sql.qp/->honeysql [:sql-mbql5 :count-where]
   [driver [_ opts pred]]
@@ -158,27 +158,22 @@
             :length :trim :ltrim :rtrim :upper :lower ::sql.qp/cast-to-text
             :integer :float  :floor :ceil :round :abs :log :exp :sqrt
             :avg :median :stddev :var :sum :min :max :count :distinct
+            :field :expression :datetime
             ;; binary
             := :!= :> :>= :< :<=
             :power :percentile
             :time :temporal-extract
             :absolute-datetime :relative-datetime
+            :contains :starts-with :ends-with
             ;; ternary
             :between :replace :substring
             :datetime-add :datetime-subtract :datetime-diff
             ;; n-ary
             :+ :- :* :/ :and :or :concat :coalesce]]
   (defmethod sql.qp/->honeysql [:sql-mbql5 op]
-    [driver [op _opts & args]]
-    ((get-method sql.qp/->honeysql [:sql op]) driver (into [op] args))))
-
-(doseq [op [;; unary
-            :field :expression :datetime
-            ;; binary
-            :contains :starts-with :ends-with]]
-  (defmethod sql.qp/->honeysql [:sql-mbql5 op]
     [driver [op opts & args]]
-    ((get-method sql.qp/->honeysql [:sql op]) driver (into [op] (conj (vec args) opts)))))
+    ((get-method sql.qp/->honeysql [:sql op]) driver (into [op] (cond-> (vec args)
+                                                                  opts (conj opts))))))
 
 (defmethod sql.qp/field-clause->alias :sql-mbql5
   [driver [clause-type opts id-or-name]]

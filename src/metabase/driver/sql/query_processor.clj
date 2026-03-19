@@ -723,7 +723,7 @@
 
 (defmulti literal-text-value?
   "Get the text value from a clause"
-  {:added "0.60.0 " :arglists '([driver clause])}
+  {:added "0.60.0" :arglists '([driver clause])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -739,7 +739,7 @@
 
 (defmulti expression-by-name
   "Get an expression from a query or stage by name"
-  {:added "0.60.0 " :arglists '([driver expression-name])}
+  {:added "0.60.0" :arglists '([driver expression-name])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -1202,7 +1202,7 @@
 (defn cum-sum->honeysql
   "Implementation for `->honeysql [driver :cum-sum]`"
   [driver expr opts]
-  ;; a cumulative count with no breakouts doesn't really mean anything, just compile it as a normal count.
+  ;; a cumulative sum with no breakouts doesn't really mean anything, just compile it as a normal sum.
   (if (empty? (:breakout *inner-query*))
     (->honeysql driver (make-clause-with-opts driver :sum opts expr))
     (cumulative-aggregation-over-rows
