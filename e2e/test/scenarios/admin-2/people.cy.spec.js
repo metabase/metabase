@@ -336,7 +336,7 @@ describe("scenarios > admin > people", () => {
         );
         cy.findByRole("textbox")
           .invoke("val")
-          .should("contain", "password-reset");
+          .should("contain", "reset_password");
         cy.button("Done").click();
       });
 
