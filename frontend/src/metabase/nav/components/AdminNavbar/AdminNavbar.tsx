@@ -1,33 +1,25 @@
 import { useClickOutside } from "@mantine/hooks";
+import cx from "classnames";
 import { useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { Link } from "metabase/common/components/Link";
 import { LogoIcon } from "metabase/common/components/LogoIcon";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { getIsPaidPlan } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { Button, Icon } from "metabase/ui";
+import { Button, Flex, Icon, Stack } from "metabase/ui";
 import type { AdminPath } from "metabase-types/store";
 
+import { ADMIN_NAVBAR_HEIGHT } from "../../constants";
 import { AppSwitcher } from "../AppSwitcher";
 import StoreLink from "../StoreLink";
 
 import { AdminNavItem } from "./AdminNavItem";
-import { AdminNavLink } from "./AdminNavItem.styled";
-import AdminNavCS from "./AdminNavbar.module.css";
-import {
-  AdminButtons,
-  AdminLogoContainer,
-  AdminLogoLink,
-  AdminLogoText,
-  AdminMobileNavBarItems,
-  AdminMobileNavbar,
-  AdminNavbarItems,
-  AdminNavbarRoot,
-  MobileHide,
-} from "./AdminNavbar.styled";
+import AdminNavItemS from "./AdminNavItem.module.css";
+import S from "./AdminNavbar.module.css";
 
 interface AdminNavbarProps {
   path: string;
@@ -63,21 +55,48 @@ export const AdminNavbar = ({
   );
 
   return (
-    <AdminNavbarRoot
+    <Flex
+      component="nav"
+      className={S.root}
       data-element-id="navbar-root"
       data-testid="admin-navbar"
       aria-label={t`Navigation bar`}
+      px="md"
+      py="sm"
+      h={ADMIN_NAVBAR_HEIGHT}
+      align="center"
+      justify="space-between"
+      flex="0 0 auto"
     >
-      <AdminLogoLink to="/admin">
-        <AdminLogoContainer>
+      <Link to="/admin" className={S.logoLink}>
+        <Flex
+          className={S.logoContainer}
+          miw={32}
+          maw="20rem"
+          h={32}
+          align="center"
+          justify="center"
+        >
           <LogoIcon dark />
           {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings */}
-          <AdminLogoText>{t`Metabase Admin`}</AdminLogoText>
-        </AdminLogoContainer>
-      </AdminLogoLink>
+          <div className={S.logoText}>{t`Metabase Admin`}</div>
+        </Flex>
+      </Link>
 
-      <MobileHide>
-        <AdminNavbarItems data-testid="admin-navbar-items">
+      <Flex
+        className={S.mobileHide}
+        align="center"
+        miw={0}
+        flex="1 1 0"
+        pl="xl"
+      >
+        <Flex
+          component="ul"
+          gap="xs"
+          flex="0 1 auto"
+          miw={0}
+          data-testid="admin-navbar-items"
+        >
           {adminPaths.map(({ name, key, path }) => (
             <AdminNavItem
               name={name}
@@ -86,15 +105,15 @@ export const AdminNavbar = ({
               currentPath={currentPath}
             />
           ))}
-        </AdminNavbarItems>
+        </Flex>
 
         {!isPaidPlan && isAdmin && <StoreLink />}
-      </MobileHide>
-      <AdminButtons>
+      </Flex>
+      <Flex ml="auto" gap="sm">
         <MobileNavbar adminPaths={adminPaths} currentPath={currentPath} />
         <AppSwitcher />
-      </AdminButtons>
-    </AdminNavbarRoot>
+      </Flex>
+    </Flex>
   );
 };
 
@@ -109,34 +128,37 @@ const MobileNavbar = ({ adminPaths, currentPath }: AdminMobileNavbarProps) => {
   const ref = useClickOutside(() => setMobileNavOpen(false));
 
   return (
-    <AdminMobileNavbar ref={ref}>
+    <div className={S.mobileNavbar} ref={ref}>
       <Button
         onClick={() => setMobileNavOpen((prev) => !prev)}
         variant="subtle"
         p="0.25rem"
         leftSection={
-          <Icon
-            name="burger"
-            size={32}
-            className={AdminNavCS.MobileHamburgerIcon}
-          />
+          <Icon name="burger" size={32} className={S.mobileHamburgerIcon} />
         }
       />
 
       {mobileNavOpen && (
-        <AdminMobileNavBarItems aria-label={t`Navigation links`}>
+        <Stack
+          component="ul"
+          className={S.mobileNavBarItems}
+          ta="right"
+          p="md"
+          gap="xl"
+        >
           {adminPaths.map(({ name, key, path }) => (
-            <AdminNavLink
+            <Link
               to={path}
               key={key}
-              isSelected={currentPath.startsWith(path)}
-              isInMobileNav
+              className={cx(AdminNavItemS.navLink, {
+                [AdminNavItemS.selected]: currentPath.startsWith(path),
+              })}
             >
               {name}
-            </AdminNavLink>
+            </Link>
           ))}
-        </AdminMobileNavBarItems>
+        </Stack>
       )}
-    </AdminMobileNavbar>
+    </div>
   );
 };

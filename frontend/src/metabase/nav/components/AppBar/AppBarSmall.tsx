@@ -1,9 +1,11 @@
+import cx from "classnames";
 import { useCallback, useState } from "react";
 
 import { Nav as DetailViewNav } from "metabase/detail-view/components";
 import { SearchBar } from "metabase/nav/components/search/SearchBar";
+import { APP_BAR_HEIGHT, APP_SUBHEADER_HEIGHT } from "metabase/nav/constants";
 import { PLUGIN_METABOT } from "metabase/plugins";
-import { Box, Flex } from "metabase/ui";
+import { Box, Flex, rem } from "metabase/ui";
 import type { DetailViewState } from "metabase-types/store";
 
 import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
@@ -12,13 +14,7 @@ import { AppSwitcher } from "../AppSwitcher";
 import { SearchButton } from "../search/SearchButton/SearchButton";
 
 import { AppBarLogo } from "./AppBarLogo";
-import {
-  AppBarHeader,
-  AppBarLogoContainer,
-  AppBarSearchContainer,
-  AppBarSubheader,
-  AppBarToggleContainer,
-} from "./AppBarSmall.styled";
+import S from "./AppBarSmall.module.css";
 import { AppBarToggle } from "./AppBarToggle";
 
 export interface AppBarSmallProps {
@@ -68,17 +64,23 @@ const AppBarSmall = ({
   return (
     <Box bg="background-primary">
       {isHeaderVisible && (
-        <AppBarHeader isSubheaderVisible={isSubheaderVisible}>
+        <Box
+          className={cx(S.header, {
+            [S.headerWithBorder]: !isSubheaderVisible,
+          })}
+          h={APP_BAR_HEIGHT}
+          px="md"
+        >
           <Flex justify="space-between" align="center" gap="sm" h="100%">
-            <AppBarToggleContainer>
+            <Box flex="0 0 auto">
               <AppBarToggle
                 isSmallAppBar
                 isNavBarEnabled={isNavBarEnabled}
                 isNavBarOpen={isNavBarVisible}
                 onToggleClick={onToggleNavbar}
               />
-            </AppBarToggleContainer>
-            <AppBarSearchContainer>
+            </Box>
+            <Box flex="1 1 auto">
               {isSearchVisible &&
                 (isEmbeddingIframe ? (
                   <SearchBar
@@ -90,22 +92,35 @@ const AppBarSmall = ({
                     <SearchButton />
                   </Flex>
                 ))}
-            </AppBarSearchContainer>
+            </Box>
             {!isEmbeddingIframe && <PLUGIN_METABOT.MetabotAppBarButton />}
             {isAppSwitcherVisible && <AppSwitcher />}
           </Flex>
-          <AppBarLogoContainer isVisible={isLogoVisible && !isSearchActive}>
+          <Box
+            className={cx(S.logoContainer, {
+              [S.logoContainerVisible]: isLogoVisible && !isSearchActive,
+              [S.logoContainerHidden]: !(isLogoVisible && !isSearchActive),
+            })}
+          >
             <AppBarLogo
               isSmallAppBar
               isLogoVisible={isLogoVisible}
               isNavBarEnabled={isNavBarEnabled}
               onLogoClick={onCloseNavbar}
             />
-          </AppBarLogoContainer>
-        </AppBarHeader>
+          </Box>
+        </Box>
       )}
       {isSubheaderVisible && (
-        <AppBarSubheader isNavBarOpen={isNavBarVisible}>
+        <Box
+          className={cx(S.subheader, {
+            [S.subheaderWithBorder]: isNavBarVisible,
+          })}
+          h={APP_SUBHEADER_HEIGHT}
+          py="md"
+          px="md"
+          pl={rem(20)}
+        >
           {detailView ? (
             <DetailViewNav
               rowName={detailView.rowName}
@@ -116,7 +131,7 @@ const AppBarSmall = ({
           ) : isCollectionPathVisible ? (
             <CollectionBreadcrumbs />
           ) : null}
-        </AppBarSubheader>
+        </Box>
       )}
     </Box>
   );

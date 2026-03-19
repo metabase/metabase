@@ -1,0 +1,43 @@
+.navLink {
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  transition: all 200ms;
+  border-radius: var(--mantine-radius-xs);
+  color: color-mix(
+    in srgb,
+    var(--mb-color-text-primary-inverse),
+    transparent 35%
+  );
+  background-color: transparent;
+
+  @media (--breakpoint-max-lg) {
+    padding-inline: 0.85rem;
+  }
+
+  &:hover {
+    color: var(--mb-color-text-primary-inverse);
+    background-color: var(--mb-color-admin-navbar-inverse);
+  }
+}
+
+.navLinkOverflowHidden {
+  overflow: hidden;
+}
+
+.selected {
+  color: var(--mb-color-text-primary-inverse);
+  background-color: var(--mb-color-admin-navbar-inverse);
+}
+
+.navListItem {
+  display: inline-flex;
+  flex-shrink: 1;
+  min-width: 0;
+  white-space: nowrap;
+  justify-content: center;
+}
+
+.navListItemActive {
+  min-width: fit-content;
+}

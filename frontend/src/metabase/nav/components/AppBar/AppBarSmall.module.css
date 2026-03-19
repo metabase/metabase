@@ -1,0 +1,36 @@
+.header {
+  position: relative;
+  border-bottom: 1px solid transparent;
+}
+
+.headerWithBorder {
+  border-color: var(--mb-color-border);
+}
+
+.subheader {
+  transition: border-bottom-color 200ms ease;
+  border-bottom: 1px solid transparent;
+}
+
+.subheaderWithBorder {
+  border-bottom-color: var(--mb-color-border);
+}
+
+.logoContainer {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  transition: none;
+}
+
+.logoContainerVisible {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.3s linear 0.2s;
+}
+
+.logoContainerHidden {
+  opacity: 0;
+  visibility: hidden;
+}

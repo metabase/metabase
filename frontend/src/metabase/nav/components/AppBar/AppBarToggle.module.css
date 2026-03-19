@@ -1,0 +1,16 @@
+.sidebarButton {
+  cursor: pointer;
+}
+
+.sidebarIcon {
+  color: var(--mb-color-brand);
+  display: block;
+}
+
+.sidebarIconInactive {
+  color: var(--mb-color-text-secondary);
+
+  &:hover {
+    color: var(--mb-color-brand);
+  }
+}

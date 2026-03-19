@@ -1,3 +1,57 @@
-.MobileHamburgerIcon {
+.root {
+  --mb-color-text-primary-inverse: var(--mantine-color-white);
+
+  background: var(--mb-color-admin-navbar);
+  color: var(--mb-color-text-primary-inverse);
+  font-size: var(--mantine-font-size-md);
+  z-index: 4;
+}
+
+.mobileHide {
+  @media (--breakpoint-max-md) {
+    display: none;
+  }
+}
+
+.mobileNavbar {
+  display: none;
+
+  @media (--breakpoint-max-md) {
+    display: flex;
+    align-items: center;
+    gap: var(--mantine-spacing-sm);
+  }
+}
+
+.mobileNavBarItems {
+  position: fixed;
+  top: 65px;
+  max-height: calc(100vh - 65px);
+  border-radius: 0 0 0 var(--mantine-radius-md);
+  right: 0;
+  background: var(--mb-color-admin-navbar);
+  overflow-y: auto;
+}
+
+.logoContainer {
+  overflow: hidden;
+}
+
+.logoText {
+  margin-left: var(--mantine-spacing-md);
+  font-weight: 700;
+
+  @media (--breakpoint-max-lg) {
+    display: none;
+  }
+}
+
+.logoLink {
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+}
+
+.mobileHamburgerIcon {
   color: var(--mb-color-text-primary-inverse);
 }

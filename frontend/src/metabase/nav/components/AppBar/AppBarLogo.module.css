@@ -1,0 +1,4 @@
+.logoLink {
+  cursor: pointer;
+  border-radius: var(--mantine-radius-sm);
+}
