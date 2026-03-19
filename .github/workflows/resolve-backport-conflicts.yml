@@ -121,7 +121,7 @@ jobs:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY_BACKPORT_FIX }}
           model: "claude-sonnet-4-20250514"
           max_turns: "30"
-          allowed_tools: "Read,Edit,Write,Bash(git:*),Bash(grep:*),Bash(find:*),Bash(ls:*),Bash(cat:*),Bash(clojure:*),Bash(bun run type-check-pure:*),Glob,Grep"
+          allowed_tools: "Read,Edit,Write,Bash(git:*),Bash(grep:*),Bash(find:*),Bash(ls:*),Bash(cat:*),Bash(clojure:*),Bash(bun run type-check-pure:*),Bash(bun run lint-eslint:*),Bash(./bin/mage cljfmt*),Glob,Grep"
           prompt: |
             You are resolving git cherry-pick merge conflicts for a Metabase backport PR.
 
@@ -153,7 +153,16 @@ jobs:
             3. Resolve each conflict by editing the file to remove ALL conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`) and leave only the correct resolved code
             4. The goal is to apply the INTENT of the backported change while adapting it to the release branch's code structure
             5. Verify no conflict markers remain by searching for them
-            6. Validate resolved files before committing:
+            6. Auto-format resolved files:
+               - **Clojure/ClojureScript** (.clj, .cljc, .cljs): run cljfmt to fix formatting:
+                 ```
+                 ./bin/mage cljfmt-files <file1> <file2> ...
+                 ```
+               - **TypeScript/JavaScript** (.ts, .tsx, .js, .jsx): run eslint with auto-fix:
+                 ```
+                 bun run lint-eslint --fix
+                 ```
+            7. Validate resolved files before committing:
                - **Clojure/ClojureScript** (.clj, .cljc, .cljs): run clj-kondo to verify syntax:
                  ```
                  clojure -M:kondo --lint <file1> <file2> ...
@@ -162,8 +171,8 @@ jobs:
                  ```
                  bun run type-check-pure
                  ```
-               If either tool reports errors, fix them before proceeding. Warnings CANNOT be ignored.
-               Repeat until all errors are resolved.
+               If either tool reports errors or warnings, fix them before proceeding. CI treats kondo warnings as errors.
+               Repeat steps 6-7 until all errors are resolved.
             7. Once all files are clean, stage and complete the cherry-pick:
                ```
                git add -A
