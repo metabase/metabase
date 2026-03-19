@@ -204,7 +204,11 @@ export function seriesSetting({
       title: t`Y-axis position`,
       widget: "segmentedControl",
       default: null,
-      getHidden: (single) => single.card.display === "row",
+      getHidden: (single, _seriesSettings, extra) =>
+        single.card.display === "row" ||
+        extra?.settings?.["graph.split_panels"] === true,
+      getDefault: (_single, _seriesSettings, extra) =>
+        extra?.settings?.["graph.split_panels"] === true ? "left" : null,
       getProps: () => ({
         options: [
           { name: t`Auto`, value: null },
