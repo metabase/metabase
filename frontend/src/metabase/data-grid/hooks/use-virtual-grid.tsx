@@ -65,7 +65,7 @@ export const useVirtualGrid = <TData,>({
   });
 
   onRowHeightChangeRef.current = ({ elements, height }: HeightChangeEvent) => {
-    const element = elements?.values().next().value;
+    const element = elements[0];
     if (!element) {
       return;
     }

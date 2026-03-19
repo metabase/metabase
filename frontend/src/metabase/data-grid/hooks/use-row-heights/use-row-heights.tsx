@@ -114,7 +114,12 @@ export const useRowHeights = <TData extends RowData, TValue>({
         return;
       }
       const height = updateRowHeight(index, sync);
-      const elements = elementsByRowIndex.current.get(index);
+      const cachedElements = elementsByRowIndex.current.get(index);
+      const elements =
+        cachedElements
+          ?.values()
+          .toArray()
+          .filter(({ isConnected }) => isConnected) ?? [];
       onHeightChange?.({ index, height, elements });
     },
     [updateRowHeight, onHeightChange],

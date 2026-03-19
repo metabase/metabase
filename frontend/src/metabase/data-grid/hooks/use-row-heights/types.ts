@@ -10,5 +10,5 @@ export type UseRowHeightsResult = {
 export type HeightChangeEvent = {
   index: number;
   height: number;
-  elements: Set<Element> | undefined;
+  elements: Element[];
 };
