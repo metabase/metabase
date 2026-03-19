@@ -8,17 +8,12 @@ export const Root = styled.div<{
 }>`
   margin-left: 2rem;
   margin-right: 2rem;
+  margin-bottom: 1.5em;
 
   ${(props) =>
     props.hidden &&
     css`
       display: none;
-    `}
-
-  ${(props) =>
-    !props.hidden &&
-    css`
-      margin-bottom: "1.5em";
     `}
 
   ${(props) =>
