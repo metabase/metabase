@@ -18,6 +18,7 @@ import {
 import { PLUGIN_REMOTE_SYNC, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { getMetadata } from "metabase/selectors/metadata";
+import { useRegisterMetabotTransformContext } from "metabase/transforms/hooks/use-register-transform-metabot-context";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { Box, Center } from "metabase/ui";
 import { useDispatch, useSelector } from "metabase/utils/redux";
@@ -31,7 +32,6 @@ import type {
 
 import { TransformEditor } from "../../components/TransformEditor";
 import { NAME_MAX_LENGTH } from "../../constants";
-import { useRegisterMetabotTransformContext } from "../../hooks/use-register-transform-metabot-context";
 import { useSourceState } from "../../hooks/use-source-state";
 import { getValidationResult, isCompleteSource } from "../../utils";
 
@@ -119,7 +119,16 @@ function NewTransformPageBody({
   const [isModalOpened, { open: openModal, close: closeModal }] =
     useDisclosure();
   const dispatch = useDispatch();
-  useRegisterMetabotTransformContext(undefined, source);
+  const pythonTestState = PLUGIN_TRANSFORMS_PYTHON.useTestPythonTransform(
+    source.type === "python" ? source : undefined,
+  );
+  useRegisterMetabotTransformContext(
+    undefined,
+    source,
+    source.type === "python"
+      ? pythonTestState?.executionResult.error?.message
+      : undefined,
+  );
 
   const validationResult = useMemo(() => {
     return source.type === "query"
@@ -183,6 +192,7 @@ function NewTransformPageBody({
               proposedSource={
                 proposedSource?.type === "python" ? proposedSource : undefined
               }
+              testState={pythonTestState!}
               isEditMode
               onChangeSource={setSourceAndRejectProposed}
               onAcceptProposed={acceptProposed}
