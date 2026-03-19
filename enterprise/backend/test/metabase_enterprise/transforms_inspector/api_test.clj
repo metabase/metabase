@@ -1,5 +1,5 @@
 (ns ^:mb/driver-tests metabase-enterprise.transforms-inspector.api-test
-  "Tests for /api/ee/transform-inspector endpoints."
+  "Tests for transform inspector endpoints at /api/ee/transforms/:id/inspect*."
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
