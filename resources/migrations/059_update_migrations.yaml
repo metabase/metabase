@@ -1226,34 +1226,6 @@ databaseChangeLog:
             constraintName: unique_python_library_entity_id
 
   - changeSet:
-      id: v59.2026-01-27T13:00:00
-      author: wotbrew
-      comment: Drop medallion names for data_layer enum use (hidden, internal instead)
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            changeSetExecuted:
-              id: v58.2026-01-27T13:00:00
-              author: wotbrew
-              changeLogFile: migrations/058_update_migrations.yaml
-      changes:
-        - sql:
-            sql: >-
-              UPDATE metabase_table
-              SET data_layer = CASE data_layer
-                WHEN 'copper' THEN 'hidden'
-                ELSE 'final'
-              END
-      rollback:
-        - sql:
-            sql: >-
-              UPDATE metabase_table
-              SET data_layer = CASE data_layer
-                WHEN 'hidden' THEN 'copper'
-                ELSE 'bronze'
-              END
-
-  - changeSet:
       id: v59.2026-01-28T10:00:00
       author: metamben
       comment: Add stale column to analysis_finding for asynchronous dependent updates
@@ -3477,7 +3449,29 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v59.2026-03-16T10:00:00
+      id: v59.2026-03-17T13:00:00
+      author: bronsa
+      comment: Drop medallion names for data_layer enum use (hidden, internal instead)
+      preConditions:
+        - onFail: MARK_RAN
+        - and:
+            - not:
+                changeSetExecuted:
+                  id: v58.2026-01-27T13:00:00
+                  author: wotbrew
+                  changeLogFile: migrations/058_update_migrations.yaml
+            - not:
+                changeSetExecuted:
+                  id: v59.2026-01-27T13:00:00
+                  author: wotbrew
+                  changeLogFile: migrations/059_update_migrations.yaml
+      runInTransaction: false
+      changes:
+        - customChange:
+            class: "metabase.app_db.custom_migrations.DropMedallionNamesForDataLayer"
+
+  - changeSet:
+      id: v59.2026-03-18T10:00:00
       author: sgavrylov
       comment: Create custom_viz_plugin table for custom visualization plugins
       preConditions:
@@ -3559,7 +3553,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v59.2026-03-16T10:00:01
+      id: v59.2026-03-18T10:00:01
       author: sgavrylov
       failOnError: false
       comment: Add unique constraint on custom_viz_plugin.repo_url
@@ -3576,7 +3570,7 @@ databaseChangeLog:
             constraintName: uq_custom_viz_plugin_repo_url
 
   - changeSet:
-      id: v59.2026-03-16T10:00:02
+      id: v59.2026-03-18T10:00:02
       author: sgavrylov
       failOnError: false
       comment: Add unique constraint on custom_viz_plugin.identifier
@@ -3593,7 +3587,7 @@ databaseChangeLog:
             constraintName: uq_custom_viz_plugin_identifier
 
   - changeSet:
-      id: v59.2026-03-16T12:00:00
+      id: v59.2026-03-18T10:00:03
       author: sgavrylov
       comment: Add enabled column to custom_viz_plugin table
       preConditions:
@@ -3615,7 +3609,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v59.2026-03-16T12:30:00
+      id: v59.2026-03-18T10:00:04
       author: sgavrylov
       comment: Add icon column to custom_viz_plugin table
       preConditions:
