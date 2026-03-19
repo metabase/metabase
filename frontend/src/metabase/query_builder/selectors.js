@@ -11,6 +11,11 @@ import { parseTimestamp } from "metabase/lib/time-dayjs";
 import { getSortedTimelines } from "metabase/lib/timelines";
 import { isNotNull } from "metabase/lib/types";
 import {
+  isQuestionDirty,
+  isQuestionRunnable,
+  isSavedQuestionChanged,
+} from "metabase/querying/common/utils/question";
+import {
   getEmbedOptions,
   getIsEmbeddingIframe,
 } from "metabase/selectors/embed";
@@ -41,11 +46,6 @@ import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 
 import { getQuestionWithDefaultVisualizationSettings } from "./actions/core/utils";
 import { createRawSeries, getWritableColumnProperties } from "./utils";
-import {
-  isQuestionDirty,
-  isQuestionRunnable,
-  isSavedQuestionChanged,
-} from "./utils/question";
 
 // This selector can be called from public questions / dashboards, which do not have state.qb
 export const getUiControls = (state) => state.qb?.uiControls;
@@ -127,11 +127,6 @@ export const getDatabaseId = createSelector(
 
 export const getTableForeignKeyReferences = (state) =>
   state.qb.tableForeignKeyReferences;
-
-export {
-  getDatabasesList,
-  getSampleDatabaseId,
-} from "metabase/querying/selectors";
 
 export const getParameters = createSelector(
   [getCard, getMetadata, getParameterValues],

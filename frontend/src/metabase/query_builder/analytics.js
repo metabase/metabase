@@ -32,13 +32,6 @@ export const trackNotebookNativePreviewShown = (question, isShown) => {
   });
 };
 
-export {
-  trackColumnCombineViaShortcut,
-  trackColumnCombineViaPlusModal,
-  trackColumnExtractViaShortcut,
-  trackColumnExtractViaPlusModal,
-} from "metabase/querying/analytics";
-
 export const trackFirstNonTableChartGenerated = (card) => {
   trackSimpleEvent({
     event: "chart_generated",

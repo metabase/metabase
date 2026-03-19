@@ -8,9 +8,9 @@ import type {
   SelectionRange,
   SidebarFeatures,
 } from "metabase/query_builder/components/NativeQueryEditor/types";
-import { QueryVisualization } from "metabase/query_builder/components/QueryVisualization";
 import { SyncedParametersList } from "metabase/query_builder/components/SyncedParametersList";
-import type { QueryModalType } from "metabase/query_builder/constants";
+import { QueryVisualization } from "metabase/querying/components/QueryVisualization/QueryVisualization";
+import type { QueryModalType } from "metabase/querying/constants";
 import { TimeseriesChrome } from "metabase/querying/filters/components/TimeseriesChrome";
 import { Box } from "metabase/ui";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";

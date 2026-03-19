@@ -7,8 +7,8 @@ import type {
   SelectionRange,
   SidebarFeatures,
 } from "metabase/query_builder/components/NativeQueryEditor/types";
-import type { QueryModalType } from "metabase/query_builder/constants";
 import { getHighlightedNativeQueryLineNumbers } from "metabase/query_builder/selectors";
+import type { QueryModalType } from "metabase/querying/constants";
 import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
