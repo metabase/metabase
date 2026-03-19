@@ -66,10 +66,11 @@ export function buildArithmeticSeriesFromResult(
       return found;
     }
     const dimensionId = dimensionMapping[entry.id];
-    if (!dimensionId || !entry.definition) {
+    const definition = definitions[entry.id]?.definition;
+    if (!dimensionId || !definition) {
       return null;
     }
-    const dimension = findDimensionById(entry.definition, dimensionId);
+    const dimension = findDimensionById(definition, dimensionId);
     if (!dimension) {
       return null;
     }

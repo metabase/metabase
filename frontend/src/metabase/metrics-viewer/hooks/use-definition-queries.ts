@@ -59,7 +59,7 @@ export interface UseDefinitionQueriesResult {
 type ParseCtx = {
   tokens: ExpressionSubToken[];
   pos: number;
-  leafRefs: Map<MetricSourceId, unknown>;
+  leafRefs: Map<number, unknown>;
 };
 
 function parseTerm(ctx: ParseCtx): unknown | null {
@@ -128,19 +128,30 @@ type DatasetRequest = {
 type ExpressionItemConfig = {
   entry: ExpressionDefinitionEntry;
   request: { definition: JsMetricDefinition };
+  modifiedDefinitions: {
+    [sourceId: MetricSourceId]: MetricDefinition;
+  };
 };
 
 function buildArithmeticRequest(
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
   tab: MetricsViewerTabState,
   tokens: ExpressionSubToken[],
-): { definition: JsMetricDefinition } | null {
+): {
+  definition: JsMetricDefinition;
+  modifiedDefinitions: {
+    [sourceId: MetricSourceId]: MetricDefinition;
+  };
+} | null {
   // Build leaf refs and projections for each metric occurrence in the expression.
   // Each occurrence gets its own unique UUID keyed by token position so the same
   // metric can appear multiple times (e.g. Revenue / Revenue).
   const leafRefs = new Map<number, unknown>();
   const projections: TypedProjection[] = [];
   const seenProjections = new Set<string>();
+  const modifiedDefinitions: {
+    [sourceId: MetricSourceId]: MetricDefinition;
+  } = {};
 
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i];
@@ -163,6 +174,8 @@ function buildArithmeticRequest(
     if (!modifiedDefinition) {
       return null;
     }
+
+    modifiedDefinitions[token.sourceId] = modifiedDefinition;
 
     const uuid = `leaf-${i}`;
     const metricId = LibMetric.sourceMetricId(modifiedDefinition);
@@ -196,6 +209,7 @@ function buildArithmeticRequest(
   }
 
   return {
+    modifiedDefinitions,
     definition: {
       expression: expr as JsMetricDefinition["expression"],
       projections,
@@ -253,12 +267,19 @@ function buildQueryItems(
     }
 
     if (isExpressionEntry(entity)) {
-      const request = buildArithmeticRequest(definitions, tab, entity.tokens);
+      const requestData = buildArithmeticRequest(
+        definitions,
+        tab,
+        entity.tokens,
+      );
 
-      if (request) {
+      if (requestData) {
         expressionItemsConfig.push({
           entry: entity,
-          request,
+          modifiedDefinitions: requestData.modifiedDefinitions,
+          request: {
+            definition: requestData?.definition,
+          },
         });
       }
     }
@@ -304,8 +325,16 @@ export function useDefinitionQueries(
     for (const { sourceId, modifiedDefinition } of datasetRequests) {
       map.set(sourceId, modifiedDefinition);
     }
+
+    for (const expressionItem of expressionItemsConfig) {
+      Object.entries(expressionItem.modifiedDefinitions).forEach(
+        ([sourceId, modifiedDefinition]) => {
+          map.set(sourceId as MetricSourceId, modifiedDefinition);
+        },
+      );
+    }
     return map;
-  }, [datasetRequests]);
+  }, [datasetRequests, expressionItemsConfig]);
 
   useEffect(() => {
     const requestsToMake = [...datasetRequests, ...expressionItemsConfig];
