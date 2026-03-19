@@ -130,6 +130,8 @@ jobs:
         if: steps.backport.outputs.has_conflicts == 'true'
         id: claude
         uses: anthropics/claude-code-base-action@beta
+        env:
+          NODE_VERSION: "22"
         with:
           # TODO: get a dedicated API key, sharing repro bot's key for now
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY_BACKPORT_FIX }}
