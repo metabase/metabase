@@ -153,6 +153,8 @@ config:
                          (str "MB_CONFIG_FILE_PATH = \"" config-path "\"")
                          "MB_EDITION = \"ee\""
                          "DISABLE_BUILD_NOTIFICATIONS = \"1\""
+                         (str "MB_PREMIUM_EMBEDDING_TOKEN = \"" (u/env "MB_PREMIUM_EMBEDDING_TOKEN") "\"")
+                         (str "LINEAR_API_KEY = \"" (u/env "LINEAR_API_KEY") "\"")
                          (str "MB_JETTY_PORT = \"" (port-for :jetty slot) "\"")
                          (str "MB_FRONTEND_DEV_PORT = \"" (port-for :frontend-dev slot) "\"")
                          (str "NREPL_PORT = \"" (port-for :nrepl slot) "\"")

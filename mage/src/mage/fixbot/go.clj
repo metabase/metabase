@@ -29,7 +29,7 @@
 (defn- generate-workmux-config
   "Generate the .workmux.yaml content."
   [issue-id issue-url app-db]
-  (str "agent: ./bin/claude-dangerous\n"
+  (str "agent: mise exec -- ./bin/claude-dangerous\n"
        "\n"
        "post_create:\n"
        "  - mkdir -p .fixbot\n"
@@ -50,17 +50,17 @@
        "    - bin/bb\n"
        "\n"
        "panes:\n"
-       "  - command: mise exec -- <agent>\n"
+       "  - command: <agent>\n"
        "    focus: true\n"
        "\n"
        "  - command: mise exec -- clj -M:dev:dev-start:drivers:drivers-dev:ee:ee-dev\n"
        "    split: horizontal\n"
-       "    size: 30%\n"
+       "    percentage: 30\n"
        "\n"
        "  - command: mise exec -- bun run build-hot\n"
        "    split: vertical\n"
        "\n"
-       "  - command: clear && ./bin/mage -fixbot-status-watch\n"
+       "  - command: ./bin/mage -fixbot-status-watch\n"
        "    split: vertical\n"
        "    size: 5\n"))
 
