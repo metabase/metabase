@@ -180,9 +180,9 @@ For Python transforms, you'll also see the transform's execution logs.
 
 ## Inspect a transform
 
-_Data Studio > Transforms > Inspect_
+_Data Studio > Transforms > [transform name] > Inspect_
 
-The transform inspector lets you poke at the input and outputs of the transform. See [Transform inspector](transform-inspector.md).
+The [transform inspector](./transform-inspector.md) lets you poke at the input and outputs of your transform.
 
 ## Transform dependencies
 
