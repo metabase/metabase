@@ -36,53 +36,61 @@ export const useRowHeights = <TData extends RowData, TValue>({
   const elementsByRowIndex = useRef<Map<number, Set<Element>>>(new Map());
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
 
-  const flushToState = useCallback((sync?: boolean) => {
-    if (sync) {
-      return setRowSizingMap(new Map(rowHeightsCache.current));
-    }
+  const measureRowHeightRef = useRef<(index: number) => number>(
+    () => defaultRowHeight,
+  );
+
+  measureRowHeightRef.current = (index: number): number =>
+    wrappedColumnsOptions.reduce((memo, column) => {
+      const value = column.accessorFn(data[index]);
+      const formattedValue = column.formatter
+        ? column.formatter(value, index, column.id)
+        : String(value);
+
+      if (value === null || value === undefined || formattedValue === "") {
+        return memo;
+      }
+      const width = tableRef.current?.getColumn(column.id)?.getSize();
+      const height = measureBodyCellDimensions(formattedValue, width).height;
+      return Math.max(height, memo);
+    }, defaultRowHeight);
+
+  const clearScheduledFlush = useCallback(() => {
     if (flushRafRef.current !== null) {
-      return;
-    }
-    flushRafRef.current = requestAnimationFrame(() => {
+      cancelAnimationFrame(flushRafRef.current);
       flushRafRef.current = null;
-      setRowSizingMap(new Map(rowHeightsCache.current));
-    });
+    }
   }, []);
 
-  const measureRowHeight = useCallback(
-    (index: number) => {
-      if (wrappedColumnsOptions.length === 0) {
-        return defaultRowHeight;
+  const flushToState = useCallback(
+    (sync?: boolean) => {
+      if (sync) {
+        clearScheduledFlush();
+        setRowSizingMap(new Map(rowHeightsCache.current));
+        return;
       }
-
-      return Math.max(
-        ...wrappedColumnsOptions.map((column) => {
-          const value = column.accessorFn(data[index]);
-          const formattedValue = column.formatter
-            ? column.formatter(value, index, column.id)
-            : String(value);
-
-          if (value == null || formattedValue === "") {
-            return defaultRowHeight;
-          }
-          const tableColumn = tableRef.current?.getColumn(column.id);
-
-          const cellDimensions = measureBodyCellDimensions(
-            formattedValue,
-            tableColumn?.getSize(),
-          );
-          return cellDimensions.height;
-        }),
-        defaultRowHeight,
-      );
+      if (flushRafRef.current !== null) {
+        return;
+      }
+      flushRafRef.current = requestAnimationFrame(() => {
+        flushRafRef.current = null;
+        setRowSizingMap(new Map(rowHeightsCache.current));
+      });
     },
-    [
-      data,
-      defaultRowHeight,
-      measureBodyCellDimensions,
-      tableRef,
-      wrappedColumnsOptions,
-    ],
+    [clearScheduledFlush],
+  );
+
+  const updateRowHeight = useCallback(
+    (index: number, sync?: boolean): number => {
+      const height = measureRowHeightRef.current(index);
+      const prev = rowHeightsCache.current.get(index);
+      rowHeightsCache.current.set(index, height);
+      if (prev !== height) {
+        flushToState(sync);
+      }
+      return height;
+    },
+    [flushToState],
   );
 
   const getRowHeight = useCallback(
@@ -97,19 +105,6 @@ export const useRowHeights = <TData extends RowData, TValue>({
       return indexRaw ? parseInt(indexRaw, 10) : null;
     },
     [datasetIndexAttributeName],
-  );
-
-  const updateRowHeight = useCallback(
-    (index: number, sync?: boolean): number => {
-      const height = measureRowHeight(index);
-      const prev = rowHeightsCache.current.get(index);
-      rowHeightsCache.current.set(index, height);
-      if (prev !== height) {
-        flushToState(sync);
-      }
-      return height;
-    },
-    [measureRowHeight, flushToState],
   );
 
   const remeasureRow = useCallback(
@@ -197,11 +192,9 @@ export const useRowHeights = <TData extends RowData, TValue>({
     remountElements();
     return () => {
       resizeObserverRef.current?.disconnect();
-      if (flushRafRef.current !== null) {
-        cancelAnimationFrame(flushRafRef.current);
-      }
+      clearScheduledFlush();
     };
-  }, [recalculate, remountElements]);
+  }, [recalculate, remountElements, clearScheduledFlush]);
 
   return {
     tableRef,
