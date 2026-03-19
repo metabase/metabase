@@ -116,6 +116,18 @@
            queries
            util}}
 
+  agent-api
+  {:team    "Metabot"
+   :api     #{metabase.agent-api.api}
+   :friends #{enterprise/agent-api}
+   :uses    #{api
+              auth-identity
+              metabot
+              query-processor
+              request
+              server
+              util}}
+
   activity-feed
   {:team "UX West"
    :api  #{metabase.activity-feed.api
@@ -340,6 +352,7 @@
            premium-features
            query-processor
            settings
+           slackbot
            system
            task
            timeline
@@ -1085,6 +1098,7 @@
            config
            events
            internal-stats
+           metabot
            settings
            startup
            task
@@ -1428,6 +1442,8 @@
            request
            session
            settings
+           slackbot
+           sso
            system
            tracing
            users
@@ -1526,18 +1542,21 @@
 
   sso
   {:team "UX West"
-   :api  #{metabase.sso.api
-           metabase.sso.core
-           metabase.sso.init
-           metabase.sso.settings}
-   :uses #{api
-           auth-identity
-           config
-           permissions
-           premium-features
-           settings
-           system
-           util}}
+   :api     #{metabase.sso.api
+              metabase.sso.api.slack-connect
+              metabase.sso.core
+              metabase.sso.init
+              metabase.sso.settings}
+   :friends #{enterprise/sso}
+   :uses    #{api
+              auth-identity
+              config
+              permissions
+              premium-features
+              request
+              settings
+              system
+              util}}
 
   startup
   {:team "DevEx"
@@ -2031,7 +2050,8 @@
 
   enterprise/agent-api
   {:team "Metabot"
-   :api  #{metabase-enterprise.agent-api.api}
+   :api  #{metabase-enterprise.agent-api.api
+            metabase-enterprise.agent-api.workspace}
    :uses #{api
            auth-identity
            query-processor
@@ -2046,6 +2066,7 @@
   {:team "Metabot"
    :api  #{metabase-enterprise.ai-entity-analysis.api}
    :uses #{api
+           metabot
            premium-features
            enterprise/metabot}}
 
@@ -2056,6 +2077,7 @@
            driver
            lib
            lib-be
+           metabot
            query-processor
            util
            enterprise/metabot}}
@@ -2065,6 +2087,7 @@
    :api  #{metabase-enterprise.ai-sql-generation.api}
    :uses #{api
            driver
+           metabot
            util
            enterprise/metabot}}
 
@@ -2073,6 +2096,7 @@
    :api  #{}
    :uses #{driver
            premium-features
+           sso
            enterprise/advanced-config
            enterprise/scim
            enterprise/semantic-search
@@ -2333,8 +2357,10 @@
               metabase.metabot.core
               metabase.metabot.init
               metabase.metabot.tools.api
-              metabase.metabot.tools.util}
+              metabase.metabot.tools.util
+              metabase.metabot.usage}
    :friends #{agent-api
+              enterprise/metabot
               slackbot}
    :uses    #{activity-feed
               analytics
@@ -2563,7 +2589,10 @@
 
   slackbot
   {:team    "Metabot"
-   :api     #{metabase.slackbot.init}
+   :api     #{metabase.slackbot.api
+              metabase.slackbot.config
+              metabase.slackbot.init
+              metabase.slackbot.settings}
    :friends #{metabot}
    :uses    #{analytics
               api

@@ -2,10 +2,10 @@
   "Snowplow and Prometheus analytics and intent-classification helpers for the metabot agent."
   (:require
    [clojure.string :as str]
-   [metabase.metabot.self :as self]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.llm.settings :as llm]
+   [metabase.metabot.self :as self]
    [metabase.util.json :as json]
    [metabase.util.log :as log]))
 

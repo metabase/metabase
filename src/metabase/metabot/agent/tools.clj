@@ -123,8 +123,7 @@
                                              (fn [args]
                                                (binding [shared/*memory-atom* memory-atom]
                                                  (tool-var args)))
-                                             (fn [args]
-                                               (tool-var args)))}]
+                                             tool-var)}]
        (assoc acc tool-name tool-def)))
    {}
    tools))

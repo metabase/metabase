@@ -78,11 +78,12 @@
   Checks for retryable HTTP status codes in ex-data (set by claude-raw/openai-raw)
   and connection-level failures."
   [^Exception e]
-  (or (retryable-status? (:status (ex-data e)))
-      ;; Connection errors (e.g. under load, connection refused/reset)
-      (instance? java.net.ConnectException e)
-      (instance? java.net.SocketTimeoutException e)
-      (instance? java.io.IOException e)))
+  (boolean
+   (or (retryable-status? (:status (ex-data e)))
+       ;; Connection errors (e.g. under load, connection refused/reset)
+       (instance? java.net.ConnectException e)
+       (instance? java.net.SocketTimeoutException e)
+       (instance? java.io.IOException e))))
 
 (defn- parse-retry-after-header
   "Extract retry-after seconds from response headers in ex-data, if present and ≤ 60s.
