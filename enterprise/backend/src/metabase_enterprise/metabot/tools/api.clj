@@ -3,10 +3,11 @@
   (:require
    [clojure.set :as set]
    [metabase-enterprise.metabot.tools.dependencies :as metabot.tools.dependencies]
-   [metabase-enterprise.metabot.tools.transforms :as metabot.tools.transforms]
+   [metabase-enterprise.metabot.tools.transforms :as metabot.tools.transforms.ee]
    [metabase.api.macros :as api.macros]
    [metabase.metabot.tools.api :as tools.api]
    [metabase.metabot.tools.deftool :refer [deftool]]
+   [metabase.metabot.tools.transforms :as metabot.tools.transforms]
    [metabase.metabot.util :as metabot.u]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -87,7 +88,7 @@
   "Get information about a Python library by path."
   {:args-schema   ::get-transform-python-library-details-arguments
    :result-schema ::get-transform-python-library-details-result
-   :handler       metabot.tools.transforms/get-transform-python-library-details})
+   :handler       metabot.tools.transforms.ee/get-transform-python-library-details})
 
 ;;; --------------------------------------------- Dependency Tools ----------------------------------------------------
 
