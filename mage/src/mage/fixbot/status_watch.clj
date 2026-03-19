@@ -127,7 +127,8 @@
     ;; Blank line + LLM status
     (when (seq llm-status)
       (.append sb "\n")
-      (.append sb llm-status)
+      (let [waiting? (re-find #"(?i)wait|test|verify|check|confirm|review|feedback|input" llm-status)]
+        (.append sb (if waiting? (colorize yellow llm-status) llm-status)))
       (.append sb "\n"))
     (.toString sb)))
 
@@ -137,30 +138,32 @@
   (let [file-path (or (first arguments) ".fixbot/llm-status.txt")
         f         (File. ^String file-path)
         mise-path "mise.local.toml"]
-    (loop [last-output ""
-           ports       nil
-           issue       nil
-           tick        0]
+    (loop [last-output    ""
+           ports          nil
+           issue          nil
+           last-be-status :unhealthy
+           last-fe-status :unhealthy
+           last-db-status :unhealthy
+           tick           0]
       (let [check?    (zero? (mod tick 5))
             ports     (or ports (when check? (load-ports mise-path)))
             issue     (or issue (when check? (load-issue-info)))
-            be-status (when (and check? ports)
-                        (check-http (str "http://localhost:" (:jetty-port ports) "/api/health") 2000))
-            fe-status (when (and check? ports)
-                        (check-http (str "http://localhost:" (:frontend-port ports)) 2000))
-            db-status (when (and check? ports (:db-port ports))
-                        (check-tcp "localhost" (:db-port ports) 2000))
+            be-status (if (and check? ports)
+                        (check-http (str "http://localhost:" (:jetty-port ports) "/api/health") 2000)
+                        last-be-status)
+            fe-status (if (and check? ports)
+                        (check-http (str "http://localhost:" (:frontend-port ports)) 2000)
+                        last-fe-status)
+            db-status (if (and check? ports (:db-port ports))
+                        (check-tcp "localhost" (:db-port ports) 2000)
+                        last-db-status)
             ;; Read LLM status from file
             llm-status (when (.exists f)
                          (str/trim (slurp f)))
-            output    (render-display issue ports
-                                      (or be-status :unhealthy)
-                                      (or fe-status :unhealthy)
-                                      (or db-status :unhealthy)
-                                      llm-status)]
+            output    (render-display issue ports be-status fe-status db-status llm-status)]
         (when (not= output last-output)
           (print "\033[2J\033[H")
           (print output)
           (flush))
         (Thread/sleep 1000)
-        (recur output ports issue (inc tick))))))
+        (recur output ports issue be-status fe-status db-status (inc tick))))))

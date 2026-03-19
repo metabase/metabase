@@ -129,6 +129,7 @@ config:
       creator: admin@example.com
       key: mb_admin_apikey
     - name: \"Regular API key\"
+      group: all-users
       description: \"API key with regular permissions.\"
       creator: admin@example.com
       key: mb_regular_apikey
