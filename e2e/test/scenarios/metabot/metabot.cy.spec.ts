@@ -206,11 +206,11 @@ d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
 
         H.lastChatMessage().should("have.text", "You, but don't tell anyone.");
 
-        H.mockMetabotResponse({ statusCode: 500 });
+        H.mockMetabotResponse({ statusCode: 200, body: apiKeyInvalidResponse });
         H.sendMetabotMessage("Who is your favorite?");
         H.lastChatMessage().should(
           "have.text",
-          "Metabot is currently offline. Please try again later.",
+          "Sorry, an error occurred: Anthropic API key expired or invalid. If this persists, please contact your administrator.",
         );
       });
 
@@ -223,10 +223,57 @@ d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
         H.assertChatVisibility("visible");
         H.lastChatMessage().should("have.text", "You, but don't tell anyone.");
       });
+
+      it("should not submit a prompt via /metabot/new when metabot is disabled", () => {
+        H.updateSetting("metabot-enabled?", false);
+        cy.visit("/metabot/new?q=Who%20is%20your%20favorite%3F");
+        cy.url().should("eq", Cypress.config().baseUrl + "/");
+        H.assertChatVisibility("not.visible");
+        cy.get("@agentReq.all").should("have.length", 0);
+      });
     });
+  });
+});
+
+describe("Metabot in full-app embedding", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.activateToken("bleeding-edge");
+  });
+
+  it("should show the metabot button when embedded-metabot-enabled? is true", () => {
+    H.updateEnterpriseSettings({ "embedded-metabot-enabled?": true });
+
+    H.visitFullAppEmbeddingUrl({
+      url: `/question/${ORDERS_BY_YEAR_QUESTION_ID}`,
+      qs: {},
+    });
+
+    H.appBar().icon("metabot").should("be.visible");
+    cy.findByLabelText("Explain this chart").should("not.exist");
+  });
+
+  it("should not show the metabot button when embedded-metabot-enabled? is false", () => {
+    H.updateEnterpriseSettings({ "embedded-metabot-enabled?": false });
+
+    H.visitFullAppEmbeddingUrl({
+      url: `/question/${ORDERS_BY_YEAR_QUESTION_ID}`,
+      qs: {},
+    });
+
+    cy.log("Wait for the question to render");
+    H.main().findByText("Filter").should("be.visible");
+
+    cy.log("Assert metabot buttons are not rendered");
+    H.appBar().icon("metabot").should("not.exist");
+    cy.findByLabelText("Explain this chart").should("not.exist");
   });
 });
 
 const whoIsYourFavoriteResponse = `0:"You, but don't tell anyone."
 2:{"type":"state","version":1,"value":{"queries":{}}}
 d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`;
+
+const apiKeyInvalidResponse = `3:"Anthropic API key expired or invalid"
+d:{"finishReason":"error","usage":{}}`;

@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type * as React from "react";
+import type { ComponentType } from "react";
 
 import PopoverS from "metabase/common/components/Popover/Popover.module.css";
 import FormS from "metabase/css/components/form.module.css";
@@ -12,8 +12,7 @@ type Props = {
   description?: string;
   hint?: string;
   hidden?: boolean;
-  disabled?: boolean;
-  widget?: React.ComponentType<{ id: string }>;
+  widget?: string | ComponentType<{ id: string }>;
   inline?: boolean;
   marginBottom?: string;
   props?: Record<string, unknown>;
@@ -29,7 +28,6 @@ const ChartSettingsWidget = ({
   description,
   hint,
   hidden,
-  disabled,
   variant = "default",
   inline = false,
   marginBottom = undefined,
@@ -49,7 +47,6 @@ const ChartSettingsWidget = ({
     <Root
       hidden={hidden}
       noPadding={noPadding}
-      disabled={disabled}
       className={cx({
         [FormS.FormField]: isFormField,
         [PopoverS.FormField]: isFormField,

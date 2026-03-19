@@ -4,7 +4,7 @@
    [metabase.util.i18n :refer [deferred-tru]]))
 
 (defsetting ai-service-base-url
-  (deferred-tru "URL for the a AI Service")
+  (deferred-tru "URL for the AI Service")
   :type       :string
   :encryption :no
   :default    "http://localhost:8000"
@@ -47,5 +47,32 @@
   :visibility :internal
   :feature    :metabot-v3
   :encryption :no
+  :export?    false
+  :doc        false)
+
+(defsetting metabot-enabled?
+  (deferred-tru "Whether Metabot is enabled for regular usage.")
+  :type       :boolean
+  :visibility :public
+  :default    true
+  :feature    :metabot-v3
+  :export?    true
+  :doc        false)
+
+(defsetting embedded-metabot-enabled?
+  (deferred-tru "Whether Metabot is enabled for embedding.")
+  :type       :boolean
+  :visibility :public
+  :default    true
+  :feature    :metabot-v3
+  :export?    true
+  :doc        false)
+
+(defsetting use-native-agent
+  (deferred-tru "Enable native Clojure agent instead of external Python AI Service.")
+  :type       :boolean
+  :default    false
+  :visibility :internal
+  :feature    :metabot-v3
   :export?    false
   :doc        false)

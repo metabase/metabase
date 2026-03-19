@@ -50,7 +50,7 @@
                               :sso-saml
                               :sso-slack
                               :support-users
-                              :transforms
+                              :transforms-basic
                               :transforms-python
                               :upload-management
                               :whitelabel
@@ -58,7 +58,8 @@
                               :database-routing
                               :tenants
                               :cloud-custom-smtp
-                              :workspaces}
+                              :workspaces
+                              :writable-connection}
     (is (= {:advanced_permissions           true
             :attached_dwh                   true
             :audit_app                      true
@@ -100,7 +101,7 @@
             :sso_slack                      true
             :support-users                  true
             :table_data_editing             false
-            :transforms                     true
+            :transforms-basic               true
             :transforms-python              true
             :upload_management              true
             :whitelabel                     true
@@ -111,5 +112,6 @@
             :etl_connections                false
             :etl_connections_pg             false
             :dependencies                   false
-            :workspaces                     true}
+            :workspaces                     true
+            :writable_connection            true}
            (:token-features (mt/user-http-request :crowberto :get 200 "session/properties"))))))

@@ -4,7 +4,6 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
-import * as DataGrid from "metabase/lib/data_grid";
 import { displayNameForColumn } from "metabase/lib/formatting";
 import type { OptionsType } from "metabase/lib/formatting/types";
 import { getSubpathSafeUrl } from "metabase/lib/urls";
@@ -13,6 +12,7 @@ import {
   ChartSettingsTableFormatting,
   isFormattable,
 } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
+import * as DataGrid from "metabase/visualizations/lib/data_grid";
 import {
   isPivoted as _isPivoted,
   columnSettings,
@@ -268,13 +268,13 @@ export class Table extends Component<TableProps, TableState> {
             ? "right"
             : "left";
         },
-        props: {
+        getProps: () => ({
           options: [
             { name: t`Left`, value: "left" },
             { name: t`Right`, value: "right" },
             { name: t`Middle`, value: "middle" },
           ],
-        },
+        }),
       },
     };
 
@@ -329,9 +329,9 @@ export class Table extends Component<TableProps, TableState> {
         title: t`Display as`,
         widget: options.length === 2 ? "radio" : "select",
         default: defaultValue,
-        props: {
+        getProps: () => ({
           options,
-        },
+        }),
       };
     }
 

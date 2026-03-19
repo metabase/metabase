@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
+   [metabase-enterprise.dependencies.async :as async]
    [metabase-enterprise.dependencies.calculation :as deps.calculation]
    [metabase-enterprise.dependencies.events]
    [metabase-enterprise.dependencies.findings :as deps.findings]
@@ -323,10 +324,11 @@
      (fn [_]
        (let [source {:type :python,
                      :source-database (mt/id),
-                     :source-tables {"orders" {:database_id (mt/id),
-                                               :schema "public",
-                                               :table "orders",
-                                               :table_id (mt/id :orders)}},
+                     :source-tables [{:alias "orders"
+                                      :database_id (mt/id)
+                                      :schema "public"
+                                      :table "orders"
+                                      :table_id (mt/id :orders)}],
                      :body
                      "import pandas as pd\n\ndef transform(orders):\n    return orders"}]
          (mt/with-temp [:model/Transform {transform-id :id :as transform} {:source source}]
@@ -344,21 +346,22 @@
     (run-with-dependencies-setup!
      (fn [_]
        (let [target {:type "table", :schema "Other", :name "test_table", :database (mt/id)}]
-         (mt/with-temp [:model/Transform {transform-id :id} {:target target}
-                        :model/Table {table-id :id} {:schema "Other", :db_id (mt/id), :name "test_table"}]
-           (events/publish-event! :event/transform-run-complete
-                                  {:object {:db-id (mt/id)
-                                            :output-schema "Other"
-                                            :output-table :test_table
-                                            :transform-id transform-id}
-                                   :user-id api/*current-user-id*})
-           (is (= models.dependency/current-dependency-analysis-version
-                  (t2/select-one-fn :dependency_analysis_version :model/Transform :id transform-id)))
-           (is (=? [{:from_entity_type :table
-                     :from_entity_id table-id,
-                     :to_entity_type :transform,
-                     :to_entity_id transform-id}]
-                   (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform)))))))))
+         (mt/with-temp [:model/Transform {transform-id :id} {:target target}]
+           ;; Transform after-insert creates the target table row via upsert-transform-target-table!
+           (let [table-id (t2/select-one-pk :model/Table :db_id (mt/id) :schema "Other" :name "test_table")]
+             (events/publish-event! :event/transform-run-complete
+                                    {:object {:db-id (mt/id)
+                                              :output-schema "Other"
+                                              :output-table :test_table
+                                              :transform-id transform-id}
+                                     :user-id api/*current-user-id*})
+             (is (= models.dependency/current-dependency-analysis-version
+                    (t2/select-one-fn :dependency_analysis_version :model/Transform :id transform-id)))
+             (is (=? [{:from_entity_type :table
+                       :from_entity_id table-id,
+                       :to_entity_type :transform,
+                       :to_entity_id transform-id}]
+                     (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform))))))))))
 
 (deftest ^:sequential python-transform-update-handles-downstream-dependencies-test
   (testing "python transform update events handles downstream dependencies"
@@ -366,44 +369,46 @@
      (fn [_]
        (let [source {:type :python,
                      :source-database (mt/id),
-                     :source-tables {"orders" {:database_id (mt/id),
-                                               :schema "public",
-                                               :table "orders",
-                                               :table_id (mt/id :orders)}},
+                     :source-tables [{:alias "orders"
+                                      :database_id (mt/id)
+                                      :schema "public"
+                                      :table "orders"
+                                      :table_id (mt/id :orders)}],
                      :body
                      "import pandas as pd\n\ndef transform(orders):\n    return orders"}
              target {:type "table", :schema "Other", :name "test_table", :database (mt/id)}]
          (mt/with-temp [:model/Transform {transform-id :id :as transform} {:target target
                                                                            :source source}
-                        :model/Table {table-id :id} {:schema "Other", :db_id (mt/id), :name "test_table"}
+                        ;; test_table is created by the Transform after-insert via upsert-transform-target-table!
                         :model/Table {} {:schema "Other", :db_id (mt/id), :name "test_table2"}]
-           (testing "initial run"
-             (events/publish-event! :event/transform-run-complete
-                                    {:object {:db-id (mt/id)
-                                              :output-schema "Other"
-                                              :output-table :test_table
-                                              :transform-id transform-id}
-                                     :user-id api/*current-user-id*})
-             (is (=? [{:from_entity_type :table
-                       :from_entity_id table-id,
-                       :to_entity_type :transform,
-                       :to_entity_id transform-id}]
-                     (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform))))
-           (testing "keeping target"
-             (events/publish-event! :event/update-transform
-                                    {:object transform
-                                     :user-id api/*current-user-id*})
-             (is (=? [{:from_entity_type :table
-                       :from_entity_id table-id,
-                       :to_entity_type :transform,
-                       :to_entity_id transform-id}]
-                     (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform))))
-           (testing "changing target update"
-             (events/publish-event! :event/update-transform
-                                    {:object (assoc-in transform [:target :name] "test_table2")
-                                     :user-id api/*current-user-id*})
-             (is (empty?
-                  (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform))))))))))
+           (let [table-id (t2/select-one-pk :model/Table :db_id (mt/id) :schema "Other" :name "test_table")]
+             (testing "initial run"
+               (events/publish-event! :event/transform-run-complete
+                                      {:object {:db-id (mt/id)
+                                                :output-schema "Other"
+                                                :output-table :test_table
+                                                :transform-id transform-id}
+                                       :user-id api/*current-user-id*})
+               (is (=? [{:from_entity_type :table
+                         :from_entity_id table-id,
+                         :to_entity_type :transform,
+                         :to_entity_id transform-id}]
+                       (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform))))
+             (testing "keeping target"
+               (events/publish-event! :event/update-transform
+                                      {:object transform
+                                       :user-id api/*current-user-id*})
+               (is (=? [{:from_entity_type :table
+                         :from_entity_id table-id,
+                         :to_entity_type :transform,
+                         :to_entity_id transform-id}]
+                       (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform))))
+             (testing "changing target update"
+               (events/publish-event! :event/update-transform
+                                      {:object (assoc-in transform [:target :name] "test_table2")
+                                       :user-id api/*current-user-id*})
+               (is (empty?
+                    (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform)))))))))))
 
 (deftest ^:sequential query-transform-update-handles-downstream-dependencies-test
   (testing "query transform update events handles downstream dependencies"
@@ -413,35 +418,36 @@
                      :type :query}
              target {:type "table", :schema "Other", :name "test_table", :database (mt/id)}]
          (mt/with-temp [:model/Transform {transform-id :id :as transform} {:target target :source source}
-                        :model/Table {table-id :id} {:schema "Other", :db_id (mt/id), :name "test_table"}
+                        ;; test_table is created by the Transform after-insert via upsert-transform-target-table!
                         :model/Table {} {:schema "Other", :db_id (mt/id), :name "test_table2"}]
-           (testing "initial run"
-             (events/publish-event! :event/transform-run-complete
-                                    {:object {:db-id (mt/id)
-                                              :output-schema "Other"
-                                              :output-table :test_table
-                                              :transform-id transform-id}
-                                     :user-id api/*current-user-id*})
-             (is (=? [{:from_entity_type :table
-                       :from_entity_id table-id,
-                       :to_entity_type :transform,
-                       :to_entity_id transform-id}]
-                     (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform))))
-           (testing "keeping target"
-             (events/publish-event! :event/update-transform
-                                    {:object transform
-                                     :user-id api/*current-user-id*})
-             (is (=? [{:from_entity_type :table
-                       :from_entity_id table-id,
-                       :to_entity_type :transform,
-                       :to_entity_id transform-id}]
-                     (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform))))
-           (testing "changing target update"
-             (events/publish-event! :event/update-transform
-                                    {:object (assoc-in transform [:target :name] "test_table2")
-                                     :user-id api/*current-user-id*})
-             (is (empty?
-                  (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform))))))))))
+           (let [table-id (t2/select-one-pk :model/Table :db_id (mt/id) :schema "Other" :name "test_table")]
+             (testing "initial run"
+               (events/publish-event! :event/transform-run-complete
+                                      {:object {:db-id (mt/id)
+                                                :output-schema "Other"
+                                                :output-table :test_table
+                                                :transform-id transform-id}
+                                       :user-id api/*current-user-id*})
+               (is (=? [{:from_entity_type :table
+                         :from_entity_id table-id,
+                         :to_entity_type :transform,
+                         :to_entity_id transform-id}]
+                       (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform))))
+             (testing "keeping target"
+               (events/publish-event! :event/update-transform
+                                      {:object transform
+                                       :user-id api/*current-user-id*})
+               (is (=? [{:from_entity_type :table
+                         :from_entity_id table-id,
+                         :to_entity_type :transform,
+                         :to_entity_id transform-id}]
+                       (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform))))
+             (testing "changing target update"
+               (events/publish-event! :event/update-transform
+                                      {:object (assoc-in transform [:target :name] "test_table2")
+                                       :user-id api/*current-user-id*})
+               (is (empty?
+                    (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform)))))))))))
 
 (deftest transform-dependency-calculation-error-handling-test
   (testing "When transform dependency calculation throws an error, it should be logged and the version should still be updated"
@@ -791,7 +797,8 @@
                                              :from_entity_id child-card-id
                                              :to_entity_type :card
                                              :to_entity_id parent-card-id}]
-           (events/publish-event! :event/card-update {:object parent-card :previous-object parent-card :user-id api/*current-user-id*})
+           (with-redefs [async/submit! (fn [f] (f))]
+             (events/publish-event! :event/card-update {:object parent-card :previous-object parent-card :user-id api/*current-user-id*}))
            (assert-has-analyses
             {:card {parent-card-id -1}})
            (is (nil? (t2/select-one-fn :analysis_version :model/AnalysisFinding
@@ -826,7 +833,8 @@
                       other-card-id old-version}}))
            (t2/with-transaction [_conn]
              (binding [models.analysis-finding/*current-analysis-finding-version* new-version]
-               (events/publish-event! :event/card-update {:object parent-card :previous-object parent-card :user-id api/*current-user-id*}))
+               (with-redefs [async/submit! (fn [f] (f))]
+                 (events/publish-event! :event/card-update {:object parent-card :previous-object parent-card :user-id api/*current-user-id*})))
              (testing "Parent should be re-analyzed synchronously"
                (assert-has-analyses
                 {:card {parent-card-id new-version}}))
@@ -860,7 +868,8 @@
            (deps.findings/upsert-analysis! child-card)
            ;; Update parent - this marks child as stale
            (t2/with-transaction [_conn]
-             (events/publish-event! :event/card-update {:object parent-card :previous-object parent-card :user-id api/*current-user-id*})
+             (with-redefs [async/submit! (fn [f] (f))]
+               (events/publish-event! :event/card-update {:object parent-card :previous-object parent-card :user-id api/*current-user-id*}))
              ;; Verify child is stale
              (is (true? (t2/select-one-fn :stale :model/AnalysisFinding
                                           :analyzed_entity_type :card
@@ -893,7 +902,8 @@
                                                   :analyzed_entity_id card-id))))
            ;; Try to update with mark-dependents-stale! throwing an exception
            (binding [models.analysis-finding/*current-analysis-finding-version* new-version]
-             (with-redefs [deps.findings/mark-dependents-stale! (fn [_ _] (throw (ex-info "Simulated failure" {})))]
+             (with-redefs [async/submit!                     (fn [f] (f))
+                           deps.findings/mark-dependents-stale! (fn [_ _] (throw (ex-info "Simulated failure" {})))]
                (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Simulated failure"
                                      (events/publish-event! :event/card-update {:object card :previous-object card :user-id api/*current-user-id*})))))
            ;; Verify analysis was NOT updated (rolled back)
@@ -923,18 +933,19 @@
          (deps.findings/upsert-analysis! child)
          (t2/with-transaction [_conn]
            (binding [models.analysis-finding/*current-analysis-finding-version* new-version]
-             (events/publish-event! :event/card-update {:object parent
-                                                        :previous-object parent
-                                                        :user-id api/*current-user-id*})
-             (testing "Native card update should trigger analysis"
-               (assert-has-analyses
-                {:card {parent-id new-version}}))
-             (testing "Its dependents should be marked stale"
-               (let [child-finding (t2/select-one :model/AnalysisFinding
-                                                  :analyzed_entity_type :card
-                                                  :analyzed_entity_id child-id)]
-                 (is (= old-version (:analysis_version child-finding)))
-                 (is (true? (:stale child-finding))))))))))))
+             (with-redefs [async/submit! (fn [f] (f))]
+               (events/publish-event! :event/card-update {:object parent
+                                                          :previous-object parent
+                                                          :user-id api/*current-user-id*})
+               (testing "Native card update should trigger analysis"
+                 (assert-has-analyses
+                  {:card {parent-id new-version}}))
+               (testing "Its dependents should be marked stale"
+                 (let [child-finding (t2/select-one :model/AnalysisFinding
+                                                    :analyzed_entity_type :card
+                                                    :analyzed_entity_id child-id)]
+                   (is (= old-version (:analysis_version child-finding)))
+                   (is (true? (:stale child-finding)))))))))))))
 
 (deftest ^:sequential card-update-stops-on-transforms-test
   (run-with-dependencies-setup!
@@ -972,22 +983,23 @@
                :transform {transform-id old-version}}))
            (binding [models.analysis-finding/*current-analysis-finding-version* new-version]
              (t2/with-transaction [_conn]
-               (events/publish-event! :event/card-update {:object parent-card :previous-object parent-card :user-id api/*current-user-id*})
-               (testing "parent card should be re-analyzed synchronously"
-                 (is (=? {:analysis_version new-version :stale false}
-                         (t2/select-one :model/AnalysisFinding
-                                        :analyzed_entity_type :card
-                                        :analyzed_entity_id parent-card-id))))
-               (testing "transform (direct dependent) should be marked stale"
-                 (is (=? {:analysis_version old-version :stale true}
-                         (t2/select-one :model/AnalysisFinding
-                                        :analyzed_entity_type :transform
-                                        :analyzed_entity_id transform-id))))
-               (testing "child card (transitive dependent) should be marked stale"
-                 (is (=? {:analysis_version old-version :stale true}
-                         (t2/select-one :model/AnalysisFinding
-                                        :analyzed_entity_type :card
-                                        :analyzed_entity_id child-card-id))))))))))))
+               (with-redefs [async/submit! (fn [f] (f))]
+                 (events/publish-event! :event/card-update {:object parent-card :previous-object parent-card :user-id api/*current-user-id*})
+                 (testing "parent card should be re-analyzed synchronously"
+                   (is (=? {:analysis_version new-version :stale false}
+                           (t2/select-one :model/AnalysisFinding
+                                          :analyzed_entity_type :card
+                                          :analyzed_entity_id parent-card-id))))
+                 (testing "transform (direct dependent) should be marked stale"
+                   (is (=? {:analysis_version old-version :stale true}
+                           (t2/select-one :model/AnalysisFinding
+                                          :analyzed_entity_type :transform
+                                          :analyzed_entity_id transform-id))))
+                 (testing "child card (transitive dependent) should be marked stale"
+                   (is (=? {:analysis_version old-version :stale true}
+                           (t2/select-one :model/AnalysisFinding
+                                          :analyzed_entity_type :card
+                                          :analyzed_entity_id child-card-id)))))))))))))
 
 (deftest ^:sequential transform-update-works-with-no-analyses-test
   (run-with-dependencies-setup!

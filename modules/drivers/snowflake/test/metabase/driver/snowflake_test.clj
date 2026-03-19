@@ -23,7 +23,6 @@
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
@@ -519,7 +518,7 @@
                                                              (original-query db sql-params (or opts {})))))]
             (is (can-connect? (:details (mt/db))))))
         (is (thrown?
-             net.snowflake.client.jdbc.SnowflakeSQLException
+             net.snowflake.client.api.exception.SnowflakeSQLException
              (can-connect? (assoc (:details (mt/db)) :db (mt/random-name))))
             "can-connect? should throw for Snowflake databases that don't exist (#9511)")
         (is (can-connect? (-> (:details (mt/db))
@@ -1023,25 +1022,24 @@
       nil "" "asdf" "snowflake:jdbc://x")))
 
 (deftest ^:parallel connection-str->parameters-test-2
-  (testing "Returns `\"ACCOUNT\"` for valid strings of no parameters"
-    (are [conn-str] (= {"ACCOUNT" "x"} (driver.snowflake/connection-str->parameters conn-str))
-      "jdbc:snowflake://x.snowflakecomputing.com"
-      "jdbc:snowflake://x.snowflakecomputing.com/"
-      "jdbc:snowflake://x.snowflakecomputing.com/?")))
+  (testing "Returns nil for valid strings of no parameters"
+    (are [conn-str exp] (= exp (driver.snowflake/connection-str->parameters conn-str))
+      "jdbc:snowflake://x.snowflakecomputing.com" nil
+      "jdbc:snowflake://x.snowflakecomputing.com/" nil
+      "jdbc:snowflake://x.snowflakecomputing.com/?" nil
+      "jdbc:snowflake://x.snowflakecomputing.com/?x" nil)))
 
 (deftest ^:parallel connection-str->parameters-test-3
   (testing "Returns decoded parameters"
     (let [role "!@#$%^&*()"]
-      (is (= {"ACCOUNT" "x"
-              "ROLE" role}
+      (is (= {"ROLE" role}
              (driver.snowflake/connection-str->parameters (str "jdbc:snowflake://x.snowflakecomputing.com/"
                                                                "?role=" (codec/url-encode role))))))))
 
 (deftest ^:parallel connection-str->parameters-test-4
   (testing "Returns multiple url parameters"
     (let [role "!@#$%^&*()"]
-      (is (= {"ACCOUNT" "x"
-              "ROLE" role
+      (is (= {"ROLE" role
               "FOO" "bar"}
              (driver.snowflake/connection-str->parameters (str "jdbc:snowflake://x.snowflakecomputing.com/"
                                                                "?role=" (codec/url-encode role)
@@ -1355,67 +1353,61 @@
                              (lib/with-fields [products-id products-name products-category])))]
       (doseq [[msg filter exp-filter exp-rows] [["case insensitive contains has rows"
                                                  (-> (lib/contains products-category "GET")
-                                                     (lib.options/update-options assoc :case-sensitive false))
+                                                     lib/ignore-case)
                                                  "CONTAINS(LOWER(\"PUBLIC\".\"products\".\"category\"), 'get')"
                                                  [[5 "Enormous Marble Wallet" "Gadget"]
                                                   [9 "Practical Bronze Computer" "Widget"]
                                                   [11 "Ergonomic Silk Coat" "Gadget"]]]
 
                                                 ["case sensitive contains has rows"
-                                                 (-> (lib/contains products-category "Gad")
-                                                     (lib.options/update-options assoc :case-sensitive true))
+                                                 (lib/contains products-category "Gad")
                                                  "CONTAINS(\"PUBLIC\".\"products\".\"category\", 'Gad')"
                                                  [[5 "Enormous Marble Wallet" "Gadget"]
                                                   [11 "Ergonomic Silk Coat" "Gadget"]
                                                   [16 "Incredible Bronze Pants" "Gadget"]]]
 
                                                 ["case sensitive contains with no rows"
-                                                 (-> (lib/contains products-category "gad")
-                                                     (lib.options/update-options assoc :case-sensitive true))
+                                                 (lib/contains products-category "gad")
                                                  "CONTAINS(\"PUBLIC\".\"products\".\"category\", 'gad')"
                                                  []]
 
                                                 ["case insensitive starts with has rows"
                                                  (-> (lib/starts-with products-category "GAD")
-                                                     (lib.options/update-options assoc :case-sensitive false))
+                                                     lib/ignore-case)
                                                  "STARTSWITH(LOWER(\"PUBLIC\".\"products\".\"category\"), 'gad')"
                                                  [[5 "Enormous Marble Wallet" "Gadget"]
                                                   [11 "Ergonomic Silk Coat" "Gadget"]
                                                   [16 "Incredible Bronze Pants" "Gadget"]]]
 
                                                 ["case sensitive starts with has rows"
-                                                 (-> (lib/starts-with products-category "Gad")
-                                                     (lib.options/update-options assoc :case-sensitive true))
+                                                 (lib/starts-with products-category "Gad")
                                                  "STARTSWITH(\"PUBLIC\".\"products\".\"category\", 'Gad')"
                                                  [[5 "Enormous Marble Wallet" "Gadget"]
                                                   [11 "Ergonomic Silk Coat" "Gadget"]
                                                   [16 "Incredible Bronze Pants" "Gadget"]]]
 
                                                 ["case sensitive starts with has no rows"
-                                                 (-> (lib/starts-with products-category "gad")
-                                                     (lib.options/update-options assoc :case-sensitive true))
+                                                 (lib/starts-with products-category "gad")
                                                  "STARTSWITH(\"PUBLIC\".\"products\".\"category\", 'gad')"
                                                  []]
 
                                                 ["case insensitive ends with has rows"
                                                  (-> (lib/ends-with products-category "GET")
-                                                     (lib.options/update-options assoc :case-sensitive false))
+                                                     lib/ignore-case)
                                                  "ENDSWITH(LOWER(\"PUBLIC\".\"products\".\"category\"), 'get')"
                                                  [[5 "Enormous Marble Wallet" "Gadget"]
                                                   [9 "Practical Bronze Computer" "Widget"]
                                                   [11 "Ergonomic Silk Coat" "Gadget"]]]
 
                                                 ["case sensitive ends with has rows"
-                                                 (-> (lib/ends-with products-category "get")
-                                                     (lib.options/update-options assoc :case-sensitive true))
+                                                 (lib/ends-with products-category "get")
                                                  "ENDSWITH(\"PUBLIC\".\"products\".\"category\", 'get')"
                                                  [[5 "Enormous Marble Wallet" "Gadget"]
                                                   [9 "Practical Bronze Computer" "Widget"]
                                                   [11 "Ergonomic Silk Coat" "Gadget"]]]
 
                                                 ["case sensitive ends with has no rows"
-                                                 (-> (lib/ends-with products-category "GET")
-                                                     (lib.options/update-options assoc :case-sensitive true))
+                                                 (lib/ends-with products-category "GET")
                                                  "ENDSWITH(\"PUBLIC\".\"products\".\"category\", 'GET')"
                                                  []]]]
         (testing msg

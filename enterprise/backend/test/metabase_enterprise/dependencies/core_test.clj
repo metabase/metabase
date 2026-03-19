@@ -8,7 +8,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util :as lib.tu]))
+   [metabase.lib.test-util :as lib.tu]
+   [metabase.util.malli :as mu]))
 
 (defn- only-missing-column-errors
   "Filters an error map to only include :missing-column type errors.
@@ -197,7 +198,7 @@
                                                                 :base-provider provider
                                                                 :graph graph
                                                                 :include-native? true)]
-          (is (= #{:card :transform} (set (keys errors))))
+          (is (= #{:card} (set (keys errors))))
           ;; That breaks (1) the SQL card which uses the snippets, (2) the transforms, (3) both the MBQL and (4) SQL
           ;; queries that consume the transform's table.
           ;; We only check :missing-column errors since SQLGlot and Macaw produce different
@@ -221,3 +222,47 @@
                                                                 :graph graph)]
           ;; Because we are changing a snippet, don't check anything downstream
           (is (= {} errors)))))))
+
+(deftest ^:parallel check-entity-exception-test
+  (testing "when a dependent card throws during compilation, errors-from-proposed-edits catches it
+            and returns a validation-exception-error instead of crashing (#GHY-3151)"
+    (mu/disable-enforcement
+      (let [{:keys [provider mbql-base]} (testbed)
+            ;; Add a card with a broken dataset-query that will throw during check-entity
+            broken-card {:lib/type      :metadata/card
+                         :id            999
+                         :database-id   (:id (lib.metadata/database provider))
+                         :name          "broken-card"
+                         :dataset-query nil}
+            provider    (lib.tu/mock-metadata-provider provider {:cards [broken-card]})
+            ;; Graph where card 101 -> card 999 (broken card depends on the base card)
+            graph       (graph/in-memory {[:card 101] #{[:card 999]}})
+            card'       (-> mbql-base
+                            (update :dataset-query lib/filter (lib/> (meta/field-metadata :orders :quantity) 100))
+                            (dissoc :result-metadata))
+            errors      (dependencies/errors-from-proposed-edits {:card [card']}
+                                                                 :base-provider provider
+                                                                 :graph graph)]
+        (is (contains? errors :card))
+        (is (contains? (:card errors) 999))
+        (is (= #{:validation-exception-error}
+               (into #{} (map :type) (get-in errors [:card 999]))))))))
+
+(deftest ^:parallel self-referential-dependency-test
+  (testing "errors-from-proposed-edits terminates when the dependency graph has a self-loop (#70452)"
+    (let [{:keys [provider mbql-base]} (testbed)
+          ;; Graph where dashboard 999 depends on card 101, and dashboard 999 depends on itself
+          ;; (as happens with click behavior linking to another tab on the same dashboard)
+          graph (graph/in-memory {[:card 101]       #{[:dashboard 999]}
+                                  [:dashboard 999]  #{[:dashboard 999]}})
+          card' (-> mbql-base
+                    (update :dataset-query lib/filter (lib/> (meta/field-metadata :orders :quantity) 100))
+                    (dissoc :result-metadata))
+          fut   (future (dependencies/errors-from-proposed-edits {:card [card']}
+                                                                 :base-provider provider
+                                                                 :graph graph))
+          result (deref fut 1000 ::timeout)]
+      (when (= result ::timeout)
+        (future-cancel fut))
+      (is (not= ::timeout result) "errors-from-proposed-edits hung (possible infinite loop)")
+      (is (= {} result)))))

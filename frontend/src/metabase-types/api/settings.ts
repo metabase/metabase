@@ -280,7 +280,7 @@ const tokenStatusFeatures = [
   "sso-ldap",
   "sso-saml",
   "sso",
-  "transforms",
+  "transforms-basic",
   "transforms-python",
   "upload-management",
   "whitelabel",
@@ -335,6 +335,7 @@ export const tokenFeatures = [
   "sso_ldap",
   "sso_oidc",
   "sso_saml",
+  "sso_slack",
   "session_timeout_config",
   "whitelabel",
   "serialization",
@@ -357,12 +358,13 @@ export const tokenFeatures = [
   "remote_sync",
   "dependencies",
   "semantic_search",
-  "transforms",
   "transforms-python",
+  "transforms-basic",
   "library",
   "support-users",
   "tenants",
   "workspaces",
+  "writable_connection",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
@@ -449,7 +451,7 @@ interface InstanceSettings {
   "example-dashboard-id": number | null;
   "has-sample-database?"?: boolean; // Careful! This can be undefined during setup!
   "instance-creation": string;
-  "llm-sql-generation-enabled": boolean;
+  "llm-anthropic-api-key-configured?": boolean;
   "read-only-mode": boolean;
   "search-typeahead-enabled": boolean;
   "show-homepage-data": boolean;
@@ -476,6 +478,7 @@ export type EmbeddingHomepageStatus =
 interface AdminSettings {
   "active-users-count"?: number;
   "custom-geojson-enabled": boolean;
+  "encryption-enabled": boolean;
   "deprecation-notice-version"?: string;
   "disable-cors-on-localhost": boolean;
   "embedding-secret-key"?: string;
@@ -499,6 +502,7 @@ interface AdminSettings {
   "setup-license-active-at-setup": boolean;
   "embedding-hub-test-embed-snippet-created": boolean;
   "embedding-hub-production-embed-snippet-created": boolean;
+  "embedding-hub-sso-auth-manual-tested": boolean;
   "store-url": string;
   gsheets: Partial<GdrivePayload>;
   "license-token-missing-banner-dismissal-timestamp"?: Array<string>;
@@ -513,7 +517,6 @@ interface SettingsManagerSettings {
   "session-cookie-samesite": SessionCookieSameSite;
   "slack-app-token": string | null;
   "slack-bug-report-channel": string | null;
-  "slack-token": string | null;
   "slack-token-valid?": boolean;
 }
 
@@ -586,6 +589,8 @@ interface PublicSettings {
   "report-timezone-short": string;
   "session-cookies": boolean | null;
   "setup-token": string | null;
+  "metabot-enabled?": boolean;
+  "embedded-metabot-enabled?": boolean;
   "show-metabase-links": boolean;
   "show-metabot": boolean;
   "show-google-sheets-integration": boolean;
@@ -595,6 +600,7 @@ interface PublicSettings {
   "snowplow-url": string;
   "start-of-week": DayOfWeekId;
   "token-features": TokenFeatures;
+  "tracing-enabled": boolean;
   "transforms-enabled": boolean;
   version: Version;
   "version-info-last-checked": string | null;
@@ -746,6 +752,7 @@ export interface EnterpriseSettings extends Settings {
   "database-replication-connections"?: DatabaseReplicationConnections | null;
   "embedding-hub-test-embed-snippet-created": boolean;
   "embedding-hub-production-embed-snippet-created": boolean;
+  "embedding-hub-sso-auth-manual-tested": boolean;
   "python-runner-url"?: string | null;
   "python-runner-api-token"?: string | null;
   "python-storage-s-3-endpoint"?: string | null;
@@ -760,6 +767,10 @@ export interface EnterpriseSettings extends Settings {
   "python-runner-test-run-timeout-seconds"?: number | null;
   "llm-anthropic-api-key"?: string | null;
   "llm-anthropic-model": string;
+  "metabot-slack-signing-secret"?: string | null;
+  "slack-connect-enabled"?: boolean | null;
+  "slack-connect-client-id"?: string | null;
+  "slack-connect-client-secret"?: string | null;
   /**
    * @deprecated
    */

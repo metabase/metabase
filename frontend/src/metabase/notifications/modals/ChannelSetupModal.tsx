@@ -21,14 +21,14 @@ const CHANNELS_CONFIG: {
       return t`Set up Slack`;
     },
     icon: "slack",
-    link: "/admin/settings/notifications",
+    link: "/admin/settings/slack",
   },
   {
     get title() {
       return t`Add a webhook`;
     },
     icon: "webhook",
-    link: "/admin/settings/notifications",
+    link: "/admin/settings/webhooks",
     testId: "alerts-channel-create-webhook",
   },
 ];

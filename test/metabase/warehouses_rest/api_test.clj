@@ -7,6 +7,7 @@
    [medley.core :as m]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.audit-app.core :as audit]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -822,16 +823,17 @@
                         :tables)]
         (is (= () tables))))))
 
-(deftest ^:parallel fetch-database-metadata-skip-fields-test
-  (mt/with-temp [:model/Database {db-id :id} {}
-                 :model/Table    table       {:db_id db-id}
-                 :model/Field    _           {:table_id (u/the-id table)}]
-    (testing "GET /api/database/:id/metadata?skip_fields=true"
-      (let [fields (->> (mt/user-http-request :rasta :get 200 (format "database/%d/metadata?skip_fields=true" db-id))
-                        :tables
-                        first
-                        :fields)]
-        (is (= () fields))))))
+(deftest fetch-database-metadata-skip-fields-test
+  (mt/with-empty-h2-app-db!
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table table {:db_id db-id}
+                   :model/Field _ {:table_id (u/the-id table)}]
+      (testing "GET /api/database/:id/metadata?skip_fields=true"
+        (let [fields (->> (mt/user-http-request :rasta :get 200 (format "database/%d/metadata?skip_fields=true" db-id))
+                          :tables
+                          first
+                          :fields)]
+          (is (= () fields)))))))
 
 (deftest ^:parallel autocomplete-suggestions-test
   (let [prefix-fn (fn [db-id prefix]
@@ -1034,20 +1036,21 @@
                     :total 0}
                    (get-all :rasta "database?include_only_uploadable=true" old-ids)))))))))
 
-(deftest ^:parallel databases-list-can-upload-test
-  (testing "GET /api/database"
-    (let [old-ids (t2/select-pks-set :model/Database)]
-      (doseq [uploads-enabled? [true false]]
-        (testing (format "The database with uploads enabled for the public schema has can_upload=%s" uploads-enabled?)
-          (mt/with-temp [:model/Database _ {:engine          :postgres
-                                            :name            "The Chosen One"
-                                            :uploads_enabled uploads-enabled?
-                                            :uploads_schema_name "public"}]
-            (let [result (get-all :crowberto "database" old-ids)]
-              (is (= 1
-                     (:total result)))
-              (is (= uploads-enabled?
-                     (-> result :data first :can_upload))))))))))
+(deftest databases-list-can-upload-test
+  (mt/with-empty-h2-app-db!
+    (testing "GET /api/database"
+      (let [old-ids (t2/select-pks-set :model/Database)]
+        (doseq [uploads-enabled? [true false]]
+          (testing (format "The database with uploads enabled for the public schema has can_upload=%s" uploads-enabled?)
+            (mt/with-temp [:model/Database _ {:engine              :postgres
+                                              :name                "The Chosen One"
+                                              :uploads_enabled     uploads-enabled?
+                                              :uploads_schema_name "public"}]
+              (let [result (get-all :crowberto "database" old-ids)]
+                (is (= 1
+                       (:total result)))
+                (is (= uploads-enabled?
+                       (-> result :data first :can_upload)))))))))))
 
 (deftest ^:parallel databases-list-include-saved-questions-test
   (testing "GET /api/database?saved=true"
@@ -1186,22 +1189,22 @@
           (check-tables-included response (virtual-table-for-card ok-card))
           (check-tables-not-included response (virtual-table-for-card cambiguous-card)))))))
 
-(deftest ^:parallel databases-list-include-saved-questions-tables-test-5
+(deftest databases-list-include-saved-questions-tables-test-5
   (testing "GET /api/database?saved=true&include=tables"
     (testing "should remove Cards that belong to a driver that doesn't support nested queries"
-      (mt/with-temp [:model/Database bad-db   {:engine ::no-nested-query-support, :details {}}
-                     :model/Card     bad-card {:name            "Bad Card"
-                                               :dataset_query   {:database (u/the-id bad-db)
-                                                                 :type     :native
-                                                                 :native   {:query "[QUERY GOES HERE]"}}
-                                               :result_metadata [{:name         "sparrows"
-                                                                  :display_name "Sparrows"
-                                                                  :base_type    :type/Integer}]
-                                               :database_id     (u/the-id bad-db)}
-                     :model/Card     ok-card  (assoc (card-with-native-query "OK Card")
-                                                     :result_metadata [{:name         "finches"
-                                                                        :display_name "Finches"
-                                                                        :base_type    :type/Integer}])]
+      (mt/with-temp [:model/Database bad-db {:engine ::no-nested-query-support, :details {}}
+                     :model/Card bad-card {:name            "Bad Card"
+                                           :dataset_query   {:database (u/the-id bad-db)
+                                                             :type     :native
+                                                             :native   {:query "[QUERY GOES HERE]"}}
+                                           :result_metadata [{:name         "sparrows"
+                                                              :display_name "Sparrows"
+                                                              :base_type    :type/Integer}]
+                                           :database_id     (u/the-id bad-db)}
+                     :model/Card ok-card (assoc (card-with-native-query "OK Card")
+                                                :result_metadata [{:name         "finches"
+                                                                   :display_name "Finches"
+                                                                   :base_type    :type/Integer}])]
         (let [response (fetch-virtual-database)]
           (is (malli= SavedQuestionsDB
                       response))
@@ -2426,13 +2429,15 @@
           (is (= {:status "error"
                   :message "Failed to connect to Database"}
                  (mt/user-http-request :crowberto :get 200 (str "database/" id "/healthcheck")))))))
-    (testing "connection-type passed and configured"
-      (mt/with-temp [:model/Database {id :id} {:details {:host "primary"}
-                                               :write_data_details {:host "write"}}]
-        (with-redefs [driver/available? (constantly true)
-                      driver/can-connect? (constantly true)]
-          (is (= {:status "ok"}
-                 (mt/user-http-request :crowberto :get 200 (str "database/" id "/healthcheck?connection-type=write-data")))))))
+    (when config/ee-available?
+      (testing "connection-type passed and configured"
+        (mt/with-premium-features #{:writable-connection}
+          (mt/with-temp [:model/Database {id :id} {:details {:host "primary"}
+                                                   :write_data_details {:host "write"}}]
+            (with-redefs [driver/available? (constantly true)
+                          driver/can-connect? (constantly true)]
+              (is (= {:status "ok"}
+                     (mt/user-http-request :crowberto :get 200 (str "database/" id "/healthcheck?connection-type=write-data")))))))))
     (testing "connection-type passed but not configured returns 400"
       (mt/with-temp [:model/Database {id :id} {:details {:host "primary"}}]
         (with-redefs [driver/available? (constantly true)]
@@ -2542,11 +2547,12 @@
         (t2/update! :model/Database (mt/id) {:workspace_permissions_status nil})
         (let [response (mt/user-http-request :crowberto :post 200
                                              (format "database/%d/permission/workspace/check" (mt/id)))]
-          (is (= "ok" (:status response)))
+          (is (= "ok" (:status response)) (str "response: " (pr-str response)))
           (is (some? (:checked_at response)))
           ;; Verify it was cached
           (let [db (t2/select-one :model/Database (mt/id))]
-            (is (= "ok" (:status (:workspace_permissions_status db)))))))
+            (is (= "ok" (:status (:workspace_permissions_status db)))
+                (str "cached: " (pr-str (:workspace_permissions_status db)))))))
 
       (testing "cached=false forces permission check"
         ;; Set a stale cache value
@@ -2716,7 +2722,7 @@
 (deftest update-database-write-data-details-test
   (testing "PUT /api/database/:id with write_data_details"
     (testing "Superusers can set write_data_details"
-      (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-premium-features #{:writable-connection}
         (mt/with-temp [:model/Database {db-id :id} {:engine :h2
                                                     :details {:host "localhost"}}]
           (with-redefs [driver/can-connect? (constantly true)]
@@ -2730,7 +2736,7 @@
                 (is (= {:host "write-host" :password "write-pass" :write-data-connection true}
                        (:write_data_details db)))))))))
     (testing "Superusers can clear write_data_details by setting it to nil"
-      (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-premium-features #{:writable-connection}
         (mt/with-temp [:model/Database {db-id :id} {:engine :h2
                                                     :details {:host "localhost"}
                                                     :write_data_details {:host "write-host"}}]
@@ -2740,7 +2746,7 @@
             (let [db (t2/select-one :model/Database :id db-id)]
               (is (nil? (:write_data_details db))))))))
     (testing "Sensitive fields are preserved when protected-password is sent"
-      (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-premium-features #{:writable-connection}
         (mt/with-temp [:model/Database {db-id :id} {:engine :h2
                                                     :details {:host "localhost"}
                                                     :write_data_details {:host "write-host"
@@ -2753,7 +2759,7 @@
             (let [db (t2/select-one :model/Database :id db-id)]
               (is (= "new-write-host" (get-in db [:write_data_details :host])))
               (is (= "original-pass" (get-in db [:write_data_details :password]))))))))
-    (testing "Returns 402 without :advanced-permissions feature"
+    (testing "Returns 402 without :writable-connection feature"
       (with-redefs [premium-features/has-feature? (constantly false)]
         (mt/with-temp [:model/Database {db-id :id} {:engine :h2
                                                     :details {:host "localhost"}}]
@@ -2761,23 +2767,24 @@
                                 {:write_data_details {:host "write-host"}}))))))
 
 (deftest put-validates-write-data-details-connection-test
-  (testing "PUT /api/database/:id returns 400 when write connection test fails"
-    (mt/with-premium-features #{:advanced-permissions}
-      (mt/with-temp [:model/Database {db-id :id} {:engine  :h2
-                                                  :details {:host "localhost"}}]
-        (with-redefs [driver/can-connect? (fn [_engine details]
-                                            (if (:write-data-connection details)
-                                              (throw (Exception. "Write connection failed"))
-                                              true))]
-          (let [response (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
-                                               {:write_data_details {:host "totally-bogus-host"
-                                                                     :write-data-connection true}})]
-            (is (= "Write connection failed" (:message response)))))))))
+  (when config/ee-available?
+    (testing "PUT /api/database/:id returns 400 when write connection test fails"
+      (mt/with-premium-features #{:writable-connection}
+        (mt/with-temp [:model/Database {db-id :id} {:engine  :h2
+                                                    :details {:host "localhost"}}]
+          (with-redefs [driver/can-connect? (fn [_engine details]
+                                              (if (:write-data-connection details)
+                                                (throw (Exception. "Write connection failed"))
+                                                true))]
+            (let [response (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
+                                                 {:write_data_details {:host "totally-bogus-host"
+                                                                       :write-data-connection true}})]
+              (is (= "Write connection failed" (:message response))))))))))
 
 (deftest write-data-details-guardrails-test
   (testing "PUT /api/database/:id write_data_details guardrails"
     (testing "write-data-connection must not be truthy in details"
-      (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-premium-features #{:writable-connection}
         (mt/with-temp [:model/Database {db-id :id} {:engine  :h2
                                                     :details {:host "localhost"}}]
           (is (= "write-data-connection must not be set in details"
@@ -2785,14 +2792,14 @@
                                        {:details {:host                  "localhost"
                                                   :write-data-connection true}}))))))
     (testing "write-data-connection must be truthy in write_data_details"
-      (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-premium-features #{:writable-connection}
         (mt/with-temp [:model/Database {db-id :id} {:engine  :h2
                                                     :details {:host "localhost"}}]
           (is (= "write-data-connection must be set in write_data_details"
                  (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
                                        {:write_data_details {:host "write-host"}}))))))
     (testing "Destination-database must be false in write_data_details"
-      (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-premium-features #{:writable-connection}
         (mt/with-temp [:model/Database {db-id :id} {:engine  :h2
                                                     :details {:host "localhost"}}]
           (is (= "destination-database must be false in write_data_details"
@@ -2801,7 +2808,7 @@
                                                              :write-data-connection true
                                                              :destination-database  true}}))))))
     (testing "Fields hidden for write connections must not be in write_data_details"
-      (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-premium-features #{:writable-connection}
         (mt/with-temp [:model/Database {db-id :id} {:engine  :h2
                                                     :details {:host "localhost"}}]
           (is (str/includes?
@@ -2811,7 +2818,7 @@
                                                            :auto_run_queries      true}})
                "write_data_details must not contain fields hidden for write connections")))))
     (testing "Cannot set write_data_details on a destination database"
-      (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-premium-features #{:writable-connection}
         (mt/with-temp [:model/Database {router-id :id} {:engine  :h2
                                                         :details {:host "localhost"}}
                        :model/Database {dest-id :id} {:engine             :h2
@@ -2822,7 +2829,7 @@
                                        {:write_data_details {:host                  "write-host"
                                                              :write-data-connection true}}))))))
     (testing "Cannot set write_data_details on a router database"
-      (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-premium-features #{:writable-connection}
         (mt/with-temp [:model/Database {router-id :id} {:engine  :h2
                                                         :details {:host "localhost"}}
                        :model/Database {_dest-id :id} {:engine :h2

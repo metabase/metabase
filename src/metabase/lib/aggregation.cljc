@@ -76,7 +76,7 @@
 (defmethod lib.metadata.calculation/describe-top-level-key-method :aggregation
   [query stage-number _k]
   (when-let [ags (not-empty (:aggregation (lib.util/query-stage query stage-number)))]
-    (lib.util/join-strings-with-conjunction
+    (i18n/join-strings-with-conjunction
      (i18n/tru "and")
      (for [aggregation ags]
        (lib.metadata.calculation/display-name query stage-number aggregation :long)))))
@@ -487,7 +487,7 @@
 
   ([query        :- ::lib.schema/query
     stage-number :- :int
-    ag-index     :- ::lib.schema.common/int-greater-than-or-equal-to-zero]
+    ag-index     :- nat-int?]
    (if-let [[_ {ag-uuid :lib/uuid}] (get (:aggregation (lib.util/query-stage query stage-number)) ag-index)]
      (lib.options/ensure-uuid [:aggregation {} ag-uuid])
      (throw (ex-info (str "Undefined aggregation " ag-index)
@@ -502,7 +502,7 @@
     [:aggregation 0]"
   [query        :- ::lib.schema/query
    stage-number :- :int
-   index        :- ::lib.schema.common/int-greater-than-or-equal-to-zero]
+   index        :- nat-int?]
   (let [ags (aggregations query stage-number)]
     (when (> (clojure.core/count ags) index)
       (nth ags index))))
@@ -510,11 +510,11 @@
 (mu/defn aggregable-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
   "Returns the columns that can be used in aggregation expressions."
   ([query :- ::lib.schema/query
-    aggregation-position :- [:maybe ::lib.schema.common/int-greater-than-or-equal-to-zero]]
+    aggregation-position :- [:maybe nat-int?]]
    (aggregable-columns query -1 aggregation-position))
   ([query :- ::lib.schema/query
     stage-number :- :int
-    aggregation-position :- [:maybe ::lib.schema.common/int-greater-than-or-equal-to-zero]]
+    aggregation-position :- [:maybe nat-int?]]
    (let [agg-cols (aggregations-metadata query stage-number)
          columns (into (vec (lib.metadata.calculation/visible-columns query stage-number))
                        (cond->> agg-cols

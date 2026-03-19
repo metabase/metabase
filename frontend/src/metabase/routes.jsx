@@ -37,6 +37,7 @@ import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { HomePage } from "metabase/home/components/HomePage";
 import { Onboarding } from "metabase/home/components/Onboarding";
 import { trackPageView } from "metabase/lib/analytics";
+import { MetricsViewerPage } from "metabase/metrics-viewer";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
 import {
@@ -126,6 +127,13 @@ export const getRoutes = (store) => {
           <Route path="logout" component={Logout} />
           <Route path="forgot_password" component={ForgotPassword} />
           <Route path="reset_password/:token" component={ResetPassword} />
+          {/* FE routes can sometimes be prioritized over BE
+              reloading will correctly pick the SSO flow back up from the BE  */}
+          <Route path="sso" onEnter={() => window.location.reload()} />
+          <Route
+            path="sso/:provider"
+            onEnter={() => window.location.reload()}
+          />
         </Route>
 
         {/* MAIN */}
@@ -317,6 +325,8 @@ export const getRoutes = (store) => {
               to="databases/:dbId/schema/:schemaName"
             />
           </Route>
+
+          <Route path="explore" component={MetricsViewerPage} />
 
           <Route path="table">
             <Route path=":tableId/detail/:rowId" component={TableDetailPage} />

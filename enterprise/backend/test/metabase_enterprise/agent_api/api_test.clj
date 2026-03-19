@@ -278,17 +278,17 @@
         (is (some? field-id) "Should find the State field")
         (let [result (agent-client :crowberto :get 200
                                    (format "agent/v1/table/%d/field/%s/values" table-id field-id))]
-          (is (=? {:statistics {:distinct_count 49}
-                   :values     sequential?}
+          (is (=? {:value_metadata {:statistics   {:distinct-count 49}
+                                    :field_values sequential?}}
                   result))
           (is (<= (count (:values result)) 30) "Should apply default limit of 30"))))
 
     (testing "Respects explicit limit parameter"
       (let [table-id (mt/id :people)
-            field-id (visible-field-id table-id "State")
-            result   (agent-client :crowberto :get 200
-                                   (format "agent/v1/table/%d/field/%s/values?limit=5" table-id field-id))]
-        (is (= 5 (count (:values result))) "Should respect limit parameter")))
+            field-id (visible-field-id table-id "State")]
+        (is (=? {:value_metadata {:field_values #(= 5 (count %))}}
+                (agent-client :crowberto :get 200
+                              (format "agent/v1/table/%d/field/%s/values?limit=5" table-id field-id))))))
 
     (testing "Returns 404 for non-existent table"
       (is (= "Not found."
@@ -399,8 +399,8 @@
               quantity-field (m/find-first #(= (:name %) "QUANTITY") (:queryable_dimensions metric-details))]
           (is (some? quantity-field) "Quantity field should be in queryable_dimensions")
           (when-let [field-id (:field_id quantity-field)]
-            (is (=? {:statistics map?
-                     :values     sequential?}
+            (is (=? {:value_metadata {:statistics   map?
+                                      :field_values sequential?}}
                     (agent-client :rasta :get 200
                                   (format "agent/v1/metric/%d/field/%s/values" (:id metric) field-id)))))))
 
@@ -491,6 +491,55 @@
             (is (=? [{:id   measure-id
                       :name "Total Revenue"}]
                     (:measures table)))))))))
+
+(deftest agent-api-scope-enforcement-test
+  (with-agent-api-setup!
+    (let [table-id (mt/id :orders)]
+      (testing "No scope claim — unscoped JWT can access all endpoints (backwards compat)"
+        (let [headers {"authorization" (str "Bearer " (sign-jwt {:email "rasta@metabase.com"}))}]
+          (is (= {:message "pong"}
+                 (client/client :get 200 "agent/v1/ping"
+                                {:request-options {:headers headers}})))
+          (is (=? {:type "table" :id table-id}
+                  (client/client :get 200 (str "agent/v1/table/" table-id)
+                                 {:request-options {:headers headers}})))))
+
+      (testing "Matching scope — agent:table:read can access /v1/table/:id"
+        (let [headers {"authorization" (str "Bearer " (sign-jwt {:email "rasta@metabase.com"
+                                                                 :scope "agent:table:read"}))}]
+          (is (=? {:type "table" :id table-id}
+                  (client/client :get 200 (str "agent/v1/table/" table-id)
+                                 {:request-options {:headers headers}})))))
+
+      (testing "Wildcard scope — agent:* can access any scoped endpoint"
+        (let [headers {"authorization" (str "Bearer " (sign-jwt {:email "rasta@metabase.com"
+                                                                 :scope "agent:*"}))}]
+          (is (=? {:type "table" :id table-id}
+                  (client/client :get 200 (str "agent/v1/table/" table-id)
+                                 {:request-options {:headers headers}})))))
+
+      (testing "Wrong scope — agent:search gets 403 on /v1/table/:id"
+        (let [headers {"authorization" (str "Bearer " (sign-jwt {:email "rasta@metabase.com"
+                                                                 :scope "agent:search"}))}]
+          (is (= {:error   "unsupported_scope"
+                  :message "Token does not have required scope: agent:table:read"}
+                 (client/client :get 403 (str "agent/v1/table/" table-id)
+                                {:request-options {:headers headers}})))))
+
+      (testing "Scoped JWT on unchecked endpoint — agent:table:read can access /v1/ping"
+        (let [headers {"authorization" (str "Bearer " (sign-jwt {:email "rasta@metabase.com"
+                                                                 :scope "agent:table:read"}))}]
+          (is (= {:message "pong"}
+                 (client/client :get 200 "agent/v1/ping"
+                                {:request-options {:headers headers}})))))
+
+      (testing "Empty scope string — gets 403 on scoped endpoints"
+        (let [headers {"authorization" (str "Bearer " (sign-jwt {:email "rasta@metabase.com"
+                                                                 :scope ""}))}]
+          (is (= {:error   "unsupported_scope"
+                  :message "Token does not have required scope: agent:table:read"}
+                 (client/client :get 403 (str "agent/v1/table/" table-id)
+                                {:request-options {:headers headers}}))))))))
 
 (deftest search-finds-metrics-test
   (with-agent-api-setup!

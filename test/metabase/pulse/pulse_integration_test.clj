@@ -426,16 +426,29 @@
                         "Example Month"
                         "Example Day"
                         "Example Week Number"
-                        "Example Week: Week"
+                        "Example Week"
                         "Example Hour"
                         "Example Minute"
                         "Example Second"]
                        (map :display_name model-card-metadata))))
-              (testing "metamodel card"
-                (is (= (map :display_name model-card-metadata)
+              (testing "metamodel card — QP adds temporal suffix since it computes display names fresh"
+                (is (= ["Full Datetime Utc"
+                        "Full Datetime Pacific"
+                        "Example Timestamp"
+                        "Example Timestamp With Time Zone"
+                        "Example Date"
+                        "Example Time"
+                        "Example Year"
+                        "Example Month"
+                        "Example Day"
+                        "Example Week Number"
+                        "Example Week: Week"
+                        "Example Hour"
+                        "Example Minute"
+                        "Example Second"]
                        (map :display_name meta-model-card-metadata))))
               (testing "metamodel results"
-                (is (= (sort (map :display_name model-card-metadata))
+                (is (= (sort (map :display_name meta-model-card-metadata))
                        (sort (keys metamodel-results))))))
             ;; Note that these values are obtained by inspection since the UI formats are in the FE code.
             ;;
@@ -471,7 +484,7 @@
                       "Example Month"                    "12"
                       "Example Day"                      "11"
                       "Example Week Number"              "50"
-                      "Example Week: Week"               "December 10, 2023 - December 16, 2023"
+                      "Example Week"                     "December 10, 2023 - December 16, 2023"
                       "Example Hour"                     "15"
                       "Example Minute"                   "30"
                       "Example Second"                   "45"}

@@ -359,7 +359,7 @@ export function createPublicDocumentLink(documentId) {
 /**
  * @param {Object} options
  * @param {string} options.url
- * @param {import("metabase-types/store").InteractiveEmbeddingOptions} options.qs
+ * @param {Partial<import("metabase-types/store").InteractiveEmbeddingOptions>} options.qs
  * @param {Function} [options.onBeforeLoad]
  */
 export const visitFullAppEmbeddingUrl = ({ url, qs, onBeforeLoad }) => {

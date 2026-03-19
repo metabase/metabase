@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/colors";
 import { ChartSettingGoalInput } from "metabase/visualizations/components/settings/ChartSettingGoalInput";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { fieldSetting } from "metabase/visualizations/lib/settings/utils";
@@ -8,10 +8,7 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-import type {
-  VisualizationDefinition,
-  VisualizationSettingsDefinitions,
-} from "metabase/visualizations/types";
+import type { VisualizationDefinition } from "metabase/visualizations/types";
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 
 import { findProgressColumn } from "./utils";
@@ -110,5 +107,5 @@ export const PROGRESS_CHART_DEFINITION: VisualizationDefinition = {
       widget: "color",
       default: color("accent1"),
     },
-  } as VisualizationSettingsDefinitions,
+  },
 };

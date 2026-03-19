@@ -77,7 +77,8 @@
 
 (defn- workspace-outputs
   "Get all workspace outputs with their global and isolated table info.
-   Includes both workspace transform outputs and enclosed external transform outputs."
+   Includes both workspace transform outputs and enclosed external transform outputs.
+   Enriches each output with :isolated_active from the referenced metabase_table."
   [workspace-id]
   ;; TODO (Chris 2026-02-02) -- rather fetch all this as an input to graph analysis, and save it in [[graph]].
   (let [ws-outputs  (t2/select [:model/WorkspaceOutput
@@ -92,8 +93,15 @@
                                      :id :transform_id :db_id
                                      :global_schema :global_table :global_table_id
                                      :isolated_schema :isolated_table :isolated_table_id]
-                                    :workspace_id workspace-id))]
-    (concat ws-outputs ext-outputs)))
+                                    :workspace_id workspace-id))
+        all-outputs (concat ws-outputs ext-outputs)
+        ;; We could avoid this extra query by using a JOIN, but we'd need to define a derived model for this to preserve
+        ;; the model transforms (e.g. char(36) trimming on ref_id), and that feels excessive for a single query.
+        active-ids  (t2/select-fn-set :id [:model/Table :id]
+                                      :id [:in (keep :isolated_table_id all-outputs)]
+                                      :active true)]
+    (for [output all-outputs]
+      (assoc output :isolated_active (contains? active-ids (:isolated_table_id output))))))
 
 (defn- ids-for-type [entities desired-node-type]
   (for [{:keys [node-type id]} entities, :when (= node-type desired-node-type)] id))
@@ -192,7 +200,7 @@
    Returns a sequence of problem maps."
   [output checked-out-ids enclosed-ids internal-dependents-map]
   (let [{:keys [ref_id db_id global_schema global_table global_table_id
-                isolated_table_id external?]} output
+                isolated_table_id isolated_active external?]} output
         ;; For external outputs, ref_id is actually the transform_id (an int)
         transform-type           (if external? :external-transform :workspace-transform)
         external-transforms      (external-transform-dependents global_table_id checked-out-ids enclosed-ids)
@@ -202,8 +210,8 @@
         table-coord              {:db_id db_id :schema global_schema :table global_table}]
 
     (cond
-      ;; Case 1: Isolated table doesn't exist yet
-      (nil? isolated_table_id)
+      ;; Case 1: Isolated table is not active (no row, hasn't been run, or was deactivated)
+      (not isolated_active)
       (cond
         ;; External transforms depend on this output that doesn't exist
         has-external-dependents?

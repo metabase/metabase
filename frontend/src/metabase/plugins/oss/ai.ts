@@ -65,7 +65,6 @@ type PluginMetabotConfig = {
 };
 
 type PluginMetabotType = {
-  isEnabled: () => boolean;
   Metabot: (props: {
     hide?: boolean;
     config?: PluginMetabotConfig;
@@ -82,11 +81,13 @@ type PluginMetabotType = {
   getNewMenuItemAIExploration: (
     hasDataAccess: boolean,
     collectionId?: CollectionId,
+    isMetabotEnabled?: boolean,
   ) => React.ReactElement | undefined;
   getMetabotVisible: (state: State, conversation_id: string) => boolean;
   MetabotAppBarButton: ComponentType;
   MetabotDataStudioButton: ComponentType;
   MetabotDataStudioSidebar: ComponentType;
+  MetabotSlackSetup: ComponentType;
   useLazyMetabotGenerateContentQuery: TypedUseLazyQuery<
     MetabotGenerateContentResponse,
     MetabotGenerateContentRequest,
@@ -151,7 +152,6 @@ const defaultMetabotContextValue: MetabotContext =
   getDefaultMetabotContextValue();
 
 const getDefaultPluginMetabot = (): PluginMetabotType => ({
-  isEnabled: () => false,
   Metabot: (_props: { hide?: boolean; config?: PluginMetabotConfig }) =>
     null as React.ReactElement | null,
   MetabotChat: (_props: { config?: PluginMetabotConfig }) =>
@@ -174,6 +174,7 @@ const getDefaultPluginMetabot = (): PluginMetabotType => ({
   MetabotAppBarButton: PluginPlaceholder,
   MetabotDataStudioButton: PluginPlaceholder,
   MetabotDataStudioSidebar: PluginPlaceholder,
+  MetabotSlackSetup: PluginPlaceholder,
   useLazyMetabotGenerateContentQuery:
     (() => []) as unknown as PluginMetabotType["useLazyMetabotGenerateContentQuery"],
   MetabotThinkingStyles: {},

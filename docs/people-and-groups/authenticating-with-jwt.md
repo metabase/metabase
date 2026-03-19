@@ -65,7 +65,7 @@ You can configure JWT group assignments through Metabase's Admin interface, or b
 
 ### Configure group mapping through environment variables
 
-You can use the following environment variables to configure JTW group mappings instead of configuring them in Metabase's Admin settings:
+You can use the following environment variables to configure JWT group mappings instead of configuring them in Metabase's Admin settings:
 
 - [`MB_JWT_ATTRIBUTE_GROUPS`](../configuring-metabase/environment-variables.md#mb_jwt_attribute_groups) to specify the key to retrieve the JWT user's groups;
 
@@ -95,7 +95,9 @@ If you add group mappings manually, Metabase will _not_ try to also match groups
 
 > Paid plans [charge for each additional account](../cloud/how-billing-works.md#what-counts-as-a-user-account).
 
-A new SSO login will automatically create a new Metabase account.
+User provisioning is enabled by default. Metabase will create accounts for people who don't yet have a Metabase account but who are able to log in via JWT SSO.
+
+If you disable user provisioning, users without accounts or with deactivated accounts will not be able to log in via JWT SSO.
 
 Metabase accounts created with an external identity provider login don't have passwords. People who sign up for Metabase using an IdP must continue to use the IdP to log into Metabase.
 

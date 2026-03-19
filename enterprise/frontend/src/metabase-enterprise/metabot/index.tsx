@@ -1,13 +1,16 @@
 import { Route } from "react-router";
 
 import type { MetabotContext as MetabotContextType } from "metabase/metabot";
+import { useMetabotEnabledEmbeddingAware } from "metabase/metabot/hooks";
 import { PLUGIN_METABOT, PLUGIN_REDUCERS } from "metabase/plugins";
+import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
 import { useLazyMetabotGenerateContentQuery } from "metabase-enterprise/api";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { Metabot } from "./components/Metabot";
 import { getAdminRoutes } from "./components/MetabotAdmin/MetabotAdminPage";
 import { getAdminRoutes as getAdminUpsellRoutes } from "./components/MetabotAdmin/MetabotPurchasePage";
+import { MetabotSlackSetup } from "./components/MetabotAdmin/MetabotSlackSetup";
 import { MetabotAppBarButton } from "./components/MetabotAppBarButton";
 import { MetabotChat } from "./components/MetabotChat";
 import MetabotThinkingStyles from "./components/MetabotChat/MetabotThinking.module.css";
@@ -16,6 +19,7 @@ import { MetabotDataStudioSidebar } from "./components/MetabotDataStudioSidebar"
 import { MetabotQueryBuilder } from "./components/MetabotQueryBuilder";
 import { getMetabotQuickLinks } from "./components/MetabotQuickLinks";
 import { getNewMenuItemAIExploration } from "./components/NewMenuItemAIExploration";
+import { SlackConnectSuccess } from "./components/SlackConnectSuccess";
 import { MetabotContext, MetabotProvider, defaultContext } from "./context";
 import { useMetabotSQLSuggestion as useMetabotSQLSuggestionEE } from "./hooks";
 import {
@@ -24,6 +28,19 @@ import {
   getMetabotVisible,
   metabotReducer,
 } from "./state";
+
+/**
+ * A wrapper component that renders MetabotQueryBuilder if metabot is enabled,
+ * otherwise falls back to the regular QueryBuilder.
+ */
+function MetabotQueryBuilderOrFallback(props: any) {
+  const isMetabotEnabled = useMetabotEnabledEmbeddingAware();
+  return isMetabotEnabled ? (
+    <MetabotQueryBuilder {...props} />
+  ) : (
+    <QueryBuilder {...props} />
+  );
+}
 
 /**
  * This is for Metabot in embedding
@@ -46,14 +63,18 @@ export function initializePlugin() {
   if (hasPremiumFeature("metabot_v3")) {
     Object.assign(PLUGIN_METABOT, {
       // helpers
-      isEnabled: () => true,
       getNewMenuItemAIExploration,
       getMetabotVisible,
       // routes
       getAdminRoutes,
-      getMetabotRoutes: getMetabotQuickLinks,
+      getMetabotRoutes: () => (
+        <>
+          {getMetabotQuickLinks()}
+          <Route path="slack-connect-success" component={SlackConnectSuccess} />
+        </>
+      ),
       getMetabotQueryBuilderRoute: () => (
-        <Route path="ask" component={MetabotQueryBuilder} />
+        <Route path="ask" component={MetabotQueryBuilderOrFallback} />
       ),
       // components
       Metabot,
@@ -61,6 +82,7 @@ export function initializePlugin() {
       MetabotAppBarButton,
       MetabotDataStudioButton,
       MetabotDataStudioSidebar,
+      MetabotSlackSetup,
       MetabotThinkingStyles,
       // hooks
       useMetabotSQLSuggestion: useMetabotSQLSuggestionEE,

@@ -6,10 +6,10 @@
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.transforms-base.interface :as transforms-base.i]
+   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms-inspector.query-analysis :as query-analysis]
    [metabase.transforms-inspector.schema :as transforms-inspector.schema]
-   [metabase.transforms.interface :as transforms.i]
-   [metabase.transforms.util :as transforms.util]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -30,13 +30,13 @@
   "Extract source table information for a transform.
    Returns a seq of maps with :table-id, :table-name, :schema, and :db-id."
   {:arglists '([transform])}
-  (fn [transform] (transforms.util/transform-source-type (:source transform))))
+  (fn [transform] (transforms-base.u/transform-source-type (:source transform))))
 
 (defmethod extract-sources :mbql
   [{:keys [source]}]
   (try
     (let [query (-> (:query source)
-                    transforms.util/massage-sql-query
+                    transforms-base.u/massage-sql-query
                     qp.preprocess/preprocess)
           table-ids (lib/all-source-table-ids query)]
       (table-ids->source-info table-ids))
@@ -48,9 +48,9 @@
   [{:keys [source] :as transform}]
   (try
     (let [query (-> (:query source)
-                    transforms.util/massage-sql-query
+                    transforms-base.u/massage-sql-query
                     qp.preprocess/preprocess)
-          db-id (transforms.util/transform-source-database transform)
+          db-id (transforms-base.u/transform-source-database transform)
           driver (t2/select-one-fn (comp keyword :engine) :model/Database :id db-id)
           deps (driver/native-query-deps driver query)
           table-ids (keep :table deps)]
@@ -63,8 +63,8 @@
   [transform]
   (try
     (let [source-tables (get-in transform [:source :source-tables])
-          normalized (transforms.util/normalize-source-tables source-tables)
-          table-ids (keep (fn [[_ v]] (:table_id v)) normalized)]
+          normalized (transforms-base.u/normalize-source-tables source-tables)
+          table-ids (keep :table_id normalized)]
       (table-ids->source-info table-ids))
     (catch Exception e
       (log/warn e "Failed to extract sources from Python transform")
@@ -77,10 +77,16 @@
 ;;; -------------------------------------------------- Target Table --------------------------------------------------
 
 (defn- get-target-table
-  "Get the target table for a transform. Returns nil if the target doesn't exist."
+  "Get the target table for a transform. Returns nil if the target doesn't exist or hasn't been materialized yet.
+   Provisional tables (inactive, never deactivated) created by the after-insert hook are excluded."
   [{:keys [target] :as transform}]
-  (let [db-id (transforms.i/target-db-id transform)]
-    (transforms.util/target-table db-id target)))
+  (let [db-id (transforms-base.i/target-db-id transform)
+        table (transforms-base.u/target-table db-id target)]
+    ;; A provisional table for a transform that was never run has active=false and deactivated_at=nil
+    ;; Having a table with active=false but a non-nil deactivated_at is a strong indication it ran before.
+    ;; That said even an active table is not proof that is has run, as targets may have been swiveled around.
+    (when (or (:active table) (:deactivated_at table))
+      table)))
 
 ;;; -------------------------------------------------- Field Metadata --------------------------------------------------
 
@@ -215,9 +221,7 @@
    [:alias [:maybe :string]]
    [:source-table {:optional true} [:maybe pos-int?]]
    [:join-table :any]
-   [:join-condition :any]
-   [:lhs-column :any]
-   [:rhs-column :any]])
+   [:join-condition :any]])
 
 (mr/def ::mbql-context
   "MBQL-specific context."
@@ -250,7 +254,7 @@
 (mu/defn build-context :- ::context
   "Build context for lens discovery and generation."
   [transform]
-  (let [source-type (transforms.util/transform-source-type (:source transform))
+  (let [source-type (transforms-base.u/transform-source-type (:source transform))
         sources-info (mapv build-table-info (extract-sources transform))
         target-table (get-target-table transform)
         target-info (when target-table
@@ -259,7 +263,7 @@
         join-structure (:join-structure query-info)
         column-matches (when (and (seq sources-info) target-info)
                          (seq (match-columns sources-info target-info query-info)))
-        db-id (transforms.util/transform-source-database transform)]
+        db-id (transforms-base.u/transform-source-database transform)]
     (cond-> {:source-type         source-type
              :sources             sources-info
              :target              target-info

@@ -9,6 +9,7 @@ import {
   GRAPH_TREND_SETTINGS,
   LEGEND_SETTINGS,
   LINE_SETTINGS,
+  SPLIT_PANELS_SETTINGS,
   STACKABLE_SETTINGS,
   TOOLTIP_SETTINGS,
 } from "metabase/visualizations/lib/settings/graph";
@@ -24,9 +25,22 @@ import type {
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
-import type { VisualizationSettings } from "metabase-types/api";
+import type {
+  Series,
+  TransformedSeries,
+  VisualizationSettings,
+} from "metabase-types/api";
 
 import { transformSeries } from "./chart-definition-legacy";
+
+const transformCartesianSeries = (series: Series): TransformedSeries => {
+  if ("_raw" in series) {
+    return series;
+  }
+
+  const transformed = transformSeries(series);
+  return Object.assign([...transformed], { _raw: series });
+};
 
 export const getCartesianChartDefinition = (
   props: Partial<Visualization>,
@@ -58,7 +72,7 @@ export const getCartesianChartDefinition = (
 
     hasEmptyState: true,
 
-    transformSeries,
+    transformSeries: transformCartesianSeries,
 
     onDisplayUpdate: (settings) => {
       if (settings[SERIES_SETTING_KEY] == null) {
@@ -93,6 +107,7 @@ export const getCartesianChartDefinition = (
 
 export const COMBO_CHARTS_SETTINGS_DEFINITIONS = {
   ...STACKABLE_SETTINGS,
+  ...SPLIT_PANELS_SETTINGS,
   ...LINE_SETTINGS,
   ...GRAPH_GOAL_SETTINGS,
   ...GRAPH_TREND_SETTINGS,

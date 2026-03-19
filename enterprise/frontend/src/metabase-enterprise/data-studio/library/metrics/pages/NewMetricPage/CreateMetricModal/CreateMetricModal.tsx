@@ -4,6 +4,7 @@ import * as Yup from "yup";
 
 import { useCreateCardMutation } from "metabase/api";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
+import { trackMetricCreated } from "metabase/data-studio/analytics";
 import {
   Form,
   FormErrorMessage,
@@ -71,9 +72,15 @@ function CreateMetricForm({
   );
 
   const handleSubmit = async (values: NewMetricValues) => {
-    const request = getCreateRequest(query, values);
-    const card = await createCard(request).unwrap();
-    onCreate(card);
+    try {
+      const request = getCreateRequest(query, values);
+      const card = await createCard(request).unwrap();
+      trackMetricCreated("success", "data_studio", card.id);
+      onCreate(card);
+    } catch (error) {
+      trackMetricCreated("failure", "data_studio", null);
+      throw error;
+    }
   };
 
   return (

@@ -2,13 +2,12 @@
   "Settings for OSS LLM integration."
   (:require
    [clojure.string :as str]
-   [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]))
 
 (defsetting llm-anthropic-api-key
   (deferred-tru "Anthropic API key for AI-assisted SQL generation.")
-  :encryption :when-encryption-key-set
+  :sensitive? true
   :visibility :settings-manager
   :export? false
   :setter     (fn [new-value]
@@ -19,6 +18,15 @@
                                     {:status-code 400})))
                   (setting/set-value-of-type! :string :llm-anthropic-api-key trimmed)))
   :doc false)
+
+(defsetting llm-anthropic-api-key-configured?
+  "Whether an Anthropic API key has been configured for AI-assisted SQL generation."
+  :type       :boolean
+  :visibility :public
+  :setter     :none
+  :export?    false
+  :getter     #(boolean (some? (llm-anthropic-api-key)))
+  :doc        false)
 
 (defsetting llm-anthropic-model
   (deferred-tru "Anthropic model for AI-assisted SQL generation.")
@@ -83,15 +91,3 @@
   :visibility :settings-manager
   :export? false
   :doc false)
-
-(defsetting llm-sql-generation-enabled
-  (deferred-tru "Whether AI-assisted SQL generation is enabled.")
-  :visibility :public
-  :type       :boolean
-  :setter     :none
-  :export?    false
-  :getter     (fn [] (or
-                      (premium-features/enable-metabot-v3?)
-                      (and
-                       (not (premium-features/is-hosted?))
-                       (some? (llm-anthropic-api-key))))))

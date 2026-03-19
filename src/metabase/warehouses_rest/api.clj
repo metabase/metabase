@@ -1004,7 +1004,7 @@
        [:settings           {:optional true} [:maybe ms/Map]]]]
   ;; TODO - ensure that custom schedules and let-user-control-scheduling go in lockstep
   (when (some? write_data_details)
-    (premium-features/assert-has-feature :advanced-permissions (tru "Advanced Permissions")))
+    (premium-features/assert-has-feature :writable-connection (tru "Writable Connection")))
   (when (:write-data-connection details)
     (throw (ex-info (tru "write-data-connection must not be set in details")
                     {:status-code 400})))
@@ -1451,7 +1451,7 @@
                             can-query?          (filter mi/can-query?)
                             can-write-metadata? (filter mi/can-write?))
          hydration-keys   (cond-> []
-                            (premium-features/has-feature? :transforms)   (conj :transform))]
+                            (premium-features/has-feature? :transforms-basic)   (conj :transform))]
      (if (seq hydration-keys)
        (apply t2/hydrate filtered-tables hydration-keys)
        filtered-tables))))

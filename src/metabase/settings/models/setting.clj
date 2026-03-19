@@ -111,7 +111,7 @@
      (contains? (set (keys (methods get-value-of-type))) a-type))])
 
 (def ^:private Visibility
-  [:enum :public :authenticated :settings-manager :admin :internal])
+  [:enum :public :authenticated :settings-manager :admin-write-authed-read :admin :internal])
 
 (defmulti default-tag-for-type
   "Type tag that will be included in the Setting's metadata, so that the getter function will not cause reflection
@@ -1240,13 +1240,14 @@
 
   Controls where this setting is visible, and who can update it. Possible values are:
 
-    Visibility       | Who Can See It?              | Who Can Update It?
-    ---------------- | ---------------------------- | --------------------
-    :public          | The entire world             | Admins and Settings Managers
-    :authenticated   | Logged-in Users              | Admins and Settings Managers
-    :settings-manager| Admins and Settings Managers | Admins and Settings Managers
-    :admin           | Admins                       | Admins
-    :internal        | Nobody                       | No one (usually for env-var-only settings)
+    Visibility               | Who Can See It?              | Who Can Update It?
+    ------------------------ | ---------------------------- | --------------------
+    :public                  | The entire world             | Admins and Settings Managers
+    :authenticated           | Logged-in Users              | Admins and Settings Managers
+    :settings-manager        | Admins and Settings Managers | Admins and Settings Managers
+    :admin-write-authed-read | Logged-in Users              | Admins
+    :admin                   | Admins                       | Admins
+    :internal                | Nobody                       | No one (usually for env-var-only settings)
 
   'Settings Managers' are non-admin users with the 'settings' permission, which gives them access to the Settings page
   in the Admin Panel.
@@ -1402,7 +1403,9 @@
   (try
     (t2/with-transaction [_conn]
       (doseq [[k v] settings]
-        (metabase.settings.models.setting/set! k v)))
+        (if (registered? k)
+          (metabase.settings.models.setting/set! k v)
+          (log/infof "Skipping unregistered setting: %s" (name k)))))
     settings
     (catch Throwable e
       (setting.cache/restore-cache!)
@@ -1470,7 +1473,8 @@
   []
   (set (concat [:public]
                (when @api/*current-user*
-                 [:authenticated])
+                 [:authenticated
+                  :admin-write-authed-read])
                (when (has-advanced-setting-access?)
                  [:settings-manager])
                (when api/*is-superuser?*
@@ -1483,7 +1487,7 @@
                (when (has-advanced-setting-access?)
                  [:settings-manager :authenticated :public])
                (when api/*is-superuser?*
-                 [:admin]))))
+                 [:admin :admin-write-authed-read]))))
 
 (defn- user-facing-settings-matching
   "Returns the user facing view of the registered settings satisfying the given predicate"

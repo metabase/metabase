@@ -7,15 +7,21 @@ redirect_from:
 
 # Fonts
 
-{% include plans-blockquote.html feature="Customizable font" %}
+{% include plans-blockquote.html feature="Customizable fonts" is_plural=true%}
 
 On Pro and Enterprise plans, you can customize the font Metabase uses (the default is [Lato](https://fonts.google.com/specimen/Lato)). You can choose from a curated set of Google Fonts that accommodate the regular, bold, and heavy font weights that Metabase relies on for its various UI elements.
 
-## Included fonts
+![Font settings](./images/font-settings.png)
 
-To change your Metabase font, click the **grid** icon in the upper right of the screen and select **Admin** > **Settings** > **Appearance**. Under **Font**, select from a list of included fonts.
+## Configure fonts
 
-- [Custom font](#custom-fonts)
+To change your Metabase font:
+
+1. Click the **grid** icon in the upper right of the screen.
+2. Select **Admin**.
+3. In Admin console, go to **Settings** > **Appearance** > **Branding**
+4. Under **Font**, select from a list of included fonts:
+
 - [Lato](https://fonts.google.com/specimen/Lato)
 - [Lora](https://fonts.google.com/specimen/Lora)
 - [Merriweather](https://fonts.google.com/specimen/Merriweather)
@@ -35,16 +41,23 @@ To change your Metabase font, click the **grid** icon in the upper right of the 
 - [Slabo 27px](https://fonts.google.com/specimen/Slabo+27px)
 - Source Sans Pro
 - [Ubuntu](https://fonts.google.com/specimen/Ubuntu)
+- [Custom font](#add-custom-fonts)
 
 Comic Sans is currently not included.
 
-## Custom fonts
+You can also upload your own custom font.
 
-To set a custom font, click the **grid** icon in the upper right of the screen and select **Admin** > **Settings** > **Appearance**.
+## Add custom fonts
 
-For **Font**, select **Custom...** and enter URLs to your font files.
+To set a custom font:
 
-## Font style options
+1. Click the **grid** icon in the upper right of the screen.
+2. Select **Admin**.
+3. In the Admin console, go to **Settings** > **Appearance** > **Branding**.
+4. Under **Fonts**, click the dropdown and select **Custom...**
+5. Enter URLs to your font files.
+
+### Custom font style options
 
 You can set three different font styles with three different URLs, one for each font style (size and weight) that Metabase will use to display its user interface properly. The font weights are:
 
@@ -60,7 +73,7 @@ For best results, set at least the 400 and 700 styles. If you have a single font
 
 For custom fonts, Metabase supports woff, woff2, ttf files. If the URL you provide lacks a specific file extension, Metabase will assume it's a woff2 file.
 
-## Google Font URLs
+### Google Font URLs
 
 To get a URL for a [Google Font](https://fonts.google.com/), visit the Google Font page and select the style you want to use. Then make an HTTP request to get the URL of the tff file. For example, say we want to use Roboto Mono: here's how we could get the font file URLs for both the 400 and 700 styles:
 
@@ -95,7 +108,7 @@ For latin text, we'd copy the relevant src URLs for each style, in this case:
 
 And paste those URLS in the relevant input fields in **Admin** > **Settings** > **Appearance** > **Font** section where it says "Tell us where to find the file for each font weight. You don’t need to include all of them, but it’ll look better if you do."
 
-## Hosting fonts on GitHub
+### Hosting fonts on GitHub
 
 If you host a font on GitHub, the font should be in a public repository, and you'll need to link to the raw font file(s) served from the raw.githubusercontent.com domain.
 
@@ -115,13 +128,13 @@ raw.githubusercontent.com/${user}/${repo}/${branch}/${path}
 
 Note that in the raw link, there is no `/blob/` directory in the URL.
 
-## Supporting multiple languages
+### Supporting multiple languages
 
 To support multiple character sets, for example both Latin and Cyrillic, you'll need to merge font files.
 
 ## Customizing the font for individual embedded items
 
-When configuring [guest embeds](../embedding/guest-embedding.md), you can select from any of the [included fonts](#included-fonts). If you've set a custom font for your Metabase, you can also select "Use instance font" to use your custom font in the embed.
+When configuring [guest embeds](../embedding/guest-embedding.md), you can select from any of the [included fonts](#configure-fonts). If you've set a custom font for your Metabase, you can also select "Use instance font" to use your custom font in the embed.
 
 ## Further reading
 

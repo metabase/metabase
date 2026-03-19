@@ -64,7 +64,10 @@ export function PythonDataPicker({
 
   const handleChange = (selections: TableSelection[]) => {
     if (database) {
-      const tableAliases = selectionsToTableAliases(selections);
+      const tableAliases = selectionsToTableAliases(
+        selections,
+        tablesData ?? [],
+      );
       onChange(database, tableAliases, tablesData ?? []);
     }
   };
@@ -218,7 +221,7 @@ function SelectionInput({
       <TableSelector
         database={database}
         table={table}
-        selectedTableIds={Object.values(tables)}
+        selectedTableIds={tables.map((t) => t.table_id)}
         onChange={handleTableChange}
         onRemove={onRemove}
         availableTables={availableTables}

@@ -45,10 +45,8 @@
   "If this is a nested column, add metadata about the parent column."
   [metadata-providerable             :- ::lib.schema.metadata/metadata-providerable
    {:keys [parent-id], :as metadata} :- ::lib.schema.metadata/column]
-  (if-not parent-id
-    metadata
-    (let [parent-metadata                     (lib.metadata/field metadata-providerable parent-id)
-          {parent-name         :name
+  (if-some [parent-metadata (when parent-id (lib.metadata/field metadata-providerable parent-id))]
+    (let [{parent-name         :name
            parent-nfc-path     :nfc-path
            parent-display-name :display-name} (add-parent-column-metadata metadata-providerable parent-metadata)
           new-name                            (str parent-name
@@ -63,7 +61,8 @@
                  :nfc-path                               (conj (vec parent-nfc-path) (:name parent-metadata))
                  :display-name                           new-display-name
                  ;; this is used by the `display-name-method` for `:metadata/column` in [[metabase.lib.field]]
-                 :lib/simple-display-name new-display-name)))))
+                 :lib/simple-display-name new-display-name)))
+    metadata))
 
 (mu/defn- field-metadata :- [:maybe ::lib.metadata.calculation/visible-column]
   "Metadata about the field from the metadata provider."
@@ -226,32 +225,31 @@
                   [k v])))
         opts-metadata-fns))
 
-(def ^:private model-propagated-keys
-  #{:lib/card-id
-    :lib/original-display-name
-    :lib/original-expression-name
-    :lib/original-fk-field-id
-    :lib/original-fk-field-name
-    :lib/original-fk-join-alias
-    :lib/original-join-alias
-    :lib/original-name
-    :lib/type
-    :active
-    :base-type
-    :converted-timezone
-    :description
-    :display-name
-    :fingerprint
-    :id
-    :semantic-type
-    :table-id
-    :visibility-type})
-
 (def ^:private regular-card-propagated-keys
   #{:lib/card-id
+    :lib/from-model?
     :active
     :fingerprint
     :visibility-type})
+
+(def ^:private model-propagated-keys
+  (set/union
+   regular-card-propagated-keys
+   #{:lib/original-display-name
+     :lib/original-expression-name
+     :lib/original-fk-field-id
+     :lib/original-fk-field-name
+     :lib/original-fk-join-alias
+     :lib/original-join-alias
+     :lib/original-name
+     :lib/type
+     :base-type
+     :converted-timezone
+     :description
+     :display-name
+     :id
+     :semantic-type
+     :table-id}))
 
 (declare resolve-in-previous-stage-returned-columns-and-update-keys)
 
@@ -273,8 +271,11 @@
             ;; unique/unambiguous if multiple versions of the column (e.g. with different bucketing units) are
             ;; returned
             (when-some [col (resolve-in-previous-stage-returned-columns-and-update-keys query card-cols (:lib/source-column-alias col))]
-              (let [col (assoc col :lib/source :source/card, :lib/card-id card-id)
-                    propagated-keys (if (= (:type card) :model)
+              (let [col             (assoc col :lib/source :source/card, :lib/card-id card-id)
+                    model?          (= (:type card) :model)
+                    col             (cond-> col
+                                      model? (assoc :lib/from-model? true))
+                    propagated-keys (if model?
                                       model-propagated-keys
                                       regular-card-propagated-keys)]
                 (select-keys col propagated-keys))))))
@@ -331,7 +332,8 @@
         (if-some [source-cols (or (when-some [previous-stage-number (lib.util/previous-stage-number query stage-number)]
                                     (lib.metadata.calculation/returned-columns query previous-stage-number))
                                   (when-some [source-card-id (:source-card (lib.util/query-stage query stage-number))]
-                                    (lib.metadata.calculation/returned-columns query (lib.metadata/card query source-card-id))))]
+                                    (when-some [card (lib.metadata/card query source-card-id)]
+                                      (lib.metadata.calculation/returned-columns query card))))]
           (let [previous-stage-cols (filter #(= (:lib/original-join-alias %) join-alias)
                                             source-cols)]
             ;; try to resolve by what is PROBABLY the correct name in a previous stage e.g. `Join` + `COLUMN` becomes
@@ -567,8 +569,9 @@
     ;; `returned-columns`... we'd get fallback metadata, right?
     (and source-table-id
          (string? id-or-name))
-    (m/find-first #(= (:name %) id-or-name)
-                  (lib.metadata.calculation/returned-columns query (lib.metadata/table query source-table-id)))
+    (when-some [table (lib.metadata/table query source-table-id)]
+      (m/find-first #(= (:name %) id-or-name)
+                    (lib.metadata.calculation/returned-columns query table)))
 
     (= (:lib/type stage) :mbql.stage/native)
     (when-some [col (resolve-in-current-stage-metadata query stage-number id-or-name)]

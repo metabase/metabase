@@ -10,10 +10,9 @@
       preferred-method (case preferred-method
                          "jwt"  :jwt
                          "saml" :saml
-                         "slack-connect"  :slack-connect
                          (throw (ex-info "Invalid auth method"
                                          {:preferred-method preferred-method
-                                          :available        [:jwt :saml :slack-connect]})))
+                                          :available        [:jwt :saml]})))
       (contains? (:params req) :jwt) :jwt
       :else :saml)))
 
@@ -24,8 +23,7 @@
   [req]
   (let [enabled-count (count (filter identity
                                      [(sso-settings/saml-enabled)
-                                      (sso-settings/jwt-enabled)
-                                      (sso-settings/slack-connect-enabled)]))]
+                                      (sso-settings/jwt-enabled)]))]
     (cond
       ;; Multiple SSO methods enabled - use preferred_method or selection logic
       (> enabled-count 1) (select-sso-backend req)
@@ -33,7 +31,6 @@
       ;; Single SSO method enabled
       (sso-settings/saml-enabled) :saml
       (sso-settings/jwt-enabled)  :jwt
-      (sso-settings/slack-connect-enabled)  :slack-connect
 
       ;; No SSO method enabled
       :else nil)))
