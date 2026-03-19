@@ -23,13 +23,12 @@ The inspector organizes its analysis into different lenses (displayed as tabs). 
 
 Data summary gives you a quick snapshot of the transform's input and output tables:
 
-- **Input tables**: table name, row count, column count.
-- **Output table**: table name, row count, column count.
-- **Field-level stats**: data type, distinct count, nil percentage, range, and averages.
+- **Input and output tables**: table name, row count, column count.
+- **Field-level stats**: data type, distinct count, nil percentage (number of null values), range, and averages.
 
 ### Column distributions
 
-Visualizes how data distributions change through the transform. Can help you spot unexpected filtering, aggregation effects, or type changes. This lens is available when columns match between input and output tables (so you may not see it when pre-aggregating data).
+The Column distributions lens visualizes how data distributions change through the transform. This lens can help you spot unexpected filtering, aggregation effects, or type changes. This lens is only available when columns match between input and output tables (so you may not see it for transforms that aggregate data).
 
 Column distributions can be slow on large datasets because it computes distribution stats for every matched column.
 
@@ -43,11 +42,9 @@ Available when the transform includes joins. Shows how well your joins match acr
 - Shows a warning when more than 20% of rows are unmatched. The warning appears inline in the join analysis results.
 - Can trigger [drill lenses](#drill-lenses) for deeper investigation into unmatched rows.
 
-Join analysis generates multiple queries to compute match rates, so expect it to take longer than Data summary. A clock icon on the tab indicates an expensive operation.
-
 ### Drill lenses
 
-Drill lenses are dynamic tabs that appear based on analysis results. For example, if join analysis finds unmatched rows, a tab like "Unmatched Rows - Join 2" will appear.
+Drill lenses are dynamic tabs that appear based on analysis results. For example, if a join analysis finds unmatched rows, a tab like "Unmatched Rows - Join 2" will appear.
 
 Drill lenses show sample rows broken down by category:
 
@@ -55,9 +52,9 @@ Drill lenses show sample rows broken down by category:
 - Rows with a NULL source key.
 - Orphan rows on either side of the join.
 
-Each card is clickable, so you can drill into a detailed question view. You can close a drill lens by clicking the **X** on its tab.
+Each card is clickable, so you can drill into a detailed question view.
 
-## Some lenses can take a while
+## Some lenses can take a while to load
 
 ![Some analyses may take a long time to load](../images/transform-inspector-analysis-warning.png)
 
