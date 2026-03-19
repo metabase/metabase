@@ -40,4 +40,8 @@
     (println "This token is required to run the Enterprise Edition.")
     (println "Set it in your shell profile or export it before running fixbot.")
     (u/exit 1))
+  ;; Ensure node_modules exists so worktree symlinks have a target
+  (when-not (.isDirectory (java.io.File. ^String (str u/project-root-directory "/node_modules")))
+    (println (c/yellow "node_modules not found — running bun install..."))
+    (shell/sh {:dir u/project-root-directory} "bun" "install"))
   (println (c/green "All preflight checks passed.")))

@@ -94,4 +94,4 @@ exec docker run -it --rm \
   "${ENV_ARGS[@]}" \
   --add-host=host.docker.internal:host-gateway \
   "$IMAGE_NAME" \
-  --dangerously-skip-permissions
+  --dangerously-skip-permissions "$@"

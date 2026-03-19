@@ -44,22 +44,21 @@
        "files:\n"
        "  symlink:\n"
        "    - node_modules\n"
+       "    - bin/bb\n"
        "\n"
        "panes:\n"
-       "  - command: ./bin/mage -fixbot-status-watch\n"
-       "    split: horizontal\n"
-       "    size: 5\n"
-       "\n"
        "  - command: <agent>\n"
        "    focus: true\n"
        "\n"
        "  - command: clj -M:dev:dev-start:drivers:drivers-dev:ee:ee-dev\n"
        "    split: horizontal\n"
-       "    percentage: 40\n"
        "\n"
        "  - command: MB_EDITION=ee bun run build-hot\n"
-       "    split: horizontal\n"
-       "    percentage: 60\n"))
+       "    split: vertical\n"
+       "\n"
+       "  - command: ./bin/mage -fixbot-status-watch\n"
+       "    split: vertical\n"
+       "    size: 5\n"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Main orchestrator
@@ -91,7 +90,7 @@
         (println (c/red "--branch is required"))
         (u/exit 1))
 
-      (let [session-name (str "fixbot/" (str/lower-case issue-id))
+      (let [session-name (str "fixbot-" (str/lower-case issue-id))
             workmux-path (str u/project-root-directory "/.workmux.yaml")
             backup-path (str workmux-path ".bak")
             had-backup? (.exists (java.io.File. workmux-path))

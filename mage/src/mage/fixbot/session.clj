@@ -21,7 +21,7 @@
 (defn- parse-worktree-name
   "Extract the worktree name from a workmux list output line.
    The name is everything after '__worktrees/' in the PATH column.
-   For names like 'fixbot/uxw-3155', the path looks like '../repo__worktrees/fixbot/uxw-3155'."
+   For names like 'fixbot-uxw-3155', the path looks like '../repo__worktrees/fixbot-uxw-3155'."
   [line]
   (let [trimmed (str/trim line)]
     (when-let [path (last (re-find #"(\S+)\s*$" trimmed))]
