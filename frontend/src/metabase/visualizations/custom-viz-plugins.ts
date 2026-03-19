@@ -23,6 +23,8 @@ declare global {
       React: typeof React;
       jsxRuntime: typeof jsxRuntime;
     };
+    // Set by custom viz IIFE bundles during loading, read and cleared by loadCustomVizPlugin
+    __customVizPlugin__?: (...args: unknown[]) => unknown;
   }
 }
 
@@ -201,10 +203,6 @@ export async function loadCustomVizPlugin(
     !plugin.dev_bundle_url &&
     !cacheBustSuffix
   ) {
-    // eslint-disable-next-line no-console
-    console.log(
-      `[custom-viz] Plugin "${plugin.display_name}" already registered as "${existing.identifier}"`,
-    );
     return existing.identifier;
   }
 
@@ -220,17 +218,17 @@ export async function loadCustomVizPlugin(
     } else if (plugin.resolved_commit) {
       bundleUrl.searchParams.set("v", plugin.resolved_commit);
     }
-    // Use fetch + Blob URL instead of direct import() to avoid
-    // "base URL is about:blank" errors when JS is served cross-origin
-    // (e.g. webpack dev server on a different port).
     const res = await fetch(bundleUrl.href, { cache: "no-store" });
     const text = await res.text();
-    const blob = new Blob([text], { type: "application/javascript" });
-    const blobUrl = URL.createObjectURL(blob);
-    const imported = await import(/* webpackIgnore: true */ blobUrl);
-    URL.revokeObjectURL(blobUrl);
 
-    const factory = imported.default;
+    // Execute in global scope so `var __customVizPlugin__` assigns to window
+    const script = document.createElement("script");
+    script.textContent = text;
+    document.head.appendChild(script);
+    document.head.removeChild(script);
+    const factory = window.__customVizPlugin__;
+    window.__customVizPlugin__ = undefined;
+
     if (typeof factory !== "function") {
       throw new Error(
         "Plugin bundle must have a default export that is a factory function",

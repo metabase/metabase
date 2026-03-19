@@ -100,8 +100,8 @@ export default defineConfig({
     outDir: "dist",
     lib: {
       entry: resolve(__dirname, "src/index.tsx"),
-      formats: ["es", "iife"],
-      fileName: (format) => (format === "iife" ? "index.iife.js" : "index.js"),
+      formats: ["iife"],
+      fileName: () => "index.js",
       name: "__customVizPlugin__",
     },
   },

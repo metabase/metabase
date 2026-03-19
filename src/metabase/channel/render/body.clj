@@ -391,17 +391,16 @@
        (m/distinct-by #(get-in % [:card :id]))))
 
 (defn- custom-viz-bundles
-  "If the card has a custom:* display type, resolve the plugin's IIFE bundle for static rendering."
+  "If the card has a custom:* display type, resolve the plugin's bundle for static rendering."
   [card]
   (let [display-type (some-> card :display name)]
     (when (and display-type (str/starts-with? display-type "custom:"))
       (let [identifier (subs display-type (count "custom:"))
             plugin     (t2/select-one :model/CustomVizPlugin :identifier identifier :enabled true)]
-        (when-let [iife-content (some-> plugin :id
-                                        (metabase.custom-viz-plugin.cache/get-bundle)
-                                        :iife-content)]
-          (when iife-content
-            [{:identifier identifier :source iife-content}]))))))
+        (when-let [content (some-> plugin :id
+                                       (metabase.custom-viz-plugin.cache/get-bundle)
+                                       :content)]
+          [{:identifier identifier :source content}])))))
 
 ;; the `:javascript_visualization` render method
 ;; is and will continue to handle more and more 'isomorphic' chart types.
