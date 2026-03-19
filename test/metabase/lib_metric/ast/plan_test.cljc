@@ -195,6 +195,21 @@
            #"same breakout dimension types"
            (ast.plan/validate-arithmetic-ast! expr))))))
 
+(deftest ^:parallel validate-arithmetic-ast-compatible-datetime-types-test
+  (testing "accepts compatible date/datetime types across different databases"
+    (let [expr (make-expression-arithmetic
+                :+ [(make-expression-leaf uuid-a [dim-1] {dim-1 {:effective-type :type/Date}})
+                    (make-expression-leaf uuid-b [dim-1] {dim-1 {:effective-type :type/DateTimeWithLocalTZ}})])]
+      (is (nil? (ast.plan/validate-arithmetic-ast! expr)))))
+  (testing "rejects incompatible temporal types (date vs time)"
+    (let [expr (make-expression-arithmetic
+                :+ [(make-expression-leaf uuid-a [dim-1] {dim-1 {:effective-type :type/Date}})
+                    (make-expression-leaf uuid-b [dim-1] {dim-1 {:effective-type :type/Time}})])]
+      (is (thrown-with-msg?
+           #?(:clj clojure.lang.ExceptionInfo :cljs js/Error)
+           #"same breakout dimension types"
+           (ast.plan/validate-arithmetic-ast! expr))))))
+
 (deftest ^:parallel validate-arithmetic-ast-valid-test
   (testing "valid arithmetic AST passes validation"
     (let [expr (make-expression-arithmetic :+ [(make-expression-leaf uuid-a [dim-1])

@@ -272,6 +272,7 @@ function findSourceMatch(
   reference: ClassifiedDimension,
 ): ClassifiedDimension | null {
   let nameMatch: ClassifiedDimension | null = null;
+  let typeMatch: ClassifiedDimension | null = null;
   const referenceName = reference.name;
 
   for (const [, info] of dimensions) {
@@ -284,9 +285,15 @@ function findSourceMatch(
     if (!nameMatch && referenceName && info.name === referenceName) {
       nameMatch = info;
     }
+    if (
+      !typeMatch &&
+      LibMetric.isCompatibleType(info.dimension, reference.dimension)
+    ) {
+      typeMatch = info;
+    }
   }
 
-  return nameMatch;
+  return nameMatch ?? typeMatch;
 }
 
 function resolveAggregateDimensionMapping(
@@ -641,6 +648,7 @@ function findDimensionBySourceMatch(
   getSubtype?: (dimension: DimensionMetadata) => string | null,
 ): string | null {
   let nameMatch: ClassifiedDimension | null = null;
+  let typeMatch: ClassifiedDimension | null = null;
 
   for (const [, info] of dimensionsByType) {
     if (info.type !== reference.type) {
@@ -660,9 +668,20 @@ function findDimensionBySourceMatch(
         nameMatch = info;
       }
     }
+    if (
+      !typeMatch &&
+      LibMetric.isCompatibleType(info.dimension, reference.dimension)
+    ) {
+      if (
+        !getSubtype ||
+        getSubtype(info.dimension) === getSubtype(reference.dimension)
+      ) {
+        typeMatch = info;
+      }
+    }
   }
 
-  return nameMatch?.id ?? null;
+  return nameMatch?.id ?? typeMatch?.id ?? null;
 }
 
 function resolveSubtypeFallback(
