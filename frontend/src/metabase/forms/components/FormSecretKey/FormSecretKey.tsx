@@ -1,7 +1,14 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useField } from "formik";
-import type { ChangeEvent, FocusEvent, Ref } from "react";
-import { forwardRef, useCallback, useState } from "react";
+import {
+  type ChangeEvent,
+  type FocusEvent,
+  type Ref,
+  forwardRef,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
 import { t } from "ttag";
 
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
@@ -12,9 +19,9 @@ import {
   Alert,
   Button,
   Flex,
-  Icon,
   PasswordInput,
   Stack,
+  Text,
   TextInput,
 } from "metabase/ui";
 
@@ -78,12 +85,13 @@ export const FormSecretKey = forwardRef(function FormSecretKey(
     setShowCopyAlert(true);
   };
 
-  // When the backend returns an obfuscated value the secret is already set.
-  // Show it as a disabled plain-text input (no eye-toggle, no empty placeholder)
-  // so the admin can see that something is configured without revealing the key.
-  // Once they confirm regeneration the value becomes a fresh plaintext token and
-  // the component switches back to a normal PasswordInput.
   const isAlreadySet = isObfuscatedValue(value);
+
+  useEffect(() => {
+    if (isAlreadySet) {
+      setShowCopyAlert(!isAlreadySet);
+    }
+  }, [isAlreadySet]);
 
   return (
     <>
@@ -118,8 +126,10 @@ export const FormSecretKey = forwardRef(function FormSecretKey(
           </Button>
         </Flex>
         {showCopyAlert && (
-          <Alert icon={<Icon name="info" />}>
-            {t`Copy and store this key in a safe place. You won’t be able to view it again after saving these settings.`}
+          <Alert color="warning" mt="sm" display="inline">
+            <Text>
+              {t`Copy and store this key in a safe place. You won’t be able to view it again after saving these settings.`}
+            </Text>
           </Alert>
         )}
       </Stack>

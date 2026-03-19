@@ -748,6 +748,60 @@
     (is (= "123456"
            (test-sensitive-setting)))))
 
+;;; ----------------------------------------------- Obfuscated Settings -----------------------------------------------
+
+(defsetting test-obfuscated-setting
+  (deferred-tru "A sensitive setting that is also exposed (obfuscated) via session-properties.")
+  :sensitive?  true
+  :obfuscated? true
+  :visibility  :authenticated
+  :encryption  :when-encryption-key-set)
+
+(defsetting test-obfuscated-only-setting
+  (deferred-tru "A non-sensitive setting that is still obfuscated in session-properties.")
+  :obfuscated? true
+  :visibility  :authenticated
+  :encryption  :when-encryption-key-set)
+
+(deftest obfuscated-settings-test
+  (testing "can-read-setting? returns true for :sensitive? + :obfuscated? settings"
+    (mt/with-current-user (mt/user->id :rasta)
+      (is (true? (setting/can-read-setting? :test-obfuscated-setting
+                                            (setting/current-user-readable-visibilities))))))
+
+  (testing "can-read-setting? returns true for :obfuscated?-only settings (no :sensitive?)"
+    (mt/with-current-user (mt/user->id :rasta)
+      (is (true? (setting/can-read-setting? :test-obfuscated-only-setting
+                                            (setting/current-user-readable-visibilities))))))
+
+  (testing "can-read-setting? still returns false for :sensitive?-only settings (excluded from session-properties)"
+    (mt/with-current-user (mt/user->id :rasta)
+      (is (false? (setting/can-read-setting? :test-sensitive-setting
+                                             (setting/current-user-readable-visibilities))))))
+
+  (testing "user-readable-values-map returns obfuscated value for :sensitive? + :obfuscated? setting"
+    (mt/with-current-user (mt/user->id :rasta)
+      (test-obfuscated-setting! "super-secret-value")
+      (is (= "**********ue"
+             (get (setting/user-readable-values-map #{:authenticated}) :test-obfuscated-setting)))))
+
+  (testing "user-readable-values-map returns obfuscated value for :obfuscated?-only setting"
+    (mt/with-current-user (mt/user->id :rasta)
+      (test-obfuscated-only-setting! "another-secret")
+      (is (= "**********et"
+             (get (setting/user-readable-values-map #{:authenticated}) :test-obfuscated-only-setting)))))
+
+  (testing "user-readable-values-map returns nil (absent) for :sensitive?-only setting"
+    (mt/with-current-user (mt/user->id :rasta)
+      (test-sensitive-setting! "ABC123")
+      (is (= ::not-present
+             (get (setting/user-readable-values-map #{:authenticated}) :test-sensitive-setting ::not-present)))))
+
+  (testing "direct getter still returns the raw value for :sensitive? + :obfuscated? setting"
+    (test-obfuscated-setting! "super-secret-value")
+    (is (= "super-secret-value"
+           (test-obfuscated-setting)))))
+
 ;;; ------------------------------------------------- CACHE SYNCING --------------------------------------------------
 
 (deftest cache-sync-test
