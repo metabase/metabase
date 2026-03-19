@@ -92,7 +92,7 @@ Object.assign(Funnel, {
       dashboard: false,
       useRawSeries: true,
       showColumnSetting: true,
-      marginBottom: "0.625rem",
+      getMarginBottom: () => "0.625rem",
     }),
     "funnel.order_dimension": {
       getValue: (_series: RawSeries, settings: ComputedVisualizationSettings) =>

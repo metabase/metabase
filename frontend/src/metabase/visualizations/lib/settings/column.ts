@@ -177,7 +177,7 @@ export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
       return t`Date separators`;
     },
     widget: "radio",
-    default: "/",
+    getDefault: () => "/",
     getProps: (_column, settings) => {
       const style = /\//.test(settings.date_style ?? "")
         ? (settings.date_style ?? "")
@@ -198,7 +198,7 @@ export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
       return t`Abbreviate days and months`;
     },
     widget: "toggle",
-    default: false,
+    getDefault: () => false,
     inline: true,
     getHidden: ({ unit }, settings) => {
       const format = getDateFormatFromStyle(
@@ -230,7 +230,7 @@ export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
       return t`Time style`;
     },
     widget: "radio",
-    default: "h:mm A",
+    getDefault: () => "h:mm A",
     getProps: (column) => ({
       options: getTimeStyleOptions(column.unit ?? "default"),
     }),

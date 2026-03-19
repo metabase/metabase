@@ -75,8 +75,7 @@
                                 slack/channel-exists? (constantly true)
                                 slack/refresh-channels-and-usernames! (constantly true)
                                 slack/refresh-channels-and-usernames-when-needed! (constantly true)]
-                    (mt/with-temporary-setting-values [slack-app-token nil
-                                                       slack-token     "fake-token"]
+                    (mt/with-temporary-setting-values [slack-app-token nil]
                       (mt/user-http-request user :put status "slack/settings" {:slack-app-token "fake-token"})))))
 
               (get-manifest [user status]

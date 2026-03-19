@@ -343,7 +343,7 @@ describe("Onboarding", () => {
       ).toHaveAttribute("href", "/admin/settings/email");
       expect(
         within(commsSetup).getByRole("link", { name: "Slack" }),
-      ).toHaveAttribute("href", "/admin/settings/notifications");
+      ).toHaveAttribute("href", "/admin/settings/slack");
 
       const cta = screen.getByTestId("subscription-cta");
       expect(within(cta).getByRole("link")).toHaveAttribute(
@@ -387,7 +387,7 @@ describe("Onboarding", () => {
       ).toHaveAttribute("href", "/admin/settings/email");
       expect(
         within(commsSetup).getByRole("link", { name: "Slack" }),
-      ).toHaveAttribute("href", "/admin/settings/notifications");
+      ).toHaveAttribute("href", "/admin/settings/slack");
 
       const cta = screen.getByTestId("alert-cta");
       expect(within(cta).getByRole("link")).toHaveAttribute(
