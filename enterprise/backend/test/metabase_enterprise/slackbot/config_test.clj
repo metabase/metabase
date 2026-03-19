@@ -2,9 +2,9 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.slackbot.test-util :as tu]
-   [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.channel.settings :as channel.settings]
    [metabase.premium-features.core :as premium-features]
+   [metabase.sso.settings :as sso-settings]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.encryption :as encryption]))
