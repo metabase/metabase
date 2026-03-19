@@ -26,6 +26,11 @@ export type TransformsPlugin = {
   TransformsUpsellPage: ComponentType;
 };
 
+export type TransformsInspectorPlugin = {
+  isEnabled: boolean;
+  getInspectorRoutes: () => ReactNode;
+};
+
 export type PythonTransformEditorUiOptions = {
   canChangeDatabase?: boolean;
   readOnly?: boolean;
@@ -145,6 +150,14 @@ const getDefaultPluginTransforms = (): TransformsPlugin => ({
 
 export const PLUGIN_TRANSFORMS = getDefaultPluginTransforms();
 
+const getDefaultPluginTransformsInspector = (): TransformsInspectorPlugin => ({
+  isEnabled: false,
+  getInspectorRoutes: () => null,
+});
+
+export const PLUGIN_TRANSFORMS_INSPECTOR =
+  getDefaultPluginTransformsInspector();
+
 const getDefaultPluginTransformsPython = (): PythonTransformsPlugin => ({
   isEnabled: false,
   getPythonTransformsRoutes: () => null,
@@ -184,6 +197,10 @@ export const PLUGIN_DEPENDENCIES = getDefaultPluginDependencies();
  */
 export function reinitialize() {
   Object.assign(PLUGIN_TRANSFORMS, getDefaultPluginTransforms());
+  Object.assign(
+    PLUGIN_TRANSFORMS_INSPECTOR,
+    getDefaultPluginTransformsInspector(),
+  );
   Object.assign(PLUGIN_TRANSFORMS_PYTHON, getDefaultPluginTransformsPython());
   Object.assign(PLUGIN_DEPENDENCIES, getDefaultPluginDependencies());
 }
