@@ -1666,3 +1666,56 @@
                                     ["case"
                                      [[["<" ["aggregation" 0 {"base-type" "type/Float"}] 0.591] "60%"]]]
                                     {"name" "A", "display-name" "B"}]))))
+
+(deftest ^:parallel do-not-do-nasty-stuff-to-parameters-test
+  (testing "[:dimension [:expression ...]] refs should get converted to MBQL 5 correctly (QUE2-289)"
+    (let [query {:database 33001
+                 :type     :native
+                 :native   {:query      "SELECT *"
+                            :parameters [{:type   :date/range
+                                          :value  "2019-09-29~2023-09-29"
+                                          :target [:dimension [:expression "date-column"]]}
+                                         {:type   :category
+                                          :value  1
+                                          :target [:dimension [:expression "number-column"]]}]}}]
+      (is (=? {:lib/type :mbql/query
+               :stages   [{:lib/type   :mbql.stage/native
+                           :parameters [{:type   :date/range
+                                         :value  "2019-09-29~2023-09-29"
+                                         :target [:dimension [:expression "date-column"]]}
+                                        {:type   :category
+                                         :value  1
+                                         :target [:dimension [:expression "number-column"]]}]}]}
+              (lib/->pMBQL query)))
+      (is (=? query
+              (-> query lib/->pMBQL lib/->legacy-MBQL))))))
+
+(deftest ^:parallel do-not-do-nasty-stuff-to-parameters-test-2
+  (testing "[:dimension [:expression ...]] refs should get converted to MBQL 5 correctly (QUE2-289)"
+    (let [query {:database 33001
+                 :type     :query
+                 :query    {:source-query {:source-table 33030
+                                           :expressions  {"date-column"   [:field 33302 nil]
+                                                          "number-column" [:field 33300 nil]}
+                                           :parameters   [{:type   :date/range
+                                                           :value  "2019-09-29~2023-09-29"
+                                                           :target [:dimension [:expression "date-column"]]}
+                                                          {:type   :category
+                                                           :value  1
+                                                           :target [:dimension [:expression "number-column"]]}]}}}]
+      (is (=? {:lib/type :mbql/query
+               :stages   [{:lib/type    :mbql.stage/mbql
+                           :expressions [[:field
+                                          {:lib/uuid            string?
+                                           :lib/expression-name "date-column"}
+                                          pos-int?]
+                                         [:field
+                                          {:lib/uuid            string?
+                                           :lib/expression-name "number-column"}
+                                          pos-int?]]
+                           :parameters  [{:type :date/range, :value "2019-09-29~2023-09-29", :target [:dimension [:expression "date-column"]]}
+                                         {:type :category, :value 1, :target [:dimension [:expression "number-column"]]}]}
+                          {:lib/type :mbql.stage/mbql}]}
+              (lib/->pMBQL query)))
+      (is (=? query
+              (-> query lib/->pMBQL lib/->legacy-MBQL))))))
