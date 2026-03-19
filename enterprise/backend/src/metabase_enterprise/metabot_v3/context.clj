@@ -9,6 +9,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms.feature-gating :as transforms.gating]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -202,10 +203,24 @@
       (assoc context :user_is_viewing annotated-viewing))
     context))
 
+(defn- feature-capabilities
+  "Returns a set of feature capability strings based on enabled features.
+  These correspond to the capability keywords used in tool :capabilities metadata:
+  - \"feature:transforms\" -> :feature-transforms
+  - \"feature:transforms-python\" -> :feature-transforms-python
+  - \"feature:snippets\" -> :feature-snippets"
+  []
+  (cond-> #{"feature:snippets"}  ; snippets are always available
+    (transforms.gating/any-transforms-enabled?)    (conj "feature:transforms")
+    (transforms.gating/python-transforms-enabled?) (conj "feature:transforms-python")))
+
 (defn- add-backend-capabilities
-  "Add backend capabilities to context, merging with any existing capabilities."
+  "Add backend capabilities to context, merging with any existing capabilities.
+  Includes both API endpoint capabilities and feature flag capabilities."
   [context]
-  (update context :capabilities (fnil into #{}) (backend-metabot-capabilities)))
+  (update context :capabilities (fnil into #{})
+          (concat (backend-metabot-capabilities)
+                  (feature-capabilities))))
 
 (defn- add-recent-views
   "Add user's recent views to the context since these have a higher likelihood of being relevant to a user's query.

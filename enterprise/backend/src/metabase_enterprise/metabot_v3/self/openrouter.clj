@@ -231,6 +231,7 @@
                                       :description "Output structured data"
                                       :parameters  schema}}])
                        (seq (mapv tool->openai-chat tools)))
+        _ (def tsp-tools all-tools)
         req        (cond-> {:model             model
                             :stream            true
                             :stream_options    {:include_usage true}

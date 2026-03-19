@@ -176,7 +176,9 @@
   [tools]
   (vec
    (for [[tool-name tool] tools
-         :let [fname  (or (-> tool meta :prompt)
+         :let [fname  (or (if (map? tool)
+                            (:prompt tool)
+                            (-> tool meta :prompt))
                           (str tool-name ".md"))
                prompt (some-> (io/resource (str "metabot/prompts/tools/" fname))
                               slurp)]
@@ -204,6 +206,7 @@
             dialect-instructions (when sql-dialect
                                    (get-cached-dialect-instructions sql-dialect))
             tool-instructions    (extract-tool-instructions tools)
+            _ (def tsp-tool-instructions tool-instructions)
             current-user-info    (or (get context :current_user_info)
                                      (get context :current-user-info))
             current-time         (or (get context :current_time)
