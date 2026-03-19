@@ -52,26 +52,13 @@
       :ready)
     (catch Exception _ :waiting)))
 
-(defn- status-label [status]
-  (case status
-    :ready     "\033[32mready\033[0m"
-    :unhealthy "\033[31mUNHEALTHY\033[0m"
-    :waiting   "\033[33mwaiting\033[0m"
-    "???"))
+(def ^:private green "\033[32m")
+(def ^:private red "\033[31m")
+(def ^:private yellow "\033[33m")
+(def ^:private reset "\033[0m")
 
-(defn- check-services
-  "Check health of backend, frontend, and database. Returns a status string line."
-  [jetty-port frontend-port db-type db-port]
-  (let [backend  (when jetty-port
-                   (check-http (str "http://localhost:" jetty-port "/api/health") 2000))
-        frontend (when frontend-port
-                   (check-http (str "http://localhost:" frontend-port) 2000))
-        db       (when db-port
-                   (check-tcp "localhost" db-port 2000))]
-    (str "BE:" (if backend (status-label backend) "?")
-         "  FE:" (if frontend (status-label frontend) "?")
-         (when db
-           (str "  " (str/upper-case (name db-type)) ":" (status-label db))))))
+(defn- colorize [color text]
+  (str color text reset))
 
 (defn- load-ports
   "Read mise.local.toml and extract ports. Returns a map or nil if file not ready."
@@ -89,35 +76,91 @@
          :db-type       db-type
          :db-port       db-port}))))
 
+(defn- load-issue-info
+  "Read issue.txt and prompt file to get issue ID, URL, and title."
+  []
+  (let [issue-file (File. ".fixbot/issue.txt")]
+    (when (.exists issue-file)
+      (let [issue-line (str/trim (slurp issue-file))
+            [id url]   (str/split issue-line #"\s*\|\s*" 2)
+            ;; Find prompt file to extract title
+            fixbot-dir (File. ".fixbot")
+            prompt-files (when (.isDirectory fixbot-dir)
+                           (->> (.listFiles fixbot-dir)
+                                (filter #(str/starts-with? (.getName ^File %) "metabase-fixbot-"))
+                                (filter #(str/ends-with? (.getName ^File %) "-prompt.md"))))
+            title (when (seq prompt-files)
+                    (let [first-line (first (str/split-lines (slurp ^File (first prompt-files))))]
+                      ;; Parse "# Fixbot Agent — UXW-3155: Add keyboard shortcut..."
+                      (when-let [[_ t] (re-find #":\s*(.+)" first-line)]
+                        (str/trim t))))]
+        {:id (str/trim (or id ""))
+         :url (str/trim (or url ""))
+         :title (or title "")}))))
+
+(defn- render-display
+  "Render the full status pane display."
+  [issue ports be-status fe-status db-status llm-status]
+  (let [sb (StringBuilder.)]
+    ;; Line 1: Issue title
+    (when (and issue (seq (:title issue)))
+      (.append sb (:title issue))
+      (.append sb "\n"))
+    ;; Line 2: Issue ID | URL
+    (when issue
+      (.append sb (str (:id issue) " | " (:url issue) "\n")))
+    ;; Line 3: Metabase | URL | DB
+    (when ports
+      (let [mb-healthy? (and (= be-status :ready) (= fe-status :ready))
+            mb-color    (if mb-healthy? green red)
+            mb-text     (str "Metabase | http://localhost:" (:jetty-port ports))
+            db-name     (when (:db-type ports)
+                          (str/upper-case (name (:db-type ports))))
+            db-color    (if (= db-status :ready) green red)
+            db-text     (when (and db-name (:db-port ports))
+                          (str db-name ": " (:db-port ports)))]
+        (.append sb (colorize mb-color mb-text))
+        (when db-text
+          (.append sb " | ")
+          (.append sb (colorize db-color db-text)))
+        (.append sb "\n")))
+    ;; Blank line + LLM status
+    (when (seq llm-status)
+      (.append sb "\n")
+      (.append sb llm-status)
+      (.append sb "\n"))
+    (.toString sb)))
+
 (defn run!
-  "Watch .fixbot/status.txt and periodically check service health."
+  "Watch .fixbot/llm-status.txt and periodically check service health."
   [{:keys [arguments]}]
-  (let [file-path (or (first arguments) ".fixbot/status.txt")
+  (let [file-path (or (first arguments) ".fixbot/llm-status.txt")
         f         (File. ^String file-path)
         mise-path "mise.local.toml"]
-    (loop [last-modified 0
-           last-services ""
-           ports         nil
-           tick          0]
-      (let [check?           (zero? (mod tick 5))
-            ;; Re-read mise.local.toml until ports are found
-            ports            (or ports (when check? (load-ports mise-path)))
-            current-modified (.lastModified f)
-            services         (if (and check? ports)
-                               (check-services (:jetty-port ports)
-                                               (:frontend-port ports)
-                                               (:db-type ports)
-                                               (:db-port ports))
-                               last-services)
-            changed?         (or (not= current-modified last-modified)
-                                 (not= services last-services))]
-        (when changed?
+    (loop [last-output ""
+           ports       nil
+           issue       nil
+           tick        0]
+      (let [check?    (zero? (mod tick 5))
+            ports     (or ports (when check? (load-ports mise-path)))
+            issue     (or issue (when check? (load-issue-info)))
+            be-status (when (and check? ports)
+                        (check-http (str "http://localhost:" (:jetty-port ports) "/api/health") 2000))
+            fe-status (when (and check? ports)
+                        (check-http (str "http://localhost:" (:frontend-port ports)) 2000))
+            db-status (when (and check? ports (:db-port ports))
+                        (check-tcp "localhost" (:db-port ports) 2000))
+            ;; Read LLM status from file
+            llm-status (when (.exists f)
+                         (str/trim (slurp f)))
+            output    (render-display issue ports
+                                      (or be-status :unhealthy)
+                                      (or fe-status :unhealthy)
+                                      (or db-status :unhealthy)
+                                      llm-status)]
+        (when (not= output last-output)
           (print "\033[2J\033[H")
-          (flush)
-          (when (.exists f)
-            (print (slurp f)))
-          (println)
-          (println services)
+          (print output)
           (flush))
         (Thread/sleep 1000)
-        (recur current-modified services ports (inc tick))))))
+        (recur output ports issue (inc tick))))))

@@ -74,16 +74,15 @@ When the user says they're happy (e.g., "looks good", "ship it", "done"):
 
 ### Status Bar
 
-A status bar at the bottom of the tmux session displays the contents of `.fixbot/status.txt` (in the worktree root) and refreshes every 5 seconds. Use this to communicate persistent state to the user.
+A status bar at the bottom of the tmux session shows issue info, service health, and your status message. The issue info and health indicators are managed automatically. You control only the status message by writing to `.fixbot/llm-status.txt`.
 
-Update `.fixbot/status.txt` (in the worktree root) when something important changes that the user should always be able to see — for example:
+Write to `.fixbot/llm-status.txt` (overwrite the whole file each time) when something important changes — for example:
 - Current phase of work (e.g., "Phase 1: Analyzing issue", "Phase 2: Writing tests", "Phase 3: Ready for user testing")
 - A blocking question waiting on user input
 - URLs the user needs (e.g., the page to test)
 
 **Rules:**
-- Keep the file to **5 lines or fewer** — the pane is small
-- The first line is auto-populated with environment info (DB, ports) — **append your status after it, do not overwrite the first line**
+- Keep it to **1-3 lines** — the pane is small and other info is displayed above your status
 - Only update when the visible state meaningfully changes — don't spam updates
 - Keep each line short and scannable
 
@@ -107,6 +106,30 @@ Update `.fixbot/status.txt` (in the worktree root) when something important chan
 **Rules:**
 - Beads is in stealth mode — it will not modify git state
 - Don't overthink it — simple issues may not need task tracking at all
+
+### Tmux Pane Layout
+
+Your session has multiple tmux panes running side by side:
+
+- **Pane 0**: You (the agent)
+- **Pane 1**: Backend server (Clojure dev server logs)
+- **Pane 2**: Frontend dev server (rspack/build-hot logs)
+- **Pane 3**: Status watch (health checks)
+
+To read logs from the backend or frontend panes, use `tmux capture-pane`:
+
+```bash
+# Capture last 200 lines from backend logs
+tmux capture-pane -t 1 -p -S -200
+
+# Capture last 200 lines from frontend logs
+tmux capture-pane -t 2 -p -S -200
+```
+
+Use this when:
+- Debugging startup failures (check if backend/frontend started successfully)
+- Looking for error messages or stack traces
+- Verifying that your code changes were picked up by hot reload
 
 ### Important Rules
 - Focus ONLY on the reported issue — no unrelated changes

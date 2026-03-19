@@ -50,13 +50,13 @@
        "  - command: <agent>\n"
        "    focus: true\n"
        "\n"
-       "  - command: clj -M:dev:dev-start:drivers:drivers-dev:ee:ee-dev\n"
+       "  - command: mise exec -- clj -M:dev:dev-start:drivers:drivers-dev:ee:ee-dev\n"
        "    split: horizontal\n"
        "\n"
-       "  - command: MB_EDITION=ee bun run build-hot\n"
+       "  - command: mise exec -- bun run build-hot\n"
        "    split: vertical\n"
        "\n"
-       "  - command: ./bin/mage -fixbot-status-watch\n"
+       "  - command: clear && ./bin/mage -fixbot-status-watch\n"
        "    split: vertical\n"
        "    size: 5\n"))
 

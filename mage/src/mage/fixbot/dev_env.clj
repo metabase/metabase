@@ -150,6 +150,8 @@ config:
                          ""
                          "[env]"
                          (str "MB_CONFIG_FILE_PATH = \"" config-path "\"")
+                         "MB_EDITION = \"ee\""
+                         "DISABLE_BUILD_NOTIFICATIONS = \"1\""
                          (str "MB_JETTY_PORT = \"" (port-for :jetty slot) "\"")
                          (str "MB_FRONTEND_DEV_PORT = \"" (port-for :frontend-dev slot) "\"")
                          (str "NREPL_PORT = \"" (port-for :nrepl slot) "\"")
@@ -175,25 +177,14 @@ config:
     (println (c/green "Wrote " path))))
 
 (defn- write-status-file!
-  "Write a human-readable status file for the fixbot status pane."
-  [slot app-db-kw]
-  (let [dir        (str u/project-root-directory "/.fixbot")
-        _          (.mkdirs (java.io.File. dir))
-        path       (str dir "/status.txt")
-        issue-path (str dir "/issue.txt")
-        issue-line (when (.exists (java.io.File. issue-path))
-                     (str/trim (slurp issue-path)))
-        db-info    (case app-db-kw
-                     :postgres (str "DB=postgres:" (port-for :postgres-app slot))
-                     :mysql    (str "DB=mysql:" (port-for :mysql slot))
-                     :mariadb  (str "DB=mariadb:" (port-for :mariadb slot))
-                     :h2       "DB=h2 (embedded)")
-        content    (str (when (seq issue-line)
-                          (str issue-line "\n"))
-                        " | Metabase=localhost:" (port-for :jetty slot)
-                        db-info
-                        "\nEnvironment starting...")]
-    (spit path content)
+  "Write initial LLM status to the fixbot status pane.
+   The status watch renders issue info and health separately;
+   this file only contains the agent's status message."
+  [_slot _app-db-kw]
+  (let [dir  (str u/project-root-directory "/.fixbot")
+        _    (.mkdirs (java.io.File. dir))
+        path (str dir "/llm-status.txt")]
+    (spit path "Booting up...")
     (println (c/green "Wrote " path))))
 
 (defn- print-summary! [slot app-db-kw]
