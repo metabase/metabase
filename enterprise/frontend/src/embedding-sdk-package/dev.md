@@ -10,7 +10,7 @@ Code in this directory should carefully reference external code, including code 
 
 You can build the SDK NPM package with `bun run build-embedding-sdk-package`.
 
-The SDK bundle is build with the core app frontend and served by the core app, so you'll probably want to have `build-hot` (with `MB_EDITION=ee`) running.
+The SDK bundle is built with the core app frontend and served by the core app, so you'll probably want to have `build-hot` (with `MB_EDITION=ee`) running.
 
 If you have `SKIP_EMBEDDING_SDK`, you'll have to unset it for the sdk bundle to be built.
 
