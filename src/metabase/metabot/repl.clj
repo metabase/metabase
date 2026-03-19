@@ -2,7 +2,7 @@
   "Basic user message => AI Service => response chat flow. This namespace implements a text-based REPL you can use from
   Clojure or the CLI with
 
-    clj -X:ee:metabot-v3/repl"
+    clj -X:metabot/repl"
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]
@@ -78,7 +78,7 @@
 (defn user-repl-cli
   "CLI entrypoint for using the MetaBot REPL.
 
-    clj -X:ee:metabot-v3/repl"
+    clj -X:metabot/repl"
   [_options]
   (mdb/setup-db! :create-sample-content? false)
   #_{:clj-kondo/ignore [:discouraged-var]}

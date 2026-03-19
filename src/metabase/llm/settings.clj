@@ -9,16 +9,17 @@
 
 (defsetting llm-anthropic-api-key
   (deferred-tru "The Anthropic API Key.")
-  :sensitive? true
-  :visibility :settings-manager
-  :export? false
-  :setter     (fn [new-value]
-                (let [trimmed (when (string? new-value)
-                                (not-empty (str/trim new-value)))]
-                  (when (and trimmed (not (str/starts-with? trimmed "sk-ant-")))
-                    (throw (ex-info (tru "Invalid Anthropic API key format. Key must start with ''sk-ant-''.")
-                                    {:status-code 400})))
-                  (setting/set-value-of-type! :string :llm-anthropic-api-key trimmed)))
+  :sensitive?       true
+  :visibility       :settings-manager
+  :export?          false
+  :deprecated-name  :ee-anthropic-api-key
+  :setter           (fn [new-value]
+                      (let [trimmed (when (string? new-value)
+                                      (not-empty (str/trim new-value)))]
+                        (when (and trimmed (not (str/starts-with? trimmed "sk-ant-")))
+                          (throw (ex-info (tru "Invalid Anthropic API key format. Key must start with ''sk-ant-''.")
+                                          {:status-code 400})))
+                        (setting/set-value-of-type! :string :llm-anthropic-api-key trimmed)))
   :doc false)
 
 (defsetting llm-anthropic-api-key-configured?
@@ -40,11 +41,12 @@
 
 (defsetting llm-anthropic-api-base-url
   (deferred-tru "The Anthropic API base URL.")
-  :encryption :no
-  :visibility :settings-manager
-  :default "https://api.anthropic.com"
-  :export? false
-  :doc false)
+  :encryption       :no
+  :visibility       :settings-manager
+  :default          "https://api.anthropic.com"
+  :export?          false
+  :deprecated-name  :ee-anthropic-api-base-url
+  :doc              false)
 
 (defsetting llm-anthropic-api-version
   (deferred-tru "The Anthropic API version.")
@@ -58,43 +60,48 @@
 
 (defsetting llm-openai-model
   (deferred-tru "The OpenAI Model (e.g. ''gpt-4'', ''gpt-3.5-turbo'')")
-  :encryption :no
-  :visibility :settings-manager
-  :default "gpt-4.1-mini"
-  :export? false
-  :doc false)
+  :encryption       :no
+  :visibility       :settings-manager
+  :default          "gpt-4.1-mini"
+  :export?          false
+  :deprecated-name  :ee-openai-model
+  :doc              false)
 
 (defsetting llm-openai-api-base-url
   (deferred-tru "The OpenAI API base URL.")
-  :encryption :no
-  :visibility :settings-manager
-  :default "https://api.openai.com"
-  :export? false
-  :doc false)
+  :encryption       :no
+  :visibility       :settings-manager
+  :default          "https://api.openai.com"
+  :export?          false
+  :deprecated-name  :ee-openai-api-base-url
+  :doc              false)
 
 (defsetting llm-openai-api-key
   (deferred-tru "The OpenAI API Key.")
-  :sensitive? true
-  :visibility :settings-manager
-  :export? false
-  :doc false)
+  :sensitive?       true
+  :visibility       :settings-manager
+  :export?          false
+  :deprecated-name  :ee-openai-api-key
+  :doc              false)
 
 ;;; ------------------------------------------------- OpenRouter ------------------------------------------------
 
 (defsetting llm-openrouter-api-base-url
   (deferred-tru "The OpenRouter API base URL used for Chat Completions.")
-  :encryption :no
-  :visibility :settings-manager
-  :default "https://openrouter.ai/api"
-  :export? false
-  :doc false)
+  :encryption       :no
+  :visibility       :settings-manager
+  :default          "https://openrouter.ai/api"
+  :export?          false
+  :deprecated-name  :ee-openrouter-api-base-url
+  :doc              false)
 
 (defsetting llm-openrouter-api-key
   (deferred-tru "The OpenRouter API Key.")
-  :sensitive? true
-  :visibility :settings-manager
-  :export? false
-  :doc false)
+  :sensitive?       true
+  :visibility       :settings-manager
+  :export?          false
+  :deprecated-name  :ee-openrouter-api-key
+  :doc              false)
 
 ;;; -------------------------------------------------- Metabot --------------------------------------------------
 
@@ -123,37 +130,40 @@
 
 (defsetting llm-metabot-provider
   (deferred-tru "The AI provider and model for Metabot. Format: provider/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-4.1-mini`, `openrouter/anthropic/claude-haiku-4-5`.")
-  :type       :string
-  :encryption :no
-  :default    "openrouter/anthropic/claude-haiku-4-5"
-  :visibility :settings-manager
-  :export?    false
-  :doc        false
-  :setter     (fn [new-value]
-                (when new-value
-                  (validate-metabot-provider! new-value))
-                (setting/set-value-of-type! :string :llm-metabot-provider new-value)))
+  :type             :string
+  :encryption       :no
+  :default          "openrouter/anthropic/claude-haiku-4-5"
+  :visibility       :settings-manager
+  :export?          false
+  :deprecated-name  :ee-ai-metabot-provider
+  :doc              false
+  :setter           (fn [new-value]
+                      (when new-value
+                        (validate-metabot-provider! new-value))
+                      (setting/set-value-of-type! :string :llm-metabot-provider new-value)))
 
 (defsetting llm-metabot-provider-lite
   (deferred-tru "The AI provider and model for lightweight Metabot tasks (e.g. user intent classification).")
-  :type       :string
-  :encryption :no
-  :default    "openrouter/openai/gpt-oss-20b"
-  :visibility :settings-manager
-  :export?    false
-  :doc        false
-  :setter     (fn [new-value]
-                (when new-value
-                  (validate-metabot-provider! new-value))
-                (setting/set-value-of-type! :string :llm-metabot-provider-lite new-value)))
+  :type             :string
+  :encryption       :no
+  :default          "openrouter/openai/gpt-oss-20b"
+  :visibility       :settings-manager
+  :export?          false
+  :deprecated-name  :ee-ai-metabot-provider-lite
+  :doc              false
+  :setter           (fn [new-value]
+                      (when new-value
+                        (validate-metabot-provider! new-value))
+                      (setting/set-value-of-type! :string :llm-metabot-provider-lite new-value)))
 
 (defsetting llm-metabot-internal-tasks-enabled?
   (deferred-tru "Controls whether Metabot performs internal tasks that might require background tasks or additional LLM calls (e.g. user intent classification).")
-  :type       :boolean
-  :visibility :settings-manager
-  :default    true
-  :export?    false
-  :doc        false)
+  :type             :boolean
+  :visibility       :settings-manager
+  :default          true
+  :export?          false
+  :deprecated-name  :ee-ai-metabot-internal-tasks-enabled?
+  :doc              false)
 
 ;;; -------------------------------------------------- General --------------------------------------------------
 
