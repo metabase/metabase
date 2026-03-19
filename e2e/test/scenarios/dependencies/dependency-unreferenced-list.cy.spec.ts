@@ -130,6 +130,9 @@ describe("scenarios > dependencies > unreferenced list", () => {
 
     it("should not show referenced entities", () => {
       setupEntities({ withReferences: true });
+      H.waitForUnreferencedEntities(
+        (entities) => !entities.some((e) => ENTITY_NAMES.includes(e.data.name)),
+      );
       H.DependencyDiagnostics.visitUnreferencedEntities();
       H.DependencyDiagnostics.list().within(() => {
         ENTITY_NAMES.forEach((name) => {
