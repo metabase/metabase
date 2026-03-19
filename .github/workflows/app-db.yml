@@ -22,7 +22,7 @@ jobs:
         version:
           - name: MariaDB 10.2
             junit-name: be-tests-mariadb-10-2-ee
-            image: mariadb:10.2.23
+            image: metabase/mariadb:10.2.23
             env:
               enable-ssl-tests: 'false'
           - name: MariaDB Latest

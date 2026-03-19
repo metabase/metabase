@@ -124,7 +124,7 @@ jobs:
       MB_MYSQL_TEST_USER: root
     services:
       mariadb:
-        image: mariadb:10.2.23
+        image: metabase/mariadb:10.2.23
         ports:
           - "3306:3306"
     steps:
