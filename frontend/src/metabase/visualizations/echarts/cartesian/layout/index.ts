@@ -26,16 +26,13 @@ import {
   isTimeSeriesAxis,
 } from "../model/guards";
 
-import type {
-  ChartBoundsCoords,
-  ChartMeasurements,
-  TicksDimensions,
-} from "./types";
+import type { ChartBoundsCoords, ChartLayout, TicksDimensions } from "./types";
 
-export interface ChartMeasurementsInput {
+export interface ChartLayoutInput {
   xAxisModel: XAxisModel;
   leftAxisModel: YAxisModel | null;
   rightAxisModel: YAxisModel | null;
+  splitPanelYAxisModels?: YAxisModel[];
   yAxisScaleTransforms: NumericAxisScaleTransforms;
   transformedDataset?: ChartDataset;
   dataset?: ChartDataset;
@@ -46,7 +43,7 @@ export interface ChartMeasurementsInput {
 
 // Cartesian charts use `transformedDataset` (scaled/transformed values) while simpler
 // charts like boxplot only have `dataset`. This helper provides unified access.
-const getDataset = (input: ChartMeasurementsInput): ChartDataset => {
+const getDataset = (input: ChartLayoutInput): ChartDataset => {
   return input.transformedDataset ?? input.dataset ?? [];
 };
 
@@ -294,7 +291,7 @@ const X_LABEL_ROTATE_45_THRESHOLD_FACTOR = 2.1;
 const X_LABEL_ROTATE_90_THRESHOLD_FACTOR = 1.2;
 
 const getAutoAxisEnabledSetting = (
-  input: ChartMeasurementsInput,
+  input: ChartLayoutInput,
   settings: ComputedVisualizationSettings,
   boundaryWidth: number,
   maxXTickWidth: number,
@@ -345,7 +342,7 @@ const X_TICKS_TO_MEASURE_COUNT = 50;
 // Formatting and measuring every x-axis value can be expensive on datasets with thousands of values,
 // therefore we want to reduce the number of measured ticks based on the x-axis column type and a single dimension width.
 const getXTicksToMeasure = (
-  input: ChartMeasurementsInput,
+  input: ChartLayoutInput,
   dimensionWidth: number,
   renderingContext: RenderingContext,
 ) => {
@@ -373,7 +370,7 @@ const getXTicksToMeasure = (
 };
 
 const getMaxXTickWidth = (
-  input: ChartMeasurementsInput,
+  input: ChartLayoutInput,
   dimensionWidth: number,
   renderingContext: RenderingContext,
 ) => {
@@ -399,7 +396,7 @@ const getMaxXTickWidth = (
 };
 
 const getTicksDimensions = (
-  input: ChartMeasurementsInput,
+  input: ChartLayoutInput,
   chartWidth: number,
   outerHeight: number,
   settings: ComputedVisualizationSettings,
@@ -493,7 +490,7 @@ const getTicksDimensions = (
 const TICK_OVERFLOW_BUFFER = 4;
 
 export const getChartPadding = (
-  input: ChartMeasurementsInput,
+  input: ChartLayoutInput,
   settings: ComputedVisualizationSettings,
   ticksDimensions: TicksDimensions,
   axisEnabledSetting: ComputedVisualizationSettings["graph.x_axis.axis_enabled"],
@@ -628,7 +625,7 @@ export const getChartBounds = (
 };
 
 const getDimensionWidth = (
-  { xAxisModel }: ChartMeasurementsInput,
+  { xAxisModel }: ChartLayoutInput,
   boundaryWidth: number,
 ) => {
   const xValuesCount =
@@ -679,7 +676,7 @@ const areHorizontalXAxisTicksOverlapping = (
 };
 
 const countFittingLabels = (
-  input: ChartMeasurementsInput,
+  input: ChartLayoutInput,
   barStack: StackModel,
   barWidth: number,
   renderingContext: RenderingContext,
@@ -734,7 +731,7 @@ const BAR_WIDTH_PRECISION = 0.85;
 const HORIZONTAL_LABELS_COUNT_THRESHOLD = 0.8;
 
 const getStackedBarTicksRotation = (
-  input: ChartMeasurementsInput,
+  input: ChartLayoutInput,
   boundaryWidth: number,
   renderingContext: RenderingContext,
 ) => {
@@ -775,14 +772,30 @@ const getStackedBarTicksRotation = (
     : "vertical";
 };
 
-export const getChartMeasurements = (
-  input: ChartMeasurementsInput,
+export const getChartLayout = (
+  input: ChartLayoutInput,
   settings: ComputedVisualizationSettings,
   hasTimelineEvents: boolean,
   width: number,
   height: number,
   renderingContext: RenderingContext,
-): ChartMeasurements => {
+): ChartLayout => {
+  const visibleSeries =
+    input.seriesModels?.filter((series) => series.visible) ?? [];
+  const isSplitPanels =
+    settings["graph.split_panels"] === true && visibleSeries.length > 1;
+
+  if (isSplitPanels) {
+    return computeSplitPanelLayout(
+      input,
+      settings,
+      hasTimelineEvents,
+      width,
+      height,
+      renderingContext,
+    );
+  }
+
   const { ticksDimensions, axisEnabledSetting } = getTicksDimensions(
     input,
     width,
@@ -822,5 +835,86 @@ export const getChartMeasurements = (
     outerHeight: height,
     axisEnabledSetting,
     stackedBarTicksRotation,
+  };
+};
+
+const computeSplitPanelLayout = (
+  input: ChartLayoutInput,
+  settings: ComputedVisualizationSettings,
+  hasTimelineEvents: boolean,
+  width: number,
+  height: number,
+  renderingContext: RenderingContext,
+): ChartLayout => {
+  const panelAxisModels = input.splitPanelYAxisModels ?? [];
+  const panelCount = panelAxisModels.length;
+  const yAxisTickWidths: number[] = panelAxisModels.map((axisModel) =>
+    getYAxisTicksWidth(
+      axisModel,
+      input.yAxisScaleTransforms,
+      settings,
+      renderingContext,
+    ),
+  );
+
+  const maxYTicksWidth =
+    yAxisTickWidths.length > 0
+      ? Math.max(...yAxisTickWidths) + CHART_STYLE.axisTicksMarginY
+      : 0;
+
+  const singleAxisInput: ChartLayoutInput = {
+    ...input,
+    rightAxisModel: null,
+  };
+
+  const { ticksDimensions: computedTicks, axisEnabledSetting } =
+    getTicksDimensions(
+      singleAxisInput,
+      width,
+      height,
+      settings,
+      hasTimelineEvents,
+      renderingContext,
+    );
+
+  const ticksDimensions: TicksDimensions = {
+    yTicksWidthLeft: maxYTicksWidth,
+    yTicksWidthRight: 0,
+    xTicksHeight: computedTicks.xTicksHeight,
+    firstXTickWidth: computedTicks.firstXTickWidth,
+    lastXTickWidth: computedTicks.lastXTickWidth,
+  };
+
+  const padding = getChartPadding(
+    singleAxisInput,
+    settings,
+    ticksDimensions,
+    axisEnabledSetting,
+    width,
+    renderingContext,
+  );
+
+  const bounds = getChartBounds(width, height, padding, ticksDimensions);
+
+  const boundaryWidth =
+    width -
+    padding.left -
+    padding.right -
+    ticksDimensions.yTicksWidthLeft -
+    ticksDimensions.yTicksWidthRight;
+
+  const panelGap = CHART_STYLE.splitPanel.gap;
+  const availableHeight = height - padding.top - padding.bottom;
+  const panelHeight =
+    (availableHeight - (panelCount - 1) * panelGap) / panelCount;
+
+  return {
+    ticksDimensions,
+    padding,
+    bounds,
+    boundaryWidth,
+    outerHeight: height,
+    axisEnabledSetting,
+    panelHeight,
   };
 };
