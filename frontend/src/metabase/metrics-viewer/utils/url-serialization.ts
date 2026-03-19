@@ -4,15 +4,19 @@ import type { MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 import type { TemporalUnit } from "metabase-types/api";
 
-import type { ExpressionToken, MathOperator } from "../types/operators";
+import type { MathOperator } from "../types/operators";
 import type {
+  ExpressionSubToken,
+  MetricExpressionId,
   MetricSourceId,
+  MetricsViewerDefinitionEntry,
   MetricsViewerDisplayType,
+  MetricsViewerFormulaEntity,
   MetricsViewerPageState,
   MetricsViewerTabState,
   MetricsViewerTabType,
 } from "../types/viewer-state";
-import { isMetricEntry } from "../types/viewer-state";
+import { isExpressionEntry, isMetricEntry } from "../types/viewer-state";
 
 import { defineCompactSchema } from "./compact-schema";
 import { getEntryBreakout } from "./definition-entries";
@@ -40,17 +44,17 @@ function reviveFilter(filter: DimensionFilterValue): DimensionFilterValue {
 
 // ── Serialized types (internal, URL-facing) ──
 
-interface SerializedExpressionToken {
-  type:
-    | "metric"
-    | "constant"
-    | "operator"
-    | "open-paren"
-    | "close-paren"
-    | "separator";
-  metricIndex?: number;
+interface SerializedExpressionSubToken {
+  type: "metric" | "constant" | "operator" | "open-paren" | "close-paren";
+  sourceId?: string;
   op?: MathOperator;
   value?: number;
+}
+
+interface SerializedExpressionEntry {
+  id: string;
+  name: string;
+  tokens: SerializedExpressionSubToken[];
 }
 
 interface SerializedUrlFilter {
@@ -91,14 +95,16 @@ export interface SerializedMetricsViewerPageState {
   sources: SerializedSource[];
   tabs: SerializedTab[];
   selectedTabId: string | null;
-  expression: SerializedExpressionToken[];
+  expressions: SerializedExpressionEntry[];
 }
 
-// ── Expression token helpers ──
+// ── Expression sub-token helpers ──
 
-function serializeToken(token: ExpressionToken): SerializedExpressionToken {
+function serializeSubToken(
+  token: ExpressionSubToken,
+): SerializedExpressionSubToken {
   if (token.type === "metric") {
-    return { type: "metric", metricIndex: token.metricIndex };
+    return { type: "metric", sourceId: token.sourceId };
   }
   if (token.type === "constant") {
     return { type: "constant", value: token.value };
@@ -109,26 +115,61 @@ function serializeToken(token: ExpressionToken): SerializedExpressionToken {
   return { type: token.type };
 }
 
-export function deserializeExpression(
-  tokens: SerializedExpressionToken[],
-): ExpressionToken[] {
-  const result: ExpressionToken[] = [];
-  for (const token of tokens) {
-    if (token.type === "metric" && token.metricIndex !== undefined) {
-      result.push({ type: "metric", metricIndex: token.metricIndex });
-    } else if (token.type === "constant" && token.value !== undefined) {
-      result.push({ type: "constant", value: token.value });
-    } else if (token.type === "operator" && token.op) {
-      result.push({ type: "operator", op: token.op });
-    } else if (token.type === "open-paren") {
-      result.push({ type: "open-paren" });
-    } else if (token.type === "close-paren") {
-      result.push({ type: "close-paren" });
-    } else if (token.type === "separator") {
-      result.push({ type: "separator" });
-    }
+function deserializeSubToken(
+  token: SerializedExpressionSubToken,
+): ExpressionSubToken | null {
+  if (token.type === "metric" && token.sourceId) {
+    return { type: "metric", sourceId: token.sourceId as MetricSourceId };
   }
-  return result;
+  if (token.type === "constant" && token.value !== undefined) {
+    return { type: "constant", value: token.value };
+  }
+  if (token.type === "operator" && token.op) {
+    return { type: "operator", op: token.op };
+  }
+  if (token.type === "open-paren") {
+    return { type: "open-paren" };
+  }
+  if (token.type === "close-paren") {
+    return { type: "close-paren" };
+  }
+  return null;
+}
+
+/**
+ * Reconstructs the full `MetricsViewerFormulaEntity[]` from both `sources`
+ * (as metric formula entities) and `expressions` in the serialized state.
+ * Sources become metric-type formula entities; expressions become expression-type.
+ */
+export function deserializeFormulaEntities(
+  serializedState: SerializedMetricsViewerPageState,
+): MetricsViewerFormulaEntity[] {
+  const entities: MetricsViewerFormulaEntity[] = [];
+
+  // Metric sources become metric formula entities
+  for (const source of serializedState.sources) {
+    const sourceId: MetricSourceId =
+      source.type === "metric" ? `metric:${source.id}` : `measure:${source.id}`;
+    entities.push({
+      id: sourceId,
+      type: "metric" as const,
+      definition: null,
+    });
+  }
+
+  // Expression entries become expression formula entities
+  for (const entry of serializedState.expressions) {
+    entities.push({
+      id: entry.id as MetricExpressionId,
+      type: "expression" as const,
+      name: entry.name,
+      tokens: entry.tokens
+        .map(deserializeSubToken)
+        .filter((t): t is ExpressionSubToken => t !== null),
+    });
+  }
+
+  return entities;
 }
 
 // ── Conversion functions ──
@@ -196,73 +237,98 @@ export function deserializeTab(
   };
 }
 
-export function stateToSerializedState(
-  state: MetricsViewerPageState,
-  tokens: ExpressionToken[] = [],
-): SerializedMetricsViewerPageState {
-  return {
-    expression: tokens.map(serializeToken),
-    sources: state.definitions.flatMap((entry) => {
-      if (!isMetricEntry(entry) || !entry.definition) {
-        return [];
-      }
-      const source = definitionToSource(entry.definition);
-      if (!source) {
-        return [];
-      }
-      const breakoutProjection = getEntryBreakout(entry);
-      if (breakoutProjection) {
-        const rawDim = LibMetric.projectionDimension(
+/**
+ * Annotates a source with breakout/filter data from the definitions map.
+ */
+function annotateSource(
+  source: SerializedSource,
+  entry: MetricsViewerDefinitionEntry,
+): SerializedSource {
+  if (!entry.definition) {
+    return source;
+  }
+
+  const breakoutProjection = getEntryBreakout(entry);
+  if (breakoutProjection) {
+    const rawDim = LibMetric.projectionDimension(
+      entry.definition,
+      breakoutProjection,
+    );
+    if (rawDim) {
+      const dimInfo = LibMetric.dimensionValuesInfo(entry.definition, rawDim);
+      source.breakout = dimInfo.id;
+
+      if (LibMetric.temporalBucket(breakoutProjection)) {
+        const buckets = LibMetric.availableTemporalBuckets(
           entry.definition,
-          breakoutProjection,
+          rawDim,
         );
-        if (rawDim) {
-          const dimInfo = LibMetric.dimensionValuesInfo(
-            entry.definition,
-            rawDim,
-          );
-          source.breakout = dimInfo.id;
-
-          if (LibMetric.temporalBucket(breakoutProjection)) {
-            const buckets = LibMetric.availableTemporalBuckets(
-              entry.definition,
-              rawDim,
-            );
-            for (const bucket of buckets) {
-              const info = LibMetric.displayInfo(entry.definition, bucket);
-              if (info.selected) {
-                source.breakoutTemporalUnit = info.shortName;
-                break;
-              }
-            }
-          }
-
-          if (LibMetric.binning(breakoutProjection)) {
-            const strategies = LibMetric.availableBinningStrategies(
-              entry.definition,
-              rawDim,
-            );
-            for (const strategy of strategies) {
-              const info = LibMetric.displayInfo(entry.definition, strategy);
-              if (info.selected) {
-                source.breakoutBinning = info.displayName;
-                break;
-              }
-            }
+        for (const bucket of buckets) {
+          const info = LibMetric.displayInfo(entry.definition, bucket);
+          if (info.selected) {
+            source.breakoutTemporalUnit = info.shortName;
+            break;
           }
         }
       }
 
-      const definitionFilters = extractDefinitionFilters(entry.definition);
-      if (definitionFilters.length > 0) {
-        source.filters = definitionFilters.map((filter) => ({
-          dimensionId: filter.dimensionId,
-          value: filter.value,
-        }));
+      if (LibMetric.binning(breakoutProjection)) {
+        const strategies = LibMetric.availableBinningStrategies(
+          entry.definition,
+          rawDim,
+        );
+        for (const strategy of strategies) {
+          const info = LibMetric.displayInfo(entry.definition, strategy);
+          if (info.selected) {
+            source.breakoutBinning = info.displayName;
+            break;
+          }
+        }
       }
+    }
+  }
 
-      return [source];
-    }),
+  const definitionFilters = extractDefinitionFilters(entry.definition);
+  if (definitionFilters.length > 0) {
+    source.filters = definitionFilters.map((filter) => ({
+      dimensionId: filter.dimensionId,
+      value: filter.value,
+    }));
+  }
+
+  return source;
+}
+
+export function stateToSerializedState(
+  state: MetricsViewerPageState,
+): SerializedMetricsViewerPageState {
+  const sources: SerializedSource[] = [];
+  const expressions: SerializedExpressionEntry[] = [];
+
+  // Iterate formulaEntities to build sources and expressions
+  for (const entity of state.formulaEntities) {
+    if (isMetricEntry(entity)) {
+      const entry = state.definitions[entity.id];
+      if (!entry?.definition) {
+        continue;
+      }
+      const source = definitionToSource(entry.definition);
+      if (!source) {
+        continue;
+      }
+      sources.push(annotateSource(source, entry));
+    } else if (isExpressionEntry(entity)) {
+      expressions.push({
+        id: entity.id,
+        name: entity.name,
+        tokens: entity.tokens.map(serializeSubToken),
+      });
+    }
+  }
+
+  return {
+    sources,
+    expressions,
     tabs: state.tabs.map(tabToSerializedTab),
     selectedTabId: state.selectedTabId,
   };
@@ -270,11 +336,18 @@ export function stateToSerializedState(
 
 // ── Compact schemas ──
 
-const expressionTokenSchema = defineCompactSchema<SerializedExpressionToken>({
-  type: "t",
-  metricIndex: { key: "i", optional: true },
-  op: { key: "o", optional: true },
-  value: { key: "v", optional: true },
+const expressionSubTokenSchema =
+  defineCompactSchema<SerializedExpressionSubToken>({
+    type: "t",
+    sourceId: { key: "s", optional: true },
+    op: { key: "o", optional: true },
+    value: { key: "v", optional: true },
+  });
+
+const expressionEntrySchema = defineCompactSchema<SerializedExpressionEntry>({
+  id: "i",
+  name: "n",
+  tokens: { key: "t", schema: expressionSubTokenSchema, default: [] },
 });
 
 const sourceFilterSchema = defineCompactSchema<SerializedUrlFilter>({
@@ -319,13 +392,13 @@ const rootSchema = defineCompactSchema<SerializedMetricsViewerPageState>({
   sources: { key: "s", schema: sourceSchema, default: [] },
   tabs: { key: "t", schema: tabSchema, default: [] },
   selectedTabId: { key: "a", default: null },
-  expression: { key: "e", schema: expressionTokenSchema, default: [] },
+  expressions: { key: "x", schema: expressionEntrySchema, default: [] },
 });
 
 // ── Encode / decode ──
 
 function emptyState(): SerializedMetricsViewerPageState {
-  return { sources: [], tabs: [], selectedTabId: null, expression: [] };
+  return { sources: [], tabs: [], selectedTabId: null, expressions: [] };
 }
 
 // After JSON.parse, Date values are ISO strings. Walk the decoded state and revive them.

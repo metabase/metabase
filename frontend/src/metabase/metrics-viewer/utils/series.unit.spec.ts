@@ -196,7 +196,7 @@ describe("getSelectedMetricsInfo", () => {
     it("extracts metric id, name, and sourceType", () => {
       const sourceId: MetricSourceId = `metric:${REVENUE_METRIC.id}`;
       const result = getSelectedMetricsInfo(
-        [{ id: sourceId, type: "metric", definition: metricDefinition }],
+        [{ id: sourceId, definition: metricDefinition }],
         new Set(),
       );
 
@@ -213,7 +213,7 @@ describe("getSelectedMetricsInfo", () => {
     it("marks entry as loading when id is in loadingIds", () => {
       const sourceId: MetricSourceId = `metric:${REVENUE_METRIC.id}`;
       const result = getSelectedMetricsInfo(
-        [{ id: sourceId, type: "metric", definition: metricDefinition }],
+        [{ id: sourceId, definition: metricDefinition }],
         new Set([sourceId]),
       );
 
@@ -232,7 +232,7 @@ describe("getSelectedMetricsInfo", () => {
     it("extracts measure id, name, tableId, and sourceType", () => {
       const sourceId: MetricSourceId = `measure:${TOTAL_MEASURE.id}`;
       const result = getSelectedMetricsInfo(
-        [{ id: sourceId, type: "metric", definition: measureDefinition }],
+        [{ id: sourceId, definition: measureDefinition }],
         new Set(),
       );
 
@@ -254,8 +254,8 @@ describe("getSelectedMetricsInfo", () => {
 
     const result = getSelectedMetricsInfo(
       [
-        { id: metricSourceId, type: "metric", definition: metricDefinition },
-        { id: measureSourceId, type: "metric", definition: measureDefinition },
+        { id: metricSourceId, definition: metricDefinition },
+        { id: measureSourceId, definition: measureDefinition },
       ],
       new Set(),
     );
@@ -283,8 +283,8 @@ describe("getSelectedMetricsInfo", () => {
 
     const result = getSelectedMetricsInfo(
       [
-        { id: metricSourceId, type: "metric", definition: metricDefinition },
-        { id: measureSourceId, type: "metric", definition: measureDefinition },
+        { id: metricSourceId, definition: metricDefinition },
+        { id: measureSourceId, definition: measureDefinition },
       ],
       new Set([measureSourceId]),
     );

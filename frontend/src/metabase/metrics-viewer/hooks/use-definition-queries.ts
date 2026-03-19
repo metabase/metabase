@@ -13,14 +13,16 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import { splitByItems } from "../components/MetricSearch/utils";
-import type { ExpressionToken, MathOperator } from "../types/operators";
+import type { MathOperator } from "../types/operators";
 import type {
+  ExpressionDefinitionEntry,
+  ExpressionSubToken,
   MetricSourceId,
   MetricsViewerDefinitionEntry,
+  MetricsViewerFormulaEntity,
   MetricsViewerTabState,
 } from "../types/viewer-state";
-import { isMetricEntry } from "../types/viewer-state";
+import { isExpressionEntry, isMetricEntry } from "../types/viewer-state";
 import {
   getModifiedDefinition,
   toJsDefinition,
@@ -28,13 +30,11 @@ import {
 import { entryHasBreakout } from "../utils/definition-entries";
 
 /**
- * One entry per expression item in the token list (items separated by
- * separator tokens that contain at least one operator — i.e. not a plain
- * single-metric item).
+ * One entry per expression definition in the formulaEntities list.
  */
 export type ExpressionItemResult = {
-  /** The tokens that form this expression item (no separator tokens). */
-  itemTokens: ExpressionToken[];
+  /** The expression definition entry. */
+  entry: ExpressionDefinitionEntry;
   result: Dataset | null;
   isExecuting: boolean;
   error: string | null;
@@ -52,20 +52,14 @@ export interface UseDefinitionQueriesResult {
    * chart series per entry alongside any standalone individual-metric series.
    */
   expressionItems: ExpressionItemResult[];
-  /**
-   * Source IDs of definitions that are plain single-metric items in the token
-   * list. `null` means "pure individual mode" — all loaded definitions are
-   * standalone and individual queries fire for all of them.
-   */
-  standaloneSourceIds: Set<MetricSourceId> | null;
 }
 
 // --- Expression parsing ---
 
 type ParseCtx = {
-  tokens: ExpressionToken[];
+  tokens: ExpressionSubToken[];
   pos: number;
-  leafRefs: Map<number, unknown>;
+  leafRefs: Map<MetricSourceId, unknown>;
 };
 
 function parseTerm(ctx: ParseCtx): unknown | null {
@@ -125,44 +119,22 @@ function parseExpression(ctx: ParseCtx): unknown | null {
 
 // ---
 
-/**
- * Returns true when a single separator-delimited item's tokens form a valid
- * arithmetic expression: at least one metric, at least one operator, and
- * balanced parentheses.
- */
-function isExpressionItem(itemTokens: ExpressionToken[]): boolean {
-  const metricCount = itemTokens.filter((t) => t.type === "metric").length;
-  const constantCount = itemTokens.filter((t) => t.type === "constant").length;
-  const opCount = itemTokens.filter((t) => t.type === "operator").length;
-  const openParens = itemTokens.filter((t) => t.type === "open-paren").length;
-  const closeParens = itemTokens.filter((t) => t.type === "close-paren").length;
-  return (
-    metricCount >= 1 &&
-    opCount >= 1 &&
-    opCount === metricCount + constantCount - 1 &&
-    openParens === closeParens
-  );
-}
+type DatasetRequest = {
+  sourceId: MetricSourceId;
+  modifiedDefinition: MetricDefinition;
+  request: { definition: JsMetricDefinition };
+};
+
+type ExpressionItemConfig = {
+  entry: ExpressionDefinitionEntry;
+  request: { definition: JsMetricDefinition };
+};
 
 function buildArithmeticRequest(
-  datasetRequests: Array<{
-    sourceId: MetricSourceId;
-    modifiedDefinition: MetricDefinition;
-  }>,
-  definitions: MetricsViewerDefinitionEntry[],
-  tokens: ExpressionToken[],
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
+  tab: MetricsViewerTabState,
+  tokens: ExpressionSubToken[],
 ): { definition: JsMetricDefinition } | null {
-  // Map metricIndex → datasetRequest (metricIndex = position in definitions)
-  const indexToRequest = new Map<number, (typeof datasetRequests)[0]>();
-  let idx = 0;
-  for (const entry of definitions) {
-    const req = datasetRequests.find((r) => r.sourceId === entry.id);
-    if (req) {
-      indexToRequest.set(idx, req);
-    }
-    idx++;
-  }
-
   // Build leaf refs and projections for each metric occurrence in the expression.
   // Each occurrence gets its own unique UUID keyed by token position so the same
   // metric can appear multiple times (e.g. Revenue / Revenue).
@@ -175,14 +147,26 @@ function buildArithmeticRequest(
     if (token.type !== "metric") {
       continue;
     }
-    const req = indexToRequest.get(token.metricIndex);
-    if (!req) {
+
+    const dimensionId = tab.dimensionMapping[token.sourceId];
+    const definition = definitions[token.sourceId]?.definition;
+    if (!dimensionId || !definition) {
       return null; // metric not in a tab yet
     }
 
+    const modifiedDefinition = getModifiedDefinition(
+      definition,
+      dimensionId,
+      tab.projectionConfig,
+    );
+
+    if (!modifiedDefinition) {
+      return null;
+    }
+
     const uuid = `leaf-${i}`;
-    const metricId = LibMetric.sourceMetricId(req.modifiedDefinition);
-    const measureId = LibMetric.sourceMeasureId(req.modifiedDefinition);
+    const metricId = LibMetric.sourceMetricId(modifiedDefinition);
+    const measureId = LibMetric.sourceMeasureId(modifiedDefinition);
 
     if (metricId != null) {
       leafRefs.set(i, ["metric", { "lib/uuid": uuid }, metricId]);
@@ -192,7 +176,7 @@ function buildArithmeticRequest(
       return null;
     }
 
-    const jsdef = toJsDefinition(req.modifiedDefinition);
+    const jsdef = toJsDefinition(modifiedDefinition);
     if (jsdef.projections) {
       for (const proj of jsdef.projections) {
         const key = `${proj.type}:${proj.id}`;
@@ -219,56 +203,88 @@ function buildArithmeticRequest(
   };
 }
 
-export function useDefinitionQueries(
-  definitions: MetricsViewerDefinitionEntry[],
+/**
+ * Unified iteration over formulaEntities to build query items.
+ * Returns dataset requests for metric entities, expression configs for
+ * expression entities, and tracks which sourceIds are referenced by expressions.
+ */
+function buildQueryItems(
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
+  formulaEntities: MetricsViewerFormulaEntity[],
   tab: MetricsViewerTabState | null,
-  tokens: ExpressionToken[] = [],
-): UseDefinitionQueriesResult {
-  const dispatch = useDispatch();
+): {
+  datasetRequests: DatasetRequest[];
+  expressionItemsConfig: ExpressionItemConfig[];
+} {
+  if (!tab) {
+    return {
+      datasetRequests: [],
+      expressionItemsConfig: [],
+    };
+  }
 
-  const datasetRequests = useMemo(() => {
-    if (!tab) {
-      return [];
-    }
+  const datasetRequests: DatasetRequest[] = [];
+  const expressionItemsConfig: ExpressionItemConfig[] = [];
 
-    return definitions.flatMap((entry) => {
-      if (!isMetricEntry(entry)) {
-        return [];
-      }
-      const dimensionId = tab.dimensionMapping[entry.id];
-      if (!dimensionId || !entry.definition) {
-        return [];
+  for (const entity of formulaEntities) {
+    if (isMetricEntry(entity)) {
+      const dimensionId = tab.dimensionMapping[entity.id];
+      const definition = definitions[entity.id]?.definition;
+      if (!dimensionId || !definition) {
+        continue;
       }
 
       const modifiedDefinition = getModifiedDefinition(
-        entry.definition,
+        definition,
         dimensionId,
         tab.projectionConfig,
       );
 
       if (!modifiedDefinition) {
-        return [];
+        continue;
       }
 
       const jsDefinition = toJsDefinition(modifiedDefinition);
+      datasetRequests.push({
+        sourceId: entity.id,
+        modifiedDefinition,
+        request: { definition: jsDefinition },
+      });
+    }
 
-      return [
-        {
-          sourceId: entry.id,
-          modifiedDefinition,
-          request: { definition: jsDefinition },
-        },
-      ];
-    });
-  }, [definitions, tab]);
+    if (isExpressionEntry(entity)) {
+      const request = buildArithmeticRequest(definitions, tab, entity.tokens);
+
+      if (request) {
+        expressionItemsConfig.push({
+          entry: entity,
+          request,
+        });
+      }
+    }
+  }
+
+  return {
+    datasetRequests,
+    expressionItemsConfig,
+  };
+}
+
+export function useDefinitionQueries(
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
+  formulaEntities: MetricsViewerFormulaEntity[],
+  tab: MetricsViewerTabState | null,
+): UseDefinitionQueriesResult {
+  const dispatch = useDispatch();
+
+  const { datasetRequests, expressionItemsConfig } = useMemo(
+    () => buildQueryItems(definitions, formulaEntities, tab),
+    [definitions, formulaEntities, tab],
+  );
 
   const breakoutRequests = useMemo(() => {
-    return definitions.flatMap((entry) => {
-      if (
-        !isMetricEntry(entry) ||
-        !entry.definition ||
-        !entryHasBreakout(entry)
-      ) {
+    return Object.values(definitions).flatMap((entry) => {
+      if (!entry.definition || !entryHasBreakout(entry)) {
         return [];
       }
 
@@ -291,108 +307,21 @@ export function useDefinitionQueries(
     return map;
   }, [datasetRequests]);
 
-  /**
-   * Arithmetic requests, one per expression item.  Each entry carries the
-   * original itemTokens (used downstream to build the series name) plus the
-   * RTK-Query request payload (null when the expression cannot yet be built,
-   * e.g. a required definition is not loaded yet).
-   */
-  const expressionItemsConfig = useMemo(() => {
-    const items = splitByItems(tokens);
-    return items
-      .filter(
-        (itemTokens) => itemTokens.length > 0 && isExpressionItem(itemTokens),
-      )
-      .map((itemTokens) => ({
-        itemTokens,
-        request: buildArithmeticRequest(
-          datasetRequests,
-          definitions,
-          itemTokens,
-        ),
-      }));
-  }, [datasetRequests, definitions, tokens]);
-
-  /**
-   * Source IDs of definitions that are referenced by plain single-metric
-   * items (not part of any expression item).  `null` means pure-individual
-   * mode: no expression items exist, so all loaded definitions are standalone.
-   */
-  const standaloneSourceIds = useMemo((): Set<MetricSourceId> | null => {
-    const items = splitByItems(tokens);
-    const hasExpressionItem = items.some(
-      (itemTokens) => itemTokens.length > 0 && isExpressionItem(itemTokens),
-    );
-
-    if (!hasExpressionItem) {
-      // Pure individual mode — caller uses all definitions.
-      return null;
-    }
-
-    const ids = new Set<MetricSourceId>();
-    for (const itemTokens of items) {
-      if (itemTokens.length === 0 || isExpressionItem(itemTokens)) {
-        continue;
-      }
-      for (const token of itemTokens) {
-        if (token.type === "metric") {
-          const entry = definitions[token.metricIndex];
-          if (entry && isMetricEntry(entry)) {
-            ids.add(entry.id);
-          }
-        }
-      }
-    }
-    return ids;
-  }, [tokens, definitions]);
-
-  const isIndividualMode = expressionItemsConfig.length === 0;
-
-  // Individual dataset queries:
-  //   • pure individual mode → fire for every definition in the tab
-  //   • mixed mode           → fire only for standalone metric items
   useEffect(() => {
-    if (datasetRequests.length === 0) {
+    const requestsToMake = [...datasetRequests, ...expressionItemsConfig];
+
+    if (requestsToMake.length === 0) {
       return;
     }
 
-    const requestsToFire = isIndividualMode
-      ? datasetRequests
-      : datasetRequests.filter(
-          (r) => standaloneSourceIds?.has(r.sourceId) ?? false,
-        );
-
-    if (requestsToFire.length === 0) {
-      return;
-    }
-
-    const subscriptions = requestsToFire.map((query) =>
+    const subscriptions = requestsToMake.map((query) =>
       dispatch(metricApi.endpoints.getMetricDataset.initiate(query.request)),
     );
 
     return () => {
       subscriptions.forEach((subscription) => subscription.unsubscribe());
     };
-  }, [datasetRequests, dispatch, isIndividualMode, standaloneSourceIds]);
-
-  // Per-expression-item arithmetic queries
-  useEffect(() => {
-    const validRequests = expressionItemsConfig
-      .map((item) => item.request)
-      .filter((r): r is NonNullable<typeof r> => r !== null);
-
-    if (validRequests.length === 0) {
-      return;
-    }
-
-    const subscriptions = validRequests.map((req) =>
-      dispatch(metricApi.endpoints.getMetricDataset.initiate(req)),
-    );
-
-    return () => {
-      subscriptions.forEach((subscription) => subscription.unsubscribe());
-    };
-  }, [expressionItemsConfig, dispatch]);
+  }, [datasetRequests, dispatch, expressionItemsConfig]);
 
   useEffect(() => {
     if (breakoutRequests.length === 0) {
@@ -418,11 +347,8 @@ export function useDefinitionQueries(
   );
 
   const expressionItemQueryResults = useSelector((state: State) =>
-    expressionItemsConfig.map(({ request }) => {
-      if (!request) {
-        return null;
-      }
-      return metricApi.endpoints.getMetricDataset.select(request)(state);
+    expressionItemsConfig.map((query) => {
+      return metricApi.endpoints.getMetricDataset.select(query.request)(state);
     }),
   );
 
@@ -444,9 +370,6 @@ export function useDefinitionQueries(
       // In mixed/expression mode only populate results for standalone sources
       // so they don't bleed into the expression-series chart path.
       for (const { sourceId, result } of datasetResults) {
-        if (!isIndividualMode && !standaloneSourceIds?.has(sourceId)) {
-          continue;
-        }
         if (result.data) {
           results.set(sourceId, result.data);
         }
@@ -463,7 +386,7 @@ export function useDefinitionQueries(
         errorsByDefinitionId: errors,
         isExecuting: (id: MetricSourceId) => executing.has(id),
       };
-    }, [isIndividualMode, standaloneSourceIds, datasetResults]);
+    }, [datasetResults]);
 
   const breakoutValuesBySourceId = useMemo(() => {
     const map = new Map<MetricSourceId, MetricBreakoutValuesResponse>();
@@ -477,10 +400,10 @@ export function useDefinitionQueries(
 
   const expressionItems: ExpressionItemResult[] = useMemo(
     () =>
-      expressionItemsConfig.map(({ itemTokens }, idx) => {
+      expressionItemsConfig.map(({ entry }, idx) => {
         const queryResult = expressionItemQueryResults[idx];
         return {
-          itemTokens,
+          entry,
           result: queryResult?.data ?? null,
           isExecuting: queryResult?.isLoading ?? false,
           error: queryResult?.error ? getErrorMessage(queryResult.error) : null,
@@ -496,6 +419,5 @@ export function useDefinitionQueries(
     breakoutValuesBySourceId,
     isExecuting,
     expressionItems,
-    standaloneSourceIds,
   };
 }

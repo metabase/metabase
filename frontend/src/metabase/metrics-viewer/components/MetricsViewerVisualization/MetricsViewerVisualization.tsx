@@ -30,7 +30,7 @@ type MetricsViewerVisualizationProps = {
   onDimensionRemove?: (definitionId: MetricSourceId) => void;
   onBrush?: (range: { start: number; end: number }) => void;
   className?: string;
-  definitions: MetricsViewerDefinitionEntry[];
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
   tab: MetricsViewerTabState;
   onTabUpdate: (updates: Partial<MetricsViewerTabState>) => void;
   cardIdToDimensionId: Record<CardId, MetricSourceId>;

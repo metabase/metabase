@@ -8,14 +8,15 @@ import { CodeMirror } from "metabase/common/components/CodeMirror";
 import { Button, Flex, Popover } from "metabase/ui";
 import type { ProjectionClause } from "metabase-lib/metric";
 
-import type { ExpressionToken } from "../../../types/operators";
 import type {
-  ExpressionSubToken,
+  MetricDefinitionEntry,
   MetricSourceId,
   MetricsViewerDefinitionEntry,
+  MetricsViewerFormulaEntity,
   SelectedMetric,
   SourceColorMap,
 } from "../../../types/viewer-state";
+import { isExpressionEntry, isMetricEntry } from "../../../types/viewer-state";
 import {
   createMeasureSourceId,
   createMetricSourceId,
@@ -24,18 +25,16 @@ import { MetricExpressionPill } from "../MetricExpressionPill";
 import { MetricPill } from "../MetricPill";
 import { MetricSearchDropdown } from "../MetricSearchDropdown";
 import {
-  buildExpressionTextLegacy,
-  buildFullTextLegacy,
+  buildExpressionText,
+  buildFullText,
   cleanupParens,
-  cleanupSeparators,
-  findInvalidRangesLegacy,
+  findInvalidRanges,
   getSelectedMeasureIds,
   getSelectedMetricIds,
   getWordAtCursor,
-  parseFullTextLegacy,
+  parseFullText,
   removeUnmatchedParens,
-  splitByItems,
-  validateExpressionLegacy,
+  validateExpression,
 } from "../utils";
 
 import S from "./MetricSearchInput.module.css";
@@ -46,11 +45,11 @@ import { operatorHighlight } from "./operatorHighlight";
 const EMPTY_SET = new Set<number>();
 
 type MetricSearchInputProps = {
-  tokens: ExpressionToken[];
-  onTokensChange: (tokens: ExpressionToken[]) => void;
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
+  formulaEntities: MetricsViewerFormulaEntity[];
+  onFormulaEntitiesChange: (entities: MetricsViewerFormulaEntity[]) => void;
   selectedMetrics: SelectedMetric[];
   metricColors: SourceColorMap;
-  definitions: MetricsViewerDefinitionEntry[];
   onAddMetric: (metric: SelectedMetric) => void;
   onRemoveMetric: (metricId: number, sourceType: "metric" | "measure") => void;
   onSwapMetric: (oldMetric: SelectedMetric, newMetric: SelectedMetric) => void;
@@ -61,11 +60,11 @@ type MetricSearchInputProps = {
 };
 
 export function MetricSearchInput({
-  tokens,
-  onTokensChange,
+  definitions,
+  formulaEntities,
+  onFormulaEntitiesChange,
   selectedMetrics,
   metricColors,
-  definitions,
   onAddMetric,
   onRemoveMetric,
   onSwapMetric,
@@ -90,8 +89,10 @@ export function MetricSearchInput({
   // Refs for reading latest values in callbacks without stale closures
   const editTextRef = useRef(editText);
   editTextRef.current = editText;
-  const selectedMetricsRef = useRef(selectedMetrics);
-  selectedMetricsRef.current = selectedMetrics;
+  const formulaEntitiesRef = useRef(formulaEntities);
+  formulaEntitiesRef.current = formulaEntities;
+  const definitionsRef = useRef(definitions);
+  definitionsRef.current = definitions;
   // Tracks whether an editing session is active. Set to true only once
   // handleInputFocus initializes the session; set back to false in commitAndCollapse.
   // Used to prevent autoFocus / view.focus() re-entrancy from reinitializing text.
@@ -104,58 +105,38 @@ export function MetricSearchInput({
   const textAtFocusRef = useRef(textAtFocus);
   textAtFocusRef.current = textAtFocus;
 
-  console.log("MetricSearchInput", textAtFocus, "|||", editText);
+  const metricEntries = useMemo(
+    () =>
+      Object.values(definitions).map(
+        (e): MetricDefinitionEntry => ({ ...e, type: "metric" as const }),
+      ),
+    [definitions],
+  );
 
-  // Remove unnecessary parentheses per item (only when not actively editing)
+  const metricEntriesRef = useRef(metricEntries);
+  metricEntriesRef.current = metricEntries;
+
+  // Clean up parens per expression entry (only when not actively editing)
   useEffect(() => {
     if (isFocused) {
       return;
     }
-    const allItems = splitByItems(tokens);
-    // cleanupParens / removeUnmatchedParens only inspect paren/operator/constant
-    // types, so the cast is safe — the metric payload shape is irrelevant here.
-    const cleanedItems = allItems.map(
-      (item) =>
-        cleanupParens(
-          removeUnmatchedParens(item as unknown as ExpressionSubToken[]),
-        ) as unknown as ExpressionToken[],
-    );
-    if (cleanedItems.some((item, i) => item !== allItems[i])) {
-      const newTokens = cleanedItems.flatMap((item, i) =>
-        i < cleanedItems.length - 1
-          ? [...item, { type: "separator" as const }]
-          : item,
-      );
-      onTokensChange(newTokens);
-    }
-  }, [isFocused, tokens, onTokensChange]);
-
-  // Remove empty items (trailing / consecutive separators) when not focused
-  useEffect(() => {
-    if (!isFocused) {
-      const cleaned = cleanupSeparators(tokens);
-      if (cleaned.length !== tokens.length) {
-        onTokensChange(cleaned);
+    let changed = false;
+    const cleaned = formulaEntities.map((entry) => {
+      if (!isExpressionEntry(entry)) {
+        return entry;
       }
+      const cleanedTokens = cleanupParens(removeUnmatchedParens(entry.tokens));
+      if (cleanedTokens !== entry.tokens) {
+        changed = true;
+        return { ...entry, tokens: cleanedTokens };
+      }
+      return entry;
+    });
+    if (changed) {
+      onFormulaEntitiesChange(cleaned);
     }
-  }, [isFocused, tokens, onTokensChange]);
-
-  // Safety net: drop out-of-range metric tokens (only when not editing)
-  useEffect(() => {
-    if (isFocused) {
-      return;
-    }
-    const maxIdx = selectedMetrics.length - 1;
-    const filtered = tokens.filter(
-      (t) => t.type !== "metric" || t.metricIndex <= maxIdx,
-    );
-    if (filtered.length !== tokens.length) {
-      onTokensChange(filtered);
-    }
-  }, [isFocused, selectedMetrics.length, tokens, onTokensChange]);
-
-  // Split tokens into items for the collapsed (pill) view
-  const items = useMemo(() => splitByItems(tokens), [tokens]);
+  }, [isFocused, formulaEntities, onFormulaEntitiesChange]);
 
   const selectedMetricIds = useMemo(
     () => getSelectedMetricIds(selectedMetrics),
@@ -167,11 +148,6 @@ export function MetricSearchInput({
     [selectedMetrics],
   );
 
-  const definitionsBySourceId = useMemo(
-    () => new Map(definitions.map((entry) => [entry.id, entry] as const)),
-    [definitions],
-  );
-
   // Focus the editor after transitioning from collapsed → expanded mode
   useEffect(() => {
     if (isFocused && pendingFocusRef.current) {
@@ -181,7 +157,6 @@ export function MetricSearchInput({
   }, [isFocused]);
 
   const handleInputFocus = useCallback(() => {
-    console.log("handleInputFocus");
     // If an editing session is already active (e.g. focus returning from a
     // dropdown item click via view.focus()), do not reset the text or the
     // committed baseline.
@@ -189,7 +164,10 @@ export function MetricSearchInput({
       return;
     }
     isEditingSessionActiveRef.current = true;
-    const fullText = buildFullTextLegacy(tokens, selectedMetrics);
+    const fullText = buildFullText(
+      formulaEntitiesRef.current,
+      definitionsRef.current,
+    );
     setTextAtFocus(fullText);
     setIsFocused(true);
     setEditText(fullText);
@@ -203,55 +181,55 @@ export function MetricSearchInput({
         });
       }
     }, 0);
-  }, [tokens, selectedMetrics]);
+  }, []);
 
-  /** Commits the current text: parses tokens, removes unreferenced metrics, and collapses. */
+  /** Commits the current text: parses formula entities, removes unreferenced metrics, and collapses. */
   const commitAndCollapse = useCallback(() => {
-    console.log("commitAndCollapse");
-    const finalTokens = parseFullTextLegacy(
+    const parsedEntities = parseFullText(
       editTextRef.current,
-      selectedMetricsRef.current,
+      metricEntriesRef.current,
     );
 
-    const referencedIndices = new Set(
-      finalTokens
-        .filter(
-          (t): t is { type: "metric"; metricIndex: number } =>
-            t.type === "metric",
-        )
-        .map((t) => t.metricIndex),
-    );
-
-    // Remove unreferenced metrics, highest index first to keep indices valid
-    let remappedTokens = [...finalTokens];
-    const toRemove = selectedMetricsRef.current
-      .map((_, idx) => idx)
-      .filter((idx) => !referencedIndices.has(idx))
-      .sort((a, b) => b - a);
-
-    for (const removeIdx of toRemove) {
-      remappedTokens = remappedTokens.map((t) =>
-        t.type === "metric" && t.metricIndex > removeIdx
-          ? { ...t, metricIndex: t.metricIndex - 1 }
-          : t,
-      );
-      const metric = selectedMetricsRef.current[removeIdx];
-      if (metric) {
-        onRemoveMetric(metric.id, metric.sourceType);
+    // Find which metric sourceIds are referenced in the parsed entities
+    const referencedSourceIds = new Set<MetricSourceId>();
+    for (const entry of parsedEntities) {
+      if (isMetricEntry(entry)) {
+        referencedSourceIds.add(entry.id);
+      } else if (isExpressionEntry(entry)) {
+        for (const token of entry.tokens) {
+          if (token.type === "metric") {
+            referencedSourceIds.add(token.sourceId);
+          }
+        }
       }
     }
 
-    onTokensChange(remappedTokens);
+    // Remove unreferenced metrics from definitions
+    for (const entry of Object.values(definitionsRef.current)) {
+      if (!referencedSourceIds.has(entry.id)) {
+        const metricId = selectedMetrics.find((m) => {
+          const sid =
+            m.sourceType === "metric"
+              ? createMetricSourceId(m.id)
+              : createMeasureSourceId(m.id);
+          return sid === entry.id;
+        });
+        if (metricId) {
+          onRemoveMetric(metricId.id, metricId.sourceType);
+        }
+      }
+    }
+
+    onFormulaEntitiesChange(parsedEntities);
     isEditingSessionActiveRef.current = false;
     setIsFocused(false);
     setIsOpen(false);
     setCurrentWord("");
     setEditText("");
     setValidationError(null);
-  }, [onRemoveMetric, onTokensChange]);
+  }, [onRemoveMetric, onFormulaEntitiesChange, selectedMetrics]);
 
   const handleInputBlur = useCallback(() => {
-    console.log("handleInputBlur");
     // If the text hasn't changed since focus, collapse back to pills view
     // without requiring the user to click "Run".
     if (editTextRef.current === textAtFocusRef.current) {
@@ -266,16 +244,24 @@ export function MetricSearchInput({
 
     // Text was modified — validate on blur but do NOT commit.
     // The expression is only executed when the user explicitly clicks "Run".
-    const currentTokens = parseFullTextLegacy(
+    const newEntities = parseFullText(
       editTextRef.current,
-      selectedMetricsRef.current,
+      metricEntriesRef.current,
     );
-    const error = validateExpressionLegacy(currentTokens);
-    setValidationError(error);
+    // Validate each expression entry
+    for (const entry of newEntities) {
+      if (isExpressionEntry(entry)) {
+        const error = validateExpression(entry.tokens);
+        if (error) {
+          setValidationError(error);
+          return;
+        }
+      }
+    }
+    setValidationError(null);
   }, []);
 
   const handleChange = useCallback((newText: string) => {
-    console.log("handleChange");
     setEditText(newText);
     setValidationError(null);
 
@@ -340,60 +326,62 @@ export function MetricSearchInput({
     [editText, onAddMetric],
   );
 
-  // Remove one item (pill) by index
+  // Remove one formula entity by index
   const handleRemoveItem = useCallback(
     (itemIndex: number) => {
-      const allItems = splitByItems(tokens);
-      const removedItemTokens = allItems[itemIndex];
-
-      const removedIndices = new Set(
-        removedItemTokens
-          .filter(
-            (t): t is { type: "metric"; metricIndex: number } =>
-              t.type === "metric",
-          )
-          .map((t) => t.metricIndex),
+      const removedEntry = formulaEntities[itemIndex];
+      const newFormulaEntities = formulaEntities.filter(
+        (_, i) => i !== itemIndex,
       );
 
-      const remainingItems = allItems.filter((_, i) => i !== itemIndex);
-      let newTokens: ExpressionToken[] = remainingItems.flatMap((item, i) =>
-        i < remainingItems.length - 1
-          ? [...item, { type: "separator" as const }]
-          : item,
-      );
-
-      const stillReferenced = new Set(
-        newTokens
-          .filter(
-            (t): t is { type: "metric"; metricIndex: number } =>
-              t.type === "metric",
-          )
-          .map((t) => t.metricIndex),
-      );
-
-      const toRemove = [...removedIndices]
-        .filter((idx) => !stillReferenced.has(idx))
-        .sort((a, b) => b - a);
-
-      for (const removeIdx of toRemove) {
-        newTokens = newTokens.map((t) =>
-          t.type === "metric" && t.metricIndex > removeIdx
-            ? { ...t, metricIndex: t.metricIndex - 1 }
-            : t,
-        );
-        const metric = selectedMetrics[removeIdx];
-        if (metric) {
-          onRemoveMetric(metric.id, metric.sourceType);
+      // Find sourceIds that were only referenced by the removed entry
+      const removedSourceIds = new Set<MetricSourceId>();
+      if (isMetricEntry(removedEntry)) {
+        removedSourceIds.add(removedEntry.id);
+      } else if (isExpressionEntry(removedEntry)) {
+        for (const token of removedEntry.tokens) {
+          if (token.type === "metric") {
+            removedSourceIds.add(token.sourceId);
+          }
         }
       }
 
-      onTokensChange(newTokens);
+      // Check if any of those sourceIds are still referenced
+      const stillReferenced = new Set<MetricSourceId>();
+      for (const entry of newFormulaEntities) {
+        if (isMetricEntry(entry)) {
+          stillReferenced.add(entry.id);
+        } else if (isExpressionEntry(entry)) {
+          for (const token of entry.tokens) {
+            if (token.type === "metric") {
+              stillReferenced.add(token.sourceId);
+            }
+          }
+        }
+      }
+
+      // Remove unreferenced metrics from definitions
+      for (const sourceId of removedSourceIds) {
+        if (!stillReferenced.has(sourceId)) {
+          const metric = selectedMetrics.find((m) => {
+            const sid =
+              m.sourceType === "metric"
+                ? createMetricSourceId(m.id)
+                : createMeasureSourceId(m.id);
+            return sid === sourceId;
+          });
+          if (metric) {
+            onRemoveMetric(metric.id, metric.sourceType);
+          }
+        }
+      }
+
+      onFormulaEntitiesChange(newFormulaEntities);
     },
-    [tokens, selectedMetrics, onRemoveMetric, onTokensChange],
+    [formulaEntities, selectedMetrics, onRemoveMetric, onFormulaEntitiesChange],
   );
 
   const handleContainerClick = useCallback(() => {
-    console.log("handleContainerClick");
     const view = editorRef.current?.view;
     if (view) {
       view.focus();
@@ -419,14 +407,19 @@ export function MetricSearchInput({
 
   /** Validate the expression and either show an error or commit + run the query. */
   const handleRun = useCallback(() => {
-    const currentTokens = parseFullTextLegacy(
+    const newEntities = parseFullText(
       editTextRef.current,
-      selectedMetricsRef.current,
+      metricEntriesRef.current,
     );
-    const error = validateExpressionLegacy(currentTokens);
-    if (error) {
-      setValidationError(error);
-      return;
+    // Validate each expression entry
+    for (const entry of newEntities) {
+      if (isExpressionEntry(entry)) {
+        const error = validateExpression(entry.tokens);
+        if (error) {
+          setValidationError(error);
+          return;
+        }
+      }
     }
     setValidationError(null);
     commitAndCollapse();
@@ -441,10 +434,7 @@ export function MetricSearchInput({
     }
     const ranges =
       validationError !== null
-        ? findInvalidRangesLegacy(
-            editTextRef.current,
-            selectedMetricsRef.current,
-          )
+        ? findInvalidRanges(editTextRef.current, metricEntriesRef.current)
         : [];
     view.dispatch({ effects: setErrorDecoration.of(ranges) });
   }, [validationError]);
@@ -454,7 +444,7 @@ export function MetricSearchInput({
     () => [
       operatorHighlight,
       errorHighlight,
-      placeholder(tokens.length === 0 ? t`Search for metrics...` : ""),
+      placeholder(formulaEntities.length === 0 ? t`Search for metrics...` : ""),
       // Prevent Enter from creating newlines; trigger run when dirty
       keymap.of([
         {
@@ -466,10 +456,10 @@ export function MetricSearchInput({
         },
       ]),
     ],
-    [tokens.length],
+    [formulaEntities.length],
   );
 
-  const isCollapsed = !isFocused && tokens.length > 0;
+  const isCollapsed = !isFocused && formulaEntities.length > 0;
 
   return (
     <Flex
@@ -485,98 +475,86 @@ export function MetricSearchInput({
     >
       <Flex align="center" gap="sm" flex={1} wrap="wrap" mih="2.375rem">
         {isCollapsed ? (
-          // Unfocused: each item rendered as MetricPill or MetricExpressionPill
+          // Unfocused: each formula entity rendered as MetricPill or MetricExpressionPill
           <>
-            {items.map((itemTokens, itemIndex) => {
-              // TODO: get rid of ExpressionToken type
-              // TODO: iterate over MetricsViewerPageState.definitions instead and render pill component based on item.type
-
-              const isSingleMetric =
-                itemTokens.length === 1 && itemTokens[0].type === "metric";
-
-              const pill = isSingleMetric
-                ? (() => {
-                    const token = itemTokens[0];
-                    if (token.type !== "metric") {
-                      return null;
-                    }
-                    const metric = selectedMetrics[token.metricIndex];
-                    if (!metric) {
-                      return null;
-                    }
-                    const sid =
-                      metric.sourceType === "metric"
-                        ? createMetricSourceId(metric.id)
-                        : createMeasureSourceId(metric.id);
-                    const entry = definitionsBySourceId.get(sid);
-                    if (!entry || entry.type !== "metric") {
-                      return null;
-                    }
-                    return (
-                      <MetricPill
-                        metric={metric}
-                        colors={metricColors[sid]}
-                        definitionEntry={entry}
-                        selectedMetricIds={selectedMetricIds}
-                        selectedMeasureIds={selectedMeasureIds}
-                        onSwap={onSwapMetric}
-                        onRemove={(_id, _sourceType) =>
-                          handleRemoveItem(itemIndex)
-                        }
-                        onSetBreakout={(dimension) =>
-                          onSetBreakout(sid, dimension)
-                        }
-                      />
-                    );
-                  })()
-                : (() => {
-                    // One primary color per unique metric in the expression,
-                    // matching the same logic used in DimensionPillBar.
-                    const expressionColors = (() => {
-                      const seen = new Set<string>();
-                      const result: string[] = [];
-                      for (const tok of itemTokens) {
-                        if (tok.type !== "metric") {
-                          continue;
-                        }
-                        const m = selectedMetrics[tok.metricIndex];
-                        if (!m) {
-                          continue;
-                        }
-                        const sid =
-                          m.sourceType === "metric"
-                            ? createMetricSourceId(m.id)
-                            : createMeasureSourceId(m.id);
-                        const key = String(sid);
-                        if (!seen.has(key)) {
-                          seen.add(key);
-                          const color = metricColors[sid]?.[0];
-                          if (color !== undefined) {
-                            result.push(color);
-                          }
-                        }
+            {formulaEntities.map((entry, entryIndex) => {
+              if (isMetricEntry(entry)) {
+                const metric = selectedMetrics.find((m) => {
+                  const sid =
+                    m.sourceType === "metric"
+                      ? createMetricSourceId(m.id)
+                      : createMeasureSourceId(m.id);
+                  return sid === entry.id;
+                });
+                if (!metric) {
+                  return null;
+                }
+                const defEntry = definitions[entry.id];
+                return (
+                  <span key={entry.id}>
+                    <MetricPill
+                      metric={metric}
+                      colors={metricColors[entry.id]}
+                      definitionEntry={
+                        defEntry
+                          ? { ...defEntry, type: "metric" as const }
+                          : entry
                       }
-                      return result.length > 0 ? result : undefined;
-                    })();
+                      selectedMetricIds={selectedMetricIds}
+                      selectedMeasureIds={selectedMeasureIds}
+                      onSwap={onSwapMetric}
+                      onRemove={(_id, _sourceType) =>
+                        handleRemoveItem(entryIndex)
+                      }
+                      onSetBreakout={(dimension) =>
+                        onSetBreakout(entry.id, dimension)
+                      }
+                    />
+                  </span>
+                );
+              }
 
-                    return (
-                      <MetricExpressionPill
-                        expressionText={buildExpressionTextLegacy(
-                          itemTokens,
-                          selectedMetrics,
-                        )}
-                        colors={expressionColors}
-                        onClick={(e: React.MouseEvent) => {
-                          e.stopPropagation();
-                          pendingFocusRef.current = true;
-                          setIsFocused(true);
-                        }}
-                        onRemove={() => handleRemoveItem(itemIndex)}
-                      />
-                    );
-                  })();
+              if (isExpressionEntry(entry)) {
+                // One primary color per unique metric in the expression
+                const expressionColors = (() => {
+                  const seen = new Set<string>();
+                  const result: string[] = [];
+                  for (const tok of entry.tokens) {
+                    if (tok.type !== "metric") {
+                      continue;
+                    }
+                    const key = String(tok.sourceId);
+                    if (!seen.has(key)) {
+                      seen.add(key);
+                      const color = metricColors[tok.sourceId]?.[0];
+                      if (color !== undefined) {
+                        result.push(color);
+                      }
+                    }
+                  }
+                  return result.length > 0 ? result : undefined;
+                })();
 
-              return <span key={itemIndex}>{pill}</span>;
+                return (
+                  <span key={entry.id}>
+                    <MetricExpressionPill
+                      expressionText={buildExpressionText(
+                        entry.tokens,
+                        metricEntries,
+                      )}
+                      colors={expressionColors}
+                      onClick={(e: React.MouseEvent) => {
+                        e.stopPropagation();
+                        pendingFocusRef.current = true;
+                        setIsFocused(true);
+                      }}
+                      onRemove={() => handleRemoveItem(entryIndex)}
+                    />
+                  </span>
+                );
+              }
+
+              return null;
             })}
           </>
         ) : (

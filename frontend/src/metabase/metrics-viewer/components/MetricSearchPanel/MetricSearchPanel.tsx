@@ -5,14 +5,13 @@ import { Box, Button, Flex, Icon, Stack, Text, Tooltip } from "metabase/ui";
 import type { MetricDefinition, ProjectionClause } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 
-import type { ExpressionToken } from "../../types/operators";
 import type {
   MetricSourceId,
   MetricsViewerDefinitionEntry,
+  MetricsViewerFormulaEntity,
   SelectedMetric,
   SourceColorMap,
 } from "../../types/viewer-state";
-import { isMetricEntry } from "../../types/viewer-state";
 import { FilterPopover } from "../FilterPopover";
 import type { DefinitionSource } from "../FilterPopover/FilterPopoverContent";
 import { MetricSearch } from "../MetricSearch";
@@ -21,11 +20,11 @@ import { MetricsFilterPills } from "../MetricsFilterPills";
 import S from "./MetricSearchPanel.module.css";
 
 type MetricSearchPanelProps = {
-  tokens: ExpressionToken[];
-  onTokensChange: (tokens: ExpressionToken[]) => void;
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
+  formulaEntities: MetricsViewerFormulaEntity[];
+  onFormulaEntitiesChange: (entities: MetricsViewerFormulaEntity[]) => void;
   selectedMetrics: SelectedMetric[];
   metricColors: SourceColorMap;
-  definitions: MetricsViewerDefinitionEntry[];
   onAddMetric: (metric: SelectedMetric) => void;
   onRemoveMetric: (metricId: number, sourceType: "metric" | "measure") => void;
   onSwapMetric: (oldMetric: SelectedMetric, newMetric: SelectedMetric) => void;
@@ -40,11 +39,11 @@ type MetricSearchPanelProps = {
 };
 
 export function MetricSearchPanel({
-  tokens,
-  onTokensChange,
+  definitions,
+  formulaEntities,
+  onFormulaEntitiesChange,
   selectedMetrics,
   metricColors,
-  definitions,
   onAddMetric,
   onRemoveMetric,
   onSwapMetric,
@@ -55,8 +54,8 @@ export function MetricSearchPanel({
 
   const readyDefinitions: DefinitionSource[] = useMemo(
     () =>
-      definitions.flatMap((definition) =>
-        isMetricEntry(definition) && definition.definition != null
+      Object.values(definitions).flatMap((definition) =>
+        definition.definition != null
           ? [{ id: definition.id, definition: definition.definition }]
           : [],
       ),
@@ -129,11 +128,11 @@ export function MetricSearchPanel({
       <Box className={S.container}>
         <Box>
           <MetricSearch
-            tokens={tokens}
-            onTokensChange={onTokensChange}
+            definitions={definitions}
+            formulaEntities={formulaEntities}
+            onFormulaEntitiesChange={onFormulaEntitiesChange}
             selectedMetrics={selectedMetrics}
             metricColors={metricColors}
-            definitions={definitions}
             onAddMetric={onAddMetric}
             onRemoveMetric={onRemoveMetric}
             onSwapMetric={onSwapMetric}

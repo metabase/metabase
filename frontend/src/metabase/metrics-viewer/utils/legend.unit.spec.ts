@@ -86,9 +86,9 @@ describe("buildLegendGroups", () => {
     const metadata = createMetadata([REVENUE_METRIC]);
     const definition = setupDefinition(metadata, REVENUE_METRIC.id);
 
-    const definitions: MetricsViewerDefinitionEntry[] = [
-      { id: "metric:1", type: "metric", definition },
-    ];
+    const definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry> = {
+      "metric:1": { id: "metric:1", definition },
+    };
     const breakoutValues = new Map<
       MetricSourceId,
       MetricBreakoutValuesResponse
@@ -107,10 +107,10 @@ describe("buildLegendGroups", () => {
     );
     const ordersDefinition = setupDefinition(metadata, ORDERS_METRIC.id);
 
-    const definitions: MetricsViewerDefinitionEntry[] = [
-      { id: "metric:1", type: "metric", definition: revenueDefinition },
-      { id: "metric:2", type: "metric", definition: ordersDefinition },
-    ];
+    const definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry> = {
+      "metric:1": { id: "metric:1", definition: revenueDefinition },
+      "metric:2": { id: "metric:2", definition: ordersDefinition },
+    };
 
     const breakoutValues = new Map<
       MetricSourceId,

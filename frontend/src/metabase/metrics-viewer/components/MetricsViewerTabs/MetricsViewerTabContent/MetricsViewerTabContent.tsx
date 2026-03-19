@@ -12,6 +12,7 @@ import type {
   MetricSourceId,
   MetricsViewerDefinitionEntry,
   MetricsViewerDisplayType,
+  MetricsViewerFormulaEntity,
   MetricsViewerTabProjectionConfig,
   MetricsViewerTabState,
   SourceColorMap,
@@ -36,7 +37,8 @@ type ExpressionItemResult = {
 };
 
 type MetricsViewerTabContentProps = {
-  definitions: MetricsViewerDefinitionEntry[];
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
+  formulaEntities: MetricsViewerFormulaEntity[];
   tab: MetricsViewerTabState;
   resultsByDefinitionId: Map<MetricSourceId, Dataset>;
   errorsByDefinitionId: Map<MetricSourceId, string>;
@@ -63,6 +65,7 @@ type MetricsViewerTabContentProps = {
 
 export function MetricsViewerTabContent({
   definitions,
+  formulaEntities,
   tab,
   resultsByDefinitionId,
   errorsByDefinitionId,
@@ -70,30 +73,20 @@ export function MetricsViewerTabContent({
   sourceColors,
   isExecuting,
   expressionItems = [],
-  standaloneSourceIds = null,
   onTabUpdate,
   onDimensionChange,
   onDimensionRemove,
 }: MetricsViewerTabContentProps) {
-  // Definitions that are plain single-metric items (or all, in pure individual mode).
-  const metricDefs = useMemo(
-    () => definitions.filter(isMetricEntry),
-    [definitions],
-  );
-
-  const standaloneDefs = useMemo(
-    () =>
-      standaloneSourceIds === null
-        ? metricDefs
-        : metricDefs.filter((d) => standaloneSourceIds.has(d.id)),
-    [metricDefs, standaloneSourceIds],
+  const metricSourceIds = useMemo(
+    () => formulaEntities.filter(isMetricEntry).map((e) => e.id),
+    [formulaEntities],
   );
 
   const isLoading = useMemo(() => {
     const expressionLoading = expressionItems.some((item) => item.isExecuting);
-    const individualLoading = standaloneDefs.map((d) => d.id).some(isExecuting);
+    const individualLoading = metricSourceIds.some((id) => isExecuting(id));
     return expressionLoading || individualLoading;
-  }, [expressionItems, standaloneDefs, isExecuting]);
+  }, [expressionItems, isExecuting, metricSourceIds]);
 
   const firstError = useMemo(() => {
     const expressionError =
@@ -101,14 +94,14 @@ export function MetricsViewerTabContent({
     if (expressionError) {
       return expressionError;
     }
-    for (const { id } of standaloneDefs) {
+    for (const id of metricSourceIds) {
       const err = errorsByDefinitionId.get(id);
       if (err) {
         return err;
       }
     }
     return null;
-  }, [expressionItems, standaloneDefs, errorsByDefinitionId]);
+  }, [expressionItems, metricSourceIds, errorsByDefinitionId]);
 
   const dimensionFilter = getTabConfig(tab.type).dimensionPredicate;
 
@@ -131,12 +124,13 @@ export function MetricsViewerTabContent({
     // individual mode when there are no expression items).
     const { series: individualSeries, cardIdToDimensionId } =
       buildRawSeriesFromDefinitions(
-        standaloneDefs,
+        formulaEntities.filter(isMetricEntry),
         tab.dimensionMapping,
         tab.display,
         resultsByDefinitionId,
         modifiedDefinitions,
         sourceColors,
+        definitions,
       );
 
     return {
@@ -145,13 +139,13 @@ export function MetricsViewerTabContent({
     };
   }, [
     expressionItems,
-    standaloneDefs,
-    definitions,
+    formulaEntities,
     tab.dimensionMapping,
     tab.display,
     resultsByDefinitionId,
     modifiedDefinitions,
     sourceColors,
+    definitions,
   ]);
 
   const dimensionItems = useMemo(

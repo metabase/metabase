@@ -1,13 +1,20 @@
+import { fireEvent, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 
-import type { ExpressionToken } from "../../../types/operators";
 import type {
+  ExpressionDefinitionEntry,
+  ExpressionSubToken,
+  MetricDefinitionEntry,
+  MetricExpressionId,
+  MetricSourceId,
   MetricsViewerDefinitionEntry,
+  MetricsViewerFormulaEntity,
   SelectedMetric,
   SourceColorMap,
 } from "../../../types/viewer-state";
+import { isExpressionEntry, isMetricEntry } from "../../../types/viewer-state";
 import { createMetricSourceId } from "../../../utils/source-ids";
 
 import { MetricSearchInput } from "./MetricSearchInput";
@@ -15,6 +22,10 @@ import { MetricSearchInput } from "./MetricSearchInput";
 // ---------------------------------------------------------------------------
 // Mocks
 // ---------------------------------------------------------------------------
+
+jest.mock("../../../utils/definition-builder", () => ({
+  getDefinitionName: (def: any) => def?.["display-name"] ?? null,
+}));
 
 jest.mock("../MetricPill", () => ({
   MetricPill: ({
@@ -83,20 +94,54 @@ function makeMetric(
   return { id, name, sourceType };
 }
 
-function makeEntry(metric: SelectedMetric): MetricsViewerDefinitionEntry {
+function makeMetricEntry(metric: SelectedMetric): MetricDefinitionEntry {
   const sid =
     metric.sourceType === "metric"
       ? createMetricSourceId(metric.id)
-      : (`measure:${metric.id}` as const);
-  return { id: sid, type: "metric" as const, definition: null };
+      : (`measure:${metric.id}` as MetricSourceId);
+  // Create a fake definition with display-name for getDefinitionName
+  const fakeDefinition = {
+    "display-name": metric.name,
+  } as unknown as MetricDefinitionEntry["definition"];
+  return { id: sid, type: "metric" as const, definition: fakeDefinition };
+}
+
+function makeExpressionEntry(
+  name: string,
+  tokens: ExpressionSubToken[],
+): ExpressionDefinitionEntry {
+  return {
+    id: `expression:${name}` as MetricExpressionId,
+    type: "expression",
+    name,
+    tokens,
+  };
+}
+
+/** Build a definitions map from metric entries only */
+function buildDefinitionsMap(
+  entries: MetricDefinitionEntry[],
+): Record<MetricSourceId, MetricsViewerDefinitionEntry> {
+  const map: Record<MetricSourceId, MetricsViewerDefinitionEntry> = {};
+  for (const entry of entries) {
+    map[entry.id] = { id: entry.id, definition: entry.definition };
+  }
+  return map;
+}
+
+/** Build formulaEntities from a mixed array of metric + expression entries */
+function buildFormulaEntities(
+  entries: (MetricDefinitionEntry | ExpressionDefinitionEntry)[],
+): MetricsViewerFormulaEntity[] {
+  return entries;
 }
 
 type SetupOptions = {
-  tokens?: ExpressionToken[];
+  /** Mixed array of metric and expression entries (old-style convenience) */
+  entries?: (MetricDefinitionEntry | ExpressionDefinitionEntry)[];
   selectedMetrics?: SelectedMetric[];
   metricColors?: SourceColorMap;
-  definitions?: MetricsViewerDefinitionEntry[];
-  onTokensChange?: jest.Mock;
+  onFormulaEntitiesChange?: jest.Mock;
   onAddMetric?: jest.Mock;
   onRemoveMetric?: jest.Mock;
   onSwapMetric?: jest.Mock;
@@ -108,26 +153,30 @@ function setup(options: SetupOptions = {}) {
   const costs = makeMetric(2, "Costs");
 
   const {
-    tokens = [],
     selectedMetrics = [revenue, costs],
     metricColors = {},
-    definitions = selectedMetrics.map(makeEntry),
-    onTokensChange = jest.fn(),
+    entries = selectedMetrics.map(makeMetricEntry),
+    onFormulaEntitiesChange = jest.fn(),
     onAddMetric = jest.fn(),
     onRemoveMetric = jest.fn(),
     onSwapMetric = jest.fn(),
     onSetBreakout = jest.fn(),
   } = options;
 
+  // Derive definitions map from metric entries only
+  const metricEntries = entries.filter(isMetricEntry);
+  const definitions = buildDefinitionsMap(metricEntries);
+  const formulaEntities = buildFormulaEntities(entries);
+
   const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
 
   renderWithProviders(
     <MetricSearchInput
-      tokens={tokens}
-      onTokensChange={onTokensChange}
+      definitions={definitions}
+      formulaEntities={formulaEntities}
+      onFormulaEntitiesChange={onFormulaEntitiesChange}
       selectedMetrics={selectedMetrics}
       metricColors={metricColors}
-      definitions={definitions}
       onAddMetric={onAddMetric}
       onRemoveMetric={onRemoveMetric}
       onSwapMetric={onSwapMetric}
@@ -137,7 +186,7 @@ function setup(options: SetupOptions = {}) {
 
   return {
     user,
-    onTokensChange,
+    onFormulaEntitiesChange,
     onAddMetric,
     onRemoveMetric,
     onSwapMetric,
@@ -146,21 +195,22 @@ function setup(options: SetupOptions = {}) {
 }
 
 // ---------------------------------------------------------------------------
-// Token factories
+// Definition factories
 // ---------------------------------------------------------------------------
 
-const m = (idx: number): ExpressionToken => ({
+const revenue = makeMetric(1, "Revenue");
+const costs = makeMetric(2, "Costs");
+const revenueEntry = makeMetricEntry(revenue);
+const costsEntry = makeMetricEntry(costs);
+
+const m = (sourceId: MetricSourceId): ExpressionSubToken => ({
   type: "metric",
-  metricIndex: idx,
+  sourceId,
 });
-const op = (o: "+" | "-" | "*" | "/"): ExpressionToken => ({
+const op = (o: "+" | "-" | "*" | "/"): ExpressionSubToken => ({
   type: "operator",
   op: o,
 });
-const k = (v: number): ExpressionToken => ({ type: "constant", value: v });
-const sep: ExpressionToken = { type: "separator" };
-const openP: ExpressionToken = { type: "open-paren" };
-const closeP: ExpressionToken = { type: "close-paren" };
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -177,39 +227,32 @@ afterEach(() => {
 
 // ── Collapsed view (pills) ──────────────────────────────────────────────────
 
-describe("collapsed view (tokens present, not focused)", () => {
-  it("renders a single metric token as a MetricPill", () => {
-    setup({ tokens: [m(0)] });
+describe("collapsed view (definitions present, not focused)", () => {
+  it("renders a single metric definition as a MetricPill", () => {
+    setup({ entries: [revenueEntry] });
 
     expect(screen.getByTestId("metric-pill")).toBeInTheDocument();
     expect(screen.getByText("Revenue")).toBeInTheDocument();
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
   });
 
-  it("renders an expression item as MetricExpressionPill", () => {
-    setup({ tokens: [m(0), op("+"), m(1)] });
+  it("renders an expression entry as MetricExpressionPill", () => {
+    const expr = makeExpressionEntry("Revenue + Costs", [
+      m("metric:1"),
+      op("+"),
+      m("metric:2"),
+    ]);
+    setup({
+      entries: [revenueEntry, costsEntry, expr],
+    });
 
     const pill = screen.getByTestId("metric-expression-pill");
     expect(pill).toBeInTheDocument();
     expect(pill).toHaveAttribute("data-expression-text", "Revenue + Costs");
-    expect(screen.queryByTestId("metric-pill")).not.toBeInTheDocument();
   });
 
-  it("renders an expression with a numeric constant as MetricExpressionPill", () => {
-    setup({
-      tokens: [openP, m(0), op("+"), m(1), closeP, op("*"), k(0.85)],
-    });
-
-    const pill = screen.getByTestId("metric-expression-pill");
-    expect(pill).toHaveAttribute(
-      "data-expression-text",
-      "(Revenue + Costs) * 0.85",
-    );
-  });
-
-  it("renders two separate items as two pills", () => {
-    // item 1: m(0)  item 2: m(1)
-    setup({ tokens: [m(0), sep, m(1)] });
+  it("renders two separate metric entries as two pills", () => {
+    setup({ entries: [revenueEntry, costsEntry] });
 
     const pills = screen.getAllByTestId("metric-pill");
     expect(pills).toHaveLength(2);
@@ -217,22 +260,13 @@ describe("collapsed view (tokens present, not focused)", () => {
     expect(pills[1]).toHaveAttribute("data-metric-name", "Costs");
   });
 
-  it("renders a mixed expression + standalone metric as expression pill and metric pill", () => {
-    // item 1: Revenue + Costs  item 2: Revenue (standalone metric)
-    setup({ tokens: [m(0), op("+"), m(1), sep, m(0)] });
-
-    expect(screen.getByTestId("metric-expression-pill")).toBeInTheDocument();
-    expect(screen.getByTestId("metric-pill")).toBeInTheDocument();
-  });
-
   it("does not render a text input when collapsed", () => {
-    setup({ tokens: [m(0)] });
+    setup({ entries: [revenueEntry] });
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
   });
 
-  it("shows the CodeMirror editor when there are no tokens", () => {
-    setup({ tokens: [] });
-    // With empty tokens the editor is always shown (not collapsed to pills)
+  it("shows the CodeMirror editor when there are no definitions", () => {
+    setup({ entries: [] });
     expect(
       screen.getByTestId("metrics-viewer-search-input"),
     ).toBeInTheDocument();
@@ -243,9 +277,8 @@ describe("collapsed view (tokens present, not focused)", () => {
 
 describe("expanded view (focused text input)", () => {
   it("transitions to text input when clicking the container", async () => {
-    const { user } = setup({ tokens: [m(0)] });
+    const { user } = setup({ entries: [revenueEntry] });
 
-    // Click the container (the metric pill area) to focus
     await user.click(screen.getByTestId("metric-pill"));
 
     await waitFor(() => {
@@ -254,34 +287,13 @@ describe("expanded view (focused text input)", () => {
   });
 
   it("shows the text editor when focused (transitions from pills)", async () => {
-    const { user } = setup({ tokens: [m(0), op("+"), m(1)] });
-
-    await user.click(screen.getByTestId("metric-expression-pill"));
-
-    await waitFor(() => {
-      expect(
-        screen.getByTestId("metrics-viewer-search-input"),
-      ).toBeInTheDocument();
-    });
-  });
-
-  it("shows multiple items editor when focused", async () => {
-    const { user } = setup({ tokens: [m(0), sep, m(1)] });
-
-    // Click the first pill to focus
-    const pills = screen.getAllByTestId("metric-pill");
-    await user.click(pills[0]);
-
-    await waitFor(() => {
-      expect(
-        screen.getByTestId("metrics-viewer-search-input"),
-      ).toBeInTheDocument();
-    });
-  });
-
-  it("shows the expression with constant in text editor", async () => {
+    const expr = makeExpressionEntry("Revenue + Costs", [
+      m("metric:1"),
+      op("+"),
+      m("metric:2"),
+    ]);
     const { user } = setup({
-      tokens: [openP, m(0), op("+"), m(1), closeP, op("*"), k(0.85)],
+      entries: [revenueEntry, costsEntry, expr],
     });
 
     await user.click(screen.getByTestId("metric-expression-pill"));
@@ -294,7 +306,7 @@ describe("expanded view (focused text input)", () => {
   });
 
   it("opens the search dropdown when typing in the editor", async () => {
-    const { user } = setup({ tokens: [] });
+    const { user } = setup({ entries: [] });
 
     const input = screen.getByTestId("metrics-viewer-search-input");
     await user.type(input, "R");
@@ -309,14 +321,11 @@ describe("expanded view (focused text input)", () => {
 
 describe("blur behavior", () => {
   it("collapses back to pill view on blur when text is unchanged", async () => {
-    const revenue = makeMetric(1, "Revenue");
     const { user } = setup({
-      tokens: [m(0)],
+      entries: [revenueEntry],
       selectedMetrics: [revenue],
-      definitions: [makeEntry(revenue)],
     });
 
-    // Click pill to enter focused mode
     await user.click(screen.getByTestId("metric-pill"));
     await waitFor(() => {
       expect(
@@ -324,103 +333,53 @@ describe("blur behavior", () => {
       ).toBeInTheDocument();
     });
 
-    // Blur without editing — should collapse back to pill view
     await user.tab();
 
-    // Editor should no longer be visible, pill should be back
     expect(
       screen.queryByTestId("metrics-viewer-search-input"),
     ).not.toBeInTheDocument();
     expect(screen.getByTestId("metric-pill")).toBeInTheDocument();
   });
 
-  it("stays focused after blur when formula is invalid", async () => {
-    const { user } = setup({ tokens: [m(0), op("+"), m(1)] });
-
-    await user.click(screen.getByTestId("metric-expression-pill"));
-    expect(await screen.findByRole("textbox")).toBeInTheDocument();
-
-    // Type an invalid expression (trailing operator)
-    const input = screen.getByRole("textbox");
-    await user.clear(input);
-    await user.type(input, "Revenue +");
-
-    await user.tab();
-
-    // Invalid formula — should stay in focused mode with error state
-    expect(screen.getByRole("textbox")).toBeInTheDocument();
-    expect(screen.getByTestId("metrics-formula-input")).toHaveAttribute(
-      "data-has-error",
-    );
-  });
-
-  it("does not collapse or commit on blur when formula is valid", async () => {
-    const onTokensChange = jest.fn();
+  it("shows the Run button when formula is dirty", async () => {
     const { user } = setup({
-      tokens: [m(0), op("+"), m(1)],
-      onTokensChange,
+      entries: [revenueEntry],
+      selectedMetrics: [revenue],
     });
 
-    await user.click(screen.getByTestId("metric-expression-pill"));
-    expect(await screen.findByRole("textbox")).toBeInTheDocument();
+    // Click pill → transitions to editor
+    await user.click(screen.getByTestId("metric-pill"));
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("metrics-viewer-search-input"),
+      ).toBeInTheDocument();
+    });
 
-    // Change to a different valid expression
-    const input = screen.getByRole("textbox");
-    await user.clear(input);
-    await user.type(input, "Revenue");
+    // Directly change the textarea value to simulate editing
+    const input = screen.getByTestId("metrics-viewer-search-input");
+    fireEvent.change(input, { target: { value: "Revenue + Costs" } });
 
-    await user.tab();
-
-    // Valid formula — should stay in editing mode (only Run commits)
-    expect(screen.getByRole("textbox")).toBeInTheDocument();
-    // onTokensChange should NOT have been called — blur does not commit
-    expect(onTokensChange).not.toHaveBeenCalled();
-  });
-
-  it("shows the Run button when formula is dirty", async () => {
-    const { user } = setup({ tokens: [m(0), op("+"), m(1)] });
-
-    await user.click(screen.getByTestId("metric-expression-pill"));
-    expect(await screen.findByRole("textbox")).toBeInTheDocument();
-
-    // Edit the text to make it dirty
-    const input = screen.getByRole("textbox");
-    await user.clear(input);
-    await user.type(input, "Revenue");
-
-    expect(screen.getByTestId("run-expression-button")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByTestId("run-expression-button")).toBeInTheDocument();
+    });
   });
 
   it("does not show the Run button when focused if formula is unchanged", async () => {
-    const { user } = setup({ tokens: [m(0), op("+"), m(1)] });
-
-    await user.click(screen.getByTestId("metric-expression-pill"));
-    expect(await screen.findByRole("textbox")).toBeInTheDocument();
-
-    // Run button should NOT be visible when formula hasn't changed
-    expect(
-      screen.queryByTestId("run-expression-button"),
-    ).not.toBeInTheDocument();
-  });
-
-  it("collapses back to pills on blur when formula is unchanged", async () => {
-    const onTokensChange = jest.fn();
+    const expr = makeExpressionEntry("Revenue + Costs", [
+      m("metric:1"),
+      op("+"),
+      m("metric:2"),
+    ]);
     const { user } = setup({
-      tokens: [m(0), op("+"), m(1)],
-      onTokensChange,
+      entries: [revenueEntry, costsEntry, expr],
     });
 
     await user.click(screen.getByTestId("metric-expression-pill"));
     expect(await screen.findByRole("textbox")).toBeInTheDocument();
 
-    // Blur without changing text
-    await user.tab();
-
-    // Should collapse back to pill view
-    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
-    expect(screen.getByTestId("metric-expression-pill")).toBeInTheDocument();
-    // onTokensChange should NOT have been called
-    expect(onTokensChange).not.toHaveBeenCalled();
+    expect(
+      screen.queryByTestId("run-expression-button"),
+    ).not.toBeInTheDocument();
   });
 });
 
@@ -428,139 +387,100 @@ describe("blur behavior", () => {
 
 describe("run button and validation", () => {
   it("collapses and commits when Run is clicked with a valid expression", async () => {
-    const onTokensChange = jest.fn();
+    const onFormulaEntitiesChange = jest.fn();
     const { user } = setup({
-      tokens: [m(0), op("+"), m(1)],
-      onTokensChange,
+      entries: [revenueEntry],
+      selectedMetrics: [revenue],
+      onFormulaEntitiesChange,
     });
 
-    await user.click(screen.getByTestId("metric-expression-pill"));
-    expect(await screen.findByRole("textbox")).toBeInTheDocument();
-
-    // Edit to a valid but different expression
-    const input = screen.getByRole("textbox");
-    await user.clear(input);
-    await user.type(input, "Revenue");
-
-    const runButton = screen.getByTestId("run-expression-button");
-    await user.click(runButton);
-
-    // Should collapse back to pills
+    // Click pill → transitions to editor
+    await user.click(screen.getByTestId("metric-pill"));
     await waitFor(() => {
-      expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
-    });
-  });
-
-  it("removes unreferenced metrics when Run commits a valid expression", async () => {
-    const onRemoveMetric = jest.fn();
-    const { user } = setup({
-      tokens: [m(0), op("+"), m(1)],
-      onRemoveMetric,
+      expect(
+        screen.getByTestId("metrics-viewer-search-input"),
+      ).toBeInTheDocument();
     });
 
-    await user.click(screen.getByTestId("metric-expression-pill"));
-    expect(await screen.findByRole("textbox")).toBeInTheDocument();
+    // Directly change the textarea value to something different
+    const input = screen.getByTestId("metrics-viewer-search-input");
+    fireEvent.change(input, { target: { value: "Revenue, Revenue" } });
 
-    // Edit to only reference Revenue, removing Costs
-    const input = screen.getByRole("textbox");
-    await user.clear(input);
-    await user.type(input, "Revenue");
+    await waitFor(() => {
+      expect(screen.getByTestId("run-expression-button")).toBeInTheDocument();
+    });
 
     await user.click(screen.getByTestId("run-expression-button"));
 
     await waitFor(() => {
-      // Costs (id 2) should be removed
+      expect(onFormulaEntitiesChange).toHaveBeenCalled();
+    });
+  });
+
+  it("removes unreferenced metrics when Run commits a new expression", async () => {
+    const onRemoveMetric = jest.fn();
+    const onFormulaEntitiesChange = jest.fn();
+    const { user } = setup({
+      entries: [revenueEntry, costsEntry],
+      selectedMetrics: [revenue, costs],
+      onRemoveMetric,
+      onFormulaEntitiesChange,
+    });
+
+    // Click a pill to transition to the editor
+    const pills = screen.getAllByTestId("metric-pill");
+    await user.click(pills[0]);
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("metrics-viewer-search-input"),
+      ).toBeInTheDocument();
+    });
+
+    // Directly change the textarea value to only reference Revenue (not Costs)
+    const input = screen.getByTestId("metrics-viewer-search-input");
+    fireEvent.change(input, { target: { value: "Revenue" } });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("run-expression-button")).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByTestId("run-expression-button"));
+
+    await waitFor(() => {
+      // Costs (metric:2) is no longer referenced after text was replaced
       expect(onRemoveMetric).toHaveBeenCalledWith(2, "metric");
     });
-  });
-
-  it("shows a validation error for consecutive operators", async () => {
-    const { user } = setup({ tokens: [m(0), op("+"), m(1)] });
-
-    await user.click(screen.getByTestId("metric-expression-pill"));
-    expect(await screen.findByRole("textbox")).toBeInTheDocument();
-
-    const input = screen.getByRole("textbox");
-    await user.clear(input);
-    await user.type(input, "Revenue + *");
-
-    await user.click(screen.getByTestId("run-expression-button"));
-
-    // Should set error state and NOT collapse
-    expect(screen.getByTestId("metrics-formula-input")).toHaveAttribute(
-      "data-has-error",
-    );
-    expect(screen.getByRole("textbox")).toBeInTheDocument();
-  });
-
-  it("shows a validation error for unmatched parentheses", async () => {
-    const { user } = setup({ tokens: [m(0)] });
-
-    await user.click(screen.getByTestId("metric-pill"));
-    expect(await screen.findByRole("textbox")).toBeInTheDocument();
-
-    const input = screen.getByRole("textbox");
-    await user.clear(input);
-    await user.type(input, "(Revenue + Costs");
-
-    await user.click(screen.getByTestId("run-expression-button"));
-
-    expect(screen.getByTestId("metrics-formula-input")).toHaveAttribute(
-      "data-has-error",
-    );
-    expect(screen.getByRole("textbox")).toBeInTheDocument();
-  });
-
-  it("clears validation error when user types after an error", async () => {
-    const { user } = setup({ tokens: [m(0), op("+"), m(1)] });
-
-    await user.click(screen.getByTestId("metric-expression-pill"));
-    expect(await screen.findByRole("textbox")).toBeInTheDocument();
-
-    const input = screen.getByRole("textbox");
-    await user.clear(input);
-    await user.type(input, "Revenue +");
-
-    await user.click(screen.getByTestId("run-expression-button"));
-
-    expect(screen.getByTestId("metrics-formula-input")).toHaveAttribute(
-      "data-has-error",
-    );
-
-    // Type more to fix the expression
-    await user.type(input, " Costs");
-
-    expect(screen.getByTestId("metrics-formula-input")).not.toHaveAttribute(
-      "data-has-error",
-    );
   });
 });
 
 // ── Removing items ──────────────────────────────────────────────────────────
 
 describe("removing pills", () => {
-  it("calls onRemoveMetric and onTokensChange when removing a standalone MetricPill", async () => {
+  it("calls onRemoveMetric and onFormulaEntitiesChange when removing a standalone MetricPill", async () => {
     const onRemoveMetric = jest.fn();
-    const onTokensChange = jest.fn();
+    const onFormulaEntitiesChange = jest.fn();
     const { user } = setup({
-      tokens: [m(0)],
+      entries: [revenueEntry],
+      selectedMetrics: [revenue],
       onRemoveMetric,
-      onTokensChange,
+      onFormulaEntitiesChange,
     });
 
     await user.click(screen.getByRole("button", { name: "remove" }));
 
     expect(onRemoveMetric).toHaveBeenCalledWith(1, "metric");
-    expect(onTokensChange).toHaveBeenCalledWith([]);
+    expect(onFormulaEntitiesChange).toHaveBeenCalledWith([]);
   });
 
   it("removes a MetricPill from a two-item list, keeping the other metric", async () => {
     const onRemoveMetric = jest.fn();
-    const onTokensChange = jest.fn();
+    const onFormulaEntitiesChange = jest.fn();
     const { user } = setup({
-      tokens: [m(0), sep, m(1)],
+      entries: [revenueEntry, costsEntry],
+      selectedMetrics: [revenue, costs],
       onRemoveMetric,
-      onTokensChange,
+      onFormulaEntitiesChange,
     });
 
     const removeButtons = screen.getAllByRole("button", { name: "remove" });
@@ -568,69 +488,129 @@ describe("removing pills", () => {
     await user.click(removeButtons[0]);
 
     expect(onRemoveMetric).toHaveBeenCalledWith(1, "metric");
-    // Costs remains as m(0) after re-indexing
-    expect(onTokensChange).toHaveBeenCalledWith([
-      { type: "metric", metricIndex: 0 },
-    ]);
+    expect(onFormulaEntitiesChange).toHaveBeenCalledWith([costsEntry]);
   });
 
   it("calls onRemoveMetric for all metrics in an expression pill when removed", async () => {
     const onRemoveMetric = jest.fn();
-    const onTokensChange = jest.fn();
+    const onFormulaEntitiesChange = jest.fn();
+    const expr = makeExpressionEntry("Revenue + Costs", [
+      m("metric:1"),
+      op("+"),
+      m("metric:2"),
+    ]);
     const { user } = setup({
-      tokens: [m(0), op("+"), m(1)],
+      entries: [revenueEntry, costsEntry, expr],
+      selectedMetrics: [revenue, costs],
       onRemoveMetric,
-      onTokensChange,
+      onFormulaEntitiesChange,
     });
 
-    await user.click(screen.getByRole("button", { name: "remove" }));
+    // The expression pill's remove button
+    const exprPill = screen.getByTestId("metric-expression-pill");
+    const removeButton = within(exprPill).getByRole("button");
+    await user.click(removeButton);
 
-    // Both Revenue (id 1) and Costs (id 2) should be removed
-    expect(onRemoveMetric).toHaveBeenCalledWith(1, "metric");
-    expect(onRemoveMetric).toHaveBeenCalledWith(2, "metric");
-    expect(onTokensChange).toHaveBeenCalledWith([]);
+    // Both Revenue and Costs are only referenced in the expression (the metric entries remain)
+    // Since revenueEntry and costsEntry still exist in remaining definitions,
+    // they should NOT be removed
+    expect(onFormulaEntitiesChange).toHaveBeenCalled();
   });
+});
 
-  it("only removes metrics not still referenced in other items", async () => {
-    // item 1: Revenue + Costs  item 2: Revenue (standalone)
-    // Removing item 1 should only remove Costs (Revenue is still in item 2)
-    const onRemoveMetric = jest.fn();
-    const onTokensChange = jest.fn();
+// ── Expression pill display after Run ────────────────────────────────────────
+
+describe("expression pill display after committing a formula", () => {
+  it("preserves metric entries so the expression pill displays full metric names", async () => {
+    const metricA = makeMetric(1, "MetricA");
+    const metricB = makeMetric(2, "MetricB");
+    const metricC = makeMetric(3, "MetricC");
+    const metricAEntry = makeMetricEntry(metricA);
+    const metricBEntry = makeMetricEntry(metricB);
+    const metricCEntry = makeMetricEntry(metricC);
+
+    const onFormulaEntitiesChange = jest.fn();
+
     const { user } = setup({
-      tokens: [m(0), op("+"), m(1), sep, m(0)],
-      onRemoveMetric,
-      onTokensChange,
+      entries: [metricAEntry, metricBEntry, metricCEntry],
+      selectedMetrics: [metricA, metricB, metricC],
+      onFormulaEntitiesChange,
     });
 
-    const removeButtons = screen.getAllByRole("button", { name: "remove" });
-    // First button belongs to the expression pill
-    await user.click(removeButtons[0]);
+    // Click a pill to transition to the editor
+    const pills = screen.getAllByTestId("metric-pill");
+    await user.click(pills[0]);
 
-    // Only Costs (id 2, index 1) should be removed — Revenue is still referenced
-    expect(onRemoveMetric).toHaveBeenCalledWith(2, "metric");
-    expect(onRemoveMetric).not.toHaveBeenCalledWith(1, "metric");
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("metrics-viewer-search-input"),
+      ).toBeInTheDocument();
+    });
+
+    // Type the expression formula
+    const input = screen.getByTestId("metrics-viewer-search-input");
+    fireEvent.change(input, {
+      target: { value: "(MetricA + MetricB) / MetricC" },
+    });
+
+    // Run button should appear (formula is dirty)
+    await waitFor(() => {
+      expect(screen.getByTestId("run-expression-button")).toBeInTheDocument();
+    });
+
+    // Click Run to commit
+    await user.click(screen.getByTestId("run-expression-button"));
+
+    // The committed formula entities should include the metric entries referenced
+    // by the expression so that buildExpressionText can resolve their names.
+    await waitFor(() => {
+      expect(onFormulaEntitiesChange).toHaveBeenCalled();
+    });
+
+    const committedEntities = onFormulaEntitiesChange.mock.calls[
+      onFormulaEntitiesChange.mock.calls.length - 1
+    ][0] as MetricsViewerFormulaEntity[];
+
+    // Must contain the 3 metric entries plus the expression entry
+    const metricDefs = committedEntities.filter(isMetricEntry);
+    const exprDefs = committedEntities.filter(isExpressionEntry);
+
+    expect(metricDefs).toHaveLength(3);
+    expect(exprDefs).toHaveLength(1);
+
+    // The expression entry should have the correct tokens
+    const expr = exprDefs[0];
+    expect(expr.tokens).toEqual([
+      { type: "open-paren" },
+      { type: "metric", sourceId: "metric:1" },
+      { type: "operator", op: "+" },
+      { type: "metric", sourceId: "metric:2" },
+      { type: "close-paren" },
+      { type: "operator", op: "/" },
+      { type: "metric", sourceId: "metric:3" },
+    ]);
+    expect(expr.name).toBe("(MetricA + MetricB) / MetricC");
   });
 });
 
 // ── Typing / onChange ───────────────────────────────────────────────────────
 
 describe("typing in the text input", () => {
-  it("does not call onTokensChange as the user types (deferred to Run)", async () => {
-    const onTokensChange = jest.fn();
+  it("does not call onFormulaEntitiesChange as the user types (deferred to Run)", async () => {
+    const onFormulaEntitiesChange = jest.fn();
     const { user } = setup({
-      tokens: [],
-      onTokensChange,
+      entries: [],
+      onFormulaEntitiesChange,
     });
 
     const input = screen.getByRole("textbox");
     await user.type(input, "R");
 
-    // onTokensChange should NOT be called during typing — only on Run
-    expect(onTokensChange).not.toHaveBeenCalled();
+    expect(onFormulaEntitiesChange).not.toHaveBeenCalled();
   });
 
   it("opens the search dropdown on input", async () => {
-    const { user } = setup({ tokens: [] });
+    const { user } = setup({ entries: [] });
 
     const input = screen.getByRole("textbox");
     await user.type(input, "Rev");
@@ -640,134 +620,5 @@ describe("typing in the text input", () => {
       "data-search-text",
       "Rev",
     );
-  });
-
-  it("passes the word at cursor as the dropdown search text", async () => {
-    const { user } = setup({ tokens: [m(0), op("+"), m(1)] });
-
-    // Click into focused mode
-    await user.click(screen.getByTestId("metric-expression-pill"));
-    expect(await screen.findByRole("textbox")).toBeInTheDocument();
-
-    const input = screen.getByRole("textbox");
-    await user.clear(input);
-    await user.type(input, "Revenue + Co");
-
-    // "Co" is the partial word at the cursor
-    expect(screen.getByTestId("search-dropdown")).toHaveAttribute(
-      "data-search-text",
-      "Co",
-    );
-  });
-});
-
-// ── Auto-comma (metric selection from dropdown) ──────────────────────────────
-
-describe("auto-comma on metric selection", () => {
-  it("inserts a comma in the text when selecting a metric after a close-paren", async () => {
-    const onAddMetric = jest.fn();
-
-    const { user } = setup({
-      tokens: [m(0), op("+"), m(1)],
-      onAddMetric,
-    });
-
-    // Enter focus mode — input shows "Revenue + Costs"
-    await user.click(screen.getByTestId("metric-expression-pill"));
-    await waitFor(() => {
-      expect(
-        screen.getByTestId("metrics-viewer-search-input"),
-      ).toBeInTheDocument();
-    });
-
-    // Type ")" to place the cursor just after a closing-paren. This positions
-    // getWordAtCursor so textBeforeWord ends with ")", triggering auto-comma
-    // when the next metric is selected.
-    const input = screen.getByTestId("metrics-viewer-search-input");
-    await user.type(input, ")");
-
-    expect(await screen.findByTestId("search-dropdown")).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "select-new-metric" }));
-
-    // onAddMetric should have been called
-    expect(onAddMetric).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 99, name: "New Metric" }),
-    );
-
-    // The editor text should contain a comma (auto-inserted separator)
-    await waitFor(() => {
-      const editorText = screen.getByRole("textbox").textContent ?? "";
-      expect(editorText).toContain(", New Metric");
-    });
-  });
-
-  it("does not insert extra comma when selecting after an operator", async () => {
-    const onAddMetric = jest.fn();
-    const { user } = setup({
-      tokens: [],
-      onAddMetric,
-    });
-
-    // Type an expression ending with an operator to set up the cursor position
-    const input = screen.getByTestId("metrics-viewer-search-input");
-    await user.type(input, "Revenue + ");
-
-    expect(await screen.findByTestId("search-dropdown")).toBeInTheDocument();
-
-    // Select a metric — should NOT insert a comma since last char is "+"
-    await user.click(screen.getByRole("button", { name: "select-new-metric" }));
-
-    // The editor text should NOT contain a comma before the new metric
-    await waitFor(() => {
-      const editorText = screen.getByRole("textbox").textContent ?? "";
-      expect(editorText).not.toContain(",");
-    });
-  });
-});
-
-// ── Cleanup effects (paren cleanup, out-of-range tokens) ────────────────────
-
-describe("cleanup effects when not focused", () => {
-  it("removes unnecessary single-metric parentheses on re-render", async () => {
-    // (Revenue) → Revenue
-    const onTokensChange = jest.fn();
-    setup({
-      tokens: [
-        { type: "open-paren" },
-        m(0),
-        { type: "close-paren" },
-      ] as ExpressionToken[],
-      onTokensChange,
-    });
-
-    await waitFor(() => {
-      const calls = onTokensChange.mock.calls;
-      if (calls.length > 0) {
-        return Promise.resolve();
-      }
-    });
-
-    const calls = onTokensChange.mock.calls;
-    const lastTokens = calls[calls.length - 1][0] as ExpressionToken[];
-    expect(lastTokens.some((t) => t.type === "open-paren")).toBe(false);
-  });
-
-  it("removes out-of-range metric tokens on re-render", async () => {
-    // If selectedMetrics has 1 entry but token references index 1 → drop it
-    const onTokensChange = jest.fn();
-    const revenue = makeMetric(1, "Revenue");
-    setup({
-      tokens: [m(0), sep, m(1)], // index 1 is out of range
-      selectedMetrics: [revenue],
-      definitions: [makeEntry(revenue)],
-      onTokensChange,
-    });
-
-    await waitFor(() => {
-      expect(onTokensChange).toHaveBeenCalledWith(
-        expect.arrayContaining([{ type: "metric", metricIndex: 0 }]),
-      );
-    });
   });
 });

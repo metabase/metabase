@@ -1,18 +1,22 @@
-import type { ExpressionToken } from "../../types/operators";
 import type {
   ExpressionSubToken,
+  MetricDefinitionEntry,
   MetricSourceId,
   SelectedMetric,
 } from "../../types/viewer-state";
 
 import {
-  buildExpressionTextLegacy,
+  buildExpressionText,
   cleanupParens,
   filterSearchResults,
   getSelectedMeasureIds,
   getSelectedMetricIds,
-  parseFullTextLegacy,
+  parseFullText,
 } from "./utils";
+
+jest.mock("../../utils/definition-builder", () => ({
+  getDefinitionName: (def: any) => def?.["display-name"] ?? null,
+}));
 
 function makeSelectedMetric(
   overrides: Partial<SelectedMetric> &
@@ -23,6 +27,27 @@ function makeSelectedMetric(
 
 function makeSearchResult(id: number, model: "metric" | "measure") {
   return { id, model, name: `Result ${id}` };
+}
+
+/**
+ * Helper to create a fake MetricDefinitionEntry with a minimal definition
+ * that has the given name. The definition is cast to satisfy the type but
+ * only supports getDefinitionName (which reads displayName from lib).
+ */
+function makeMetricEntry(
+  sourceId: MetricSourceId,
+  name: string,
+): MetricDefinitionEntry {
+  // getDefinitionName calls LibMetric.displayName which returns the
+  // `display-name` key from the definition JS object. We fake it here.
+  const fakeDefinition = {
+    "display-name": name,
+  } as unknown as MetricDefinitionEntry["definition"];
+  return {
+    id: sourceId,
+    type: "metric",
+    definition: fakeDefinition,
+  };
 }
 
 describe("getSelectedMetricIds", () => {
@@ -240,53 +265,52 @@ describe("cleanupParens", () => {
 // buildExpressionText — constants
 // ---------------------------------------------------------------------------
 
-describe("buildExpressionTextLegacy", () => {
-  const revenue: SelectedMetric = {
-    id: 1,
-    name: "Revenue",
-    sourceType: "metric",
-  };
-  const costs: SelectedMetric = { id: 2, name: "Costs", sourceType: "metric" };
-  const metrics = [revenue, costs];
+describe("buildExpressionText", () => {
+  const revenueEntry = makeMetricEntry("metric:1", "Revenue");
+  const costsEntry = makeMetricEntry("metric:2", "Costs");
+  const metricEntries = [revenueEntry, costsEntry];
 
-  const m = (idx: number): ExpressionToken => ({
+  const m = (sourceId: MetricSourceId): ExpressionSubToken => ({
     type: "metric",
-    metricIndex: idx,
+    sourceId,
   });
-  const op = (o: "+" | "-" | "*" | "/"): ExpressionToken => ({
+  const op = (o: "+" | "-" | "*" | "/"): ExpressionSubToken => ({
     type: "operator",
     op: o,
   });
-  const k = (v: number): ExpressionToken => ({ type: "constant", value: v });
-  const open: ExpressionToken = { type: "open-paren" };
-  const close: ExpressionToken = { type: "close-paren" };
+  const k = (v: number): ExpressionSubToken => ({
+    type: "constant",
+    value: v,
+  });
+  const open: ExpressionSubToken = { type: "open-paren" };
+  const close: ExpressionSubToken = { type: "close-paren" };
 
   it("renders a metric scaled by a decimal constant", () => {
-    expect(buildExpressionTextLegacy([m(0), op("*"), k(0.85)], metrics)).toBe(
-      "Revenue * 0.85",
-    );
+    expect(
+      buildExpressionText([m("metric:1"), op("*"), k(0.85)], metricEntries),
+    ).toBe("Revenue * 0.85");
   });
 
   it("renders an integer constant", () => {
-    expect(buildExpressionTextLegacy([m(0), op("*"), k(100)], metrics)).toBe(
-      "Revenue * 100",
-    );
+    expect(
+      buildExpressionText([m("metric:1"), op("*"), k(100)], metricEntries),
+    ).toBe("Revenue * 100");
   });
 
   it("renders constants inside parentheses", () => {
     // (Revenue + Costs) * 0.85
     expect(
-      buildExpressionTextLegacy(
-        [open, m(0), op("+"), m(1), close, op("*"), k(0.85)],
-        metrics,
+      buildExpressionText(
+        [open, m("metric:1"), op("+"), m("metric:2"), close, op("*"), k(0.85)],
+        metricEntries,
       ),
     ).toBe("(Revenue + Costs) * 0.85");
   });
 
   it("renders a constant divided by a metric", () => {
-    expect(buildExpressionTextLegacy([k(1), op("/"), m(0)], metrics)).toBe(
-      "1 / Revenue",
-    );
+    expect(
+      buildExpressionText([k(1), op("/"), m("metric:1")], metricEntries),
+    ).toBe("1 / Revenue");
   });
 });
 
@@ -294,100 +318,132 @@ describe("buildExpressionTextLegacy", () => {
 // parseFullText — numeric literals
 // ---------------------------------------------------------------------------
 
-describe("parseFullTextLegacy — numeric literal parsing", () => {
-  const revenue: SelectedMetric = {
-    id: 1,
-    name: "Revenue",
-    sourceType: "metric",
-  };
-  const costs: SelectedMetric = { id: 2, name: "Costs", sourceType: "metric" };
-  const metrics = [revenue, costs];
+describe("parseFullText — numeric literal parsing", () => {
+  const revenueEntry = makeMetricEntry("metric:1", "Revenue");
+  const costsEntry = makeMetricEntry("metric:2", "Costs");
+  const metricEntries = [revenueEntry, costsEntry];
 
-  const m = (idx: number): ExpressionToken => ({
+  const m = (sourceId: MetricSourceId): ExpressionSubToken => ({
     type: "metric",
-    metricIndex: idx,
+    sourceId,
   });
-  const op = (o: "+" | "-" | "*" | "/"): ExpressionToken => ({
+  const op = (o: "+" | "-" | "*" | "/"): ExpressionSubToken => ({
     type: "operator",
     op: o,
   });
-  const k = (v: number): ExpressionToken => ({ type: "constant", value: v });
+  const k = (v: number): ExpressionSubToken => ({
+    type: "constant",
+    value: v,
+  });
 
   it("parses a metric multiplied by a decimal constant", () => {
-    expect(parseFullTextLegacy("Revenue * 0.85", metrics)).toEqual([
-      m(0),
-      op("*"),
-      k(0.85),
-    ]);
+    const result = parseFullText("Revenue * 0.85", metricEntries);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      type: "expression",
+      tokens: [m("metric:1"), op("*"), k(0.85)],
+    });
   });
 
   it("parses a metric multiplied by an integer constant", () => {
-    expect(parseFullTextLegacy("Revenue * 100", metrics)).toEqual([
-      m(0),
-      op("*"),
-      k(100),
-    ]);
+    const result = parseFullText("Revenue * 100", metricEntries);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      type: "expression",
+      tokens: [m("metric:1"), op("*"), k(100)],
+    });
   });
 
   it("parses a constant on the left side", () => {
-    expect(parseFullTextLegacy("0.5 * Revenue", metrics)).toEqual([
-      k(0.5),
-      op("*"),
-      m(0),
-    ]);
+    const result = parseFullText("0.5 * Revenue", metricEntries);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      type: "expression",
+      tokens: [k(0.5), op("*"), m("metric:1")],
+    });
   });
 
   it("parses a constant inside parentheses — (Revenue + Costs) * 0.85", () => {
-    expect(parseFullTextLegacy("(Revenue + Costs) * 0.85", metrics)).toEqual([
-      { type: "open-paren" },
-      m(0),
-      op("+"),
-      m(1),
-      { type: "close-paren" },
-      op("*"),
-      k(0.85),
-    ]);
+    const result = parseFullText("(Revenue + Costs) * 0.85", metricEntries);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      type: "expression",
+      tokens: [
+        { type: "open-paren" },
+        m("metric:1"),
+        op("+"),
+        m("metric:2"),
+        { type: "close-paren" },
+        op("*"),
+        k(0.85),
+      ],
+    });
   });
 
   it("parses multiple constants in one expression", () => {
     // 0.5 * Revenue + 0.5 * Costs
-    expect(parseFullTextLegacy("0.5 * Revenue + 0.5 * Costs", metrics)).toEqual(
-      [k(0.5), op("*"), m(0), op("+"), k(0.5), op("*"), m(1)],
-    );
+    const result = parseFullText("0.5 * Revenue + 0.5 * Costs", metricEntries);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      type: "expression",
+      tokens: [
+        k(0.5),
+        op("*"),
+        m("metric:1"),
+        op("+"),
+        k(0.5),
+        op("*"),
+        m("metric:2"),
+      ],
+    });
   });
 
   it("handles an integer that looks like it could start a decimal (no dot follows)", () => {
     // "1 + Revenue" — "1" is an integer with no fractional part
-    expect(parseFullTextLegacy("1 + Revenue", metrics)).toEqual([
-      k(1),
-      op("+"),
-      m(0),
-    ]);
+    const result = parseFullText("1 + Revenue", metricEntries);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      type: "expression",
+      tokens: [k(1), op("+"), m("metric:1")],
+    });
   });
 
   it("does not parse a trailing dot as part of the number", () => {
     // "1." — trailing dot with no digit after it; "1" is the constant, "." is skipped
-    expect(parseFullTextLegacy("1.", metrics)).toEqual([k(1)]);
+    const result = parseFullText("1.", metricEntries);
+    expect(result).toHaveLength(1);
+    // Single constant → still becomes an expression entry since it's not a metric name
+    expect(result[0]).toMatchObject({
+      type: "expression",
+      tokens: [k(1)],
+    });
   });
 
   it("parses constants and metrics as separate items separated by a comma", () => {
     // "Revenue * 0.85, Costs"
-    expect(parseFullTextLegacy("Revenue * 0.85, Costs", metrics)).toEqual([
-      m(0),
-      op("*"),
-      k(0.85),
-      { type: "separator" },
-      m(1),
-    ]);
+    const result = parseFullText("Revenue * 0.85, Costs", metricEntries);
+    expect(result).toHaveLength(2);
+    expect(result[0]).toMatchObject({
+      type: "expression",
+      tokens: [m("metric:1"), op("*"), k(0.85)],
+    });
+    // "Costs" is a standalone metric
+    expect(result[1]).toMatchObject({
+      type: "metric",
+      id: "metric:2",
+    });
   });
 
-  it("round-trips through buildExpressionTextLegacy", () => {
+  it("round-trips through buildExpressionText", () => {
     const text = "(Revenue + Costs) * 0.85";
-    const tokens = parseFullTextLegacy(text, metrics);
-    // Remove the separator-less single item and rebuild
-    const [item] = [tokens]; // only one item (no separators)
-    expect(buildExpressionTextLegacy(item as ExpressionToken[], metrics)).toBe(
-      text,
-    );
+    const result = parseFullText(text, metricEntries);
+    expect(result).toHaveLength(1);
+    const entry = result[0];
+    if (entry.type === "expression") {
+      // eslint-disable-next-line jest/no-conditional-expect
+      expect(buildExpressionText(entry.tokens, metricEntries)).toBe(text);
+    } else {
+      throw new Error("Expected expression entry");
+    }
   });
 });

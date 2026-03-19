@@ -1,5 +1,4 @@
 import type { Location } from "history";
-import { useState } from "react";
 
 import { Box, Flex, Stack } from "metabase/ui";
 
@@ -14,8 +13,6 @@ import {
   MetricsViewerTabs,
 } from "../../components/MetricsViewerTabs";
 import { useMetricsViewer } from "../../hooks/use-metrics-viewer";
-import type { ExpressionToken } from "../../types/operators";
-import { isMetricEntry } from "../../types/viewer-state";
 
 import S from "./MetricsViewerPage.module.css";
 
@@ -24,10 +21,9 @@ export type MetricsViewerPageProps = {
 };
 
 export function MetricsViewerPage(props: MetricsViewerPageProps) {
-  const [tokens, setTokens] = useState<ExpressionToken[]>([]);
-
   const {
     definitions,
+    formulaEntities,
     tabs,
     activeTab,
     activeTabId,
@@ -42,7 +38,6 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
     availableDimensions,
     isExecuting,
     expressionItems,
-    standaloneSourceIds,
     addMetric,
     swapMetric,
     removeMetric,
@@ -54,22 +49,23 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
     removeTabDimension,
     updateDefinition,
     setBreakoutDimension,
-  } = useMetricsViewer(props, tokens, setTokens);
+    setFormulaEntities,
+  } = useMetricsViewer(props);
 
-  const hasDefinitions = definitions.length > 0;
-  const hasLoadedDefinitions = definitions.some(
-    (entry) => isMetricEntry(entry) && entry.definition != null,
+  const hasDefinitions = Object.keys(definitions).length > 0;
+  const hasLoadedDefinitions = Object.values(definitions).some(
+    (entry) => entry.definition != null,
   );
 
   return (
     <Stack h="100%" gap={0} className={S.root}>
       <Box px="lg" pt="md" flex="0 0 auto">
         <MetricSearchPanel
-          tokens={tokens}
-          onTokensChange={setTokens}
+          definitions={definitions}
+          formulaEntities={formulaEntities}
+          onFormulaEntitiesChange={setFormulaEntities}
           selectedMetrics={selectedMetrics}
           metricColors={sourceColors}
-          definitions={definitions}
           onAddMetric={addMetric}
           onRemoveMetric={removeMetric}
           onSwapMetric={swapMetric}
@@ -109,6 +105,7 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
               ) : activeTab ? (
                 <MetricsViewerTabContent
                   definitions={definitions}
+                  formulaEntities={formulaEntities}
                   tab={activeTab}
                   resultsByDefinitionId={resultsByDefinitionId}
                   errorsByDefinitionId={errorsByDefinitionId}
@@ -116,7 +113,6 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
                   sourceColors={sourceColors}
                   isExecuting={isExecuting}
                   expressionItems={expressionItems}
-                  standaloneSourceIds={standaloneSourceIds}
                   onTabUpdate={updateActiveTab}
                   onDimensionChange={(defId, dim) =>
                     changeTabDimension(activeTab.id, defId, dim)

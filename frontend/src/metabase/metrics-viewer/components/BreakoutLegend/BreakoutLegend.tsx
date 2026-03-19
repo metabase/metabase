@@ -13,7 +13,7 @@ import { buildLegendGroups } from "../../utils/legend";
 import S from "./BreakoutLegend.module.css";
 
 type BreakoutLegendProps = {
-  definitions: MetricsViewerDefinitionEntry[];
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
   breakoutValuesBySourceId: Map<MetricSourceId, MetricBreakoutValuesResponse>;
   sourceColors: SourceColorMap;
 };

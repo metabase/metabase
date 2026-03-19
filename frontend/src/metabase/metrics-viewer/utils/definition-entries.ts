@@ -1,15 +1,11 @@
 import * as LibMetric from "metabase-lib/metric";
 
-import type {
-  MetricDefinitionEntry,
-  MetricsViewerDefinitionEntry,
-} from "../types/viewer-state";
-import { isMetricEntry } from "../types/viewer-state";
+import type { MetricsViewerDefinitionEntry } from "../types/viewer-state";
 
 export function getEntryBreakout(
   entry: MetricsViewerDefinitionEntry,
 ): LibMetric.ProjectionClause | undefined {
-  if (!isMetricEntry(entry) || !entry.definition) {
+  if (!entry.definition) {
     return undefined;
   }
   const projections = LibMetric.projections(entry.definition);
@@ -21,13 +17,13 @@ export function entryHasBreakout(entry: MetricsViewerDefinitionEntry): boolean {
 }
 
 /**
- * Narrows a definition entry to a metric entry that has a non-null definition.
- * Useful for filtering arrays of entries to only metric entries with loaded definitions.
+ * Narrows a definition entry to one that has a non-null definition.
+ * Useful for filtering arrays/maps of entries to only those with loaded definitions.
  */
-export function isLoadedMetricEntry(
+export function isLoadedEntry(
   entry: MetricsViewerDefinitionEntry,
-): entry is MetricDefinitionEntry & {
-  definition: NonNullable<MetricDefinitionEntry["definition"]>;
+): entry is MetricsViewerDefinitionEntry & {
+  definition: NonNullable<MetricsViewerDefinitionEntry["definition"]>;
 } {
-  return isMetricEntry(entry) && entry.definition != null;
+  return entry.definition != null;
 }

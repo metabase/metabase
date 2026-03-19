@@ -7,19 +7,19 @@ import * as Urls from "metabase/lib/urls";
 import type { MeasureId, TemporalUnit } from "metabase-types/api";
 import type { MetricId } from "metabase-types/api/metric";
 
-import type { ExpressionToken } from "../types/operators";
-import type {
-  MetricSourceId,
-  MetricsViewerPageState,
-  MetricsViewerTabState,
+import {
+  type MetricSourceId,
+  type MetricsViewerFormulaEntity,
+  type MetricsViewerPageState,
+  type MetricsViewerTabState,
+  isExpressionEntry,
 } from "../types/viewer-state";
-import { isMetricEntry } from "../types/viewer-state";
 import type { SourceFilter } from "../utils/dimension-filters";
-import { createSourceId } from "../utils/source-ids";
+import { createSourceId, parseSourceId } from "../utils/source-ids";
 import {
   type SerializedMetricsViewerPageState,
   decodeState,
-  deserializeExpression,
+  deserializeFormulaEntities,
   deserializeTab,
   encodeState,
   stateToSerializedState,
@@ -43,8 +43,7 @@ export function useViewerUrl(
   initialize: (state: MetricsViewerPageState) => void,
   onLoadSources: (request: LoadSourcesRequest) => void,
   location: Location,
-  tokens: ExpressionToken[],
-  onTokensRestored: (tokens: ExpressionToken[]) => void,
+  setFormulaEntities: (entities: MetricsViewerFormulaEntity[]) => void,
 ): void {
   const dispatch = useDispatch();
   const lastHashRef = useRef<string | null>(null);
@@ -62,7 +61,7 @@ export function useViewerUrl(
           sources: [{ type: "metric", id: parseInt(metricId, 10) }],
           tabs: [],
           selectedTabId: null,
-          expression: [],
+          expressions: [],
         };
         const encodedHash = encodeState(serializedState);
         if (encodedHash === undefined) {
@@ -113,11 +112,26 @@ export function useViewerUrl(
         serializedState.tabs.map(deserializeTab);
 
       initialize({
-        definitions: [],
+        definitions: {},
+        formulaEntities: [],
         tabs,
         selectedTabId: serializedState.selectedTabId,
       });
     }
+
+    // Restore formula entities from URL (expressions + standalone metric refs
+    // are reconstructed from the serialized state)
+    const restoredFormulaEntities = deserializeFormulaEntities(serializedState);
+
+    restoredFormulaEntities.forEach((entity) => {
+      if (isExpressionEntry(entity)) {
+        entity.tokens.forEach((token) => {
+          if (token.type === "metric") {
+            metricIds.push(parseSourceId(token.sourceId).id);
+          }
+        });
+      }
+    });
 
     if (metricIds.length > 0 || measureIds.length > 0) {
       const hasBreakouts = Object.keys(breakoutBySourceId).length > 0;
@@ -130,38 +144,25 @@ export function useViewerUrl(
       });
     }
 
-    const restoredExpression = deserializeExpression(
-      serializedState.expression ?? [],
-    );
-
-    // When there is no saved expression (e.g. legacy URLs, ?metricId= entry point),
-    // generate default tokens so every source appears as a pill in the formula input.
-    if (restoredExpression.length === 0 && serializedState.sources.length > 0) {
-      const defaultTokens: ExpressionToken[] = [];
-      for (let i = 0; i < serializedState.sources.length; i++) {
-        if (i > 0) {
-          defaultTokens.push({ type: "operator", op: "+" });
-        }
-        defaultTokens.push({ type: "metric", metricIndex: i });
-      }
-      onTokensRestored(defaultTokens);
-    } else {
-      onTokensRestored(restoredExpression);
+    if (restoredFormulaEntities.length > 0) {
+      setFormulaEntities(restoredFormulaEntities);
     }
-  }, [location, dispatch, initialize, onLoadSources, onTokensRestored]);
+
+    // eslint-disable-next-line no-console
+    console.log("serializedState", serializedState);
+  }, [location, dispatch, initialize, onLoadSources, setFormulaEntities]);
 
   // sync state to URL
   useEffect(() => {
+    const definitionValues = Object.values(state.definitions);
     if (
-      state.definitions.length === 0 ||
-      state.definitions.some(
-        (entry) => isMetricEntry(entry) && entry.definition === null,
-      )
+      definitionValues.length === 0 ||
+      definitionValues.some((entry) => entry.definition === null)
     ) {
       return;
     }
 
-    const serializedState = stateToSerializedState(state, tokens);
+    const serializedState = stateToSerializedState(state);
     const hash = encodeState(serializedState);
     if (hash !== undefined && hash !== lastHashRef.current) {
       lastHashRef.current = hash;
@@ -172,5 +173,5 @@ export function useViewerUrl(
         dispatch(push(url));
       }
     }
-  }, [state, tokens, dispatch]);
+  }, [state, dispatch]);
 }

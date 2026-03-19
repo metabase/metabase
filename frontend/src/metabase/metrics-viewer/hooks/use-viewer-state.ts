@@ -17,14 +17,12 @@ import type { MetricId } from "metabase-types/api/metric";
 import type {
   MetricSourceId,
   MetricsViewerDefinitionEntry,
+  MetricsViewerFormulaEntity,
   MetricsViewerPageState,
   MetricsViewerTabState,
   StoredMetricsViewerTab,
 } from "../types/viewer-state";
-import {
-  getInitialMetricsViewerPageState,
-  isMetricEntry,
-} from "../types/viewer-state";
+import { getInitialMetricsViewerPageState } from "../types/viewer-state";
 import { buildBinnedBreakoutDefinition } from "../utils/definition-builder";
 import {
   createMeasureSourceId,
@@ -81,13 +79,12 @@ function getValidSelectedTabId(
 
 function addDefinitionToTabs(
   tabs: MetricsViewerTabState[],
-  definitionEntries: MetricsViewerDefinitionEntry[],
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
   newDefId: MetricSourceId,
   newDef: MetricDefinition,
 ): MetricsViewerTabState[] {
   const existingDefinitions = objectFromEntries(
-    definitionEntries
-      .filter(isMetricEntry)
+    Object.values(definitions)
       .filter((entry) => entry.id !== newDefId)
       .map((entry) => [entry.id, entry.definition] as const),
   );
@@ -135,6 +132,7 @@ export interface UseViewerStateResult {
 
   removeDefinition: (id: MetricSourceId) => void;
   updateDefinition: (id: MetricSourceId, definition: MetricDefinition) => void;
+  setFormulaEntities: (entities: MetricsViewerFormulaEntity[]) => void;
 
   selectTab: (tabId: string) => void;
   addTab: (tab: MetricsViewerTabState) => void;
@@ -191,18 +189,20 @@ export function useViewerState(): UseViewerStateResult {
   const addDefinition = useCallback(
     (entry: MetricsViewerDefinitionEntry) =>
       setState((prev) => {
-        if (prev.definitions.some((existing) => existing.id === entry.id)) {
+        if (entry.id in prev.definitions) {
           return prev;
         }
 
-        const newDefinitions = [...prev.definitions, entry];
+        const newDefinitions = {
+          ...prev.definitions,
+          [entry.id]: entry,
+        };
 
-        if (
-          prev.tabs.length === 0 ||
-          !isMetricEntry(entry) ||
-          !entry.definition
-        ) {
-          return { ...prev, definitions: newDefinitions };
+        if (prev.tabs.length === 0 || !entry.definition) {
+          return {
+            ...prev,
+            definitions: newDefinitions,
+          };
         }
 
         return {
@@ -222,12 +222,10 @@ export function useViewerState(): UseViewerStateResult {
   const removeDefinition = useCallback(
     (id: MetricSourceId) =>
       setState((prev) => {
-        const newDefinitions = prev.definitions.filter(
-          (entry) => entry.id !== id,
-        );
+        const { [id]: _, ...newDefinitions } = prev.definitions;
         const newTabs = prev.tabs
           .map((tab) => {
-            const { [id]: _, ...rest } = tab.dimensionMapping;
+            const { [id]: __, ...rest } = tab.dimensionMapping;
             return { ...tab, dimensionMapping: rest };
           })
           .filter((tab) => Object.values(tab.dimensionMapping).some(isNotNull));
@@ -245,9 +243,15 @@ export function useViewerState(): UseViewerStateResult {
   const updateDefinition = useCallback(
     (id: MetricSourceId, definition: MetricDefinition) =>
       setState((prev) => {
-        const newDefinitions = prev.definitions.map((entry) =>
-          entry.id === id ? { ...entry, definition } : entry,
-        );
+        const existing = prev.definitions[id];
+        if (!existing) {
+          return prev;
+        }
+
+        const newDefinitions = {
+          ...prev.definitions,
+          [id]: { ...existing, definition },
+        };
 
         if (prev.tabs.length === 0) {
           return { ...prev, definitions: newDefinitions };
@@ -277,23 +281,35 @@ export function useViewerState(): UseViewerStateResult {
   const replaceDefinition = useCallback(
     (oldId: MetricSourceId, newEntry: MetricsViewerDefinitionEntry) =>
       setState((prev) => {
-        const index = prev.definitions.findIndex((entry) => entry.id === oldId);
-        if (index === -1) {
+        if (!(oldId in prev.definitions)) {
           return prev;
         }
 
-        const newDefinitions = [...prev.definitions];
-        newDefinitions[index] = newEntry;
+        const { [oldId]: _, ...rest } = prev.definitions;
+        const newDefinitions = { ...rest, [newEntry.id]: newEntry };
+
+        // Update formulaEntities: replace the old metric ref with the new one
+        const newFormulaEntities = prev.formulaEntities.map((fe) => {
+          if (fe.type === "metric" && fe.id === oldId) {
+            return { ...newEntry, type: "metric" as const };
+          }
+          return fe;
+        });
 
         const newTabs = prev.tabs.map((tab) => {
           if (!(oldId in tab.dimensionMapping)) {
             return tab;
           }
-          const { [oldId]: _, ...rest } = tab.dimensionMapping;
-          return { ...tab, dimensionMapping: rest };
+          const { [oldId]: __, ...tabRest } = tab.dimensionMapping;
+          return { ...tab, dimensionMapping: tabRest };
         });
 
-        return { ...prev, definitions: newDefinitions, tabs: newTabs };
+        return {
+          ...prev,
+          definitions: newDefinitions,
+          formulaEntities: newFormulaEntities,
+          tabs: newTabs,
+        };
       }),
     [],
   );
@@ -354,11 +370,8 @@ export function useViewerState(): UseViewerStateResult {
       dimension: DimensionMetadata,
     ) =>
       setState((prev) => {
-        const entry = prev.definitions.find(
-          (defEntry) => defEntry.id === definitionId,
-        );
-        const def =
-          entry && isMetricEntry(entry) ? entry.definition : undefined;
+        const entry = prev.definitions[definitionId];
+        const def = entry?.definition;
         const dimId = def
           ? LibMetric.dimensionValuesInfo(def, dimension).id
           : undefined;
@@ -415,31 +428,41 @@ export function useViewerState(): UseViewerStateResult {
     [],
   );
 
+  const setFormulaEntities = useCallback(
+    (formulaEntities: MetricsViewerFormulaEntity[]) =>
+      setState((prev) => ({ ...prev, formulaEntities })),
+    [],
+  );
+
   const setBreakoutDimension = useCallback(
     (id: MetricSourceId, dimension: ProjectionClause | undefined) =>
-      setState((prev) => ({
-        ...prev,
-        definitions: prev.definitions.map((entry) => {
-          if (entry.id !== id || !isMetricEntry(entry) || !entry.definition) {
-            return entry;
-          }
+      setState((prev) => {
+        const entry = prev.definitions[id];
+        if (!entry || !entry.definition) {
+          return prev;
+        }
 
-          let newDefinition = entry.definition;
-          const existingProjections = LibMetric.projections(newDefinition);
-          for (const proj of existingProjections) {
-            newDefinition = LibMetric.removeClause(newDefinition, proj);
-          }
+        let newDefinition = entry.definition;
+        const existingProjections = LibMetric.projections(newDefinition);
+        for (const proj of existingProjections) {
+          newDefinition = LibMetric.removeClause(newDefinition, proj);
+        }
 
-          if (dimension) {
-            newDefinition = buildBinnedBreakoutDefinition(
-              newDefinition,
-              dimension,
-            );
-          }
+        if (dimension) {
+          newDefinition = buildBinnedBreakoutDefinition(
+            newDefinition,
+            dimension,
+          );
+        }
 
-          return { ...entry, definition: newDefinition };
-        }),
-      })),
+        return {
+          ...prev,
+          definitions: {
+            ...prev.definitions,
+            [id]: { ...entry, definition: newDefinition },
+          },
+        };
+      }),
     [],
   );
 
@@ -464,7 +487,7 @@ export function useViewerState(): UseViewerStateResult {
 
       loadingRef.current.add(id);
       setLoadingIds((prev) => new Set(prev).add(id));
-      addDefinition({ id, type: "metric", definition: null });
+      addDefinition({ id, definition: null });
 
       try {
         const rawDefinition = await loader();
@@ -512,7 +535,6 @@ export function useViewerState(): UseViewerStateResult {
       setLoadingIds((prev) => new Set(prev).add(newId));
       replaceDefinition(oldSourceId, {
         id: newId,
-        type: "metric",
         definition: null,
       });
 
@@ -579,6 +601,7 @@ export function useViewerState(): UseViewerStateResult {
 
     removeDefinition,
     updateDefinition,
+    setFormulaEntities,
 
     selectTab,
     addTab,

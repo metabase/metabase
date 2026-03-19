@@ -28,6 +28,7 @@ import {
   type MetricSourceId,
   type MetricsViewerDefinitionEntry,
   type MetricsViewerDisplayType,
+  type MetricsViewerFormulaEntity,
   type SelectedMetric,
   type SourceColorMap,
   isExpressionEntry,
@@ -45,7 +46,7 @@ import { DISPLAY_TYPE_REGISTRY } from "./tab-config";
 import { getDimensionIcon } from "./tabs";
 
 export function buildArithmeticSeriesFromResult(
-  definitions: MetricsViewerDefinitionEntry[],
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
   dimensionMapping: Record<MetricSourceId, DimensionId | null>,
   display: MetricsViewerDisplayType,
   arithmeticResult: Dataset,
@@ -56,8 +57,8 @@ export function buildArithmeticSeriesFromResult(
     return [];
   }
 
-  const metricDefs = definitions.filter(isMetricEntry);
-  const firstSettingsEntry = metricDefs.reduce<{
+  const defEntries = Object.values(definitions);
+  const firstSettingsEntry = defEntries.reduce<{
     def: MetricDefinition;
     dimension: DimensionMetadata;
   } | null>((found, entry) => {
@@ -128,7 +129,7 @@ function getDefinitionCardId(def: MetricDefinition): number | null {
 }
 
 /**
- * Computes colors for each definition by building the same series key array
+ * Computes colors for each formula entity by building the same series key array
  * that the chart pipeline would produce, then passing it to getColorsForValues.
  *
  * Chart key rules (from transformSeries → keyForSingleSeries):
@@ -136,7 +137,8 @@ function getDefinitionCardId(def: MetricDefinition): number | null {
  *   - Subsequent series keys = card.name (displayName or "displayName: breakoutValue")
  */
 export function computeSourceColors(
-  definitions: MetricsViewerDefinitionEntry[],
+  formulaEntities: MetricsViewerFormulaEntity[],
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
   breakoutValuesBySourceId?: Map<MetricSourceId, MetricBreakoutValuesResponse>,
 ): SourceColorMap {
   const entries: {
@@ -144,39 +146,38 @@ export function computeSourceColors(
     keys: string[];
   }[] = [];
 
-  for (const entry of definitions) {
-    if (isMetricEntry(entry)) {
-      if (!entry.definition) {
+  const defCount = Object.keys(definitions).length;
+
+  for (const entity of formulaEntities) {
+    if (isMetricEntry(entity)) {
+      const def = definitions[entity.id];
+      if (!def?.definition) {
         continue;
       }
 
-      const displayName = getDefinitionName(entry.definition);
+      const displayName = getDefinitionName(def.definition);
       if (!displayName) {
         continue;
       }
 
-      const response = breakoutValuesBySourceId?.get(
-        (entry as MetricDefinitionEntry).id,
-      );
-      if (entryHasBreakout(entry) && response && response.values.length > 0) {
+      const response = breakoutValuesBySourceId?.get(entity.id);
+      if (entryHasBreakout(def) && response && response.values.length > 0) {
         const keys = response.values.map((val) => {
           const formatted = String(
             formatValue(isEmpty(val) ? NULL_DISPLAY_VALUE : val, {
               column: response.col,
             }),
           );
-          return definitions.length > 1
-            ? `${displayName}: ${formatted}`
-            : formatted;
+          return defCount > 1 ? `${displayName}: ${formatted}` : formatted;
         });
-        entries.push({ sourceId: entry.id, keys });
+        entries.push({ sourceId: entity.id, keys });
       } else {
-        entries.push({ sourceId: entry.id, keys: [displayName] });
+        entries.push({ sourceId: entity.id, keys: [displayName] });
       }
     }
 
-    if (isExpressionEntry(entry)) {
-      entries.push({ sourceId: entry.id, keys: [entry.name] });
+    if (isExpressionEntry(entity)) {
+      entries.push({ sourceId: entity.id, keys: [entity.name] });
     }
   }
 
@@ -186,13 +187,13 @@ export function computeSourceColors(
 
   const allKeys = entries.flatMap((entry) => entry.keys);
 
-  const firstEntry = definitions.find(
-    (definition) => definition.id === entries[0].sourceId,
-  );
-  const firstDefinition =
-    firstEntry && isMetricEntry(firstEntry) ? firstEntry.definition : undefined;
-  if (firstDefinition) {
-    const columnName = getDefinitionColumnName(firstDefinition);
+  const firstEntityId = entries[0].sourceId;
+  const firstDef =
+    firstEntityId in definitions
+      ? definitions[firstEntityId as MetricSourceId]
+      : undefined;
+  if (firstDef?.definition) {
+    const columnName = getDefinitionColumnName(firstDef.definition);
     if (columnName) {
       allKeys[0] = columnName;
     }
@@ -301,19 +302,18 @@ function createSeriesCard(
 }
 
 export function buildRawSeriesFromDefinitions(
-  definitions: MetricsViewerDefinitionEntry[],
+  metrics: MetricDefinitionEntry[],
   dimensionMapping: Record<MetricSourceId, DimensionId | null>,
   display: MetricsViewerDisplayType,
   resultsByDefinitionId: Map<MetricSourceId, Dataset>,
   modifiedDefinitions: Map<MetricSourceId, MetricDefinition>,
   sourceColors: SourceColorMap,
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
 ): {
   series: SingleSeries[];
   cardIdToDimensionId: Record<CardId, MetricSourceId>;
 } {
-  const metricDefinitions = definitions.filter(isMetricEntry);
-
-  const firstSettingsEntry = metricDefinitions.reduce<{
+  const firstSettingsEntry = metrics.reduce<{
     def: MetricDefinition;
     dimension: DimensionMetadata;
   } | null>((found, entry) => {
@@ -321,10 +321,11 @@ export function buildRawSeriesFromDefinitions(
       return found;
     }
     const dimensionId = dimensionMapping[entry.id];
-    if (!dimensionId || !entry.definition) {
+    const definition = definitions[entry.id]?.definition;
+    if (!dimensionId || !definition) {
       return null;
     }
-    const dimension = findDimensionById(entry.definition, dimensionId);
+    const dimension = findDimensionById(definition, dimensionId);
     if (!dimension) {
       return null;
     }
@@ -345,10 +346,12 @@ export function buildRawSeriesFromDefinitions(
   );
 
   const cardIdToDimensionId: Record<CardId, MetricSourceId> = {};
+  const defCount = metrics.length;
 
-  const series = metricDefinitions.flatMap((entry) => {
+  const series = metrics.flatMap((entry) => {
     const dimensionId = dimensionMapping[entry.id];
-    if (!dimensionId || !entry.definition) {
+    const definition = definitions[entry.id]?.definition;
+    if (!dimensionId || !definition) {
       return [];
     }
 
@@ -362,12 +365,12 @@ export function buildRawSeriesFromDefinitions(
       return [];
     }
 
-    const cardId = getDefinitionCardId(entry.definition);
+    const cardId = getDefinitionCardId(definition);
     if (cardId == null) {
       return [];
     }
 
-    const name = getDefinitionName(entry.definition);
+    const name = getDefinitionName(definition);
 
     const seriesKey = getSeriesVizSettingsKey(
       result.data.cols[1], // metric API returns [projection_cols..., aggregation_col]
@@ -396,7 +399,7 @@ export function buildRawSeriesFromDefinitions(
     } else {
       entrySeries = splitByBreakout(
         singleSeries,
-        definitions.length,
+        defCount,
         sourceColors[entry.id],
       );
     }
@@ -439,7 +442,7 @@ function computeColorVizSettings({
 }
 
 function computeAvailableOptions(
-  entry: MetricDefinitionEntry,
+  entry: MetricsViewerDefinitionEntry,
   modifiedDefinition: MetricDefinition | undefined,
   dimensionFilter?: (dimension: LibMetric.DimensionMetadata) => boolean,
 ): DimensionOption[] {
@@ -479,14 +482,14 @@ function computeAvailableOptions(
 }
 
 export function buildDimensionItemsFromDefinitions(
-  definitions: MetricsViewerDefinitionEntry[],
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
   dimensionMapping: Record<MetricSourceId, DimensionId | null>,
   modifiedDefinitions: Map<MetricSourceId, MetricDefinition>,
   sourceColors: SourceColorMap,
   dimensionFilter?: (dimension: LibMetric.DimensionMetadata) => boolean,
 ): DimensionItem[] {
-  return definitions.flatMap((entry): DimensionItem[] => {
-    if (!isMetricEntry(entry) || !entry.definition) {
+  return Object.values(definitions).flatMap((entry): DimensionItem[] => {
+    if (!entry.definition) {
       return [];
     }
 
@@ -551,9 +554,6 @@ export function getSelectedMetricsInfo(
   loadingIds: Set<MetricSourceId>,
 ): SelectedMetric[] {
   return definitions.flatMap((entry): SelectedMetric[] => {
-    if (!isMetricEntry(entry)) {
-      return [];
-    }
     const { definition } = entry;
     const isLoading = loadingIds.has(entry.id);
 

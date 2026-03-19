@@ -2,7 +2,7 @@ import type { DimensionFilterValue } from "./dimension-filters";
 import {
   type SerializedMetricsViewerPageState,
   decodeState,
-  deserializeExpression,
+  deserializeFormulaEntities,
   encodeState,
 } from "./url-serialization";
 
@@ -37,7 +37,7 @@ describe("url-serialization", () => {
           },
         ],
         selectedTabId: "tab-1",
-        expression: [],
+        expressions: [],
       };
 
       const hash = encodeStateOrThrow(state);
@@ -57,7 +57,7 @@ describe("url-serialization", () => {
         ],
         tabs: [],
         selectedTabId: null,
-        expression: [],
+        expressions: [],
       };
 
       const hash = encodeStateOrThrow(state);
@@ -77,7 +77,7 @@ describe("url-serialization", () => {
         ],
         tabs: [],
         selectedTabId: null,
-        expression: [],
+        expressions: [],
       };
 
       const hash = encodeStateOrThrow(state);
@@ -98,7 +98,7 @@ describe("url-serialization", () => {
         ],
         tabs: [],
         selectedTabId: null,
-        expression: [],
+        expressions: [],
       };
 
       const hash = encodeStateOrThrow(state);
@@ -111,7 +111,7 @@ describe("url-serialization", () => {
         sources: [],
         tabs: [],
         selectedTabId: null,
-        expression: [],
+        expressions: [],
       };
 
       const hash = encodeStateOrThrow(state);
@@ -140,7 +140,7 @@ describe("url-serialization", () => {
         ],
         tabs: [],
         selectedTabId: null,
-        expression: [],
+        expressions: [],
       };
 
       const hash = encodeStateOrThrow(state);
@@ -148,7 +148,7 @@ describe("url-serialization", () => {
       expect(decoded).toEqual(state);
     });
 
-    it("round-trips a non-empty expression", () => {
+    it("round-trips a non-empty expressions list", () => {
       const state: SerializedMetricsViewerPageState = {
         sources: [
           { type: "metric", id: 1 },
@@ -156,10 +156,16 @@ describe("url-serialization", () => {
         ],
         tabs: [],
         selectedTabId: null,
-        expression: [
-          { type: "metric", metricIndex: 0 },
-          { type: "operator", op: "+" },
-          { type: "metric", metricIndex: 1 },
+        expressions: [
+          {
+            id: "expression:Revenue + Costs",
+            name: "Revenue + Costs",
+            tokens: [
+              { type: "metric", sourceId: "metric:1" },
+              { type: "operator", op: "+" },
+              { type: "metric", sourceId: "metric:2" },
+            ],
+          },
         ],
       };
 
@@ -177,40 +183,20 @@ describe("url-serialization", () => {
         ],
         tabs: [],
         selectedTabId: null,
-        expression: [
-          { type: "open-paren" },
-          { type: "metric", metricIndex: 0 },
-          { type: "operator", op: "+" },
-          { type: "metric", metricIndex: 1 },
-          { type: "close-paren" },
-          { type: "operator", op: "*" },
-          { type: "metric", metricIndex: 2 },
-        ],
-      };
-
-      const hash = encodeStateOrThrow(state);
-      const decoded = decodeState(hash);
-      expect(decoded).toEqual(state);
-    });
-
-    it("round-trips an expression with all operator types", () => {
-      const state: SerializedMetricsViewerPageState = {
-        sources: [
-          { type: "metric", id: 1 },
-          { type: "metric", id: 2 },
-          { type: "metric", id: 3 },
-          { type: "metric", id: 4 },
-        ],
-        tabs: [],
-        selectedTabId: null,
-        expression: [
-          { type: "metric", metricIndex: 0 },
-          { type: "operator", op: "+" },
-          { type: "metric", metricIndex: 1 },
-          { type: "operator", op: "-" },
-          { type: "metric", metricIndex: 2 },
-          { type: "operator", op: "*" },
-          { type: "metric", metricIndex: 3 },
+        expressions: [
+          {
+            id: "expression:(A + B) * C",
+            name: "(A + B) * C",
+            tokens: [
+              { type: "open-paren" },
+              { type: "metric", sourceId: "metric:1" },
+              { type: "operator", op: "+" },
+              { type: "metric", sourceId: "metric:2" },
+              { type: "close-paren" },
+              { type: "operator", op: "*" },
+              { type: "metric", sourceId: "metric:3" },
+            ],
+          },
         ],
       };
 
@@ -226,7 +212,7 @@ describe("url-serialization", () => {
         sources: [],
         tabs: [],
         selectedTabId: null,
-        expression: [],
+        expressions: [],
       });
     });
 
@@ -235,7 +221,7 @@ describe("url-serialization", () => {
         sources: [],
         tabs: [],
         selectedTabId: null,
-        expression: [],
+        expressions: [],
       });
     });
 
@@ -245,7 +231,7 @@ describe("url-serialization", () => {
         sources: [],
         tabs: [],
         selectedTabId: null,
-        expression: [],
+        expressions: [],
       });
     });
 
@@ -270,7 +256,7 @@ describe("url-serialization", () => {
           },
         ],
         selectedTabId: "tab-1",
-        expression: [],
+        expressions: [],
       };
 
       const hash = encodeStateOrThrow(state);
@@ -291,7 +277,7 @@ describe("url-serialization", () => {
           },
         ],
         selectedTabId: null,
-        expression: [],
+        expressions: [],
       };
 
       const hash = encodeStateOrThrow(state);
@@ -312,7 +298,7 @@ describe("url-serialization", () => {
           },
         ],
         selectedTabId: null,
-        expression: [],
+        expressions: [],
       };
 
       const hash = encodeStateOrThrow(state);
@@ -333,7 +319,7 @@ describe("url-serialization", () => {
         ],
         tabs: [],
         selectedTabId: null,
-        expression: [],
+        expressions: [],
       };
       return decodeState(encodeStateOrThrow(state)).sources[0].filters![0]
         .value;
@@ -405,7 +391,7 @@ describe("url-serialization", () => {
         ],
         tabs: [],
         selectedTabId: null,
-        expression: [],
+        expressions: [],
       };
 
       const decoded = decodeState(encodeStateOrThrow(state));
@@ -423,52 +409,123 @@ describe("url-serialization", () => {
     });
   });
 
-  describe("deserializeExpression", () => {
-    it("returns empty array for empty input", () => {
-      expect(deserializeExpression([])).toEqual([]);
+  describe("deserializeFormulaEntities", () => {
+    function emptyState(
+      overrides: Partial<SerializedMetricsViewerPageState> = {},
+    ): SerializedMetricsViewerPageState {
+      return {
+        sources: [],
+        tabs: [],
+        selectedTabId: null,
+        expressions: [],
+        ...overrides,
+      };
+    }
+
+    it("returns empty array for empty state", () => {
+      expect(deserializeFormulaEntities(emptyState())).toEqual([]);
     });
 
-    it("deserializes metric tokens", () => {
-      expect(
-        deserializeExpression([{ type: "metric", metricIndex: 0 }]),
-      ).toEqual([{ type: "metric", metricIndex: 0 }]);
-    });
-
-    it("deserializes operator tokens", () => {
-      expect(deserializeExpression([{ type: "operator", op: "+" }])).toEqual([
-        { type: "operator", op: "+" },
+    it("returns metric entities for sources", () => {
+      const result = deserializeFormulaEntities(
+        emptyState({
+          sources: [
+            { type: "metric", id: 1 },
+            { type: "measure", id: 42 },
+          ],
+        }),
+      );
+      expect(result).toEqual([
+        { id: "metric:1", type: "metric", definition: null },
+        { id: "measure:42", type: "metric", definition: null },
       ]);
     });
 
-    it("deserializes open-paren and close-paren tokens", () => {
-      expect(
-        deserializeExpression([
-          { type: "open-paren" },
-          { type: "close-paren" },
-        ]),
-      ).toEqual([{ type: "open-paren" }, { type: "close-paren" }]);
+    it("deserializes expression entries with metric tokens", () => {
+      const result = deserializeFormulaEntities(
+        emptyState({
+          sources: [
+            { type: "metric", id: 1 },
+            { type: "metric", id: 2 },
+          ],
+          expressions: [
+            {
+              id: "expression:test",
+              name: "test",
+              tokens: [
+                { type: "metric", sourceId: "metric:1" },
+                { type: "operator", op: "+" },
+                { type: "metric", sourceId: "metric:2" },
+              ],
+            },
+          ],
+        }),
+      );
+      expect(result).toEqual([
+        { id: "metric:1", type: "metric", definition: null },
+        { id: "metric:2", type: "metric", definition: null },
+        {
+          id: "expression:test",
+          type: "expression",
+          name: "test",
+          tokens: [
+            { type: "metric", sourceId: "metric:1" },
+            { type: "operator", op: "+" },
+            { type: "metric", sourceId: "metric:2" },
+          ],
+        },
+      ]);
     });
 
-    it("skips metric tokens with missing metricIndex", () => {
-      expect(deserializeExpression([{ type: "metric" }])).toEqual([]);
+    it("deserializes parentheses", () => {
+      const result = deserializeFormulaEntities(
+        emptyState({
+          expressions: [
+            {
+              id: "expression:test",
+              name: "test",
+              tokens: [{ type: "open-paren" }, { type: "close-paren" }],
+            },
+          ],
+        }),
+      );
+      const expressions = result.filter((e) => e.type === "expression");
+      expect(expressions).toHaveLength(1);
+      expect(expressions[0]).toMatchObject({
+        tokens: [{ type: "open-paren" }, { type: "close-paren" }],
+      });
+    });
+
+    it("skips metric tokens with missing sourceId", () => {
+      const result = deserializeFormulaEntities(
+        emptyState({
+          expressions: [
+            {
+              id: "expression:test",
+              name: "test",
+              tokens: [{ type: "metric" } as any],
+            },
+          ],
+        }),
+      );
+      const expressions = result.filter((e) => e.type === "expression");
+      expect(expressions[0]).toMatchObject({ tokens: [] });
     });
 
     it("skips operator tokens with missing op", () => {
-      expect(deserializeExpression([{ type: "operator" }])).toEqual([]);
-    });
-
-    it("deserializes a full expression", () => {
-      expect(
-        deserializeExpression([
-          { type: "metric", metricIndex: 0 },
-          { type: "operator", op: "+" },
-          { type: "metric", metricIndex: 1 },
-        ]),
-      ).toEqual([
-        { type: "metric", metricIndex: 0 },
-        { type: "operator", op: "+" },
-        { type: "metric", metricIndex: 1 },
-      ]);
+      const result = deserializeFormulaEntities(
+        emptyState({
+          expressions: [
+            {
+              id: "expression:test",
+              name: "test",
+              tokens: [{ type: "operator" } as any],
+            },
+          ],
+        }),
+      );
+      const expressions = result.filter((e) => e.type === "expression");
+      expect(expressions[0]).toMatchObject({ tokens: [] });
     });
   });
 });

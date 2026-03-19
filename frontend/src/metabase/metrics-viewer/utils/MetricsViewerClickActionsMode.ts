@@ -13,20 +13,19 @@ import type {
   MetricsViewerDefinitionEntry,
   MetricsViewerTabState,
 } from "../types/viewer-state";
-import { isMetricEntry } from "../types/viewer-state";
 
 import type { DimensionFilterValue } from "./dimension-filters";
 import { findDimensionById } from "./dimension-lookup";
 
 type MetricsViewerClickActionParams = {
-  definitions: MetricsViewerDefinitionEntry[];
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
   tab: MetricsViewerTabState;
   onTabUpdate: (updates: Partial<MetricsViewerTabState>) => void;
   cardIdToDimensionId: Record<CardId, MetricSourceId>;
 };
 
 export class MetricsViewerClickActionsMode implements ClickActionsMode {
-  private definitions: MetricsViewerDefinitionEntry[];
+  private definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
   private tab: MetricsViewerTabState;
   private onTabUpdate: (updates: Partial<MetricsViewerTabState>) => void;
   private cardIdToDimensionId: Record<CardId, MetricSourceId>;
@@ -46,11 +45,9 @@ export class MetricsViewerClickActionsMode implements ClickActionsMode {
     if (cardId == null) {
       return [];
     }
-    const definition = this.definitions.find(
-      (definition) => definition.id === this.cardIdToDimensionId[cardId],
-    );
+    const sourceId = this.cardIdToDimensionId[cardId];
+    const definition = sourceId ? this.definitions[sourceId] : undefined;
     const params = {
-      definitions: this.definitions,
       definition,
       tab: this.tab,
       onTabUpdate: this.onTabUpdate,
@@ -63,7 +60,6 @@ export class MetricsViewerClickActionsMode implements ClickActionsMode {
 }
 
 type GetActionParams = {
-  definitions: MetricsViewerDefinitionEntry[];
   definition: MetricsViewerDefinitionEntry | undefined; //definition that was clicked on
   tab: MetricsViewerTabState;
   onTabUpdate: (updates: Partial<MetricsViewerTabState>) => void;
@@ -76,7 +72,7 @@ function getZoomInTimeSeriesAction({
   onTabUpdate,
   clickObject,
 }: GetActionParams): ClickAction | undefined {
-  if (!definition || !isMetricEntry(definition) || !definition.definition) {
+  if (!definition || !definition.definition) {
     return;
   }
   const dimension = clickObject.dimensions?.[0];
@@ -168,9 +164,6 @@ function getNextTemporalUnit(
   tab: MetricsViewerTabState,
   currentUnit: TemporalUnit,
 ): TemporalUnit | undefined {
-  if (!isMetricEntry(entry)) {
-    return undefined;
-  }
   const definition = entry.definition;
   const dimensionId = tab.dimensionMapping[entry.id];
   if (!definition || !dimensionId) {

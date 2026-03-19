@@ -9,12 +9,11 @@ import type {
 import * as LibMetric from "metabase-lib/metric";
 import type { Dataset, MetricBreakoutValuesResponse } from "metabase-types/api";
 
-import { buildExpressionTextLegacy } from "../components/MetricSearch/utils";
 import type { MetricsViewerPageProps } from "../pages/MetricsViewerPage/MetricsViewerPage";
-import type { ExpressionToken } from "../types/operators";
 import type {
   MetricSourceId,
   MetricsViewerDefinitionEntry,
+  MetricsViewerFormulaEntity,
   MetricsViewerTabState,
   SelectedMetric,
   SourceColorMap,
@@ -54,7 +53,8 @@ import { useViewerState } from "./use-viewer-state";
 import { type LoadSourcesRequest, useViewerUrl } from "./use-viewer-url";
 
 export interface UseMetricsViewerResult {
-  definitions: MetricsViewerDefinitionEntry[];
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
+  formulaEntities: MetricsViewerFormulaEntity[];
   tabs: MetricsViewerTabState[];
   activeTab: MetricsViewerTabState | null;
   activeTabId: string | null;
@@ -66,9 +66,8 @@ export interface UseMetricsViewerResult {
   isExecuting: (id: MetricSourceId) => boolean;
 
   /**
-   * One entry per expression item in the token list (items with operators).
-   * Each entry's `name` is the human-readable expression text built from the
-   * current selectedMetrics list.
+   * One entry per expression item in the formulaEntities list (expression entries).
+   * Each entry's `name` is the human-readable expression text.
    */
   expressionItems: Array<{
     name: string;
@@ -76,11 +75,6 @@ export interface UseMetricsViewerResult {
     isExecuting: boolean;
     error: string | null;
   }>;
-  /**
-   * Source IDs of definitions that are plain single-metric items.
-   * `null` means pure individual mode — all definitions are standalone.
-   */
-  standaloneSourceIds: Set<MetricSourceId> | null;
 
   sourceColors: SourceColorMap;
   breakoutValuesBySourceId: Map<MetricSourceId, MetricBreakoutValuesResponse>;
@@ -108,6 +102,7 @@ export interface UseMetricsViewerResult {
     id: MetricSourceId,
     dimension: ProjectionClause | undefined,
   ) => void;
+  setFormulaEntities: (entities: MetricsViewerFormulaEntity[]) => void;
 }
 
 function buildUrlRestoreTransform(
@@ -170,16 +165,15 @@ function buildUrlRestoreTransform(
   };
 }
 
-export function useMetricsViewer(
-  { location }: MetricsViewerPageProps,
-  tokens: ExpressionToken[] = [],
-  onTokensRestored: (tokens: ExpressionToken[]) => void = () => {},
-): UseMetricsViewerResult {
+export function useMetricsViewer({
+  location,
+}: MetricsViewerPageProps): UseMetricsViewerResult {
   const {
     state,
     loadingIds,
     removeDefinition,
     updateDefinition,
+    setFormulaEntities,
     selectTab: changeTab,
     addTab,
     removeTab,
@@ -193,6 +187,9 @@ export function useMetricsViewer(
     loadAndReplaceMetric,
     loadAndReplaceMeasure,
   } = useViewerState();
+
+  // eslint-disable-next-line no-console
+  console.log("useMetricsViewer", state);
 
   const handleLoadSources = useCallback(
     (request: LoadSourcesRequest) => {
@@ -216,8 +213,7 @@ export function useMetricsViewer(
     initialize,
     handleLoadSources,
     location,
-    tokens,
-    onTokensRestored,
+    setFormulaEntities,
   );
 
   const activeTab = useMemo((): MetricsViewerTabState | null => {
@@ -236,47 +232,53 @@ export function useMetricsViewer(
     breakoutValuesBySourceId,
     isExecuting,
     expressionItems: rawExpressionItems,
-    standaloneSourceIds,
-  } = useDefinitionQueries(state.definitions, activeTab, tokens);
+  } = useDefinitionQueries(state.definitions, state.formulaEntities, activeTab);
 
-  const selectedMetrics = useMemo(
-    () => getSelectedMetricsInfo(state.definitions, loadingIds),
-    [state.definitions, loadingIds],
+  const definitionValues = useMemo(
+    () => Object.values(state.definitions),
+    [state.definitions],
   );
 
-  // Enrich each expression item with its human-readable name derived from the
-  // current selectedMetrics list (which maps metricIndex → metric name).
+  const selectedMetrics = useMemo(
+    () => getSelectedMetricsInfo(definitionValues, loadingIds),
+    [definitionValues, loadingIds],
+  );
+
+  // Map expression items to include the human-readable name
   const expressionItems = useMemo(
     () =>
       rawExpressionItems.map(
-        ({ itemTokens, result, isExecuting: itemExec, error }) => ({
-          name: buildExpressionTextLegacy(itemTokens, selectedMetrics),
+        ({ entry, result, isExecuting: itemExec, error }) => ({
+          name: entry.name,
           result,
           isExecuting: itemExec,
           error,
         }),
       ),
-    [rawExpressionItems, selectedMetrics],
+    [rawExpressionItems],
   );
 
   const sourceColors = useMemo(
-    () => computeSourceColors(state.definitions, breakoutValuesBySourceId),
-    [state.definitions, breakoutValuesBySourceId],
+    () =>
+      computeSourceColors(
+        state.formulaEntities,
+        state.definitions,
+        breakoutValuesBySourceId,
+      ),
+    [state.formulaEntities, state.definitions, breakoutValuesBySourceId],
   );
 
   const definitionsBySourceId = useMemo(
     () =>
       objectFromEntries(
-        state.definitions
-          .filter(isMetricEntry)
-          .map((entry) => [entry.id, entry.definition] as const),
+        definitionValues.map((entry) => [entry.id, entry.definition] as const),
       ),
-    [state.definitions],
+    [definitionValues],
   );
 
   const sourceOrder = useMemo(
-    () => state.definitions.filter(isMetricEntry).map((entry) => entry.id),
-    [state.definitions],
+    () => state.formulaEntities.filter(isMetricEntry).map((entry) => entry.id),
+    [state.formulaEntities],
   );
 
   const sourceDataById = useMemo((): Record<
@@ -284,10 +286,7 @@ export function useMetricsViewer(
     SourceDisplayInfo
   > => {
     const result: Record<MetricSourceId, SourceDisplayInfo> = {};
-    for (const entry of state.definitions) {
-      if (!isMetricEntry(entry)) {
-        continue;
-      }
+    for (const entry of definitionValues) {
       const { definition } = entry;
       if (!definition) {
         continue;
@@ -303,7 +302,7 @@ export function useMetricsViewer(
       }
     }
     return result;
-  }, [state.definitions]);
+  }, [definitionValues]);
 
   const existingTabIds = useMemo(
     () => new Set(state.tabs.map((tab) => tab.id)),
@@ -312,8 +311,7 @@ export function useMetricsViewer(
 
   const effectiveTabs = useMemo(() => {
     const dimsBySource = new Map(
-      state.definitions
-        .filter(isMetricEntry)
+      definitionValues
         .filter((entry) => entry.definition != null)
         .map(
           (entry) =>
@@ -338,7 +336,7 @@ export function useMetricsViewer(
       const label = resolveCommonTabLabel(names, tab.label);
       return label !== tab.label ? { ...tab, label } : tab;
     });
-  }, [state.tabs, state.definitions]);
+  }, [state.tabs, definitionValues]);
 
   const availableDimensions = useMemo(
     () =>
@@ -354,7 +352,7 @@ export function useMetricsViewer(
     (metric: SelectedMetric) => {
       const sourceId = createSourceId(metric.id, metric.sourceType);
 
-      if (state.definitions.some((entry) => entry.id === sourceId)) {
+      if (sourceId in state.definitions) {
         return;
       }
 
@@ -416,6 +414,7 @@ export function useMetricsViewer(
 
   return {
     definitions: state.definitions,
+    formulaEntities: state.formulaEntities,
     tabs: effectiveTabs,
     activeTab,
     activeTabId: state.selectedTabId,
@@ -427,7 +426,6 @@ export function useMetricsViewer(
     isExecuting,
 
     expressionItems,
-    standaloneSourceIds,
 
     sourceColors,
     breakoutValuesBySourceId,
@@ -448,5 +446,6 @@ export function useMetricsViewer(
     removeTabDimension,
     updateDefinition,
     setBreakoutDimension,
+    setFormulaEntities,
   };
 }

@@ -9,7 +9,6 @@ import type {
   MetricsViewerDefinitionEntry,
   SourceColorMap,
 } from "../types/viewer-state";
-import { isMetricEntry } from "../types/viewer-state";
 
 import { getDefinitionName } from "./definition-builder";
 import { entryHasBreakout, getEntryBreakout } from "./definition-entries";
@@ -26,19 +25,20 @@ export interface LegendGroup {
 }
 
 export function buildLegendGroups(
-  definitions: MetricsViewerDefinitionEntry[],
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
   breakoutValuesBySourceId: Map<MetricSourceId, MetricBreakoutValuesResponse>,
   sourceColors: SourceColorMap,
 ): LegendGroup[] {
-  const hasAnyBreakout = definitions.some((entry) => entryHasBreakout(entry));
+  const entries = Object.values(definitions);
+  const hasAnyBreakout = entries.some((entry) => entryHasBreakout(entry));
   if (!hasAnyBreakout) {
     return [];
   }
 
   const groups: LegendGroup[] = [];
 
-  for (const entry of definitions) {
-    if (!isMetricEntry(entry) || !entry.definition) {
+  for (const entry of entries) {
+    if (!entry.definition) {
       continue;
     }
 

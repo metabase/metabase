@@ -18,7 +18,7 @@ export type MetricsViewerDisplayType = Extract<
 >;
 
 export type MetricSourceId = `metric:${number}` | `measure:${number}`;
-export type MetricExpressionId = `expression:${number}`;
+export type MetricExpressionId = `expression:${string}`;
 
 export type MetricsViewerTabType =
   | "time"
@@ -59,37 +59,36 @@ export type ExpressionSubToken =
  * This is different from the computed/modified definition (from getModifiedDefinition)
  * which adds the tab's dimension as an additional projection.
  */
-export type MetricsViewerDefinitionEntry =
-  | {
-      id: MetricSourceId;
-      type: "metric";
-      definition: MetricDefinition | null;
-    }
-  | {
-      id: MetricExpressionId;
-      type: "expression";
-      name: string;
-      tokens: ExpressionSubToken[];
-    };
+export interface MetricsViewerDefinitionEntry {
+  id: MetricSourceId;
+  definition: MetricDefinition | null;
+}
 
-export type MetricDefinitionEntry = Extract<
-  MetricsViewerDefinitionEntry,
-  { type: "metric" }
->;
+export type MetricDefinitionEntry = MetricsViewerDefinitionEntry & {
+  type: "metric";
 
-export type ExpressionDefinitionEntry = Extract<
-  MetricsViewerDefinitionEntry,
-  { type: "expression" }
->;
+  // TODO: remove "definition" from here
+};
+
+export type ExpressionDefinitionEntry = {
+  id: MetricExpressionId;
+  type: "expression";
+  name: string;
+  tokens: ExpressionSubToken[];
+};
+
+export type MetricsViewerFormulaEntity =
+  | MetricDefinitionEntry
+  | ExpressionDefinitionEntry;
 
 export function isMetricEntry(
-  entry: MetricsViewerDefinitionEntry,
+  entry: MetricsViewerFormulaEntity,
 ): entry is MetricDefinitionEntry {
   return entry.type === "metric";
 }
 
 export function isExpressionEntry(
-  entry: MetricsViewerDefinitionEntry,
+  entry: MetricsViewerFormulaEntity,
 ): entry is ExpressionDefinitionEntry {
   return entry.type === "expression";
 }
@@ -114,14 +113,16 @@ export interface MetricsViewerTabState {
 // ── Page state ──
 
 export interface MetricsViewerPageState {
-  definitions: MetricsViewerDefinitionEntry[];
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
+  formulaEntities: MetricsViewerFormulaEntity[];
   tabs: MetricsViewerTabState[];
   selectedTabId: string | null;
 }
 
 export function getInitialMetricsViewerPageState(): MetricsViewerPageState {
   return {
-    definitions: [],
+    definitions: {},
+    formulaEntities: [],
     tabs: [],
     selectedTabId: null,
   };

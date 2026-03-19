@@ -1,13 +1,15 @@
 import { t } from "ttag";
 
-import type { ExpressionToken, MathOperator } from "../../types/operators";
-import { isMathOperator } from "../../types/operators";
+import type { MathOperator } from "../../types/operators";
 import type {
   ExpressionSubToken,
   MetricDefinitionEntry,
+  MetricSourceId,
   MetricsViewerDefinitionEntry,
+  MetricsViewerFormulaEntity,
   SelectedMetric,
 } from "../../types/viewer-state";
+import { isExpressionEntry, isMetricEntry } from "../../types/viewer-state";
 import { getDefinitionName } from "../../utils/definition-builder";
 
 /**
@@ -45,25 +47,31 @@ export function buildExpressionText(
 }
 
 /**
- * Builds the full editable text for all definitions, joined by ", ".
- * Metric entries become their display name; expression entries are
- * reconstructed from their sub-tokens.
+ * Builds the full editable text for all formula entities, joined by ", ".
+ * Metric entries become their display name (looked up from definitions map);
+ * expression entries are reconstructed from their sub-tokens.
  */
 export function buildFullText(
-  definitions: MetricsViewerDefinitionEntry[],
+  formulaEntities: MetricsViewerFormulaEntity[],
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
 ): string {
-  const metricEntries = definitions.filter(
-    (e): e is MetricDefinitionEntry => e.type === "metric",
-  );
-  return definitions
-    .map((entry) => {
-      if (entry.type === "expression") {
-        return buildExpressionText(entry.tokens, metricEntries);
+  const metricEntries = Object.values(definitions)
+    .filter(
+      (e): e is MetricDefinitionEntry =>
+        "type" in e || e.definition !== undefined,
+    )
+    .map((e) => ({ ...e, type: "metric" as const }));
+  return formulaEntities
+    .map((entity) => {
+      if (isExpressionEntry(entity)) {
+        return buildExpressionText(entity.tokens, metricEntries);
       }
-      const name = entry.definition
-        ? getDefinitionName(entry.definition)
-        : null;
-      return name ?? "";
+      if (isMetricEntry(entity)) {
+        const def = definitions[entity.id];
+        const name = def?.definition ? getDefinitionName(def.definition) : null;
+        return name ?? "";
+      }
+      return "";
     })
     .join(", ");
 }
@@ -103,7 +111,7 @@ export function getWordAtCursor(
 
 /**
  * Parses a full expression text (with ", " separating items) into a
- * `MetricsViewerDefinitionEntry[]`. Each comma-separated segment becomes
+ * `MetricsViewerFormulaEntity[]`. Each comma-separated segment becomes
  * either a standalone metric entry (if it matches a single metric name) or
  * an expression entry (if it contains operators / multiple operands).
  *
@@ -113,9 +121,9 @@ export function getWordAtCursor(
 export function parseFullText(
   text: string,
   metricEntries: MetricDefinitionEntry[],
-): MetricsViewerDefinitionEntry[] {
+): MetricsViewerFormulaEntity[] {
   const rawItems = text.split(",");
-  const result: MetricsViewerDefinitionEntry[] = [];
+  const result: MetricsViewerFormulaEntity[] = [];
 
   for (const rawItem of rawItems) {
     const trimmed = rawItem.trim();
@@ -701,496 +709,4 @@ export function filterSearchResults<T extends SearchResultLike>(
         result.id !== excludeMetric.id ||
         result.model !== excludeMetric.sourceType),
   );
-}
-
-// ── Legacy helpers (to be removed in Phase 5/6) ──
-
-/**
- * @deprecated Will be removed once the token-based expression system is
- * fully migrated to definitions-based. Used by use-definition-queries and
- * MetricSearchInput during the transition.
- */
-export function splitByItems(tokens: ExpressionToken[]): ExpressionToken[][] {
-  const items: ExpressionToken[][] = [];
-  let current: ExpressionToken[] = [];
-  for (const token of tokens) {
-    if (token.type === "separator") {
-      if (current.length > 0) {
-        items.push(current);
-        current = [];
-      }
-    } else {
-      current.push(token);
-    }
-  }
-  if (current.length > 0) {
-    items.push(current);
-  }
-  return items;
-}
-
-/**
- * @deprecated Legacy version of buildExpressionText that accepts
- * ExpressionToken[] + SelectedMetric[] (old API). Will be removed
- * once the token-based expression system is fully migrated.
- */
-export function buildExpressionTextLegacy(
-  tokens: ExpressionToken[],
-  selectedMetrics: SelectedMetric[],
-): string {
-  let result = "";
-  for (let i = 0; i < tokens.length; i++) {
-    const token = tokens[i];
-    const prev = tokens[i - 1];
-    if (i > 0 && prev?.type !== "open-paren" && token.type !== "close-paren") {
-      result += " ";
-    }
-    if (token.type === "open-paren") {
-      result += "(";
-    } else if (token.type === "close-paren") {
-      result += ")";
-    } else if (token.type === "operator") {
-      result += token.op;
-    } else if (token.type === "metric") {
-      result += selectedMetrics[token.metricIndex]?.name ?? "";
-    } else if (token.type === "constant") {
-      result += String(token.value);
-    }
-  }
-  return result;
-}
-
-/**
- * @deprecated Removes trailing/consecutive separators from ExpressionToken[].
- * Will be removed once MetricSearchInput is migrated to definitions-based.
- */
-export function cleanupSeparators(
-  tokens: ExpressionToken[],
-): ExpressionToken[] {
-  const result: ExpressionToken[] = [];
-  for (const token of tokens) {
-    if (token.type === "separator") {
-      if (result.length > 0 && result[result.length - 1].type !== "separator") {
-        result.push(token);
-      }
-    } else {
-      result.push(token);
-    }
-  }
-  // Remove trailing separator
-  if (result.length > 0 && result[result.length - 1].type === "separator") {
-    result.pop();
-  }
-  return result;
-}
-
-/**
- * @deprecated Legacy version of buildFullText that accepts
- * ExpressionToken[] + SelectedMetric[] (old API). Will be removed
- * once the token-based expression system is fully migrated.
- */
-export function buildFullTextLegacy(
-  tokens: ExpressionToken[],
-  selectedMetrics: SelectedMetric[],
-): string {
-  const items = splitByItems(tokens);
-  return items
-    .map((itemTokens) => buildExpressionTextLegacy(itemTokens, selectedMetrics))
-    .join(", ");
-}
-
-/**
- * @deprecated Legacy version of parseFullText that accepts
- * (text, SelectedMetric[]) and returns ExpressionToken[]. Will be removed
- * once the token-based expression system is fully migrated.
- */
-export function parseFullTextLegacy(
-  text: string,
-  selectedMetrics: SelectedMetric[],
-): ExpressionToken[] {
-  const rawItems = text.split(",");
-  const allTokens: ExpressionToken[] = [];
-
-  for (let itemIdx = 0; itemIdx < rawItems.length; itemIdx++) {
-    const rawItem = rawItems[itemIdx];
-    const trimmed = rawItem.trim();
-    if (trimmed.length === 0) {
-      continue;
-    }
-
-    if (allTokens.length > 0) {
-      allTokens.push({ type: "separator" });
-    }
-
-    const itemTokens = parseItemTextLegacy(rawItem, selectedMetrics);
-    allTokens.push(...itemTokens);
-  }
-
-  return allTokens;
-}
-
-function parseItemTextLegacy(
-  text: string,
-  selectedMetrics: SelectedMetric[],
-): ExpressionToken[] {
-  const tokens: ExpressionToken[] = [];
-
-  const sortedMetrics = selectedMetrics
-    .map((m, idx) => ({ name: (m.name ?? "").toLowerCase(), index: idx }))
-    .filter((m) => m.name.length > 0)
-    .sort((a, b) => b.name.length - a.name.length);
-
-  const lower = text.toLowerCase();
-  let i = 0;
-
-  while (i < text.length) {
-    const ch = text[i];
-
-    if (ch === " " || ch === "\t") {
-      i++;
-      continue;
-    }
-    if (ch === "(") {
-      tokens.push({ type: "open-paren" });
-      i++;
-      continue;
-    }
-    if (ch === ")") {
-      tokens.push({ type: "close-paren" });
-      i++;
-      continue;
-    }
-    if (isMathOperator(ch)) {
-      tokens.push({ type: "operator", op: ch });
-      i++;
-      continue;
-    }
-    if (ch >= "0" && ch <= "9") {
-      let numStr = "";
-      while (i < text.length && text[i] >= "0" && text[i] <= "9") {
-        numStr += text[i++];
-      }
-      if (
-        i < text.length &&
-        text[i] === "." &&
-        i + 1 < text.length &&
-        text[i + 1] >= "0" &&
-        text[i + 1] <= "9"
-      ) {
-        numStr += text[i++];
-        while (i < text.length && text[i] >= "0" && text[i] <= "9") {
-          numStr += text[i++];
-        }
-      }
-      tokens.push({ type: "constant", value: parseFloat(numStr) });
-      continue;
-    }
-
-    let matched = false;
-    for (const { name, index } of sortedMetrics) {
-      if (lower.startsWith(name, i)) {
-        const nextI = i + name.length;
-        const nextCh = text[nextI];
-        if (
-          !nextCh ||
-          nextCh === " " ||
-          nextCh === "\t" ||
-          EXPRESSION_DELIMITERS.has(nextCh)
-        ) {
-          tokens.push({ type: "metric", metricIndex: index });
-          i = nextI;
-          matched = true;
-          break;
-        }
-      }
-    }
-
-    if (!matched) {
-      i++;
-    }
-  }
-
-  return tokens;
-}
-
-/**
- * @deprecated Legacy version of validateExpression that accepts
- * ExpressionToken[]. Will be removed once MetricSearchInput is migrated.
- */
-export function validateExpressionLegacy(
-  tokens: ExpressionToken[],
-): string | null {
-  if (tokens.length === 0) {
-    return null;
-  }
-
-  let depth = 0;
-  for (const token of tokens) {
-    if (token.type === "open-paren") {
-      depth++;
-    } else if (token.type === "close-paren") {
-      depth--;
-      if (depth < 0) {
-        return t`Unmatched closing parenthesis`;
-      }
-    }
-  }
-  if (depth > 0) {
-    return t`Unmatched opening parenthesis`;
-  }
-
-  let prevSignificant: ExpressionToken | null = null;
-  for (const token of tokens) {
-    if (token.type === "separator") {
-      prevSignificant = null;
-      continue;
-    }
-    if (token.type === "operator") {
-      if (prevSignificant === null) {
-        return t`Expression cannot start with an operator`;
-      }
-      if (prevSignificant.type === "operator") {
-        return t`Two operators in a row without a metric between them`;
-      }
-      if (prevSignificant.type === "open-paren") {
-        return t`Operator right after opening parenthesis`;
-      }
-    }
-    if (
-      token.type === "close-paren" &&
-      prevSignificant?.type === "open-paren"
-    ) {
-      return t`Empty parentheses`;
-    }
-    prevSignificant = token;
-  }
-  if (prevSignificant?.type === "operator") {
-    return t`Expression cannot end with an operator`;
-  }
-
-  const hasOperand = tokens.some(
-    (tok) => tok.type === "metric" || tok.type === "constant",
-  );
-  if (!hasOperand) {
-    return t`Expression must contain at least one metric`;
-  }
-
-  return null;
-}
-
-type PositionedTokenLegacy = ExpressionToken & { from: number; to: number };
-
-function parseFullTextWithPositionsLegacy(
-  text: string,
-  selectedMetrics: SelectedMetric[],
-): PositionedTokenLegacy[] {
-  const sortedMetrics = selectedMetrics
-    .map((m, idx) => ({ name: (m.name ?? "").toLowerCase(), index: idx }))
-    .filter((m) => m.name.length > 0)
-    .sort((a, b) => b.name.length - a.name.length);
-
-  const lower = text.toLowerCase();
-  const tokens: PositionedTokenLegacy[] = [];
-  let i = 0;
-
-  while (i < text.length) {
-    const ch = text[i];
-
-    if (ch === " " || ch === "\t") {
-      i++;
-      continue;
-    }
-    if (ch === ",") {
-      tokens.push({ type: "separator", from: i, to: i + 1 });
-      i++;
-      continue;
-    }
-    if (ch === "(") {
-      tokens.push({ type: "open-paren", from: i, to: i + 1 });
-      i++;
-      continue;
-    }
-    if (ch === ")") {
-      tokens.push({ type: "close-paren", from: i, to: i + 1 });
-      i++;
-      continue;
-    }
-    if (isMathOperator(ch)) {
-      tokens.push({ type: "operator", op: ch, from: i, to: i + 1 });
-      i++;
-      continue;
-    }
-    if (ch >= "0" && ch <= "9") {
-      const start = i;
-      let numStr = "";
-      while (i < text.length && text[i] >= "0" && text[i] <= "9") {
-        numStr += text[i++];
-      }
-      if (
-        i < text.length &&
-        text[i] === "." &&
-        i + 1 < text.length &&
-        text[i + 1] >= "0" &&
-        text[i + 1] <= "9"
-      ) {
-        numStr += text[i++];
-        while (i < text.length && text[i] >= "0" && text[i] <= "9") {
-          numStr += text[i++];
-        }
-      }
-      tokens.push({
-        type: "constant",
-        value: parseFloat(numStr),
-        from: start,
-        to: i,
-      });
-      continue;
-    }
-
-    let matched = false;
-    for (const { name, index } of sortedMetrics) {
-      if (lower.startsWith(name, i)) {
-        const nextI = i + name.length;
-        const nextCh = text[nextI];
-        if (
-          !nextCh ||
-          nextCh === " " ||
-          nextCh === "\t" ||
-          EXPRESSION_DELIMITERS.has(nextCh)
-        ) {
-          tokens.push({
-            type: "metric",
-            metricIndex: index,
-            from: i,
-            to: nextI,
-          });
-          i = nextI;
-          matched = true;
-          break;
-        }
-      }
-    }
-
-    if (!matched) {
-      i++;
-    }
-  }
-
-  return tokens;
-}
-
-/**
- * @deprecated Legacy version of findInvalidRanges that accepts
- * (text, SelectedMetric[]). Will be removed once MetricSearchInput is migrated.
- */
-export function findInvalidRangesLegacy(
-  text: string,
-  selectedMetrics: SelectedMetric[],
-): ErrorRange[] {
-  const allTokens = parseFullTextWithPositionsLegacy(text, selectedMetrics);
-
-  // Split by separator tokens
-  const segments: PositionedTokenLegacy[][] = [];
-  let segmentTokens: PositionedTokenLegacy[] = [];
-  for (const token of allTokens) {
-    if (token.type === "separator") {
-      segments.push(segmentTokens);
-      segmentTokens = [];
-    } else {
-      segmentTokens.push(token);
-    }
-  }
-  segments.push(segmentTokens);
-
-  const invalid: ErrorRange[] = [];
-
-  for (const itemTokens of segments) {
-    if (itemTokens.length === 0) {
-      continue;
-    }
-
-    const itemInvalid: ErrorRange[] = [];
-
-    const openStack: PositionedTokenLegacy[] = [];
-    for (const token of itemTokens) {
-      if (token.type === "open-paren") {
-        openStack.push(token);
-      } else if (token.type === "close-paren") {
-        if (openStack.length === 0) {
-          itemInvalid.push({
-            from: token.from,
-            to: token.to,
-            message: t`Unmatched closing parenthesis`,
-          });
-        } else {
-          openStack.pop();
-        }
-      }
-    }
-    for (const token of openStack) {
-      itemInvalid.push({
-        from: token.from,
-        to: token.to,
-        message: t`Unmatched opening parenthesis`,
-      });
-    }
-
-    let prevSignificant: PositionedTokenLegacy | null = null;
-    for (const token of itemTokens) {
-      if (token.type === "operator") {
-        if (prevSignificant === null) {
-          itemInvalid.push({
-            from: token.from,
-            to: token.to,
-            message: t`Expression cannot start with an operator`,
-          });
-        } else if (prevSignificant.type === "operator") {
-          itemInvalid.push({
-            from: token.from,
-            to: token.to,
-            message: t`Two operators in a row without a metric between them`,
-          });
-        } else if (prevSignificant.type === "open-paren") {
-          itemInvalid.push({
-            from: token.from,
-            to: token.to,
-            message: t`Operator right after opening parenthesis`,
-          });
-        }
-      }
-      if (
-        token.type === "close-paren" &&
-        prevSignificant?.type === "open-paren"
-      ) {
-        itemInvalid.push({
-          from: prevSignificant.from,
-          to: token.to,
-          message: t`Empty parentheses`,
-        });
-      }
-      prevSignificant = token;
-    }
-    if (prevSignificant?.type === "operator") {
-      itemInvalid.push({
-        from: prevSignificant.from,
-        to: prevSignificant.to,
-        message: t`Expression cannot end with an operator`,
-      });
-    }
-
-    const hasOperand = itemTokens.some(
-      (tok) => tok.type === "metric" || tok.type === "constant",
-    );
-    if (!hasOperand && itemInvalid.length === 0) {
-      itemInvalid.push({
-        from: itemTokens[0].from,
-        to: itemTokens[itemTokens.length - 1].to,
-        message: t`Expression must contain at least one metric`,
-      });
-    }
-
-    invalid.push(...itemInvalid);
-  }
-
-  return invalid;
 }
