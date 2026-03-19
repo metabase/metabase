@@ -1,0 +1,63 @@
+;; Docker image → host port mapping for local CI test REPL.
+;;
+;; Container ports stay as defined in the CI YAML; only host ports are remapped
+;; so that multiple DB versions can run simultaneously.
+;;
+;; Port conventions (aligned with deps.edn :db/* aliases and bb.edn :db-info):
+;;
+;;   mariadb   3306–3307   (oldest=3306, latest=3307)
+;;   mysql     3308–3309   (oldest=3308, latest=3309)
+;;   postgres  5432–5433   (oldest=5432, latest=5433)
+;;   pgvector  5434
+;;   mongo     27017–27018 (oldest=27017, latest=27018)
+;;
+;; Explicit-version images get ports adjacent to their family range.
+;; Developers: add new entries here when new CI images appear.
+
+{;; MariaDB (3306–3307)
+ "circleci/mariadb:10.6"    3306
+ "circleci/mariadb:latest"  3307
+
+ ;; MySQL (3308–3309)
+ "cimg/mysql:8.4"           3308
+ "mysql:8.4"                3308
+ "mysql:latest"             3309
+
+ ;; PostgreSQL (5432–5433)
+ "postgres:14-alpine"       5432
+ "postgres:latest"          5433
+
+ ;; pgvector (5434)
+ "pgvector/pgvector:pg17"   5434
+
+ ;; MongoDB (27017–27020)
+ "metabase/qa-databases:mongo-sample-6"    27017
+ "metabase/qa-databases:mongo-sample-4.4"  27018
+ "metabase/qa-databases:mongo-sample-5.0"  27019
+ "mongo:latest"                            27020
+ "circleci/mongo:latest"                   27020
+ "metabase/mongo-sharded-cluster:6"        27021
+
+ ;; Oracle (1521–2484)
+ "gvenzl/oracle-xe:18.4.0-slim"            1521
+ "metabase/qa-databases:oracle-xe-21.3"    2484
+
+ ;; SQL Server (1433–1434)
+ "mcr.microsoft.com/mssql/server:2017-latest"  1433
+ "mcr.microsoft.com/mssql/server:2022-latest"  1434
+
+ ;; Druid
+ "metabase/druid:0.20.2"                       8082
+ "metabase/druid:29.0.1-json-no-ingestion"     8888
+
+ ;; Presto
+ "metabase/presto-mb-ci:latest"                8443
+
+ ;; SparkSQL
+ "metabase/spark:3.2.1"                        10000
+
+ ;; Trino / Starburst
+ "trinodb/trino:latest"                        8080
+
+ ;; Vertica
+ "vertica-ce:25.3.0-0"                         5435}

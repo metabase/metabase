@@ -57,7 +57,14 @@ export const PublicOrEmbeddedDashCardMenu = ({
   });
 
   return (
-    <Menu offset={4} position="bottom-end" opened={isOpen} onClose={close}>
+    <Menu
+      closeOnEscape
+      offset={4}
+      onClose={close}
+      opened={isOpen}
+      position="bottom-end"
+      trapFocus
+    >
       <Menu.Target>
         <ActionIcon
           size="xs"

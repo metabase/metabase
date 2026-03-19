@@ -1031,10 +1031,10 @@
   (testing (str "Filtering on a specific date (DATE column) should work correctly regardless of report timezone/DB"
                 " timezone support (#39769)")
     (mt/test-drivers (mt/normal-drivers)
-      (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
+      (mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
         (let [metadata-provider (lib.tu/merged-mock-metadata-provider
                                  (mt/metadata-provider)
-                                 {:database {:timezone "US/Pacific"}})
+                                 {:database {:timezone "America/Los_Angeles"}})
               checkins          (lib.metadata/table metadata-provider (mt/id :checkins))
               checkins-id       (lib.metadata/field metadata-provider (mt/id :checkins :id))
               checkins-date     (lib.metadata/field metadata-provider (mt/id :checkins :date))
@@ -1070,10 +1070,10 @@
   (testing (str "Filtering on a specific date (TIMESTAMP WITH TIME ZONE column) should work correctly regardless of"
                 " report timezone/DB timezone support (#39769)")
     (mt/test-drivers (mt/normal-drivers)
-      (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
+      (mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
         (let [metadata-provider (lib.tu/merged-mock-metadata-provider
                                  (mt/metadata-provider)
-                                 {:database {:timezone "US/Pacific"}})
+                                 {:database {:timezone "America/Los_Angeles"}})
               orders            (lib.metadata/table metadata-provider (mt/id :orders))
               orders-id         (lib.metadata/field metadata-provider (mt/id :orders :id))
               orders-created-at (lib.metadata/field metadata-provider (mt/id :orders :created_at))

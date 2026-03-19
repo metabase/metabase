@@ -287,6 +287,7 @@
   channel
   {:team "Gadget"
    :api  #{metabase.channel.api
+           metabase.channel.api.slack
            metabase.channel.core
            metabase.channel.email
            metabase.channel.email.messages
@@ -813,7 +814,6 @@
            lib
            lib-be
            models
-           premium-features
            request
            settings
            sql-tools
@@ -1676,7 +1676,8 @@
            lib-be
            query-processor
            sync
-           util}
+           util
+           warehouse-schema}
    :friends #{transforms
               enterprise/transforms-python
               enterprise/workspaces}}
@@ -1784,6 +1785,7 @@
            premium-features
            request
            sso
+           system
            tenants
            users
            util
@@ -1847,7 +1849,8 @@
            remote-sync
            search
            util
-           warehouses}}
+           warehouses
+           workspaces}}
 
   warehouse-schema-rest
   {:team "UX West"
@@ -1920,6 +1923,11 @@
            warehouse-schema
            warehouses
            enterprise/advanced-permissions}}
+
+  workspaces
+  {:team "Metabot"
+   :api  #{metabase.workspaces.core}
+   :uses #{util}}
 
   xrays
   {:team "Querying"
@@ -2044,7 +2052,8 @@
 
   enterprise/api
   {:team "UX West"
-   :api  #{metabase-enterprise.api.core}
+   :api  #{metabase-enterprise.api.core
+           metabase-enterprise.api.routes.common}
    :uses #{api
            premium-features
            util}}
@@ -2306,15 +2315,17 @@
   enterprise/metabot-v3
   {:team    "Metabot"
    :api     #{metabase-enterprise.metabot-v3.api
-              metabase-enterprise.metabot-v3.client
               metabase-enterprise.metabot-v3.core
               metabase-enterprise.metabot-v3.init
               metabase-enterprise.metabot-v3.tools.api}
-   :friends #{enterprise/agent-api}
+   :friends #{enterprise/agent-api
+              enterprise/slackbot}
    :uses    #{activity-feed
+              analytics
               api
               app-db
               audit-app
+              channel
               collections
               config
               documents
@@ -2324,6 +2335,7 @@
               lib-be
               models
               native-query-snippets
+              notification
               parameters
               permissions
               premium-features
@@ -2340,10 +2352,12 @@
               task
               transforms
               transforms-base
-              users
               util
               warehouses
+              enterprise/api
               enterprise/dependencies
+              enterprise/llm
+              enterprise/slackbot
               enterprise/transforms-python}}
 
   enterprise/permission-debug
@@ -2461,8 +2475,7 @@
            task
            tracing
            util
-           enterprise/llm
-           enterprise/metabot-v3}}
+           enterprise/llm}}
 
   enterprise/serialization
   {:team "Querying"
@@ -2484,6 +2497,27 @@
            search
            setup
            util}}
+
+  enterprise/slackbot
+  {:team    "Metabot"
+   :api     #{metabase-enterprise.slackbot.init}
+   :friends #{enterprise/metabot-v3}
+   :uses    #{analytics
+              api
+              channel
+              config
+              formatter
+              lib
+              permissions
+              premium-features
+              query-processor
+              request
+              settings
+              system
+              upload
+              util
+              enterprise/metabot-v3
+              enterprise/sso}}
 
   enterprise/snippet-collections
   {:team "Querying"
@@ -2616,6 +2650,7 @@
            transforms
            transforms-base
            util
+           warehouse-schema
            enterprise/transforms-python}}
 
   enterprise/writable-connection

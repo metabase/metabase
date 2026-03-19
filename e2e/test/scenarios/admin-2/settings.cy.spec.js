@@ -269,17 +269,13 @@ describe("scenarios > admin > settings", () => {
 
   describe(" > slack settings", () => {
     it("should present the form and display errors", () => {
-      cy.visit("/admin/settings/notifications");
-      cy.findByTestId("admin-layout-content")
-        .findByText("Connect to Slack")
-        .click();
+      cy.visit("/admin/settings/slack");
 
-      H.modal().findByText("Metabase on Slack");
+      cy.findByRole("main").findByText("Create a Slack app and connect to it.");
 
       cy.findByLabelText(/Slack Bot User OAuth Token/i).type("xoxb");
-      cy.button("Save changes").click();
-
-      H.modal().findByText(/invalid token/i);
+      cy.button("Connect").click();
+      cy.findByRole("main").findByText(/invalid token/i);
     });
   });
 });
@@ -1092,7 +1088,7 @@ describe("notifications", { tags: "@external" }, () => {
 
     AUTH_METHODS.forEach((auth) => {
       it(`${auth.display} Auth`, () => {
-        cy.visit("/admin/settings/notifications");
+        cy.visit("/admin/settings/webhooks");
         cy.findByRole("heading", { name: "Add a webhook" }).click();
 
         H.modal().within(() => {
@@ -1121,7 +1117,7 @@ describe("notifications", { tags: "@external" }, () => {
   });
 
   it("Should allow you to create and edit Notifications", () => {
-    cy.visit("/admin/settings/notifications");
+    cy.visit("/admin/settings/webhooks");
 
     cy.findByRole("heading", { name: "Add a webhook" }).click();
 

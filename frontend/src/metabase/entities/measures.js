@@ -3,10 +3,10 @@ import {
   useGetMeasureQuery,
   useListMeasuresQuery,
 } from "metabase/api";
-import { color } from "metabase/lib/colors";
 import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 import { MeasureSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
+import { color } from "metabase/ui/colors";
 
 /**
  * @deprecated use "metabase/api" instead
