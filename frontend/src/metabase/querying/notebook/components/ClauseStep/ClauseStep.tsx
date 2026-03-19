@@ -7,8 +7,8 @@ import { useMergedRef } from "@mantine/hooks";
 import type { ReactNode, Ref } from "react";
 import { forwardRef, useCallback } from "react";
 
-import type { ColorName } from "metabase/lib/colors/types";
 import { Icon } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 
 import {
   NotebookCell,

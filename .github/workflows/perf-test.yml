@@ -5,7 +5,7 @@ on:
   workflow_call:
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     if: github.event.pull_request.head.repo.full_name == github.repository
     name: Build Metabase Docker image
     timeout-minutes: 60
@@ -47,7 +47,7 @@ jobs:
           push: true
   launch_perf_test:
     needs: [ build ]
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     name: Launch Perf Test
     permissions:
       id-token: write

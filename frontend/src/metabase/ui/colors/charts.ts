@@ -127,7 +127,7 @@ const getHashBasedMapping = (
 
   // if we haven't found a value for a key,
   // let's try to find a preferred value for it (e.g. count gets its own specific color)
-  // see frontend/src/metabase/lib/colors/groups.ts, getPreferredColor()
+  // see frontend/src/metabase/ui/colors/groups.ts, getPreferredColor()
   sortedKeys.forEach((key, i) => {
     if (!newMapping[key]) {
       const value = getPreferredValue(sortedDefaultKeys?.[i] ?? key);

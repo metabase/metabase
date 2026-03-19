@@ -1,9 +1,7 @@
 import Color from "color";
 
-import type { ColorGetter } from "metabase/visualizations/types";
-
 import { colors, getColors } from "./colors";
-import type { ColorName, ColorPalette } from "./types";
+import type { ColorGetter, ColorName, ColorPalette } from "./types";
 
 export const ACCENT_COUNT = 8;
 

@@ -74,6 +74,7 @@ async function setup(options?: Partial<ObjectDetailProps>) {
       viewPreviousObjectDetail={() => null}
       viewNextObjectDetail={() => null}
       closeObjectDetail={() => null}
+      isDashboard={false}
       {...options}
     />,
     { storeInitialState: state },

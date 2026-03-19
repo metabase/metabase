@@ -12,7 +12,7 @@ env:
 jobs:
   sdk-component-tests:
     name: "SDK component tests (React ${{ matrix.react-version }})"
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 45
     strategy:
       matrix:
@@ -128,7 +128,7 @@ jobs:
              await core.summary.addRaw(summary).write();
 
   decide-target-ref:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     outputs:
       target-ref: ${{ steps.get-target-ref.outputs.value }}
     steps:
@@ -151,7 +151,7 @@ jobs:
   sdk-component-tests-backward-compatibility:
     name: "SDK component tests (Backward compatibility)"
     needs: [decide-target-ref]
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 45
     env:
       MB_RUN_MODE: "e2e"

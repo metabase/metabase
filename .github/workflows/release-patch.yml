@@ -5,22 +5,22 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Major Metabase version (e.g. 45, 52, 68)'
+        description: "Major Metabase version (e.g. 45, 52, 68)"
         type: number
         required: true
       override_sha:
         description: DANGEROUSLY allow releasing from this commit sha, regardless of the state of CI (can be empty)
         type: string
         required: false
-        default: ''
-  schedule:
-    - cron: '0 21 * * 1-5' # every weekday at 4 pm EST/5 pm EDT
+        default: ""
+  # schedule:
+  #   - cron: "0 21 * * 1-5" # every weekday at 4 pm EST/5 pm EDT
 
 jobs:
   auto-patch-trigger:
     # don't run this workflow on a cron for forks
     if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4

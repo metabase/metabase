@@ -20,7 +20,7 @@ export interface ChartBoundsCoords {
 
 export type TicksRotation = "horizontal" | "vertical";
 
-export interface ChartMeasurements {
+export interface ChartLayout {
   padding: Padding;
   ticksDimensions: TicksDimensions;
   bounds: ChartBoundsCoords;
@@ -28,4 +28,5 @@ export interface ChartMeasurements {
   outerHeight: number;
   axisEnabledSetting: ComputedVisualizationSettings["graph.x_axis.axis_enabled"];
   stackedBarTicksRotation?: TicksRotation;
+  panelHeight?: number;
 }

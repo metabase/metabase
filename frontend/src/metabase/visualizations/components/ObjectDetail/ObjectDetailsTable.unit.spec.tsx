@@ -104,6 +104,7 @@ describe("ObjectDetailsTable", () => {
         settings={{
           column: () => null,
         }}
+        isDashboard={false}
       />,
     );
 
@@ -124,6 +125,7 @@ describe("ObjectDetailsTable", () => {
         settings={{
           column: () => null,
         }}
+        isDashboard={false}
       />,
     );
 
@@ -144,6 +146,7 @@ describe("ObjectDetailsTable", () => {
           settings={{
             column: () => null,
           }}
+          isDashboard={false}
         />,
       );
 
@@ -162,6 +165,7 @@ describe("ObjectDetailsTable", () => {
           settings={{
             column: () => null,
           }}
+          isDashboard={false}
         />,
       );
 
@@ -180,6 +184,7 @@ describe("ObjectDetailsTable", () => {
           onVisualizationClick={() => null}
           visualizationIsClickable={() => false}
           settings={{}}
+          isDashboard={false}
         />,
       );
 
@@ -195,6 +200,7 @@ describe("ObjectDetailsTable", () => {
           onVisualizationClick={() => null}
           visualizationIsClickable={() => false}
           settings={{}}
+          isDashboard={false}
         />,
       );
 
