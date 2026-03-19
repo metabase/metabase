@@ -20,14 +20,12 @@
 ;; format) happens inside each adapter, but the **input contract is identical**.
 
 (def ToolEntry
-  "A tool entry: [name, var] or [name, wrapped-map].
-  The wrapped-map form comes from `wrap-tools-with-state` and carries
-  :doc, :schema, :fn, and optionally :decode/:prompt."
-  [:tuple :string [:or [:fn var?]
-                   [:map
-                    [:doc {:optional true} [:maybe :string]]
-                    [:schema :any]
-                    [:fn [:fn fn?]]]]])
+  "A tool definition map with :tool-name, :doc, :schema, :fn, and optionally :decode/:prompt."
+  [:map
+   [:tool-name :string]
+   [:doc {:optional true} [:maybe :string]]
+   [:schema :any]
+   [:fn [:fn fn?]]])
 
 (def LLMRequestOpts
   "Canonical schema for the opts map passed to every LLM provider adapter.
@@ -38,7 +36,7 @@
   Optional:
     :system      - System prompt string
     :input       - Sequence of AISDK parts and user messages
-    :tools       - Sequence of [name, var-or-map] tool entries
+    :tools       - Sequence of tool definition maps
     :tool_choice - \"auto\" or \"required\"
     :temperature - Sampling temperature
     :max-tokens  - Maximum tokens in the response
@@ -385,18 +383,16 @@
     args))
 
 (defn- tool-decode-fn
-  "Extract the `:decode` function from a tool (var, wrapped map, or fn with metadata).
+  "Extract the `:decode` function from a tool definition map.
   The decode function transforms tool arguments before the tool runs.
   Returns `nil` if the tool has no decoder."
   [tool]
-  (cond
-    (map? tool) (:decode tool)
-    :else       (:decode (meta tool))))
+  (:decode tool))
 
 (defn- tool-call-fn
-  "Extract the callable function from a tool (var or wrapped map)."
+  "Extract the callable function from a tool definition map."
   [tool]
-  (if (map? tool) (:fn tool) tool))
+  (:fn tool))
 
 (defn- run-tool
   "Execute a tool and return output chunks. Handles errors gracefully.

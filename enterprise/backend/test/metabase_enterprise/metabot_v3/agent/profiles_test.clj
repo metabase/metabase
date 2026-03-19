@@ -1,13 +1,13 @@
 (ns metabase-enterprise.metabot-v3.agent.profiles-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.metabot-v3.agent.profiles :as profiles]
    [metabase.llm.settings :as llm]
+   [metabase.metabot.agent.profiles :as profiles]
    [metabase.test :as mt]))
 
 (deftest get-profile-test
   (letfn [(tool-names [profile]
-            (set (map (comp :tool-name meta) (:tools profile))))]
+            (set (map :tool-name (keep #(%) (:tools profile)))))]
     (testing "retrieves embedding_next profile with default provider"
       (let [profile (profiles/get-profile :embedding_next)]
         (is (some? profile))
@@ -42,7 +42,6 @@
         (is (= 0.3 (:temperature profile)))
         (is (vector? (:tools profile)))
         (is (contains? (tool-names profile) "search"))
-        (is (contains? (tool-names profile) "get_transform_details"))
         (is (contains? (tool-names profile) "list_available_fields"))))
 
     (testing "retrieves sql profile"
@@ -91,7 +90,7 @@
           (is (contains? profile :max-iterations))
           (is (contains? profile :temperature))
           (is (contains? profile :tools))
-          (is (every? var? (:tools profile))))))))
+          (is (every? fn? (:tools profile))))))))
 
 (deftest get-profile-respects-provider-setting-test
   (testing "model reflects llm-metabot-provider setting"

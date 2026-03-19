@@ -8,8 +8,7 @@
    [metabase.metabot.tools.field-stats :as field-stats-tools]
    [metabase.metabot.tools.get-metadata :as metadata-tools]
    [metabase.metabot.tools.instructions :as instructions]
-   [metabase.metabot.tools.llm-representations :as llm-rep]
-   [metabase.util.malli :as mu]))
+   [metabase.metabot.tools.llm-representations :as llm-rep]))
 
 (set! *warn-on-reflection* true)
 
@@ -46,35 +45,47 @@
   [result format-fn]
   (m/assoc-some result :output (some-> result :structured-output format-fn)))
 
-(mu/defn ^{:tool-name "list_available_data_sources"} list-available-data-sources-tool
-  "List all data sources (metrics and models) available to the metabot instance."
-  [_args :- [:maybe [:map {:closed true}]]]
-  (add-output
-   (entity-details-tools/answer-sources {:metabot-id metabot-v3.config/embedded-metabot-id
-                                         :with-field-values? false})
-   format-answer-sources-output))
+(defn list-available-data-sources-tool "list-available-data-sources-tool" []
+  {:tool-name "list_available_data_sources"
+   :doc       "List all data sources (metrics and models) available to the metabot instance."
+   :schema    [:=> [:cat [:maybe [:map {:closed true}]]] :any]
+   :fn        (fn [_args]
+                (add-output
+                 (entity-details-tools/answer-sources {:metabot-id metabot-v3.config/embedded-metabot-id
+                                                       :with-field-values? false})
+                 format-answer-sources-output))})
 
-(mu/defn ^{:tool-name "list_available_fields"} list-available-fields-tool
-  "Retrieve metadata for tables, models, and metrics."
-  [{:keys [table_ids model_ids metric_ids]} :- [:map {:closed true}
-                                                [:table_ids [:sequential :int]]
-                                                [:model_ids [:sequential :int]]
-                                                [:metric_ids [:sequential :int]]]]
-  (add-output
-   (metadata-tools/get-metadata {:table-ids table_ids
-                                 :model-ids model_ids
-                                 :metric-ids metric_ids})
-   format-metadata-output))
+(def ^:private list-available-fields-schema
+  [:map {:closed true}
+   [:table_ids [:sequential :int]]
+   [:model_ids [:sequential :int]]
+   [:metric_ids [:sequential :int]]])
 
-(mu/defn ^{:tool-name "get_field_values"} get-field-values-tool
-  "Return metadata for a given field of a given data source."
-  [{:keys [data_source source_id field_id]} :- [:map {:closed true}
-                                                [:data_source [:enum "table" "model" "metric"]]
-                                                [:source_id :int]
-                                                [:field_id :string]]]
-  (add-output
-   (field-stats-tools/field-values {:entity-type data_source
-                                    :entity-id source_id
-                                    :field-id field_id
-                                    :limit nil})
-   format-field-metadata-output))
+(defn list-available-fields-tool "list-available-fields-tool" []
+  {:tool-name "list_available_fields"
+   :doc       "Retrieve metadata for tables, models, and metrics."
+   :schema    [:=> [:cat list-available-fields-schema] :any]
+   :fn        (fn [{:keys [table_ids model_ids metric_ids]}]
+                (add-output
+                 (metadata-tools/get-metadata {:table-ids table_ids
+                                               :model-ids model_ids
+                                               :metric-ids metric_ids})
+                 format-metadata-output))})
+
+(def ^:private get-field-values-schema
+  [:map {:closed true}
+   [:data_source [:enum "table" "model" "metric"]]
+   [:source_id :int]
+   [:field_id :string]])
+
+(defn get-field-values-tool "get-field-values-tool" []
+  {:tool-name "get_field_values"
+   :doc       "Return metadata for a given field of a given data source."
+   :schema    [:=> [:cat get-field-values-schema] :any]
+   :fn        (fn [{:keys [data_source source_id field_id]}]
+                (add-output
+                 (field-stats-tools/field-values {:entity-type data_source
+                                                  :entity-id source_id
+                                                  :field-id field_id
+                                                  :limit nil})
+                 format-field-metadata-output))})
