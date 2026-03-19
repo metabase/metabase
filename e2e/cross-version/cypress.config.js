@@ -1,16 +1,21 @@
 const { defineConfig } = require("cypress");
 
-const { defaultConfig } = require("../../support/config");
+const { defaultConfig } = require("../support/config");
 
+const isDevMode = !!process.env.CROSS_VERSION_DEV_MODE;
 const viewportWidth = 1600;
 const viewportHeight = 1200;
 
 module.exports = defineConfig({
   e2e: {
     ...defaultConfig,
-    specPattern: "e2e/test/cross-version/scenarios/**/*.cy.spec.ts",
+    specPattern: "e2e/cross-version/latest/**/*.cy.spec.ts",
     viewportWidth,
     viewportHeight,
+    expose: {
+      ...defaultConfig.expose,
+      CROSS_VERSION_DEV_MODE: isDevMode,
+    },
     setupNodeEvents(on, config) {
       // Call the default setupNodeEvents first
       defaultConfig.setupNodeEvents(on, config);

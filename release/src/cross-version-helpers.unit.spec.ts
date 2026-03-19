@@ -4,7 +4,6 @@ import {
   getHeadMajorVersion,
   getMajorVersion,
   getRollingTagMajorVersion,
-  getVersionBranch,
   HEAD_DOCKER_IMAGE,
   isHead,
   isRollingTag,
@@ -181,19 +180,6 @@ describe("cross-version-helpers", () => {
         expect(() => compareVersions("v0.58.7", "invalid")).toThrow(
           "Invalid version string: invalid",
         );
-      });
-    });
-
-    describe("getVersionBranch", () => {
-      it.each([
-        ["v0.57.6", "x-version-57"],
-        ["v1.58.7", "x-version-58"],
-        ["v0.50.13.5", "x-version-50"],
-        // Rolling tags
-        ["v1.59.x", "x-version-59"],
-        ["v0.58.x", "x-version-58"],
-      ] as const)("%s -> %s", (version, expected) => {
-        expect(getVersionBranch(version)).toBe(expected);
       });
     });
 
