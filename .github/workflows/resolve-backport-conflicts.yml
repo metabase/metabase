@@ -73,10 +73,6 @@ jobs:
       - name: Run backport script to create cherry-pick conflicts
         id: backport
         run: |
-          # Run the backport script which will:
-          # 1. git reset HEAD~1 (undo the backport.sh commit)
-          # 2. rm ./backport.sh
-          # 3. git cherry-pick <commit> (this will fail with conflicts)
           bash ./backport.sh 2>&1 || true
 
           # Check if we're in a cherry-pick state with conflicts
@@ -96,6 +92,18 @@ jobs:
         if: steps.backport.outputs.has_conflicts == 'false'
         run: git push --force
 
+      - name: Prepare back-end environment
+        if: steps.backport.outputs.has_conflicts == 'true'
+        uses: ./.github/actions/prepare-backend
+
+      - name: Prepare front-end environment
+        if: steps.backport.outputs.has_conflicts == 'true'
+        uses: ./.github/actions/prepare-frontend
+
+      - name: Build CLJS for type checking
+        if: steps.backport.outputs.has_conflicts == 'true'
+        run: bun run build-pure:cljs
+
       - name: Generate GitHub App Token for Claude
         if: steps.backport.outputs.has_conflicts == 'true'
         uses: actions/create-github-app-token@v1
@@ -113,7 +121,7 @@ jobs:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY_BACKPORT_FIX }}
           model: "claude-sonnet-4-20250514"
           max_turns: "30"
-          allowed_tools: "Read,Edit,Write,Bash(git:*),Bash(grep:*),Bash(find:*),Bash(ls:*),Bash(cat:*),Glob,Grep"
+          allowed_tools: "Read,Edit,Write,Bash(git:*),Bash(grep:*),Bash(find:*),Bash(ls:*),Bash(cat:*),Bash(clojure:*),Bash(bun run type-check-pure:*),Glob,Grep"
           prompt: |
             You are resolving git cherry-pick merge conflicts for a Metabase backport PR.
 
@@ -144,13 +152,24 @@ jobs:
             2. For context, you may search the codebase to understand the current state of the release branch (e.g., check if a module exists at a certain path)
             3. Resolve each conflict by editing the file to remove ALL conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`) and leave only the correct resolved code
             4. The goal is to apply the INTENT of the backported change while adapting it to the release branch's code structure
-            5. After resolving ALL files, stage and complete the cherry-pick:
+            5. Verify no conflict markers remain by searching for them
+            6. Validate resolved files before committing:
+               - **Clojure/ClojureScript** (.clj, .cljc, .cljs): run clj-kondo to verify syntax:
+                 ```
+                 clojure -M:kondo --lint <file1> <file2> ...
+                 ```
+               - **TypeScript/JavaScript** (.ts, .tsx, .js, .jsx): run the type checker:
+                 ```
+                 bun run type-check-pure
+                 ```
+               If either tool reports errors, fix them before proceeding. Warnings CANNOT be ignored.
+               Repeat until all errors are resolved.
+            7. Once all files are clean, stage and complete the cherry-pick:
                ```
                git add -A
                git cherry-pick --continue
                ```
-            6. Verify no conflict markers remain by searching for them
-            7. Push the result:
+            8. Push the result:
                ```
                git push --force
                ```
