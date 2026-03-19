@@ -79,6 +79,7 @@
    :database-routing           (deferred-tru "Database Routing")
    :cloud-custom-smtp          (deferred-tru "Custom SMTP")
    :support-users              (deferred-tru "Support Users")
+   :transforms-basic           (deferred-tru "Transforms")
    :transforms-python          (deferred-tru "Transforms Python")
    :workspaces                 (deferred-tru "Workspaces")})
 

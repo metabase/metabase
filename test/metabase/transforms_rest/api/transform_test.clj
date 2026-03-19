@@ -1676,4 +1676,3 @@
             (search.tu/with-new-search-and-legacy-search
               (is (= #{native-id mbql-id}
                      (search-transform-ids search-term))))))))))
-
