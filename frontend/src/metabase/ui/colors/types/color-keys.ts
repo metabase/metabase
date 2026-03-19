@@ -1,3 +1,6 @@
+// WARNING: This file is referenced by CssVarsDeclarationPlugin.
+// If you move or rename it, update the path in css-vars-declaration-plugin.js.
+
 import type { ALL_ACCENT_COLOR_NAMES } from "../constants/accents";
 
 /**
