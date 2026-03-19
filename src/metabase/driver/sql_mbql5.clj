@@ -235,14 +235,9 @@
   [driver hsql-form op [_ _opts amount unit]]
   (sql.qp/add-interval-honeysql-form driver hsql-form (cond-> amount (= op :-) -) unit))
 
-(defmethod sql.qp/make-clause :sql-mbql5
-  [_driver tag & args]
-  ;; TODO(rileythomp, 2026-03-16): Add :lib/uuid key and fix any broken tests
-  (into [tag {} #_{:lib/uuid (str (random-uuid))}] args))
-
 (defmethod sql.qp/make-clause-with-opts :sql-mbql5
   [_driver tag opts & args]
-  (into [tag (assoc opts :lib/uuid (str (random-uuid)))] args))
+  (into [tag (merge {:lib/uuid (str (random-uuid))} opts)] args))
 
 (defmethod sql.params.substitution/field->clause :sql-mbql5
   [_driver field opts]

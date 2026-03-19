@@ -372,26 +372,21 @@
         day-of-week-of-start-of-year (date driver :day-of-week start-of-year)]
     (h2x/- 8 day-of-week-of-start-of-year)))
 
-(defmulti make-clause
-  "Return an mbql clause given a tag and arguments"
-  {:added "0.60.0" :arglists '([driver tag & args])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defmethod make-clause :sql
-  [_driver tag & args]
-  (into [tag] args))
-
-;; TODO(rileythomp, 2026-03-16): Can we merge this with make-clause?
 (defmulti make-clause-with-opts
-  "Return an mbql clause given a tag and arguments"
+  "Return an mbql clause given a tag, arguments, and options"
   {:added "0.60.0" :arglists '([driver tag opts & args])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
 (defmethod make-clause-with-opts :sql
   [_driver tag opts & args]
-  (conj (into [tag] args) opts))
+  (cond-> (into [tag] args)
+    opts (conj opts)))
+
+(defn make-clause
+  "Return an mbql clause given a tag and arguments"
+  [driver tag & args]
+  (apply make-clause-with-opts driver tag nil args))
 
 (defn- week-of-year
   "Calculate the week of year for `:us` or `:instance` `mode`. Returns a Honey SQL expression.

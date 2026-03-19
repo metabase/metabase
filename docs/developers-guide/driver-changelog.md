@@ -7,7 +7,6 @@ title: Driver interface changelog
 ## Metabase 0.60.0
 
 - Added the following driver multimethods to support the MBQL5 compilation migration:
-  - `make-clause` - Returns an MBQL clause without any options
   - `make-clause-with-opts` - Returns an MBQL clause with the given options
   - `field->clause` - Returns an MBQL `:field` clause with the given options
   - `add-interval` - Wrapper around `add-interval-honeysql-form`
