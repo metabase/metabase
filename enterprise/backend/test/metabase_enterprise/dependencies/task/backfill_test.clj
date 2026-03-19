@@ -81,7 +81,7 @@
                                                             :source {:type "query"
                                                                      :query (mt/mbql-query nil
                                                                               {:source-table (str "card__" card-id)})}
-                                                            :target {:type "table" :name "test_table"}}]
+                                                            :target {:type "table" :name (mt/random-name)}}]
           ;; Mark both as stale
           (mark-stale! :card card-id)
           (mark-stale! :transform transform-id)

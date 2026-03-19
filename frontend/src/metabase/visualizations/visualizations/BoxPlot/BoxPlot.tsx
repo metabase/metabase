@@ -13,7 +13,7 @@ import {
   getBoxPlotOption,
   getBoxPlotTooltipOption,
 } from "metabase/visualizations/echarts/boxplot";
-import { getChartMeasurements } from "metabase/visualizations/echarts/cartesian/chart-measurements";
+import { getChartLayout } from "metabase/visualizations/echarts/cartesian/layout";
 import { getLegendItems } from "metabase/visualizations/echarts/cartesian/model/legend";
 import {
   useClickedStateTooltipSync,
@@ -120,9 +120,9 @@ function BoxPlotInner({
     [chartModel, hiddenSeries, toggleSeriesVisibility],
   );
 
-  const chartMeasurements = useMemo(
+  const cartesianLayout = useMemo(
     () =>
-      getChartMeasurements(
+      getChartLayout(
         { ...chartModel, dataset: chartModel.boxDataset },
         settings,
         false,
@@ -137,18 +137,12 @@ function BoxPlotInner({
     () =>
       getBoxPlotLayoutModel({
         chartModel,
-        chartMeasurements,
+        cartesianLayout,
         settings,
         chartWidth: chartSize.width,
         renderingContext,
       }),
-    [
-      chartModel,
-      chartMeasurements,
-      settings,
-      chartSize.width,
-      renderingContext,
-    ],
+    [chartModel, cartesianLayout, settings, chartSize.width, renderingContext],
   );
 
   const option = useMemo(() => {

@@ -2624,8 +2624,15 @@ LIMIT
       cy.log("visit transforms page");
       visitTransformListPage();
 
-      cy.log("'Create a transform' menu button is not displayed");
-      cy.button("Create a transform").should("not.exist");
+      cy.log("'Create a transform' button is disabled with tooltip");
+      cy.button("Create a transform").should("be.visible").and("be.disabled");
+      cy.button("Create a transform").realHover();
+      H.tooltip()
+        .should("be.visible")
+        .and(
+          "have.text",
+          "Transforms can't be created when Remote Sync is in read-only mode",
+        );
 
       cy.log("clicking Python library navigates to the library editor");
       getTransformsList().findByText("Python library").click();
@@ -2685,6 +2692,35 @@ LIMIT
         cy.findByRole("menuitem", { name: /Move/ }).should("not.exist");
         cy.findByRole("menuitem", { name: /Delete/ }).should("not.exist");
       });
+    });
+
+    it("should show not found message on new transform pages", () => {
+      cy.log("visit new native transform page");
+      cy.visit("/data-studio/transforms/new/native");
+
+      cy.log("should show not found message");
+      cy.findByTestId("transform-query-editor").should("be.visible");
+      cy.findByTestId("transform-query-editor")
+        .findByText("We're a little lost...")
+        .should("be.visible");
+
+      cy.log("visit new python transform page");
+      cy.visit("/data-studio/transforms/new/python");
+
+      cy.log("should show not found message");
+      cy.findByTestId("transform-query-editor").should("be.visible");
+      cy.findByTestId("transform-query-editor")
+        .findByText("We're a little lost...")
+        .should("be.visible");
+
+      cy.log("visit new query transform page");
+      cy.visit("/data-studio/transforms/new/query");
+
+      cy.log("should show not found message");
+      cy.findByTestId("transform-query-editor").should("be.visible");
+      cy.findByTestId("transform-query-editor")
+        .findByText("We're a little lost...")
+        .should("be.visible");
     });
   });
 });
