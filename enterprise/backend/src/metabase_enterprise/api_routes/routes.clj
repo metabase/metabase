@@ -134,7 +134,7 @@
    "/metabot-tools"                metabase-enterprise.metabot-v3.tools.api/routes
    "/metabot-v3"                   metabase-enterprise.metabot-v3.api/routes
    "/permission_debug"             (premium-handler metabase-enterprise.permission-debug.api/routes :advanced-permissions)
-   "/transform-inspector"          (premium-handler metabase-enterprise.transforms-inspector.api/routes :transforms-basic)
+   "/transforms"                   (premium-handler metabase-enterprise.transforms-inspector.api/routes :transforms-basic)
    "/transforms-python"            (premium-handler metabase-enterprise.transforms-python.api/routes :transforms-python)
    "/scim"                         (premium-handler metabase-enterprise.scim.routes/routes :scim)
    "/semantic-search"              (premium-handler metabase-enterprise.semantic-search.api/routes :semantic-search)

@@ -79,6 +79,6 @@
          rff)))))
 
 (def ^{:arglists '([request respond raise])} routes
-  "`/api/ee/transform-inspector` routes."
+  "`/api/ee/transforms` routes."
   (handlers/routes
    (api.macros/ns-handler *ns* +auth)))
