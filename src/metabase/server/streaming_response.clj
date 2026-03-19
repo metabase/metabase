@@ -139,8 +139,8 @@
      (some #(instance? % obj) [InterruptedException EofException])
      (log/trace "Error is an InterruptedException or EofException, not writing to output stream")
 
-    (instance? Throwable obj)
-    (recur os (format-exception obj) export-format status-code)
+     (instance? Throwable obj)
+     (recur os (format-exception obj) export-format status-code)
 
      :else
      (do
