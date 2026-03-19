@@ -6,7 +6,7 @@ import {
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { TableColumnInfo } from "metabase/common/components/MetadataInfo/ColumnInfo";
-import { SidebarContent } from "metabase/query_builder/components/SidebarContent";
+import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { FieldId } from "metabase-types/api";
 

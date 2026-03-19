@@ -5,7 +5,6 @@ import { merge, updateIn } from "icepick";
 import _ from "underscore";
 
 import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
-import { Databases } from "metabase/entities/databases";
 import { cleanIndexFlags } from "metabase/entities/model-indexes/actions";
 import { Timelines } from "metabase/entities/timelines";
 import { parseTimestamp } from "metabase/lib/time-dayjs";
@@ -129,19 +128,10 @@ export const getDatabaseId = createSelector(
 export const getTableForeignKeyReferences = (state) =>
   state.qb.tableForeignKeyReferences;
 
-const getDatabasesListDefaultValue = [];
-export const getDatabasesList = (state) =>
-  Databases.selectors.getList(state, {
-    entityQuery: { include: "tables", saved: true },
-  }) || getDatabasesListDefaultValue;
-
-export const getSampleDatabaseId = createSelector(
-  [getDatabasesList],
-  (databases) => {
-    const sampleDatabase = _.findWhere(databases, { is_sample: true });
-    return sampleDatabase && sampleDatabase.id;
-  },
-);
+export {
+  getDatabasesList,
+  getSampleDatabaseId,
+} from "metabase/querying/selectors";
 
 export const getParameters = createSelector(
   [getCard, getMetadata, getParameterValues],

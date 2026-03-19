@@ -1,1 +1,1 @@
-export * from "./SnippetSidebar";
+export { SnippetSidebar } from "metabase/querying/components/SnippetSidebar";

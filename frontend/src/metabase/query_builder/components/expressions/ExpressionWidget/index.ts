@@ -1,2 +1,1 @@
-export * from "./ExpressionWidget";
-export * from "./ExpressionWidgetHeader";
+export * from "metabase/querying/components/expressions/ExpressionWidget";
