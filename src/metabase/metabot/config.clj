@@ -1,7 +1,7 @@
 (ns metabase.metabot.config
   (:require
    [medley.core :as m]
-   [metabase.metabot.settings :as metabot-v3.settings]
+   [metabase.metabot.settings :as metabot.settings]
    [toucan2.core :as t2]))
 
 (def internal-metabot-id
@@ -46,7 +46,7 @@
    Precedence: explicit metabot-id > env metabot-id > default (internal)"
   [metabot-id]
   (or metabot-id
-      (metabot-v3.settings/metabot-id)
+      (metabot.settings/metabot-id)
       internal-metabot-id))
 
 (defn resolve-dynamic-profile-id
@@ -56,6 +56,6 @@
    (resolve-dynamic-profile-id profile-id (resolve-dynamic-metabot-id nil)))
   ([profile-id metabot-id]
    (or profile-id
-       (metabot-v3.settings/ai-service-profile-id)
+       (metabot.settings/ai-service-profile-id)
        (metabot-id->profile-id metabot-id)
        "embedding_next")))

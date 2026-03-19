@@ -1,6 +1,6 @@
 (ns metabase.metabot.tools.snippets
   (:require
-   [metabase.metabot.tools.util :as metabot-v3.tools.u]
+   [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.native-query-snippets.core :as snippets]))
 
 (defn get-snippets
@@ -11,7 +11,7 @@
      (->> (snippets/list-native-query-snippets)
           (map #(select-keys % [:id :name :description])))}
     (catch Exception e
-      (metabot-v3.tools.u/handle-agent-error e))))
+      (metabot.tools.u/handle-agent-error e))))
 
 (defn get-snippet-details
   "Retrieve a specific SQL snippet by ID, including its content."
@@ -22,4 +22,4 @@
        (when-let [snippet (snippets/get-native-query-snippet snippet-id)]
          (select-keys snippet [:id :name :description :content])))}
     (catch Exception e
-      (metabot-v3.tools.u/handle-agent-error e))))
+      (metabot.tools.u/handle-agent-error e))))

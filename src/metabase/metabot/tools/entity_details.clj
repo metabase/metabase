@@ -1,14 +1,14 @@
 (ns metabase.metabot.tools.entity-details
   (:require
    [medley.core :as m]
-   [metabase.metabot.config :as metabot-v3.config]
-   [metabase.metabot.tools.util :as metabot-v3.tools.u]
    [metabase.api.common :as api]
    [metabase.documents.core :as documents]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.metabot.config :as metabot-v3.config]
+   [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.parameters.field-values :as params.field-values]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
@@ -99,7 +99,7 @@
   "Get metric details as returned by tools."
   ([id] (metric-details id nil))
   ([id options]
-   (when-let [card (metabot-v3.tools.u/get-card id)]
+   (when-let [card (metabot.tools.u/get-card id)]
      (metric-details card (lib-be/application-database-metadata-provider (:database_id card)) options)))
   ([card metadata-provider {:keys [field-values-fn with-default-temporal-breakout? with-queryable-dimensions?
                                    with-segments?]
@@ -117,7 +117,7 @@
                       (lib/remove-all-breakouts metric-query))
          visible-cols (when query-needed?
                         (->> (lib/visible-columns base-query)
-                             (map #(metabot-v3.tools.u/add-table-reference base-query %))))
+                             (map #(metabot.tools.u/add-table-reference base-query %))))
          col->index (when query-needed?
                       (into {} (map-indexed (fn [i col] [col i])) visible-cols))
          col-index (when query-needed?
@@ -126,13 +126,13 @@
                                      (->> breakouts
                                           (map #(lib/find-matching-column % visible-cols))
                                           (m/find-first lib.types.isa/temporal?)))
-         field-id-prefix (metabot-v3.tools.u/card-field-id-prefix id)]
+         field-id-prefix (metabot.tools.u/card-field-id-prefix id)]
      (cond-> {:id id
               :type :metric
               :name (:name card)
               :description (:description card)
               :default_time_dimension_field_id (when default-temporal-breakout
-                                                 (-> (metabot-v3.tools.u/->result-column
+                                                 (-> (metabot.tools.u/->result-column
                                                       metric-query
                                                       default-temporal-breakout
                                                       (col-index default-temporal-breakout)
@@ -141,8 +141,8 @@
               :verified (verified-review? id "card")}
        with-queryable-dimensions?
        (assoc :queryable-dimensions (into []
-                                          (comp (map #(metabot-v3.tools.u/add-table-reference base-query %))
-                                                (map #(metabot-v3.tools.u/->result-column
+                                          (comp (map #(metabot.tools.u/add-table-reference base-query %))
+                                                (map #(metabot.tools.u/->result-column
                                                        metric-query % (col-index %) field-id-prefix)))
                                           (->> (lib/filterable-columns base-query)
                                                field-values-fn)))
@@ -175,12 +175,12 @@
         :as   options}]
    (when-let [base (if metadata-provider
                      (lib.metadata/table metadata-provider id)
-                     (metabot-v3.tools.u/get-table id :db_id :description :name :schema))]
+                     (metabot.tools.u/get-table id :db_id :description :name :schema))]
      (let [query-needed? (or with-fields? with-related-tables? with-metrics? with-measures? with-segments?)
            db-id (if metadata-provider (:db-id base) (:db_id base))
            db-engine (some-> (if metadata-provider
                                (lib.metadata/database metadata-provider)
-                               (metabot-v3.tools.u/get-database db-id :engine))
+                               (metabot.tools.u/get-database db-id :engine))
                              :engine name)
            mp (when query-needed?
                 (or metadata-provider
@@ -190,14 +190,14 @@
            cols (when with-fields?
                   (->> (lib/visible-columns table-query -1 {:include-implicitly-joinable? false})
                        field-values-fn
-                       (map #(metabot-v3.tools.u/add-table-reference table-query %))))
+                       (map #(metabot.tools.u/add-table-reference table-query %))))
            field-id-prefix (when (or with-fields? with-related-tables?)
-                             (metabot-v3.tools.u/table-field-id-prefix id))
+                             (metabot.tools.u/table-field-id-prefix id))
            related-tables (when with-related-tables?
                             (related-tables table-query field-id-prefix with-fields? field-values-fn))]
        (-> {:id id
             :type :table
-            :fields (into [] (map-indexed #(metabot-v3.tools.u/->result-column table-query %2 %1 field-id-prefix)) cols)
+            :fields (into [] (map-indexed #(metabot.tools.u/->result-column table-query %2 %1 field-id-prefix)) cols)
             :name (:name base)
             ;; :display_name should be (lib/display-name table-query), but we want to avoid creating the query if possible
             :display_name (some->> (:name base)
@@ -258,7 +258,7 @@
   "Get details for a card."
   ([id] (card-details id nil))
   ([id options]
-   (when-let [card (metabot-v3.tools.u/get-card id)]
+   (when-let [card (metabot.tools.u/get-card id)]
      (card-details card (lib-be/application-database-metadata-provider (:database_id card)) options)))
   ([base metadata-provider {:keys [field-values-fn with-fields? with-related-tables? with-metrics?
                                    with-measures? with-segments?]
@@ -286,12 +286,12 @@
          returned-fields (when with-fields?
                            (->> (lib/returned-columns card-query)
                                 field-values-fn))
-         field-id-prefix (metabot-v3.tools.u/card-field-id-prefix id)
+         field-id-prefix (metabot.tools.u/card-field-id-prefix id)
          related-tables (when with-related-tables?
                           (related-tables card-query field-id-prefix with-fields? field-values-fn))]
      (-> {:id id
           :type card-type
-          :fields (into [] (map-indexed #(metabot-v3.tools.u/->result-column card-query %2 %1 field-id-prefix)) returned-fields)
+          :fields (into [] (map-indexed #(metabot.tools.u/->result-column card-query %2 %1 field-id-prefix)) returned-fields)
           :name (:name base)
           :display_name (some->> (:name base)
                                  (u.humanization/name->human-readable-name :simple))
@@ -330,7 +330,7 @@
   [{:keys [metabot-id] :as options}]
   (if-let [normalized-metabot-id (metabot-v3.config/normalize-metabot-id metabot-id)]
     (lib-be/with-metadata-provider-cache
-      (let [metrics-and-models (metabot-v3.tools.u/get-metrics-and-models normalized-metabot-id)
+      (let [metrics-and-models (metabot.tools.u/get-metrics-and-models normalized-metabot-id)
             {metrics :metric, models :model}
             (->> (for [[[card-type database-id] cards] (group-by (juxt :type :database_id) metrics-and-models)
                        detail (cards-details card-type database-id cards options)]
@@ -380,7 +380,7 @@
     (catch Exception e
       (if (= (:status-code (ex-data e)) 404)
         {:output (ex-message e) :status-code 404}
-        (metabot-v3.tools.u/handle-agent-error e)))))
+        (metabot.tools.u/handle-agent-error e)))))
 
 (defn get-metric-details
   "Get information about the metric with ID `metric-id`."
@@ -397,7 +397,7 @@
     (catch Exception e
       (if (= (:status-code (ex-data e)) 404)
         {:output (ex-message e) :status-code 404}
-        (metabot-v3.tools.u/handle-agent-error e)))))
+        (metabot.tools.u/handle-agent-error e)))))
 
 (defn get-report-details
   "Get information about the report (card) with ID `report-id`."
@@ -407,7 +407,7 @@
       (let [options (cond-> arguments
                       (= (:with-field-values? arguments) false) (assoc :field-values-fn identity))
             details (if (int? report-id)
-                      (let [card    (t2/hydrate (metabot-v3.tools.u/get-card report-id)
+                      (let [card    (t2/hydrate (metabot.tools.u/get-card report-id)
                                                 :average_query_time)
                             mp      (lib-be/application-database-metadata-provider (:database_id card))
                             details (card-details card mp options)]
@@ -421,7 +421,7 @@
     (catch Exception e
       (if (= (:status-code (ex-data e)) 404)
         {:output (ex-message e) :status-code 404}
-        (metabot-v3.tools.u/handle-agent-error e)))))
+        (metabot.tools.u/handle-agent-error e)))))
 
 (defn get-document-details
   "Get information about the document with ID `document-id`."
@@ -441,7 +441,7 @@
 (defn- execute-query
   [query-id query-input]
   (let [normalized-query (lib-be/normalize-query query-input)
-        field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)
+        field-id-prefix (metabot.tools.u/query-field-id-prefix query-id)
         database-id (:database normalized-query)
         _ (api/read-check :model/Database database-id)
         mp (lib-be/application-database-metadata-provider database-id)
@@ -451,7 +451,7 @@
      :query-id query-id
      :query normalized-query
      :result-columns (into []
-                           (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 field-id-prefix))
+                           (map-indexed #(metabot.tools.u/->result-column query %2 %1 field-id-prefix))
                            returned-cols)}))
 
 (defn get-query-details

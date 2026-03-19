@@ -2,8 +2,8 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase-enterprise.metabot-v3.table-utils :as table-utils]
    [metabase.lib.core :as lib]
+   [metabase.metabot.table-utils :as table-utils]
    [metabase.test :as mt]))
 
 (deftest ^:parallel schema-sample-test

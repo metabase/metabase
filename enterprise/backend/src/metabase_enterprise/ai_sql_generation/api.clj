@@ -1,10 +1,10 @@
 (ns metabase-enterprise.ai-sql-generation.api
   "`/api/ee/ai-sql-generation/` routes"
   (:require
-   [metabase-enterprise.metabot-v3.core :as metabot-v3]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.driver.util :as driver.u]
+   [metabase.metabot.core :as metabot-v3]
    [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)

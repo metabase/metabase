@@ -1,9 +1,9 @@
 (ns metabase.metabot.tools.create-dashboard-subscription
   (:require
    [clojure.set :as set]
-   [metabase.metabot.tools.util :as metabot-v3.tools.u]
    [metabase.api.common :as api]
    [metabase.channel.settings :as channel.settings]
+   [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.pulse.api :as pulse.api]
    [toucan2.core :as t2]))
 
@@ -13,7 +13,7 @@
   (merge {:channel_type :slack
           :enabled      true
           :details      {:channel slack-channel}}
-         (metabot-v3.tools.u/schedule->schedule-map schedule)))
+         (metabot.tools.u/schedule->schedule-map schedule)))
 
 (defn- create-dashboard-subscription*
   "Private helper for create-dashboard-subscription (call that instead)."
@@ -67,5 +67,5 @@
     (try
       (create-dashboard-subscription* args)
       (catch Exception e
-        (-> (metabot-v3.tools.u/handle-agent-error e)
+        (-> (metabot.tools.u/handle-agent-error e)
             (set/rename-keys {:output :error}))))))

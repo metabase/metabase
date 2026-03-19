@@ -4,29 +4,25 @@
    [buddy.core.hash :as buddy-hash]
    [buddy.sign.jwt :as jwt]
    [clojure.set :as set]
-   [metabase.metabot.reactions]
-   [metabase.metabot.settings :as metabot-v3.settings]
-   [metabase.metabot.table-utils :as table-utils]
-   [metabase.metabot.tools.create-alert
-    :as metabot-v3.tools.create-alert]
-   [metabase.metabot.tools.create-dashboard-subscription
-    :as metabot-v3.tools.create-dashboard-subscription]
-   [metabase.metabot.tools.deftool :refer [deftool]]
-   [metabase.metabot.tools.dependencies :as metabot-v3.tools.dependencies]
-   [metabase.metabot.tools.entity-details :as metabot-v3.tools.entity-details]
-   [metabase.metabot.tools.field-stats :as metabot-v3.tools.field-stats]
-   [metabase.metabot.tools.filters :as metabot-v3.tools.filters]
-   [metabase.metabot.tools.generate-insights :as metabot-v3.tools.generate-insights]
-   [metabase.metabot.tools.search :as metabot-v3.tools.search]
-   [metabase.metabot.tools.snippets :as metabot-v3.tools.snippets]
-   [metabase.metabot.tools.transforms :as metabot-v3.tools.transforms]
-   [metabase.metabot.util :as metabot-v3.u]
    [metabase.api.macros :as api.macros]
    [metabase.api.response :as api.response]
    [metabase.api.routes.common :as api.routes.common]
    ;; TODO (Cam 10/10/25) -- update MetaBot to use Lib + MBQL 5
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
+   [metabase.metabot.reactions]
+   [metabase.metabot.settings :as metabot.settings]
+   [metabase.metabot.table-utils :as table-utils]
+   [metabase.metabot.tools.create-alert :as metabot.tools.create-alert]
+   [metabase.metabot.tools.create-dashboard-subscription :as metabot.tools.create-dashboard-subscription]
+   [metabase.metabot.tools.deftool :refer [deftool]]
+   [metabase.metabot.tools.entity-details :as metabot.tools.entity-details]
+   [metabase.metabot.tools.field-stats :as metabot.tools.field-stats]
+   [metabase.metabot.tools.filters :as metabot.tools.filters]
+   [metabase.metabot.tools.generate-insights :as metabot.tools.generate-insights]
+   [metabase.metabot.tools.search :as metabot.tools.search]
+   [metabase.metabot.tools.snippets :as metabot.tools.snippets]
+   [metabase.metabot.util :as metabot.u]
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -37,7 +33,7 @@
   [token]
   (try
     (when (string? token)
-      (jwt/decrypt token (buddy-hash/sha256 (metabot-v3.settings/site-uuid-for-metabot-tools))))
+      (jwt/decrypt token (buddy-hash/sha256 (metabot.settings/site-uuid-for-metabot-tools))))
     (catch Exception e
       (log/error e "Bad AI service token")
       nil)))
@@ -61,7 +57,7 @@
                  "is-null"         "is-not-null"
                  "string-is-empty" "string-is-not-empty"
                  "is-true"         "is-false"]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
 
 (mr/def ::temporal-extraction-filter
   [:and
@@ -76,7 +72,7 @@
                  "minute-equals"      "minute-not-equals"
                  "second-equals"      "second-not-equals"]]
     [:value :int]]
-   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
 
 (mr/def ::disjunctive-temporal-extraction-filter
   [:and
@@ -91,7 +87,7 @@
                  "minute-equals"      "minute-not-equals"
                  "second-equals"      "second-not-equals"]]
     [:values [:sequential :int]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
 
 (mr/def ::temporal-filter
   [:and
@@ -103,7 +99,7 @@
                  "greater-than" "greater-than-or-equal"
                  "less-than"    "less-than-or-equal"]]
     [:value [:or :string :int]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
 
 (mr/def ::disjunctive-temporal-filter
   [:and
@@ -115,7 +111,7 @@
                  "greater-than" "greater-than-or-equal"
                  "less-than"    "less-than-or-equal"]]
     [:values [:sequential [:or :string :int]]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
 
 (mr/def ::string-filter
   [:and
@@ -126,7 +122,7 @@
                  "string-contains"    "string-not-contains"
                  "string-starts-with" "string-ends-with"]]
     [:value :string]]
-   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
 
 (mr/def ::disjunctive-string-date-filter
   [:and
@@ -137,7 +133,7 @@
                  "string-contains"    "string-not-contains"
                  "string-starts-with" "string-ends-with"]]
     [:values [:sequential :string]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
 
 (mr/def ::numeric-filter
   [:and
@@ -148,7 +144,7 @@
                  "greater-than" "greater-than-or-equal"
                  "less-than"    "less-than-or-equal"]]
     [:value [:or :int :double]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
 
 (mr/def ::disjunctive-numeric-filter
   [:and
@@ -157,14 +153,14 @@
     [:operation [:enum {:encode/tool-api-request keyword}
                  "equals" "not-equals"]]
     [:values [:sequential [:or :int :double]]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
 
 (mr/def ::segment-filter
   "Filter using a pre-defined segment."
   [:and
    [:map
     [:segment_id :int]]
-   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
 
 (mr/def ::filter
   [:or
@@ -182,7 +178,7 @@
     [:field_granularity {:optional true}
      [:maybe [:enum {:encode/tool-api-request keyword}
               "minute", "hour" "day" "week" "month" "quarter" "year" "day-of-week"]]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
 
 (mr/def ::count-aggregation
   "Count aggregation — counts rows, no field_id needed.
@@ -192,7 +188,7 @@
     [:function [:= {:encode/tool-api-request keyword} "count"]]
     [:bucket {:optional true} ::bucket]
     [:sort_order {:optional true} [:maybe [:enum {:encode/tool-api-request keyword} "asc" "desc"]]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
 
 (mr/def ::field-aggregation
   "Aggregation using a field and function. field_id is required.
@@ -204,7 +200,7 @@
     [:sort_order {:optional true} [:maybe [:enum {:encode/tool-api-request keyword} "asc" "desc"]]]
     [:function [:enum {:encode/tool-api-request keyword}
                 "avg" "count-distinct" "max" "min" "sum"]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
 
 (mr/def ::measure-aggregation
   "Aggregation using a pre-defined measure."
@@ -212,7 +208,7 @@
    [:map
     [:measure_id :int]
     [:sort_order {:optional true} [:maybe [:enum {:encode/tool-api-request keyword} "asc" "desc"]]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
 
 (mr/def ::aggregation
   "Aggregation — count (field optional), field-based (field required), or measure-based."
@@ -223,7 +219,7 @@
    [:map
     [:field_id :string]
     [:bucket {:optional true} ::bucket]]
-   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
 
 (mr/def ::order-by
   "Order by item specifying a field and sort direction."
@@ -252,7 +248,7 @@
    [:sequential :string]])
 
 (mr/def ::statistics
-  [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+  [:map {:decode/tool-api-response #(update-keys % metabot.u/safe->snake_case_en)}
    [:distinct_count {:optional true} [:maybe ::count]]
    [:percent_null   {:optional true} [:maybe ::proportion]]
    [:min            {:optional true} [:maybe number?]]
@@ -275,7 +271,7 @@
    "boolean" "date" "datetime" "time" "number" "string"])
 
 (mr/def ::column
-  [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+  [:map {:decode/tool-api-response #(update-keys % metabot.u/safe->snake_case_en)}
    [:field_id :string]
    [:name :string]
    [:type [:maybe ::field-type]]
@@ -293,9 +289,9 @@
 
 (mr/def ::filtering-result
   [:or
-   [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+   [:map {:decode/tool-api-response #(update-keys % metabot.u/safe->snake_case_en)}
     [:structured_output
-     [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+     [:map {:decode/tool-api-response #(update-keys % metabot.u/safe->snake_case_en)}
       [:type [:= :query]]
       [:query_id :string]
       [:query ::mbql.s/Query]
@@ -304,7 +300,7 @@
     [:output :string]]])
 
 (mr/def ::basic-metric
-  [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+  [:map {:decode/tool-api-response #(update-keys % metabot.u/safe->snake_case_en)}
    [:id :int]
    [:type [:= :metric]]
    [:name :string]
@@ -314,13 +310,13 @@
 (mr/def ::full-metric
   [:merge
    ::basic-metric
-   [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+   [:map {:decode/tool-api-response #(update-keys % metabot.u/safe->snake_case_en)}
     [:queryable_dimensions {:optional true} ::columns]
     [:segments {:optional true} [:sequential ::segment]]
     [:verified {:optional true} :boolean]]])
 
 (mr/def ::measure
-  [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+  [:map {:decode/tool-api-response #(update-keys % metabot.u/safe->snake_case_en)}
    [:id :int]
    [:name :string]
    [:display_name {:optional true} [:maybe :string]]
@@ -328,7 +324,7 @@
    [:definition {:optional true} [:maybe :map]]])
 
 (mr/def ::segment
-  [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+  [:map {:decode/tool-api-response #(update-keys % metabot.u/safe->snake_case_en)}
    [:id :int]
    [:name :string]
    [:display_name {:optional true} [:maybe :string]]
@@ -352,28 +348,8 @@
    [:measures {:optional true} [:sequential ::measure]]
    [:segments {:optional true} [:sequential ::segment]]])
 
-(mr/def ::basic-transform
-  [:map
-   {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
-   [:id :int]
-   [:name :string]
-   [:type [:enum {:decode/tool-api-response name} "mbql" "native" "python"]]
-   [:description {:optional true} [:maybe :string]]
-   [:entity_id {:optional true} [:maybe :string]]
-   ;; :source keys are not snake_cased to match what the FE expects / provides in user_is_viewing context
-   [:source ::metabot-v3.tools.transforms/transform-source]])
-
-(mr/def ::full-transform
-  [:merge
-   ::basic-transform
-   [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
-    [:created_at ms/TemporalString]
-    [:updated_at ms/TemporalString]
-    ;; :target keys are not snake_cased to match what the FE expects / provides in user_is_viewing context
-    [:target ::metabot-v3.tools.transforms/transform-target]]])
-
 (mr/def ::basic-snippet
-  [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+  [:map {:decode/tool-api-response #(update-keys % metabot.u/safe->snake_case_en)}
    [:id :int]
    [:name :string]
    [:description {:optional true} [:maybe :string]]])
@@ -381,7 +357,7 @@
 (mr/def ::full-snippet
   [:merge
    ::basic-snippet
-   [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+   [:map {:decode/tool-api-response #(update-keys % metabot.u/safe->snake_case_en)}
     [:content :string]]])
 
 ;;; ---------------------------------------------- Discovery & Search -----------------------------------------------
@@ -402,7 +378,7 @@
 (mr/def ::answer-sources-result
   [:or
    [:map
-    {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+    {:decode/tool-api-response #(update-keys % metabot.u/safe->snake_case_en)}
     [:structured_output [:map
                          [:metrics [:sequential ::full-metric]]
                          [:models  [:sequential ::table-result]]]]]
@@ -413,7 +389,7 @@
   {:args-schema    ::answer-sources-arguments
    :args-optional? true
    :result-schema  ::answer-sources-result
-   :handler        metabot-v3.tools.entity-details/answer-sources})
+   :handler        metabot.tools.entity-details/answer-sources})
 
 (mr/def ::search-arguments
   [:and
@@ -432,7 +408,7 @@
 
 (mr/def ::search-result-item
   "Unified schema for search result items."
-  [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+  [:map {:decode/tool-api-response #(update-keys % metabot.u/safe->snake_case_en)}
    [:id :int]
    [:type [:enum :table :model :dashboard :question :metric :database :transform]]
    [:name :string]
@@ -451,7 +427,7 @@
 (mr/def ::search-result
   [:or
    [:map
-    {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+    {:decode/tool-api-response #(update-keys % metabot.u/safe->snake_case_en)}
     [:structured_output [:map
                          [:data [:sequential ::search-result-item]]
                          [:total_count :int]]]]
@@ -462,7 +438,7 @@
   {:args-schema    ::search-arguments
    :args-optional? true
    :result-schema  ::search-result
-   :handler        metabot-v3.tools.search/search-tool})
+   :handler        metabot.tools.search/search-tool})
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
@@ -473,7 +449,7 @@
   {:args-schema    ::search-arguments
    :args-optional? true
    :result-schema  ::search-result
-   :handler        metabot-v3.tools.search/search-tool})
+   :handler        metabot.tools.search/search-tool})
 
 ;;; ----------------------------------------------------- Actions -----------------------------------------------------
 
@@ -498,7 +474,7 @@
                             (for [fl ["first" "last"]
                                   day days]
                               (str fl "-" day)))]]]
-     [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]]))
+     [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]]))
 
 (mr/def ::create-dashboard-subscription-arguments
   [:and
@@ -506,14 +482,14 @@
     [:dashboard_id :int]
     [:slack_channel :string]
     [:schedule ::subscription-schedule]]
-   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
 
 (deftool "/create-dashboard-subscription"
   "Create a dashboard subscription and send it to a slack channel."
   {:args-schema   ::create-dashboard-subscription-arguments
    :result-schema [:map [:error  {:optional true} :string
                          :output {:optional true} :string]]
-   :handler       metabot-v3.tools.create-dashboard-subscription/create-dashboard-subscription})
+   :handler       metabot.tools.create-dashboard-subscription/create-dashboard-subscription})
 
 (mr/def ::create-alert-arguments
   [:and
@@ -523,14 +499,14 @@
     [:send_once {:optional true, :default false} :boolean]
     [:schedule ::subscription-schedule]
     [:slack_channel :string]]
-   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
 
 (deftool "/create-alert"
   "Create an alert for a saved question."
   {:args-schema   ::create-alert-arguments
    :result-schema [:map [:error  {:optional true} :string
                          :output {:optional true} :string]]
-   :handler       metabot-v3.tools.create-alert/create-alert})
+   :handler       metabot.tools.create-alert/create-alert})
 
 ;;; ---------------------------------------------------- Analytics ----------------------------------------------------
 
@@ -541,13 +517,13 @@
     [:entity_id :int]
     [:field_id :string]
     [:limit {:optional true} [:maybe :int]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
 
 (mr/def ::field-values-result
   [:or
-   [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+   [:map {:decode/tool-api-response #(update-keys % metabot.u/safe->snake_case_en)}
     [:structured_output
-     [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+     [:map {:decode/tool-api-response #(update-keys % metabot.u/safe->snake_case_en)}
       [:field_id :string]
       [:value_metadata [:map
                         [:field_values {:optional true} [:maybe [:sequential :any]]]
@@ -559,12 +535,12 @@
   "Return statistics and/or values for a given field of a given entity."
   {:args-schema   ::field-values-arguments
    :result-schema ::field-values-result
-   :handler       metabot-v3.tools.field-stats/field-values})
+   :handler       metabot.tools.field-stats/field-values})
 
 (mr/def ::generate-insights-arguments
   [:map
    ;; query should not be changed to kebab-case
-   {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}
+   {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}
    [:for [:or
           [:map [:metric_id :int]]
           [:map [:table_id :string]]
@@ -577,14 +553,14 @@
    :result-schema [:map
                    [:output :string]
                    [:reactions [:sequential :metabot.reaction/redirect]]]
-   :handler       metabot-v3.tools.generate-insights/generate-insights})
+   :handler       metabot.tools.generate-insights/generate-insights})
 
 ;;; -------------------------------------------------- Entity Details -------------------------------------------------
 
 (mr/def ::get-current-user-result
   [:or
-   [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
-    [:structured_output [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+   [:map {:decode/tool-api-response #(update-keys % metabot.u/safe->snake_case_en)}
+    [:structured_output [:map {:decode/tool-api-response #(update-keys % metabot.u/safe->snake_case_en)}
                          [:id :int]
                          [:type [:= :user]]
                          [:name :string]
@@ -595,7 +571,7 @@
 (deftool "/get-current-user"
   "Get information about user that started the conversation."
   {:result-schema ::get-current-user-result
-   :handler       metabot-v3.tools.entity-details/get-current-user})
+   :handler       metabot.tools.entity-details/get-current-user})
 
 (mr/def ::get-dashboard-details-arguments
   [:and
@@ -605,7 +581,7 @@
 (mr/def ::get-dashboard-details-result
   [:or
    [:map
-    {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+    {:decode/tool-api-response #(update-keys % metabot.u/safe->snake_case_en)}
     [:structured_output [:map
                          [:id :int]
                          [:type [:= :dashboard]]
@@ -618,7 +594,7 @@
   "Get information about a given dashboard."
   {:args-schema   ::get-dashboard-details-arguments
    :result-schema ::get-dashboard-details-result
-   :handler       metabot-v3.tools.entity-details/get-dashboard-details})
+   :handler       metabot.tools.entity-details/get-dashboard-details})
 
 (mr/def ::get-metric-details-arguments
   [:and
@@ -637,7 +613,7 @@
 
 (mr/def ::get-metric-details-result
   [:or
-   [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+   [:map {:decode/tool-api-response #(update-keys % metabot.u/safe->snake_case_en)}
     [:structured_output ::full-metric]]
    [:map [:output :string]]])
 
@@ -645,7 +621,7 @@
   "Get information about a given metric."
   {:args-schema   ::get-metric-details-arguments
    :result-schema ::get-metric-details-result
-   :handler       metabot-v3.tools.entity-details/get-metric-details})
+   :handler       metabot.tools.entity-details/get-metric-details})
 
 (mr/def ::get-query-details-arguments
   [:map [:query :map]])
@@ -653,9 +629,9 @@
 (mr/def ::get-query-details-result
   [:or
    [:map
-    {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+    {:decode/tool-api-response #(update-keys % metabot.u/safe->snake_case_en)}
     [:structured_output [:map
-                         {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+                         {:decode/tool-api-response #(update-keys % metabot.u/safe->snake_case_en)}
                          [:type [:= :query]]
                          [:query_id :string]
                          [:query :map]
@@ -666,7 +642,7 @@
   "Get information about a given query."
   {:args-schema   ::get-query-details-arguments
    :result-schema ::get-query-details-result
-   :handler       metabot-v3.tools.entity-details/get-query-details})
+   :handler       metabot.tools.entity-details/get-query-details})
 
 (mr/def ::get-report-details-arguments
   [:and
@@ -682,9 +658,9 @@
 (mr/def ::get-report-details-result
   [:or
    [:map
-    {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+    {:decode/tool-api-response #(update-keys % metabot.u/safe->snake_case_en)}
     [:structured_output [:map
-                         {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+                         {:decode/tool-api-response #(update-keys % metabot.u/safe->snake_case_en)}
                          [:id :int]
                          [:type [:= :question]]
                          [:name :string]
@@ -697,7 +673,7 @@
   "Get information about a given report."
   {:args-schema   ::get-report-details-arguments
    :result-schema ::get-report-details-result
-   :handler       metabot-v3.tools.entity-details/get-report-details})
+   :handler       metabot.tools.entity-details/get-report-details})
 
 (mr/def ::get-document-details-arguments
   [:and
@@ -709,9 +685,9 @@
 (mr/def ::get-document-details-result
   [:or
    [:map
-    {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+    {:decode/tool-api-response #(update-keys % metabot.u/safe->snake_case_en)}
     [:structured_output [:map
-                         {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+                         {:decode/tool-api-response #(update-keys % metabot.u/safe->snake_case_en)}
                          [:id :int]
                          [:name :string]
                          [:document :string]]]]
@@ -721,7 +697,7 @@
   "Get information about a given document."
   {:args-schema   ::get-document-details-arguments
    :result-schema ::get-document-details-result
-   :handler       metabot-v3.tools.entity-details/get-document-details})
+   :handler       metabot.tools.entity-details/get-document-details})
 
 (mr/def ::get-table-details-arguments
   [:and
@@ -750,7 +726,7 @@
 
 (mr/def ::get-table-details-result
   [:or
-   [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+   [:map {:decode/tool-api-response #(update-keys % metabot.u/safe->snake_case_en)}
     [:structured_output ::table-result]]
    [:map [:output :string]]])
 
@@ -758,7 +734,7 @@
   "Get information about a given table or model."
   {:args-schema   ::get-table-details-arguments
    :result-schema ::get-table-details-result
-   :handler       metabot-v3.tools.entity-details/get-table-details})
+   :handler       metabot.tools.entity-details/get-table-details})
 
 (mr/def ::get-tables-arguments
   [:and
@@ -770,10 +746,10 @@
 (mr/def ::get-tables-result
   [:or
    [:map
-    {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+    {:decode/tool-api-response #(update-keys % metabot.u/safe->snake_case_en)}
     [:structured_output
      [:map
-      {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+      {:decode/tool-api-response #(update-keys % metabot.u/safe->snake_case_en)}
       [:database [:map
                   [:id :int]
                   [:engine :string]
@@ -799,97 +775,6 @@
    :result-schema ::get-tables-result
    :handler       table-utils/get-tables})
 
-;;; ---------------------------------------------------- Transforms ---------------------------------------------------
-
-(mr/def ::get-transforms-result
-  [:or
-   [:map
-    {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
-    [:structured_output [:sequential ::basic-transform]]]
-   [:map [:output :string]]])
-
-(deftool "/get-transforms"
-  "Get a list of all known transforms."
-  {:result-schema ::get-transforms-result
-   :handler       metabot-v3.tools.transforms/get-transforms})
-
-(mr/def ::get-transform-details-arguments
-  [:and
-   [:map
-    [:transform_id :int]]
-   [:map {:encode/tool-api-request
-          #(set/rename-keys % {:transform_id :transform-id})}]])
-
-(mr/def ::get-transform-details-result
-  [:or
-   [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
-    [:structured_output [:sequential ::full-transform]]]
-   [:map [:output :string]]])
-
-(deftool "/get-transform-details"
-  "Get information about a transform."
-  {:args-schema   ::get-transform-details-arguments
-   :result-schema ::get-transform-details-result
-   :handler       metabot-v3.tools.transforms/get-transform-details})
-
-(mr/def ::get-transform-python-library-details-arguments
-  [:and
-   [:map
-    [:path :string]]
-   [:map {:encode/tool-api-request
-          #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
-
-(mr/def ::get-transform-python-library-details-result
-  [:or
-   [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
-    [:structured_output [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
-                         [:source :string]
-                         [:path :string]
-                         [:created_at ms/TemporalString]
-                         [:updated_at ms/TemporalString]]]]
-   [:map [:output :string]]])
-
-(deftool "/get-transform-python-library-details"
-  "Get information about a Python library by path."
-  {:args-schema   ::get-transform-python-library-details-arguments
-   :result-schema ::get-transform-python-library-details-result
-   :handler       metabot-v3.tools.transforms/get-transform-python-library-details})
-
-(mr/def ::check-transform-dependencies-arguments
-  [:and
-   [:map
-    [:transform_id :int]
-    [:source ::metabot-v3.tools.transforms/transform-source]]
-   [:map {:encode/tool-api-request
-          #(set/rename-keys % {:transform_id :id})}]])
-
-(mr/def ::broken-question
-  [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
-   [:id :int]
-   [:name :string]])
-
-(mr/def ::broken-transform
-  [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
-   [:id :int]
-   [:name :string]])
-
-(mr/def ::check-transform-dependencies-result
-  [:or
-   [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
-    [:structured_output [:map
-                         [:success :boolean]
-                         [:bad_transform_count :int]
-                         [:bad_transforms [:sequential ::broken-transform]]
-                         [:bad_question_count :int]
-                         [:bad_questions [:sequential ::broken-question]]]]]
-   [:map [:output :string]]])
-
-(deftool "/check-transform-dependencies"
-  "Check a proposed edit to a transform and return details of cards or transforms that would be broken by the change."
-  {:args-schema   ::check-transform-dependencies-arguments
-   :result-schema ::check-transform-dependencies-result
-   :handler       metabot-v3.tools.dependencies/check-transform-dependencies})
-
 ;;; ----------------------------------------------------- Querying ----------------------------------------------------
 
 (mr/def ::filter-records-arguments
@@ -902,15 +787,15 @@
                      [:query_id {:optional true} :string]]
                     [:map [:report_id :int]]
                     [:map [:table_id :string]]]
-                   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]]]
+                   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]]]
     [:filters [:sequential ::filter]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
 
 (deftool "/filter-records"
   "Apply filters to records from a data source (query, report, or table)."
   {:args-schema   ::filter-records-arguments
    :result-schema ::filtering-result
-   :handler       metabot-v3.tools.filters/filter-records})
+   :handler       metabot.tools.filters/filter-records})
 
 (mr/def ::query-metric-arguments
   [:and
@@ -918,13 +803,13 @@
     [:metric_id :int]
     [:filters {:optional true} [:maybe [:sequential ::filter]]]
     [:group_by {:optional true} [:maybe [:sequential ::group-by]]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
 
 (deftool "/query-metric"
   "Construct a query from a metric."
   {:args-schema   ::query-metric-arguments
    :result-schema ::filtering-result
-   :handler       metabot-v3.tools.filters/query-metric})
+   :handler       metabot.tools.filters/query-metric})
 
 (mr/def ::query-model-arguments
   [:and
@@ -936,14 +821,14 @@
     [:group_by {:optional true} [:maybe [:sequential ::group-by]]]
     [:order_by {:optional true} [:maybe [:sequential ::order-by]]]
     [:limit {:optional true} [:maybe :int]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
 
 ;; TODO tsplude - drop the `/query-model` endpoint and filter logic in favor of this
 (deftool "/query-model"
   "Construct a query from a model."
   {:args-schema   ::query-model-arguments
    :result-schema ::filtering-result
-   :handler       metabot-v3.tools.filters/query-model})
+   :handler       metabot.tools.filters/query-model})
 
 (mr/def ::query-datasource-arguments
   [:and
@@ -958,27 +843,27 @@
     [:limit {:optional true} [:maybe :int]]]
    [:fn {:error/message "Exactly one of table_id and model_id required"}
     #(= (count (select-keys % [:table_id :model_id])) 1)]
-   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
 
 ;; TODO tsplude - drop the `/query-model` endpoint and filter logic in favor of this
 (deftool "/query-datasource"
   "Construct a query from a model or table data source."
   {:args-schema   ::query-datasource-arguments
    :result-schema ::filtering-result
-   :handler       metabot-v3.tools.filters/query-datasource})
+   :handler       metabot.tools.filters/query-datasource})
 
 ;;; --------------------------------------------------- SQL Snippets --------------------------------------------------
 
 (mr/def ::get-snippets-result
   "Schema for SQL snippet list results"
   [:map
-   {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+   {:decode/tool-api-response #(update-keys % metabot.u/safe->snake_case_en)}
    [:structured_output [:sequential ::basic-snippet]]])
 
 (deftool "/get-snippets"
   "Get a list of all known SQL snippets."
   {:result-schema ::get-snippets-result
-   :handler       metabot-v3.tools.snippets/get-snippets})
+   :handler       metabot.tools.snippets/get-snippets})
 
 (mr/def ::get-snippet-details-arguments
   [:and
@@ -989,14 +874,14 @@
 
 (mr/def ::get-snippet-details-result
   "Schema for SQL snippet detail results"
-  [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+  [:map {:decode/tool-api-response #(update-keys % metabot.u/safe->snake_case_en)}
    [:structured_output ::full-snippet]])
 
 (deftool "/get-snippet-details"
   "Get the content of a single SQL snippet."
   {:args-schema   ::get-snippet-details-arguments
    :result-schema ::get-snippet-details-result
-   :handler       metabot-v3.tools.snippets/get-snippet-details})
+   :handler       metabot.tools.snippets/get-snippet-details})
 
 ;;; --------------------------------------------------- Middleware ----------------------------------------------------
 
@@ -1008,7 +893,7 @@
                                            (get "x-metabase-session")
                                            decode-ai-service-token)]
       (request/with-current-user user
-        (handler (assoc request :metabot-v3/metabot-id metabot-id) respond raise))
+        (handler (assoc request :metabot/metabot-id metabot-id) respond raise))
       (if (:metabase-user-id request)
         ;; request relying on metabot-id are going to fail
         (handler request respond raise)

@@ -1,15 +1,15 @@
 (ns metabase.metabot.tools.filters
   (:require
    [buddy.core.codecs :as codecs]
-   [metabase.metabot.agent.streaming :as streaming]
-   [metabase.metabot.tools.instructions :as instructions]
-   [metabase.metabot.tools.util :as metabot-v3.tools.u]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
+   [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.tools.instructions :as instructions]
+   [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -359,28 +359,28 @@
 
 (defn- query-metric*
   [{:keys [metric-id filters group-by] :as _arguments}]
-  (let [card (metabot-v3.tools.u/get-card metric-id)
+  (let [card (metabot.tools.u/get-card metric-id)
         mp (lib-be/application-database-metadata-provider (:database_id card))
         base-query (->> (lib/query mp (lib.metadata/card mp metric-id))
                         lib/remove-all-breakouts)
-        field-id-prefix (metabot-v3.tools.u/card-field-id-prefix metric-id)
+        field-id-prefix (metabot.tools.u/card-field-id-prefix metric-id)
         visible-cols (lib/visible-columns base-query)
-        resolve-visible-column #(metabot-v3.tools.u/resolve-column % field-id-prefix visible-cols)
+        resolve-visible-column #(metabot.tools.u/resolve-column % field-id-prefix visible-cols)
         ;; Separate segment filters from field filters before column resolution
         resolved-filters (map #(if (:segment-id %) % (resolve-visible-column %)) filters)
         query (as-> base-query $q
                 (reduce add-filter $q resolved-filters)
                 (reduce add-breakout
                         $q
-                        (map #(metabot-v3.tools.u/resolve-column % field-id-prefix visible-cols) group-by)))
+                        (map #(metabot.tools.u/resolve-column % field-id-prefix visible-cols) group-by)))
         query-id (u/generate-nano-id)
-        query-field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)
+        query-field-id-prefix (metabot.tools.u/query-field-id-prefix query-id)
         returned-cols (lib/returned-columns query)]
     {:type           :query
      :query-id       query-id
      :query          query
      :result-columns (into []
-                           (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 query-field-id-prefix))
+                           (map-indexed #(metabot.tools.u/->result-column query %2 %1 query-field-id-prefix))
                            returned-cols)}))
 
 (defn query-metric
@@ -399,7 +399,7 @@
     (catch Exception e
       (if (= (:status-code (ex-data e)) 404)
         {:output (ex-message e) :status-code 404}
-        (metabot-v3.tools.u/handle-agent-error e)))))
+        (metabot.tools.u/handle-agent-error e)))))
 
 (defn- apply-aggregation-sort-order
   "If sort-order is specified, add an order-by clause for the last aggregation in the query."
@@ -472,12 +472,12 @@
 
 (defn- query-model*
   [{:keys [model-id fields filters aggregations group-by order-by limit] :as _arguments}]
-  (let [card (metabot-v3.tools.u/get-card model-id)
+  (let [card (metabot.tools.u/get-card model-id)
         mp (lib-be/application-database-metadata-provider (:database_id card))
         base-query (lib/query mp (lib.metadata/card mp model-id))
-        field-id-prefix (metabot-v3.tools.u/card-field-id-prefix model-id)
+        field-id-prefix (metabot.tools.u/card-field-id-prefix model-id)
         visible-cols (lib/visible-columns base-query)
-        resolve-visible-column #(metabot-v3.tools.u/resolve-column % field-id-prefix visible-cols)
+        resolve-visible-column #(metabot.tools.u/resolve-column % field-id-prefix visible-cols)
         _ (log/debug "query_model field-id expectations"
                      {:model-id model-id
                       :field-id-prefix field-id-prefix
@@ -503,13 +503,13 @@
                   (reduce-query add-order-by (map resolve-order-by-column order-by))
                   (add-limit limit))
         query-id (u/generate-nano-id)
-        query-field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)
+        query-field-id-prefix (metabot.tools.u/query-field-id-prefix query-id)
         returned-cols (lib/returned-columns query)]
     {:type :query
      :query-id query-id
      :query query
      :result-columns (into []
-                           (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 query-field-id-prefix))
+                           (map-indexed #(metabot.tools.u/->result-column query %2 %1 query-field-id-prefix))
                            returned-cols)}))
 
 (defn query-model
@@ -528,7 +528,7 @@
     (catch Exception e
       (if (= (:status-code (ex-data e)) 404)
         {:output (ex-message e) :status-code 404}
-        (metabot-v3.tools.u/handle-agent-error e)))))
+        (metabot.tools.u/handle-agent-error e)))))
 
 (defn- resolve-datasource
   "Resolve datasource parameters to [field-id-prefix base-query] tuple.
@@ -537,7 +537,7 @@
   (cond
     model-id
     (try
-      [(metabot-v3.tools.u/card-field-id-prefix model-id) (metabot-v3.tools.u/card-query model-id)]
+      [(metabot.tools.u/card-field-id-prefix model-id) (metabot.tools.u/card-query model-id)]
       (catch clojure.lang.ExceptionInfo e
         (throw (if (= (:status-code (ex-data e)) 404)
                  (ex-info (str "No model found with model_id " model-id)
@@ -546,7 +546,7 @@
 
     table-id
     (try
-      [(metabot-v3.tools.u/table-field-id-prefix table-id) (metabot-v3.tools.u/table-query table-id)]
+      [(metabot.tools.u/table-field-id-prefix table-id) (metabot.tools.u/table-query table-id)]
       (catch clojure.lang.ExceptionInfo e
         (throw (if (= (:status-code (ex-data e)) 404)
                  (ex-info (str "No table found with table_id " table-id)
@@ -560,7 +560,7 @@
   [{:keys [fields filters aggregations group-by order-by limit] :as arguments}]
   (let [[filter-field-id-prefix base-query] (resolve-datasource arguments)
         visible-cols (lib/visible-columns base-query)
-        resolve-visible-column #(metabot-v3.tools.u/resolve-column % filter-field-id-prefix visible-cols)
+        resolve-visible-column #(metabot.tools.u/resolve-column % filter-field-id-prefix visible-cols)
         resolve-order-by-column (fn [{:keys [field direction]}] {:field (resolve-visible-column field) :direction direction})
         projection (map (comp (juxt filter-bucketed-column (fn [{:keys [column bucket]}]
                                                              (let [column (cond-> column
@@ -582,13 +582,13 @@
                   (reduce-query add-order-by (map resolve-order-by-column order-by))
                   (add-limit limit))
         query-id (u/generate-nano-id)
-        query-field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)
+        query-field-id-prefix (metabot.tools.u/query-field-id-prefix query-id)
         returned-cols (lib/returned-columns query)]
     {:type           :query
      :query-id       query-id
      :query          query
      :result-columns (into []
-                           (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 query-field-id-prefix))
+                           (map-indexed #(metabot.tools.u/->result-column query %2 %1 query-field-id-prefix))
                            returned-cols)}))
 
 (defn query-datasource
@@ -611,7 +611,7 @@
     (catch Exception e
       (if (= (:status-code (ex-data e)) 404)
         {:output (ex-message e) :status-code 404}
-        (metabot-v3.tools.u/handle-agent-error e)))))
+        (metabot.tools.u/handle-agent-error e)))))
 
 (defn- base-query
   [data-source]
@@ -623,27 +623,27 @@
                              _ (api/read-check :model/Database database-id)
                              mp (lib-be/application-database-metadata-provider database-id)]
                          [(if query-id
-                            (metabot-v3.tools.u/query-field-id-prefix query-id)
-                            metabot-v3.tools.u/any-prefix-pattern)
+                            (metabot.tools.u/query-field-id-prefix query-id)
+                            metabot.tools.u/any-prefix-pattern)
                           (-> (lib/query mp normalized-query) lib/append-stage)]))]
     (cond
       model-id
-      (if-let [model-query (metabot-v3.tools.u/card-query model-id)]
-        [(metabot-v3.tools.u/card-field-id-prefix model-id) model-query]
+      (if-let [model-query (metabot.tools.u/card-query model-id)]
+        [(metabot.tools.u/card-field-id-prefix model-id) model-query]
         (throw (ex-info (str "No model found with model_id " model-id)
                         {:agent-error? true :status-code 404 :data-source data-source})))
 
       table-id
       (let [table-id (cond-> table-id
                        (string? table-id) parse-long)]
-        (if-let [table-query (metabot-v3.tools.u/table-query table-id)]
-          [(metabot-v3.tools.u/table-field-id-prefix table-id) table-query]
+        (if-let [table-query (metabot.tools.u/table-query table-id)]
+          [(metabot.tools.u/table-field-id-prefix table-id) table-query]
           (throw (ex-info (str "No table found with table_id " table-id)
                           {:agent-error? true :status-code 404 :data-source data-source}))))
 
       report-id
-      (if-let [query (metabot-v3.tools.u/card-query report-id)]
-        [(metabot-v3.tools.u/card-field-id-prefix report-id) query]
+      (if-let [query (metabot.tools.u/card-query report-id)]
+        [(metabot.tools.u/card-field-id-prefix report-id) query]
         (throw (ex-info (str "No report found with report_id " report-id)
                         {:agent-error? true :status-code 404 :data-source data-source})))
 
@@ -660,16 +660,16 @@
   (try
     (let [[filter-field-id-prefix base] (base-query data-source)
           returned-cols (lib/returned-columns base)
-          query (reduce add-filter base (map #(metabot-v3.tools.u/resolve-column % filter-field-id-prefix returned-cols) filters))
+          query (reduce add-filter base (map #(metabot.tools.u/resolve-column % filter-field-id-prefix returned-cols) filters))
           query-id (u/generate-nano-id)
-          query-field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)]
+          query-field-id-prefix (metabot.tools.u/query-field-id-prefix query-id)]
       {:structured-output
        {:result-type :query
         :type :query
         :query-id query-id
         :query query
         :result-columns (into []
-                              (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 query-field-id-prefix))
+                              (map-indexed #(metabot.tools.u/->result-column query %2 %1 query-field-id-prefix))
                               (lib/returned-columns query))}})
     (catch Exception ex
-      (metabot-v3.tools.u/handle-agent-error ex))))
+      (metabot.tools.u/handle-agent-error ex))))
