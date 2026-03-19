@@ -1140,11 +1140,7 @@ describe("issue 55487", () => {
   it("should be able open object details on browser forward navigation (metabase#55487)", () => {
     H.visitQuestion(ORDERS_QUESTION_ID);
 
-    cy.findByTestId("table-body")
-      .get("[data-index='4']")
-      .within(() => {
-        cy.get("[data-column-id='ID']").click();
-      });
+    cy.findByTestId("table-body").find("[data-column-id='ID']").eq(4).click();
 
     cy.findByTestId("object-detail").should("be.visible");
 
