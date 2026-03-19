@@ -2928,7 +2928,7 @@ const testChangingBackToDefaultBehavior = () => {
 
 const getTableCell = (index) => {
   // eslint-disable-next-line metabase/no-unsafe-element-filtering
-  return cy
+  return H.tableInteractiveBody()
     .findAllByRole("row")
     .eq(POINT_INDEX)
     .findAllByTestId("cell-data")

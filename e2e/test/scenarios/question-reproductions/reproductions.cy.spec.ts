@@ -1280,7 +1280,7 @@ SELECT 2 AS ID, 3 AS USER_ID
       );
     });
 
-    cy.findByTestId("table-root")
+    cy.findByTestId("table-body")
       .findAllByRole("row")
       .first()
       .within(() => {
@@ -1302,7 +1302,7 @@ SELECT 2 AS ID, 3 AS USER_ID
 
     H.visitQuestion("@questionId");
 
-    cy.findByTestId("table-root")
+    cy.findByTestId("table-body")
       .findAllByRole("row")
       .eq(1)
       .within(() => {
