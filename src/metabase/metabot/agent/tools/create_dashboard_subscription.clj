@@ -5,7 +5,8 @@
    [metabase.metabot.agent.tools.create-alert :as tools.create-alert]
    [metabase.metabot.agent.tools.shared :as shared]
    [metabase.metabot.tools.create-dashboard-subscription :as tools.create-dashboard-subscription]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -35,24 +36,22 @@ If any required information is missing, ask the user for it rather than assuming
    [:dashboard_id :int]
    [:schedule tools.create-alert/schedule-schema]])
 
-(defn slackbot-create-dashboard-subscription-tool "create_dashboard_subscription" []
-  {:tool-name           "create_dashboard_subscription"
-   :system-instructions create-dashboard-subscription-system-instructions
-   :doc                 "Create a recurring subscription that delivers a dashboard's contents to a Slack channel."
-   :schema              [:=> [:cat schema] :any]
-   :fn                  (fn [{:keys [dashboard_id schedule]}]
-                          (let [slack-channel-id (:slack_channel_id (shared/current-context))]
-                            (when-not slack-channel-id
-                              (throw (ex-info "This tool can only be used from a Slack channel"
-                                              {:agent-error? true})))
-                            (try
-                              (let [result (tools.create-dashboard-subscription/create-dashboard-subscription
-                                            {:dashboard-id  dashboard_id
-                                             :schedule      schedule
-                                             :slack-channel slack-channel-id})]
-                                (if (:error result)
-                                  {:output (:error result)}
-                                  {:output (or (:output result) "Dashboard subscription created successfully.")}))
-                              (catch Exception e
-                                (log/error e "Failed to create dashboard subscription")
-                                {:output (str "Failed to create dashboard subscription: " (or (ex-message e) "Unknown error"))}))))})
+(mu/defn ^{:tool-name           "create_dashboard_subscription"
+           :system-instructions create-dashboard-subscription-system-instructions} slackbot-create-dashboard-subscription-tool
+  "Create a recurring subscription that delivers a dashboard's contents to a Slack channel."
+  [{:keys [dashboard_id schedule]} :- schema]
+  (let [slack-channel-id (:slack_channel_id (shared/current-context))]
+    (when-not slack-channel-id
+      (throw (ex-info "This tool can only be used from a Slack channel"
+                      {:agent-error? true})))
+    (try
+      (let [result (tools.create-dashboard-subscription/create-dashboard-subscription
+                    {:dashboard-id  dashboard_id
+                     :schedule      schedule
+                     :slack-channel slack-channel-id})]
+        (if (:error result)
+          {:output (:error result)}
+          {:output (or (:output result) "Dashboard subscription created successfully.")}))
+      (catch Exception e
+        (log/error e "Failed to create dashboard subscription")
+        {:output (str "Failed to create dashboard subscription: " (or (ex-message e) "Unknown error"))}))))

@@ -4,7 +4,8 @@
   (:require
    [metabase.metabot.agent.tools.shared :as shared]
    [metabase.metabot.tools.create-alert :as tools.create-alert]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -65,26 +66,24 @@ NEVER tell the user you have created an alert without actually calling the creat
    [:schedule schedule-schema]
    [:send_once {:optional true :default false} :boolean]])
 
-(defn create-alert-tool "create alert" []
-  {:tool-name           "create_alert"
-   :system-instructions create-alert-system-instructions
-   :doc                 "Create an alert based on a saved question's results on a recurring schedule."
-   :schema              [:=> [:cat schema] :any]
-   :fn                  (fn [{:keys [card_id send_condition schedule send_once]}]
-                          (let [slack-channel-id (:slack_channel_id (shared/current-context))]
-                            (when-not slack-channel-id
-                              (throw (ex-info "This tool can only be used from a Slack channel"
-                                              {:agent-error? true})))
-                            (try
-                              (let [result (tools.create-alert/create-alert
-                                            {:card-id        card_id
-                                             :send-condition (keyword send_condition)
-                                             :schedule       schedule
-                                             :send-once      (boolean send_once)
-                                             :slack-channel  slack-channel-id})]
-                                (if (:error result)
-                                  {:output (:error result)}
-                                  {:output (or (:output result) "Alert created successfully.")}))
-                              (catch Exception e
-                                (log/error e "Failed to create alert")
-                                {:output (str "Failed to create alert: " (or (ex-message e) "Unknown error"))}))))})
+(mu/defn ^{:tool-name           "create_alert"
+           :system-instructions create-alert-system-instructions} create-alert-tool
+  "Create an alert based on a saved question's results on a recurring schedule."
+  [{:keys [card_id send_condition schedule send_once]} :- schema]
+  (let [slack-channel-id (:slack_channel_id (shared/current-context))]
+    (when-not slack-channel-id
+      (throw (ex-info "This tool can only be used from a Slack channel"
+                      {:agent-error? true})))
+    (try
+      (let [result (tools.create-alert/create-alert
+                    {:card-id        card_id
+                     :send-condition (keyword send_condition)
+                     :schedule       schedule
+                     :send-once      (boolean send_once)
+                     :slack-channel  slack-channel-id})]
+        (if (:error result)
+          {:output (:error result)}
+          {:output (or (:output result) "Alert created successfully.")}))
+      (catch Exception e
+        (log/error e "Failed to create alert")
+        {:output (str "Failed to create alert: " (or (ex-message e) "Unknown error"))}))))
