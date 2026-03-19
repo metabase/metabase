@@ -73,6 +73,11 @@ export function chartGridLines() {
   );
 }
 
+export function splitPanelAxisLines() {
+  const borderStrong = getColor("border-strong");
+  return echartsContainer().find(`path[stroke="${borderStrong}"]`);
+}
+
 export function chartPathWithFillColor(color) {
   return echartsContainer().find(`path[fill="${color}"]`);
 }

@@ -77,10 +77,16 @@
 ;;; -------------------------------------------------- Target Table --------------------------------------------------
 
 (defn- get-target-table
-  "Get the target table for a transform. Returns nil if the target doesn't exist."
+  "Get the target table for a transform. Returns nil if the target doesn't exist or hasn't been materialized yet.
+   Provisional tables (inactive, never deactivated) created by the after-insert hook are excluded."
   [{:keys [target] :as transform}]
-  (let [db-id (transforms-base.i/target-db-id transform)]
-    (transforms-base.u/target-table db-id target)))
+  (let [db-id (transforms-base.i/target-db-id transform)
+        table (transforms-base.u/target-table db-id target)]
+    ;; A provisional table for a transform that was never run has active=false and deactivated_at=nil
+    ;; Having a table with active=false but a non-nil deactivated_at is a strong indication it ran before.
+    ;; That said even an active table is not proof that is has run, as targets may have been swiveled around.
+    (when (or (:active table) (:deactivated_at table))
+      table)))
 
 ;;; -------------------------------------------------- Field Metadata --------------------------------------------------
 

@@ -33,7 +33,7 @@ export const GRAPH_GOAL_SETTINGS: VisualizationSettingsDefinitions = {
       return t`Goal line`;
     },
     widget: "toggle",
-    default: false,
+    getDefault: () => false,
     inline: true,
     getMarginBottom: () => "1rem",
   },
@@ -45,7 +45,7 @@ export const GRAPH_GOAL_SETTINGS: VisualizationSettingsDefinitions = {
       return t`Goal value`;
     },
     widget: "number",
-    default: 0,
+    getDefault: () => 0,
     getHidden: (_series, vizSettings) =>
       vizSettings["graph.show_goal"] !== true,
     readDependencies: ["graph.show_goal"],
