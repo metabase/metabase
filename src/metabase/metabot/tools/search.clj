@@ -2,9 +2,9 @@
   (:require
    [clojure.set :as set]
    [medley.core :as m]
-   [metabase.metabot.config :as metabot-v3.config]
-   [metabase.metabot.reactions]
    [metabase.api.common :as api]
+   [metabase.metabot.config :as metabot.config]
+   [metabase.metabot.reactions]
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
@@ -177,11 +177,11 @@
                           (set (distinct (keep entity-type->search-model entity-types)))
                           metabot-search-models)
         _               (log/infof "[METABOT-SEARCH] Converted entity-types %s to search-models %s" entity-types search-models)
-        metabot         (t2/select-one :model/Metabot :entity_id (get-in metabot-v3.config/metabot-config [metabot-id :entity-id] metabot-id))
+        metabot         (t2/select-one :model/Metabot :entity_id (get-in metabot.config/metabot-config [metabot-id :entity-id] metabot-id))
         use-verified?   (if metabot-id
                           (:use_verified_content metabot)
                           false)
-        embedded-metabot?  (= metabot-id metabot-v3.config/embedded-metabot-id)
+        embedded-metabot?  (= metabot-id metabot.config/embedded-metabot-id)
         collection-id   (when (or embedded-metabot? (= profile-id "nlq"))
                           (:collection_id metabot))
         limit           (or limit 50)

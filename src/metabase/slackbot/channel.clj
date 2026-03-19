@@ -2,7 +2,7 @@
   "Visible Slack channel reply/update flow for metabot."
   (:require
    [clojure.string :as str]
-   [metabase.metabot.persistence :as metabot-v3.persistence]
+   [metabase.metabot.persistence :as metabot.persistence]
    [metabase.slackbot.client :as slackbot.client]
    [metabase.util.log :as log]))
 
@@ -94,7 +94,7 @@
             res                     (slackbot.client/post-thread-reply client {:channel channel :thread_ts thread-ts}
                                                                        final-text :blocks final-blocks)]
         (when-let [res-ts (:ts res)]
-          (metabot-v3.persistence/set-response-slack-msg-id! @stored-msg-id res-ts))
+          (metabot.persistence/set-response-slack-msg-id! @stored-msg-id res-ts))
         (when-not (:ok res)
           (log/errorf "[slackbot] channel post-message failed: %s (block_count=%d block_types=%s response_messages=%s)"
                       (:error res)

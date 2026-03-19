@@ -4,7 +4,7 @@
    [toucan2.core :as t2]))
 
 (defn metabot-stats
-  "Calculate total Metabot token usage over a window of the the previous UTC day 00:00-23:59"
+  "Calculate total Metabot token usage over a window of the previous UTC day 00:00-23:59"
   []
   (let [yesterday-utc (-> (t/offset-date-time (t/zone-offset "+00"))
                           (t/minus (t/days 1)))]

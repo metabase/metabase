@@ -4,20 +4,20 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.api.common :as api]
+   [metabase.channel.slack :as channel.slack]
    [metabase.metabot.agent.core :as agent]
-   [metabase.metabot.context :as metabot-v3.context]
-   [metabase.metabot.envelope :as metabot-v3.envelope]
-   [metabase.metabot.persistence :as metabot-v3.persistence]
+   [metabase.metabot.context :as metabot.context]
+   [metabase.metabot.envelope :as metabot.envelope]
+   [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.self.core :as self.core]
-   [metabase.metabot.util :as metabot-v3.u]
+   [metabase.metabot.util :as metabot.u]
+   [metabase.permissions.core :as perms]
    [metabase.slackbot.channel :as slackbot.channel]
    [metabase.slackbot.client :as slackbot.client]
    [metabase.slackbot.events :as slackbot.events]
    [metabase.slackbot.persistence :as slackbot.persistence]
    [metabase.slackbot.query :as slackbot.query]
-   [metabase.api.common :as api]
-   [metabase.channel.slack :as channel.slack]
-   [metabase.permissions.core :as perms]
    [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -169,19 +169,19 @@
   [conversation-id prompt thread bot-user-id channel-id extra-history
    {:keys [on-text on-tool-start on-tool-end on-data req-slack-msg-id get-res-slack-msg-id request-prompt stored-msg-id]}]
   (let [data-idx        (volatile! -1)
-        message         (metabot-v3.envelope/user-message prompt)
-        request-message (metabot-v3.envelope/user-message (or request-prompt prompt))
+        message         (metabot.envelope/user-message prompt)
+        request-message (metabot.envelope/user-message (or request-prompt prompt))
         capabilities    (compute-capabilities)
         thread-history  (thread->history thread bot-user-id conversation-id)
         history         (into (vec thread-history) extra-history)
-        context         (metabot-v3.context/create-context
+        context         (metabot.context/create-context
                          {:current_time_with_timezone (str (java.time.OffsetDateTime/now))
                           :capabilities               capabilities
                           :slack_channel_id           channel-id})
         messages        (conj (vec history) request-message)
-        _               (metabot-v3.persistence/store-message! conversation-id "slackbot" [message]
-                                                               :channel-id   channel-id
-                                                               :slack-msg-id req-slack-msg-id)
+        _               (metabot.persistence/store-message! conversation-id "slackbot" [message]
+                                                            :channel-id   channel-id
+                                                            :slack-msg-id req-slack-msg-id)
         parts-atom      (atom [])
         dispatch-xf     (comp
                          (u/tee-xf parts-atom)
@@ -220,9 +220,9 @@
                  :profile-id :slackbot
                  :context    context}))
     (let [lines (into [] (self.core/aisdk-line-xf) @parts-atom)
-          pk    (metabot-v3.persistence/store-message!
+          pk    (metabot.persistence/store-message!
                  conversation-id "slackbot"
-                 (metabot-v3.u/aisdk->messages :assistant lines)
+                 (metabot.u/aisdk->messages :assistant lines)
                  :channel-id   channel-id
                  :slack-msg-id (when get-res-slack-msg-id (get-res-slack-msg-id))
                  :user-id      api/*current-user-id*)]

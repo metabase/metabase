@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase.analytics.prometheus-test :as prometheus-test]
    [metabase.metabot.agent.core :as agent]
-   [metabase.metabot.feedback :as metabot-v3.feedback]
+   [metabase.metabot.feedback :as metabot.feedback]
    [metabase.slackbot.api :as slackbot]
    [metabase.slackbot.client :as slackbot.client]
    [metabase.slackbot.persistence :as slackbot.persistence]
@@ -704,9 +704,9 @@
           harbormaster-calls (atom [])
           open-view-calls    (atom [])]
       (with-redefs [slackbot/slack-id->user-id                  (constantly (mt/user->id :rasta))
-                    metabot-v3.feedback/submit-to-harbormaster!  (fn [feedback]
-                                                                   (swap! harbormaster-calls conj feedback)
-                                                                   true)
+                    metabot.feedback/submit-to-harbormaster!  (fn [feedback]
+                                                                (swap! harbormaster-calls conj feedback)
+                                                                true)
                     slackbot.client/open-view                    (fn [_ params]
                                                                    (swap! open-view-calls conj params)
                                                                    {:ok true})]
@@ -755,9 +755,9 @@
     (let [harbormaster-calls (atom [])
           open-view-calls    (atom [])]
       (with-redefs [slackbot/slack-id->user-id                  (constantly nil)
-                    metabot-v3.feedback/submit-to-harbormaster!  (fn [feedback]
-                                                                   (swap! harbormaster-calls conj feedback)
-                                                                   true)
+                    metabot.feedback/submit-to-harbormaster!  (fn [feedback]
+                                                                (swap! harbormaster-calls conj feedback)
+                                                                true)
                     slackbot.client/open-view                    (fn [_ params]
                                                                    (swap! open-view-calls conj params)
                                                                    {:ok true})]
@@ -777,9 +777,9 @@
 (deftest handle-feedback-modal-submission-test
   (testing "modal submission sends feedback to harbormaster"
     (let [harbormaster-calls (atom [])]
-      (with-redefs [metabot-v3.feedback/submit-to-harbormaster! (fn [feedback]
-                                                                  (swap! harbormaster-calls conj feedback)
-                                                                  true)]
+      (with-redefs [metabot.feedback/submit-to-harbormaster! (fn [feedback]
+                                                               (swap! harbormaster-calls conj feedback)
+                                                               true)]
         (let [payload {:type "view_submission"
                        :view {:callback_id      "metabot_feedback_modal"
                               :private_metadata (json/encode {:conversation_id "conv-123"
@@ -800,9 +800,9 @@
 
   (testing "modal submission with only freeform text submits"
     (let [harbormaster-calls (atom [])]
-      (with-redefs [metabot-v3.feedback/submit-to-harbormaster! (fn [feedback]
-                                                                  (swap! harbormaster-calls conj feedback)
-                                                                  true)]
+      (with-redefs [metabot.feedback/submit-to-harbormaster! (fn [feedback]
+                                                               (swap! harbormaster-calls conj feedback)
+                                                               true)]
         (let [payload {:type "view_submission"
                        :view {:callback_id      "metabot_feedback_modal"
                               :private_metadata (json/encode {:conversation_id "conv-123"
@@ -818,9 +818,9 @@
 
   (testing "modal submission with no details still submits basic feedback"
     (let [harbormaster-calls (atom [])]
-      (with-redefs [metabot-v3.feedback/submit-to-harbormaster! (fn [feedback]
-                                                                  (swap! harbormaster-calls conj feedback)
-                                                                  true)]
+      (with-redefs [metabot.feedback/submit-to-harbormaster! (fn [feedback]
+                                                               (swap! harbormaster-calls conj feedback)
+                                                               true)]
         (let [payload {:type "view_submission"
                        :view {:callback_id      "metabot_feedback_modal"
                               :private_metadata (json/encode {:conversation_id "conv-123"
@@ -836,9 +836,9 @@
 
   (testing "modal submission with only issue type submits"
     (let [harbormaster-calls (atom [])]
-      (with-redefs [metabot-v3.feedback/submit-to-harbormaster! (fn [feedback]
-                                                                  (swap! harbormaster-calls conj feedback)
-                                                                  true)]
+      (with-redefs [metabot.feedback/submit-to-harbormaster! (fn [feedback]
+                                                               (swap! harbormaster-calls conj feedback)
+                                                               true)]
         (let [payload {:type "view_submission"
                        :view {:callback_id      "metabot_feedback_modal"
                               :private_metadata (json/encode {:conversation_id "conv-123"

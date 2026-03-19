@@ -2380,7 +2380,7 @@
               metabase-enterprise.metabot.init
               metabase-enterprise.metabot.tools.api}
    :friends #{enterprise/agent-api
-              enterprise/slackbot
+              slackbot
               metabot}
    :uses    #{activity-feed
               analytics
@@ -2420,7 +2420,7 @@
               warehouses
               enterprise/api
               enterprise/dependencies
-              enterprise/slackbot
+              slackbot
               enterprise/transforms-python}}
 
   enterprise/permission-debug

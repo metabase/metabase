@@ -4,7 +4,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.driver.util :as driver.u]
-   [metabase.metabot.core :as metabot-v3]
+   [metabase.metabot.core :as metabot]
    [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
@@ -20,9 +20,9 @@
    {:keys [prompt database_id]} :- [:map
                                     [:prompt ms/NonBlankString]
                                     [:database_id ms/PositiveInt]]]
-  (-> (metabot-v3/generate-sql {:dialect (driver.u/database->driver database_id)
-                                :instructions prompt
-                                :tables (metabot-v3/database-tables database_id)})
+  (-> (metabot/generate-sql {:dialect (driver.u/database->driver database_id)
+                             :instructions prompt
+                             :tables (metabot/database-tables database_id)})
       (select-keys [:generated_sql])))
 
 (def ^{:arglists '([request respond raise])} routes

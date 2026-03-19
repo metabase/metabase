@@ -5,7 +5,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.app-db.core :as mdb]
-   [metabase.metabot.suggested-prompts :as metabot-v3.suggested-prompts]
+   [metabase.metabot.suggested-prompts :as metabot.suggested-prompts]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
@@ -55,8 +55,8 @@
     (let [old-vals (select-keys old-metabot (keys metabot-updates))]
       (when (not= old-vals metabot-updates)
         (t2/update! :model/Metabot id metabot-updates)
-        (metabot-v3.suggested-prompts/delete-all-metabot-prompts id)
-        (metabot-v3.suggested-prompts/generate-sample-prompts id))
+        (metabot.suggested-prompts/delete-all-metabot-prompts id)
+        (metabot.suggested-prompts/generate-sample-prompts id))
       (t2/select-one :model/Metabot :id id))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -69,8 +69,8 @@
   (api/check-superuser)
   (t2/with-transaction [_conn]
     (api/check-404 (t2/exists? :model/Metabot :id id))
-    (metabot-v3.suggested-prompts/delete-all-metabot-prompts id)
-    (metabot-v3.suggested-prompts/generate-sample-prompts id))
+    (metabot.suggested-prompts/delete-all-metabot-prompts id)
+    (metabot.suggested-prompts/generate-sample-prompts id))
   api/generic-204-no-content)
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
@@ -132,7 +132,7 @@
   "Delete all prompt suggestions for the metabot instance with `id`."
   [{:keys [id]} :- [:map [:id pos-int?]]]
   (api/check-superuser)
-  (metabot-v3.suggested-prompts/delete-all-metabot-prompts id)
+  (metabot.suggested-prompts/delete-all-metabot-prompts id)
   api/generic-204-no-content)
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

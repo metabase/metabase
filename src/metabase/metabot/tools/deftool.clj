@@ -4,7 +4,7 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [metabase.api.macros :as api.macros]
-   [metabase.metabot.context :as metabot-v3.context]
+   [metabase.metabot.context :as metabot.context]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -43,7 +43,7 @@
   [{:keys [arguments conversation_id profile_id] :as body}
    request
    {:keys [api-name args-schema result-schema handler]}]
-  (metabot-v3.context/log (assoc body :api api-name) :llm.log/llm->be)
+  (metabot.context/log (assoc body :api api-name) :llm.log/llm->be)
   (let [metabot-id   (:metabot/metabot-id request)
         encoded-args (cond-> (if args-schema
                                (mc/encode args-schema arguments request-transformer)
@@ -55,7 +55,7 @@
                        (mc/decode result-schema raw-result response-transformer)
                        raw-result)]
     (doto (assoc result :conversation_id conversation_id)
-      (metabot-v3.context/log :llm.log/be->llm))))
+      (metabot.context/log :llm.log/be->llm))))
 
 (defmacro deftool
   "Define a tool endpoint with standard encoding/decoding and logging behavior.

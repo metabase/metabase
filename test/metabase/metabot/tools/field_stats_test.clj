@@ -3,8 +3,8 @@
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.metabot.tools.field-stats :as metabot-v3.tools.field-stats]
-   [metabase.metabot.tools.util :as metabot-v3.tools.u]
+   [metabase.metabot.tools.field-stats :as metabot.tools.field-stats]
+   [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.test :as mt]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
@@ -41,14 +41,14 @@
   (let [mp             (mt/metadata-provider)
         people-id      (mt/id :people)
         people-query   (table-query mp people-id)
-        birth-date-id  (visible-field-id people-query (metabot-v3.tools.u/table-field-id-prefix people-id) "Birth Date")
-        state-id       (visible-field-id people-query (metabot-v3.tools.u/table-field-id-prefix people-id) "State")
+        birth-date-id  (visible-field-id people-query (metabot.tools.u/table-field-id-prefix people-id) "Birth Date")
+        state-id       (visible-field-id people-query (metabot.tools.u/table-field-id-prefix people-id) "State")
         products-id    (mt/id :products)
         products-query (table-query mp products-id)
-        category-id    (visible-field-id products-query (metabot-v3.tools.u/table-field-id-prefix products-id) "Category")]
+        category-id    (visible-field-id products-query (metabot.tools.u/table-field-id-prefix products-id) "Category")]
     (testing "No read permission results in an error."
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
-                            (metabot-v3.tools.field-stats/field-values
+                            (metabot.tools.field-stats/field-values
                              {:entity-type "table", :entity-id people-id, :field-id state-id, :limit 5}))))
     (testing "Getting statistics and values for table fields works."
       (mt/as-admin
@@ -56,7 +56,7 @@
              (= {:structured-output {:result-type    :field-metadata
                                      :field_id       field-id
                                      :value_metadata value-metadata}}
-                (metabot-v3.tools.field-stats/field-values
+                (metabot.tools.field-stats/field-values
                  {:entity-type "table", :entity-id table-id, :field-id field-id, :limit 5}))
           people-id   birth-date-id {:statistics
                                      {:distinct-count 2308
@@ -88,21 +88,21 @@
                                              :type :model}]
     (let [mp (mt/metadata-provider)
           model-query (lib/query mp (lib.metadata/card mp model-id))
-          card-field-id-prefix (metabot-v3.tools.u/card-field-id-prefix model-id)
+          card-field-id-prefix (metabot.tools.u/card-field-id-prefix model-id)
           ;; All fields use c<card-id> syntax with indices from model's visible-columns
           quantity-id (visible-field-id model-query card-field-id-prefix "Quantity")
           state-id (visible-field-id model-query card-field-id-prefix "State")
           category-id (visible-field-id model-query card-field-id-prefix "Category")]
       (testing "No read permission results in an error."
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
-                              (metabot-v3.tools.field-stats/field-values
+                              (metabot.tools.field-stats/field-values
                                {:entity-type "model", :entity-id model-id, :field-id state-id, :limit 5}))))
       (testing "Getting statistics and values for model fields works."
         (mt/as-admin
           (are [field-id value-metadata]
                (=? {:structured-output {:field_id field-id
                                         :value_metadata value-metadata}}
-                   (metabot-v3.tools.field-stats/field-values
+                   (metabot.tools.field-stats/field-values
                     {:entity-type "model", :entity-id model-id, :field-id field-id, :limit 5}))
             quantity-id {:statistics {:distinct-count 62
                                       :percent-null   0.0}
@@ -133,20 +133,20 @@
                                               :type :metric}]
     (let [mp (mt/metadata-provider)
           metric-query (lib/query mp (lib.metadata/metric mp metric-id))
-          card-field-id-prefix (metabot-v3.tools.u/card-field-id-prefix metric-id)
+          card-field-id-prefix (metabot.tools.u/card-field-id-prefix metric-id)
           ;; All fields use c<card-id> syntax with indices from metric's filterable-columns
           quantity-id (filterable-field-id metric-query card-field-id-prefix "Quantity")
           birth-date-id (filterable-field-id metric-query card-field-id-prefix "Birth Date")]
       (testing "No read permission results in an error."
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
-                              (metabot-v3.tools.field-stats/field-values
+                              (metabot.tools.field-stats/field-values
                                {:entity-type "metric", :entity-id metric-id, :field-id birth-date-id, :limit 5}))))
       (testing "Getting statistics and values for metric fields works."
         (mt/as-admin
           (are [field-id value-metadata]
                (=? {:structured-output {:field_id field-id
                                         :value_metadata value-metadata}}
-                   (metabot-v3.tools.field-stats/field-values
+                   (metabot.tools.field-stats/field-values
                     {:entity-type "metric", :entity-id metric-id, :field-id field-id, :limit 5}))
             quantity-id   {:statistics {:distinct-count 62
                                         :percent-null   0.0}

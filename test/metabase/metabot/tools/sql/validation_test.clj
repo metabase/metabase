@@ -2,7 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest testing is]]
-   [metabase.metabot.tools.sql.validation :as metabot-v3.tools.sql.validation]))
+   [metabase.metabot.tools.sql.validation :as metabot.tools.sql.validation]))
 
 ;;;; contains-template-tags?
 
@@ -21,7 +21,7 @@
 (deftest contains-template-tags?-positive-test
   (doseq [{:keys [context  sql]} contains-template-tags-positive-cases]
     (testing context
-      (is (true? (#'metabot-v3.tools.sql.validation/contains-template-tags? sql))))))
+      (is (true? (#'metabot.tools.sql.validation/contains-template-tags? sql))))))
 
 (def ^:private contains-template-tags-negative-cases
   [{:context "Single curly braces (e.g., JSON) should not trigger detection"
@@ -34,7 +34,7 @@
 (deftest contains-template-tags?-negative-test
   (doseq [{:keys [context  sql]} contains-template-tags-negative-cases]
     (testing context
-      (is (false? (#'metabot-v3.tools.sql.validation/contains-template-tags? sql))))))
+      (is (false? (#'metabot.tools.sql.validation/contains-template-tags? sql))))))
 
 ;;;; validate-sql
 
@@ -80,7 +80,7 @@
   (doseq [{:keys [context dialect expected sql]} validation-cases]
     (testing context
       (is (=? expected
-              (metabot-v3.tools.sql.validation/validate-sql dialect sql))))))
+              (metabot.tools.sql.validation/validate-sql dialect sql))))))
 
 (def ^:private transpilation-cases
   "Testing _context_ describe a test case. Apart from that, pretty formatting is checked by comparisons of raw output
@@ -107,4 +107,4 @@
   (doseq [{:keys [context dialect expected sql]} transpilation-cases]
     (testing context
       (is (=? expected
-              (metabot-v3.tools.sql.validation/validate-sql dialect sql))))))
+              (metabot.tools.sql.validation/validate-sql dialect sql))))))
