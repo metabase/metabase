@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import * as jsxRuntime from "react/jsx-runtime";
+import { t } from "ttag";
 
 import { useListCustomVizPluginsQuery } from "metabase/api";
+import { useToast } from "metabase/common/hooks";
 import type { IconName } from "metabase/ui";
 import type {
   CustomVizPluginRuntime,
@@ -11,6 +13,15 @@ import type {
 import type { Visualization } from "./types/visualization";
 
 import visualizations, { registerVisualization } from ".";
+
+type CustomVizPluginDefinition = {
+  VisualizationComponent: Visualization;
+  minSize?: Visualization["minSize"];
+  defaultSize?: Visualization["defaultSize"];
+  isSensible?: Visualization["isSensible"];
+  checkRenderable?: Visualization["checkRenderable"];
+  settings?: Visualization["settings"];
+};
 
 // ---------------------------------------------------------------------------
 // Global API exposed to plugin bundles via window.__METABASE_VIZ_API__
@@ -24,7 +35,9 @@ declare global {
       jsxRuntime: typeof jsxRuntime;
     };
     // Set by custom viz IIFE bundles during loading, read and cleared by loadCustomVizPlugin
-    __customVizPlugin__?: (...args: unknown[]) => unknown;
+    __customVizPlugin__?: (
+      ...args: unknown[]
+    ) => CustomVizPluginDefinition | null | undefined;
   }
 }
 
@@ -72,6 +85,7 @@ function useCustomVizDevReload(
   display: string | undefined,
   plugins: CustomVizPluginRuntime[] | undefined,
   setLoading: (loading: boolean) => void,
+  onInfo: (message: string) => void,
 ) {
   useEffect(() => {
     if (!isCustomVizDisplay(display) || !plugins) {
@@ -97,7 +111,7 @@ function useCustomVizDevReload(
       );
       setLoading(true);
       try {
-        await loadCustomVizPlugin(plugin, `?t=${Date.now()}`);
+        await loadCustomVizPlugin(plugin, `?t=${Date.now()}`, onInfo);
       } finally {
         setLoading(false);
       }
@@ -110,7 +124,7 @@ function useCustomVizDevReload(
     return () => {
       eventSource.close();
     };
-  }, [display, plugins, setLoading]);
+  }, [display, onInfo, plugins, setLoading]);
 }
 
 /**
@@ -125,31 +139,42 @@ export function useAutoLoadCustomVizPlugin(display: string | undefined): {
   loading: boolean;
 } {
   const plugins = useCustomVizPlugins();
+  const [sendToast] = useToast();
   const [loading, setLoading] = useState(false);
   const loadingRef = useRef<string | null>(null);
 
-  const load = useCallback(async (pluginToLoad: CustomVizPluginRuntime) => {
-    const ident = `custom:${pluginToLoad.identifier}`;
-    if (loadingRef.current === ident) {
-      return;
-    }
-    const existing = loadedPlugins.get(pluginToLoad.id);
-    if (
-      existing &&
-      existing.commit === pluginToLoad.resolved_commit &&
-      !pluginToLoad.dev_bundle_url
-    ) {
-      return;
-    }
-    loadingRef.current = ident;
-    setLoading(true);
-    try {
-      await loadCustomVizPlugin(pluginToLoad);
-    } finally {
-      loadingRef.current = null;
-      setLoading(false);
-    }
-  }, []);
+  const onInfo = useCallback(
+    (message: string) => {
+      sendToast({ message });
+    },
+    [sendToast],
+  );
+
+  const load = useCallback(
+    async (pluginToLoad: CustomVizPluginRuntime) => {
+      const ident = `custom:${pluginToLoad.identifier}`;
+      if (loadingRef.current === ident) {
+        return;
+      }
+      const existing = loadedPlugins.get(pluginToLoad.id);
+      if (
+        existing &&
+        existing.commit === pluginToLoad.resolved_commit &&
+        !pluginToLoad.dev_bundle_url
+      ) {
+        return;
+      }
+      loadingRef.current = ident;
+      setLoading(true);
+      try {
+        await loadCustomVizPlugin(pluginToLoad, undefined, onInfo);
+      } finally {
+        loadingRef.current = null;
+        setLoading(false);
+      }
+    },
+    [onInfo],
+  );
 
   useEffect(() => {
     if (!isCustomVizDisplay(display) || !plugins) {
@@ -167,7 +192,7 @@ export function useAutoLoadCustomVizPlugin(display: string | undefined): {
     }
   }, [display, plugins, load]);
 
-  useCustomVizDevReload(display, plugins, setLoading);
+  useCustomVizDevReload(display, plugins, setLoading, onInfo);
 
   // `loading` state drives re-renders when async load completes.
   // Without it, the Map-based check alone wouldn't trigger a re-render.
@@ -195,6 +220,7 @@ export function useAutoLoadCustomVizPlugin(display: string | undefined): {
 export async function loadCustomVizPlugin(
   plugin: CustomVizPluginRuntime,
   cacheBustSuffix?: string,
+  onInfo?: (message: string) => void,
 ): Promise<string | null> {
   const existing = loadedPlugins.get(plugin.id);
   if (
@@ -219,10 +245,20 @@ export async function loadCustomVizPlugin(
       bundleUrl.searchParams.set("v", plugin.resolved_commit);
     }
     const res = await fetch(bundleUrl.href, { cache: "no-store" });
+    if (!res.ok) {
+      onInfo?.(
+        t`Couldn't load "${plugin.display_name}" plugin bundle (HTTP ${res.status}).`,
+      );
+      return null;
+    }
+
     const text = await res.text();
 
     // Execute in global scope so `var __customVizPlugin__` assigns to window
     const script = document.createElement("script");
+    if (window.MetabaseNonce) {
+      script.nonce = window.MetabaseNonce;
+    }
     script.textContent = text;
     document.head.appendChild(script);
     document.head.removeChild(script);
