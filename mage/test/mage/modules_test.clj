@@ -197,12 +197,12 @@
         (is (= "master/release branch" (:reason result)))))))
 
 ;;; =============================================================================
-;;; Priority 10: Driver deps affected (self-hosted only)
+;;; Priority 11: Driver deps affected (self-hosted only)
 ;;; =============================================================================
 
 (deftest driver-deps-affected-runs-self-hosted-drivers
   (testing "Self-hosted drivers run when driver module is affected"
-    ;; H2/Postgres hit priority 2 first, others hit priority 10
+    ;; H2/Postgres hit priority 2 first, others hit priority 11
     (doseq [driver [:mysql :mongo :oracle :sqlserver]]
       (let [result (mage.modules/driver-decision driver
                                                  (make-ctx {})
@@ -279,7 +279,7 @@
         (is (= "no relevant changes for cloud driver" (:reason result)))))))
 
 ;;; =============================================================================
-;;; Priority 11: Self-hosted drivers
+;;; Priority 12: Self-hosted drivers
 ;;; =============================================================================
 
 (deftest self-hosted-driver-not-affected-skips
