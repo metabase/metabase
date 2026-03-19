@@ -3,6 +3,7 @@ import {
   compareVersions,
   getDockerImage,
   getMajorVersion,
+  getVersionBranch,
 } from "../release/src/cross-version-helpers";
 
 const [cmd, ...args] = process.argv.slice(2);
@@ -13,7 +14,9 @@ if (cmd === "compare") {
   console.log(getDockerImage(args[0]));
 } else if (cmd === "major") {
   console.log(getMajorVersion(args[0]));
+} else if (cmd === "branch") {
+  console.log(getVersionBranch(args[0]));
 } else {
-  console.error("Usage: cli.ts <compare|image|major> [args]");
+  console.error("Usage: cli.ts <compare|image|major|branch> [args]");
   process.exit(1);
 }
