@@ -1672,11 +1672,11 @@
      [:lower field])
    pattern])
 
-(def ^:private StringValueOrFieldOrExpression
-  [:or
-   [:and driver-api/mbql.schema.value
-    [:fn {:error/message "string value"} #(string? (second %))]]
-   driver-api/mbql.schema.FieldOrExpressionDef])
+#_(def ^:private StringValueOrFieldOrExpression
+    [:or
+     [:and driver-api/mbql.schema.value
+      [:fn {:error/message "string value"} #(string? (second %))]]
+     driver-api/mbql.schema.FieldOrExpressionDef])
 
 (defmulti escape-like-pattern
   "Handle escaping a literal string into a `LIKE` clause pattern which will match literally.

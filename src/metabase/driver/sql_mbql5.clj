@@ -26,8 +26,14 @@
       :stages))
 
 (defn- stage->honeysql [driver stage]
-  (if (= (:lib/type stage) :mbql.stage/native)
+  (cond
+    (:persisted-info/native stage)
+    (sql.qp/sql-source-query (:persisted-info/native stage) nil)
+
+    (= (:lib/type stage) :mbql.stage/native)
     (sql.qp/sql-source-query (:native stage) (:params stage))
+
+    :else
     (binding [sql.qp/*inner-query* stage]
       (#'sql.qp/apply-top-level-clauses driver {} stage))))
 
