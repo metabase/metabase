@@ -19,6 +19,11 @@ To inspect a transform, you need to run the transform at least once, since the i
 
 The inspector organizes its analysis into different lenses (displayed as tabs). Each lens focuses on specific aspects of your transform. Lenses only appear when relevant: for example, join analysis only shows up for transforms that include joins.
 
+- [Data summary](#data-summary)
+- [Column distributions](#column-distributions)
+- [Join analysis](#join-analysis)
+- [Drill lenses](#drill-lenses)
+
 ### Data summary
 
 Data summary gives you a quick snapshot of the transform's input and output tables:
