@@ -28,7 +28,6 @@ export interface VirtualGrid {
   rowVirtualizer: Virtualizer<HTMLDivElement, Element>;
   columnVirtualizer: Virtualizer<HTMLDivElement, Element>;
   measureGrid: () => void;
-  scrollTo: (options: { rowIndex?: number; columnIndex?: number }) => void;
   virtualIndexAttributeName: string;
 }
 
@@ -82,25 +81,6 @@ export const useVirtualGrid = <TData,>({
     columnVirtualizer.measure();
   }, [columnVirtualizer]);
 
-  const pinnedColumnsCount = table.getLeftLeafColumns().length;
-  const scrollTo = useCallback(
-    ({
-      rowIndex,
-      columnIndex,
-    }: {
-      rowIndex?: number;
-      columnIndex?: number;
-    }) => {
-      if (rowIndex != null) {
-        rowVirtualizer.scrollToIndex(rowIndex);
-      }
-      if (columnIndex != null && columnIndex >= pinnedColumnsCount) {
-        columnVirtualizer.scrollToIndex(columnIndex - pinnedColumnsCount);
-      }
-    },
-    [rowVirtualizer, columnVirtualizer, pinnedColumnsCount],
-  );
-
   const virtualColumns = columnVirtualizer.getVirtualItems();
   const virtualRows = rowVirtualizer.getVirtualItems();
 
@@ -116,7 +96,6 @@ export const useVirtualGrid = <TData,>({
     rowVirtualizer,
     columnVirtualizer,
     measureGrid,
-    scrollTo,
     virtualIndexAttributeName,
   };
 };

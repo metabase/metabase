@@ -738,7 +738,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     minGridWidth,
     enableSelection: true,
   });
-  const { virtualGrid, columnsReordering } = tableProps;
+  const { getCenterColumns, scrollTo, columnsReordering } = tableProps;
   const infoPopoversDisabled =
     clicked !== null ||
     !hasMetadataPopovers ||
@@ -755,20 +755,16 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
 
   const scrolledColumnRef = useRef<number | null>(null);
   useEffect(() => {
-    const hasColumns = virtualGrid.virtualColumns.length > 0;
+    const hasColumns = getCenterColumns().length > 0;
     if (hasColumns && scrollToLastColumn) {
-      virtualGrid.columnVirtualizer.scrollToIndex(
-        tableProps.table.getAllColumns().length,
-        {
-          align: "end",
-        },
-      );
+      const lastIndex = tableProps.table.getAllColumns().length - 1;
+      scrollTo({ column: { index: lastIndex, options: { align: "end" } } });
       dispatch(setUIControls({ scrollToLastColumn: false }));
     } else if (
       scrollToColumn != null &&
       scrolledColumnRef.current !== scrollToColumn
     ) {
-      virtualGrid.columnVirtualizer.scrollToIndex(scrollToColumn);
+      scrollTo({ column: { index: scrollToColumn } });
       scrolledColumnRef.current = scrollToColumn;
     }
   }, [
@@ -776,7 +772,8 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     scrollToLastColumn,
     dispatch,
     tableProps.table,
-    virtualGrid,
+    getCenterColumns,
+    scrollTo,
   ]);
 
   const handleWheel = useCallback(() => {

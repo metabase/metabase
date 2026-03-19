@@ -13,7 +13,7 @@ import type {
   SortingState,
   Table,
 } from "@tanstack/react-table";
-import type { VirtualItem } from "@tanstack/react-virtual";
+import type { ScrollToOptions, VirtualItem } from "@tanstack/react-virtual";
 import type { RefObject } from "react";
 
 import type { ColumnsReordering } from "./hooks/use-columns-reordering";
@@ -293,6 +293,16 @@ export type CellId = {
   cellId: string;
 };
 
+export type ScrollToDestination = {
+  index: number;
+  options?: ScrollToOptions;
+};
+
+export type ScrollToDestinations = {
+  row?: ScrollToDestination;
+  column?: ScrollToDestination;
+};
+
 export interface DataGridInstance<TData> {
   table: Table<TData>;
   gridRef: RefObject<HTMLDivElement>;
@@ -311,6 +321,7 @@ export interface DataGridInstance<TData> {
   getCenterColumns: () => DataGridColumnType<TData>[];
   datasetIndexAttributeName: string;
   rowMeasureRef: (element: HTMLDivElement | null) => void;
+  scrollTo: (destinations: ScrollToDestinations) => void;
   onHeaderCellClick?: (
     event: React.MouseEvent<HTMLDivElement>,
     columnId?: string,

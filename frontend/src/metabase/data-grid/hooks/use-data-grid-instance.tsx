@@ -42,6 +42,7 @@ import type {
   DataGridOptions,
   DataGridRowType,
   ExpandedColumnsState,
+  ScrollToDestinations,
 } from "metabase/data-grid/types";
 import { getDataColumn } from "metabase/data-grid/utils/columns/data-column";
 import { getRowIdColumn } from "metabase/data-grid/utils/columns/row-id-column";
@@ -433,16 +434,35 @@ export const useDataGridInstance = <TData, TValue>({
   );
 
   const isResizingColumn = !!table.getState().columnSizingInfo.isResizingColumn;
-  const isNextInteracting = columnsReordering.isDragging || isResizingColumn;
+  const isInteracting = columnsReordering.isDragging || isResizingColumn;
   useEffect(() => {
-    toggleColumnPinningLimiter(isNextInteracting);
-  }, [toggleColumnPinningLimiter, isNextInteracting]);
+    toggleColumnPinningLimiter(isInteracting);
+  }, [toggleColumnPinningLimiter, isInteracting]);
+
+  const scrollTo = useCallback(
+    ({ row, column }: ScrollToDestinations) => {
+      if (row) {
+        const rowPinningCount = rowPinning.top?.length ?? 0;
+        const rowIndex = Math.max(row.index - rowPinningCount, 0);
+        virtualGrid.rowVirtualizer.scrollToIndex(rowIndex, row.options);
+      }
+      if (column) {
+        const columnPinningCount = columnPinning.left?.length ?? 0;
+        const columnIndex = Math.max(column.index - columnPinningCount, 0);
+        virtualGrid.columnVirtualizer.scrollToIndex(
+          columnIndex,
+          column.options,
+        );
+      }
+    },
+    [virtualGrid, rowPinning, columnPinning],
+  );
 
   const selection = useCellSelection({
     gridRef,
     table,
     isEnabled: enableSelection,
-    scrollTo: virtualGrid.scrollTo,
+    scrollTo,
   });
 
   // Calculate total height of the grid based on rows
@@ -587,5 +607,6 @@ export const useDataGridInstance = <TData, TValue>({
     datasetIndexAttributeName,
     enablePagination,
     sorting,
+    scrollTo,
   };
 };
