@@ -1,12 +1,12 @@
 (ns metabase.metabot.api.metabot
   "`/api/ee/metabot-v3/metabot` routes"
   (:require
-   [metabase.metabot.suggested-prompts :as metabot-v3.suggested-prompts]
-   [metabase.metabot.tools.util :as metabot-v3.tools.u]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.app-db.core :as mdb]
+   [metabase.metabot.suggested-prompts :as metabot-v3.suggested-prompts]
+   [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.util.i18n :refer [tru]]
@@ -93,7 +93,7 @@
                   :postgres :random
                   :rand)
         base-query (cond-> {:join  [[{:select [:id :name :type]
-                                      :from   [[(metabot-v3.tools.u/metabot-metrics-and-models-query id)
+                                      :from   [[(metabot.tools.u/metabot-metrics-and-models-query id)
                                                 :scope]]}
                                      :card]
                                     [:and

@@ -1,9 +1,9 @@
 (ns metabase.metabot.tools.create-alert
   (:require
    [clojure.set :as set]
-   [metabase.metabot.tools.util :as metabot-v3.tools.u]
    [metabase.api.common :as api]
    [metabase.channel.settings :as channel.settings]
+   [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.notification.api :as notification.api]
    [metabase.util.cron :as u.cron]
    [toucan2.core :as t2]))
@@ -13,7 +13,7 @@
   The schedule comes in as e.g. {:frequency :daily :hour 9} and needs to be
   converted to a Quartz cron string like \"0 0 9 * * ? *\"."
   [schedule]
-  (u.cron/schedule-map->cron-string (metabot-v3.tools.u/schedule->schedule-map schedule)))
+  (u.cron/schedule-map->cron-string (metabot.tools.u/schedule->schedule-map schedule)))
 
 (defn- create-alert*
   "Private helper for create-alert (call that instead)."
@@ -70,5 +70,5 @@
     (try
       (create-alert* args)
       (catch Exception e
-        (-> (metabot-v3.tools.u/handle-agent-error e)
+        (-> (metabot.tools.u/handle-agent-error e)
             (set/rename-keys {:output :error}))))))

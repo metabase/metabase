@@ -28,9 +28,9 @@
 
   Examples calls are ;; using doto
     (doto (request message context history)
-      (metabot-v3.context/log :llm.log/be->fe))
+      (metabot.context/log :llm.log/be->fe))
     ;; or just regularly
-    (metabot-v3.context/log _body :llm.log/fe->be)"
+    (metabot.context/log _body :llm.log/fe->be)"
   [payload direction]
   (when config/is-dev?
     (let [directions {:llm.log/fe->be "\"FE -----------------> BE\""
@@ -57,7 +57,7 @@
   capability."
   []
   ;; 20 ns per call, safe to keep unmemoized
-  (for [[[_method url _params] _spec] (-> (the-ns 'metabase-enterprise.metabot-v3.tools.api)
+  (for [[[_method url _params] _spec] (-> (the-ns 'metabase.metabot.tools.api)
                                           meta
                                           :api/endpoints)]
     (str "backend:/api/ee/metabot-tools" url)))

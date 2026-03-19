@@ -245,7 +245,7 @@
   :development-mode)
 
 (define-premium-feature ^{:added "0.52.0"} enable-metabot-v3?
-  "Enable the newest LLM-based MetaBot? (The one that lives in [[metabase-enterprise.metabot-v3.core]].)"
+  "Enable the newest LLM-based MetaBot? (The one that lives in [[metabase.metabot.core]].)"
   :metabot-v3)
 
 (define-premium-feature ^{:added "0.54.0"} enable-ai-sql-fixer?

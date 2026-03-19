@@ -4,20 +4,18 @@
   (:require
    [clojure.string :as str]
    [malli.core :as mc]
-   [metabase.agent-api.workspace :as agent-workspace]
-   [metabase.metabot-v3.tools.api :as tools.api]
-   [metabase.metabot-v3.tools.deftool :as deftool]
-   [metabase.metabot-v3.tools.entity-details :as entity-details]
-   [metabase.metabot-v3.tools.field-stats :as field-stats]
-   [metabase.metabot-v3.tools.filters :as metabot-filters]
-   [metabase.metabot-v3.tools.search :as metabot-search]
-   [metabase.metabot-v3.util :as metabot-v3.u]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.macros.scope :as scope]
    [metabase.api.routes.common :as api.routes.common]
-   [metabase.api.util.handlers :as handlers]
    [metabase.auth-identity.core :as auth-identity]
+   [metabase.metabot.tools.api :as tools.api]
+   [metabase.metabot.tools.deftool :as deftool]
+   [metabase.metabot.tools.entity-details :as entity-details]
+   [metabase.metabot.tools.field-stats :as field-stats]
+   [metabase.metabot.tools.filters :as metabot-filters]
+   [metabase.metabot.tools.search :as metabot-search]
+   [metabase.metabot.util :as metabot-v3.u]
    [metabase.query-processor :as qp]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
@@ -551,13 +549,12 @@
                 (handler (assoc request :token-scopes (or (:scopes result) #{::scope/unrestricted}))
                          respond raise))
               (respond (error-response (:error result) (:message result))))))))))
-(def ^:private +auth
+(def +auth
+  "Agent API authentication middleware. Supports both session-based and stateless JWT authentication."
   (api.routes.common/wrap-middleware-for-open-api-spec-generation enforce-authentication))
 
 ;;; ---------------------------------------------------- Routes ------------------------------------------------------
 
 (def ^{:arglists '([request respond raise])} routes
-  "`/api/agent/` routes."
-  (handlers/routes
-   (api.macros/ns-handler *ns* +auth)
-   (agent-workspace/workspace-handler +auth)))
+  "`/api/agent/` routes. Workspace routes are mounted separately via the EE routes file."
+  (api.macros/ns-handler *ns* +auth))

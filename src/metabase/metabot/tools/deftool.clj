@@ -3,8 +3,8 @@
   (:require
    [malli.core :as mc]
    [malli.transform :as mtx]
-   [metabase.metabot.context :as metabot-v3.context]
    [metabase.api.macros :as api.macros]
+   [metabase.metabot.context :as metabot-v3.context]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -31,7 +31,7 @@
 
   Arguments:
   - `body` - The request body containing `:arguments` and `:conversation_id`
-  - `request` - The Ring request map (used to extract `:metabot-v3/metabot-id`)
+  - `request` - The Ring request map (used to extract `:metabot/metabot-id`)
   - `opts` - A map with:
     - `:api-name` - Keyword name for logging (e.g., `:field-values`)
     - `:args-schema` - Malli schema for encoding arguments (optional)
@@ -44,7 +44,7 @@
    request
    {:keys [api-name args-schema result-schema handler]}]
   (metabot-v3.context/log (assoc body :api api-name) :llm.log/llm->be)
-  (let [metabot-id   (:metabot-v3/metabot-id request)
+  (let [metabot-id   (:metabot/metabot-id request)
         encoded-args (cond-> (if args-schema
                                (mc/encode args-schema arguments request-transformer)
                                {})
@@ -79,7 +79,7 @@
       \"Return statistics and/or values for a given field.\"
       {:args-schema   ::field-values-arguments
        :result-schema ::field-values-result
-       :handler       metabot-v3.tools.field-stats/field-values})"
+       :handler       metabot.tools.field-stats/field-values})"
   [route docstring {:keys [args-schema args-optional? result-schema handler]}]
   (let [api-name        (keyword (subs route 1)) ; "/field-values" -> :field-values
         body-schema     (if args-schema

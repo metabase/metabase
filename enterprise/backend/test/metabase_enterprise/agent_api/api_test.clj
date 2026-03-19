@@ -5,12 +5,12 @@
    [environ.core :as env]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase-enterprise.metabot-v3.settings] ; for setting definitions
-   [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase-enterprise.sso.test-setup :as sso.test-setup]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.normalize :as lib.normalize]
+   [metabase.metabot.settings] ; for setting definitions
+   [metabase.metabot.tools.util :as metabot-v3.tools.u]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.test-util :as search.tu]
    [metabase.session.models.session :as session.models]

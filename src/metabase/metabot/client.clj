@@ -14,7 +14,7 @@
    [metabase.metabot.client.schema :as metabot-v3.client.schema]
    [metabase.metabot.config :as metabot-v3.config]
    [metabase.metabot.context :as metabot-v3.context]
-   [metabase.metabot.settings :as metabot-v3.settings]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.premium-features.core :as premium-features]
    [metabase.server.streaming-response :as sr]
    [metabase.system.core :as system]
@@ -38,9 +38,9 @@
    (get-ai-service-token api/*current-user-id* metabot-v3.config/internal-metabot-id))
 
   ([user-id metabot-id]
-   (let [secret (buddy-hash/sha256 (metabot-v3.settings/site-uuid-for-metabot-tools))
+   (let [secret (buddy-hash/sha256 (metabot.settings/site-uuid-for-metabot-tools))
          claims {:user       user-id
-                 :exp        (t/plus (t/instant) (t/seconds (metabot-v3.settings/metabot-ai-service-token-ttl)))
+                 :exp        (t/plus (t/instant) (t/seconds (metabot.settings/metabot-ai-service-token-ttl)))
                  :metabot-id metabot-id}]
      (jwt/encrypt claims secret {:alg :dir, :enc :a128cbc-hs256}))))
 
@@ -79,7 +79,7 @@
         (deliver response-status (some-> <> :status))))))
 
 (defn- ai-url [path]
-  (str (metabot-v3.settings/ai-service-base-url) path))
+  (str (metabot.settings/ai-service-base-url) path))
 
 (defn- check-response!
   "Returns response body on success (200 or 202), throws on failure."
@@ -92,25 +92,25 @@
                      :response (dissoc response :headers)}))))
 
 (defn- metric-selection-endpoint-url []
-  (str (metabot-v3.settings/ai-service-base-url) "/v1/select-metric"))
+  (str (metabot.settings/ai-service-base-url) "/v1/select-metric"))
 
 (defn- fix-sql-endpoint []
-  (str (metabot-v3.settings/ai-service-base-url) "/v1/sql/fix"))
+  (str (metabot.settings/ai-service-base-url) "/v1/sql/fix"))
 
 (defn- generate-sql-endpoint []
-  (str (metabot-v3.settings/ai-service-base-url) "/v1/sql/generate"))
+  (str (metabot.settings/ai-service-base-url) "/v1/sql/generate"))
 
 (defn- analyze-chart-endpoint []
-  (str (metabot-v3.settings/ai-service-base-url) "/v1/analyze/chart"))
+  (str (metabot.settings/ai-service-base-url) "/v1/analyze/chart"))
 
 (defn- analyze-dashboard-endpoint []
-  (str (metabot-v3.settings/ai-service-base-url) "/v1/analyze/dashboard"))
+  (str (metabot.settings/ai-service-base-url) "/v1/analyze/dashboard"))
 
 (defn- example-question-generation-endpoint []
-  (str (metabot-v3.settings/ai-service-base-url) "/v1/example-question-generation/batch"))
+  (str (metabot.settings/ai-service-base-url) "/v1/example-question-generation/batch"))
 
 (defn- document-generate-content-endpoint []
-  (str (metabot-v3.settings/ai-service-base-url) "/v1/document/generate-content"))
+  (str (metabot.settings/ai-service-base-url) "/v1/document/generate-content"))
 
 (defn- quick-closing-body
   "Some requests come with body wrapped in ContentLengthInputStream, and that will never close the underlying stream.
