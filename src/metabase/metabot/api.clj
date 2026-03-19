@@ -11,12 +11,12 @@
    [metabase.metabot.agent.core :as agent]
    [metabase.metabot.api.document]
    [metabase.metabot.api.metabot]
-   [metabase.metabot.client :as metabot-v3.client]
-   [metabase.metabot.client.schema :as metabot-v3.client.schema]
-   [metabase.metabot.config :as metabot-v3.config]
-   [metabase.metabot.context :as metabot-v3.context]
-   [metabase.metabot.envelope :as metabot-v3.envelope]
-   [metabase.metabot.feedback :as metabot-v3.feedback]
+   [metabase.metabot.client :as metabot.client]
+   [metabase.metabot.client.schema :as metabot.client.schema]
+   [metabase.metabot.config :as metabot.config]
+   [metabase.metabot.context :as metabot.context]
+   [metabase.metabot.envelope :as metabot.envelope]
+   [metabase.metabot.feedback :as metabot.feedback]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.tools.api]
@@ -63,7 +63,7 @@
 (defn- check-metabot-enabled!
   "Checks that the Metabot instance identified by `metabot-id` is enabled. Throws a 403 if it's not."
   [metabot-id]
-  (if (= metabot-id metabot-v3.config/embedded-metabot-id)
+  (if (= metabot-id metabot.config/embedded-metabot-id)
     (api/check (metabot.settings/embedded-metabot-enabled?)
                [403 "Embedded Metabot is not enabled."])
     (api/check (metabot.settings/metabot-enabled?)
@@ -169,7 +169,7 @@
   When `:debug?` is true, enables debug logging which emits a `debug_log` data
   part at the end of the stream with full LLM request/response data per iteration."
   [{:keys [profile-id message context history conversation-id state debug?]}]
-  (let [enriched-context (metabot-v3.context/create-context context)
+  (let [enriched-context (metabot.context/create-context context)
         messages         (concat history [message])]
     (sr/streaming-response {:content-type "text/event-stream"} [^OutputStream os canceled-chan]
       (let [parts-atom (atom [])
@@ -196,10 +196,10 @@
 (defn streaming-request
   "Handles an incoming request, making all required tool invocation, LLM call loops, etc."
   [{:keys [metabot_id profile_id message context history conversation_id state debug]}]
-  (let [message    (metabot-v3.envelope/user-message message)
-        metabot-id (metabot-v3.config/resolve-dynamic-metabot-id metabot_id)
+  (let [message    (metabot.envelope/user-message message)
+        metabot-id (metabot.config/resolve-dynamic-metabot-id metabot_id)
         _          (check-metabot-enabled! metabot-id)
-        profile-id (metabot-v3.config/resolve-dynamic-profile-id profile_id metabot-id)
+        profile-id (metabot.config/resolve-dynamic-profile-id profile_id metabot-id)
         ;; Only allow debug mode in dev — never in production
         debug?     (and config/is-dev? (boolean debug))]
     (store-aiservice-messages! conversation_id profile-id [message])
@@ -218,10 +218,10 @@
           :debug?          debug?}))
 
       ;; Fallback to Python AI Service
-      (let [session-id (metabot-v3.client/get-ai-service-token api/*current-user-id* metabot-id)]
+      (let [session-id (metabot.client/get-ai-service-token api/*current-user-id* metabot-id)]
         (log/info "Using Python AI Service" {:profile-id profile-id :debug? debug?})
-        (metabot-v3.client/streaming-request
-         {:context         (metabot-v3.context/create-context context)
+        (metabot.client/streaming-request
+         {:context         (metabot.context/create-context context)
           :metabot-id      metabot-id
           :profile-id      profile-id
           :session-id      session-id
@@ -246,12 +246,12 @@
             [:profile_id {:optional true} :string]
             [:metabot_id {:optional true} :string]
             [:message ms/NonBlankString]
-            [:context ::metabot-v3.context/context]
+            [:context ::metabot.context/context]
             [:conversation_id ms/UUIDString]
-            [:history [:maybe ::metabot-v3.client.schema/messages]]
+            [:history [:maybe ::metabot.client.schema/messages]]
             [:state :map]
             [:debug {:optional true} [:maybe :boolean]]]]
-  (metabot-v3.context/log body :llm.log/fe->be)
+  (metabot.context/log body :llm.log/fe->be)
   (streaming-request body))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -264,7 +264,7 @@
    _query-params
    feedback :- :map]
   (try
-    (api/check-400 (metabot-v3.feedback/submit-to-harbormaster! feedback)
+    (api/check-400 (metabot.feedback/submit-to-harbormaster! feedback)
                    "Cannot submit feedback. The license token and/or Store API URL are missing!")
     api/generic-204-no-content
     (catch Exception e

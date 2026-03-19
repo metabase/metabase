@@ -2,13 +2,13 @@
   "`/api/ee/metabot-v3/document` routes"
   (:require
    [clojure.string :as str]
-   [metabase.metabot.agent.core :as metabot-v3.agent]
-   [metabase.metabot.client :as metabot-v3.client]
-   [metabase.metabot.context :as metabot-v3.context]
-   [metabase.metabot.table-utils :as table-utils]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.metabot.agent.core :as metabot.agent]
+   [metabase.metabot.client :as metabot.client]
+   [metabase.metabot.context :as metabot.context]
+   [metabase.metabot.table-utils :as table-utils]
    [metabase.query-processor :as qp]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouses.core :as warehouses]))
@@ -16,7 +16,7 @@
 (set! *warn-on-reflection* true)
 
 (defn- fix-sql [fix-request]
-  (let [response (metabot-v3.client/fix-sql fix-request)
+  (let [response (metabot.client/fix-sql fix-request)
         return-sql (:sql fix-request)]
     (when-let [fixes (:fixes response)]
       (str/join "\n" (reduce
@@ -111,9 +111,9 @@
 (defn- native-generate-content
   [{:keys [instructions references]}]
   (let [context (assoc
-                 (metabot-v3.context/create-context {:capabilities #{"permission:write_sql_queries"}})
+                 (metabot.context/create-context {:capabilities #{"permission:write_sql_queries"}})
                  :references references)
-        parts (into [] (metabot-v3.agent/run-agent-loop
+        parts (into [] (metabot.agent/run-agent-loop
                         {:messages           [{:role :user
                                                :content instructions}]
                          :profile-id         :document-generate-content
@@ -149,10 +149,10 @@
    body :- [:map
             [:instructions ms/NonBlankString]
             [:references {:optional true} ms/Map]]]
-  (let [response (metabot-v3.client/document-generate-content {:instructions    (:instructions body)
-                                                               :references      (:references body)
-                                                               :user_id         api/*current-user-id*
-                                                               :conversation_id (str (random-uuid))})]
+  (let [response (metabot.client/document-generate-content {:instructions    (:instructions body)
+                                                            :references      (:references body)
+                                                            :user_id         api/*current-user-id*
+                                                            :conversation_id (str (random-uuid))})]
     (maybe-fix-native-sql response (:references body))))
 
 (api.macros/defendpoint :post "/native-generate-content" :- [:map

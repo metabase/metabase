@@ -4,8 +4,8 @@
    [metabase-enterprise.test :as met]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.metabot.tools.field-stats :as metabot-v3.tools.field-stats]
-   [metabase.metabot.tools.util :as metabot-v3.tools.u]
+   [metabase.metabot.tools.field-stats :as metabot.tools.field-stats]
+   [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -33,9 +33,9 @@
           table-id       (mt/id :categories)
           mp             (mt/metadata-provider)
           tq             (table-query mp table-id)
-          agent-field-id (visible-field-id tq (metabot-v3.tools.u/table-field-id-prefix table-id) "Name")]
+          agent-field-id (visible-field-id tq (metabot.tools.u/table-field-id-prefix table-id) "Name")]
       (try
-        (let [result (metabot-v3.tools.field-stats/field-values
+        (let [result (metabot.tools.field-stats/field-values
                       {:entity-type "table", :entity-id table-id, :field-id agent-field-id, :limit 10})]
           (testing "returns sandboxed field values"
             (is (= ["African" "American"] (get-in result [:structured-output :value_metadata :field_values])))))
@@ -57,8 +57,8 @@
           (t2/update! :model/Field field-id {:fingerprint nil :fingerprint_version 0})
           (let [mp             (mt/metadata-provider)
                 tq             (table-query mp table-id)
-                agent-field-id (visible-field-id tq (metabot-v3.tools.u/table-field-id-prefix table-id) "Name")]
-            (metabot-v3.tools.field-stats/field-values
+                agent-field-id (visible-field-id tq (metabot.tools.u/table-field-id-prefix table-id) "Name")]
+            (metabot.tools.field-stats/field-values
              {:entity-type "table", :entity-id table-id, :field-id agent-field-id})
             (let [new-fp (t2/select-one-fn :fingerprint :model/Field :id field-id)]
               (testing "fingerprint was saved"

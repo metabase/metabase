@@ -161,7 +161,7 @@
 (defn generate-example-questions
   "Generate example questions natively using LLM via OpenRouter.
 
-  Accepts the same payload shape as `metabot-v3.client/generate-example-questions`:
+  Accepts the same payload shape as `metabot.client/generate-example-questions`:
     {:tables  [{:name ... :fields [...]}]
      :metrics [{:name ... :queryable-dimensions [...]}]}
 

@@ -8,8 +8,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.metabot.tools.entity-details :as metabot-v3.tools.entity-details]
-   [metabase.metabot.tools.filters :as metabot-v3.tools.filters]
+   [metabase.metabot.tools.entity-details :as metabot.tools.entity-details]
+   [metabase.metabot.tools.filters :as metabot.tools.filters]
    [metabase.metabot.tools.test-util :as tools.tu]
    [metabase.test :as mt]
    [metabase.util :as u]))
@@ -36,17 +36,17 @@
                                                 :type :metric}]
       (testing "User has to have execution rights."
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
-                              (metabot-v3.tools.filters/query-metric
+                              (metabot.tools.filters/query-metric
                                {:metric-id metric-id
                                 :filters []
                                 :group-by []}))))
       (mt/with-current-user (mt/user->id :crowberto)
-        (let [metric-details (metabot-v3.tools.entity-details/metric-details metric-id)
+        (let [metric-details (metabot.tools.entity-details/metric-details metric-id)
               ->field-id #(u/prog1 (-> metric-details :queryable-dimensions (by-name %) :field_id)
                             (when-not <>
                               (throw (ex-info (str "Column " % " not found") {:column %}))))]
           (testing "Trivial query works."
-            (let [result (metabot-v3.tools.filters/query-metric
+            (let [result (metabot.tools.filters/query-metric
                           {:metric-id metric-id
                            :filters []
                            :group-by []})
@@ -72,7 +72,7 @@
                                                              "TX"]
                                                             [:> {} [:field {} (mt/id :orders :discount)]
                                                              3]]}]}}}
-                    (metabot-v3.tools.filters/query-metric
+                    (metabot.tools.filters/query-metric
                      {:metric-id metric-id
                       :filters [{:field-id (->field-id ["User" "State"])
                                  :operation :string-equals
@@ -98,7 +98,7 @@
                                                                       6 7 8]]
                                                            :breakout [[:field {:temporal-unit :week}
                                                                        (mt/id :orders :created_at)]]}]}}}
-                    (metabot-v3.tools.filters/query-metric
+                    (metabot.tools.filters/query-metric
                      {:metric-id metric-id
                       :filters [{:field-id (->field-id "Created At")
                                  :bucket :week-of-year
@@ -139,7 +139,7 @@
                                                               [:!= {}
                                                                [:field {} (mt/id :orders :discount)]
                                                                3 42]]}]}}}
-                      (metabot-v3.tools.filters/query-metric
+                      (metabot.tools.filters/query-metric
                        {:metric-id metric-id
                         :filters [{:field-id state-id
                                    :operation :string-contains
@@ -159,11 +159,11 @@
         (testing "Missing metric results in an error."
           (is (= {:output "Not found."
                   :status-code 404}
-                 (metabot-v3.tools.filters/query-metric {:metric-id Integer/MAX_VALUE}))))
+                 (metabot.tools.filters/query-metric {:metric-id Integer/MAX_VALUE}))))
         (testing "Invalid metric-id results in an error."
           (is (= {:output (str "Invalid metric_id " metric-id)
                   :status-code 400}
-                 (metabot-v3.tools.filters/query-metric {:metric-id (str metric-id)}))))))))
+                 (metabot.tools.filters/query-metric {:metric-id (str metric-id)}))))))))
 
 (deftest query-metric-temporal-value-validation-test
   (let [mp (mt/metadata-provider)
@@ -178,12 +178,12 @@
                                                 :description "The average subtotal of orders."
                                                 :type :metric}]
       (mt/with-current-user (mt/user->id :crowberto)
-        (let [metric-details (metabot-v3.tools.entity-details/metric-details metric-id)
+        (let [metric-details (metabot.tools.entity-details/metric-details metric-id)
               ->field-id #(u/prog1 (-> metric-details :queryable-dimensions (by-name %) :field_id)
                             (when-not <>
                               (throw (ex-info (str "Column " % " not found") {:column %}))))]
           (testing "Negative value on temporal field without bucket is rejected"
-            (let [result (metabot-v3.tools.filters/query-metric
+            (let [result (metabot.tools.filters/query-metric
                           {:metric-id metric-id
                            :filters [{:field-id (->field-id "Created At")
                                       :operation :greater-than-or-equal
@@ -192,7 +192,7 @@
               (is (= 400 (:status-code result)))
               (is (str/includes? (:output result) "not valid for a date/datetime field"))))
           (testing "Small positive integer on temporal field without bucket is rejected"
-            (let [result (metabot-v3.tools.filters/query-metric
+            (let [result (metabot.tools.filters/query-metric
                           {:metric-id metric-id
                            :filters [{:field-id (->field-id "Created At")
                                       :operation :greater-than-or-equal
@@ -202,7 +202,7 @@
               (is (str/includes? (:output result) "not valid for a date/datetime field"))))
           (testing "Date string on temporal field without bucket passes validation"
             (is (=? {:structured-output {:type :query}}
-                    (metabot-v3.tools.filters/query-metric
+                    (metabot.tools.filters/query-metric
                      {:metric-id metric-id
                       :filters [{:field-id (->field-id "Created At")
                                  :operation :greater-than-or-equal
@@ -210,7 +210,7 @@
                       :group-by []}))))
           (testing "Large integer (year) on temporal field without bucket passes validation"
             (is (=? {:structured-output {:type :query}}
-                    (metabot-v3.tools.filters/query-metric
+                    (metabot.tools.filters/query-metric
                      {:metric-id metric-id
                       :filters [{:field-id (->field-id "Created At")
                                  :operation :greater-than-or-equal
@@ -218,7 +218,7 @@
                       :group-by []}))))
           (testing "Numeric value on non-temporal field without bucket passes validation"
             (is (=? {:structured-output {:type :query}}
-                    (metabot-v3.tools.filters/query-metric
+                    (metabot.tools.filters/query-metric
                      {:metric-id metric-id
                       :filters [{:field-id (->field-id "Discount")
                                  :operation :greater-than-or-equal
@@ -233,12 +233,12 @@
                                              :type :model}]
     (testing "User has to have execution rights."
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
-                            (metabot-v3.tools.filters/query-model
+                            (metabot.tools.filters/query-model
                              {:model-id model-id
                               :filters []
                               :group-by []}))))
     (mt/with-current-user (mt/user->id :crowberto)
-      (let [model-details (-> (metabot-v3.tools.entity-details/get-table-details {:model-id model-id})
+      (let [model-details (-> (metabot.tools.entity-details/get-table-details {:model-id model-id})
                               :structured-output)
             ->field-id #(u/prog1 (-> model-details :fields (by-name %) :field_id)
                           (when-not <>
@@ -251,7 +251,7 @@
                                                :lib/type :mbql/query
                                                :stages [{:lib/type :mbql.stage/mbql
                                                          :source-card model-id}]}}}
-                  (metabot-v3.tools.filters/query-model
+                  (metabot.tools.filters/query-model
                    {:model-id model-id
                     :filters []
                     :group-by []}))))
@@ -265,7 +265,7 @@
                                                          :aggregation [[:sum {} [:field {} "SUBTOTAL"]]]
                                                          :breakout [[:field {} "PRODUCT_ID"]]
                                                          :filters [[:> {} [:field {} "DISCOUNT"] 3]]}]}}}
-                  (metabot-v3.tools.filters/query-model
+                  (metabot.tools.filters/query-model
                    {:model-id model-id
                     :filters [{:field-id (->field-id "Discount")
                                :operation :number-greater-than
@@ -289,7 +289,7 @@
                                                                    [:= {} [:get-month {} [:field {} "CREATED_AT"]] 6 7 8]]
                                                          :breakout [[:field {} "PRODUCT_ID"]
                                                                     [:field {:temporal-unit :week} "CREATED_AT"]]}]}}}
-                  (metabot-v3.tools.filters/query-model
+                  (metabot.tools.filters/query-model
                    {:model-id model-id
                     :filters [{:field-id order-created-at-field-id
                                :bucket :week-of-year
@@ -330,7 +330,7 @@
                                          [:expression "Created At: Day of week" {:base-type :type/Integer}]
                                          [:field "TOTAL" {:base-type :type/Float}]]
                                 :filter [:!= [:field "USER_ID" {}] 3 42]})}}
-                    (metabot-v3.tools.filters/query-model
+                    (metabot.tools.filters/query-model
                      {:model-id model-id
                       :fields [{:field-id order-created-at-field-id
                                 :bucket :day-of-month}
@@ -353,34 +353,34 @@
                        :filters [{:field-id (->field-id "User ID")
                                   :operation :not-equals
                                   :values [3 42]}]}]
-            (are [input] (=? expected-query (metabot-v3.tools.filters/query-model input))
+            (are [input] (=? expected-query (metabot.tools.filters/query-model input))
               input
               (assoc input :fields nil)
               (assoc input :fields [])))))
       (testing "Missing model results in an error."
         (is (= {:output "Not found."
                 :status-code 404}
-               (metabot-v3.tools.filters/query-model {:model-id Integer/MAX_VALUE}))))
+               (metabot.tools.filters/query-model {:model-id Integer/MAX_VALUE}))))
       (testing "Invalid model-id results in an error."
         (is (= {:output (str "Invalid model_id " model-id)
                 :status-code 400}
-               (metabot-v3.tools.filters/query-model {:model-id (str model-id)})))))))
+               (metabot.tools.filters/query-model {:model-id (str model-id)})))))))
 
 (deftest ^:parallel filter-records-table-test
   (testing "User has to have execution rights, otherwise the table should be invisible."
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
-                          (metabot-v3.tools.filters/filter-records
+                          (metabot.tools.filters/filter-records
                            {:data-source {:table-id (mt/id :orders)}
                             :filters []}))))
   (mt/with-current-user (mt/user->id :crowberto)
     (let [mp (mt/metadata-provider)
           table-id (mt/id :orders)
-          table-details (#'metabot-v3.tools.entity-details/table-details table-id {:metadata-provider mp})
+          table-details (#'metabot.tools.entity-details/table-details table-id {:metadata-provider mp})
           ->field-id #(u/prog1 (-> table-details :fields (by-name %) :field_id)
                         (when-not <>
                           (throw (ex-info (str "Column " % " not found") {:column %}))))]
       (testing "Trivial query works."
-        (let [result (metabot-v3.tools.filters/filter-records
+        (let [result (metabot.tools.filters/filter-records
                       {:data-source {:table-id table-id}
                        :filters []})
               actual-query (get-in result [:structured-output :query])
@@ -389,7 +389,7 @@
           (is (string? (get-in result [:structured-output :query-id])))
           (is (tools.tu/query= expected-query actual-query))))
       (testing "Filtering works."
-        (let [result (metabot-v3.tools.filters/filter-records
+        (let [result (metabot.tools.filters/filter-records
                       {:data-source {:table-id table-id}
                        :filters [{:field-id (->field-id "Created At")
                                   :bucket :day-of-week
@@ -410,7 +410,7 @@
           (is (tools.tu/query= expected-query actual-query)))))
     (testing "Missing table results in an error."
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Not found."
-                            (metabot-v3.tools.filters/filter-records
+                            (metabot.tools.filters/filter-records
                              {:data-source {:table-id Integer/MAX_VALUE}}))))))
 
 (deftest ^:parallel filter-records-model-test
@@ -424,11 +424,11 @@
                                                :type :model}]
       (testing "User has to have execution rights."
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
-                              (metabot-v3.tools.filters/filter-records
+                              (metabot.tools.filters/filter-records
                                {:data-source {:table-id (str "card__" model-id)}
                                 :filters []}))))
       (mt/with-current-user (mt/user->id :crowberto)
-        (let [model-details (#'metabot-v3.tools.entity-details/card-details model-id)
+        (let [model-details (#'metabot.tools.entity-details/card-details model-id)
               table-id (str "card__" model-id)
               ->field-id #(u/prog1 (-> model-details :fields (by-name %) :field_id)
                             (when-not <>
@@ -440,7 +440,7 @@
                                                  :lib/type :mbql/query
                                                  :stages [{:lib/type :mbql.stage/mbql
                                                            :source-card model-id}]}}}
-                    (metabot-v3.tools.filters/filter-records
+                    (metabot.tools.filters/filter-records
                      {:data-source {:table-id table-id}
                       :filters []}))))
           (testing "Filtering works."
@@ -451,14 +451,14 @@
                                                  :stages [{:lib/type :mbql.stage/mbql
                                                            :source-card model-id
                                                            :filters [[:> {} [:field {} "DISCOUNT"] 3]]}]}}}
-                    (metabot-v3.tools.filters/filter-records
+                    (metabot.tools.filters/filter-records
                      {:data-source {:table-id table-id}
                       :filters [{:field-id (->field-id "Discount")
                                  :operation :number-greater-than
                                  :value 3}]})))))
         (testing "Missing table results in an error."
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Not found."
-                                (metabot-v3.tools.filters/filter-records
+                                (metabot.tools.filters/filter-records
                                  {:data-source {:table-id (str "card__" Integer/MAX_VALUE)}}))))))))
 
 (deftest ^:parallel filter-records-report-test
@@ -473,11 +473,11 @@
                                               :type :question}]
       (testing "User has to have execution rights."
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
-                              (metabot-v3.tools.filters/filter-records
+                              (metabot.tools.filters/filter-records
                                {:data-source {:report-id card-id}
                                 :filters []}))))
       (mt/with-current-user (mt/user->id :crowberto)
-        (let [report-details (#'metabot-v3.tools.entity-details/card-details card-id)
+        (let [report-details (#'metabot.tools.entity-details/card-details card-id)
               ->field-id #(u/prog1 (-> report-details :fields (by-name %) :field_id)
                             (when-not <>
                               (throw (ex-info (str "Column " % " not found") {:column %}))))]
@@ -488,7 +488,7 @@
                                                  :lib/type :mbql/query
                                                  :stages [{:lib/type :mbql.stage/mbql
                                                            :source-table table-id}]}}}
-                    (metabot-v3.tools.filters/filter-records
+                    (metabot.tools.filters/filter-records
                      {:data-source {:report-id card-id}
                       :filters []}))))
           (testing "Filtering works."
@@ -499,14 +499,14 @@
                                                  :stages [{:lib/type :mbql.stage/mbql
                                                            :source-table table-id
                                                            :filters [[:> {} [:field {} (mt/id :orders :discount)] 3]]}]}}}
-                    (metabot-v3.tools.filters/filter-records
+                    (metabot.tools.filters/filter-records
                      {:data-source {:report-id card-id}
                       :filters [{:field-id (->field-id "Discount")
                                  :operation :number-greater-than
                                  :value 3}]})))))
         (testing "Missing table results in an error."
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Not found."
-                                (metabot-v3.tools.filters/filter-records
+                                (metabot.tools.filters/filter-records
                                  {:data-source {:report-id Integer/MAX_VALUE}}))))))))
 
 (deftest ^:parallel filter-records-query-test
@@ -516,7 +516,7 @@
         query (lib/query mp (lib.metadata/table mp table-id))
         legacy-query (lib.convert/->legacy-MBQL query)
         query-details (mt/with-current-user (mt/user->id :crowberto)
-                        (#'metabot-v3.tools.entity-details/execute-query query-id legacy-query))
+                        (#'metabot.tools.entity-details/execute-query query-id legacy-query))
         ->field-id #(u/prog1 (-> query-details :result-columns (by-name %) :field_id)
                       (when-not <>
                         (throw (ex-info (str "Column " % " not found") {:column %}))))
@@ -536,22 +536,22 @@
       (testing "Filtering works."
         (testing "new tool call with query and query-id"
           (is (=? expected
-                  (metabot-v3.tools.filters/filter-records
+                  (metabot.tools.filters/filter-records
                    (assoc input :data-source (select-keys query-details [:query :query-id]))))))
         (testing "new tool call with just query"
           (is (=? expected
-                  (metabot-v3.tools.filters/filter-records
+                  (metabot.tools.filters/filter-records
                    (assoc input :data-source (select-keys query-details [:query]))))))
         (testing "MBQL v5 query works"
           (is (=? expected
-                  (metabot-v3.tools.filters/filter-records
+                  (metabot.tools.filters/filter-records
                    (assoc input :data-source {:query query})))))))))
 
 (deftest ^:parallel query-datasource-table-test
   (mt/with-current-user (mt/user->id :crowberto)
     (let [mp (mt/metadata-provider)
           table-id (mt/id :orders)
-          table-details (#'metabot-v3.tools.entity-details/table-details table-id {:metadata-provider mp})
+          table-details (#'metabot.tools.entity-details/table-details table-id {:metadata-provider mp})
           ->field-id #(u/prog1 (-> table-details :fields (by-name %) :field_id)
                         (when-not <>
                           (throw (ex-info (str "Column " % " not found") {:column %}))))]
@@ -562,7 +562,7 @@
                                              :lib/type :mbql/query
                                              :stages [{:lib/type :mbql.stage/mbql
                                                        :source-table table-id}]}}}
-                (metabot-v3.tools.filters/query-datasource
+                (metabot.tools.filters/query-datasource
                  {:table-id table-id}))))
 
       (testing "Table query with fields selection"
@@ -574,7 +574,7 @@
                                                        :source-table table-id
                                                        :fields [[:field {} (mt/id :orders :created_at)]
                                                                 [:field {} (mt/id :orders :total)]]}]}}}
-                (metabot-v3.tools.filters/query-datasource
+                (metabot.tools.filters/query-datasource
                  {:table-id table-id
                   :fields [{:field-id (->field-id "Created At")}
                            {:field-id (->field-id "Total")}]}))))
@@ -588,7 +588,7 @@
                                                        :source-table table-id
                                                        :filters [[:> {} [:field {} (mt/id :orders :discount)] 3]
                                                                  [:= {} [:field {} (mt/id :orders :user_id)] 10]]}]}}}
-                (metabot-v3.tools.filters/query-datasource
+                (metabot.tools.filters/query-datasource
                  {:table-id table-id
                   :filters [{:field-id (->field-id "Discount")
                              :operation :number-greater-than
@@ -607,7 +607,7 @@
                                                        :aggregation [[:sum {} [:field {} (mt/id :orders :subtotal)]]
                                                                      [:avg {} [:field {} (mt/id :orders :discount)]]]
                                                        :breakout [[:field {} (mt/id :orders :product_id)]]}]}}}
-                (metabot-v3.tools.filters/query-datasource
+                (metabot.tools.filters/query-datasource
                  {:table-id table-id
                   :aggregations [{:field-id (->field-id "Subtotal")
                                   :function :sum}
@@ -625,7 +625,7 @@
                                                        :order-by [[:asc {} [:field {} (mt/id :orders :created_at)]]
                                                                   [:desc {} [:field {} (mt/id :orders :total)]]]
                                                        :limit 100}]}}}
-                (metabot-v3.tools.filters/query-datasource
+                (metabot.tools.filters/query-datasource
                  {:table-id table-id
                   :order-by [{:field {:field-id (->field-id "Created At")}
                               :direction :asc}
@@ -642,7 +642,7 @@
                                                        :source-table table-id
                                                        :aggregation [[:count {}]]
                                                        :breakout [[:field {:temporal-unit :month} (mt/id :orders :created_at)]]}]}}}
-                (metabot-v3.tools.filters/query-datasource
+                (metabot.tools.filters/query-datasource
                  {:table-id table-id
                   :aggregations [{:field-id (->field-id "Product ID")
                                   :function :count}]
@@ -656,7 +656,7 @@
                                              :description "Test model for orders"
                                              :type :model}]
     (mt/with-current-user (mt/user->id :crowberto)
-      (let [model-details (-> (metabot-v3.tools.entity-details/get-table-details {:model-id model-id})
+      (let [model-details (-> (metabot.tools.entity-details/get-table-details {:model-id model-id})
                               :structured-output)
             ->field-id #(u/prog1 (-> model-details :fields (by-name %) :field_id)
                           (when-not <>
@@ -668,7 +668,7 @@
                                                :lib/type :mbql/query
                                                :stages [{:lib/type :mbql.stage/mbql
                                                          :source-card model-id}]}}}
-                  (metabot-v3.tools.filters/query-datasource
+                  (metabot.tools.filters/query-datasource
                    {:model-id model-id}))))
 
         (testing "Model query with fields selection"
@@ -680,7 +680,7 @@
                                                          :source-card model-id
                                                          :fields [[:field {} "CREATED_AT"]
                                                                   [:field {} "TOTAL"]]}]}}}
-                  (metabot-v3.tools.filters/query-datasource
+                  (metabot.tools.filters/query-datasource
                    {:model-id model-id
                     :fields [{:field-id (->field-id "Created At")}
                              {:field-id (->field-id "Total")}]}))))
@@ -694,7 +694,7 @@
                                                          :source-card model-id
                                                          :filters [[:> {} [:field {} "DISCOUNT"] 5]
                                                                    [:< {} [:field {} "SUBTOTAL"] 100]]}]}}}
-                  (metabot-v3.tools.filters/query-datasource
+                  (metabot.tools.filters/query-datasource
                    {:model-id model-id
                     :filters [{:field-id (->field-id "Discount")
                                :operation :number-greater-than
@@ -713,7 +713,7 @@
                                                          :aggregation [[:count {}]
                                                                        [:max {} [:field {} "TOTAL"]]]
                                                          :breakout [[:field {} "USER_ID"]]}]}}}
-                  (metabot-v3.tools.filters/query-datasource
+                  (metabot.tools.filters/query-datasource
                    {:model-id model-id
                     :aggregations [{:field-id (->field-id "Product ID")
                                     :function :count}
@@ -730,7 +730,7 @@
                                                          :source-card model-id
                                                          :order-by [[:desc {} [:field {} "CREATED_AT"]]]
                                                          :limit 50}]}}}
-                  (metabot-v3.tools.filters/query-datasource
+                  (metabot.tools.filters/query-datasource
                    {:model-id model-id
                     :order-by [{:field {:field-id (->field-id "Created At")}
                                 :direction :desc}]
@@ -741,37 +741,37 @@
     (testing "Error when neither table-id nor model-id provided"
       (is (= {:output "Either table_id or model_id must be provided"
               :status-code 400}
-             (metabot-v3.tools.filters/query-datasource {}))))
+             (metabot.tools.filters/query-datasource {}))))
 
     (testing "Error when both table-id and model-id provided"
       (is (= {:output "Cannot provide both table_id and model_id"
               :status-code 400}
-             (metabot-v3.tools.filters/query-datasource
+             (metabot.tools.filters/query-datasource
               {:table-id (mt/id :orders)
                :model-id 123}))))
 
     (testing "Error with invalid table-id"
       (is (= {:output "Invalid table_id not-a-number"
               :status-code 400}
-             (metabot-v3.tools.filters/query-datasource
+             (metabot.tools.filters/query-datasource
               {:table-id "not-a-number"}))))
 
     (testing "Error with invalid model-id"
       (is (= {:output "Invalid model_id not-a-number"
               :status-code 400}
-             (metabot-v3.tools.filters/query-datasource
+             (metabot.tools.filters/query-datasource
               {:model-id "not-a-number"}))))
 
     (testing "Error with non-existent table"
       (is (= {:output (str "No table found with table_id " Integer/MAX_VALUE)
               :status-code 404}
-             (metabot-v3.tools.filters/query-datasource
+             (metabot.tools.filters/query-datasource
               {:table-id Integer/MAX_VALUE}))))
 
     (testing "Error with non-existent model"
       (is (= {:output (str "No model found with model_id " Integer/MAX_VALUE)
               :status-code 404}
-             (metabot-v3.tools.filters/query-datasource
+             (metabot.tools.filters/query-datasource
               {:model-id Integer/MAX_VALUE}))))))
 
 (deftest ^:parallel query-datasource-permissions-test
@@ -781,12 +781,12 @@
                                              :type :model}]
     (testing "User without permissions gets error for table"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
-                            (metabot-v3.tools.filters/query-datasource
+                            (metabot.tools.filters/query-datasource
                              {:table-id (mt/id :orders)}))))
 
     (testing "User without permissions gets error for model"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
-                            (metabot-v3.tools.filters/query-datasource
+                            (metabot.tools.filters/query-datasource
                              {:model-id model-id}))))))
 
 (defn- mbql-measure-definition
@@ -848,7 +848,7 @@
       (mt/with-current-user (mt/user->id :crowberto)
         (testing "query-metric with segment filter applies the segment"
           (with-redefs [lib-be/application-database-metadata-provider (constantly mock-mp)]
-            (let [result (metabot-v3.tools.filters/query-metric
+            (let [result (metabot.tools.filters/query-metric
                           {:metric-id metric-id
                            :filters [{:segment-id mock-segment-id}]
                            :group-by []})
@@ -866,7 +866,7 @@
     (mt/with-current-user (mt/user->id :crowberto)
       (with-redefs [lib-be/application-database-metadata-provider (constantly mock-mp)]
         (testing "query-datasource with measure aggregation"
-          (let [result (metabot-v3.tools.filters/query-datasource
+          (let [result (metabot.tools.filters/query-datasource
                         {:table-id (mt/id :orders)
                          :aggregations [{:measure-id mock-measure-id}]})
                 query (get-in result [:structured-output :query])
@@ -877,7 +877,7 @@
             (is (some #(and (vector? %) (= :measure (first %))) aggregations))))
 
         (testing "query-datasource with measure aggregation and sort order"
-          (let [result (metabot-v3.tools.filters/query-datasource
+          (let [result (metabot.tools.filters/query-datasource
                         {:table-id (mt/id :orders)
                          :aggregations [{:measure-id mock-measure-id
                                          :sort-order :desc}]})
@@ -894,7 +894,7 @@
     (mt/with-current-user (mt/user->id :crowberto)
       (with-redefs [lib-be/application-database-metadata-provider (constantly mock-mp)]
         (testing "query-datasource with segment filter"
-          (let [result (metabot-v3.tools.filters/query-datasource
+          (let [result (metabot.tools.filters/query-datasource
                         {:table-id (mt/id :orders)
                          :filters [{:segment-id mock-segment-id}]})
                 query (get-in result [:structured-output :query])
@@ -916,7 +916,7 @@
     (mt/with-current-user (mt/user->id :crowberto)
       (with-redefs [lib-be/application-database-metadata-provider (constantly mock-mp)]
         (testing "query-datasource with both measure aggregation and segment filter"
-          (let [result (metabot-v3.tools.filters/query-datasource
+          (let [result (metabot.tools.filters/query-datasource
                         {:table-id (mt/id :orders)
                          :aggregations [{:measure-id mock-measure-id}]
                          :filters [{:segment-id mock-segment-id}]})
@@ -934,7 +934,7 @@
     (mt/with-current-user (mt/user->id :crowberto)
       (with-redefs [lib-be/application-database-metadata-provider (constantly mp)]
         (testing "query-datasource with non-existent segment returns error"
-          (let [result (metabot-v3.tools.filters/query-datasource
+          (let [result (metabot.tools.filters/query-datasource
                         {:table-id (mt/id :orders)
                          :filters [{:segment-id non-existent-segment-id}]})]
             (is (nil? (:structured-output result)))
@@ -948,7 +948,7 @@
     (mt/with-current-user (mt/user->id :crowberto)
       (with-redefs [lib-be/application-database-metadata-provider (constantly mp)]
         (testing "query-datasource with non-existent measure returns error"
-          (let [result (metabot-v3.tools.filters/query-datasource
+          (let [result (metabot.tools.filters/query-datasource
                         {:table-id (mt/id :orders)
                          :aggregations [{:measure-id non-existent-measure-id}]})]
             (is (nil? (:structured-output result)))

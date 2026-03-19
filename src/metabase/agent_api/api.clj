@@ -15,7 +15,7 @@
    [metabase.metabot.tools.field-stats :as field-stats]
    [metabase.metabot.tools.filters :as metabot-filters]
    [metabase.metabot.tools.search :as metabot-search]
-   [metabase.metabot.util :as metabot-v3.u]
+   [metabase.metabot.util :as metabot.u]
    [metabase.query-processor :as qp]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
@@ -60,7 +60,7 @@
 
 (mr/def ::field
   "A field from a table or metric. The field_id format is '<prefix><entity-id>-<field-index>' where prefix indicates the source (t=table, c=metric) and index is the position in the entity's fields."
-  [:map {:encode/api #(update-keys % metabot-v3.u/safe->snake_case_en)}
+  [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en)}
    [:field_id :string]
    [:name :string]
    [:type {:optional true} [:maybe ::field-type]]
@@ -75,7 +75,7 @@
 
 (mr/def ::metric-summary
   "Summary of a metric associated with a table. Includes the field_id of the default time dimension for temporal breakouts."
-  [:map {:encode/api #(update-keys % metabot-v3.u/safe->snake_case_en)}
+  [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en)}
    [:id :int]
    [:type [:= :metric]]
    [:name :string]
@@ -84,7 +84,7 @@
 
 (mr/def ::segment
   "A predefined filter condition that can be applied to queries via the segment_id in filters."
-  [:map {:encode/api #(update-keys % metabot-v3.u/safe->snake_case_en)}
+  [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en)}
    [:id :int]
    [:name :string]
    [:display_name {:optional true} [:maybe :string]]
@@ -92,7 +92,7 @@
 
 (mr/def ::measure
   "A reusable aggregation expression associated with a table. Reference via measure_id in the aggregations array."
-  [:map {:encode/api #(update-keys % metabot-v3.u/safe->snake_case_en)}
+  [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en)}
    [:id :int]
    [:name :string]
    [:display_name {:optional true} [:maybe :string]]
@@ -100,7 +100,7 @@
 
 (mr/def ::related-table
   "A table related to the queried entity via foreign key. The related_by field indicates the FK field name."
-  [:map {:encode/api #(update-keys % metabot-v3.u/safe->snake_case_en)}
+  [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en)}
    [:id :int]
    [:type [:= :table]]
    [:name :string]
@@ -114,7 +114,7 @@
 
 (mr/def ::table
   "Full details of a table including its fields, related tables, metrics, and segments."
-  [:map {:encode/api #(update-keys % metabot-v3.u/safe->snake_case_en)}
+  [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en)}
    [:id :int]
    [:type ::entity-type]
    [:name :string]
@@ -131,7 +131,7 @@
 
 (mr/def ::metric
   "A metric with its queryable dimensions and segments. The default_time_dimension_field_id is the field_id of the recommended time dimension for temporal breakouts."
-  [:map {:encode/api #(update-keys % metabot-v3.u/safe->snake_case_en)}
+  [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en)}
    [:id :int]
    [:type [:= :metric]]
    [:name :string]
@@ -143,7 +143,7 @@
 
 (mr/def ::statistics
   "Statistical summary of a field's values computed during database sync. Includes counts, percentages, numeric summaries (min/max/avg/quartiles/sd), and date ranges."
-  [:map {:encode/api #(update-keys % metabot-v3.u/safe->snake_case_en)}
+  [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en)}
    [:distinct_count {:optional true} [:maybe :int]]
    [:percent_null   {:optional true} [:maybe number?]]
    [:min            {:optional true} [:maybe number?]]
@@ -162,14 +162,14 @@
 
 (mr/def ::field-values
   "Statistics and sample values for a specific field."
-  [:map {:encode/api #(update-keys % metabot-v3.u/safe->snake_case_en)}
+  [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en)}
    [:field_id {:optional true} [:maybe :string]]
    [:statistics {:optional true} [:maybe ::statistics]]
    [:values {:optional true} [:maybe [:sequential :any]]]])
 
 (mr/def ::search-result-item
   "A table or metric returned from search."
-  [:map {:encode/api #(update-keys % metabot-v3.u/safe->snake_case_en)}
+  [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en)}
    [:id :int]
    [:type [:enum "table" "metric"]]
    [:name :string]
@@ -183,7 +183,7 @@
 
 (mr/def ::search-response
   "Search results containing tables and metrics matching the query."
-  [:map {:encode/api #(update-keys % metabot-v3.u/safe->snake_case_en)}
+  [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en)}
    [:data [:sequential ::search-result-item]]
    [:total_count :int]])
 
@@ -326,7 +326,7 @@
                     :description "Order by regular fields only. To order by aggregation results, use sort_order on the aggregation."}
      [:maybe [:sequential ::tools.api/order-by]]]
     [:limit        {:optional true} [:maybe ms/PositiveInt]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
 
 (mr/def ::construct-query-metric-request
   "Request schema for constructing a query from a metric.
@@ -336,7 +336,7 @@
     [:metric_id ms/PositiveInt]
     [:filters  {:optional true} [:maybe [:sequential ::tools.api/filter]]]
     [:group_by {:optional true} [:maybe [:sequential ::tools.api/group-by]]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
 
 (mr/def ::construct-query-request
   "Request schema for /v1/construct-query. Accepts either table_id or metric_id."

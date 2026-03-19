@@ -245,7 +245,7 @@
                      temperature (assoc :temperature temperature)
                      max-tokens  (assoc :max_tokens max-tokens))]
     (log/debug "OpenRouter request" {:model model :msg-count (count messages) :tools (count (or tools []))})
-    (with-span :info {:name       :metabot-v3.openrouter/request
+    (with-span :info {:name       :metabot.openrouter/request
                       :model      model
                       :msg-count  (count messages)
                       :tool-count (count (or tools []))}

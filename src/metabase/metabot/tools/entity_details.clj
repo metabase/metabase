@@ -7,7 +7,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.metabot.config :as metabot-v3.config]
+   [metabase.metabot.config :as metabot.config]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.parameters.field-values :as params.field-values]
    [metabase.util :as u]
@@ -328,7 +328,7 @@
   "Get the details of metrics and models in the scope of the Metabot instance with ID `metabot-id`.
   Accepts a map with `:metabot-id` and optional options for field values."
   [{:keys [metabot-id] :as options}]
-  (if-let [normalized-metabot-id (metabot-v3.config/normalize-metabot-id metabot-id)]
+  (if-let [normalized-metabot-id (metabot.config/normalize-metabot-id metabot-id)]
     (lib-be/with-metadata-provider-cache
       (let [metrics-and-models (metabot.tools.u/get-metrics-and-models normalized-metabot-id)
             {metrics :metric, models :model}

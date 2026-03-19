@@ -3,7 +3,7 @@
   (:require
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.metabot.core :as metabot-v3]
+   [metabase.metabot.core :as metabot]
    [metabase.premium-features.core :as premium-features]))
 
 (set! *warn-on-reflection* true)
@@ -31,7 +31,7 @@
                     :chart {:name name
                             :description description}
                     :timeline_events timeline_events}
-        resp (metabot-v3/analyze-chart chart-data)]
+        resp (metabot/analyze-chart chart-data)]
     {:summary (:analysis resp)}))
 
 (def ^{:arglists '([request respond raise])} routes

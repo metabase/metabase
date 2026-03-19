@@ -4,10 +4,10 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.metabot.client :as metabot-v3.client]
-   [metabase.metabot.config :as metabot-v3.config]
+   [metabase.metabot.client :as metabot.client]
+   [metabase.metabot.config :as metabot.config]
    [metabase.metabot.task.suggested-prompts-generator
-    :as metabot-v3.task.suggested-prompts-generator]
+    :as metabot.task.suggested-prompts-generator]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -15,8 +15,8 @@
   (mt/with-premium-features #{:metabot-v3 :content-verification}
     (mt/with-empty-h2-app-db!
       (let [original-metabot (t2/select-one :model/Metabot
-                                            :entity_id (get-in metabot-v3.config/metabot-config
-                                                               [metabot-v3.config/internal-metabot-id :entity-id]))
+                                            :entity_id (get-in metabot.config/metabot-config
+                                                               [metabot.config/internal-metabot-id :entity-id]))
             mp (mt/metadata-provider)
             query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                       lib.convert/->legacy-MBQL)
@@ -27,7 +27,7 @@
              {card-id :id}
              {:type :model
               :dataset_query query}]
-            (with-redefs [metabot-v3.client/generate-example-questions
+            (with-redefs [metabot.client/generate-example-questions
                           (fn [input]
                             ;; Return fake prompts if we have cards, empty otherwise
                             (if (or (seq (:metrics input)) (seq (:tables input)))
@@ -40,14 +40,14 @@
 
               (testing "Non-verified card with use_verified_content=false generates prompts"
                 (t2/update! :model/Metabot (:id original-metabot) {:use_verified_content false})
-                (#'metabot-v3.task.suggested-prompts-generator/maybe-generate-suggested-prompts!)
+                (#'metabot.task.suggested-prompts-generator/maybe-generate-suggested-prompts!)
                 (let [prompts (t2/select :model/MetabotPrompt :card_id card-id)]
                   (is (seq prompts))))
 
               (testing "Non-verified card with use_verified_content=true generates no prompts"
                 (t2/delete! :model/MetabotPrompt)
                 (t2/update! :model/Metabot (:id original-metabot) {:use_verified_content true})
-                (#'metabot-v3.task.suggested-prompts-generator/maybe-generate-suggested-prompts!)
+                (#'metabot.task.suggested-prompts-generator/maybe-generate-suggested-prompts!)
                 (let [prompts (t2/select :model/MetabotPrompt :card_id card-id)]
                   (is (empty? prompts))))
 
@@ -64,14 +64,14 @@
                   (testing "with use_verified_content=true"
                     (t2/delete! :model/MetabotPrompt)
                     (t2/update! :model/Metabot (:id original-metabot) {:use_verified_content true})
-                    (#'metabot-v3.task.suggested-prompts-generator/maybe-generate-suggested-prompts!)
+                    (#'metabot.task.suggested-prompts-generator/maybe-generate-suggested-prompts!)
                     (let [prompts (t2/select :model/MetabotPrompt :card_id card-id)]
                       (is (seq prompts))))
 
                   (testing "with use_verified_content=false"
                     (t2/delete! :model/MetabotPrompt)
                     (t2/update! :model/Metabot (:id original-metabot) {:use_verified_content false})
-                    (#'metabot-v3.task.suggested-prompts-generator/maybe-generate-suggested-prompts!)
+                    (#'metabot.task.suggested-prompts-generator/maybe-generate-suggested-prompts!)
                     (let [prompts (t2/select :model/MetabotPrompt :card_id card-id)]
                       (is (seq prompts))))))
 

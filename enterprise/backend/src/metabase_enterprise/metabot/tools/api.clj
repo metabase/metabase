@@ -7,7 +7,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.metabot.tools.api :as tools.api]
    [metabase.metabot.tools.deftool :refer [deftool]]
-   [metabase.metabot.util :as metabot-v3.u]
+   [metabase.metabot.util :as metabot.u]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -15,7 +15,7 @@
 
 (mr/def ::basic-transform
   [:map
-   {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+   {:decode/tool-api-response #(update-keys % metabot.u/safe->snake_case_en)}
    [:id :int]
    [:name :string]
    [:type [:enum {:decode/tool-api-response name} "mbql" "native" "python"]]
@@ -27,7 +27,7 @@
 (mr/def ::full-transform
   [:merge
    ::basic-transform
-   [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+   [:map {:decode/tool-api-response #(update-keys % metabot.u/safe->snake_case_en)}
     [:created_at ms/TemporalString]
     [:updated_at ms/TemporalString]
     ;; :target keys are not snake_cased to match what the FE expects / provides in user_is_viewing context
@@ -38,7 +38,7 @@
 (mr/def ::get-transforms-result
   [:or
    [:map
-    {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+    {:decode/tool-api-response #(update-keys % metabot.u/safe->snake_case_en)}
     [:structured_output [:sequential ::basic-transform]]]
    [:map [:output :string]]])
 
@@ -56,7 +56,7 @@
 
 (mr/def ::get-transform-details-result
   [:or
-   [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+   [:map {:decode/tool-api-response #(update-keys % metabot.u/safe->snake_case_en)}
     [:structured_output [:sequential ::full-transform]]]
    [:map [:output :string]]])
 
@@ -71,12 +71,12 @@
    [:map
     [:path :string]]
    [:map {:encode/tool-api-request
-          #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+          #(update-keys % metabot.u/safe->kebab-case-en)}]])
 
 (mr/def ::get-transform-python-library-details-result
   [:or
-   [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
-    [:structured_output [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+   [:map {:decode/tool-api-response #(update-keys % metabot.u/safe->snake_case_en)}
+    [:structured_output [:map {:decode/tool-api-response #(update-keys % metabot.u/safe->snake_case_en)}
                          [:source :string]
                          [:path :string]
                          [:created_at ms/TemporalString]
@@ -100,18 +100,18 @@
           #(set/rename-keys % {:transform_id :id})}]])
 
 (mr/def ::broken-question
-  [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+  [:map {:decode/tool-api-response #(update-keys % metabot.u/safe->snake_case_en)}
    [:id :int]
    [:name :string]])
 
 (mr/def ::broken-transform
-  [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+  [:map {:decode/tool-api-response #(update-keys % metabot.u/safe->snake_case_en)}
    [:id :int]
    [:name :string]])
 
 (mr/def ::check-transform-dependencies-result
   [:or
-   [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+   [:map {:decode/tool-api-response #(update-keys % metabot.u/safe->snake_case_en)}
     [:structured_output [:map
                          [:success :boolean]
                          [:bad_transform_count :int]
