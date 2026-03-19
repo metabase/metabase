@@ -829,7 +829,7 @@
   For each source file, checks that:
   1. The defining module's `:model-exports` allows the model (`:any` or set containing it)
   2. The using module's `:model-imports` allows the model (`:any` or set containing it)
-  3. If `:model-imports` is restricted and the model's definition is unknown, that is a violation
+  3. The model's definition exists somewhere (`:unknown-model` is always a violation)
 
   Returns a sequence of violation maps with `:file`, `:module`, `:model`, `:defining-module`, `:violation-type`."
   ([]
@@ -845,44 +845,32 @@
                                    ns.parse/name-from-ns-decl)
                        mod     (module ns-symb)]
                    (when (and mod (not (contains? model-boundary-exempt-namespaces ns-symb)))
-                     (let [models        (find-model-keywords file)
-                           module-config (get kondo-config mod)
-                           model-imports (get module-config :model-imports :any)]
-                       (for [model models
-                             :let  [defining-mod (get ownership model)]
-                             :when (not= defining-mod mod) ; own models always allowed
-                             :let  [defining-config (when defining-mod (get kondo-config defining-mod))
-                                    model-exports   (when defining-mod (get defining-config :model-exports :any))]
-                             violation
-                             (cond-> []
-                               ;; Unknown model + restricted imports = violation
-                               (and (nil? defining-mod) (not= model-imports :any))
-                               (conj {:file             (file->path-relative-to-project-root file)
-                                      :module           mod
-                                      :model            model
-                                      :defining-module  nil
-                                      :violation-type   :unknown-model})
+                     (let [model-imports (get-in kondo-config [mod :model-imports] :any)
+                           models       (find-model-keywords file)
+                           rel-path     (file->path-relative-to-project-root file)]
+                       (for [model          models
+                             :let           [defining-mod  (get ownership model)]
+                             :when          (not= defining-mod mod)
+                             :let           [model-exports (when defining-mod
+                                                             (get-in kondo-config [defining-mod :model-exports] :any))]
+                             violation-type (cond-> []
+                                              (nil? defining-mod)
+                                              (conj :unknown-model)
 
-                               ;; Defining module restricts exports and this model is not exported
-                               (and defining-mod
-                                    (not= model-exports :any)
-                                    (not (contains? model-exports model)))
-                               (conj {:file             (file->path-relative-to-project-root file)
-                                      :module           mod
-                                      :model            model
-                                      :defining-module  defining-mod
-                                      :violation-type   :not-exported})
+                                              (and defining-mod
+                                                   (not= model-exports :any)
+                                                   (not (contains? model-exports model)))
+                                              (conj :not-exported)
 
-                               ;; Using module restricts imports and this model is not imported
-                               (and defining-mod
-                                    (not= model-imports :any)
-                                    (not (contains? model-imports model)))
-                               (conj {:file             (file->path-relative-to-project-root file)
-                                      :module           mod
-                                      :model            model
-                                      :defining-module  defining-mod
-                                      :violation-type   :not-imported}))]
-                         violation))))
+                                              (and defining-mod
+                                                   (not= model-imports :any)
+                                                   (not (contains? model-imports model)))
+                                              (conj :not-imported))]
+                         {:file            rel-path
+                          :module          mod
+                          :model           model
+                          :defining-module defining-mod
+                          :violation-type  violation-type}))))
                  (catch Throwable e
                    (throw (ex-info (format "Error checking model boundaries in %s" (str file))
                                    {:file file}

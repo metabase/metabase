@@ -67,8 +67,7 @@ At test time (`metabase.core.modules-test`), the system:
 3. Checks each reference against:
    - The defining module's `:model-exports` (is this model exported?)
    - The using module's `:model-imports` (is this module allowed to use it?)
-   - If the model definition is unknown and the using module has restricted
-     `:model-imports`, that is a violation
+   - The model definition exists somewhere (unknown models are always a violation)
 
 ### Violation types
 
@@ -76,7 +75,7 @@ At test time (`metabase.core.modules-test`), the system:
 |-------------------|---------|
 | `:not-exported`   | The defining module restricts `:model-exports` and this model is not in the set |
 | `:not-imported`   | The using module restricts `:model-imports` and this model is not in the set |
-| `:unknown-model`  | The model definition was not found anywhere, and the using module has restricted `:model-imports` |
+| `:unknown-model`  | The model definition was not found anywhere (always a violation) |
 
 ### Exemptions
 
