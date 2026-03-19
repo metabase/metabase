@@ -20,6 +20,7 @@ You'll write a query or a Python script in Metabase, a transform will run this q
   - You assign tags (e.g., daily, hourly) to group your transforms.
   - A job runs on a schedule (e.g., every day at midnight) and executes all transforms that have been assigned a specific tag.
 - Each execution of a transform is a **run**. A run replaces the target table with fresh results. You can review the history of runs to monitor their success or failure.
+- You can **inspect** a transform to analyze its data flow, join behavior, and column distributions. See [Transform inspector](transform-inspector.md).
 
 ## Databases that support transforms
 
@@ -176,6 +177,12 @@ To schedule a transform, you'll need to assign one or more tags to it, then crea
 You can see the time and status of the latest transform run on the transform's page, or in the [Runs view](./jobs-and-runs.md). The time of the run is given in the system's timezone.
 
 For Python transforms, you'll also see the transform's execution logs.
+
+## Inspect a transform
+
+_Data Studio > Transforms > Inspect_
+
+The transform inspector lets you poke at the input and outputs of the transform. See [Transform inspector](transform-inspector.md).
 
 ## Transform dependencies
 
