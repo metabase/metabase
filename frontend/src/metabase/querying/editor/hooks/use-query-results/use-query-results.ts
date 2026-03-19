@@ -5,6 +5,7 @@ import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type { Dataset, DatasetQuery } from "metabase-types/api";
+import { isObject } from "metabase-types/guards";
 
 import type { QueryEditorUiState } from "../../types";
 
@@ -88,5 +89,5 @@ export function useQueryResults(
 }
 
 function hasDataset(value: unknown): value is { data: Dataset } {
-  return typeof value === "object" && value !== null && "data" in value;
+  return isObject(value) && "data" in value;
 }
