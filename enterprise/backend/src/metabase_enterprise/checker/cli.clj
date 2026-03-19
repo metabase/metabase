@@ -6,7 +6,11 @@
      java -jar metabase.jar --mode checker --checker structural --export /path/to/export"
   (:require
    [clojure.java.io :as io]
-   [clojure.tools.cli :as cli]))
+   [clojure.string :as str]
+   [clojure.tools.cli :as cli]
+   [metabase-enterprise.checker.checker :as checker]
+   [metabase-enterprise.checker.format.hybrid :as hybrid]
+   [metabase-enterprise.checker.structural :as structural]))
 
 (set! *warn-on-reflection* true)
 
@@ -31,15 +35,40 @@
       (fail! (str "Not a directory: " path)))))
 
 (defn- run-cards-checker
-  "Run the cards checker."
+  "Run the cards checker. Auto-detects format (serdes or concise/hybrid)."
   [export-dir output-file]
-  ((requiring-resolve 'metabase-enterprise.checker.format.serdes/cli-check-cards) export-dir output-file))
+  (let [results (hybrid/check export-dir)
+        summary (checker/summarize-results results)
+        failures (filter #(not= :ok (checker/result-status (second %))) results)]
+    ;; Write to output file if specified
+    (when output-file
+      (spit output-file (pr-str results))
+      (println "Results written to:" output-file))
+    ;; Print summary
+    (println "Card Check Results")
+    (println "==================")
+    (println "Total cards:" (:total summary))
+    (println "  OK:" (:ok summary))
+    (println "  Errors:" (:errors summary))
+    (println "  Unresolved refs:" (:unresolved summary))
+    (println "  Issues:" (:issues summary))
+    ;; Print failures
+    (when (seq failures)
+      (println "\nFailures:")
+      (println "---------")
+      (doseq [entry (sort-by (comp :name second) failures)]
+        (println)
+        (println (checker/format-result entry))))
+    ;; Exit with appropriate code
+    (flush)
+    (System/exit (if (zero? (+ (:errors summary) (:unresolved summary) (:issues summary)))
+                   0
+                   1))))
 
 (defn- run-structural-checker
   "Run the structural checker."
   [export-dir output-file]
-  (let [check-fn (requiring-resolve 'metabase-enterprise.checker.structural/check)
-        results (check-fn export-dir)
+  (let [results (structural/check export-dir)
         invalid-count (count (:invalid results))]
     (when output-file
       (spit output-file (pr-str results))
@@ -79,7 +108,7 @@
           (System/exit 0))
 
       errors
-      (fail! (str "Error parsing arguments:\n" (clojure.string/join "\n" errors))
+      (fail! (str "Error parsing arguments:\n" (str/join "\n" errors))
              ""
              (usage summary))
 
