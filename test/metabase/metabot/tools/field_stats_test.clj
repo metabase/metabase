@@ -156,5 +156,3 @@
                             :percent-null   0.0
                             :earliest       "1958-04-26"
                             :latest         "2000-04-03"}}))))))
-
-
