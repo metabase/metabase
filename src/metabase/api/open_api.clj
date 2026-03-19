@@ -4,6 +4,7 @@
   Actual implementation for [[metabase.api.macros/defendpoint]] endpoints lives
   in [[metabase.api.macros.defendpoint.open-api]]. "
   (:require
+   [metabase.config :as config]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -321,10 +322,20 @@
   https://spec.openapis.org/oas/latest.html#openapi-object"
   [handler :- [:=> [:cat :map fn? fn?] any?]]
   {:closed true}
-  (merge
-   {:openapi "3.1.0"
-    :info    {:title   "Metabase API"}}
-   (open-api-spec handler "/api")))
+  (let [base-spec (open-api-spec handler "/api")]
+    (-> base-spec
+        (assoc :openapi "3.1.0"
+               :info    {:title   "Metabase API"
+                         :version (:tag config/mb-version-info)
+                         :license {:name "AGPL-3.0"
+                                   :url  "https://www.gnu.org/licenses/agpl-3.0.html"}}
+               ;; Apply API key authentication to all endpoints by default
+               :security [{"ApiKeyAuth" []}])
+        (assoc-in [:components :securitySchemes]
+                  {"ApiKeyAuth" {:type        "apiKey"
+                                 :in          "header"
+                                 :name        "X-API-Key"
+                                 :description "API key for authentication"}}))))
 
 #_:clj-kondo/ignore
 (comment

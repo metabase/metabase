@@ -633,7 +633,7 @@ tar -xvf  metabase_data.tgz
 
     ```sh
     curl \
-      -H 'x-api-key: YOUR_API_KEY' \
+      -H 'X-API-Key: YOUR_API_KEY' \
       -X POST 'https://your-metabase-url/api/ee/serialization/export' \
       -o metabase_data.tgz
     ```
@@ -668,7 +668,7 @@ tar -xvf  metabase_data.tgz
     
     ```sh
     curl -X POST \
-      -H 'x-api-key: YOUR_API_KEY' \
+      -H 'X-API-Key: YOUR_API_KEY' \
       -F 'file=@metabase_data.tgz' \
       'https://your-metabase-url/api/ee/serialization/import' \
       -o -
