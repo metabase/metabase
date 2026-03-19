@@ -4,6 +4,8 @@ import {
   BOOLEAN,
   COORDINATE,
   FOREIGN_KEY,
+  type FieldTypeKey,
+  type Hierarchy,
   INTEGER,
   LOCATION,
   NUMBER,
@@ -26,8 +28,6 @@ export interface FieldTypeInfo {
   effective_type?: string | null;
   semantic_type?: string | null;
 }
-
-type FieldTypeKey = keyof typeof TYPE_HIERARCHIES;
 
 /**
  * Is x the same as, or a descendant type of, y?
@@ -62,18 +62,18 @@ export function isFieldType(
     return false;
   }
 
-  const typeDefinition = TYPE_HIERARCHIES[type] as Record<string, string[]>;
+  const typeDefinition = TYPE_HIERARCHIES[type];
   // check to see if it belongs to any of the field types:
-  const props = field.effective_type
-    ? ["effective", "semantic"]
-    : ["base", "semantic"];
+  const props: (keyof Hierarchy & keyof FieldTypeInfo)[] = field.effective_type
+    ? ["effective_type", "semantic_type"]
+    : ["base_type", "semantic_type"];
   for (const prop of props) {
     const allowedTypes = typeDefinition[prop];
     if (!allowedTypes) {
       continue;
     }
 
-    const fieldType = field[(prop + "_type") as keyof FieldTypeInfo];
+    const fieldType = field[prop];
     for (const allowedType of allowedTypes) {
       if (isa(fieldType, allowedType)) {
         return true;
@@ -83,14 +83,14 @@ export function isFieldType(
 
   // recursively check to see if it's NOT another field type:
   for (const excludedType of typeDefinition.exclude || []) {
-    if (isFieldType(excludedType as FieldTypeKey, field)) {
+    if (isFieldType(excludedType, field)) {
       return false;
     }
   }
 
   // recursively check to see if it's another field type:
   for (const includedType of typeDefinition.include || []) {
-    if (isFieldType(includedType as FieldTypeKey, field)) {
+    if (isFieldType(includedType, field)) {
       return true;
     }
   }
