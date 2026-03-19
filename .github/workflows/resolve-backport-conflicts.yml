@@ -59,6 +59,15 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
 
+      - name: Detect package manager
+        id: pkg
+        run: |
+          if [ -f "bun.lock" ] || [ -f "bun.lockb" ]; then
+            echo "mgr=bun" >> $GITHUB_OUTPUT
+          else
+            echo "mgr=yarn" >> $GITHUB_OUTPUT
+          fi
+
       - name: Validate backport PR
         id: validate
         run: |
@@ -107,7 +116,7 @@ jobs:
 
       - name: Build CLJS for type checking
         if: steps.backport.outputs.has_conflicts == 'true'
-        run: bun run build-pure:cljs
+        run: ${{ steps.pkg.outputs.mgr }} run build-pure:cljs
 
       - name: Generate GitHub App Token for Claude
         if: steps.backport.outputs.has_conflicts == 'true'
@@ -126,7 +135,7 @@ jobs:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY_BACKPORT_FIX }}
           model: "claude-sonnet-4-20250514"
           max_turns: "${{ github.event.inputs.max_turns || '50' }}"
-          allowed_tools: "Read,Edit,Write,Bash(git:*),Bash(grep:*),Bash(find:*),Bash(ls:*),Bash(cat:*),Bash(clojure:*),Bash(bun run type-check-pure:*),Bash(bun run lint-eslint:*),Bash(./bin/mage cljfmt:*),Glob,Grep"
+          allowed_tools: "Read,Edit,Write,Bash(git:*),Bash(grep:*),Bash(find:*),Bash(ls:*),Bash(cat:*),Bash(clojure:*),Bash(${{ steps.pkg.outputs.mgr }} run type-check-pure:*),Bash(${{ steps.pkg.outputs.mgr }} run lint-eslint:*),Bash(./bin/mage cljfmt:*),Glob,Grep"
           prompt: |
             You are resolving git cherry-pick merge conflicts for a Metabase backport PR.
 
@@ -165,7 +174,7 @@ jobs:
                  ```
                - **TypeScript/JavaScript** (.ts, .tsx, .js, .jsx): run eslint with auto-fix:
                  ```
-                 bun run lint-eslint --fix
+                 ${{ steps.pkg.outputs.mgr }} run lint-eslint --fix
                  ```
             7. Validate resolved files before committing:
                - **Clojure/ClojureScript** (.clj, .cljc, .cljs): run clj-kondo to verify syntax:
@@ -174,7 +183,7 @@ jobs:
                  ```
                - **TypeScript/JavaScript** (.ts, .tsx, .js, .jsx): run the type checker:
                  ```
-                 bun run type-check-pure
+                 ${{ steps.pkg.outputs.mgr }} run type-check-pure
                  ```
                If either tool reports errors or warnings, fix them before proceeding. CI treats kondo warnings as errors.
                Repeat steps 6-7 until all errors are resolved.
