@@ -268,8 +268,8 @@
                                 %))]
                   (sql.qp/->honeysql
                    driver/*driver*
-                   (sql.qp/make-clause driver/*driver* := col-ref
-                                       (sql.qp/make-clause-with-opts driver/*driver* :value opts (str uuid))))))
+                   (sql.qp/mbql-clause driver/*driver* := col-ref
+                                       (sql.qp/mbql-clause-with-opts driver/*driver* :value opts (str uuid))))))
           (is (=? [:= [:metabase.util.honey-sql-2/identifier :field [field]]
                    (some-fn #(= uuid %)
                             #(= [:metabase.util.honey-sql-2/typed
@@ -278,7 +278,7 @@
                                 %))]
                   (sql.qp/->honeysql
                    driver/*driver*
-                   (sql.qp/make-clause driver/*driver* := col-ref uuid)))))))))
+                   (sql.qp/mbql-clause driver/*driver* := col-ref uuid)))))))))
 
 (deftest query-canceled-test?
   (testing "walks a chain of exceptions"

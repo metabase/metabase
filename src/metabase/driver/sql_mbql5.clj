@@ -104,7 +104,7 @@
     [(sql.qp/->honeysql driver expr) direction]))
 
 ;; TODO(rileythomp, 2026-03-19): Check if we actually need the options here and below.
-;; If not, update the `:sql` implementations to use `make-clause`
+;; If not, update the `:sql` implementations to use `mbql-clause`
 (defmethod sql.qp/->honeysql [:sql-mbql5 :cum-count]
   [driver [_ opts expr-or-nil]]
   (sql.qp/cum-count->honeysql driver expr-or-nil opts))
@@ -184,7 +184,7 @@
     [driver [op opts & args]]
     ((get-method sql.qp/->honeysql [:sql op]) driver (into [op] (cond-> (vec args) opts (conj opts))))))
 
-(defmethod sql.qp/make-clause-with-opts :sql-mbql5
+(defmethod sql.qp/mbql-clause-with-opts :sql-mbql5
   [_driver tag opts & args]
   (into [tag (merge {:lib/uuid (str (random-uuid))} opts)] args))
 

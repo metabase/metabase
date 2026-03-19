@@ -371,20 +371,20 @@
         day-of-week-of-start-of-year (date driver :day-of-week start-of-year)]
     (h2x/- 8 day-of-week-of-start-of-year)))
 
-(defmulti make-clause-with-opts
+(defmulti mbql-clause-with-opts
   "Returns an MBQL clause given with the given tag, arguments, and options."
   {:added "0.60.0" :arglists '([driver tag opts & args])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defmethod make-clause-with-opts :sql
+(defmethod mbql-clause-with-opts :sql
   [_driver tag opts & args]
   (cond-> (into [tag] args) opts (conj opts)))
 
-(defn make-clause
+(defn mbql-clause
   "Return an mbql clause given a tag and arguments"
   [driver tag & args]
-  (apply make-clause-with-opts driver tag nil args))
+  (apply mbql-clause-with-opts driver tag nil args))
 
 (defn- week-of-year
   "Calculate the week of year for `:us` or `:instance` `mode`. Returns a Honey SQL expression.
@@ -414,7 +414,7 @@
                                           (h2x/- days-till-start-of-first-full-week)
                                           (h2x// 7.0)
                                           (compiled))]
-    (->> (make-clause driver :ceil total-full-weeks)
+    (->> (mbql-clause driver :ceil total-full-weeks)
          (->honeysql driver)
          (h2x/+ 1)
          (->integer driver))))
@@ -753,7 +753,7 @@
                              (apply h2x/identifier :field source-query-alias source-alias)
 
                              (literal-text-value? expression-definition)
-                             (make-clause driver ::expression-literal-text-value expression-definition)
+                             (mbql-clause driver ::expression-literal-text-value expression-definition)
 
                              ;; Handle raw string literals (not wrapped in :value) - needed for
                              ;; expression definitions that are just string literals, e.g. from
@@ -761,10 +761,10 @@
                              ;; the string becomes a parameter placeholder without type info,
                              ;; which some databases (like H2) can't handle.
                              (string? expression-definition)
-                             (make-clause driver ::expression-literal-text-value
+                             (mbql-clause driver ::expression-literal-text-value
                                           ;; TODO(rileythomp, 2026-03-19): Should this be `:base-type` for `:sql-mbql5`?
-                                          ;; Or should `make-clause-with-opts :sql-mbql5` convert the option keys?
-                                          (make-clause-with-opts driver :value {:base_type :type/Text} expression-definition))
+                                          ;; Or should `mbql-clause-with-opts :sql-mbql5` convert the option keys?
+                                          (mbql-clause-with-opts driver :value {:base_type :type/Text} expression-definition))
 
                              :else
                              expression-definition))))
@@ -1043,7 +1043,7 @@
   (let [aggregations (vec aggregations)]
     (into []
           (keep (fn [clause]
-                  (->honeysql driver (make-clause driver ::over-order-bys aggregations clause))))
+                  (->honeysql driver (mbql-clause driver ::over-order-bys aggregations clause))))
           order-bys)))
 
 (defmulti remapped-order-by?
@@ -1179,8 +1179,8 @@
   ;; a cumulative count with no breakouts doesn't really mean anything, just compile it as a normal count.
   (if (empty? (:breakout *inner-query*))
     ;; TODO(rileythomp, 2026-03-19): Determine if we need the opts here or if we can just
-    ;; use `make-clause`. Simplify here and cum-sum below accordingly if so.
-    (->honeysql driver (make-clause-with-opts driver :count opts expr-or-nil))
+    ;; use `mbql-clause`. Simplify here and cum-sum below accordingly if so.
+    (->honeysql driver (mbql-clause-with-opts driver :count opts expr-or-nil))
     (cumulative-aggregation-over-rows
      driver
      [:sum (if expr-or-nil
@@ -1207,7 +1207,7 @@
   [driver expr opts]
   ;; a cumulative sum with no breakouts doesn't really mean anything, just compile it as a normal sum.
   (if (empty? (:breakout *inner-query*))
-    (->honeysql driver (make-clause-with-opts driver :sum opts expr))
+    (->honeysql driver (mbql-clause-with-opts driver :sum opts expr))
     (cumulative-aggregation-over-rows
      driver
      [:sum [:sum (->honeysql driver expr)]])))
@@ -1729,7 +1729,7 @@
                                                   (not case-sensitive) u/lower-case-en))
          (->honeysql driver)
          (transform-literal-like-pattern-honeysql driver))
-    (let [expr (->honeysql driver (apply make-clause driver :concat (remove nil? [pre arg post])))]
+    (let [expr (->honeysql driver (apply mbql-clause driver :concat (remove nil? [pre arg post])))]
       (if case-sensitive
         expr
         [:lower expr]))))
@@ -1759,7 +1759,7 @@
            (not (uuid? (->honeysql driver arg)))
              ;; Check for inlined values
            (not (= (:database-type (h2x/type-info (->honeysql driver arg))) "uuid")))
-    (make-clause driver ::cast-to-text field)
+    (mbql-clause driver ::cast-to-text field)
     field))
 
 (mu/defn maybe-cast-uuid-for-text-compare
@@ -1767,7 +1767,7 @@
    Comparing UUID fields against with these operations requires casting as the right side will have `%` for `LIKE` operations."
   [driver field]
   (if (uuid-field? field)
-    (make-clause driver ::cast-to-text field)
+    (mbql-clause driver ::cast-to-text field)
     field))
 
 (defmethod ->honeysql [:sql ::cast]
@@ -2217,7 +2217,7 @@
     (binding [driver/*driver* driver]
       (let [inner-query (preprocess driver query)]
         (log/tracef "Compiling MBQL query\n%s" (u/pprint-to-str 'magenta inner-query))
-        (u/prog1 (->honeysql driver (make-clause driver ::mbql inner-query))
+        (u/prog1 (->honeysql driver (mbql-clause driver ::mbql inner-query))
           (log/debugf "\nHoneySQL Form: %s\n%s" (u/emoji "🍯") (u/pprint-to-str 'cyan <>))
           (driver-api/debug> (list '🍯 <>)))))
 
