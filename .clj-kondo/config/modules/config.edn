@@ -1676,7 +1676,8 @@
            lib-be
            query-processor
            sync
-           util}
+           util
+           warehouse-schema}
    :friends #{transforms
               enterprise/transforms-python
               enterprise/workspaces}}
@@ -1836,7 +1837,8 @@
            remote-sync
            search
            util
-           warehouses}}
+           warehouses
+           workspaces}}
 
   warehouse-schema-rest
   {:team "UX West"
@@ -1909,6 +1911,11 @@
            warehouse-schema
            warehouses
            enterprise/advanced-permissions}}
+
+  workspaces
+  {:team "Metabot"
+   :api  #{metabase.workspaces.core}
+   :uses #{util}}
 
   xrays
   {:team "Querying"
@@ -2650,6 +2657,7 @@
            transforms
            transforms-base
            util
+           warehouse-schema
            enterprise/transforms-python}}
 
   enterprise/writable-connection

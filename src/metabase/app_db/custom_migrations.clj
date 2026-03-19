@@ -2051,3 +2051,85 @@
           (t2/query {:update :transform
                      :set    {:source (json-in (dissoc parsed :source-incremental-strategy))}
                      :where  [:= :id id]}))))))
+
+(define-migration BackfillTransformTargetTables
+  ;; For each transform that has a target (database, schema, name), ensure a metabase_table row exists.
+  ;; If the table already exists (active or inactive), do nothing. Otherwise, insert a transform target row.
+  ;;
+  ;; Similarly, backfill workspace_output rows missing global_table_id or isolated_table_id.
+  (let [;; Reproduces humanization/name->human-readable-name :simple (can't call library code in migrations)
+        acronyms  #{"id" "url" "ip" "uid" "uuid" "guid"}
+        cap-word  (fn [word]
+                    (let [lower (lower-case-en word)]
+                      (if (contains? acronyms lower)
+                        (upper-case-en word)
+                        (if (= word (upper-case-en word))
+                          (str/capitalize word)
+                          (str (str/capitalize (subs word 0 1)) (subs word 1))))))
+        humanize  (fn [s]
+                    (when (seq s)
+                      (let [result (str/join " " (for [part  (str/split s #"[-_\s]+")
+                                                       :when (not (str/blank? part))]
+                                                   (cap-word part)))]
+                        (if (str/blank? result) s result))))
+        find-table-id (fn [db-id schema table-name]
+                        (:id (first (t2/query {:select [:id]
+                                               :from   [:metabase_table]
+                                               :where  [:and
+                                                        [:= :db_id db-id]
+                                                        (if (some? schema)
+                                                          [:= [:lower :schema] (lower-case-en schema)]
+                                                          [:is :schema nil])
+                                                        [:= [:lower :name] (lower-case-en table-name)]]
+                                               :limit  1}))))
+        upsert-table! (fn [db-id schema table-name]
+                        (or (find-table-id db-id schema table-name)
+                            (try
+                              (t2/query {:insert-into :metabase_table
+                                         :values      [{:db_id               db-id
+                                                        :schema              schema
+                                                        :name                table-name
+                                                        :display_name        (humanize table-name)
+                                                        :active              false
+                                                        :transform_target    true
+                                                        :data_source         "metabase-transform"
+                                                        :data_authority      "computed"
+                                                        :initial_sync_status "complete"
+                                                        :created_at          :%now
+                                                        :updated_at          :%now}]})
+                              (find-table-id db-id schema table-name)
+                              (catch Exception _
+                                (find-table-id db-id schema table-name)))))]
+    ;; 1. Backfill for transforms: create provisional tables for targets that don't exist
+    (doseq [{:keys [target target_db_id]} (t2/query {:select [:target :target_db_id]
+                                                     :from   [:transform]
+                                                     :where  [:not= :target_db_id nil]})]
+      (let [target-map (json-out target false)]
+        (when-let [table-name (get target-map "name")]
+          (let [schema (get target-map "schema")
+                db-id  target_db_id]
+            (upsert-table! db-id schema table-name)))))
+    ;; 2-5. Backfill workspace_output and workspace_output_external rows missing table FKs
+    (let [backfill-table-fk! (fn [from-table schema-col table-col fk-col]
+                               (doseq [{:keys [id db_id] :as row}
+                                       (t2/query {:select [:id :db_id schema-col table-col]
+                                                  :from   [from-table]
+                                                  :where  [:= fk-col nil]})]
+                                 (when-let [table-id (upsert-table! db_id (get row schema-col) (get row table-col))]
+                                   (t2/query {:update from-table
+                                              :set    {fk-col table-id}
+                                              :where  [:= :id id]}))))]
+      (backfill-table-fk! :workspace_output :global_schema :global_table :global_table_id)
+      (backfill-table-fk! :workspace_output :isolated_schema :isolated_table :isolated_table_id)
+      (backfill-table-fk! :workspace_output_external :global_schema :global_table :global_table_id)
+      (backfill-table-fk! :workspace_output_external :isolated_schema :isolated_table :isolated_table_id))
+    ;; 6-7. Backfill workspace_input and workspace_input_external rows missing table_id
+    (doseq [from-table [:workspace_input :workspace_input_external]
+            :let [rows (t2/query {:select [:id :db_id :schema :table]
+                                  :from   [from-table]
+                                  :where  [:= :table_id nil]})]
+            {:keys [id db_id schema table]} rows]
+      (when-let [table-id (find-table-id db_id schema table)]
+        (t2/query {:update from-table
+                   :set    {:table_id table-id}
+                   :where  [:= :id id]})))))
