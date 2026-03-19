@@ -5,7 +5,10 @@ import {
   PaneHeaderTabs,
 } from "metabase/data-studio/common/components/PaneHeader";
 import * as Urls from "metabase/lib/urls";
-import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import {
+  PLUGIN_DEPENDENCIES,
+  PLUGIN_TRANSFORMS_INSPECTOR,
+} from "metabase/plugins";
 import type { Transform, TransformId } from "metabase-types/api";
 
 type TransformTabsProps = {
@@ -18,7 +21,6 @@ export const TransformTabs = ({ transform }: TransformTabsProps) => {
 };
 
 function getTabs(id: TransformId): PaneHeaderTab[] {
-  const inspectUrl = Urls.transformInspect(id);
   const tabs: PaneHeaderTab[] = [
     {
       label: t`Definition`,
@@ -32,12 +34,16 @@ function getTabs(id: TransformId): PaneHeaderTab[] {
       label: t`Settings`,
       to: Urls.transformSettings(id),
     },
-    {
+  ];
+
+  if (PLUGIN_TRANSFORMS_INSPECTOR.isEnabled) {
+    const inspectUrl = Urls.transformInspect(id);
+    tabs.push({
       label: t`Inspect`,
       to: inspectUrl,
       isSelected: (pathname: string) => pathname.startsWith(inspectUrl),
-    },
-  ];
+    });
+  }
 
   if (PLUGIN_DEPENDENCIES.isEnabled) {
     tabs.push({
