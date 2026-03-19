@@ -267,7 +267,7 @@
      :prepared-statement-args args}))
 
 (defn field->clause*
-  "Return an mbql field clause with the relevant options for a field filter"
+  "Returns an MBQL `:field` clause with the relevant options for a field filter."
   [driver field other-opts]
   (sql.qp/make-clause-with-opts driver :field
                                 (merge {:base-type                     (:base-type field)

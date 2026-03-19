@@ -372,7 +372,7 @@
     (h2x/- 8 day-of-week-of-start-of-year)))
 
 (defmulti make-clause-with-opts
-  "Return an mbql clause given a tag, arguments, and options"
+  "Returns an MBQL clause given with the given tag, arguments, and options."
   {:added "0.60.0" :arglists '([driver tag opts & args])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
@@ -736,7 +736,7 @@
                    :type/Text)))))
 
 (defmulti expression-by-name
-  "Get an expression from a query or stage by name"
+  "Gets an expression from a query or stage (`*inner-query`) by name."
   {:added "0.60.0" :arglists '([driver expression-name])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
@@ -1046,7 +1046,7 @@
           order-bys)))
 
 (defmulti remapped-order-by?
-  "Returns true if the given order-by clause is an externally remapped field"
+  "Looks for the `externally-remapped-field` key in the order by field options."
   {:added "0.60.0", :arglists '([driver order-by])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
@@ -1056,7 +1056,7 @@
   (driver-api/qp.util.transformations.nest-breakouts.externally-remapped-field opts))
 
 (defmulti remapped-breakout?
-  "Returns true if the given breakout clause is an externally remapped field"
+  "Looks for the `externally-remapped-field` key in the breakout options."
   {:added "0.60.0", :arglists '([driver breakout])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
@@ -1066,7 +1066,7 @@
   (driver-api/qp.util.transformations.nest-breakouts.externally-remapped-field opts))
 
 (defmulti finest-temporal-breakout-idx
-  "Wrapper around [[driver-api/finest-temporal-breakout-index]]"
+  "Wrapper around `driver-api/finest-temporal-breakout-index`."
   {:added "0.60.0", :arglists '([driver breakouts])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
@@ -1704,7 +1704,7 @@
   [:escape like-rhs-honeysql [:inline "\\"]])
 
 (defmulti clause-value-idx
-  "Returns the index of the value in a clause"
+  "Returns the index of the value in a clause."
   {:added "0.60.0" :arglists '([driver])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)

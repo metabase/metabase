@@ -182,8 +182,22 @@
     [driver [op opts & args]]
     ((get-method sql.qp/->honeysql [:sql op]) driver (into [op] (cond-> (vec args) opts (conj opts))))))
 
+(defmethod sql.qp/make-clause-with-opts :sql-mbql5
+  [_driver tag opts & args]
+  (into [tag (merge {:lib/uuid (str (random-uuid))} opts)] args))
+
+(defmethod sql.params.substitution/field->clause :sql-mbql5
+  [driver field other-opts]
+  (sql.params.substitution/field->clause* driver field other-opts))
+
 (defmethod sql.qp/clause-value-idx :sql-mbql5 [_driver] 2)
 
+(defmethod sql.qp/expression-by-name :sql-mbql5
+  [_driver expression-name]
+  (m/find-first (comp #{expression-name} lib.util/expression-name)
+                (:expressions sql.qp/*inner-query*)))
+
+;; TODO(rileythomp, 2026-03-19): Check if we actually need to dissoc here and below
 (defmethod sql.qp/remapped-order-by? :sql-mbql5
   [_driver [_dir _opts [_ opts _name]]]
   (driver-api/qp.util.transformations.nest-breakouts.externally-remapped-field (dissoc opts :lib/uuid)))
@@ -195,16 +209,3 @@
 (defmethod sql.qp/finest-temporal-breakout-idx :sql-mbql5
   [_driver breakouts]
   (driver-api/finest-temporal-breakout-index breakouts 1))
-
-(defmethod sql.qp/expression-by-name :sql-mbql5
-  [_driver expression-name]
-  (m/find-first (comp #{expression-name} lib.util/expression-name)
-                (:expressions sql.qp/*inner-query*)))
-
-(defmethod sql.qp/make-clause-with-opts :sql-mbql5
-  [_driver tag opts & args]
-  (into [tag (merge {:lib/uuid (str (random-uuid))} opts)] args))
-
-(defmethod sql.params.substitution/field->clause :sql-mbql5
-  [driver field other-opts]
-  (sql.params.substitution/field->clause* driver field other-opts))

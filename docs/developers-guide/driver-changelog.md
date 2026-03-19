@@ -6,16 +6,16 @@ title: Driver interface changelog
 
 ## Metabase 0.60.0
 
-- Added the following driver multimethods to support the MBQL5 compilation migration:
-  - `make-clause-with-opts` - Returns an MBQL clause with the given options
-  - `field->clause` - Returns an MBQL `:field` clause with the given options
-  - `remapped-order-by?` - Wrapper around `qp.util.transformations.nest-breakouts.externally-remapped-field`
-  - `expression-by-name` - Gets an expression from a query or stage (`*inner-query`) by name
-  - `clause-value-idx` - Returns the index of the value in a clause
-  - `finest-temporal-breakout-idx` - Wrapper around `driver-api/finest-temporal-breakout-index`
-  - `remapped-breakout?` - Wrapper around `driver-api/qp.util.transformations.nest-breakouts.externally-remapped-field`
-  These methods have implementations for the :sql and :sql-mbql5 drivers, other drivers should not need to implement these methods.
-  These methods will eventually be deprecated in favour of the :sql-mbql5 implementation once all drivers have been migrated.
+- Added the following driver multimethods to support MBQL5 compilation migration:
+  - `make-clause-with-opts` - Returns an MBQL clause given with the given tag, arguments, and options.
+  - `field->clause` - Returns an MBQL `:field` clause with the relevant options for a field filter.
+  - `clause-value-idx` - Returns the index of the value in a clause.
+  - `expression-by-name` - Gets an expression from a query or stage (`*inner-query`) by name.
+  - `remapped-order-by?` - Looks for the `externally-remapped-field` key in the order by field options.
+  - `remapped-breakout?` - Looks for the `externally-remapped-field` key in the breakout options.
+  - `finest-temporal-breakout-idx` - Wrapper around `driver-api/finest-temporal-breakout-index`.
+  These methods have implementations for the `:sql` and `:sql-mbql5` drivers. Concrete drivers should not need
+  to implement these methods. Drivers can opt-in to MBQL5 compilation by adding the `:sql-mbql5` driver as a parent. See the `:h2` driver for an example. These methods will eventually be deprecated in favour of the `:sql-mbql5` implementations once all drivers have been migrated.
 
 ## Metabase 0.59.0
 
