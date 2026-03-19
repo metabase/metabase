@@ -384,7 +384,7 @@ export const SPLIT_PANELS_SETTINGS: VisualizationSettingsDefinitions = {
       return t`Split series into panels`;
     },
     widget: "toggle",
-    default: false,
+    getDefault: () => false,
     inline: true,
     getMarginBottom: () => "1rem",
     getHidden: (series, settings) => {
