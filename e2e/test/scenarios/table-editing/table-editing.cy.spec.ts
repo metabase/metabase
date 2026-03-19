@@ -307,12 +307,11 @@ describe("scenarios > table-editing", () => {
       cases.forEach(({ dataType, column, value }) => {
         it(`should allow to edit a cell with type ${dataType}`, () => {
           // Locate the table and the specific cell to edit
-          cy.findByTestId("table-root")
-            .findAllByRole("row")
+          cy.findByTestId("table-body")
+            .find(`[data-column-id='${column}']`)
             .eq(1) // Select the second row (index 1)
-            .within(() => {
-              cy.get(`[data-column-id='${column}']`).as("targetCell").click(); // Activate inline editing
-            });
+            .as("targetCell")
+            .click(); // Activate inline editing
 
           // Edit the cell value
           cy.get("@targetCell")
@@ -351,14 +350,11 @@ describe("scenarios > table-editing", () => {
       });
 
       it("should allow to edit a cell with date type", () => {
-        cy.findByTestId("table-root")
-          .findAllByRole("row")
+        cy.findByTestId("table-body")
+          .find("[data-column-id='date']")
           .eq(1)
-          .within(() => {
-            cy.get("[data-column-id='date']").as("targetCell").click({
-              scrollBehavior: false,
-            });
-          });
+          .as("targetCell")
+          .click({ scrollBehavior: false });
 
         const day = Math.floor(Math.random() * 10) + 10; // 10-20
 
@@ -379,14 +375,11 @@ describe("scenarios > table-editing", () => {
       });
 
       it("should allow to edit a cell with datetime type", () => {
-        cy.findByTestId("table-root")
-          .findAllByRole("row")
+        cy.findByTestId("table-body")
+          .find("[data-column-id='datetime']")
           .eq(1)
-          .within(() => {
-            cy.get("[data-column-id='datetime']").as("targetCell").click({
-              scrollBehavior: false,
-            });
-          });
+          .as("targetCell")
+          .click({ scrollBehavior: false });
 
         const day = Math.floor(Math.random() * 10) + 10; // 10-20
         const hour = Math.floor(Math.random() * 12);
@@ -423,14 +416,11 @@ describe("scenarios > table-editing", () => {
       });
 
       it("should allow to edit a cell with select type", () => {
-        cy.findByTestId("table-root")
-          .findAllByRole("row")
+        cy.findByTestId("table-body")
+          .find("[data-column-id='boolean']")
           .eq(1)
-          .within(() => {
-            cy.get("[data-column-id='boolean']").as("targetCell").click({
-              scrollBehavior: false,
-            });
-          });
+          .as("targetCell")
+          .click({ scrollBehavior: false });
 
         H.popover().within(() => {
           // 3: true, false, null
@@ -445,37 +435,27 @@ describe("scenarios > table-editing", () => {
       });
 
       it("should not allow to edit PK cells", () => {
-        cy.findByTestId("table-root")
-          .findAllByRole("row")
+        cy.findByTestId("table-body")
+          .find("[data-column-id='id']")
           .eq(1)
-          .within(() => {
-            cy.get("[data-column-id='id']")
-              .as("targetCell")
-              .click({
-                scrollBehavior: false,
-              })
-              .find("input")
-              .should("not.exist");
-          });
+          .as("targetCell")
+          .click({ scrollBehavior: false })
+          .find("input")
+          .should("not.exist");
       });
 
       it("should handle errors", () => {
-        cy.findByTestId("table-root")
-          .findAllByRole("row")
+        cy.findByTestId("table-body")
+          .find("[data-column-id='tinyint']")
           .eq(1)
-          .within(() => {
-            cy.get("[data-column-id='tinyint']")
-              .as("targetCell")
-              .click({
-                scrollBehavior: false,
-              })
-              .find("input")
-              // Entering a big number into tinyint column
-              .type("{selectAll}{backspace}9999999", {
-                scrollBehavior: false,
-              })
-              .blur(); // Trigger the save action by blurring the input
-          });
+          .as("targetCell")
+          .click({ scrollBehavior: false })
+          .find("input")
+          // Entering a big number into tinyint column
+          .type("{selectAll}{backspace}9999999", {
+            scrollBehavior: false,
+          })
+          .blur(); // Trigger the save action by blurring the input
 
         H.undoToast()
           .findByText("Couldn't save table changes")
