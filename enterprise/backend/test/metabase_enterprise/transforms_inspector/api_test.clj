@@ -10,7 +10,7 @@
 (set! *warn-on-reflection* true)
 
 (deftest inspect-lens-not-found-test
-  (mt/with-premium-features #{:transforms-basic}
+  (mt/with-premium-features #{:transforms-basic :transforms-python}
     (testing "GET /api/ee/transforms/:id/inspect/:lens-id returns 404 for a nonexistent lens"
       (mt/with-temp [:model/Transform {transform-id :id} {}]
         (mt/with-data-analyst-role! (mt/user->id :lucky)
@@ -22,7 +22,7 @@
 ;;; -------------------------------------------------- Inspector Query API --------------------------------------------------
 
 (deftest inspect-query-execute-test
-  (mt/with-premium-features #{:transforms-basic}
+  (mt/with-premium-features #{:transforms-basic :transforms-python}
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (testing "POST /api/ee/transforms/:id/inspect/:lens-id/query executes a query with inspector context"
         (mt/with-temp [:model/Transform {transform-id :id} {}]
@@ -41,7 +41,7 @@
                   (is (= "transform-inspector" (:context result))))))))))))
 
 (deftest inspect-query-with-lens-params-test
-  (mt/with-premium-features #{:transforms-basic}
+  (mt/with-premium-features #{:transforms-basic :transforms-python}
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (testing "POST /api/ee/transforms/:id/inspect/:lens-id/query passes lens_params through to query execution"
         (mt/with-temp [:model/Transform {transform-id :id} {}]
@@ -57,7 +57,7 @@
                 (is (= "transform-inspector" (:context result)))))))))))
 
 (deftest inspect-query-permissions-test
-  (mt/with-premium-features #{:transforms-basic}
+  (mt/with-premium-features #{:transforms-basic :transforms-python}
     (testing "POST /api/ee/transforms/:id/inspect/:lens-id/query requires transforms permission"
       (mt/with-temp [:model/Transform {transform-id :id} {}]
         (let [mp (mt/metadata-provider)]
@@ -74,7 +74,7 @@
                                                       {:query (lib/aggregate (lib/query mp (lib.metadata/table mp (mt/id :orders))) (lib/count))}))))))))))))
 
 (deftest inspect-query-not-found-test
-  (mt/with-premium-features #{:transforms-basic}
+  (mt/with-premium-features #{:transforms-basic :transforms-python}
     (testing "POST /api/ee/transforms/:id/inspect/:lens-id/query returns 404 for non-existent transform"
       (mt/with-data-analyst-role! (mt/user->id :lucky)
         (mt/user-http-request :lucky :post 404
@@ -82,7 +82,7 @@
                               {:query (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))})))))
 
 (deftest inspect-query-invalid-params-test
-  (mt/with-premium-features #{:transforms-basic}
+  (mt/with-premium-features #{:transforms-basic :transforms-python}
     (testing "POST /api/ee/transforms/:id/inspect/:lens-id/query validates parameters"
       (mt/with-temp [:model/Transform {transform-id :id} {}]
         (mt/with-data-analyst-role! (mt/user->id :lucky)
