@@ -650,6 +650,13 @@
    :requires [[mage.fixbot.session :as session]]
    :task (task! (session/list-sessions! parsed))}
 
+  -fixbot-quit
+  {:doc "Tear down and remove a fixbot worktree session"
+   :examples [["./bin/mage -fixbot-quit mb-12345" "Remove session and worktree"]]
+   :requires [[mage.fixbot.session :as session]]
+   :arg-schema [:tuple [:string {:name "name-or-id"}]]
+   :task (task! (session/quit! parsed))}
+
   -fixbot-dashboard
   {:doc "Open fixbot TUI dashboard"
    :examples [["./bin/mage -fixbot-dashboard" "Open dashboard"]]

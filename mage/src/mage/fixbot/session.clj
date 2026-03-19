@@ -10,7 +10,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Helpers
 
-(defn- workmux-list
+(defn- workmux-list-raw
   "Run `workmux list` and return the raw output lines."
   []
   (let [{:keys [exit out]} (shell/sh* {:quiet? true} "workmux" "list")]
@@ -18,18 +18,37 @@
       (vec (remove str/blank? out))
       [])))
 
+(defn- parse-worktree-name
+  "Extract the worktree name from a workmux list output line.
+   The name is everything after '__worktrees/' in the PATH column.
+   For names like 'fixbot/uxw-3155', the path looks like '../repo__worktrees/fixbot/uxw-3155'."
+  [line]
+  (let [trimmed (str/trim line)]
+    (when-let [path (last (re-find #"(\S+)\s*$" trimmed))]
+      (cond
+        (= path "(here)") nil ;; skip the main worktree
+        (str/includes? path "__worktrees/")
+        (second (str/split path #"__worktrees/" 2))
+        :else (last (str/split path #"/"))))))
+
 (defn- find-session
   "Find a workmux session matching the given name or issue ID (case-insensitive substring match).
-   Returns the session name or nil."
+   Returns the worktree name (suitable for workmux commands) or nil."
   [name-or-id]
-  (let [needle  (str/lower-case (str/trim name-or-id))
-        sessions (workmux-list)]
-    (first (filter #(str/includes? (str/lower-case %) needle) sessions))))
+  (let [needle   (str/lower-case (str/trim name-or-id))
+        lines    (workmux-list-raw)
+        ;; Skip header line
+        data     (rest lines)]
+    (->> data
+         (keep (fn [line]
+                 (when (str/includes? (str/lower-case line) needle)
+                   (parse-worktree-name line))))
+         first)))
 
 (defn- print-available-sessions!
   "Print the list of available workmux sessions."
   []
-  (let [sessions (workmux-list)]
+  (let [sessions (workmux-list-raw)]
     (if (seq sessions)
       (do
         (println (c/yellow "Available sessions:"))
@@ -108,22 +127,42 @@
   [_parsed]
   (println (c/bold (c/green "Fixbot Sessions")))
   (println)
-  ;; Show workmux list with PR info
-  (let [{:keys [exit out]} (shell/sh* {:quiet? true} "workmux" "list" "--pr")]
+  ;; Show workmux list with PR info, filtered to fixbot sessions
+  (let [{:keys [exit out]} (shell/sh* {:quiet? true} "workmux" "list" "--pr" "fixbot")]
     (when (zero? exit)
       (doseq [line out]
         (println line))))
   (println)
   ;; Show git status info
-  (let [{:keys [exit out]} (shell/sh* {:quiet? true} "workmux" "status" "--git")]
+  (let [{:keys [exit out]} (shell/sh* {:quiet? true} "workmux" "status" "--git" "fixbot")]
     (when (zero? exit)
       (doseq [line out]
         (println line)))))
 
+(defn quit!
+  "Tear down and remove a fixbot worktree session."
+  [{:keys [arguments]}]
+  (let [name-or-id (first arguments)]
+    (when (str/blank? name-or-id)
+      (println (c/red "Usage: ./bin/mage -fixbot-quit <name-or-issue-id>"))
+      (u/exit 1))
+    (let [session (find-session name-or-id)]
+      (when-not session
+        (println (c/red "No session found matching: ") name-or-id)
+        (print-available-sessions!)
+        (u/exit 1))
+      ;; Remove worktree (pre_remove hook handles dev-env teardown)
+      (println (c/yellow "Removing worktree: " session "..."))
+      (shell/sh "workmux" "remove" "-f" session)
+      ;; Kill tmux session if it exists
+      (shell/sh* {:quiet? true} "tmux" "kill-session" "-t" session)
+      (println)
+      (println (c/bold (c/green "Session removed: ") (c/cyan session))))))
+
 (defn dashboard!
   "Open the workmux TUI dashboard."
   []
-  (let [pb (ProcessBuilder. ^java.util.List ["workmux" "dashboard"])]
+  (let [pb (ProcessBuilder. ^java.util.List ["workmux" "dashboard" "fixbot"])]
     (.inheritIO pb)
     (.directory pb (java.io.File. ^String u/project-root-directory))
     (let [proc (.start pb)]

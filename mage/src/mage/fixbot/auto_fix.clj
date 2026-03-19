@@ -78,7 +78,7 @@
         (println (c/red "--branch is required"))
         (u/exit 1))
 
-      (let [session-name  (str/lower-case issue-id)
+      (let [session-name  (str "fixbot/" (str/lower-case issue-id))
             workmux-path  (str u/project-root-directory "/.workmux.yaml")
             backup-path   (str workmux-path ".bak")
             had-backup?   (.exists (java.io.File. workmux-path))
