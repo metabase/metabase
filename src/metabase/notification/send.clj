@@ -449,7 +449,10 @@
                                :entity_type :card
                                :entity_id   card-id})
     :notification/dashboard (when-let [dashboard-id (or (:dashboard_id payload)
-                                                        ;; TODO: :model/NotificationDashboard is not defined anywhere — investigate
+                                                        ;; TODO(@gadget): :model/NotificationDashboard doesn't appear to be
+                                                        ;; defined anywhere (no defmethod, no migration). Looks like dashboard
+                                                        ;; notifications carry :dashboard_id inline via :dashboard_subscription
+                                                        ;; instead. Is this fallback still needed?
                                                         (some->> payload_id
                                                                  (t2/select-one-fn :dashboard_id :model/NotificationDashboard :id)))]
                               {:run_type    :subscription
