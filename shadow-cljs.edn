@@ -12,15 +12,15 @@
  {:app
   {:target     :npm-module
    :output-dir "target/cljs_release/"
+   :build-hooks [(metabase.shadow-cljs-hooks/add-ee-entries)]
    :dev        {:output-dir "target/cljs_dev/"
                 :compiler-options {:reader-features #{:cljs-dev}}}
    :compiler-options {:reader-features #{:cljs-release}
                       :source-map      true
                       :warnings        {:fn-deprecated false}}
    :closure-defines {goog.debug.LOGGING_ENABLED true}
-   ;; NOTE: shadow-cljs --config-merge replaces (not appends) vectors,
-   ;; so shadow-cljs-ee.edn duplicates this list with EE entries added.
-   ;; Keep both in sync when adding new entries.
+   ;; EE entries are appended by the add-ee-entries build hook
+   ;; when MB_EDITION=ee (see metabase.shadow-cljs-hooks).
    :entries    [metabase.dashboards.constants
                 metabase.lib.column-group
                 metabase.lib.js
