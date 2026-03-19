@@ -82,3 +82,4 @@ Tell the user:
 - Which issue you're fixing
 - Which database you chose and why
 - That the workmux session has been launched
+- That they can run `./bin/mage -fixbot-dashboard` in a separate terminal for a live TUI dashboard showing all active agents

@@ -109,13 +109,13 @@
   (println (c/bold (c/green "Fixbot Sessions")))
   (println)
   ;; Show workmux list with PR info
-  (let [{:keys [exit out]} (shell/sh* "workmux" "list" "--pr")]
+  (let [{:keys [exit out]} (shell/sh* {:quiet? true} "workmux" "list" "--pr")]
     (when (zero? exit)
       (doseq [line out]
         (println line))))
   (println)
   ;; Show git status info
-  (let [{:keys [exit out]} (shell/sh* "workmux" "status" "--git")]
+  (let [{:keys [exit out]} (shell/sh* {:quiet? true} "workmux" "status" "--git")]
     (when (zero? exit)
       (doseq [line out]
         (println line)))))
