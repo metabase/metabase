@@ -39,8 +39,16 @@ cd "$PROJECT_ROOT"
 
 export CYPRESS_BASE_URL="${CYPRESS_BASE_URL:-http://localhost:3000}"
 
-echo "[cypress] Running @${PHASE} tests against ${CYPRESS_BASE_URL}"
-
-bunx cypress run \
-  --config-file "e2e/cross-version/cypress.config.js" \
+CYPRESS_ARGS=(
+  --config-file "e2e/cross-version/cypress.config.js"
   --env "grepTags=@${PHASE}"
+)
+
+if [[ -n "${CYPRESS_SPEC_PATTERN:-}" ]]; then
+  echo "[cypress] Running @${PHASE} tests from ${CYPRESS_SPEC_PATTERN}"
+  CYPRESS_ARGS+=(--config "specPattern=${CYPRESS_SPEC_PATTERN}")
+else
+  echo "[cypress] Running @${PHASE} tests against ${CYPRESS_BASE_URL}"
+fi
+
+bunx cypress run "${CYPRESS_ARGS[@]}"
