@@ -22,7 +22,7 @@ databaseChangeLog:
             columnName: target_table_id
 
   - changeSet:
-      id: v60.2026-03-10T00:00:00a
+      id: v60.2026-03-10T00:00:05
       author: christruter
       comment: Add index on transform.target_table_id
       changes:
@@ -61,7 +61,7 @@ databaseChangeLog:
       rollback:
 
   - changeSet:
-      id: v60.2026-03-10T00:00:02a
+      id: v60.2026-03-10T00:00:06
       author: christruter
       comment: Add index on workspace_output.global_table_id
       changes:
@@ -91,7 +91,7 @@ databaseChangeLog:
             onDelete: SET NULL
 
   - changeSet:
-      id: v60.2026-03-10T00:00:03a
+      id: v60.2026-03-10T00:00:07
       author: christruter
       comment: Add index on workspace_output.isolated_table_id
       changes:
