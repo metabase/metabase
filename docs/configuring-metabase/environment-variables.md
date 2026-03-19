@@ -1205,6 +1205,16 @@ The custom illustration for the login page.
 
 The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox.
 
+### `MB_METABOT_SLACK_SIGNING_SECRET`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `metabot-slack-signing-secret`
+
+Signing secret for verifying requests from the Metabot Slack app.
+
 ### `MB_NATIVE_QUERY_AUTOCOMPLETE_MATCH_STYLE`
 
 - Type: keyword
@@ -1902,10 +1912,10 @@ Slack OIDC claim for the team/workspace ID.
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: string
-- Default: `sso`
+- Default: `link-only`
 - [Configuration file name](./config-file.md): `slack-connect-authentication-mode`
 
-Controls whether Slack can be used for SSO login or just account linking. Valid values: "sso" (default) or "link-only".
+Controls whether Slack can be used for SSO login or just account linking. Valid values: "sso" or "link-only" (default).
 
 ### `MB_SLACK_CONNECT_CLIENT_ID`
 
@@ -2469,12 +2479,25 @@ Default: `""`
 
 When set, starts a Java Flight Recorder (JFR) recording at startup that can be analyzed with JDK Mission Control or other JFR tools.
 
-- `"true"` generates a timestamped output file like `metabase-2026_01_15.jfr`
-- Any other non-empty value is used as the output filename (`.jfr` extension is appended if missing)
+- `"true"` generates a timestamped output file like `metabase-20260115_143000.jfr`
+- A value ending in `.jfr` is used as the output filename
+- Any other non-empty value is treated as a directory path. A new timestamped JFR file is written to that directory every 30 minutes (e.g., `metabase-20260115_143000.jfr`). Data is only written at the end of each 30-minute interval.
 - `""` or `"false"` disables monitoring (the default)
 
 The performance recording stores only method signature calls and other code execution metrics.
 It does not store any sensitive information such as environment variables, system properties, or other machine information.
+
+### `MB_MONITOR_PERFORMANCE_SAVE_RATE`
+
+Type: integer<br>
+Default: mode-specific (5 minutes for single-file mode, 30 minutes for rolling mode)
+
+Override the interval (in minutes) at which JFR recording data is saved to disk. Only applies when [MB_MONITOR_PERFORMANCE](#mb_monitor_performance) is enabled.
+
+- In single-file mode, the default is `5` minutes.
+- In rolling directory mode, the default is `30` minutes.
+
+Setting this value overrides the default for whichever mode is active.
 
 ### `MB_NO_SURVEYS`
 

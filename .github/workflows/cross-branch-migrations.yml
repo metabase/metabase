@@ -25,7 +25,7 @@ concurrency:
 
 jobs:
   migrations-h2-ee:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     env:
       CI: 'true'
@@ -39,7 +39,7 @@ jobs:
           head-ref: ${{ env.HEAD_REF }}
 
   migrations-postgres-14-ee:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     env:
       CI: 'true'
@@ -65,7 +65,7 @@ jobs:
           head-ref: ${{ env.HEAD_REF }}
 
   migrations-postgres-latest-ee:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     env:
       CI: 'true'
@@ -91,7 +91,7 @@ jobs:
           head-ref: ${{ env.HEAD_REF }}
 
   migrations-mysql-8-4-ee:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     env:
       CI: 'true'
@@ -116,7 +116,7 @@ jobs:
           head-ref: ${{ env.HEAD_REF }}
 
   migrations-mysql-latest-ee:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     env:
       CI: 'true'
@@ -142,7 +142,7 @@ jobs:
           head-ref: ${{ env.HEAD_REF }}
 
   migrations-mariadb-10-6-ee:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     env:
       CI: 'true'
@@ -153,7 +153,8 @@ jobs:
       MB_DB_USER: root
     services:
       mariadb:
-        image: mariadb:10.6
+        image: metabase/mariadb:10.6 # https://github.com/metabase/metabase-mariadb-docker-image
+        image: ${{ matrix.version.image }}
         ports:
           - "3306:3306"
         env:
@@ -167,7 +168,7 @@ jobs:
           head-ref: ${{ env.HEAD_REF }}
 
   migrations-mariadb-latest-ee:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     env:
       CI: 'true'

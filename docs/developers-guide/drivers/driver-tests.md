@@ -204,7 +204,7 @@ Here is an example configuration for PostgreSQL.
 be-tests-postgres-latest-ee:
   needs: files-changed
   if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
-  runs-on: ubuntu-22.04
+  runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
   timeout-minutes: 40
   env:
     CI: "true"
@@ -212,20 +212,20 @@ be-tests-postgres-latest-ee:
     MB_DB_TYPE: postgres
     MB_DB_PORT: 5432
     MB_DB_HOST: localhost
-    MB_DB_DBNAME: mb_test
-    MB_DB_USER: mb_test
-    MB_POSTGRESQL_TEST_USER: mb_test
+    MB_DB_DBNAME: circle_test
+    MB_DB_USER: circle_test
+    MB_POSTGRESQL_TEST_USER: circle_test
     MB_POSTGRES_SSL_TEST_SSL: true
     MB_POSTGRES_SSL_TEST_SSL_MODE: verify-full
     MB_POSTGRES_SSL_TEST_SSL_ROOT_CERT_PATH: "test-resources/certificates/us-east-2-bundle.pem"
   services:
     postgres:
-      image: postgres:latest
+      image: circleci/postgres:latest
       ports:
         - "5432:5432"
       env:
-        POSTGRES_USER: mb_test
-        POSTGRES_DB: mb_test
+        POSTGRES_USER: circle_test
+        POSTGRES_DB: circle_test
         POSTGRES_HOST_AUTH_METHOD: trust
   steps:
     - uses: actions/checkout@v4

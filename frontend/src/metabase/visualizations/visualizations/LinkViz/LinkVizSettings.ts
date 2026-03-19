@@ -31,9 +31,9 @@ export const settings = {
       value: {
         url: "",
       },
-      default: {
+      getDefault: () => ({
         url: "",
-      },
+      }),
     },
   },
   preventDragging: (e: React.SyntheticEvent) => e.stopPropagation(),

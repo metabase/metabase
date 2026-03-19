@@ -150,7 +150,7 @@ export function nestedSettings<
 
   const idDef: SeriesSettingDefinition<Value, TProps & { id: string }> = {
     section: t`Display`,
-    default: {},
+    getDefault: () => ({}),
     getProps: (series, settings, onChange, extra) => {
       const objects = getObjects(series, settings);
       const allComputedSettings = getComputedSettingsForAllObjects(

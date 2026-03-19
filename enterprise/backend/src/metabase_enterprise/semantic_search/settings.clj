@@ -5,14 +5,25 @@
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
 
+(def ^:private valid-embedding-providers
+  "The set of valid embedding provider names."
+  #{"ai-service" "openai" "ollama"})
+
 (defsetting ee-embedding-provider
-  (deferred-tru "The embedding provider to use (:openai, :ollama, or :ai-service)")
+  (deferred-tru "The embedding provider to use (`openai`, `ollama`, or `ai-service`)")
   :encryption :no
   :visibility :settings-manager
   :default "ai-service"
   :type :string
   :export? false
-  :doc false)
+  :doc false
+  :setter (fn [new-value]
+            (when (and new-value (not (contains? valid-embedding-providers new-value)))
+              (throw (ex-info (str "Invalid embedding provider: " (pr-str new-value)
+                                   ". Valid providers are: " (pr-str valid-embedding-providers))
+                              {:invalid-value new-value
+                               :valid-values  valid-embedding-providers})))
+            (setting/set-value-of-type! :string :ee-embedding-provider new-value)))
 
 (defsetting ee-embedding-model
   (deferred-tru "Set the embedding model for the selected provider")
@@ -40,6 +51,21 @@
   "Get the OpenAI API key from the existing LLM settings."
   []
   (llm-settings/ee-openai-api-key))
+
+(defsetting ee-embedding-service-base-url
+  (deferred-tru "URL of the OpenAI-compatible embedding service (e.g. a LiteLLM proxy).")
+  :encryption :no
+  :visibility :settings-manager
+  :default    nil
+  :export?    false
+  :doc        false)
+
+(defsetting ee-embedding-service-api-key
+  (deferred-tru "API key for authenticating with the embedding service.")
+  :sensitive? true
+  :visibility :settings-manager
+  :export?    false
+  :doc        false)
 
 (defsetting semantic-search-enabled
   (deferred-tru "Enable the semantic search engine? Intended as a kill switch for the semantic search feature while dogfooding.")

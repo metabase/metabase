@@ -132,11 +132,13 @@
      task
      task-history
      timeline
+     tracing
      types
      users
      util
      version
-     view-log})
+     view-log
+     warehouse-schema})
 
 (defn- affected-modules
   "Set of modules that are direct or indirect dependents of `modules`, and thus are affected by changes to them.
@@ -399,17 +401,23 @@
     {:should-run true
      :reason "Module updated which explicitly triggers cloud drivers"}
 
-    ;; Priority 9: Cloud driver, no relevant changes → skip
+    ;; Priority 9: Cloud driver + driver deps affected (e.g., deps.edn changed)
+    (and (contains? cloud-drivers driver)
+         driver-deps-affected?)
+    {:should-run true
+     :reason "driver module affected by shared code changes"}
+
+    ;; Priority 10: Cloud driver, no relevant changes → skip
     (contains? cloud-drivers driver)
     {:should-run false
      :reason "no relevant changes for cloud driver"}
 
-    ;; Priority 10: Driver deps affected by shared code changes
+    ;; Priority 11: Driver deps affected by shared code changes
     driver-deps-affected?
     {:should-run true
      :reason "driver module affected by shared code changes"}
 
-    ;; Priority 11: Self-hosted driver, not affected
+    ;; Priority 12: Self-hosted driver, not affected
     :else
     {:should-run false
      :reason "driver module not affected"}))

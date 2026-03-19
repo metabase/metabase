@@ -14,7 +14,7 @@ concurrency:
 jobs:
   be-tests-mariadb:
     if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
       fail-fast: false
@@ -22,8 +22,7 @@ jobs:
         version:
           - name: MariaDB 10.6
             junit-name: be-tests-mariadb-10-6-ee
-            # FIXME: Use the official image when DEV-1668 gets resolved
-            image: circleci/mariadb:10.6
+            image: metabase/mariadb:10.6 # https://github.com/metabase/metabase-mariadb-docker-image
             env:
               enable-ssl-tests: 'false'
           - name: MariaDB Latest
@@ -58,8 +57,8 @@ jobs:
         ports:
           - "3306:3306"
         env:
-          MYSQL_ALLOW_EMPTY_PASSWORD: true
-          MYSQL_DATABASE: mb_test
+          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: true
+          MARIADB_DATABASE: mb_test
     env:
       # Only run old migrations tests on pushes to master or release branches. All other branches should skip tests
       # with the tag `mb/old-migrations-test`. `__ADDITIONAL_EXCLUDED_TAG__` is not used anywhere outside of splicing
@@ -129,7 +128,7 @@ jobs:
 
   be-tests-mysql:
     if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
       fail-fast: false
@@ -253,7 +252,7 @@ jobs:
 
   be-tests-postgres:
     if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
       fail-fast: false
@@ -367,7 +366,7 @@ jobs:
       - be-tests-mariadb
       - be-tests-mysql
       - be-tests-postgres
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     name: app-db-tests-result
     if: always() && !cancelled()

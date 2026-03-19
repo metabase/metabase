@@ -202,7 +202,7 @@
 
 (deftest driver-deps-affected-runs-self-hosted-drivers
   (testing "Self-hosted drivers run when driver module is affected"
-    ;; H2/Postgres hit priority 2 first, others hit priority 9
+    ;; H2/Postgres hit priority 2 first, others hit priority 10
     (doseq [driver [:mysql :mongo :oracle :sqlserver]]
       (let [result (mage.modules/driver-decision driver
                                                  (make-ctx {})
@@ -214,7 +214,7 @@
         (is (= "driver module affected by shared code changes" (:reason result)))))))
 
 ;;; =============================================================================
-;;; Priority 6-9: Cloud driver special rules
+;;; Priority 6-10: Cloud driver special rules
 ;;; =============================================================================
 
 (deftest cloud-driver-with-label-runs
@@ -253,6 +253,18 @@
             (str driver " should run when query-processor updated"))
         (is (= "Module updated which explicitly triggers cloud drivers"
                (:reason result)))))))
+
+(deftest cloud-driver-runs-when-driver-deps-affected
+  (testing "Cloud driver runs when driver deps are affected (e.g., deps.edn changed)"
+    (doseq [driver [:athena :bigquery :databricks :redshift :snowflake]]
+      (let [result (mage.modules/driver-decision driver
+                                                 (make-ctx {})
+                                                 true  ; driver-deps-affected
+                                                 #{}   ; quarantined
+                                                 #{})] ; updated
+        (is (true? (:should-run result))
+            (str driver " should run when driver deps affected"))
+        (is (= "driver module affected by shared code changes" (:reason result)))))))
 
 (deftest cloud-driver-without-changes-skips
   (testing "Cloud driver skips when no relevant changes"

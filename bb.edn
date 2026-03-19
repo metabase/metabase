@@ -354,12 +354,13 @@
                          "RUN"
                          (str "any of " (pr-str driver-triggers) " affected by cloud-driver module changes")]
                         ["8"    "Cloud driver + query-processor updated"  "RUN"  "query-processor module updated"]
-                        ["9"    "Cloud driver, no relevant changes"       "SKIP" "no relevant changes for cloud driver"]
-                        ["10"
+                        ["9"    "Cloud driver + driver deps affected"     "RUN"  "driver module affected by shared code changes"]
+                        ["10"    "Cloud driver, no relevant changes"       "SKIP" "no relevant changes for cloud driver"]
+                        ["11"
                          (str (pr-str driver-triggers) " module deps affected")
                          "RUN"
                          (str "any of " (pr-str driver-triggers) " affected by module changes")]
-                        ["11"   "Self-hosted driver, not affected"        "SKIP" "driver module not affected"]]))
+                        ["12"   "Self-hosted driver, not affected"        "SKIP" "driver module not affected"]]))
         "\n\n## Labels of Interest\n\n"
         "These PR labels influence driver test decisions:\n\n"
         "  ci:run-all-drivers        Force-run ALL drivers (overrides quarantine)\n"
@@ -591,4 +592,16 @@
              [nil "--status" "Show current env status"]
              [nil "--slot SLOT" "Override port slot (0-99)" :parse-fn Integer/parseInt]
              [nil "--fresh" "Recreate containers from scratch"]]
-   :task (task! (jds-dev-env/dev-env! parsed))}}}
+   :task (task! (jds-dev-env/dev-env! parsed))}
+
+  -bgrabow-ci-test-repl
+  {:doc "Start a REPL replicating a CI test job environment (Docker + env vars)"
+   :examples [["./bin/mage -bgrabow-ci-test-repl" "Interactive selection with fzf"]
+              ["./bin/mage -bgrabow-ci-test-repl app-db/be-tests-mysql" "Start REPL for a specific job"]
+              ["./bin/mage -bgrabow-ci-test-repl -n app-db/be-tests-mysql" "Dry run: print commands without executing"]]
+   :requires [[mage.bgrabow.ci-test-repl :as ci-test-repl]]
+   :options [["-n" "--dry-run" "Print docker, env, and clojure commands without executing"]]
+   :task (task!
+           (let [wj (first (:arguments parsed))
+                 [workflow job] (when wj (clojure.string/split wj (re-pattern "/") 2))]
+             (ci-test-repl/ci-test-repl {:workflow workflow :job job :dry-run? (:dry-run (:options parsed))})))}}}

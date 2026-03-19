@@ -21,7 +21,6 @@ import { getFilterDisplayName } from "./utils";
 type DimensionFilterButtonProps = {
   definition: MetricDefinition;
   filterDimension: DimensionMetadata;
-  filter?: FilterClause;
   dimensionFilter?: DimensionFilterValue;
   allFilterDimensions?: DimensionMetadata[];
   onChange: (value: DimensionFilterValue | undefined) => void;
@@ -30,7 +29,6 @@ type DimensionFilterButtonProps = {
 export function DimensionFilterButton({
   definition,
   filterDimension,
-  filter,
   dimensionFilter,
   allFilterDimensions,
   onChange,
@@ -38,14 +36,11 @@ export function DimensionFilterButton({
   const [isOpen, setIsOpen] = useState(false);
 
   const reconstructedFilter = useMemo((): FilterClause | undefined => {
-    if (filter) {
-      return filter;
-    }
     if (dimensionFilter) {
       return buildDimensionFilterClause(filterDimension, dimensionFilter);
     }
     return undefined;
-  }, [filter, dimensionFilter, filterDimension]);
+  }, [dimensionFilter, filterDimension]);
 
   const isDateDimension = LibMetric.isDateOrDateTime(filterDimension);
 
