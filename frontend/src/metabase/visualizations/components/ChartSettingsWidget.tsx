@@ -17,7 +17,6 @@ type Props = {
   marginBottom?: string;
   props?: Record<string, unknown>;
   variant?: "default" | "form-field";
-  borderBottom?: boolean;
   dataTestId?: string;
   id: string;
   style?: CSSProperties;
@@ -35,8 +34,6 @@ const ChartSettingsWidget = ({
   dataTestId,
   props,
   style,
-
-  borderBottom,
   // NOTE: pass along special props to support:
   // * adding additional fields
   // * substituting widgets
@@ -54,7 +51,6 @@ const ChartSettingsWidget = ({
       marginBottom={marginBottom}
       data-testid={dataTestId ?? `chart-settings-widget-${extraWidgetProps.id}`}
       data-field-title={title}
-      borderBottom={borderBottom}
       style={style}
     >
       {title && (

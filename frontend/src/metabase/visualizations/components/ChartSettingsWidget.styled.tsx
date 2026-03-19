@@ -6,7 +6,6 @@ import styled from "@emotion/styled";
 export const Root = styled.div<{
   inline?: boolean;
   marginBottom?: string;
-  borderBottom?: boolean;
 }>`
   ${(props) =>
     props.hidden &&
@@ -30,12 +29,7 @@ export const Root = styled.div<{
       align-items: center;
     `}
 
-    ${(props) =>
-    props.borderBottom &&
-    css`
-      padding-bottom: 1rem;
-      border-bottom: 1px solid var(--mb-color-border);
-    `}
+
 
   input {
     transition: border 0.3s;
