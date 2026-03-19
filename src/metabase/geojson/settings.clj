@@ -137,3 +137,8 @@
   :visibility :public
   :export?    true
   :audit      :raw-value)
+
+(defn user-defined-custom-geojson
+  "Returns the subset of custom-geojson that users defined, without the built-in geojson entries."
+  []
+  (reduce dissoc (custom-geojson) (keys (builtin-geojson))))

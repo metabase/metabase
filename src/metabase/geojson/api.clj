@@ -93,7 +93,7 @@
    raise]
   (when-not (geojson.settings/custom-geojson-enabled)
     (raise (ex-info (tru "Custom GeoJSON is not enabled") {:status-code 400})))
-  (if-let [url (get-in (geojson.settings/custom-geojson) [(keyword k) :url])]
+  (if-let [url (get-in (geojson.settings/user-defined-custom-geojson) [(keyword k) :url])]
     (try
       (read-url-and-respond url respond)
       (catch Throwable e
