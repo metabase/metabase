@@ -9,8 +9,8 @@ import { getErrorComponent } from "embedding-sdk-bundle/store/selectors";
 import type { SdkErrorComponentProps } from "embedding-sdk-bundle/types";
 import { Alert } from "metabase/common/components/Alert";
 import { EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/config";
-import { color } from "metabase/lib/colors";
 import { Anchor, Box, Center, Code, Flex, Portal } from "metabase/ui";
+import { color } from "metabase/ui/colors";
 
 export const SdkError = ({
   message,

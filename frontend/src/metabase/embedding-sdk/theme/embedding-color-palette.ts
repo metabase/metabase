@@ -3,9 +3,9 @@ import type {
   MetabaseColors,
   MetabaseComponentTheme,
 } from "metabase/embedding-sdk/theme";
-import { colors } from "metabase/lib/colors";
-import { mapChartColorsToAccents } from "metabase/lib/colors/accents";
-import type { ColorName, ColorPalette } from "metabase/lib/colors/types";
+import { colors } from "metabase/ui/colors";
+import { mapChartColorsToAccents } from "metabase/ui/colors/accents";
+import type { ColorName, ColorPalette } from "metabase/ui/colors/types";
 
 /**
  * Define SDK colors that can be mapped 1:1 to the main app colors.
@@ -19,7 +19,7 @@ export type MappableSdkColor = Exclude<MetabaseColor, "charts">;
 /**
  * Mapping of SDK colors to main app colors.
  *
- * The main app colors are defined in `metabase/lib/colors/colors.ts`.
+ * The main app colors are defined in `metabase/ui/colors/colors.ts`.
  * One SDK theme color can map to multiple main app colors.
  */
 export const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<

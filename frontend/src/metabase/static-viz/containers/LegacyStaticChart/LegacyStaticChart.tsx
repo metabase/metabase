@@ -1,7 +1,7 @@
-import type { ColorPalette } from "metabase/lib/colors/types";
 import Funnel from "metabase/static-viz/components/FunnelChart";
 import Gauge from "metabase/static-viz/components/Gauge";
 import { createColorGetter } from "metabase/static-viz/lib/colors";
+import type { ColorPalette } from "metabase/ui/colors/types";
 
 export type LegacyStaticChartType = "gauge" | "funnel";
 

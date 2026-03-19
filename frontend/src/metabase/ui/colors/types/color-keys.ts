@@ -33,6 +33,7 @@ export type MetabaseColorKey =
   | "border-brand"
   | "border-filter"
   | "border-strong"
+  | "border-stronger"
   | "border-subtle"
   | "brand"
   | "brand-hover"

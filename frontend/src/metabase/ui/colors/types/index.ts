@@ -8,6 +8,7 @@ import type { MetabaseColorKey } from "./color-keys";
 
 export type ColorPalette = Partial<Record<MetabaseColorKey, string>>;
 export type ColorName = MetabaseColorKey;
+export type ColorGetter = (colorName: string) => string;
 
 export type * from "./color-keys";
 export type * from "./accent-color-options";
