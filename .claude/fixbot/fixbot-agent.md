@@ -72,6 +72,42 @@ When the user says they're happy (e.g., "looks good", "ship it", "done"):
 1. Tell the user to run `/fixbot-pr` — this reviews all changes and creates the PR
 2. Do NOT create a PR yourself — the `/fixbot-pr` command handles code review, cleanup, and PR creation
 
+### Status Bar
+
+A status bar at the bottom of the tmux session displays the contents of `.fixbot/status.txt` (in the worktree root) and refreshes every 5 seconds. Use this to communicate persistent state to the user.
+
+Update `.fixbot/status.txt` (in the worktree root) when something important changes that the user should always be able to see — for example:
+- Current phase of work (e.g., "Phase 1: Analyzing issue", "Phase 2: Writing tests", "Phase 3: Ready for user testing")
+- A blocking question waiting on user input
+- URLs the user needs (e.g., the page to test)
+
+**Rules:**
+- Keep the file to **5 lines or fewer** — the pane is small
+- The first line is auto-populated with environment info (DB, ports) — **append your status after it, do not overwrite the first line**
+- Only update when the visible state meaningfully changes — don't spam updates
+- Keep each line short and scannable
+
+### Task Tracking with Beads
+
+`bd` (beads) is installed and initialized in stealth mode for structured task tracking. Use it to break down complex work, track dependencies, and maintain context across phases.
+
+**Key commands:**
+- `bd create "Task title" -p 0` — create a task (lower priority number = higher priority)
+- `bd ready` — list tasks that have no blockers and are ready to work on
+- `bd update <id> --claim` — assign a task to yourself and mark it in-progress
+- `bd update <id> --close` — mark a task as done
+- `bd show <id>` — view task details and history
+- `bd list` — list all tasks
+
+**When to use:**
+- When breaking a fix into multiple subtasks
+- To track what's been done vs what remains
+- To note blockers or dependencies between tasks
+
+**Rules:**
+- Beads is in stealth mode — it will not modify git state
+- Don't overthink it — simple issues may not need task tracking at all
+
 ### Important Rules
 - Focus ONLY on the reported issue — no unrelated changes
 - Always run tests before telling the user to verify

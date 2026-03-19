@@ -12,42 +12,40 @@
 
 (defn- generate-workmux-config
   "Generate the .workmux.yaml content."
-  [issue-id issue-url worktree-name app-db]
-  (let [main-repo u/project-root-directory]
-    (str "agent: ./bin/claude-dangerous\n"
-         "\n"
-         "post_create:\n"
-         "  - cp .claude/fixbot/commands/*.md .claude/commands/\n"
-         "  - ln -sfn " main-repo "/node_modules node_modules\n"
-         "  - ./bin/mage -fixbot-dev-env --app-db " app-db "\n"
-         "\n"
-         "panes:\n"
-         "  # Main: Claude agent (gets most screen space, focused)\n"
-         "  - command: <agent>\n"
-         "    focus: true\n"
-         "\n"
-         "  # Right column, top: Backend logs\n"
-         "  - command: >-\n"
-         "      eval \"$(mise activate bash)\" &&\n"
-         "      clojure -M:run:dev:dev-start:drivers:drivers-dev 2>&1\n"
-         "    split: horizontal\n"
-         "    percentage: 35\n"
-         "\n"
-         "  # Right column, bottom: Frontend build-hot\n"
-         "  - command: >-\n"
-         "      eval \"$(mise activate bash)\" && yarn build-hot 2>&1\n"
-         "    split: vertical\n"
-         "    percentage: 50\n"
-         "\n"
-         "  # Bottom status bar: port info + issue link\n"
-         "  - command: >-\n"
-         "      sleep 3 &&\n"
-         "      cat /tmp/metabase-fixbot-" worktree-name "-status.txt 2>/dev/null ||\n"
-         "      echo 'Environment starting...';\n"
-         "      echo 'Issue: " issue-id " | " issue-url "';\n"
-         "      exec bash\n"
-         "    split: horizontal\n"
-         "    size: 5\n")))
+  [issue-id issue-url app-db]
+  (str "agent: ./bin/claude-dangerous\n"
+       "\n"
+       "post_create:\n"
+       "  - cp .claude/fixbot/commands/*.md .claude/commands/\n"
+       "  - ./bin/mage -fixbot-dev-env --app-db " app-db "\n"
+       "  - bd init --stealth --quiet\n"
+       "\n"
+       "pre_remove:\n"
+       "  - ./bin/mage -fixbot-dev-env --down\n"
+       "\n"
+       "files:\n"
+       "  symlink:\n"
+       "    - node_modules\n"
+       "\n"
+       "panes:\n"
+       "  - command: <agent>\n"
+       "    focus: true\n"
+       "\n"
+       "  - command: clj -M:dev:dev-start:drivers:drivers-dev:ee:ee-dev\n"
+       "    split: horizontal\n"
+       "    percentage: 35\n"
+       "\n"
+       "  - command: MB_EDITION=ee bun run build-hot\n"
+       "    split: vertical\n"
+       "    percentage: 50\n"
+       "\n"
+       "  - command: >-\n"
+       "      watch -n 5 -t '\n"
+       "      cat .fixbot/status.txt 2>/dev/null ||\n"
+       "      echo \"Environment starting...\";\n"
+       "      echo \"Issue: " issue-id " | " issue-url "\"'\n"
+       "    split: horizontal\n"
+       "    size: 5\n"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Main orchestrator
@@ -63,7 +61,8 @@
     (let [issue-id    (str/upper-case (str/trim issue-id))
           app-db      (or (:app-db options) "postgres")
           prompt-file (:prompt-file options)
-          branch-name (:branch options)]
+          branch-name (:branch options)
+          base-branch (:base options)]
       (when-not (re-matches #"[A-Z]+-\d+" issue-id)
         (println (c/red "Invalid issue identifier: " issue-id))
         (println "Expected format: MB-12345")
@@ -78,8 +77,7 @@
         (println (c/red "--branch is required"))
         (u/exit 1))
 
-      (let [worktree-name (last (str/split branch-name #"/"))
-            session-name  (str/lower-case issue-id)
+      (let [session-name  (str/lower-case issue-id)
             workmux-path  (str u/project-root-directory "/.workmux.yaml")
             backup-path   (str workmux-path ".bak")
             had-backup?   (.exists (java.io.File. workmux-path))
@@ -95,7 +93,7 @@
         ;; Write our workmux config
         (println (c/yellow "Writing .workmux.yaml..."))
         (spit workmux-path
-              (generate-workmux-config issue-id issue-url worktree-name app-db))
+              (generate-workmux-config issue-id issue-url app-db))
 
         (try
           ;; Launch workmux
@@ -106,14 +104,17 @@
           (println (c/yellow "Prompt: ") prompt-file)
           (println)
 
-          (let [workmux-cmd (str "workmux add " branch-name
+          (let [base-args   (when base-branch ["--base" base-branch])
+                workmux-cmd (str "workmux add " branch-name
                                  " --name " session-name
-                                 " -P " prompt-file)]
+                                 " -P " prompt-file
+                                 (when base-branch (str " --base " base-branch)))]
             (if in-tmux?
               ;; Already inside tmux — run workmux directly
-              (shell/sh "workmux" "add" branch-name
-                        "--name" session-name
-                        "-P" prompt-file)
+              (apply shell/sh "workmux" "add" branch-name
+                     "--name" session-name
+                     "-P" prompt-file
+                     base-args)
               ;; Not inside tmux — create a detached session and run workmux in it
               (do
                 (println (c/yellow "Not inside tmux. Creating detached tmux session..."))

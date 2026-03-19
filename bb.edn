@@ -608,7 +608,8 @@
    :arg-schema [:tuple [:string {:name "issue-id"}]]
    :options [[nil "--app-db DB" "App database" :default "postgres"]
              [nil "--prompt-file FILE" "Path to agent prompt file"]
-             [nil "--branch BRANCH" "Branch name from Linear"]]
+             [nil "--branch BRANCH" "Branch name from Linear"]
+             [nil "--base BASE" "Base branch/commit to branch from"]]
    :task (task! (auto-fix/run! parsed))}
 
   -fixbot-dev-env
@@ -627,4 +628,30 @@
    :examples [["./bin/mage -fixbot-fetch-issue MB-12345" "Fetch and display issue"]]
    :requires [[mage.fixbot.linear :as linear]]
    :arg-schema [:tuple [:string {:name "issue-id"}]]
-   :task (task! (linear/print-issue! parsed))}}}
+   :task (task! (linear/print-issue! parsed))}
+
+  -fixbot-pause
+  {:doc "Pause a fixbot session (stop containers, close tmux, keep worktree)"
+   :examples [["./bin/mage -fixbot-pause mb-12345" "Pause session"]]
+   :requires [[mage.fixbot.session :as session]]
+   :arg-schema [:tuple [:string {:name "name-or-id"}]]
+   :task (task! (session/pause! parsed))}
+
+  -fixbot-resume
+  {:doc "Resume a paused fixbot session"
+   :examples [["./bin/mage -fixbot-resume mb-12345" "Resume session"]]
+   :requires [[mage.fixbot.session :as session]]
+   :arg-schema [:tuple [:string {:name "name-or-id"}]]
+   :task (task! (session/resume! parsed))}
+
+  -fixbot-list
+  {:doc "List fixbot sessions with status"
+   :examples [["./bin/mage -fixbot-list" "List all sessions"]]
+   :requires [[mage.fixbot.session :as session]]
+   :task (task! (session/list-sessions! parsed))}
+
+  -fixbot-dashboard
+  {:doc "Open fixbot TUI dashboard"
+   :examples [["./bin/mage -fixbot-dashboard" "Open dashboard"]]
+   :requires [[mage.fixbot.session :as session]]
+   :task (task! (session/dashboard!))}}}

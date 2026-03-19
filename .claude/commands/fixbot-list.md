@@ -1,3 +1,10 @@
-List all active fixbot worktree sessions.
+List all fixbot worktree sessions with status information.
 
-Run `workmux list` and display the results to the user. If `workmux status` is available, include agent status information as well.
+## Steps
+
+1. Run the mage task to list sessions:
+   ```
+   ./bin/mage -fixbot-list
+   ```
+
+2. Present the output to the user.

@@ -38,6 +38,9 @@ ENV MISE_YES=1
 # Install Playwright CLI with Chromium for UI verification
 RUN npm install -g playwright && npx playwright install chromium
 
+# Install beads (bd) for agent task tracking
+RUN npm install -g @beads/bd
+
 # Create .claude directory so Claude Code can write session data
 RUN mkdir -p /home/claude/.claude
 

@@ -13,6 +13,8 @@
 .\#*
 .cpcache/
 .eastwood
+/.beads/
+/.fixbot/
 .idea/
 .nrepl-port
 .portal

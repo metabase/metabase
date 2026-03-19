@@ -177,8 +177,9 @@ config:
 (defn- write-status-file!
   "Write a human-readable status file for the fixbot status pane."
   [slot app-db-kw]
-  (let [wt-name  (worktree-name)
-        path     (str "/tmp/metabase-fixbot-" wt-name "-status.txt")
+  (let [dir      (str u/project-root-directory "/.fixbot")
+        _        (.mkdirs (java.io.File. dir))
+        path     (str dir "/status.txt")
         db-info  (case app-db-kw
                    :postgres (str "DB=postgres:" (port-for :postgres-app slot))
                    :mysql    (str "DB=mysql:" (port-for :mysql slot))
