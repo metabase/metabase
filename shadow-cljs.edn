@@ -18,6 +18,9 @@
                       :source-map      true
                       :warnings        {:fn-deprecated false}}
    :closure-defines {goog.debug.LOGGING_ENABLED true}
+   ;; NOTE: shadow-cljs --config-merge replaces (not appends) vectors,
+   ;; so shadow-cljs-ee.edn duplicates this list with EE entries added.
+   ;; Keep both in sync when adding new entries.
    :entries    [metabase.dashboards.constants
                 metabase.lib.column-group
                 metabase.lib.js
