@@ -206,11 +206,5 @@
   (into [tag (merge {:lib/uuid (str (random-uuid))} opts)] args))
 
 (defmethod sql.params.substitution/field->clause :sql-mbql5
-  [driver field opts]
-  (sql.qp/make-clause-with-opts driver :field
-                                (merge {:lib/uuid (str (random-uuid))
-                                        :base-type (:base-type field)
-                                        driver-api/qp.add.source-table (:table-id field)
-                                        ::sql.params.substitution/compiling-field-filter? true}
-                                       opts)
-                                (:id field)))
+  [driver field other-opts]
+  (sql.params.substitution/field->clause* driver field other-opts))
