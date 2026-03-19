@@ -57,7 +57,7 @@ jobs:
         ports:
           - "3306:3306"
         env:
-          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: true
+          MYSQL_ALLOW_EMPTY_ROOT_PASSWORD: true
           MARIADB_DATABASE: mb_test
     env:
       # Only run old migrations tests on pushes to master or release branches. All other branches should skip tests
