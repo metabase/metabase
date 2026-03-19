@@ -155,7 +155,7 @@
                (json/encode-to obj writer {})))
            (catch EofException _)
            (catch Throwable e
-             (log/error e "Error writing error to output stream" obj)))))))))
+             (log/error e "Error writing error to output stream" obj))))))))
 
 (defn- do-f* [f ^OutputStream os _finished-chan canceled-chan]
   (try
