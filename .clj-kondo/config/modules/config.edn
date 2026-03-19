@@ -1681,32 +1681,16 @@
               enterprise/transforms-python
               enterprise/workspaces}}
 
-  transforms-inspector
-  {:team "Gadget"
-   :api  #{metabase.transforms-inspector.core
-           metabase.transforms-inspector.schema}
-   :uses #{driver
-           lib
-           lib-be
-           query-processor
-           sql-tools
-           transforms-base
-           util}}
-
   transforms-rest
   {:team "Gadget"
    :api  #{metabase.transforms-rest.api.transform
            metabase.transforms-rest.api.transform-job
            metabase.transforms-rest.api.transform-tag}
    :uses #{api
-           events
            models
-           query-processor
            request
-           server
            transforms
            transforms-base
-           transforms-inspector
            util}}
 
   types
@@ -2585,6 +2569,24 @@
   {:team "Querying"
    :api  #{}
    :uses #{premium-features}}
+
+  enterprise/transforms-inspector
+  {:team "Gadget"
+   :api  #{metabase-enterprise.transforms-inspector.api
+           metabase-enterprise.transforms-inspector.core
+           metabase-enterprise.transforms-inspector.schema}
+   :uses #{api
+           driver
+           events
+           lib
+           lib-be
+           query-processor
+           server
+           sql-tools
+           transforms
+           transforms-base
+           util
+           enterprise/api}}
 
   enterprise/transforms-python
   {:team "Querying"
