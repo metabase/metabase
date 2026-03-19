@@ -1,6 +1,9 @@
 (ns metabase.metabot.agent.tools
   "Tool registry for the agent loop.
-  Provides a unified namespace for tool vars and state-aware wrapping."
+  Provides tool definition thunks and state-aware wrapping.
+
+  Each tool is a zero-arg function (thunk) that returns a tool definition map.
+  This enables `defenterprise` tools that return nil in OSS and a full definition in EE."
   (:require
    [metabase.metabot.agent.tools.analyze-chart :as tools.analyze-chart]
    [metabase.metabot.agent.tools.autogen-dashboard :as tools.autogen-dashboard]
@@ -21,7 +24,7 @@
    [metabase.metabot.agent.tools.static-viz :as tools.static-viz]
    [metabase.metabot.agent.tools.subscriptions :as tools.subscriptions]
    [metabase.metabot.agent.tools.todo :as tools.todo]
-   #_[metabase.metabot.agent.tools.transforms :as tools.transforms]
+   [metabase.metabot.agent.tools.transforms :as tools.transforms]
    [potemkin :as p]))
 
 (set! *warn-on-reflection* true)
@@ -43,7 +46,6 @@
   list-available-data-sources-tool
   list-available-fields-tool
   get-field-values-tool]
- #_
  [tools.transforms
   get-transform-details-tool
   get-transform-python-library-details-tool
@@ -100,25 +102,21 @@
   Tools in `state-dependent-tools` will have access to the memory atom
   via the dynamic `*memory-atom*` binding.
 
-  Returns a new tools map where state-dependent tools are wrapped.
-  Wrapped tools are returned as maps with :doc, :schema, :prompt, and :fn keys
-  to satisfy the Claude API schema validation. Tool-specific instructions are
-  loaded from `resources/metabot/prompts/tools/` by `extract-tool-instructions`
-  in `prompts.clj`, keyed by `:prompt` metadata or `<tool-name>.md` by default."
+  Takes and returns a tools map where values are tool definition maps
+  (with :doc, :schema, :prompt, :fn, and optionally :decode keys).
+  Tool-specific instructions are loaded from `resources/metabot/prompts/tools/`
+  by `extract-tool-instructions` in `prompts.clj`, keyed by `:prompt` or
+  `<tool-name>.md` by default."
   [tools memory-atom]
   (reduce-kv
-   (fn [acc tool-name tool-var]
+   (fn [acc tool-name tool-def]
      (if (contains? state-dependent-tools tool-name)
-       (let [{:keys [doc schema prompt decode]} (meta tool-var)
-             wrapped-fn (fn [args]
-                          (binding [shared/*memory-atom* memory-atom
-                                    *memory-atom*        memory-atom]
-                            (tool-var args)))]
-         (assoc acc tool-name (cond-> {:doc doc
-                                       :schema schema
-                                       :prompt prompt
-                                       :fn wrapped-fn}
-                                decode (assoc :decode decode))))
-       (assoc acc tool-name tool-var)))
+       (let [original-fn (:fn tool-def)
+             wrapped-fn  (fn [args]
+                           (binding [shared/*memory-atom* memory-atom
+                                     *memory-atom*        memory-atom]
+                             (original-fn args)))]
+         (assoc acc tool-name (assoc tool-def :fn wrapped-fn)))
+       (assoc acc tool-name tool-def)))
    {}
    tools))

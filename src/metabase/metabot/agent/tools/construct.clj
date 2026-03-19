@@ -4,6 +4,7 @@
    [clojure.walk :as walk]
    [malli.core :as mc]
    [malli.transform :as mtx]
+   [metabase.lib.core :as lib]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.create-chart :as create-chart-tools]
@@ -11,10 +12,8 @@
    [metabase.metabot.tools.instructions :as instructions]
    [metabase.metabot.tools.llm-representations :as llm-rep]
    [metabase.metabot.util :as metabot-u]
-   [metabase.lib.core :as lib]
    [metabase.util.json :as json]
-   [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -315,56 +314,57 @@
         :limit (:limit normalized-query)})
       {:output (str "Unsupported query_type: " query-type)})))
 
-(mu/defn ^{:tool-name "construct_notebook_query"
-           :decode    decode-tool-args}
-  construct-notebook-query-tool
-  "Construct and visualize a notebook query from a metric, model, or table."
-  [{:keys [_reasoning query visualization]} :- construct-notebook-query-args-schema]
-  (try
-    (let [;; LLM sometimes nests visualization inside query — pull it out
-          effective-viz    (or visualization (:visualization query))
-          normalized-visualization (normalize-ai-args effective-viz)
-          chart-type               (or (chart-type->keyword (:chart-type normalized-visualization))
-                                       :table)
-          query-result             (execute-query (dissoc query :visualization))
-          structured               (or (:structured-output query-result) (:structured_output query-result))]
-      (if (and structured (:query-id structured) (:query structured))
-        (let [chart-result (create-chart-tools/create-chart
-                            {:query-id      (:query-id structured)
-                             :chart-type    chart-type
-                             :queries-state {(:query-id structured) (:query structured)}})
-              navigate-url (get-in chart-result [:reactions 0 :url])
-              full-structured (assoc structured
-                                     :result-type   :query
-                                     :chart-id      (:chart-id chart-result)
-                                     :chart-type    (:chart-type chart-result)
-                                     :chart-link    (:chart-link chart-result)
-                                     :chart-content (:chart-content chart-result))
-              instruction-text
-              (let [link (te/link "Chart" "metabase://chart/" (:chart-id chart-result))]
-                (te/lines
-                 "Your query and chart have been created successfully."
-                 ""
-                 "Next steps to present the chart to the user:"
-                 (str "- Always provide a direct link using: `" link "` where Chart is a meaningful link text")
-                 "- If creating multiple charts, present all chart links"))
-              chart-xml (structured->chart-xml structured (:chart-id chart-result) chart-type)]
-          {:output (str "<result>\n" chart-xml "\n</result>\n"
-                        "<instructions>\n" instruction-text "\n</instructions>")
-           :data-parts        (when navigate-url
-                                [(streaming/navigate-to-part navigate-url)])
-           :structured-output full-structured
-           :instructions      instruction-text})
-        ;; query-result may already have :output (error) or only :structured-output
-        (if-let [s (or (:structured-output query-result) (:structured_output query-result))]
-          (let [query-xml        (llm-rep/query->xml (structured->query-data s))
-                instruction-text (instructions/query-created-instructions-for (:query-id s))]
-            (assoc query-result
-                   :output (str "<result>\n" query-xml "\n</result>\n"
-                                "<instructions>\n" instruction-text "\n</instructions>")))
-          query-result)))
-    (catch Exception e
-      (log/error e "Failed to construct notebook query")
-      (if (:agent-error? (ex-data e))
-        {:output (ex-message e)}
-        {:output (str "Failed to construct notebook query: " (or (ex-message e) "Unknown error"))}))))
+(defn construct-notebook-query-tool "construct notebook query" []
+  {:tool-name "construct_notebook_query"
+   :decode    decode-tool-args
+   :doc       "Construct and visualize a notebook query from a metric, model, or table."
+   :schema    [:=> [:cat construct-notebook-query-args-schema] :any]
+   :fn        (fn [{:keys [_reasoning query visualization]}]
+                (try
+                  (let [;; LLM sometimes nests visualization inside query — pull it out
+                        effective-viz    (or visualization (:visualization query))
+                        normalized-visualization (normalize-ai-args effective-viz)
+                        chart-type               (or (chart-type->keyword (:chart-type normalized-visualization))
+                                                     :table)
+                        query-result             (execute-query (dissoc query :visualization))
+                        structured               (or (:structured-output query-result) (:structured_output query-result))]
+                    (if (and structured (:query-id structured) (:query structured))
+                      (let [chart-result (create-chart-tools/create-chart
+                                          {:query-id      (:query-id structured)
+                                           :chart-type    chart-type
+                                           :queries-state {(:query-id structured) (:query structured)}})
+                            navigate-url (get-in chart-result [:reactions 0 :url])
+                            full-structured (assoc structured
+                                                   :result-type   :query
+                                                   :chart-id      (:chart-id chart-result)
+                                                   :chart-type    (:chart-type chart-result)
+                                                   :chart-link    (:chart-link chart-result)
+                                                   :chart-content (:chart-content chart-result))
+                            instruction-text
+                            (let [link (te/link "Chart" "metabase://chart/" (:chart-id chart-result))]
+                              (te/lines
+                               "Your query and chart have been created successfully."
+                               ""
+                               "Next steps to present the chart to the user:"
+                               (str "- Always provide a direct link using: `" link "` where Chart is a meaningful link text")
+                               "- If creating multiple charts, present all chart links"))
+                            chart-xml (structured->chart-xml structured (:chart-id chart-result) chart-type)]
+                        {:output (str "<result>\n" chart-xml "\n</result>\n"
+                                      "<instructions>\n" instruction-text "\n</instructions>")
+                         :data-parts        (when navigate-url
+                                              [(streaming/navigate-to-part navigate-url)])
+                         :structured-output full-structured
+                         :instructions      instruction-text})
+                      ;; query-result may already have :output (error) or only :structured-output
+                      (if-let [s (or (:structured-output query-result) (:structured_output query-result))]
+                        (let [query-xml        (llm-rep/query->xml (structured->query-data s))
+                              instruction-text (instructions/query-created-instructions-for (:query-id s))]
+                          (assoc query-result
+                                 :output (str "<result>\n" query-xml "\n</result>\n"
+                                              "<instructions>\n" instruction-text "\n</instructions>")))
+                        query-result)))
+                  (catch Exception e
+                    (log/error e "Failed to construct notebook query")
+                    (if (:agent-error? (ex-data e))
+                      {:output (ex-message e)}
+                      {:output (str "Failed to construct notebook query: " (or (ex-message e) "Unknown error"))}))))})

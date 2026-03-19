@@ -9,7 +9,6 @@
    [metabase.metabot.stats.core :as stats.core]
    [metabase.metabot.stats.repr :as stats.repr]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
    [tech.v3.resource :as resource]))
 
 (set! *warn-on-reflection* true)
@@ -49,33 +48,36 @@ Do not use headers (##). Do not list statistics. Do not analyze series separatel
   (some-> (get (shared/current-chart-configs-state) chart-config-id)
           stringify-series-keys))
 
-(mu/defn ^{:tool-name "analyze_chart"
-           :prompt "analyze_chart"}
-  analyze-chart-tool
-  "Compute statistics and generate analysis context for a chart.
+(def ^:private schema
+  [:map {:closed true}
+   [:chart_config_id :string]
+   [:deep {:optional true :default true} [:maybe :boolean]]])
+
+(defn analyze-chart-tool "Chart tool" []
+  {:tool-name "analyze_chart"
+   :prompt    "analyze_chart"
+   :doc       "Compute statistics and generate analysis context for a chart.
   Use this to analyze trends, outliers, volatility, and patterns in chart data.
 
   The chart_config_id references a chart from the user's current viewing context.
   Available chart IDs are provided in the system context."
-  [{:keys [chart_config_id deep]}
-   :- [:map {:closed true}
-       [:chart_config_id :string]
-       [:deep {:optional true :default true} [:maybe :boolean]]]]
-  (try
-    (if-let [chart-config (resolve-chart-config-from-memory chart_config_id)]
-      ;; Wrap TMD operations in resource context to ensure off-heap memory is released
-      (resource/stack-resource-context
-       (let [{:keys [timeline_events title display_type]} chart-config
-             opts  {:deep? (if (nil? deep) true (boolean deep))}
-             stats (stats.core/compute-chart-stats chart-config opts)
-             context {:title           title
-                      :display-type    display_type
-                      :stats           stats
-                      :timeline-events timeline_events}
-             representation (stats.repr/generate-representation context)]
-         {:output (str representation "\n\n---\n\n" interpretation-guidance)}))
-      {:output (str "Chart config not found: " chart_config_id
-                    ". Available chart configs can be found in the viewing context.")})
-    (catch Exception e
-      (log/error e "Error analyzing chart")
-      {:output (str "Failed to analyze chart: " (or (ex-message e) "Unknown error"))})))
+   :schema    [:=> [:cat schema] :any]
+   :fn        (fn [{:keys [chart_config_id deep]}]
+                (try
+                  (if-let [chart-config (resolve-chart-config-from-memory chart_config_id)]
+                    ;; Wrap TMD operations in resource context to ensure off-heap memory is released
+                    (resource/stack-resource-context
+                     (let [{:keys [timeline_events title display_type]} chart-config
+                           opts  {:deep? (if (nil? deep) true (boolean deep))}
+                           stats (stats.core/compute-chart-stats chart-config opts)
+                           context {:title           title
+                                    :display-type    display_type
+                                    :stats           stats
+                                    :timeline-events timeline_events}
+                           representation (stats.repr/generate-representation context)]
+                       {:output (str representation "\n\n---\n\n" interpretation-guidance)}))
+                    {:output (str "Chart config not found: " chart_config_id
+                                  ". Available chart configs can be found in the viewing context.")})
+                  (catch Exception e
+                    (log/error e "Error analyzing chart")
+                    {:output (str "Failed to analyze chart: " (or (ex-message e) "Unknown error"))})))})
