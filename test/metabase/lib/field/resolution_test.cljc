@@ -1677,3 +1677,15 @@
               (lib.field.resolution/resolve-field-ref
                query -1
                [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/Number} "CATEGORY_3"]))))))
+
+(deftest ^:parallel resolve-deduplicated-column-name-large-suffix-no-stackoverflow-test
+  (testing "Resolving a field with a large numeric suffix should not cause a StackOverflowError (#70952 / GHY-3238)"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
+                    (lib/append-stage))
+          expected (lib.field.resolution/resolve-field-ref
+                    query -1
+                    [:field {:lib/uuid "00000000-0000-0000-0000-000000000000" :base-type :type/Text} "CATEGORY"])]
+      (is (= expected
+             (lib.field.resolution/resolve-field-ref
+              query -1
+              [:field {:lib/uuid "00000000-0000-0000-0000-000000000000" :base-type :type/Text} "CATEGORY_5000"]))))))
