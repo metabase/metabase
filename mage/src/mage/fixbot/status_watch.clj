@@ -73,29 +73,44 @@
          (when db
            (str "  " (str/upper-case (name db-type)) ":" (status-label db))))))
 
+(defn- load-ports
+  "Read mise.local.toml and extract ports. Returns a map or nil if file not ready."
+  [^String mise-path]
+  (when-let [env (parse-mise-env mise-path)]
+    (let [jetty-port    (extract-port (get env "MB_JETTY_PORT"))
+          frontend-port (extract-port (get env "MB_FRONTEND_DEV_PORT"))
+          db-uri        (get env "MB_DB_CONNECTION_URI")
+          db-type-str   (get env "MB_DB_TYPE")
+          db-type       (when db-type-str (keyword db-type-str))
+          db-port       (extract-port db-uri)]
+      (when jetty-port
+        {:jetty-port    jetty-port
+         :frontend-port frontend-port
+         :db-type       db-type
+         :db-port       db-port}))))
+
 (defn run!
   "Watch .fixbot/status.txt and periodically check service health."
   [{:keys [arguments]}]
-  (let [file-path    (or (first arguments) ".fixbot/status.txt")
-        f            (File. ^String file-path)
-        mise-path    "mise.local.toml"
-        env          (parse-mise-env mise-path)
-        jetty-port   (extract-port (get env "MB_JETTY_PORT"))
-        frontend-port (extract-port (get env "MB_FRONTEND_DEV_PORT"))
-        db-uri       (get env "MB_DB_CONNECTION_URI")
-        db-type-str  (get env "MB_DB_TYPE")
-        db-type      (when db-type-str (keyword db-type-str))
-        db-port      (extract-port db-uri)]
-    (loop [last-modified  0
-           last-services  ""
-           tick           0]
-      (let [check?          (zero? (mod tick 5)) ;; check services every 5 seconds
+  (let [file-path (or (first arguments) ".fixbot/status.txt")
+        f         (File. ^String file-path)
+        mise-path "mise.local.toml"]
+    (loop [last-modified 0
+           last-services ""
+           ports         nil
+           tick          0]
+      (let [check?           (zero? (mod tick 5))
+            ;; Re-read mise.local.toml until ports are found
+            ports            (or ports (when check? (load-ports mise-path)))
             current-modified (.lastModified f)
-            services        (if check?
-                              (check-services jetty-port frontend-port db-type db-port)
-                              last-services)
-            changed?        (or (not= current-modified last-modified)
-                                (not= services last-services))]
+            services         (if (and check? ports)
+                               (check-services (:jetty-port ports)
+                                               (:frontend-port ports)
+                                               (:db-type ports)
+                                               (:db-port ports))
+                               last-services)
+            changed?         (or (not= current-modified last-modified)
+                                 (not= services last-services))]
         (when changed?
           (print "\033[2J\033[H")
           (flush)
@@ -105,4 +120,4 @@
           (println services)
           (flush))
         (Thread/sleep 1000)
-        (recur current-modified services (inc tick))))))
+        (recur current-modified services ports (inc tick))))))
