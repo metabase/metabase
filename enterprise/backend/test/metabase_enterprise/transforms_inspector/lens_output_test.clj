@@ -2,13 +2,13 @@
   "Tests for lens card output validation and trigger flow."
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.transforms-inspector.core :as inspector.core]
    [metabase-enterprise.transforms-inspector.lens.core :as lens.core]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.test :as mt]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms-inspector.core :as inspector.core.oss]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -295,7 +295,7 @@
                                             "matched_count" 70
                                             "null_count"    30
                                             "null_rate"     0.3}}
-                eval-result (inspector.core/evaluate-triggers ja-lens card-results)]
+                eval-result (inspector.core.oss/evaluate-triggers ja-lens card-results)]
             (testing "alerts fire for high null rate (>0.2)"
               (is (= 1 (count (:alerts eval-result)))))
             (testing "drill lens fires for unmatched rows (>0.05)"
@@ -313,7 +313,7 @@
                                             "matched_count" 99
                                             "null_count"    1
                                             "null_rate"     0.01}}
-                eval-result (inspector.core/evaluate-triggers ja-lens card-results)]
+                eval-result (inspector.core.oss/evaluate-triggers ja-lens card-results)]
             (is (empty? (:alerts eval-result)))
             (is (empty? (:drill_lenses eval-result)))))))))
 
@@ -328,6 +328,6 @@
                                         :params {:join_step 1}
                                         :reason "test"}]}
           card-results {"step-1" {"no_data" true}}
-          eval-result (inspector.core/evaluate-triggers lens card-results)]
+          eval-result (inspector.core.oss/evaluate-triggers lens card-results)]
       (is (empty? (:alerts eval-result)))
       (is (empty? (:drill_lenses eval-result))))))
