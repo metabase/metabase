@@ -6,6 +6,9 @@ import styled from "@emotion/styled";
 export const Root = styled.div<{
   inline?: boolean;
 }>`
+  margin-left: 2rem;
+  margin-right: 2rem;
+
   ${(props) =>
     props.hidden &&
     css`
