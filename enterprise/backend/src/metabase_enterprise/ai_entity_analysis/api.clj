@@ -1,9 +1,9 @@
 (ns metabase-enterprise.ai-entity-analysis.api
   "`/api/ee/ai-entity-analysis/` routes"
   (:require
-   [metabase-enterprise.metabot-v3.core :as metabot-v3]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.metabot.core :as metabot-v3]
    [metabase.premium-features.core :as premium-features]))
 
 (set! *warn-on-reflection* true)

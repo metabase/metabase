@@ -1,7 +1,7 @@
 (ns metabase-enterprise.ai-entity-analysis.api-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.metabot-v3.client :as metabot-client]
+   [metabase.metabot.client :as metabot-client]
    [metabase.test :as mt]))
 
 (deftest analyze-chart-test

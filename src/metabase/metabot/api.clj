@@ -18,8 +18,9 @@
    [metabase.metabot.envelope :as metabot-v3.envelope]
    [metabase.metabot.feedback :as metabot-v3.feedback]
    [metabase.metabot.self.core :as self.core]
-   [metabase.metabot.settings :as metabot-v3.settings]
-   [metabase.metabot.util :as metabot-v3.u]
+   [metabase.metabot.settings :as metabot.settings]
+   [metabase.metabot.tools.api]
+   [metabase.metabot.util :as metabot.u]
    [metabase.server.streaming-response :as sr]
    [metabase.slackbot.api]
    [metabase.util :as u]
@@ -63,9 +64,9 @@
   "Checks that the Metabot instance identified by `metabot-id` is enabled. Throws a 403 if it's not."
   [metabot-id]
   (if (= metabot-id metabot-v3.config/embedded-metabot-id)
-    (api/check (metabot-v3.settings/embedded-metabot-enabled?)
+    (api/check (metabot.settings/embedded-metabot-enabled?)
                [403 "Embedded Metabot is not enabled."])
-    (api/check (metabot-v3.settings/metabot-enabled?)
+    (api/check (metabot.settings/metabot-enabled?)
                [403 "Metabot is not enabled."])))
 
 (defn- extract-usage
@@ -203,7 +204,7 @@
         debug?     (and config/is-dev? (boolean debug))]
     (store-aiservice-messages! conversation_id profile-id [message])
 
-    (if (metabot-v3.settings/use-native-agent)
+    (if (metabot.settings/use-native-agent)
       ;; Use native Clojure agent
       (do
         (log/info "Using native Clojure agent" {:profile-id profile-id :debug? debug?})
@@ -230,7 +231,7 @@
           :state           state
           :debug?          debug?
           :on-complete     (fn [lines]
-                             (store-aiservice-messages! conversation_id profile-id (metabot-v3.u/aisdk->messages :assistant lines))
+                             (store-aiservice-messages! conversation_id profile-id (metabot.u/aisdk->messages :assistant lines))
                              :store-in-db)})))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -277,5 +278,7 @@
     {"/metabot"  metabase.metabot.api.metabot/routes
      "/document" metabase.metabot.api.document/routes
      ;; premium check happens in the route so we still ack events to prevent slack retrying
-     "/slack"    metabase.slackbot.api/routes})
+     "/slack"    metabase.slackbot.api/routes
+     ;; tools has its own auth via +tool-session (AI service JWT tokens, not regular session auth)
+     "/tools"    metabase.metabot.tools.api/routes})
    (api.macros/ns-handler *ns* +auth)))

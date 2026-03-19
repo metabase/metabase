@@ -2,12 +2,12 @@
   "Shared table utilities for enterprise modules."
   (:require
    [clojure.set :as set]
-   [metabase.metabot.query-analyzer :as query-analyzer]
-   [metabase.metabot.tools.util :as metabot-v3.tools.u]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.metabot.query-analyzer :as query-analyzer]
+   [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
@@ -112,8 +112,8 @@
          (mapv (fn [{:keys [id name schema description]}]
                  (let [table-query (lib/query mp (lib.metadata/table mp id))
                        cols (->> (lib/visible-columns table-query)
-                                 (map #(metabot-v3.tools.u/add-table-reference table-query %)))
-                       field-id-prefix (metabot-v3.tools.u/table-field-id-prefix id)]
+                                 (map #(metabot.tools.u/add-table-reference table-query %)))
+                       field-id-prefix (metabot.tools.u/table-field-id-prefix id)]
                    {:id id
                     :type :table
                     :name name
@@ -122,7 +122,7 @@
                     :database_engine engine
                     :database_schema schema
                     :description description
-                    :fields (into [] (map-indexed #(metabot-v3.tools.u/->result-column table-query %2 %1 field-id-prefix) cols))
+                    :fields (into [] (map-indexed #(metabot.tools.u/->result-column table-query %2 %1 field-id-prefix) cols))
                     :metrics []}))
                all-tables))))))
 

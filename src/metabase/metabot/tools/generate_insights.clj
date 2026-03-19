@@ -1,8 +1,8 @@
 (ns metabase.metabot.tools.generate-insights
   (:require
    [buddy.core.codecs :as codecs]
-   [metabase.metabot.tools.util :as metabot-v3.tools.u]
    [metabase.lib.util :as lib.util]
+   [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
@@ -33,4 +33,4 @@
       {:output results-url
        :reactions [{:type :metabot.reaction/redirect :url results-url}]})
     (catch Exception e
-      (metabot-v3.tools.u/handle-agent-error e))))
+      (metabot.tools.u/handle-agent-error e))))

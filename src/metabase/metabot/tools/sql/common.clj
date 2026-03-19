@@ -2,17 +2,17 @@
   "Namespace that aggregates functionality common to tools sql namespaces.
 
   Those are:
-  - `metabot-v3.tools.create-sql-query`,
-  - `metabot-v3.tools.edit-sql-query`,
-  - `metabot-v3.tools.replace-sql-query`.
+  - `metabot.tools.create-sql-query`,
+  - `metabot.tools.edit-sql-query`,
+  - `metabot.tools.replace-sql-query`.
 
   Each of those namespaces define an _operation_:
   - `create-sql-query`,
   - `edit-sql-query`,
   - `replace-sql-query`."
   (:require
-   [metabase.metabot.tools.sql.validation :as metabot-v3.tools.sql.validation]
    [metabase.lib.core :as lib]
+   [metabase.metabot.tools.sql.validation :as metabot.tools.sql.validation]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]))
 
@@ -33,7 +33,7 @@
   "Result of an operation as described this ns' docstring. Stores validation result and action result iff validation
   was successful."
   [:map
-   [:validation-result ::metabot-v3.tools.sql.validation/validation-result]
+   [:validation-result ::metabot.tools.sql.validation/validation-result]
    [:action-result {:optional true} ::action-result]])
 
 (defn update-query-sql

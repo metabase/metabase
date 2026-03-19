@@ -1,12 +1,12 @@
 (ns metabase-enterprise.ai-sql-fixer.api
   "`/api/ee/ai-sql-fixer/` routes"
   (:require
-   [metabase-enterprise.metabot-v3.core :as metabot-v3]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.driver.util :as driver.u]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.metabot.core :as metabot-v3]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.util.malli.schema :as ms]))
 
