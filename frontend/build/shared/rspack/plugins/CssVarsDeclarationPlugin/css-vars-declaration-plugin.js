@@ -48,7 +48,7 @@ const CSS_VAR_CONFIGS = [
     ],
   },
   {
-    path: "metabase/lib/colors/types/color-keys.ts",
+    path: "metabase/ui/colors/types/color-keys.ts",
     sources: [
       {
         type: "unionType",
