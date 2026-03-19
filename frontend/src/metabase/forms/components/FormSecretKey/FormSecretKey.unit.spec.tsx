@@ -1,0 +1,170 @@
+import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
+
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { Form, FormProvider, FormSubmitButton } from "metabase/forms";
+
+import { FormSecretKey } from "./FormSecretKey";
+
+interface FormValues {
+  secret: string | null | undefined;
+}
+
+interface SetupOpts {
+  initialValues?: FormValues;
+}
+
+const CONFIRMATION = {
+  header: "Regenerate signing key?",
+  dialog: "Existing tokens will stop working.",
+};
+
+const OBFUSCATED_VALUE = "**********ab";
+const PLAINTEXT_VALUE = "my-super-secret-token-abc123";
+
+const setup = ({ initialValues = { secret: undefined } }: SetupOpts = {}) => {
+  const onSubmit = jest.fn();
+
+  fetchMock.get("path:/api/util/random_token", {
+    token: "newly-generated-token",
+  });
+
+  renderWithProviders(
+    <FormProvider initialValues={initialValues} onSubmit={onSubmit}>
+      <Form>
+        <FormSecretKey
+          name="secret"
+          label="Signing Key"
+          confirmation={CONFIRMATION}
+        />
+        <FormSubmitButton />
+      </Form>
+    </FormProvider>,
+  );
+
+  return { onSubmit };
+};
+
+describe("FormSecretKey", () => {
+  afterEach(() => {
+    fetchMock.hardReset();
+  });
+
+  describe("when there is no value (UXW-3300)", () => {
+    it("shows a 'Generate key' button and an empty input", () => {
+      setup({ initialValues: { secret: undefined } });
+
+      expect(
+        screen.getByRole("button", { name: "Generate key" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Regenerate key" }),
+      ).not.toBeInTheDocument();
+      expect(screen.getByLabelText("Signing Key")).toHaveValue("");
+    });
+
+    it("generates a token and shows 'Regenerate key' after clicking 'Generate key' (UXW-3300)", async () => {
+      setup({ initialValues: { secret: undefined } });
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Generate key" }),
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: "Regenerate key" }),
+        ).toBeInTheDocument();
+      });
+      expect(
+        screen.queryByRole("button", { name: "Generate key" }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("when the value is a plaintext token (UXW-3300)", () => {
+    it("shows 'Regenerate key' button without 'Already set' placeholder", () => {
+      setup({ initialValues: { secret: PLAINTEXT_VALUE } });
+
+      expect(
+        screen.getByRole("button", { name: "Regenerate key" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Generate key" }),
+      ).not.toBeInTheDocument();
+      expect(screen.getByLabelText("Signing Key")).not.toHaveAttribute(
+        "placeholder",
+        "Already set",
+      );
+    });
+
+    it("opens a confirmation modal when 'Regenerate key' is clicked (UXW-3300)", async () => {
+      setup({ initialValues: { secret: PLAINTEXT_VALUE } });
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Regenerate key" }),
+      );
+
+      expect(await screen.findByText(CONFIRMATION.header)).toBeInTheDocument();
+      expect(screen.getByText(CONFIRMATION.dialog)).toBeInTheDocument();
+    });
+  });
+
+  describe("when the value is an obfuscated backend secret (UXW-3300)", () => {
+    it("renders an empty input with 'Already set' placeholder instead of the masked string", () => {
+      setup({ initialValues: { secret: OBFUSCATED_VALUE } });
+
+      const input = screen.getByLabelText("Signing Key");
+      expect(input).toHaveValue("");
+      expect(input).toHaveAttribute("placeholder", "Already set");
+    });
+
+    it("shows 'Regenerate key' button, not 'Generate key'", () => {
+      setup({ initialValues: { secret: OBFUSCATED_VALUE } });
+
+      expect(
+        screen.getByRole("button", { name: "Regenerate key" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Generate key" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("opens a confirmation modal when 'Regenerate key' is clicked (UXW-3300)", async () => {
+      setup({ initialValues: { secret: OBFUSCATED_VALUE } });
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Regenerate key" }),
+      );
+
+      expect(await screen.findByText(CONFIRMATION.header)).toBeInTheDocument();
+      expect(screen.getByText(CONFIRMATION.dialog)).toBeInTheDocument();
+    });
+
+    it("generates a new token and removes 'Already set' placeholder after confirming (UXW-3300)", async () => {
+      setup({ initialValues: { secret: OBFUSCATED_VALUE } });
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Regenerate key" }),
+      );
+      await screen.findByText(CONFIRMATION.header);
+      await userEvent.click(screen.getByRole("button", { name: "Yes" }));
+
+      // Modal should close
+      await waitFor(() => {
+        expect(screen.queryByText(CONFIRMATION.header)).not.toBeInTheDocument();
+      });
+
+      // After regeneration, the input should no longer show "Already set"
+      // — a new plaintext token is now in the field
+      await waitFor(() => {
+        expect(screen.getByLabelText("Signing Key")).not.toHaveAttribute(
+          "placeholder",
+          "Already set",
+        );
+      });
+      expect(
+        screen.getByRole("button", { name: "Regenerate key" }),
+      ).toBeInTheDocument();
+    });
+  });
+});
