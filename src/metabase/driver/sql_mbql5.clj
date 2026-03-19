@@ -95,8 +95,8 @@
     (throw (ex-info "Aggregation reference missing ::desired-alias. Was add-alias-info run?"
                     {:clause clause, :uuid agg-uuid}))))
 
-(defmethod sql.qp/->honeysql [:sql-mbql5 ::sql.qp/over-order-bys]
-  [driver [_op _opts aggregations [direction _dir-opts expr]]]
+(defmethod sql.qp/over-order-by->honeysql :sql-mbql5
+  [driver aggregations [direction _opts expr]]
   (if (lib.util/clause-of-type? expr :aggregation)
     (let [[_op _opts agg-uuid] expr
           aggregation (m/find-first #(= (lib.options/uuid %) agg-uuid) aggregations)]

@@ -1018,9 +1018,14 @@
                 (or (clause-pred (first form))
                     (m/find-first (partial contains-clause? clause-pred) (rest form))))))
 
-;; TODO(rileythomp, 2026-03-19): Make this its own multimethod, not a ->honeysql hack.
-(defmethod ->honeysql [:sql ::over-order-bys]
-  [driver [_op aggregations [direction expr]]]
+(defmulti over-order-by->honeysql
+  "Returns the HoneySQL for an order by clause in the over clause of a window function."
+  {:added "0.60.0" :arglists '([driver aggregations order-by])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod over-order-by->honeysql :sql
+  [driver aggregations [direction expr]]
   (if (aggregation? expr)
     (let [[_aggregation index] expr
           agg (unwrap-aggregation-option (aggregations index))]
@@ -1034,8 +1039,8 @@
   [driver aggregations order-bys]
   (let [aggregations (vec aggregations)]
     (into []
-          (keep (fn [clause]
-                  (->honeysql driver (mbql-clause driver [::over-order-bys aggregations clause]))))
+          (keep (fn [order-by]
+                  (over-order-by->honeysql driver aggregations order-by)))
           order-bys)))
 
 (defmulti remapped-order-by?
