@@ -4,7 +4,6 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 export const Root = styled.div<{
-  disabled?: boolean;
   noPadding?: boolean;
   inline?: boolean;
   marginBottom?: string;
@@ -29,12 +28,6 @@ export const Root = styled.div<{
       margin-bottom: ${props.marginBottom || "1.5em"};
     `}
 
-  ${(props) =>
-    props.disabled &&
-    css`
-      pointer-events: none;
-      opacity: 0.4;
-    `}
   ${(props) =>
     props.inline &&
     !props.hidden &&

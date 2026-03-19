@@ -1,7 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/colors";
 import {
   getMaxDimensionsSupported,
   getMaxMetricsSupported,
@@ -158,7 +158,7 @@ export const GRAPH_DATA_SETTINGS: VisualizationSettingsDefinitions = {
       return t`Data`;
     },
     widget: ChartSettingSeriesOrder,
-    marginBottom: "1rem",
+    getMarginBottom: () => "1rem",
     useRawSeries: true,
     getValue: (rawSeries, settings) => {
       const seriesModels = getSeriesModelsForSettings(rawSeries, settings);
@@ -340,14 +340,23 @@ export const STACKABLE_SETTINGS: VisualizationSettingsDefinitions = {
       ],
     }),
     isValid: (series, settings) => {
+      if (settings["graph.split_panels"] === true) {
+        return settings["stackable.stack_type"] == null;
+      }
       const seriesDisplays = getSeriesDisplays(series, settings);
 
       return isStackingValueValid(settings, seriesDisplays);
     },
     getDefault: ([{ card }], settings) => {
+      if (settings["graph.split_panels"] === true) {
+        return null;
+      }
       return getDefaultStackingValue(settings, card);
     },
     getHidden: (series, settings) => {
+      if (settings["graph.split_panels"] === true) {
+        return true;
+      }
       const displays = series.map(
         (single) => settings.series?.(single).display,
       );
@@ -356,6 +365,34 @@ export const STACKABLE_SETTINGS: VisualizationSettingsDefinitions = {
       });
 
       return stackableDisplays.length <= 1;
+    },
+    readDependencies: [
+      "graph.metrics",
+      "graph.dimensions",
+      "series",
+      "graph.split_panels",
+    ],
+  },
+};
+
+export const SPLIT_PANELS_SETTINGS: VisualizationSettingsDefinitions = {
+  "graph.split_panels": {
+    get section() {
+      return t`Display`;
+    },
+    get title() {
+      return t`Split series into panels`;
+    },
+    widget: "toggle",
+    default: false,
+    inline: true,
+    getMarginBottom: () => "1rem",
+    getHidden: (series, settings) => {
+      const displays = series.map(
+        (single) => settings.series?.(single).display,
+      );
+      const visibleDisplays = displays.filter((display) => display != null);
+      return visibleDisplays.length <= 1;
     },
     readDependencies: ["graph.metrics", "graph.dimensions", "series"],
   },
@@ -427,7 +464,7 @@ export const GRAPH_TREND_SETTINGS: VisualizationSettingsDefinitions = {
     },
     useRawSeries: true,
     inline: true,
-    marginBottom: "1rem",
+    getMarginBottom: () => "1rem",
   },
 };
 
@@ -443,7 +480,7 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS: VisualizationSettingsDefinitions = {
     getHidden: (series, vizSettings) => !canHaveDataLabels(series, vizSettings),
     getDefault: getDefaultShowDataLabels,
     inline: true,
-    marginBottom: "1rem",
+    getMarginBottom: () => "1rem",
   },
   "graph.label_value_frequency": {
     get section() {
@@ -885,7 +922,9 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
     widget: "toggle",
     inline: true,
     getDefault: getDefaultIsAutoSplitEnabled,
-    getHidden: (series) => series.length < 2,
+    getHidden: (series, vizSettings) =>
+      series.length < 2 || vizSettings["graph.split_panels"] === true,
+    readDependencies: ["graph.split_panels"],
   },
   "graph.x_axis.labels_enabled": {
     get section() {
@@ -1056,7 +1095,7 @@ export const BOXPLOT_SETTINGS: VisualizationSettingsDefinitions<
     widget: "toggle",
     default: false,
     inline: true,
-    marginBottom: "1rem",
+    getMarginBottom: () => "1rem",
   },
   "boxplot.show_values_mode": {
     get section() {

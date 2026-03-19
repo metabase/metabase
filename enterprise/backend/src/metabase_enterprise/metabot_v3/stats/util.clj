@@ -22,7 +22,7 @@
      :max max-val
      :mean (dfn/mean values)
      :median (dfn/median values)
-     :std_dev (dfn/standard-deviation values)
+     :std-dev (dfn/standard-deviation values)
      :range (- max-val min-val)}))
 
 (mu/defn correlation-direction :- ::stats.types/correlation-direction
@@ -77,12 +77,12 @@
                  n (count aligned-a)]
            :when (>= n min-correlation-sample-size)
            :let [coef (dfn/pearsons-correlation aligned-a aligned-b)]]
-       {:series_a name-a
-        :series_b name-b
+       {:series-a name-a
+        :series-b name-b
         :coefficient coef
         :strength (correlation-strength coef)
         :direction (correlation-direction coef)
-        :aligned_sample_size n}))))
+        :aligned-sample-size n}))))
 
 (mu/defn maybe-compute-correlations :- [:maybe [:sequential ::stats.types/correlation]]
   "Compute pairwise correlations if deep mode is enabled and there are multiple series.
@@ -106,20 +106,20 @@
     (* 100.0 (/ (- to-val from-val) (Math/abs (double from-val))))))
 
 (defn compute-series-with-labels
-  "Apply `compute-fn` to each series' x_values and y_values, attaching :x_name and :y_name
+  "Apply `compute-fn` to each series' x_values and y_values, attaching :x-name and :y-name
   from column metadata. `compute-fn` is called on x_values and y_values for each series.
   Returns a map of series-name -> stats-with-labels."
   [series-data compute-fn]
   (into {}
         (for [[series-name {:keys [x_values y_values x y]}] series-data]
           [series-name (-> (compute-fn x_values y_values)
-                           (assoc :x_name (some-> x :name))
-                           (assoc :y_name (some-> y :name)))])))
+                           (assoc :x-name (some-> x :name))
+                           (assoc :y-name (some-> y :name)))])))
 
 (mu/defn make-chart-result :- ::stats.types/chart-stats
   "Build the standard chart stats result map."
   [chart-type series-data series-stats correlations]
-  (cond-> {:chart_type   chart-type
-           :series_count (count series-data)
+  (cond-> {:chart-type   chart-type
+           :series-count (count series-data)
            :series       series-stats}
     correlations (assoc :correlations correlations)))

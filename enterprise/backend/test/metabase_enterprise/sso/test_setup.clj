@@ -40,13 +40,14 @@
         (t2/update! :model/User {:email "rasta@metabase.com"} {:first_name "Rasta" :last_name "Toucan" :sso_source nil})))))
 
 (defn do-with-other-sso-types-disabled!
-  "Execute `thunk` with LDAP, SAML, and JWT SSO types disabled.
+  "Execute `thunk` with LDAP, SAML, JWT, and Slack Connect SSO types disabled.
    Useful when testing a specific SSO provider in isolation."
   [thunk]
   (mt/with-temporary-setting-values
-    [ldap-enabled false
-     saml-enabled false
-     jwt-enabled  false]
+    [ldap-enabled          false
+     saml-enabled          false
+     jwt-enabled           false
+     slack-connect-enabled false]
     (thunk)))
 
 ;;; -------------------------------------------------- SAML Setup --------------------------------------------------

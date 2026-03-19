@@ -177,7 +177,9 @@
    [:limit [:maybe :int]]
    [:visualization {:optional true} construct-visualization-schema]])
 
-(def ^:private construct-query-schema
+(def construct-query-schema
+  "Schema for the query parameter of construct_notebook_query.
+  Shared with the slackbot query tool variant."
   [:or construct-query-metric-schema construct-query-aggregate-schema construct-query-raw-schema])
 
 (def ^:private construct-operation-aliases
@@ -281,6 +283,38 @@
   [args]
   (mc/decode construct-notebook-query-args-schema args tool-arg-transformer))
 
+(defn execute-query
+  "Execute a notebook query based on normalized query parameters.
+  Returns the raw query result from filter-tools.
+  Shared between construct-notebook-query-tool and slackbot-construct-notebook-query-tool."
+  [query]
+  (let [normalized-query (normalize-ai-args query)
+        query-type (query-type->keyword (:query-type normalized-query))]
+    (log/debug "execute-query" {:query-type query-type})
+    (case query-type
+      :metric
+      (filter-tools/query-metric
+       {:metric-id (get-in normalized-query [:source :metric-id])
+        :filters (normalize-construct-filters (:filters normalized-query))
+        :group-by (normalize-ai-args (:group-by normalized-query))})
+      :aggregate
+      (filter-tools/query-datasource
+       {:model-id (get-in normalized-query [:source :model-id])
+        :table-id (get-in normalized-query [:source :table-id])
+        :aggregations (normalize-ai-args (:aggregations normalized-query))
+        :filters (normalize-construct-filters (:filters normalized-query))
+        :group-by (normalize-ai-args (:group-by normalized-query))
+        :limit (:limit normalized-query)})
+      :raw
+      (filter-tools/query-datasource
+       {:model-id (get-in normalized-query [:source :model-id])
+        :table-id (get-in normalized-query [:source :table-id])
+        :fields (normalize-ai-args (:fields normalized-query))
+        :filters (normalize-construct-filters (:filters normalized-query))
+        :order-by (normalize-ai-args (:order-by normalized-query))
+        :limit (:limit normalized-query)})
+      {:output (str "Unsupported query_type: " query-type)})))
+
 (mu/defn ^{:tool-name "construct_notebook_query"
            :decode    decode-tool-args}
   construct-notebook-query-tool
@@ -289,37 +323,10 @@
   (try
     (let [;; LLM sometimes nests visualization inside query — pull it out
           effective-viz    (or visualization (:visualization query))
-          normalized-query         (normalize-ai-args (dissoc query :visualization))
           normalized-visualization (normalize-ai-args effective-viz)
-          query-type               (query-type->keyword (:query-type normalized-query))
           chart-type               (or (chart-type->keyword (:chart-type normalized-visualization))
                                        :table)
-          _                        (log/debug "construct_notebook_query request"
-                                              {:query-type query-type
-                                               :chart-type chart-type})
-          query-result             (case query-type
-                                     :metric
-                                     (filter-tools/query-metric
-                                      {:metric-id (get-in normalized-query [:source :metric-id])
-                                       :filters   (normalize-construct-filters (:filters normalized-query))
-                                       :group-by  (normalize-ai-args (:group-by normalized-query))})
-                                     :aggregate
-                                     (filter-tools/query-datasource
-                                      {:model-id     (get-in normalized-query [:source :model-id])
-                                       :table-id     (get-in normalized-query [:source :table-id])
-                                       :aggregations (normalize-ai-args (:aggregations normalized-query))
-                                       :filters      (normalize-construct-filters (:filters normalized-query))
-                                       :group-by     (normalize-ai-args (:group-by normalized-query))
-                                       :limit        (:limit normalized-query)})
-                                     :raw
-                                     (filter-tools/query-datasource
-                                      {:model-id (get-in normalized-query [:source :model-id])
-                                       :table-id (get-in normalized-query [:source :table-id])
-                                       :fields   (normalize-ai-args (:fields normalized-query))
-                                       :filters  (normalize-construct-filters (:filters normalized-query))
-                                       :order-by (normalize-ai-args (:order-by normalized-query))
-                                       :limit    (:limit normalized-query)})
-                                     {:output (str "Unsupported query_type: " query-type)})
+          query-result             (execute-query (dissoc query :visualization))
           structured               (or (:structured-output query-result) (:structured_output query-result))]
       (if (and structured (:query-id structured) (:query structured))
         (let [chart-result (create-chart-tools/create-chart

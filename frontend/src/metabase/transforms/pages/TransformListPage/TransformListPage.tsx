@@ -25,11 +25,10 @@ import CS from "metabase/css/core/index.css";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
-import type { ColorName } from "metabase/lib/colors/types";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { type NamedUser, getUserName } from "metabase/lib/user";
-import { PLUGIN_REMOTE_SYNC, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
+import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getMetadata } from "metabase/selectors/metadata";
 import { CreateTransformMenu } from "metabase/transforms/components/CreateTransformMenu";
 import { ListEmptyState } from "metabase/transforms/components/ListEmptyState";
@@ -48,6 +47,7 @@ import {
   TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 
 import { CollectionRowMenu } from "./CollectionRowMenu";
 import S from "./TransformListPage.module.css";
@@ -108,9 +108,6 @@ export const TransformListPage = ({
 }: TransformListPageProps) => {
   const { transformsDatabases = [], isLoadingDatabases } =
     useTransformPermissions();
-  const isRemoteSyncReadOnly = useSelector(
-    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
-  );
   const targetCollectionId =
     Urls.extractEntityId(location.query?.collectionId) ?? null;
   const hasScrolledRef = useRef(false);
@@ -354,9 +351,7 @@ export const TransformListPage = ({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
-          {!isRemoteSyncReadOnly && transformsDatabases.length > 0 && (
-            <CreateTransformMenu />
-          )}
+          {transformsDatabases.length > 0 && <CreateTransformMenu />}
         </Flex>
 
         <Card withBorder p={0}>

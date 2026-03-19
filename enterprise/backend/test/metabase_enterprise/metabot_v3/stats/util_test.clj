@@ -27,7 +27,7 @@
              :mean 30.0
              :median 30.0
              :range 40.0
-             :std_dev (=?/approx [15.81 0.01])}
+             :std-dev (=?/approx [15.81 0.01])}
             (stats.u/compute-summary [10.0 20.0 30.0 40.0 50.0])))))
 
 (deftest ^:parallel compute-summary-single-value-test
@@ -183,8 +183,8 @@
       (is (= 1 (count result)))
       (is (=? {"s1" {:sum 60
                      :count 3
-                     :x_name "Date"
-                     :y_name "Revenue"}}
+                     :x-name "Date"
+                     :y-name "Revenue"}}
               result)))))
 
 (deftest ^:parallel compute-series-with-labels-nil-metadata-test
@@ -193,8 +193,8 @@
           result (stats.u/compute-series-with-labels
                   series-data
                   (fn [_ _] {:ok true}))]
-      (is (=? {"s1" {:x_name nil?
-                     :y_name nil?}}
+      (is (=? {"s1" {:x-name nil?
+                     :y-name nil?}}
               result)))))
 
 (deftest ^:parallel compute-series-with-labels-multiple-series-test
@@ -221,53 +221,53 @@
    :max     10.0
    :mean    5.0
    :median  5.0
-   :std_dev 2.0
+   :std-dev 2.0
    :range   9.0})
 
 (def ^:private sample-categorical-series
   {"s1" {:summary        sample-summary
-         :data_points    5
-         :category_count 3
-         :top_categories [{:name "A" :value 10.0 :percentage 50.0}]
+         :data-points    5
+         :category-count 3
+         :top-categories [{:name "A" :value 10.0 :percentage 50.0}]
          :outliers       []}})
 
 (def ^:private sample-histogram-series
-  {"s1" {:estimated_summary {:weighted_mean    5.0
-                             :weighted_std_dev 2.0
-                             :data_range       9.0}
-         :total_count       50
-         :data_points       10
-         :bin_data          [[1.0 5.0] [2.0 10.0]]
-         :distribution      {:estimated_percentiles {25 2.0 50 5.0 75 8.0 90 9.0 95 9.5 99 9.9}
-                             :estimated_quartiles   {:q1 2.0 :median 5.0 :q3 8.0 :iqr 6.0}}
-         :structure         {:mode_bin           [2.0 10.0]
-                             :peak_count         1
-                             :concentration_top3 1.0
-                             :gap_count          0
-                             :empty_bin_ratio    0.0
-                             :bin_count          2}}})
+  {"s1" {:estimated-summary {:weighted-mean    5.0
+                             :weighted-std-dev 2.0
+                             :data-range       9.0}
+         :total-count       50
+         :data-points       10
+         :bin-data          [[1.0 5.0] [2.0 10.0]]
+         :distribution      {:estimated-percentiles {25 2.0 50 5.0 75 8.0 90 9.0 95 9.5 99 9.9}
+                             :estimated-quartiles   {:q1 2.0 :median 5.0 :q3 8.0 :iqr 6.0}}
+         :structure         {:mode-bin           [2.0 10.0]
+                             :peak-count         1
+                             :concentration-top3 1.0
+                             :gap-count          0
+                             :empty-bin-ratio    0.0
+                             :bin-count          2}}})
 
 (deftest ^:parallel make-chart-result-basic-test
   (testing "builds standard chart result with valid schema"
-    (is (=? {:chart_type    :categorical
-             :series_count  1
+    (is (=? {:chart-type    :categorical
+             :series-count  1
              :series        sample-categorical-series
              :correlations  (symbol "nil #_\"key is not present.\"")}
             (stats.u/make-chart-result :categorical {"s1" {}} sample-categorical-series nil)))))
 
 (deftest ^:parallel make-chart-result-with-correlations-test
   (testing "includes correlations when provided"
-    (let [corrs [{:series_a "a" :series_b "b" :coefficient 0.9
+    (let [corrs [{:series-a "a" :series-b "b" :coefficient 0.9
                   :strength :strong :direction :positive}]
           series {"a" {:summary        sample-summary
-                       :data_points    2
-                       :category_count 2
-                       :top_categories []
+                       :data-points    2
+                       :category-count 2
+                       :top-categories []
                        :outliers       []}
                   "b" {:summary        sample-summary
-                       :data_points    2
-                       :category_count 2
-                       :top_categories []
+                       :data-points    2
+                       :category-count 2
+                       :top-categories []
                        :outliers       []}}
           result (stats.u/make-chart-result :categorical {"a" {} "b" {}} series corrs)]
       (is (= corrs (:correlations result))))))

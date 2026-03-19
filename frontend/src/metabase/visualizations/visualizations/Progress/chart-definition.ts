@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/colors";
 import { ChartSettingGoalInput } from "metabase/visualizations/components/settings/ChartSettingGoalInput";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { fieldSetting } from "metabase/visualizations/lib/settings/utils";
