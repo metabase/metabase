@@ -130,9 +130,6 @@ describe("scenarios > dependencies > unreferenced list", () => {
 
     it("should not show referenced entities", () => {
       setupEntities({ withReferences: true });
-      H.waitForUnreferencedEntities(
-        (entities) => !entities.some((e) => ENTITY_NAMES.includes(e.data.name)),
-      );
       H.DependencyDiagnostics.visitUnreferencedEntities();
       H.DependencyDiagnostics.list().within(() => {
         ENTITY_NAMES.forEach((name) => {
@@ -408,19 +405,30 @@ describe("scenarios > dependencies > unreferenced list", () => {
 function setupEntities({
   withReferences = false,
 }: { withReferences?: boolean } = {}) {
-  setupTableContent();
+  setupTableContent({ withReferences });
   setupModelContent({ withReferences });
   setupSegmentContent({ withReferences });
   setupMetricContent({ withReferences });
   setupSnippetContent({ withReferences });
 }
 
-function setupTableContent() {
+function setupTableContent({
+  withReferences = false,
+}: {
+  withReferences?: boolean;
+}) {
   H.getTableId({ name: TABLE_NAME }).then((tableId) => {
     cy.request("PUT", `/api/table/${tableId}`, {
       display_name: TABLE_DISPLAY_NAME,
       description: TABLE_DESCRIPTION,
       owner_user_id: ADMIN_USER_ID,
+    }).then(() => {
+      if (withReferences) {
+        createQuestionWithTableDataSource({
+          name: `${TABLE_DISPLAY_NAME} -> Question`,
+          tableId,
+        });
+      }
     });
   });
 }
@@ -679,6 +687,22 @@ function createQuestionWithModelDataSource({
     type: "question",
     query: {
       "source-table": `card__${modelId}`,
+    },
+  });
+}
+
+function createQuestionWithTableDataSource({
+  name,
+  tableId,
+}: {
+  name: string;
+  tableId: TableId;
+}) {
+  return H.createQuestion({
+    name,
+    type: "question",
+    query: {
+      "source-table": tableId,
     },
   });
 }
