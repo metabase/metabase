@@ -1,4 +1,4 @@
-(ns mage.fixbot.auto-fix
+(ns mage.fixbot.go
   (:require
    [clojure.string :as str]
    [mage.color :as c]
@@ -23,7 +23,7 @@
       (when (zero? exit)
         (let [raw (str/trim (str/join "" out))
               ;; Parse {"claudeAiOauth":{"accessToken":"sk-ant-...",...}}
-              m   (re-find #"\"accessToken\"\s*:\s*\"([^\"]+)\"" raw)]
+              m (re-find #"\"accessToken\"\s*:\s*\"([^\"]+)\"" raw)]
           (second m))))))
 
 (defn- generate-workmux-config
@@ -46,20 +46,20 @@
        "    - node_modules\n"
        "\n"
        "panes:\n"
+       "  - command: ./bin/mage -fixbot-status-watch\n"
+       "    split: horizontal\n"
+       "    size: 5\n"
+       "\n"
        "  - command: <agent>\n"
        "    focus: true\n"
        "\n"
        "  - command: clj -M:dev:dev-start:drivers:drivers-dev:ee:ee-dev\n"
        "    split: horizontal\n"
-       "    percentage: 35\n"
+       "    percentage: 40\n"
        "\n"
        "  - command: MB_EDITION=ee bun run build-hot\n"
-       "    split: vertical\n"
-       "    percentage: 50\n"
-       "\n"
-       "  - command: watch -n 5 -t cat .fixbot/status.txt\n"
        "    split: horizontal\n"
-       "    size: 5\n"))
+       "    percentage: 60\n"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Main orchestrator
@@ -70,10 +70,10 @@
   [{:keys [arguments options]}]
   (let [issue-id (first arguments)]
     (when (str/blank? issue-id)
-      (println (c/red "Usage: ./bin/mage -fixbot-auto-fix MB-12345 --app-db postgres --prompt-file /tmp/prompt.md --branch 'username/mb-12345-fix-thing'"))
+      (println (c/red "Usage: ./bin/mage fixbot-go MB-12345 --app-db postgres --prompt-file /tmp/prompt.md --branch 'username/mb-12345-fix-thing'"))
       (u/exit 1))
-    (let [issue-id    (str/upper-case (str/trim issue-id))
-          app-db      (or (:app-db options) "postgres")
+    (let [issue-id (str/upper-case (str/trim issue-id))
+          app-db (or (:app-db options) "postgres")
           prompt-file (:prompt-file options)
           branch-name (:branch options)
           base-branch (:base options)]
@@ -91,15 +91,15 @@
         (println (c/red "--branch is required"))
         (u/exit 1))
 
-      (let [session-name  (str "fixbot/" (str/lower-case issue-id))
-            workmux-path  (str u/project-root-directory "/.workmux.yaml")
-            backup-path   (str workmux-path ".bak")
-            had-backup?   (.exists (java.io.File. workmux-path))
+      (let [session-name (str "fixbot/" (str/lower-case issue-id))
+            workmux-path (str u/project-root-directory "/.workmux.yaml")
+            backup-path (str workmux-path ".bak")
+            had-backup? (.exists (java.io.File. workmux-path))
             ;; Use the issue URL from Linear (construct from issue-id)
-            issue-url     (str "https://linear.app/metabase/issue/" issue-id)
-            in-tmux?      (not (str/blank? (u/env "TMUX" (constantly nil))))
+            issue-url (str "https://linear.app/metabase/issue/" issue-id)
+            in-tmux? (not (str/blank? (u/env "TMUX" (constantly nil))))
             ;; Extract OAuth token while we have keychain access (tmux can't)
-            oauth-token   (extract-claude-oauth-token)]
+            oauth-token (extract-claude-oauth-token)]
 
         ;; Back up existing .workmux.yaml if it exists
         (when had-backup?
@@ -120,7 +120,7 @@
           (println (c/yellow "Prompt: ") prompt-file)
           (println)
 
-          (let [base-args   (when base-branch ["--base" base-branch])
+          (let [base-args (when base-branch ["--base" base-branch])
                 workmux-cmd (str "workmux add " branch-name
                                  " --name " session-name
                                  " -P " prompt-file

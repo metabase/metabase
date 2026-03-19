@@ -47,7 +47,7 @@ If this succeeds, the session is resumed — report success and stop.
 
 7. **Launch the session:**
    ```
-   ./bin/mage -fixbot-auto-fix <ISSUE_ID> --app-db <DB> --prompt-file .fixbot/metabase-fixbot-<ISSUE_ID>-prompt.md --branch '<BRANCH>'
+   ./bin/mage fixbot-go <ISSUE_ID> --app-db <DB> --prompt-file .fixbot/metabase-fixbot-<ISSUE_ID>-prompt.md --branch '<BRANCH>'
    ```
 
 8. Tell the user the session was created from the existing branch.

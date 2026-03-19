@@ -69,7 +69,7 @@ Use the port computation: ports are based on a deterministic slot derived from t
 
 Run:
 ```
-./bin/mage -fixbot-auto-fix <ISSUE_ID> --app-db <DB> --prompt-file .fixbot/metabase-fixbot-<ISSUE_ID>-prompt.md --branch '<BRANCH_NAME>'
+./bin/mage fixbot-go <ISSUE_ID> --app-db <DB> --prompt-file .fixbot/metabase-fixbot-<ISSUE_ID>-prompt.md --branch '<BRANCH_NAME>'
 ```
 
 Where:

@@ -600,17 +600,23 @@
    :requires [[mage.fixbot.preflight :as preflight]]
    :task (task! (preflight/preflight!))}
 
-  -fixbot-auto-fix
+  -fixbot-status-watch
+  {:doc "Watch and display .fixbot/status.txt"
+   :requires [[mage.fixbot.status-watch :as status-watch]]
+   :arg-schema [:? [:string {:name "file-path"}]]
+   :task (task! (status-watch/run! parsed))}
+
+  fixbot-go
   {:doc "Launch auto-fix workflow for a Linear issue"
-   :examples [["./bin/mage -fixbot-auto-fix MB-12345 --app-db postgres --prompt-file /tmp/prompt.md --branch 'username/mb-12345-fix-thing'"
+   :examples [["./bin/mage fixbot-go MB-12345 --app-db postgres --prompt-file /tmp/prompt.md --branch 'username/mb-12345-fix-thing'"
                "Launch workmux session"]]
-   :requires [[mage.fixbot.auto-fix :as auto-fix]]
+   :requires [[mage.fixbot.go :as fixbot-go]]
    :arg-schema [:tuple [:string {:name "issue-id"}]]
    :options [[nil "--app-db DB" "App database" :default "postgres"]
              [nil "--prompt-file FILE" "Path to agent prompt file"]
              [nil "--branch BRANCH" "Branch name from Linear"]
              [nil "--base BASE" "Base branch/commit to branch from"]]
-   :task (task! (auto-fix/run! parsed))}
+   :task (task! (fixbot-go/run! parsed))}
 
   -fixbot-dev-env
   {:doc "Stand up dev environment for auto-fix workflow"
