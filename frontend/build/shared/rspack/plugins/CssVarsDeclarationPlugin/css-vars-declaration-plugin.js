@@ -146,11 +146,21 @@ class CssVarsDeclarationPlugin {
       }
     }
 
+    if (cssVars.size === 0) {
+      this.#warn(`No CSS variables found for ${config.path}, skipping .d.css`);
+      return;
+    }
+
     const outputPath = config.path.replace(/\.ts$/, ".d.css");
-    this.#writeCssDeclarationFile(
-      path.join(this.#frontendSrcPath, outputPath),
-      cssVars,
-    );
+    const fullOutputPath = path.join(this.#frontendSrcPath, outputPath);
+    const outputDir = path.dirname(fullOutputPath);
+
+    if (!fs.existsSync(outputDir)) {
+      this.#warn(`Output directory not found: ${outputDir}, skipping .d.css`);
+      return;
+    }
+
+    this.#writeCssDeclarationFile(fullOutputPath, cssVars);
   }
 
   /**
