@@ -256,7 +256,7 @@
         (do-with-group-sync-login!
          provider-config {:groups ["test-group"]} "oidc-group-user@example.com"
          (fn [result]
-           (is (= true (:success? result)) (str "login result: " (pr-str result)))
+           (is (true? (:success? result)) (str "login result: " (pr-str result)))
            (testing "user is added to the mapped group"
              (let [user (t2/select-one :model/User :%lower.email "oidc-group-user@example.com")]
                (is (some? user))
@@ -275,7 +275,7 @@
         (do-with-group-sync-login!
          provider-config {:groups ["test-group"]} email
          (fn [result]
-           (is (= true (:success? result)))
+           (is (true? (:success? result)))
            (testing "user is NOT added to the mapped group because sync is disabled"
              (let [user (t2/select-one :model/User :%lower.email email)]
                (is (some? user))
@@ -293,7 +293,7 @@
       (do-with-group-sync-login!
        provider-config {:groups ["test-group"]} email
        (fn [result]
-         (is (= true (:success? result)))
+         (is (true? (:success? result)))
          (testing "user exists but only has the All Users group"
            (let [user (t2/select-one :model/User :%lower.email email)]
              (is (some? user))
@@ -311,7 +311,7 @@
         (do-with-group-sync-login!
          provider-config {:groups "single-group"} email
          (fn [result]
-           (is (= true (:success? result)))
+           (is (true? (:success? result)))
            (testing "user is added to the mapped group even with a string claim value"
              (let [user (t2/select-one :model/User :%lower.email email)]
                (is (some? user))
@@ -333,7 +333,7 @@
         (do-with-group-sync-login!
          provider-config {:groups ["group-a" "group-b"]} email
          (fn [result]
-           (is (= true (:success? result)))
+           (is (true? (:success? result)))
            (let [user (t2/select-one :model/User :%lower.email email)]
              (is (some? user))
              (let [group-ids (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id (:id user))]
@@ -343,7 +343,7 @@
         (do-with-group-sync-login!
          provider-config {:groups ["group-a"]} email
          (fn [result]
-           (is (= true (:success? result)))
+           (is (true? (:success? result)))
            (testing "user is removed from group-b but still in group-a"
              (let [user      (t2/select-one :model/User :%lower.email email)
                    group-ids (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id (:id user))]
@@ -361,7 +361,7 @@
         (do-with-group-sync-login!
          provider-config {:roles ["admin-role"]} email
          (fn [result]
-           (is (= true (:success? result)))
+           (is (true? (:success? result)))
            (testing "user is added to the mapped group via custom claim attribute"
              (let [user (t2/select-one :model/User :%lower.email email)]
                (is (some? user))
@@ -380,7 +380,7 @@
         (do-with-group-sync-login!
          provider-config {"groups" ["my-team"]} email
          (fn [result]
-           (is (= true (:success? result)))
+           (is (true? (:success? result)))
            (testing "user is added to the mapped group even with string-keyed claims"
              (let [user (t2/select-one :model/User :%lower.email email)]
                (is (some? user))
