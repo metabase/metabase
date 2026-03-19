@@ -1,35 +1,7 @@
 (ns metabase-enterprise.metabot.tools.transforms
   (:require
    [metabase-enterprise.transforms-python.api :as transforms-python.api]
-   [metabase.metabot.tools.util :as metabot.tools.u]
-   [metabase.transforms.core :as transforms]
-   [metabase.transforms.schema :as transforms.schema]
-   [metabase.util.malli.registry :as mr]))
-
-(mr/def ::transform-source ::transforms.schema/transform-source)
-(mr/def ::transform-target ::transforms.schema/transform-target)
-
-(defn get-transforms
-  "Get a list of all known transforms."
-  [_args]
-  (try
-    {:structured_output
-     (->> (transforms/get-transforms)
-          (into [] (comp (filter #(or (transforms/python-transform? %)
-                                      (transforms/native-query-transform? %)))
-                         (filter :source_readable)
-                         (map #(select-keys % [:id :entity_id :name :type :description :source])))))}
-    (catch Exception e
-      (metabot.tools.u/handle-agent-error e))))
-
-(defn get-transform-details
-  "Get information about a transform."
-  [{:keys [transform-id]}]
-  (try
-    {:structured_output
-     (transforms/get-transform transform-id)}
-    (catch Exception e
-      (metabot.tools.u/handle-agent-error e))))
+   [metabase.metabot.tools.util :as metabot.tools.u]))
 
 (defn get-transform-python-library-details
   "Get information about a Python library by path."
