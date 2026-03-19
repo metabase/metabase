@@ -274,5 +274,3 @@
               (let [segment (first segments)]
                 (is (= segment-id (:id segment)))
                 (is (= "Large Orders" (:name segment)))))))))))
-
-
