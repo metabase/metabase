@@ -1,7 +1,7 @@
-(ns metabase-enterprise.transforms-inspector.interestingness-test
+(ns metabase.transforms-inspector.interestingness-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.transforms-inspector.interestingness :as interestingness]))
+   [metabase.transforms-inspector.interestingness :as interestingness]))
 
 ;;; -------------------------------------------------- dominated-column? --------------------------------------------------
 

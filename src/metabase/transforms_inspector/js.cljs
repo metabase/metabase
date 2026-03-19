@@ -1,7 +1,7 @@
-(ns metabase-enterprise.transforms-inspector.js
-  "Javascript-facing interface for transform inspector. Wraps functions in metabase-enterprise.transforms-inspector.core"
+(ns metabase.transforms-inspector.js
+  "Javascript-facing interface for transform inspector. Wraps functions in metabase.transforms-inspector.core"
   (:require
-   [metabase-enterprise.transforms-inspector.core :as inspector]))
+   [metabase.transforms-inspector.core :as inspector]))
 
 (def ^:private empty-triggers #js {:alerts #js [] :drill_lenses #js []})
 

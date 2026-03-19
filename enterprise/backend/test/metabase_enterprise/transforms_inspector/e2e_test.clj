@@ -3,12 +3,12 @@
    discover → get-lens → execute cards → compute results → evaluate triggers → drill."
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.transforms-inspector.core :as inspector]
    [metabase.driver :as driver]
    [metabase.driver.sql.util :as sql.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
+   [metabase.transforms-inspector.core :as inspector]
    [metabase.transforms.execute :as transforms.execute]
    [metabase.transforms.test-util :as transforms.tu]
    [toucan2.core :as t2]))

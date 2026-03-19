@@ -1,7 +1,7 @@
-(ns metabase-enterprise.transforms-inspector.degeneracy-test
+(ns metabase.transforms-inspector.degeneracy-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.transforms-inspector.degeneracy :as degeneracy]))
+   [metabase.transforms-inspector.degeneracy :as degeneracy]))
 
 (deftest degenerate-for-display-default-test
   (testing "non-degenerate when data present"

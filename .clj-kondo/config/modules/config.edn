@@ -1681,6 +1681,11 @@
               enterprise/transforms-python
               enterprise/workspaces}}
 
+  transforms-inspector
+  {:team "Gadget"
+   :api  #{metabase.transforms-inspector.core}
+   :uses #{}}
+
   transforms-rest
   {:team "Gadget"
    :api  #{metabase.transforms-rest.api.transform
@@ -2574,7 +2579,6 @@
   enterprise/transforms-inspector
   {:team "Gadget"
    :api  #{metabase-enterprise.transforms-inspector.api
-           metabase-enterprise.transforms-inspector.core
            metabase-enterprise.transforms-inspector.schema}
    :uses #{api
            driver
@@ -2586,6 +2590,7 @@
            sql-tools
            transforms
            transforms-base
+           transforms-inspector
            util
            enterprise/api}}
 

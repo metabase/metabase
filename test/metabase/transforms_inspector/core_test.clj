@@ -1,7 +1,7 @@
-(ns metabase-enterprise.transforms-inspector.core-test
+(ns metabase.transforms-inspector.core-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.transforms-inspector.core :as inspector.core]))
+   [metabase.transforms-inspector.core :as inspector.core]))
 
 ;;; -------------------------------------------------- compute-card-result --------------------------------------------------
 

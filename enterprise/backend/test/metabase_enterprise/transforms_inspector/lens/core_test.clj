@@ -1,8 +1,8 @@
 (ns metabase-enterprise.transforms-inspector.lens.core-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.transforms-inspector.core :as inspector]
-   [metabase-enterprise.transforms-inspector.lens.core :as lens.core]))
+   [metabase-enterprise.transforms-inspector.lens.core :as lens.core]
+   [metabase.transforms-inspector.core :as inspector]))
 
 (comment inspector/keep-me)
 

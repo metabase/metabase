@@ -1,7 +1,7 @@
-(ns metabase-enterprise.transforms-inspector.triggers-test
+(ns metabase.transforms-inspector.triggers-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.transforms-inspector.triggers :as triggers]))
+   [metabase.transforms-inspector.triggers :as triggers]))
 
 (deftest evaluate-condition-default-test
   (testing "unknown condition names return false"

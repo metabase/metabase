@@ -1,4 +1,4 @@
-(ns metabase-enterprise.transforms-inspector.core
+(ns metabase.transforms-inspector.core
   "Public API for Transform Inspector utilities."
   (:require
    #?@(:clj [[metabase-enterprise.transforms-inspector.context :as context]
@@ -10,10 +10,10 @@
              [metabase-enterprise.transforms-inspector.schema]
              [metabase.util.i18n :refer [tru]]
              [metabase.util.malli :as mu]])
-   [metabase-enterprise.transforms-inspector.card-result :as card-result]
-   [metabase-enterprise.transforms-inspector.degeneracy :as degeneracy]
-   [metabase-enterprise.transforms-inspector.interestingness :as interestingness]
-   [metabase-enterprise.transforms-inspector.triggers :as triggers]))
+   [metabase.transforms-inspector.card-result :as card-result]
+   [metabase.transforms-inspector.degeneracy :as degeneracy]
+   [metabase.transforms-inspector.interestingness :as interestingness]
+   [metabase.transforms-inspector.triggers :as triggers]))
 
 #?(:clj
    (comment

@@ -1,4 +1,4 @@
-(ns metabase-enterprise.transforms-inspector.degeneracy
+(ns metabase.transforms-inspector.degeneracy
   "Multimethod for detecting degenerate card results.
    A degenerate result is one that doesn't provide useful information
    and should be hidden or deprioritized in the UI.")

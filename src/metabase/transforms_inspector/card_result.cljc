@@ -1,4 +1,4 @@
-(ns metabase-enterprise.transforms-inspector.card-result
+(ns metabase.transforms-inspector.card-result
   "Compute derived fields from raw query results for inspector cards.
 
    This is a cljc namespace so it can be used by both:

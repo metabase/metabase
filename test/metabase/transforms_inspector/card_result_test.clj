@@ -1,7 +1,7 @@
-(ns metabase-enterprise.transforms-inspector.card-result-test
+(ns metabase.transforms-inspector.card-result-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.transforms-inspector.card-result :as card-result]))
+   [metabase.transforms-inspector.card-result :as card-result]))
 
 (deftest compute-card-result-default-test
   (testing "default method returns nil for non-nil rows"

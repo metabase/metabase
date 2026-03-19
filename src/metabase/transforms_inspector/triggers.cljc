@@ -1,4 +1,4 @@
-(ns metabase-enterprise.transforms-inspector.triggers
+(ns metabase.transforms-inspector.triggers
   "Multimethod for evaluating trigger conditions against inspector card results.
 
    Triggers control when alerts and drill-down lenses appear
