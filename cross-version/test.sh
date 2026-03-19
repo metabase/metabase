@@ -69,7 +69,18 @@ cli() {
 
 run_e2e() {
   local phase="$1"
-  "$REPO_ROOT/e2e/cross-version/run.sh" --phase "$phase"
+  local version="$2"
+  local major specs_dir
+
+  major=$(cli major "$version")
+  specs_dir="$REPO_ROOT/e2e/cross-version/${major}"
+  if [[ ! -d "$specs_dir" ]]; then
+    specs_dir="$REPO_ROOT/e2e/cross-version/latest"
+  fi
+
+  log "Using specs from ${specs_dir}"
+  CYPRESS_SPEC_PATTERN="${specs_dir}/**/*.cy.spec.ts" \
+    "$REPO_ROOT/e2e/cross-version/run.sh" --phase "$phase"
 }
 
 
@@ -333,7 +344,7 @@ main() {
 
   log ""
   log "Step 2: Running e2e tests (@source)..."
-  run_e2e source
+  run_e2e source "$SOURCE_VERSION"
 
   log ""
   log "Step 3: Stopping SOURCE version ($SOURCE_VERSION)..."
@@ -354,7 +365,7 @@ main() {
 
     log ""
     log "Step 5: Running e2e tests (@target)..."
-    run_e2e target
+    run_e2e target "$TARGET_VERSION"
 
   else
     # Downgrade: should refuse to start, then we run migrate down
@@ -388,7 +399,7 @@ main() {
 
     log ""
     log "Step 7: Running e2e tests (@target)..."
-    run_e2e target
+    run_e2e target "$TARGET_VERSION"
   fi
 
   log ""
