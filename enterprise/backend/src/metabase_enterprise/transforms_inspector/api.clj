@@ -1,5 +1,6 @@
 (ns metabase-enterprise.transforms-inspector.api
   (:require
+   [metabase-enterprise.transforms-inspector.core :as inspector]
    [metabase-enterprise.transforms-inspector.schema :as inspector.schema]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -11,7 +12,6 @@
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.server.core :as server]
-   [metabase.transforms-inspector.core :as inspector]
    [metabase.transforms.core :as transforms.core]
    [metabase.util.malli.schema :as ms]))
 

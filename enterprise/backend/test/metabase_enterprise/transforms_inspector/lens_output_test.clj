@@ -2,13 +2,13 @@
   "Tests for lens card output validation and trigger flow."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.transforms-inspector.core :as inspector.core]
    [metabase-enterprise.transforms-inspector.lens.core :as lens.core]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.test :as mt]
    [metabase.transforms-base.util :as transforms-base.u]
-   [metabase.transforms-inspector.core :as inspector.core]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)

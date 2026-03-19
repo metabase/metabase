@@ -2586,6 +2586,7 @@
   enterprise/transforms-inspector
   {:team "Gadget"
    :api  #{metabase-enterprise.transforms-inspector.api
+           metabase-enterprise.transforms-inspector.core
            metabase-enterprise.transforms-inspector.schema}
    :uses #{api
            driver
