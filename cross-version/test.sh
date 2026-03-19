@@ -82,14 +82,25 @@ run_e2e() {
     return
   fi
 
-  local branch dest
+  local branch ref dest
   branch=$(cli branch "$version")
   dest="$XV_SPECS_DIR/$phase"
 
-  log "Extracting specs from ${branch} → ${dest}"
+  # Prefer local branch, fall back to remote
+  ref="$branch"
+  if ! git -C "$REPO_ROOT" rev-parse --verify "$branch" >/dev/null 2>&1; then
+    ref="origin/$branch"
+    # Fetch if not available locally (CI only checks out the triggering branch)
+    if ! git -C "$REPO_ROOT" rev-parse --verify "$ref" >/dev/null 2>&1; then
+      log "Fetching ${branch} from origin..."
+      git -C "$REPO_ROOT" fetch origin "$branch"
+    fi
+  fi
+
+  log "Extracting specs from ${ref} → ${dest}"
   rm -rf "$dest"
   mkdir -p "$dest"
-  git -C "$REPO_ROOT" archive "$branch" -- e2e/test/cross-version/scenarios/ \
+  git -C "$REPO_ROOT" archive "$ref" -- e2e/test/cross-version/scenarios/ \
     | tar x -C "$dest"
 
   "$REPO_ROOT/e2e/test/cross-version/run.sh" --phase "$phase" \
