@@ -1,0 +1,24 @@
+;; EE overrides for shadow-cljs. Merged via --config-merge when building EE.
+;; Adds enterprise/backend/src to classpath and includes EE CLJS entries.
+{:deps {:aliases [:cljs :ee]}
+
+ :builds
+ {:app
+  {:entries [metabase.dashboards.constants
+             metabase.lib.column-group
+             metabase.lib.js
+             metabase.lib.limit
+             metabase.lib.types.isa
+             metabase.lib-metric.js
+             metabase.parameters.shared
+             metabase.pivot.core
+             metabase.pivot.js
+             metabase.types.core
+             metabase.util.currency
+             metabase.util.devtools
+             metabase.util.formatting.constants
+             metabase.util.formatting.date
+             metabase.util.time
+             metabase.xrays.domain-entities.queries.util
+             ;; EE entries
+             metabase-enterprise.transforms-inspector.js]}}}
