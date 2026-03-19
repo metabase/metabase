@@ -43,7 +43,7 @@
   #_{:clj-kondo/ignore [:deprecated-var]}
   (if-not (mbql.u/is-clause? :field clause)
     clause
-    (if (:lib/uuid (second clause))
+    (if (:lib/uuid (second clause)) ;; mbql5
       (lib/with-temporal-bucket clause unit)
       (mbql.u/with-temporal-unit clause unit))))
 
@@ -209,6 +209,7 @@
 (def ^:private all-date-string-decoders
   (concat relative-date-string-decoders absolute-date-string-decoders))
 
+;; TODO(rileythomp, 2026-03-18): Add back schemas here
 (mu/defn date-string->filter ; :- ::mbql.s/Filter
   "Takes a string description of a *date* (not datetime) range such as 'lastmonth' or '2016-07-15~2016-08-6', or
   an absolute date *or datetime* string, and returns a corresponding MBQL filter clause for a given field reference."
