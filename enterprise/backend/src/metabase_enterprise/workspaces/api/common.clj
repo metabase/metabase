@@ -412,7 +412,7 @@
         fallback-map     (merge
                           (ws.impl/table-ids-fallbacks :global_schema :global_table :global_table_id all-outputs)
                           (ws.impl/table-ids-fallbacks :isolated_schema :isolated_table :isolated_table_id all-outputs))
-        table-ids        (keep :isolated_table_id all-outputs)
+        table-ids        (into (into #{} (keep :isolated_table_id) all-outputs) (vals fallback-map))
         active-table-ids (t2/select-fn-set :id [:model/Table :id] :id [:in table-ids] :active true)]
     {:inputs  (sort-by (juxt :db_id :schema :table) inputs)
      :outputs (sort-by
