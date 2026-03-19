@@ -1,60 +1,12 @@
 (ns metabase-enterprise.metabot.tools.transforms-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.metabot.tools.transforms :as metabot.tools.transforms]
-   [metabase.lib-be.metadata.jvm :as lib-be]
-   [metabase.lib.core :as lib]
-   [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.test :as mt]))
+   [metabase-enterprise.metabot.tools.transforms :as metabot.tools.transforms]))
 
-(deftest get-transforms-test
-  (testing "get-transforms correctly returns transform when the user has access to the source database"
-    (mt/with-premium-features #{:transforms-basic}
-      (mt/with-temp [:model/Database {db-id :id} {}]
-        (let [mp (lib-be/application-database-metadata-provider db-id)]
-          (mt/with-temp [:model/Transform transform
-                         {:name   "Test Transform"
-                          :source {:type  "query"
-                                   :query (lib/native-query mp "SELECT 1")}}]
-            (testing "returns transform when user can query the source database"
-              (mt/with-test-user :crowberto
-                (let [result   (:structured_output (metabot.tools.transforms/get-transforms {}))
-                      returned (first (filter #(= (:id transform) (:id %)) result))]
-                  (is (some? returned)))))
-            (testing "filters out transform when user cannot query the source database"
-              (mt/with-data-analyst-role! (mt/user->id :rasta)
-                (mt/with-db-perm-for-group! (perms-group/all-users) db-id :perms/create-queries :no
-                  (mt/with-test-user :rasta
-                    (let [result   (:structured_output (metabot.tools.transforms/get-transforms {}))
-                          returned (first (filter #(= (:id transform) (:id %)) result))]
-                      (is (nil? returned)))))))))))))
+;; Tests for get-transforms and get-transform-details have been moved to
+;; metabase.metabot.tools.transforms-test (OSS).
 
-(deftest get-transform-details-test
-  (testing "get-transform-details returns transform when user can query the source database"
-    (mt/with-premium-features #{:transforms-basic}
-      (mt/with-temp [:model/Transform transform
-                     {:name   "Test Transform"
-                      :source {:type  "query"
-                               :query (lib/native-query (mt/metadata-provider) "SELECT 1")}}]
-        (mt/with-test-user :crowberto
-          (let [result (:structured_output (metabot.tools.transforms/get-transform-details
-                                            {:transform-id (:id transform)}))]
-            (is (= (:id transform) (:id result)))))))))
-
-(deftest get-transform-details-blocked-test
-  (testing "get-transform-details throws when user cannot query the source database"
-    (mt/with-premium-features #{:transforms-basic}
-      (mt/with-temp [:model/Database {db-id :id} {}]
-        (let [mp (lib-be/application-database-metadata-provider db-id)]
-          (mt/with-temp [:model/Transform transform
-                         {:name   "Blocked Transform"
-                          :source {:type  "query"
-                                   :query (lib/native-query mp "SELECT 1")}}]
-            (mt/with-data-analyst-role! (mt/user->id :rasta)
-              (mt/with-db-perm-for-group! (perms-group/all-users) db-id :perms/create-queries :no
-                (mt/with-test-user :rasta
-                  (is (thrown-with-msg?
-                       clojure.lang.ExceptionInfo
-                       #"You don't have permissions to do that"
-                       (metabot.tools.transforms/get-transform-details
-                        {:transform-id (:id transform)}))))))))))))
+(deftest get-transform-python-library-details-test
+  (testing "get-transform-python-library-details is available"
+    ;; Basic smoke test that the function exists and is callable
+    (is (fn? metabot.tools.transforms/get-transform-python-library-details))))
