@@ -16,6 +16,6 @@ scratch=".fixbot/bd-scratch"
 
 mkdir -p "$scratch"
 git init -q "$scratch/repo"
-(cd "$scratch/repo" && bd init --stealth --quiet -p "$name")
+(cd "$scratch/repo" && echo "n" | bd init --stealth --quiet --skip-hooks -p "$name")
 mv "$scratch/repo/.beads" .beads
 rm -rf "$scratch"
