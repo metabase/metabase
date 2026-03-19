@@ -44,9 +44,6 @@
                        :builtin     true}}
     {}))
 
-(def ^:private builtin-geojson-urls
-  (set (map :url (builtin-geojson))))
-
 (def ^:private CustomGeoJSON
   [:map-of :keyword [:map {:closed true}
                      [:name                         ms/NonBlankString]
@@ -82,6 +79,9 @@
       (and (valid-protocol? url)
            (http/valid-host? :external-only url)))
     (catch Throwable _ false)))
+
+(def ^:private builtin-geojson-urls
+  (set (map :url (builtin-geojson))))
 
 (defn valid-geojson-resource-path?
   "Whether GeoJSON `url` points to a valid resource. Does not check whether the contents are valid GeoJSON or not.
