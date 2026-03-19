@@ -128,10 +128,10 @@ export const DataGrid = function DataGrid<TData>({
   const renderRow = (
     row: DataGridRowType<TData>,
     columns: DataGridColumnType<TData>[],
-    key: string,
+    index: number,
   ) => (
     <DataGridRow
-      key={key}
+      key={index}
       row={row}
       pinnedRowsCount={pinnedRows.length}
       rowMeasureRef={rowMeasureRef}
@@ -202,10 +202,10 @@ export const DataGrid = function DataGrid<TData>({
   ) =>
     renderGridPanels({
       pinnedContent: rows.map((row, index) =>
-        renderRow(row, pinnedColumns, `pinned-${index}`),
+        renderRow(row, pinnedColumns, index),
       ),
       centerContent: rows.map((row, index) =>
-        renderRow(row, centerColumns, `center-${index}`),
+        renderRow(row, centerColumns, index),
       ),
       minHeight,
     });
