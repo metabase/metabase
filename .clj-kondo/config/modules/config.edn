@@ -1684,7 +1684,7 @@
 
   transforms-inspector
   {:team "Gadget"
-   :api  #{metabase.transforms-inspector.core}
+   :api  #{}
    :uses #{}}
 
   transforms-rest
@@ -2585,9 +2585,7 @@
 
   enterprise/transforms-inspector
   {:team "Gadget"
-   :api  #{metabase-enterprise.transforms-inspector.api
-           metabase-enterprise.transforms-inspector.core
-           metabase-enterprise.transforms-inspector.schema}
+   :api  #{metabase-enterprise.transforms-inspector.api}
    :uses #{api
            driver
            events
@@ -2598,9 +2596,7 @@
            sql-tools
            transforms
            transforms-base
-           transforms-inspector
-           util
-           enterprise/api}}
+           util}}
 
   enterprise/transforms-python
   {:team "Querying"
