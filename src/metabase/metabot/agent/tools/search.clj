@@ -6,7 +6,8 @@
    [metabase.metabot.tools.instructions :as instructions]
    [metabase.metabot.tools.llm-representations :as llm-rep]
    [metabase.metabot.tools.search :as search-tools]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -54,12 +55,10 @@
    [:entity_types {:optional true}
     [:maybe [:sequential [:enum "table" "model" "metric" "dashboard" "question"]]]]])
 
-(defn search-tool "search-tool" []
-  {:tool-name "search"
-   :doc       "Search for tables, models, metrics, dashboards, and saved questions."
-   :schema    [:=> [:cat search-schema] :any]
-   :fn        (fn [args]
-                (do-search "search" #{"table" "model" "metric" "dashboard" "question"} {} args))})
+(mu/defn ^{:tool-name "search"} search-tool
+  "Search for tables, models, metrics, dashboards, and saved questions."
+  [args :- search-schema]
+  (do-search "search" #{"table" "model" "metric" "dashboard" "question"} {} args))
 
 (def ^:private sql-search-schema
   [:map {:closed true}
@@ -69,13 +68,11 @@
    [:entity_types {:optional true}
     [:maybe [:sequential [:enum "table" "model"]]]]])
 
-(defn sql-search-tool []
-  {:tool-name "search"
-   :prompt    "sql_search.md"
-   :doc       "Search for SQL-queryable data sources (tables and models) within a database."
-   :schema    [:=> [:cat sql-search-schema] :any]
-   :fn        (fn [{:keys [database_id] :as args}]
-                (do-search "SQL search" #{"table" "model"} {:database-id database_id} args))})
+(mu/defn ^{:tool-name "search"
+           :prompt    "sql_search.md"} sql-search-tool
+  "Search for SQL-queryable data sources (tables and models) within a database."
+  [{:keys [database_id] :as args} :- sql-search-schema]
+  (do-search "SQL search" #{"table" "model"} {:database-id database_id} args))
 
 (def ^:private nlq-search-schema
   [:map {:closed true}
@@ -84,13 +81,11 @@
    [:entity_types {:optional true}
     [:maybe [:sequential [:enum "model" "metric" "table"]]]]])
 
-(defn nlq-search-tool []
-  {:tool-name "search"
-   :prompt    "nql_search.md"
-   :doc       "Search for NLQ-queryable data sources (models, metrics, tables)."
-   :schema    [:=> [:cat nlq-search-schema] :any]
-   :fn        (fn [args]
-                (do-search "NLQ search" #{"model" "metric" "table"} {:profile-id "nlq"} args))})
+(mu/defn ^{:tool-name "search"
+           :prompt    "nql_search.md"} nlq-search-tool
+  "Search for NLQ-queryable data sources (models, metrics, tables)."
+  [args :- nlq-search-schema]
+  (do-search "NLQ search" #{"model" "metric" "table"} {:profile-id "nlq"} args))
 
 (def ^:private transform-search-schema
   [:map {:closed true}
@@ -100,11 +95,9 @@
    [:entity_types {:optional true}
     [:maybe [:sequential [:enum "table" "model" "transform"]]]]])
 
-(defn transform-search-tool []
-  {:tool-name "search"
-   :prompt    "transform_search"
-   :doc       "Search for transforms, tables, and models."
-   :schema    [:=> [:cat transform-search-schema] :any]
-   :fn        (fn [{:keys [search_native_query] :as args}]
-                (do-search "transform search" #{"table" "model" "transform"}
-                           {:search-native-query search_native_query} args))})
+(mu/defn ^{:tool-name "search"
+           :prompt    "transform_search"} transform-search-tool
+  "Search for transforms, tables, and models."
+  [{:keys [search_native_query] :as args} :- transform-search-schema]
+  (do-search "transform search" #{"table" "model" "transform"}
+             {:search-native-query search_native_query} args))

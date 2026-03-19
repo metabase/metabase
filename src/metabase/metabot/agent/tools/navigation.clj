@@ -3,7 +3,8 @@
   (:require
    [metabase.metabot.agent.tools.shared :as shared]
    [metabase.metabot.tools.navigate :as navigate-tools]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -23,27 +24,25 @@
                   [:map {:closed true}
                    [:chart_id :string]]]]])
 
-(defn navigate-user-tool "navigate-user-tool" []
-  {:tool-name    "navigate_user"
-   :capabilities #{:frontend-navigate-user-v1}
-   :doc          "Navigate the user to a specific page or entity in Metabase.
+(mu/defn ^{:tool-name    "navigate_user"
+           :capabilities #{:frontend-navigate-user-v1}} navigate-user-tool
+  "Navigate the user to a specific page or entity in Metabase.
 
   Use this tool to direct users to:
   - Pages: notebook_editor, metrics_browser, model_browser, database_browser, sql_editor
   - Entities: table, model, question, metric, dashboard
   - Query results or charts from the current conversation"
-   :schema       [:=> [:cat schema] :any]
-   :fn           (fn [{:keys [destination]}]
-                   (try
-                     (let [result (navigate-tools/navigate {:destination destination
-                                                            :memory-atom shared/*memory-atom*})
-                           structured (:structured-output result)
-                           reactions (:reactions result)]
-                       (cond-> {:output (:message structured)
-                                :structured-output structured}
-                         (seq reactions) (assoc :reactions reactions)))
-                     (catch Exception e
-                       (log/error e "Error navigating")
-                       (if (:agent-error? (ex-data e))
-                         {:output (ex-message e)}
-                         {:output (str "Failed to navigate: " (or (ex-message e) "Unknown error"))}))))})
+  [{:keys [destination]} :- schema]
+  (try
+    (let [result (navigate-tools/navigate {:destination destination
+                                           :memory-atom shared/*memory-atom*})
+          structured (:structured-output result)
+          reactions (:reactions result)]
+      (cond-> {:output (:message structured)
+               :structured-output structured}
+        (seq reactions) (assoc :reactions reactions)))
+    (catch Exception e
+      (log/error e "Error navigating")
+      (if (:agent-error? (ex-data e))
+        {:output (ex-message e)}
+        {:output (str "Failed to navigate: " (or (ex-message e) "Unknown error"))}))))
