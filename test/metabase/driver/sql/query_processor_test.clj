@@ -9,6 +9,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
    [metabase.driver.sql.query-processor.deprecated]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
@@ -17,6 +18,7 @@
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.lib.test-util.places-cam-likes-metadata-provider :as lib.tu.places-cam-likes-metadata-provider]
+   [metabase.lib.util :as lib.util]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.limit :as limit]
@@ -223,16 +225,12 @@
                 :params ["Cam" "Lucky Pigeon"]}
                (sql.qp/mbql->native
                 :h2
-                (lib.tu.macros/mbql-5-query nil
-                  {:stages [{:lib/type           :mbql.stage/native
-                             :native             "SELECT * FROM some_table WHERE name = ?;"
-                             :params             ["Cam"]
-                             :lib/stage-metadata {:columns [{:lib/type     :metadata/column
-                                                             :name         "name"
-                                                             :display-name "Name"
-                                                             :base-type    :type/Integer}]}}
-                            {:lib/type :mbql.stage/mbql
-                             :filters  [[:!= {} [:field {:base-type :type/Integer} "name"] "Lucky Pigeon"]]}]}))))))))
+                (->> {:source-query    {:native "SELECT * FROM some_table WHERE name = ?;", :params ["Cam"]}
+                      :source-metadata [{:name "name", :display_name "Name", :base_type :type/Integer}]
+                      :filter          [:!= *name/Integer "Lucky Pigeon"]}
+                     (lib.tu.macros/mbql-query venues)
+                     (lib.convert/->pMBQL)
+                     (lib/query meta/metadata-provider)))))))))
 
 (deftest ^:parallel joins-against-native-queries-test
   (testing "Joins against native SQL queries should get converted appropriately! make sure correct HoneySQL is generated"
@@ -244,55 +242,38 @@
                  (h2x/with-database-type-info (h2x/identifier :field "PUBLIC" "CHECKINS" "VENUE_ID") "integer")
                  (h2x/identifier :field "card" "id")]]
                (sql.qp/join->honeysql :h2
-                                      {:lib/type :mbql.stage/mbql,
-                                       :alias "card",
-                                       :strategy :left-join,
-                                       :stages [{:lib/type :mbql.stage/native, :native "SELECT * FROM VENUES;", :params []}]
-                                       :conditions [[:= {}
-                                                     [:field {::add/source-table (meta/id :checkins)
-                                                              ::add/source-alias "VENUE_ID"} (meta/id :checkins :venue-id)]
-                                                     [:field {:join-alias        "card"
-                                                              :base-type         :type/Integer
-                                                              ::add/source-table "card"
-                                                              ::add/source-alias "id"} "id"]]]})))))))
-
-(defmulti compile-join-query
-  "Compile a join to sql"
-  {:added "0.59.0" :arglists '([driver])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defmethod compile-join-query :default
-  [_driver]
-  {:source-query {:native "SELECT * FROM VENUES;", :params []}
-   :alias        "card"
-   :strategy     :left-join
-   :condition    [:=
-                  [:field (meta/id :checkins :id) {::add/source-table (meta/id :checkins)
-                                                   ::add/source-alias "VENUE_ID"}]
-                  [:field "id" {:base-type         :type/Text
-                                ::add/source-table "card"
-                                ::add/source-alias "id"}]]})
-
-(defmethod compile-join-query :sql-mbql5
-  [_driver]
-  {:lib/type :mbql.stage/mbql,
-   :alias "card",
-   :strategy :left-join,
-   :stages [{:lib/type :mbql.stage/native, :native "SELECT * FROM VENUES;", :params []}]
-   :conditions [[:= {}
-                 [:field {::add/source-table (meta/id :checkins)  ::add/source-alias "VENUE_ID"} (meta/id :checkins :id)]
-                 [:field {:base-type :type/Text,
-                          :metabase.query-processor.util.add-alias-info/source-table "card",
-                          :metabase.query-processor.util.add-alias-info/source-alias "id"}
-                  "id"]]]})
+                                      (->> {:source-query {:native "SELECT * FROM VENUES;", :params []}
+                                            :alias        "card"
+                                            :strategy     :left-join
+                                            :condition    [:=
+                                                           [:field %venue-id {::add/source-table $$checkins
+                                                                              ::add/source-alias "VENUE_ID"}]
+                                                           [:field "id" {:join-alias        "card"
+                                                                         :base-type         :type/Integer
+                                                                         ::add/source-table "card"
+                                                                         ::add/source-alias "id"}]]}
+                                           (lib.tu.macros/$ids checkins)
+                                           (#'lib.util/join->pipeline)
+                                           (lib.convert/->pMBQL)))))))))
 
 (defn- compile-join
   [driver]
   (driver/with-driver driver
     (qp.store/with-metadata-provider meta/metadata-provider
-      (let [query (compile-join-query driver)
-            join (sql.qp/join->honeysql driver query)]
+      (let [join-query {:source-query {:native "SELECT * FROM VENUES;", :params []}
+                        :alias        "card"
+                        :strategy     :left-join
+                        :condition    [:=
+                                       [:field (meta/id :checkins :id) {::add/source-table (meta/id :checkins)
+                                                                        ::add/source-alias "VENUE_ID"}]
+                                       [:field "id" {:base-type         :type/Text
+                                                     ::add/source-table "card"
+                                                     ::add/source-alias "id"}]]}
+            join (cond->> join-query
+                   (isa? driver/hierarchy driver :sql-mbql5)
+                   ((comp lib.convert/->pMBQL #'lib.util/join->pipeline))
+
+                   true  (sql.qp/join->honeysql driver))]
         (sql.qp/format-honeysql driver {:join join})))))
 
 ;;; Ok to hardcode driver names here because it's for general HoneySQL compilation behavior and not something that needs

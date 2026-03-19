@@ -17,7 +17,7 @@ title: Driver interface changelog
   - `finest-temporal-breakout-idx` - Wrapper around `driver-api/finest-temporal-breakout-index`
   - `remapped-breakout?` - Wrapper around `driver-api/qp.util.transformations.nest-breakouts.externally-remapped-field`
   - `literal-text-value?` - Wrapper to destructure options from MBQL clause
-  These methods have implementations for the :sql and :sql-mbql5 drivers, other drives should not need to implement these methods.
+  These methods have implementations for the :sql and :sql-mbql5 drivers, other drivers should not need to implement these methods.
   These methods will eventually be deprecated in favour of the :sql-mbql5 implementation once all drivers have been migrated.
 
 ## Metabase 0.59.0
