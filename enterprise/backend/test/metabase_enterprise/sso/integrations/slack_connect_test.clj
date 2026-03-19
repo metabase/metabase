@@ -101,7 +101,7 @@
             slack-connect-client-secret nil]
            (is (= "Slack Connect is not enabled"
                   (mt/client :get 400 "/auth/sso/slack-connect"
-                             {:request-options {:redirect-strategy :none}})))))))))))
+                             {:request-options {:redirect-strategy :none}})))))))))
 
 ;;; -------------------------------------------------- Redirect Tests --------------------------------------------------
 

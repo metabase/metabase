@@ -1,12 +1,12 @@
 (ns metabase-enterprise.metabot.agent.tools.transforms
-  "Enterprise implementations of Python transform tool thunks."
+  "Enterprise implementations of Python transform tools."
   (:require
    [metabase-enterprise.metabot.tools.transforms :as transform-tools]
    [metabase-enterprise.metabot.tools.transforms-write :as transforms-write-tools]
    [metabase.metabot.agent.tools.shared :as shared]
    [metabase.metabot.agent.tools.transforms :as agent-transforms]
    [metabase.metabot.util :as metabot.u]
-   [metabase.premium-features.core :as premium-features]))
+   [metabase.premium-features.core :refer [defenterprise]]))
 
 (set! *warn-on-reflection* true)
 
@@ -24,16 +24,12 @@
 ;;; Tool definitions
 ;;; ──────────────────────────────────────────────────────────────────
 
-(premium-features/defenterprise get-transform-python-library-details-tool
-  "Returns tool definition for getting Python library details."
+(defenterprise get-transform-python-library-details-tool
+  "Get information about a Python library by path."
   :feature :none
-  []
-  {:tool-name "get_transform_python_library_details"
-   :doc       "Get information about a Python library by path."
-   :schema    [:=> [:cat [:map {:closed true} [:path :string]]] :any]
-   :fn        (fn [{:keys [path]}]
-                (agent-transforms/add-output (transform-tools/get-transform-python-library-details {:path path})
-                                             format-python-library-output))})
+  [{:keys [path]}]
+  (agent-transforms/add-output (transform-tools/get-transform-python-library-details {:path path})
+                               format-python-library-output))
 
 (def ^:private write-transform-python-schema
   [:map {:closed true}
@@ -51,13 +47,8 @@
    [:source_database {:optional true} [:maybe :int]]
    [:source_tables {:optional true} [:maybe :map]]])
 
-(premium-features/defenterprise write-transform-python-tool
-  "Returns tool definition for writing Python transforms."
-  :feature :none
-  []
-  {:tool-name    "write_transform_python"
-   :capabilities #{:feature-transforms :feature-transforms-python :permission-write-transforms}
-   :doc          "Write new Python code or edit existing code for transforms.
+(defenterprise write-transform-python-tool
+  "Write new Python code or edit existing code for transforms.
 
   Supports two modes:
   - edit: Targeted string replacements with partial edits
@@ -69,23 +60,23 @@
   Use `get_transform_python_library_details` before writing any Python code to inspect the shared library.
   Use the shared library in your code by adding `import common` at the top of the file.
   Keep `import common` at the top of the file even if it is currently unused."
-   :schema       [:=> [:cat write-transform-python-schema] :any]
-   :fn           (fn [{:keys [transform_id edit_action thinking transform_name transform_description
-                              source_database source_tables]}]
-                   (try
-                     (agent-transforms/add-output
-                      (transforms-write-tools/write-transform-python
-                       {:transform_id transform_id
-                        :edit_action edit_action
-                        :thinking thinking
-                        :transform_name transform_name
-                        :transform_description transform_description
-                        :source_database source_database
-                        :source_tables source_tables
-                        :memory-atom shared/*memory-atom*
-                        :context (shared/current-context)})
-                      agent-transforms/format-transform-write-output)
-                     (catch Exception e
-                       (if (:agent-error? (ex-data e))
-                         {:output (ex-message e)}
-                         {:output (str "Failed to write Python transform: " (or (ex-message e) "Unknown error"))}))))})
+  :feature :none
+  [{:keys [transform_id edit_action thinking transform_name transform_description
+           source_database source_tables]}]
+  (try
+    (agent-transforms/add-output
+     (transforms-write-tools/write-transform-python
+      {:transform_id transform_id
+       :edit_action edit_action
+       :thinking thinking
+       :transform_name transform_name
+       :transform_description transform_description
+       :source_database source_database
+       :source_tables source_tables
+       :memory-atom shared/*memory-atom*
+       :context (shared/current-context)})
+     agent-transforms/format-transform-write-output)
+    (catch Exception e
+      (if (:agent-error? (ex-data e))
+        {:output (ex-message e)}
+        {:output (str "Failed to write Python transform: " (or (ex-message e) "Unknown error"))}))))

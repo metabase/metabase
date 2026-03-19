@@ -1,9 +1,10 @@
 (ns metabase.metabot.agent.tools
   "Tool registry for the agent loop.
-  Provides tool definition thunks and state-aware wrapping.
+  Provides tool vars and state-aware wrapping.
 
-  Each tool is a zero-arg function (thunk) that returns a tool definition map.
-  This enables `defenterprise` tools that return nil in OSS and a full definition in EE."
+  Each tool is a var whose metadata contains `:tool-name`, `:schema`, and optionally
+  `:capabilities`, `:prompt`, `:decode`, and `:system-instructions`. The var itself
+  is a function that takes the tool arguments and returns a result map."
   (:require
    [metabase.metabot.agent.tools.analyze-chart :as tools.analyze-chart]
    [metabase.metabot.agent.tools.autogen-dashboard :as tools.autogen-dashboard]
@@ -86,8 +87,6 @@
  [tools.create-dashboard-subscription
   slackbot-create-dashboard-subscription-tool])
 
-(def ^:dynamic ^:private *memory-atom* nil)
-
 (def ^:private state-dependent-tools
   "Set of tool names that require access to agent state."
   #{"analyze_chart"
@@ -100,23 +99,32 @@
 (defn wrap-tools-with-state
   "Wrap state-dependent tools with access to the memory atom.
   Tools in `state-dependent-tools` will have access to the memory atom
-  via the dynamic `*memory-atom*` binding.
+  via the dynamic `shared/*memory-atom*` binding.
 
-  Takes and returns a tools map where values are tool definition maps
-  (with :doc, :schema, :prompt, :fn, and optionally :decode keys).
+  Takes a tools map where values are tool vars. Returns a tools map where
+  values are tool definition maps (with :doc, :schema, :prompt, :fn, and
+  optionally :decode keys).
+
   Tool-specific instructions are loaded from `resources/metabot/prompts/tools/`
   by `extract-tool-instructions` in `prompts.clj`, keyed by `:prompt` or
   `<tool-name>.md` by default."
   [tools memory-atom]
   (reduce-kv
-   (fn [acc tool-name tool-def]
-     (if (contains? state-dependent-tools tool-name)
-       (let [original-fn (:fn tool-def)
-             wrapped-fn  (fn [args]
-                           (binding [shared/*memory-atom* memory-atom
-                                     *memory-atom*        memory-atom]
-                             (original-fn args)))]
-         (assoc acc tool-name (assoc tool-def :fn wrapped-fn)))
+   (fn [acc tool-name tool-var]
+     (let [m        (meta tool-var)
+           tool-def {:tool-name            (:tool-name m)
+                     :doc                  (:doc m)
+                     :schema               (:schema m)
+                     :prompt               (:prompt m)
+                     :decode               (:decode m)
+                     :system-instructions  (:system-instructions m)
+                     :capabilities         (:capabilities m)
+                     :fn                   (if (contains? state-dependent-tools tool-name)
+                                             (fn [args]
+                                               (binding [shared/*memory-atom* memory-atom]
+                                                 (tool-var args)))
+                                             (fn [args]
+                                               (tool-var args)))}]
        (assoc acc tool-name tool-def)))
    {}
    tools))

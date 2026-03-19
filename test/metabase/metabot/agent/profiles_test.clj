@@ -7,7 +7,7 @@
 
 (deftest get-profile-test
   (letfn [(tool-names [profile]
-            (set (map :tool-name (keep #(%) (:tools profile)))))]
+            (set (map #(:tool-name (meta %)) (:tools profile))))]
     (testing "retrieves embedding_next profile with default provider"
       (let [profile (profiles/get-profile :embedding_next)]
         (is (some? profile))
@@ -90,7 +90,7 @@
           (is (contains? profile :max-iterations))
           (is (contains? profile :temperature))
           (is (contains? profile :tools))
-          (is (every? fn? (:tools profile))))))))
+          (is (every? var? (:tools profile))))))))
 
 (deftest get-profile-respects-provider-setting-test
   (testing "model reflects llm-metabot-provider setting"

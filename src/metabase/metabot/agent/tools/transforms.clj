@@ -1,15 +1,16 @@
 (ns metabase.metabot.agent.tools.transforms
-  "Transform tool thunks.
+  "Transform tool definitions.
   SQL transform tools are implemented directly in OSS.
-  Python transform tools return nil (EE only)."
+  Python transform tools use defenterprise (return nil/error in OSS, real impl in EE)."
   (:require
    [metabase.metabot.agent.tools.shared :as shared]
    [metabase.metabot.tools.dependencies :as deps]
    [metabase.metabot.tools.transforms :as transform-tools]
    [metabase.metabot.tools.transforms-write :as transforms-write-tools]
    [metabase.metabot.util :as metabot.u]
-   [metabase.premium-features.core :as premium-features]
-   [metabase.util.log :as log]))
+   [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -77,21 +78,22 @@
 ;;; Tool definitions
 ;;; ──────────────────────────────────────────────────────────────────
 
-(defn get-transform-details-tool
-  "Returns tool definition for getting transform details."
-  []
-  {:tool-name "get_transform_details"
-   :doc       "Get information about a transform."
-   :schema    [:=> [:cat [:map {:closed true} [:transform_id :int]]] :any]
-   :fn        (fn [{:keys [transform_id]}]
-                (add-output (transform-tools/get-transform-details {:transform-id transform_id})
-                            format-transform-details-output))})
+(mu/defn ^{:tool-name "get_transform_details"} get-transform-details-tool
+  "Get information about a transform."
+  [{:keys [transform_id]} :- [:map {:closed true} [:transform_id :int]]]
+  (add-output (transform-tools/get-transform-details {:transform-id transform_id})
+              format-transform-details-output))
 
-(premium-features/defenterprise get-transform-python-library-details-tool
-  "Returns tool definition for getting Python library details, or nil in OSS."
+(def ^:private python-lib-schema
+  [:map {:closed true} [:path :string]])
+
+(defenterprise ^{:tool-name  "get_transform_python_library_details"
+                 :schema     [:=> [:cat python-lib-schema] :map]
+                 :ee-feature :transforms} get-transform-python-library-details-tool
+  "Get Python library details. EE-only; returns an error in OSS."
   metabase-enterprise.metabot.agent.tools.transforms
-  []
-  nil)
+  [{:keys [_path]}]
+  {:output "Python transform tools are only available in Metabase Enterprise Edition."})
 
 (def ^:private write-transform-sql-schema
   [:map {:closed true}
@@ -109,12 +111,9 @@
    [:source_database {:optional true} [:maybe :int]]
    [:source_tables {:optional true} [:maybe :map]]])
 
-(defn write-transform-sql-tool
-  "Returns tool definition for writing SQL transforms."
-  []
-  {:tool-name    "write_transform_sql"
-   :capabilities #{:feature-transforms :permission-write-transforms}
-   :doc          "Write new SQL queries or edit existing queries for transforms.
+(mu/defn ^{:tool-name    "write_transform_sql"
+           :capabilities #{:feature-transforms :permission-write-transforms}} write-transform-sql-tool
+  "Write new SQL queries or edit existing queries for transforms.
 
   Supports two modes:
   - edit: Targeted string replacements with partial edits
@@ -122,33 +121,35 @@
 
   For edit mode, provide edits as an array of {old_string, new_string, replace_all} objects.
   For replace mode, provide new_content with the complete SQL."
-   :schema       [:=> [:cat write-transform-sql-schema] :any]
-   :fn           (fn [{:keys [transform_id edit_action thinking transform_name transform_description
-                              source_database source_tables]}]
-                   (try
-                     (let [result (add-output
-                                   (transforms-write-tools/write-transform-sql
-                                    {:transform_id transform_id
-                                     :edit_action edit_action
-                                     :thinking thinking
-                                     :transform_name transform_name
-                                     :transform_description transform_description
-                                     :source_database source_database
-                                     :source_tables source_tables
-                                     :memory-atom shared/*memory-atom*
-                                     :context (shared/current-context)})
-                                   format-transform-write-output)
-                           transform (get-in result [:structured-output :transform])
-                           dep-issues (check-dependencies transform_id (:source transform))]
-                       (cond-> result
-                         dep-issues (update :instructions str (format-dependency-warnings dep-issues))))
-                     (catch Exception e
-                       (if (:agent-error? (ex-data e))
-                         {:output (ex-message e)}
-                         {:output (str "Failed to write SQL transform: " (or (ex-message e) "Unknown error"))}))))})
+  [{:keys [transform_id edit_action thinking transform_name transform_description
+           source_database source_tables]} :- write-transform-sql-schema]
+  (try
+    (let [result (add-output
+                  (transforms-write-tools/write-transform-sql
+                   {:transform_id transform_id
+                    :edit_action edit_action
+                    :thinking thinking
+                    :transform_name transform_name
+                    :transform_description transform_description
+                    :source_database source_database
+                    :source_tables source_tables
+                    :memory-atom shared/*memory-atom*
+                    :context (shared/current-context)})
+                  format-transform-write-output)
+          transform (get-in result [:structured-output :transform])
+          dep-issues (check-dependencies transform_id (:source transform))]
+      (cond-> result
+        dep-issues (update :instructions str (format-dependency-warnings dep-issues))))
+    (catch Exception e
+      (if (:agent-error? (ex-data e))
+        {:output (ex-message e)}
+        {:output (str "Failed to write SQL transform: " (or (ex-message e) "Unknown error"))}))))
 
-(premium-features/defenterprise write-transform-python-tool
-  "Returns tool definition for writing Python transforms, or nil in OSS."
+(defenterprise ^{:tool-name    "write_transform_python"
+                 :schema       [:=> [:cat write-transform-sql-schema] :map]
+                 :capabilities #{:feature-transforms :feature-transforms-python :permission-write-transforms}
+                 :ee-feature   :transforms} write-transform-python-tool
+  "Write Python transforms. EE-only; returns an error in OSS."
   metabase-enterprise.metabot.agent.tools.transforms
-  []
-  nil)
+  [{:keys [_transform_id]}]
+  {:output "Python transform tools are only available in Metabase Enterprise Edition."})
