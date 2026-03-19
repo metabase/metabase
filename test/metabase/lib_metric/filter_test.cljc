@@ -553,19 +553,24 @@
 
 (defn- mock-dimension-fetcher
   "Mock dimension fetcher that returns mock-dimensions for metric-id 1."
-  [{:keys [metric-id]}]
+  [metric-id]
   (when (= metric-id 1)
     mock-dimensions))
 
 (def ^:private mock-metadata-provider
   "A mock metadata provider that returns mock dimensions."
   (lib-metric.metadata.provider/metric-context-metadata-provider
-   (constantly [])           ; metric-fetcher-fn
-   (constantly [])           ; measure-fetcher-fn
-   mock-dimension-fetcher    ; dimension-fetcher-fn
-   (constantly nil)          ; table->db-fn
-   (constantly nil)          ; db-provider-fn
-   (constantly nil)))        ; setting-fn
+   {:metric-fn           (constantly nil)
+    :measure-fn          (constantly nil)
+    :dimension-fn        (fn [uuid] (some #(when (= uuid (:id %)) %) mock-dimensions))
+    :dims-for-metric-fn  mock-dimension-fetcher
+    :dims-for-measure-fn (constantly [])
+    :dims-for-table-fn   (constantly [])
+    :cols-for-table-fn   (constantly [])
+    :col-fn              (constantly nil)
+    :table-fn            (constantly nil)
+    :setting-fn          (constantly nil)
+    :db-provider-fn      (constantly nil)}))        ; setting-fn
 
 (def ^:private mock-definition
   {:lib/type          :metric/definition
