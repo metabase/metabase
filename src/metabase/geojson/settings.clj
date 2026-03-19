@@ -80,16 +80,12 @@
            (http/valid-host? :external-only url)))
     (catch Throwable _ false)))
 
-(def ^:private builtin-geojson-urls
-  (set (map :url (builtin-geojson))))
-
 (defn valid-geojson-resource-path?
   "Whether GeoJSON `url` points to a valid resource. Does not check whether the contents are valid GeoJSON or not.
    User-defined classpath resources are only allowed when MB_ALLOW_CLASSPATH_GEOJSON is true."
   [url]
-  (or (and (allow-classpath-geojson?)
-           (boolean (io/resource url)))
-      (contains? builtin-geojson-urls url)))
+  (and (allow-classpath-geojson?)
+       (boolean (io/resource url))))
 
 (defn valid-geojson-url?
   "Whether GeoJSON `url` points to a valid resource or "
