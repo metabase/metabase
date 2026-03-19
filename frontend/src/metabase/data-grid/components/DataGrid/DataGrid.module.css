@@ -83,8 +83,6 @@
   display: flex;
   width: 100%;
   position: relative;
-  padding-left: var(--virtual-padding-left, 0);
-  padding-right: var(--virtual-padding-right, 0);
 
   &.active {
     background-color: color-mix(

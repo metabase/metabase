@@ -46,6 +46,7 @@ export const DataGridRow = <TData,>({
   styles,
 }: DataGridRowProps<TData>) => {
   const rowPositionStyles = getRowPositionStyles(row);
+  const paddingLeft = columns[0]?.virtualItem?.start ?? 0;
 
   return (
     <div
@@ -66,7 +67,7 @@ export const DataGridRow = <TData,>({
         },
         classNames?.row,
       )}
-      style={{ ...rowPositionStyles, ...styles?.row }}
+      style={{ ...rowPositionStyles, paddingLeft, ...styles?.row }}
     >
       {columns.map((column) => {
         const cell = column.getCell(row.origin);

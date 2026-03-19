@@ -74,13 +74,8 @@ export const DataGrid = function DataGrid<TData>({
   onHeaderCellClick,
   isColumnReorderingDisabled,
 }: DataGridProps<TData>) {
-  const {
-    rowVirtualizer,
-    columnVirtualizer,
-    virtualPaddingLeft,
-    virtualPaddingRight,
-    virtualIndexAttributeName,
-  } = virtualGrid;
+  const { rowVirtualizer, columnVirtualizer, virtualIndexAttributeName } =
+    virtualGrid;
 
   const forceUpdate = useForceUpdate();
   useEffect(() => {
@@ -194,10 +189,6 @@ export const DataGrid = function DataGrid<TData>({
           minHeight,
           width: `${columnVirtualizer.getTotalSize()}px`,
           backgroundColor,
-          ...({
-            "--virtual-padding-left": `${virtualPaddingLeft}px`,
-            "--virtual-padding-right": `${virtualPaddingRight}px`,
-          } as React.CSSProperties),
         }}
       >
         {centerContent}

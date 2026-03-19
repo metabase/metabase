@@ -29,48 +29,53 @@ export const DataGridHeader = <TData,>({
   onHeaderCellClick,
   classNames,
   styles,
-}: DataGridHeaderProps<TData>) => (
-  <div
-    className={cx(S.row, classNames?.row)}
-    style={{
-      height: `${HEADER_BASE_HEIGHT}px`,
-      backgroundColor,
-      ...styles?.row,
-    }}
-  >
-    {columns.map((column) => {
-      const header = headerGroup.headers[column.origin.getIndex()];
-      const headerCell = flexRender(
-        header.column.columnDef.header,
-        header.getContext(),
-      );
-      const isUtilityColumn =
-        header.column.columnDef.meta?.isUtilityColumn === true;
-      const columnPositionStyles = getColumnPositionStyles(column);
+}: DataGridHeaderProps<TData>) => {
+  const paddingLeft = columns[0]?.virtualItem?.start ?? 0;
 
-      const headerContent = isUtilityColumn ? (
-        headerCell
-      ) : (
-        <SortableHeader
-          className={cx(S.headerCell, classNames?.headerCell)}
-          style={styles?.headerCell}
-          isColumnReorderingDisabled={isColumnReorderingDisabled}
-          header={header}
-          onClick={onHeaderCellClick}
-        >
-          {headerCell}
-        </SortableHeader>
-      );
+  return (
+    <div
+      className={cx(S.row, classNames?.row)}
+      style={{
+        height: `${HEADER_BASE_HEIGHT}px`,
+        backgroundColor,
+        paddingLeft,
+        ...styles?.row,
+      }}
+    >
+      {columns.map((column) => {
+        const header = headerGroup.headers[column.origin.getIndex()];
+        const headerCell = flexRender(
+          header.column.columnDef.header,
+          header.getContext(),
+        );
+        const isUtilityColumn =
+          header.column.columnDef.meta?.isUtilityColumn === true;
+        const columnPositionStyles = getColumnPositionStyles(column);
 
-      return (
-        <div
-          key={header.id}
-          style={columnPositionStyles}
-          data-header-id={header.id}
-        >
-          {headerContent}
-        </div>
-      );
-    })}
-  </div>
-);
+        const headerContent = isUtilityColumn ? (
+          headerCell
+        ) : (
+          <SortableHeader
+            className={cx(S.headerCell, classNames?.headerCell)}
+            style={styles?.headerCell}
+            isColumnReorderingDisabled={isColumnReorderingDisabled}
+            header={header}
+            onClick={onHeaderCellClick}
+          >
+            {headerCell}
+          </SortableHeader>
+        );
+
+        return (
+          <div
+            key={header.id}
+            style={columnPositionStyles}
+            data-header-id={header.id}
+          >
+            {headerContent}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
