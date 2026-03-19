@@ -137,7 +137,8 @@
      users
      util
      version
-     view-log})
+     view-log
+     warehouse-schema})
 
 (defn- affected-modules
   "Set of modules that are direct or indirect dependents of `modules`, and thus are affected by changes to them.
