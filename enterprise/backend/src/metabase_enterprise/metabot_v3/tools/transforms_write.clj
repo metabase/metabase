@@ -2,6 +2,8 @@
   "Tools for writing/editing SQL and Python transform source code.
   Supports both partial edits (targeted string replacements) and full replacement modes."
   (:require
+   ^{:clj-kondo/ignore true} #_[metabase.driver.sql :as driver.sql]
+   ^{:clj-kondo/ignore true} #_[metabase.driver.util :as driver.u]
    [clojure.string :as str]
    [metabase-enterprise.metabot-v3.agent.streaming :as streaming]
    [metabase.util.log :as log]))
@@ -63,21 +65,39 @@ def transform():
     return pd.DataFrame([{\"message\": \"Hello from Python transform!\"}])
 ")
 
+;; TODO (lbrdnk 2026-03-19): This is probably incomplete. Revisit! And why database is not avail on occasions?
+(defn- source-for-transform-type
+  [source-type transform-name transform-description source-database source-tables]
+  (def source-database)
+  (assert (pos-int? source-database))
+  (case source-type
+      ;; Direct mbql manipulation -- wrong
+    :sql {:type "query"
+          :query {:type :native
+                  :native {:query fresh-sql-template}
+                  :database source-database}}
+    (throw (Exception. "Only sql transform supported now."))))
+
+;; TODO: Params
 (defn- create-fresh-transform
   "Create a fresh transform structure with the given source type."
   [source-type transform-name transform-description source-database source-tables]
-  (let [template (case source-type
-                   :sql fresh-sql-template
-                   :python fresh-python-template)]
+  ^{:clj-kondo/ignore [:redundant-let]}
+  (let [;; TODO: Unsure whether we are fine with nil.
+        #_#_schema* (try (when (pos-int? source-database)
+                           (driver.sql/default-schema (driver.u/database->driver source-database)))
+                         (catch Exception _
+                           (log/debugf "Unable to get schema for database `%s`." source-database)
+                           nil))]
     {:id nil
      :name (or transform-name (str "New " (name source-type) " Transform"))
      :description (or transform-description "")
-     :source {:type (name source-type)
-              :query template
-              :source-database source-database
-              :source-tables (or source-tables {})}
      :target {:type "table"
-              :name ""}}))
+              :name ""
+              :database source-database
+              :schema nil}
+     :source (source-for-transform-type
+              :sql transform-name transform-description source-database source-tables)}))
 
 ;;; Write Transform SQL Tool
 
@@ -99,13 +119,15 @@ def transform():
   - :structured-output - The suggested transform
   - :data-parts - Transform suggestion data part for streaming"
   [{:keys [transform_id edit_action thinking transform_name transform_description
-           source_database source_tables memory-atom context]}]
+           source_database source_tables memory-atom context] :as aaas}]
+  (def saaa aaas)
   (log/info "Writing SQL transform" {:transform-id transform_id
                                      :edit-mode (:mode edit_action)
                                      :has-context (some? context)})
 
   (let [;; Get current transform from context or memory, or create fresh one
         current-transform (cond
+                            ;; TODO: Ensure following 2 branches are ok.
                             ;; Try to get from context first
                             (and transform_id context)
                             (get-in context [:transforms (str transform_id)])
@@ -114,6 +136,7 @@ def transform():
                             (and transform_id memory-atom)
                             (get-in @memory-atom [:state :transforms (str transform_id)])
 
+                            ;; TODO: Following is not handling python properly!
                             ;; Create fresh transform
                             :else
                             (create-fresh-transform :sql transform_name transform_description
@@ -125,7 +148,8 @@ def transform():
                             {:agent-error? true
                              :transform-id transform_id})))
 
-        current-sql (get-in current-transform [:source :query] "")
+        ;; TODO (lbrdnk 2026-03-19): Proper handling of python and mbql5.
+        current-sql (get-in current-transform [:source :query :native :query] "")
 
         ;; Apply edits based on mode
         new-sql (case (:mode edit_action)
@@ -140,11 +164,12 @@ def transform():
 
         ;; Build suggested transform
         suggested-transform (cond-> current-transform
-                              true (assoc-in [:source :query] new-sql)
+                              true (assoc-in [:source :query :native :query] new-sql)
                               transform_name (assoc :name transform_name)
                               transform_description (assoc :description transform_description)
-                              source_database (assoc-in [:source :source-database] source_database)
-                              source_tables (assoc-in [:source :source-tables] source_tables))]
+                                            ;; TODO: Why?
+                              #_#_source_database (assoc-in [:source :source-database] source_database)
+                              #_#_source_tables (assoc-in [:source :source-tables] source_tables))]
 
     ;; Store in memory if we have an ID
     (when (and transform_id memory-atom)
