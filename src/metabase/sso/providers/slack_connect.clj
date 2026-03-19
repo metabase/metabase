@@ -1,11 +1,9 @@
-(ns metabase-enterprise.sso.providers.slack-connect
+(ns metabase.sso.providers.slack-connect
   "Slack Connect OIDC authentication provider. Derives from the base OIDC provider
    and adds Slack-specific configuration and claim extraction."
   (:require
-   [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
-   [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.auth-identity.core :as auth-identity]
-   [metabase.premium-features.core :as premium-features]
+   [metabase.sso.settings :as sso-settings]
    [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -69,16 +67,40 @@
      :scopes ["openid" "profile" "email"]
      :redirect-uri (get request :redirect-uri)}))
 
+;;; -------------------------------------------------- Utilities --------------------------------------------------
+
+(defn- maybe-throw-user-provisioning
+  "Throw an error if `enabled?` is falsey, indicating new user creation is not allowed."
+  [enabled?]
+  (when-not enabled?
+    (throw (ex-info (tru "Sorry, but you''ll need a Metabase account to view this page. Please contact your administrator.")
+                    {:status-code 401}))))
+
+(defn check-sso-redirect
+  "Check if open redirect is being exploited in SSO. If so, or if the redirect-url is invalid, throw a 400."
+  [redirect-url]
+  (try
+    (let [redirect (some-> redirect-url (java.net.URI.))
+          our-host (some-> ((requiring-resolve 'metabase.system.core/site-url)) (java.net.URI.) (.getHost))]
+      (when-not (or (nil? redirect-url)
+                    (and (nil? (.getHost redirect))
+                         (nil? (.getScheme redirect)))
+                    (= (.getHost redirect) our-host))
+        (throw (ex-info (tru "Invalid redirect URL")
+                        {:status-code  400
+                         :redirect-url redirect-url})))
+      redirect-url)
+    (catch clojure.lang.ExceptionInfo e (throw e))
+    (catch Exception _e
+      (throw (ex-info (tru "Invalid redirect URL")
+                      {:status-code  400
+                       :redirect-url redirect-url})))))
+
 ;;; -------------------------------------------------- Authentication Implementation --------------------------------------------------
 
 (methodical/defmethod auth-identity/authenticate :provider/slack-connect
   [_provider request]
   (cond
-    (not (premium-features/enable-sso-slack?))
-    {:success? false
-     :error :feature-not-available
-     :message (tru "Slack Connect authentication is not available on your plan")}
-
     (not (sso-settings/slack-connect-enabled))
     {:success? false
      :error :slack-connect-not-enabled
@@ -138,7 +160,7 @@
   (condp = (sso-settings/slack-connect-authentication-mode)
     sso-settings/slack-connect-auth-mode-sso
     (do (when-not user
-          (sso-utils/check-user-provisioning (keyword provider-name)))
+          (maybe-throw-user-provisioning (sso-settings/slack-connect-user-provisioning-enabled)))
         (next-method provider request))
 
     sso-settings/slack-connect-auth-mode-link-only

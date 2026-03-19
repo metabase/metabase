@@ -1,4 +1,4 @@
-(ns metabase-enterprise.sso.integrations.slack-connect
+(ns metabase.sso.integrations.slack-connect
   "Implementation of the Slack Connect backend for SSO.
 
    Slack Connect uses OIDC (OpenID Connect) for authentication, which only uses GET requests.
@@ -12,13 +12,12 @@
    5. Metabase exchanges code for tokens and creates session"
   (:require
    [java-time.api :as t]
-   [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
-   [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.api.common :as api]
    [metabase.auth-identity.core :as auth-identity]
-   [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.sso.core :as sso]
+   [metabase.sso.providers.slack-connect :as slack-connect.provider]
+   [metabase.sso.settings :as sso-settings]
    [metabase.system.core :as system]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -34,7 +33,6 @@
 (defn- check-slack-connect-prereqs!
   "Check that Slack Connect is available and enabled. Throws on failure."
   []
-  (premium-features/assert-has-feature :sso-slack (tru "Slack Connect authentication"))
   (when-not (sso-settings/slack-connect-enabled)
     (throw (ex-info (tru "Slack Connect is not enabled")
                     {:status-code 400}))))
@@ -49,7 +47,7 @@
             (throw (ex-info (tru "Account linking requires an authenticated session")
                             {:status-code 401})))
         redirect-url (if redirect
-                       (sso-utils/check-sso-redirect redirect)
+                       (slack-connect.provider/check-sso-redirect redirect)
                        "/")
         auth-result (auth-identity/authenticate :provider/slack-connect
                                                 (assoc request
