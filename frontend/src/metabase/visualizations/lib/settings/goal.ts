@@ -37,8 +37,6 @@ export const GRAPH_GOAL_SETTINGS: VisualizationSettingsDefinitions = {
     inline: true,
     getWrapperStyle: () => ({
       marginBottom: "1rem",
-      marginLeft: 0,
-      marginRight: 0,
     }),
   },
   "graph.goal_value": {
