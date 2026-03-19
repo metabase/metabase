@@ -9,7 +9,7 @@ import type {
   SidebarFeatures,
 } from "metabase/query_builder/components/NativeQueryEditor/types";
 import { SyncedParametersList } from "metabase/query_builder/components/SyncedParametersList";
-import { QueryVisualization } from "metabase/querying/components/QueryVisualization/QueryVisualization";
+import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
 import type { QueryModalType } from "metabase/querying/constants";
 import { TimeseriesChrome } from "metabase/querying/filters/components/TimeseriesChrome";
 import { Box } from "metabase/ui";
