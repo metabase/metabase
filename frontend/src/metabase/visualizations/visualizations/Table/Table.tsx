@@ -9,6 +9,7 @@ import { displayNameForColumn } from "metabase/lib/formatting";
 import type { OptionsType } from "metabase/lib/formatting/types";
 import { getSubpathSafeUrl } from "metabase/lib/urls";
 import ChartSettingLinkUrlInput from "metabase/visualizations/components/settings/ChartSettingLinkUrlInput";
+import { ChartSettingNumberInput } from "metabase/visualizations/components/settings/ChartSettingNumberInput";
 import {
   ChartSettingsTableFormatting,
   isFormattable,
@@ -133,14 +134,12 @@ export class Table extends Component<TableProps, TableState> {
       get title() {
         return t`Number of columns to freeze`;
       },
-      widget: "number",
+      widget: ChartSettingNumberInput,
       default: 1,
       getHidden: (series: Series, settings: VisualizationSettings) =>
         !settings["table.freeze_columns"],
       readDependencies: ["table.freeze_columns"],
-      props: {
-        options: { isInteger: true, isNonNegative: true },
-      },
+      props: { min: 1 },
     },
     "table.freeze_rows": {
       get section() {
@@ -160,14 +159,12 @@ export class Table extends Component<TableProps, TableState> {
       get title() {
         return t`Number of rows to freeze`;
       },
-      widget: "number",
+      widget: ChartSettingNumberInput,
       default: 1,
       getHidden: (series: Series, settings: VisualizationSettings) =>
         !settings["table.freeze_rows"],
       readDependencies: ["table.freeze_rows"],
-      props: {
-        options: { isInteger: true, isNonNegative: true },
-      },
+      props: { min: 1 },
     },
     "table.pivot": {
       get section() {
