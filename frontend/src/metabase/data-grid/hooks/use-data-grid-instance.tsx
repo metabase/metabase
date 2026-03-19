@@ -262,10 +262,11 @@ export const useDataGridInstance = <TData, TValue>({
 
   const onRowHeightChangeRef = useRef<(event: HeightChangeEvent) => void>();
 
-  const { tableRef, getRowHeight, rowMeasureRef, remeasureAll, rowSizingMap } =
+  const { getRowHeight, rowMeasureRef, remeasureAll, rowSizingMap } =
     useRowHeights({
       data,
       defaultRowHeight,
+      columnSizingMap,
       wrappedColumnsOptions,
       measureBodyCellDimensions,
       datasetIndexAttributeName,
@@ -319,8 +320,6 @@ export const useDataGridInstance = <TData, TValue>({
     onRowHeightChangeRef,
     virtualIndexAttributeName,
   });
-
-  tableRef.current = table;
 
   const measureColumnWidths = useMeasureColumnWidths(
     table,

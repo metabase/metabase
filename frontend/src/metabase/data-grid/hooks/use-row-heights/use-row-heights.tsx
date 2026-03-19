@@ -1,4 +1,4 @@
-import type { RowData, Table } from "@tanstack/react-table";
+import type { ColumnSizingState, RowData } from "@tanstack/react-table";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 
 import type { ColumnOptions } from "../../types";
@@ -12,6 +12,7 @@ import type {
 type UseRowHeightsProps<TData extends RowData, TValue> = {
   data: TData[];
   defaultRowHeight: number;
+  columnSizingMap: ColumnSizingState;
   wrappedColumnsOptions: ColumnOptions<TData, TValue>[];
   measureBodyCellDimensions: (
     text: React.ReactNode,
@@ -24,12 +25,12 @@ type UseRowHeightsProps<TData extends RowData, TValue> = {
 export const useRowHeights = <TData extends RowData, TValue>({
   data,
   defaultRowHeight,
+  columnSizingMap,
   wrappedColumnsOptions,
   measureBodyCellDimensions,
   datasetIndexAttributeName,
   onHeightChange,
-}: UseRowHeightsProps<TData, TValue>): UseRowHeightsResult<TData> => {
-  const tableRef = useRef<Table<TData>>();
+}: UseRowHeightsProps<TData, TValue>): UseRowHeightsResult => {
   const rowHeightsCache = useRef<RowSizingState>(new Map());
   const [rowSizingMap, setRowSizingMap] = useState<RowSizingState>(new Map());
   const flushRafRef = useRef<number | null>(null);
@@ -50,7 +51,7 @@ export const useRowHeights = <TData extends RowData, TValue>({
       if (value === null || value === undefined || formattedValue === "") {
         return memo;
       }
-      const width = tableRef.current?.getColumn(column.id)?.getSize();
+      const width = columnSizingMap[column.id];
       const height = measureBodyCellDimensions(formattedValue, width).height;
       return Math.max(height, memo);
     }, defaultRowHeight);
@@ -197,7 +198,6 @@ export const useRowHeights = <TData extends RowData, TValue>({
   }, [recalculate, remountElements, clearScheduledFlush]);
 
   return {
-    tableRef,
     rowSizingMap,
     rowMeasureRef,
     getRowHeight,

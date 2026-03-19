@@ -1,9 +1,6 @@
-import type { Table } from "@tanstack/react-table";
-
 export type RowSizingState = Map<number, number>;
 
-export type UseRowHeightsResult<TData> = {
-  tableRef: React.MutableRefObject<Table<TData> | undefined>;
+export type UseRowHeightsResult = {
   rowMeasureRef: (element: HTMLDivElement | null) => void;
   getRowHeight: (rowIndex: number) => number;
   rowSizingMap: RowSizingState;
