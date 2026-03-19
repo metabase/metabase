@@ -374,7 +374,7 @@
 
 (defmulti make-clause
   "Return an mbql clause given a tag and arguments"
-  {:added "0.59.0" :arglists '([driver tag & args])}
+  {:added "0.60.0" :arglists '([driver tag & args])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -385,7 +385,7 @@
 ;; TODO(rileythomp, 2026-03-16): Can we merge this with make-clause?
 (defmulti make-clause-with-opts
   "Return an mbql clause given a tag and arguments"
-  {:added "0.59.0" :arglists '([driver tag opts & args])}
+  {:added "0.60.0" :arglists '([driver tag opts & args])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -728,7 +728,7 @@
 
 (defmulti literal-text-value?
   "Get the text value from a clause"
-  {:added "0.59.0 " :arglists '([driver clause])}
+  {:added "0.60.0 " :arglists '([driver clause])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -744,7 +744,7 @@
 
 (defmulti expression-by-name
   "Get an expression from a query or stage by name"
-  {:added "0.59.0 " :arglists '([driver expression-name])}
+  {:added "0.60.0 " :arglists '([driver expression-name])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -1054,7 +1054,7 @@
 
 (defmulti remapped-order-by?
   "Returns true if the given order-by clause is an externally remapped field"
-  {:added "0.59.0", :arglists '([driver order-by])}
+  {:added "0.60.0", :arglists '([driver order-by])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -1064,7 +1064,7 @@
 
 (defmulti remapped-breakout?
   "Returns true if the given breakout clause is an externally remapped field"
-  {:added "0.59.0", :arglists '([driver breakout])}
+  {:added "0.60.0", :arglists '([driver breakout])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -1074,7 +1074,7 @@
 
 (defmulti finest-temporal-breakout-idx
   "Wrapper around [[driver-api/finest-temporal-breakout-index]]"
-  {:added "0.59.0", :arglists '([driver breakouts])}
+  {:added "0.60.0", :arglists '([driver breakouts])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -1227,7 +1227,7 @@
 ;; so that we can destructure it there
 (defmulti add-interval
   "Wrapper around [[add-interval-honeysql-form]]"
-  {:added "0.59.0", :arglists '([driver hsql-form op interval])}
+  {:added "0.60.0", :arglists '([driver hsql-form op interval])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -1512,7 +1512,7 @@
 
 (defmulti field-clause->alias
   "Wrapper around [[field-clause->alias*]]"
-  {:added "0.59.0" :arglists '([driver clause & unique-name-fn])}
+  {:added "0.60.0" :arglists '([driver clause & unique-name-fn])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -1716,7 +1716,7 @@
 
 (defmulti clause-value-idx
   "Returns the index of the value in a clause"
-  {:added "0.59.0" :arglists '([driver])}
+  {:added "0.60.0" :arglists '([driver])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -1883,7 +1883,7 @@
 ;; TODO(rileythomp, 2026-03-18): Replace this with a match for mbql4 vs mbql5
 (defmulti unwrap-value-literal
   "Extract value literal from `:value` form or returns form as is if not a `:value` form."
-  {:added "0.59.0" :arglists '([driver maybe-value-form])}
+  {:added "0.60.0" :arglists '([driver maybe-value-form])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
