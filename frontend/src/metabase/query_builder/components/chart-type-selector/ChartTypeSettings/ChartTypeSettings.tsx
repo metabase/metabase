@@ -60,6 +60,11 @@ function CustomVizOption({
         <Text lh="unset" ta="center" fw="bold" fz="sm" c="text-secondary">
           {plugin.display_name}
         </Text>
+        {plugin.dev_bundle_url && (
+          <Text lh="unset" ta="center" fz="xs" c="text-tertiary">
+            {t`dev`}
+          </Text>
+        )}
       </Stack>
     </Center>
   );

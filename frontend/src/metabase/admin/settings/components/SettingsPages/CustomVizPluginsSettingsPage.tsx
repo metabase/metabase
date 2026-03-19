@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
@@ -22,9 +23,9 @@ import {
 } from "metabase/forms";
 import {
   ActionIcon,
-  Badge,
   Box,
   Button,
+  Collapse,
   Flex,
   Group,
   Icon,
@@ -36,6 +37,7 @@ import {
   Stack,
   Switch,
   Text,
+  TextInput,
 } from "metabase/ui";
 import { iconNames } from "metabase/ui/components/icons/Icon/icons";
 import type { CustomVizPlugin } from "metabase-types/api";
@@ -101,7 +103,6 @@ function PluginForm({
 }) {
   const [createPlugin] = useCreateCustomVizPluginMutation();
   const [updatePlugin] = useUpdateCustomVizPluginMutation();
-  const [setDevUrl] = useSetCustomVizPluginDevUrlMutation();
   const isEdit = Boolean(plugin);
 
   const [selectedIcon, setSelectedIcon] = useState<IconName>(
@@ -114,7 +115,6 @@ function PluginForm({
       display_name: plugin?.display_name ?? "",
       access_token: "",
       pinned_version: plugin?.pinned_version ?? "",
-      dev_bundle_url: plugin?.dev_bundle_url ?? "",
     }),
     [plugin],
   );
@@ -125,7 +125,6 @@ function PluginForm({
       display_name: string;
       access_token: string;
       pinned_version: string;
-      dev_bundle_url: string;
     }) => {
       const icon = selectedIcon === DEFAULT_ICON ? null : selectedIcon;
 
@@ -136,11 +135,6 @@ function PluginForm({
           icon,
           access_token: values.access_token || undefined,
           pinned_version: values.pinned_version || null,
-        }).unwrap();
-        // dev_bundle_url uses a separate in-memory endpoint
-        await setDevUrl({
-          id: plugin.id,
-          dev_bundle_url: values.dev_bundle_url || null,
         }).unwrap();
       } else {
         await createPlugin({
@@ -153,15 +147,7 @@ function PluginForm({
       }
       onClose();
     },
-    [
-      createPlugin,
-      updatePlugin,
-      setDevUrl,
-      plugin,
-      isEdit,
-      selectedIcon,
-      onClose,
-    ],
+    [createPlugin, updatePlugin, plugin, isEdit, selectedIcon, onClose],
   );
 
   return (
@@ -206,21 +192,6 @@ function PluginForm({
                   placeholder="main"
                 />
               </Stack>
-              {isEdit && (
-                <Stack gap="md">
-                  <Text fw={700}>{t`Development`}</Text>
-                  <FormTextInput
-                    name="dev_bundle_url"
-                    label={t`Dev bundle URL`}
-                    description={
-                      <Text c="text-tertiary" size="sm" component="span">
-                        {t`Local URL to load bundle from during development (dev mode only)`}
-                      </Text>
-                    }
-                    placeholder="http://localhost:5174/index.js"
-                  />
-                </Stack>
-              )}
               <Stack gap="md">
                 <Text fw={700}>{t`Customization`}</Text>
                 <FormTextInput
@@ -301,14 +272,7 @@ function PluginListItem({
       <Group gap="md" align="flex-start">
         <IconPreview iconName={(plugin.icon as IconName) ?? DEFAULT_ICON} />
         <Stack gap="xs">
-          <Group gap="xs">
-            <Text fw={700}>{plugin.display_name}</Text>
-            {plugin.dev_bundle_url && (
-              <Badge size="xs" variant="light" color="violet">
-                {t`DEV`}
-              </Badge>
-            )}
-          </Group>
+          <Text fw={700}>{plugin.display_name}</Text>
           <Text
             component="a"
             href={plugin.repo_url}
@@ -374,6 +338,109 @@ function PluginListItem({
         </Menu>
       </Group>
     </Flex>
+  );
+}
+
+function DevUrlItem({ plugin }: { plugin: CustomVizPlugin }) {
+  const [setDevUrl, { isLoading }] = useSetCustomVizPluginDevUrlMutation();
+  const [url, setUrl] = useState(plugin.dev_bundle_url ?? "");
+  const [saved, setSaved] = useState(false);
+
+  const handleSave = useCallback(async () => {
+    try {
+      await setDevUrl({
+        id: plugin.id,
+        dev_bundle_url: url || null,
+      }).unwrap();
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch {
+      // error is handled by RTK Query
+    }
+  }, [plugin.id, url, setDevUrl]);
+
+  const handleClear = useCallback(async () => {
+    try {
+      setUrl("");
+      await setDevUrl({
+        id: plugin.id,
+        dev_bundle_url: null,
+      }).unwrap();
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch {
+      // error is handled by RTK Query
+    }
+  }, [plugin.id, setDevUrl]);
+
+  return (
+    <Flex gap="sm" align="flex-end">
+      <Box style={{ flex: 1 }}>
+        <TextInput
+          label={plugin.display_name}
+          placeholder="http://localhost:5174"
+          value={url}
+          onChange={(e) => {
+            setUrl(e.currentTarget.value);
+            setSaved(false);
+          }}
+        />
+      </Box>
+      <Button
+        variant="filled"
+        size="sm"
+        onClick={handleSave}
+        loading={isLoading}
+      >
+        {saved ? t`Saved` : t`Save`}
+      </Button>
+      {plugin.dev_bundle_url && (
+        <Button variant="subtle" size="sm" onClick={handleClear}>
+          {t`Clear`}
+        </Button>
+      )}
+    </Flex>
+  );
+}
+
+function DevelopmentSection({ plugins }: { plugins: CustomVizPlugin[] }) {
+  const [opened, { toggle }] = useDisclosure(false);
+
+  return (
+    <Box
+      mt="xl"
+      p="md"
+      style={{
+        border: "1px solid var(--mb-color-border)",
+        borderRadius: "var(--mb-radius-md)",
+      }}
+    >
+      <Group
+        gap="xs"
+        onClick={toggle}
+        style={{ cursor: "pointer", userSelect: "none" }}
+      >
+        <Icon
+          name="chevronright"
+          size={12}
+          style={{
+            transform: opened ? "rotate(90deg)" : undefined,
+            transition: "transform 150ms ease",
+          }}
+        />
+        <Text fw={700}>{t`Development`}</Text>
+      </Group>
+      <Collapse in={opened}>
+        <Stack gap="md" mt="md">
+          <Text size="sm" c="text-tertiary">
+            {t`Set dev bundle URLs to load plugin code from a local dev server instead of the stored bundle. Changes take effect on the next page reload.`}
+          </Text>
+          {plugins.map((plugin) => (
+            <DevUrlItem key={plugin.id} plugin={plugin} />
+          ))}
+        </Stack>
+      </Collapse>
+    </Box>
   );
 }
 
@@ -448,6 +515,10 @@ export function CustomVizPluginsSettingsPage() {
               />
             ))}
         </Stack>
+
+        {plugins && plugins.length > 0 && (
+          <DevelopmentSection plugins={plugins} />
+        )}
       </SettingsSection>
     </SettingsPageWrapper>
   );
