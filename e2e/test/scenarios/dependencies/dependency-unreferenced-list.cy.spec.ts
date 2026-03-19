@@ -314,6 +314,9 @@ describe("scenarios > dependencies > unreferenced list", () => {
   describe("selecting entities", () => {
     it("should show the sidebar for supported entities and trigger snowplow event", () => {
       setupEntities();
+      H.waitForUnreferencedEntities((entities) =>
+        entities.some((e) => e.data.name === TABLE_DISPLAY_NAME),
+      );
       H.DependencyDiagnostics.visitUnreferencedEntities();
 
       H.DependencyDiagnostics.list().findByText(TABLE_DISPLAY_NAME).click();
