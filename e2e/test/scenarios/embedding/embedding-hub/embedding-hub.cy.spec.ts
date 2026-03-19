@@ -5,30 +5,6 @@ const { H } = cy;
 
 const { STATIC_ORDERS_ID, STATIC_PEOPLE_ID } = SAMPLE_DB_TABLES;
 
-/**
- * When the backend marks the move-dashboard step as completed,
- * the stepper auto-opens the data-segregation step and radios are visible.
- * When the backend doesn't have the checklist key yet (local dev),
- * the move-dashboard step opens showing a "Continue" button.
- * This helper waits for either case and clicks Continue if needed.
- */
-function completeMoveMoveDashboardStepIfOpen() {
-  cy.log("complete the move-dashboard step if it's open");
-
-  const isContinueBtn = (_i: number, el: HTMLElement) =>
-    el.textContent?.trim() === "Continue";
-
-  H.main().then(($main) => {
-    const continueBtn = $main
-      .find("button")
-      .filter(":visible")
-      .filter(isContinueBtn);
-    if (continueBtn.length > 0) {
-      cy.wrap(continueBtn.first()).click();
-    }
-  });
-}
-
 describe("scenarios - embedding hub", () => {
   describe("checklist", () => {
     beforeEach(() => {
@@ -1155,8 +1131,6 @@ describe("scenarios - embedding hub", () => {
 
       cy.visit("/admin/embedding/setup-guide/permissions");
 
-      completeMoveMoveDashboardStepIfOpen();
-
       cy.log("open the data segregation strategy step");
       H.main()
         .findByText("Which data segregation strategy does your database use?")
@@ -1390,8 +1364,6 @@ describe("scenarios - embedding hub", () => {
       cy.get<number>("@postgresID").then((postgresId) => {
         cy.visit("/admin/embedding/setup-guide/permissions");
 
-        completeMoveMoveDashboardStepIfOpen();
-
         H.main()
           .findByRole("radio", { name: /Connection impersonation/ })
           .scrollIntoView()
@@ -1457,8 +1429,6 @@ describe("scenarios - embedding hub", () => {
     it("should show 'no compatible databases' message when only Sample Database exists", () => {
       cy.visit("/admin/embedding/setup-guide/permissions");
 
-      completeMoveMoveDashboardStepIfOpen();
-
       cy.log("select connection impersonation strategy");
       H.main()
         .findByRole("radio", { name: /Connection impersonation/ })
@@ -1486,8 +1456,6 @@ describe("scenarios - embedding hub", () => {
       H.addPostgresDatabase("QA Postgres12");
 
       cy.visit("/admin/embedding/setup-guide/permissions");
-
-      completeMoveMoveDashboardStepIfOpen();
 
       H.main()
         .findByRole("radio", { name: /Connection impersonation/ })
@@ -1542,8 +1510,6 @@ describe("scenarios - embedding hub", () => {
 
     it("creates a tenant with database_role attribute when using connection impersonation", () => {
       cy.visit("/admin/embedding/setup-guide/permissions");
-
-      completeMoveMoveDashboardStepIfOpen();
 
       cy.log("select connection impersonation strategy");
       H.main()
@@ -1614,8 +1580,6 @@ describe("scenarios - embedding hub", () => {
 
     it("creates a tenant with database_slug attribute when using database routing", () => {
       cy.visit("/admin/embedding/setup-guide/permissions");
-
-      completeMoveMoveDashboardStepIfOpen();
 
       cy.log("select database routing strategy");
       H.main()
