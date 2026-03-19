@@ -10,6 +10,7 @@ import {
   useState,
 } from "react";
 import { t } from "ttag";
+import { pick } from "underscore";
 
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import CS from "metabase/css/core/index.css";
@@ -99,12 +100,11 @@ export const FormSecretKey = forwardRef(function FormSecretKey(
         <Flex align="end" gap="1rem">
           {isAlreadySet ? (
             <TextInput
-              {...props}
+              {...pick(props, ["label", "description", "withAsterisk"])}
               ref={ref}
               name={name}
-              value={value}
               readOnly
-              error={touched ? error : null}
+              value={value}
             />
           ) : (
             <PasswordInput
