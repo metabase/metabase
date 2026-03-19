@@ -1,5 +1,5 @@
 ;; shadow-cljs configuration
-{:deps {:aliases [:cljs :ee]}
+{:deps {:aliases [:cljs]}
 
  :nrepl
  {:middleware
