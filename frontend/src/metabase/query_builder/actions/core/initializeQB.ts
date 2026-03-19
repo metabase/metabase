@@ -355,6 +355,17 @@ async function handleQBInit(
   // Populate the metadata store with param_fields from the card response.
   // This ensures field filter widgets have has_field_values even when the user
   // lacks create-queries permission on the underlying table (GHY-1605).
+  // When navigating from a dashboard, the card may be loaded from the entity cache
+  // without param_fields, so we force a reload to get the full card data.
+  if (isSavedCard(card) && !card.param_fields) {
+    const freshAction = await dispatch(
+      Questions.actions.fetch({ id: card.id }, { reload: true }),
+    );
+    const freshCard = Questions.HACK_getObjectFromAction(freshAction);
+    if (freshCard?.card()?.param_fields) {
+      card = { ...card, param_fields: freshCard.card().param_fields };
+    }
+  }
   if (card.param_fields) {
     await dispatch(addFields(Object.values(card.param_fields).flat()));
   }
