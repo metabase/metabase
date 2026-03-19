@@ -1,8 +1,8 @@
 (ns metabase.metabot.tools.dependencies
   (:require
-   [metabase.premium-features.core :as premium-features]))
+   [metabase.premium-features.core :refer [defenterprise]]))
 
-(premium-features/defenterprise check-transform-dependencies
+(defenterprise check-transform-dependencies
   "Check for downstream breakages. Returns nil in OSS."
   metabase-enterprise.metabot.tools.dependencies
   [_transform-map]

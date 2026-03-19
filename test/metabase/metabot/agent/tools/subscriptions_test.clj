@@ -10,14 +10,13 @@
 ;;; ------------------------------------------ schema / metadata tests -----------------------------------------------
 
 (deftest create-dashboard-subscription-tool-schema-test
-  (testing "tool has correct :tool-name metadata"
-    (let [tool-meta (meta #'agent-subscriptions/create-dashboard-subscription-tool)]
-      (is (= "create_dashboard_subscription" (:tool-name tool-meta)))))
+  (let [m (meta #'agent-subscriptions/create-dashboard-subscription-tool)]
+    (testing "tool has correct :tool-name"
+      (is (= "create_dashboard_subscription" (:tool-name m))))
 
-  (testing "tool schema matches expected shape"
-    (let [tool-meta (meta #'agent-subscriptions/create-dashboard-subscription-tool)]
-      (is (some? (:schema tool-meta)))
-      (is (string? (:doc tool-meta))))))
+    (testing "tool var has expected metadata"
+      (is (some? (:schema m)))
+      (is (string? (:doc m))))))
 
 ;;; --------------------------------------- integration tests (with-temp) -------------------------------------------
 
@@ -40,9 +39,6 @@
 (deftest create-dashboard-subscription-invalid-dashboard-id-test
   (testing "non-integer dashboard_id → 'invalid dashboard_id'"
     (mt/with-current-user (mt/user->id :crowberto)
-      ;; The underlying tool checks (int? dashboard-id), and the agent wrapper
-      ;; passes the value through. If the schema lets a string through we'd still
-      ;; get the right error from the underlying tool.
       (with-redefs [subscription-tools/create-dashboard-subscription
                     (fn [{:keys [dashboard-id]}]
                       (if (int? dashboard-id)

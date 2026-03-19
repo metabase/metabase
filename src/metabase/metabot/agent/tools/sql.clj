@@ -10,7 +10,8 @@
    [metabase.metabot.tools.llm-representations :as llm-rep]
    [metabase.metabot.tools.replace-sql-query :as replace-sql-query-tools]
    [metabase.util :as u]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -77,61 +78,57 @@
    [:database_id :int]
    [:sql_query :string]])
 
-(defn create-sql-query-tool "create-sql-query-tool" []
-  {:tool-name    "create_sql_query"
-   :capabilities #{:permission-write-sql-queries}
-   :doc          "Create a new SQL query."
-   :schema       [:=> [:cat create-sql-schema] :any]
-   :fn           (fn [{:keys [database_id sql_query]}]
-                   (try
-                     (let [{:keys [validation-result action-result]}
-                           (create-sql-query-tools/create-sql-query
-                            {:database-id database_id
-                             :sql sql_query})
-                           {:keys [valid? dialect error-message]} validation-result
-                           {:keys [query-id query]} action-result]
-                       (if valid?
-                         (let [structured  (assoc action-result :result-type :query)
-                               instr       (instructions/query-created-instructions-for query-id)
-                               results-url (streaming/query->question-url query)]
-                           {:output (format-query-output structured instr {:preamble? true})
-                            :structured-output structured
-                            :instructions instr
-                            :data-parts [(streaming/navigate-to-part results-url)]})
-                         (let [instr (instructions/sql-validation-error-instructions dialect error-message)]
-                           {:output (format-validation-error-output instr)
-                            :instructions instr})))
-                     (catch Exception e
-                       (log/error e "Error creating SQL query")
-                       (if (:agent-error? (ex-data e))
-                         {:output (ex-message e)}
-                         {:output (str "Failed to create SQL query: " (or (ex-message e) "Unknown error"))}))))})
+(mu/defn ^{:tool-name    "create_sql_query"
+           :capabilities #{:permission-write-sql-queries}} create-sql-query-tool
+  "Create a new SQL query."
+  [{:keys [database_id sql_query]} :- create-sql-schema]
+  (try
+    (let [{:keys [validation-result action-result]}
+          (create-sql-query-tools/create-sql-query
+           {:database-id database_id
+            :sql sql_query})
+          {:keys [valid? dialect error-message]} validation-result
+          {:keys [query-id query]} action-result]
+      (if valid?
+        (let [structured  (assoc action-result :result-type :query)
+              instr       (instructions/query-created-instructions-for query-id)
+              results-url (streaming/query->question-url query)]
+          {:output (format-query-output structured instr {:preamble? true})
+           :structured-output structured
+           :instructions instr
+           :data-parts [(streaming/navigate-to-part results-url)]})
+        (let [instr (instructions/sql-validation-error-instructions dialect error-message)]
+          {:output (format-validation-error-output instr)
+           :instructions instr})))
+    (catch Exception e
+      (log/error e "Error creating SQL query")
+      (if (:agent-error? (ex-data e))
+        {:output (ex-message e)}
+        {:output (str "Failed to create SQL query: " (or (ex-message e) "Unknown error"))}))))
 
-(defn create-sql-query-code-edit-tool "create-sql-query-code-edit-tool" []
-  {:tool-name    "create_sql_query"
-   :capabilities #{:permission-write-sql-queries}
-   :doc          "Create a new SQL query and update the code editor buffer."
-   :schema       [:=> [:cat create-sql-schema] :any]
-   :fn           (fn [{:keys [database_id sql_query]}]
-                   (let [buffer-id (first-code-editor-buffer-id)]
-                     (if (nil? buffer-id)
-                       {:output "No active code editor buffer found for SQL editing."}
-                       (let [{:keys [validation-result action-result]}
-                             (create-sql-query-tools/create-sql-query
-                              {:database-id database_id
-                               :sql sql_query})
-                             {:keys [valid? dialect error-message]} validation-result
-                             {:keys [query-id query-content]} action-result]
-                         (if valid?
-                           (let [structured (assoc action-result :result-type :query)
-                                 instr      (instructions/query-created-instructions-for query-id)]
-                             {:output (format-query-output structured instr {:preamble? true})
-                              :structured-output structured
-                              :instructions instr
-                              :data-parts [(code-edit-part buffer-id query-content)]})
-                           (let [instr (instructions/sql-validation-error-instructions dialect error-message)]
-                             {:output (format-validation-error-output instr)
-                              :instructions instr}))))))})
+(mu/defn ^{:tool-name    "create_sql_query"
+           :capabilities #{:permission-write-sql-queries}} create-sql-query-code-edit-tool
+  "Create a new SQL query and update the code editor buffer."
+  [{:keys [database_id sql_query]} :- create-sql-schema]
+  (let [buffer-id (first-code-editor-buffer-id)]
+    (if (nil? buffer-id)
+      {:output "No active code editor buffer found for SQL editing."}
+      (let [{:keys [validation-result action-result]}
+            (create-sql-query-tools/create-sql-query
+             {:database-id database_id
+              :sql sql_query})
+            {:keys [valid? dialect error-message]} validation-result
+            {:keys [query-id query-content]} action-result]
+        (if valid?
+          (let [structured (assoc action-result :result-type :query)
+                instr      (instructions/query-created-instructions-for query-id)]
+            {:output (format-query-output structured instr {:preamble? true})
+             :structured-output structured
+             :instructions instr
+             :data-parts [(code-edit-part buffer-id query-content)]})
+          (let [instr (instructions/sql-validation-error-instructions dialect error-message)]
+            {:output (format-validation-error-output instr)
+             :instructions instr}))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Edit SQL query
@@ -146,65 +143,61 @@
                          [:new_string :string]
                          [:replace_all {:optional true} [:maybe :boolean]]]]]])
 
-(defn edit-sql-query-tool "edit-sql-query-tool" []
-  {:tool-name    "edit_sql_query"
-   :capabilities #{:permission-write-sql-queries}
-   :doc          "Edit an existing SQL query using structured edits."
-   :schema       [:=> [:cat edit-sql-schema] :any]
-   :fn           (fn [{:keys [query_id edits checklist]}]
-                   (try
-                     (let [{:keys [validation-result action-result]}
-                           (edit-sql-query-tools/edit-sql-query
-                            {:query-id query_id
-                             :edits edits
-                             :checklist checklist
-                             :queries-state (shared/current-queries-state)})
-                           {:keys [valid? error-message dialect]} validation-result
-                           {:keys [query-id query]} action-result]
-                       (if valid?
-                         (let [structured  (assoc action-result :result-type :query)
-                               instr       (instructions/edit-sql-query-instructions-for query-id)
-                               results-url (streaming/query->question-url query)]
-                           {:output (format-query-output structured instr)
-                            :structured-output structured
-                            :instructions instr
-                            :data-parts [(streaming/navigate-to-part results-url)]})
-                         (let [instr (instructions/sql-validation-error-instructions dialect error-message)]
-                           {:output (format-validation-error-output instr)
-                            :instructions instr})))
-                     (catch Exception e
-                       (log/error e "Error editing SQL query")
-                       (if (:agent-error? (ex-data e))
-                         {:output (ex-message e)}
-                         {:output (str "Failed to edit SQL query: " (or (ex-message e) "Unknown error"))}))))})
+(mu/defn ^{:tool-name    "edit_sql_query"
+           :capabilities #{:permission-write-sql-queries}} edit-sql-query-tool
+  "Edit an existing SQL query using structured edits."
+  [{:keys [query_id edits checklist]} :- edit-sql-schema]
+  (try
+    (let [{:keys [validation-result action-result]}
+          (edit-sql-query-tools/edit-sql-query
+           {:query-id query_id
+            :edits edits
+            :checklist checklist
+            :queries-state (shared/current-queries-state)})
+          {:keys [valid? error-message dialect]} validation-result
+          {:keys [query-id query]} action-result]
+      (if valid?
+        (let [structured  (assoc action-result :result-type :query)
+              instr       (instructions/edit-sql-query-instructions-for query-id)
+              results-url (streaming/query->question-url query)]
+          {:output (format-query-output structured instr)
+           :structured-output structured
+           :instructions instr
+           :data-parts [(streaming/navigate-to-part results-url)]})
+        (let [instr (instructions/sql-validation-error-instructions dialect error-message)]
+          {:output (format-validation-error-output instr)
+           :instructions instr})))
+    (catch Exception e
+      (log/error e "Error editing SQL query")
+      (if (:agent-error? (ex-data e))
+        {:output (ex-message e)}
+        {:output (str "Failed to edit SQL query: " (or (ex-message e) "Unknown error"))}))))
 
-(defn edit-sql-query-code-edit-tool "edit-sql-query-code-edit-tool" []
-  {:tool-name    "edit_sql_query"
-   :capabilities #{:permission-write-sql-queries}
-   :doc          "Edit an existing SQL query and update the code editor buffer."
-   :schema       [:=> [:cat edit-sql-schema] :any]
-   :fn           (fn [{:keys [query_id edits checklist]}]
-                   (let [buffer-id (first-code-editor-buffer-id)]
-                     (if (nil? buffer-id)
-                       {:output "No active code editor buffer found for SQL editing."}
-                       (let [{:keys [validation-result action-result]}
-                             (edit-sql-query-tools/edit-sql-query
-                              {:query-id query_id
-                               :edits edits
-                               :checklist checklist
-                               :queries-state (shared/current-queries-state)})
-                             {:keys [valid? dialect error-message]} validation-result
-                             {:keys [query-id query-content]} action-result]
-                         (if valid?
-                           (let [structured (assoc action-result :result-type :query)
-                                 instr      (instructions/edit-sql-query-instructions-for query-id)]
-                             {:output (format-query-output structured instr)
-                              :structured-output structured
-                              :instructions instr
-                              :data-parts [(code-edit-part buffer-id query-content)]})
-                           (let [instr (instructions/sql-validation-error-instructions dialect error-message)]
-                             {:output (format-validation-error-output instr)
-                              :instructions instr}))))))})
+(mu/defn ^{:tool-name    "edit_sql_query"
+           :capabilities #{:permission-write-sql-queries}} edit-sql-query-code-edit-tool
+  "Edit an existing SQL query and update the code editor buffer."
+  [{:keys [query_id edits checklist]} :- edit-sql-schema]
+  (let [buffer-id (first-code-editor-buffer-id)]
+    (if (nil? buffer-id)
+      {:output "No active code editor buffer found for SQL editing."}
+      (let [{:keys [validation-result action-result]}
+            (edit-sql-query-tools/edit-sql-query
+             {:query-id query_id
+              :edits edits
+              :checklist checklist
+              :queries-state (shared/current-queries-state)})
+            {:keys [valid? dialect error-message]} validation-result
+            {:keys [query-id query-content]} action-result]
+        (if valid?
+          (let [structured (assoc action-result :result-type :query)
+                instr      (instructions/edit-sql-query-instructions-for query-id)]
+            {:output (format-query-output structured instr)
+             :structured-output structured
+             :instructions instr
+             :data-parts [(code-edit-part buffer-id query-content)]})
+          (let [instr (instructions/sql-validation-error-instructions dialect error-message)]
+            {:output (format-validation-error-output instr)
+             :instructions instr}))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Replace SQL query
@@ -216,62 +209,58 @@
    [:checklist :string]
    [:new_query :string]])
 
-(defn replace-sql-query-tool "replace-sql-query-tool" []
-  {:tool-name    "replace_sql_query"
-   :capabilities #{:permission-write-sql-queries}
-   :doc          "Replace the SQL content of an existing query entirely."
-   :schema       [:=> [:cat replace-sql-schema] :any]
-   :fn           (fn [{:keys [query_id new_query checklist]}]
-                   (try
-                     (let [{:keys [validation-result action-result]}
-                           (replace-sql-query-tools/replace-sql-query
-                            {:query-id query_id
-                             :sql new_query
-                             :checklist checklist
-                             :queries-state (shared/current-queries-state)})
-                           {:keys [valid? dialect error-message]} validation-result
-                           {:keys [query-id query]} action-result]
-                       (if valid?
-                         (let [structured  (assoc action-result :result-type :query)
-                               instr       (instructions/replace-sql-query-instructions-for query-id)
-                               results-url (streaming/query->question-url query)]
-                           {:output (format-query-output structured instr)
-                            :structured-output structured
-                            :instructions instr
-                            :data-parts [(streaming/navigate-to-part results-url)]})
-                         (let [instr (instructions/sql-validation-error-instructions dialect error-message)]
-                           {:output (format-validation-error-output instr)
-                            :instructions instr})))
-                     (catch Exception e
-                       (log/error e "Error replacing SQL query")
-                       (if (:agent-error? (ex-data e))
-                         {:output (ex-message e)}
-                         {:output (str "Failed to replace SQL query: " (or (ex-message e) "Unknown error"))}))))})
+(mu/defn ^{:tool-name    "replace_sql_query"
+           :capabilities #{:permission-write-sql-queries}} replace-sql-query-tool
+  "Replace the SQL content of an existing query entirely."
+  [{:keys [query_id new_query checklist]} :- replace-sql-schema]
+  (try
+    (let [{:keys [validation-result action-result]}
+          (replace-sql-query-tools/replace-sql-query
+           {:query-id query_id
+            :sql new_query
+            :checklist checklist
+            :queries-state (shared/current-queries-state)})
+          {:keys [valid? dialect error-message]} validation-result
+          {:keys [query-id query]} action-result]
+      (if valid?
+        (let [structured  (assoc action-result :result-type :query)
+              instr       (instructions/replace-sql-query-instructions-for query-id)
+              results-url (streaming/query->question-url query)]
+          {:output (format-query-output structured instr)
+           :structured-output structured
+           :instructions instr
+           :data-parts [(streaming/navigate-to-part results-url)]})
+        (let [instr (instructions/sql-validation-error-instructions dialect error-message)]
+          {:output (format-validation-error-output instr)
+           :instructions instr})))
+    (catch Exception e
+      (log/error e "Error replacing SQL query")
+      (if (:agent-error? (ex-data e))
+        {:output (ex-message e)}
+        {:output (str "Failed to replace SQL query: " (or (ex-message e) "Unknown error"))}))))
 
-(defn replace-sql-query-code-edit-tool "replace-sql-query-code-edit-tool" []
-  {:tool-name    "replace_sql_query"
-   :capabilities #{:permission-write-sql-queries}
-   :doc          "Replace an SQL query and update the code editor buffer."
-   :schema       [:=> [:cat replace-sql-schema] :any]
-   :fn           (fn [{:keys [query_id new_query checklist]}]
-                   (let [buffer-id (first-code-editor-buffer-id)]
-                     (if (nil? buffer-id)
-                       {:output "No active code editor buffer found for SQL editing."}
-                       (let [{:keys [validation-result action-result]}
-                             (replace-sql-query-tools/replace-sql-query
-                              {:query-id query_id
-                               :sql new_query
-                               :checklist checklist
-                               :queries-state (shared/current-queries-state)})
-                             {:keys [valid? dialect error-message]} validation-result
-                             {:keys [query-id query-content]} action-result]
-                         (if valid?
-                           (let [structured (assoc action-result :result-type :query)
-                                 instr      (instructions/replace-sql-query-instructions-for query-id)]
-                             {:output (format-query-output structured instr)
-                              :structured-output structured
-                              :instructions instr
-                              :data-parts [(code-edit-part buffer-id query-content)]})
-                           (let [instr (instructions/sql-validation-error-instructions dialect error-message)]
-                             {:output (format-validation-error-output instr)
-                              :instructions instr}))))))})
+(mu/defn ^{:tool-name    "replace_sql_query"
+           :capabilities #{:permission-write-sql-queries}} replace-sql-query-code-edit-tool
+  "Replace an SQL query and update the code editor buffer."
+  [{:keys [query_id new_query checklist]} :- replace-sql-schema]
+  (let [buffer-id (first-code-editor-buffer-id)]
+    (if (nil? buffer-id)
+      {:output "No active code editor buffer found for SQL editing."}
+      (let [{:keys [validation-result action-result]}
+            (replace-sql-query-tools/replace-sql-query
+             {:query-id query_id
+              :sql new_query
+              :checklist checklist
+              :queries-state (shared/current-queries-state)})
+            {:keys [valid? dialect error-message]} validation-result
+            {:keys [query-id query-content]} action-result]
+        (if valid?
+          (let [structured (assoc action-result :result-type :query)
+                instr      (instructions/replace-sql-query-instructions-for query-id)]
+            {:output (format-query-output structured instr)
+             :structured-output structured
+             :instructions instr
+             :data-parts [(code-edit-part buffer-id query-content)]})
+          (let [instr (instructions/sql-validation-error-instructions dialect error-message)]
+            {:output (format-validation-error-output instr)
+             :instructions instr}))))))
