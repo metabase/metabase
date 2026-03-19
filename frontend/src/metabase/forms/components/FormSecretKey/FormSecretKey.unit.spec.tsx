@@ -51,7 +51,7 @@ describe("FormSecretKey", () => {
   });
 
   describe("when there is no value (UXW-3300)", () => {
-    it("shows a 'Generate key' button and an empty input", () => {
+    it("shows a 'Generate key' button and an empty password input", () => {
       setup({ initialValues: { secret: undefined } });
 
       expect(
@@ -60,7 +60,9 @@ describe("FormSecretKey", () => {
       expect(
         screen.queryByRole("button", { name: "Regenerate key" }),
       ).not.toBeInTheDocument();
-      expect(screen.getByLabelText("Signing Key")).toHaveValue("");
+      const input = screen.getByLabelText("Signing Key");
+      expect(input).toHaveValue("");
+      expect(input).toHaveAttribute("type", "password");
     });
 
     it("generates a token and shows 'Regenerate key' after clicking 'Generate key' (UXW-3300)", async () => {
@@ -82,7 +84,7 @@ describe("FormSecretKey", () => {
   });
 
   describe("when the value is a plaintext token (UXW-3300)", () => {
-    it("shows 'Regenerate key' button without 'Already set' placeholder", () => {
+    it("shows 'Regenerate key' button and a password input (with eye toggle)", () => {
       setup({ initialValues: { secret: PLAINTEXT_VALUE } });
 
       expect(
@@ -91,9 +93,9 @@ describe("FormSecretKey", () => {
       expect(
         screen.queryByRole("button", { name: "Generate key" }),
       ).not.toBeInTheDocument();
-      expect(screen.getByLabelText("Signing Key")).not.toHaveAttribute(
-        "placeholder",
-        "Already set",
+      expect(screen.getByLabelText("Signing Key")).toHaveAttribute(
+        "type",
+        "password",
       );
     });
 
@@ -110,12 +112,14 @@ describe("FormSecretKey", () => {
   });
 
   describe("when the value is an obfuscated backend secret (UXW-3300)", () => {
-    it("renders an empty input with 'Already set' placeholder instead of the masked string", () => {
+    it("renders a disabled plain-text input showing the obfuscated value (no eye toggle)", () => {
       setup({ initialValues: { secret: OBFUSCATED_VALUE } });
 
       const input = screen.getByLabelText("Signing Key");
-      expect(input).toHaveValue("");
-      expect(input).toHaveAttribute("placeholder", "Already set");
+      expect(input).toHaveValue(OBFUSCATED_VALUE);
+      expect(input).toHaveAttribute("readonly");
+      // TextInput (not PasswordInput) — no type="password", no eye-toggle button
+      expect(input).not.toHaveAttribute("type", "password");
     });
 
     it("shows 'Regenerate key' button, not 'Generate key'", () => {
@@ -140,7 +144,7 @@ describe("FormSecretKey", () => {
       expect(screen.getByText(CONFIRMATION.dialog)).toBeInTheDocument();
     });
 
-    it("generates a new token and removes 'Already set' placeholder after confirming (UXW-3300)", async () => {
+    it("switches to an enabled password input with the new token after confirming (UXW-3300)", async () => {
       setup({ initialValues: { secret: OBFUSCATED_VALUE } });
 
       await userEvent.click(
@@ -154,13 +158,11 @@ describe("FormSecretKey", () => {
         expect(screen.queryByText(CONFIRMATION.header)).not.toBeInTheDocument();
       });
 
-      // After regeneration, the input should no longer show "Already set"
-      // — a new plaintext token is now in the field
+      // Input is now an enabled password field with the freshly generated token
       await waitFor(() => {
-        expect(screen.getByLabelText("Signing Key")).not.toHaveAttribute(
-          "placeholder",
-          "Already set",
-        );
+        const input = screen.getByLabelText("Signing Key");
+        expect(input).not.toHaveAttribute("readonly");
+        expect(input).toHaveAttribute("type", "password");
       });
       expect(
         screen.getByRole("button", { name: "Regenerate key" }),

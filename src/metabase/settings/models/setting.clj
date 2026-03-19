@@ -220,6 +220,10 @@
    ;; is this sensitive (never show in plaintext), like a password? (default: false)
    [:sensitive? :boolean]
 
+   ;; when true, the setting is included in session-properties as an obfuscated value (e.g. "**********XX").
+   ;; Use this for secrets the frontend needs to know *exist* without receiving the plaintext. (default: false)
+   [:obfuscated? :boolean]
+
    ;; where this setting should be visible (default: :admin)
    [:visibility Visibility]
 
@@ -1083,6 +1087,7 @@
                  :encryption         (extract-encryption-or-default setting)
                  :export?            false
                  :sensitive?         false
+                 :obfuscated?        false
                  :cache?             true
                  :feature            nil
                  :database-local     :never
@@ -1589,17 +1594,24 @@
 
 (defn can-read-setting?
   "Returns true if a setting can be read according to the provided set of `allowed-visibilities`, and false otherwise.
-   `allowed-visibilities` is a set of visibilities that the user can read."
+   `allowed-visibilities` is a set of visibilities that the user can read.
+
+   Settings marked `:sensitive?` are excluded unless they are also marked `:obfuscated?`, in which case they are
+   included but their value will be obfuscated (see [[user-readable-values-map]]).
+   Settings marked `:obfuscated?` (even without `:sensitive?`) are always included with their value obfuscated."
   [setting allowed-visibilities]
   (let [setting (resolve-setting setting)]
-    (boolean (and (not (:sensitive? setting))
+    (boolean (and (or (not (:sensitive? setting))
+                      (:obfuscated? setting))
                   (contains? allowed-visibilities (:visibility setting))))))
 
 (defn user-readable-values-map
   "Returns Settings as a map of setting name -> site-wide value for a given set of [[Visibility]] keywords
   e.g. `#{:public :authenticated}`.
 
-  Settings marked `:sensitive?` (e.g. passwords) are excluded.
+  Settings marked `:sensitive?` (e.g. passwords) are excluded, unless they are also marked `:obfuscated?`, in which
+  case they are included with their value obfuscated (e.g. \"**********XX\").
+  Settings marked only `:obfuscated?` (without `:sensitive?`) are also included with their value obfuscated.
 
   This is currently used by `GET /api/session/properties` and
   in [[metabase.server.routes.index/load-entrypoint-template]]. These are used as read-only sources of Settings for
@@ -1614,8 +1626,12 @@
                      (and (not (database-local-only? setting))
                           (can-read-setting? setting visibilities)
                           (:include-in-list? setting))))
-           (map (fn [[setting-name]]
-                  [setting-name (get setting-name)])))
+           (map (fn [[setting-name setting]]
+                  [setting-name (if (:obfuscated? setting)
+                                  (when-let [v (get-value-of-type :string setting-name)]
+                                    (obfuscate-value v))
+                                  (get setting-name))])))
+
      @registered-settings)))
 
 (defn- redact-parse-ex
