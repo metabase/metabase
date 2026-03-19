@@ -5,6 +5,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.models.interface :as mi]
+   [metabase.premium-features.core :refer [defenterprise]]
    [toucan2.core :as t2]))
 
 (def ^:private ^:dynamic *max-reported-broken-transforms* 10)
@@ -43,9 +44,10 @@
                                     {:question card :errors (get card-errors (:id card))})
                                   broken-cards))}))
 
-(defn check-transform-dependencies
+(defenterprise check-transform-dependencies
   "Check a proposed edit to a SQL transform, and return transforms that will break in a format
   suitable for Metabot. Takes a map with :id and :source keys."
+  :feature :none
   [{:keys [id source]}]
   (try
     (let [transform-to-check (api/check-404 (t2/select-one :model/Transform :id id))
