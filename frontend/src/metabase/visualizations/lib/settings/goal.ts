@@ -33,8 +33,8 @@ export const GRAPH_GOAL_SETTINGS: VisualizationSettingsDefinitions = {
       return t`Goal line`;
     },
     widget: "toggle",
-    inline: true,
     getDefault: () => false,
+    inline: true,
     getWrapperStyle: () => ({
       marginBottom: "1rem",
       marginLeft: 0,
