@@ -13,7 +13,6 @@
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
    [metabase.driver.sql.query-processor.deprecated :as sql.qp.deprecated]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -721,21 +720,20 @@
                        (h2x/with-type-info value {:database-type "varchar"}))))
       (->honeysql driver value))))
 
-(defmulti literal-text-value?
-  "Get the text value from a clause"
-  {:added "0.60.0" :arglists '([driver clause])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defmethod literal-text-value? :sql
-  [_driver [_ value {base-type :base_type effective-type :effective_type} :as clause]]
-  (and (driver-api/is-clause? :value clause)
-       (string? value)
-       ;; If no type info is provided (nil opts), assume it's text since it's a string.
-       ;; This handles cases like [:value "some string" nil] from expression definitions.
-       (or (nil? base-type)
-           (isa? (or effective-type base-type)
-                 :type/Text))))
+(defn- literal-text-value?
+  [_driver clause]
+  (let [[value base-type effective-type] (driver-api/match-lite clause
+                                           [_ (opts :guard :lib/uuid) value] ;; mbql5
+                                           [value (:base-type opts) (:effective-type opts)]
+                                           [_ value opts] ;; mbql4
+                                           [value (:base_type opts) (:effective_type opts)])]
+    (and (driver-api/is-clause? :value clause)
+         (string? value)
+         ;; If no type info is provided (nil opts), assume it's text since it's a string.
+         ;; This handles cases like [:value "some string" nil] from expression definitions.
+         (or (nil? base-type)
+             (isa? (or effective-type base-type)
+                   :type/Text)))))
 
 (defmulti expression-by-name
   "Get an expression from a query or stage by name"
@@ -1053,7 +1051,7 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defmethod remapped-order-by? :default
+(defmethod remapped-order-by? :sql
   [_driver [_dir [_ _name opts]]]
   (driver-api/qp.util.transformations.nest-breakouts.externally-remapped-field opts))
 
@@ -1063,7 +1061,7 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defmethod remapped-breakout? :default
+(defmethod remapped-breakout? :sql
   [_driver [_ _name opts]]
   (driver-api/qp.util.transformations.nest-breakouts.externally-remapped-field opts))
 
@@ -1073,7 +1071,7 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defmethod finest-temporal-breakout-idx :default
+(defmethod finest-temporal-breakout-idx :sql
   [_driver breakouts]
   (driver-api/finest-temporal-breakout-index breakouts 2))
 
@@ -1228,15 +1226,12 @@
 (defn- interval? [expr]
   (driver-api/is-clause? :interval expr))
 
-(defmulti add-interval
-  "Wrapper around [[add-interval-honeysql-form]]"
-  {:added "0.60.0", :arglists '([driver hsql-form op interval])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defmethod add-interval :sql
-  [driver hsql-form op [_ amount unit]]
-  (add-interval-honeysql-form driver hsql-form (cond-> amount (= op :-) -) unit))
+(defn- add-interval
+  [driver hsql-form op interval]
+  (let [[amount unit] (driver-api/match-lite interval
+                        [_ (_opts :guard :lib/uuid) amount unit] [amount unit] ;; mbql5
+                        [_ amount unit] [amount unit])]
+    (add-interval-honeysql-form driver hsql-form (cond-> amount (= op :-) -) unit)))
 
 (defmethod ->honeysql [:sql :+]
   [driver [op & args]]
@@ -1487,15 +1482,19 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; TODO -- this name is a bit of a misnomer since it also handles `:aggregation` and `:expression` clauses.
-(mu/defn field-clause->alias* :- some?
+(mu/defn field-clause->alias :- some?
   "Generate HoneySQL for an appropriate alias (e.g., for use with SQL `AS`) for a `:field`, `:expression`, or
   `:aggregation` clause of any type, or `nil` if the Field should not be aliased. By default uses the
   `::add/desired-alias` key in the clause options.
 
   Optional third parameter `unique-name-fn` is no longer used as of 0.42.0."
   ([driver                                                :- :keyword
-    [clause-type id-or-name opts] :- vector?]
-   (let [desired-alias (or (get opts driver-api/qp.add.desired-alias)
+    clause :- vector?]
+   (let [[clause-type id-or-name opts] (driver-api/match-lite clause
+                                         [clause-type (opts :guard :lib/uuid) id-or-name] ;; mbql5
+                                         [clause-type id-or-name opts]
+                                         _ clause)
+         desired-alias (or (get opts driver-api/qp.add.desired-alias)
                            ;; fallback behavior for anyone using SQL QP functions directly without including the stuff
                            ;; from [[metabase.query-processor.util.add-alias-info]]. We should probably disallow this
                            ;; going forward because it is liable to break
@@ -1511,17 +1510,7 @@
     driver
     "metabase.driver.sql.query-processor/field-clause->alias with 3 args"
     "0.48.0")
-   (field-clause->alias* driver field-clause)))
-
-(defmulti field-clause->alias
-  "Wrapper around [[field-clause->alias*]]"
-  {:added "0.60.0" :arglists '([driver clause])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defmethod field-clause->alias :default
-  [driver clause]
-  (field-clause->alias* driver clause))
+   (field-clause->alias driver field-clause)))
 
 (defn as
   "Generate HoneySQL for an `AS` form (e.g. `<form> AS <field>`) using the name information of a `clause`. The
@@ -1587,19 +1576,17 @@
 
 (defn- force-using-column-alias-opts
   [opts is-breakout]
-  (cond-> opts
-    true
-    (assoc driver-api/qp.add.source-alias        (get opts driver-api/qp.add.desired-alias)
-           driver-api/qp.add.source-table        driver-api/qp.add.none
-           ;; this key will tell the SQL QP not to apply casting here either.
-           :qp/ignore-coercion       true
-           ;; used to indicate that this is a forced alias
-           ::forced-alias            true)
+  (cond-> (assoc opts
+                 driver-api/qp.add.source-alias        (get opts driver-api/qp.add.desired-alias)
+                 driver-api/qp.add.source-table        driver-api/qp.add.none
+                 ;; this key will tell the SQL QP not to apply casting here either.
+                 :qp/ignore-coercion       true
+                 ;; used to indicate that this is a forced alias
+                 ::forced-alias            true)
     ;; don't want to do temporal bucketing or binning inside the order by only.
     ;; That happens inside the `SELECT`
     ;; (#22831) however, we do want it in breakout
-    (not is-breakout)
-    (dissoc :temporal-unit :binning)))
+    (not is-breakout) (dissoc :temporal-unit :binning)))
 
 (defn rewrite-fields-to-force-using-column-aliases
   "Rewrite `:field` clauses to force them to use the column alias regardless of where they appear."
@@ -1885,8 +1872,8 @@
 (defn unwrap-value-literal
   "Extract value literal from `:value` form or returns form as is if not a `:value` form."
   [maybe-value-form]
-  (lib.util.match/match-lite maybe-value-form
-    [:value (opts :guard :lib/uuid) x & _] x
+  (driver-api/match-lite maybe-value-form
+    [:value (opts :guard :lib/uuid) x & _] x ;; mbql5
     [:value x & _] x
     _              maybe-value-form))
 

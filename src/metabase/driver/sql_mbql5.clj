@@ -182,10 +182,6 @@
     [driver [op opts & args]]
     ((get-method sql.qp/->honeysql [:sql op]) driver (into [op] (cond-> (vec args) opts (conj opts))))))
 
-(defmethod sql.qp/field-clause->alias :sql-mbql5
-  [driver [clause-type opts id-or-name]]
-  (sql.qp/field-clause->alias* driver [clause-type id-or-name opts]))
-
 (defmethod sql.qp/clause-value-idx :sql-mbql5 [_driver] 2)
 
 (defmethod sql.qp/remapped-order-by? :sql-mbql5
@@ -200,18 +196,10 @@
   [_driver breakouts]
   (driver-api/finest-temporal-breakout-index breakouts 1))
 
-(defmethod sql.qp/literal-text-value? :sql-mbql5
-  [driver [op {:keys [base-type effective-type]} value]]
-  ((get-method sql.qp/literal-text-value? :sql) driver [op value {:base_type base-type :effective_type effective-type}]))
-
 (defmethod sql.qp/expression-by-name :sql-mbql5
   [_driver expression-name]
   (m/find-first (comp #{expression-name} lib.util/expression-name)
                 (:expressions sql.qp/*inner-query*)))
-
-(defmethod sql.qp/add-interval :sql-mbql5
-  [driver hsql-form op [_ _opts amount unit]]
-  (sql.qp/add-interval-honeysql-form driver hsql-form (cond-> amount (= op :-) -) unit))
 
 (defmethod sql.qp/make-clause-with-opts :sql-mbql5
   [_driver tag opts & args]
