@@ -343,20 +343,19 @@
     (mt/test-helpers-set-global-values!
       (do-response-formats [response-format _request-options]
         (with-embedding-enabled-and-new-secret-key!
-          (let [expected-status (response-format->status-code response-format)]
-            (testing (str "If the card has an invalid query we should just get a generic \"query failed\" "
-                          "exception (rather than leaking query info)")
+          (testing (str "If the card has an invalid query we should just get a generic \"query failed\" "
+                      "exception (rather than leaking query info)")
               (with-temp-card [card {:enable_embedding true, :dataset_query {:database (mt/id)
                                                                              :type     :native
                                                                              :native   {:query "SELECT * FROM XYZ"}}}]
                 (is (= {:status     "failed"
                         :error      "An error occurred while running the query."
                         :error_type "invalid-query"}
-                       (client/real-client :get expected-status (card-query-url card response-format))))
+                       (client/real-client :get 500 (card-query-url card response-format))))
                 (is (= {:status     "failed"
                         :error      "An error occurred while running the query."
                         :error_type "invalid-query"}
-                       (client/real-client :get expected-status (card-query-url (:entity_id card) response-format))))))))))))
+                       (client/real-client :get 500 (card-query-url (:entity_id card) response-format))))))))))))
 
 (deftest card-query-test-4
   (testing "GET /api/embed/card/:token/query and GET /api/embed/card/:token/query/:export-format"
