@@ -6,11 +6,11 @@
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.metabot.client :as metabot-v3.client]
-   [metabase.metabot.client.schema :as metabot-v3.client.schema]
-   [metabase.metabot.config :as metabot-v3.config]
-   [metabase.metabot.suggested-prompts :as metabot-v3.suggested-prompts]
-   [metabase.metabot.util :as metabot-v3.util]
+   [metabase.metabot.client :as metabot.client]
+   [metabase.metabot.client.schema :as metabot.client.schema]
+   [metabase.metabot.config :as metabot.config]
+   [metabase.metabot.suggested-prompts :as metabot.suggested-prompts]
+   [metabase.metabot.util :as metabot.util]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
@@ -21,16 +21,16 @@
 
 (set! *warn-on-reflection* true)
 
-(mu/defn- make-mock-stream-response* [part-prefix finish-reason chunks usage :- ::metabot-v3.client.schema/usage]
+(mu/defn- make-mock-stream-response* [part-prefix finish-reason chunks usage :- ::metabot.client.schema/usage]
   (str (->> chunks
             (map #(str part-prefix (json/encode %) "\n"))
             (str/join))
        "d:" (json/encode {:finishReason finish-reason :usage usage})))
 
-(mu/defn make-mock-text-stream-response [chunks usage :- ::metabot-v3.client.schema/usage]
+(mu/defn make-mock-text-stream-response [chunks usage :- ::metabot.client.schema/usage]
   (make-mock-stream-response* "0:" "stop" chunks usage))
 
-(mu/defn make-mock-error-stream-response [chunks usage :- ::metabot-v3.client.schema/usage]
+(mu/defn make-mock-error-stream-response [chunks usage :- ::metabot.client.schema/usage]
   (make-mock-stream-response* "3:" "error" chunks usage))
 
 (defn mock-post! [^String body & [{:keys [delay-ms]
@@ -77,14 +77,14 @@
                          :state           {:some "state"}}]
       (mt/with-dynamic-fn-redefs [http/post (mock-post! mock-response)]
         (mt/with-current-user (mt/user->id :crowberto)
-          (let [res  (metabot-v3.client/streaming-request req)
+          (let [res  (metabot.client/streaming-request req)
                 body (consume-streaming-response res)]
             (is (instance? StreamingResponse res))
             (is (= "text/event-stream; charset=utf-8" (:content-type (.options ^StreamingResponse res))))
             (is (string? body))
             (is (=? [{:_type :TEXT :content "a1a2a3"}
                      {:_type :FINISH_MESSAGE :finish_reason "stop"}]
-                    (metabot-v3.util/aisdk->messages :assistant (str/split-lines body))))))))))
+                    (metabot.util/aisdk->messages :assistant (str/split-lines body))))))))))
 
 (deftest client-error-test
   (mt/with-premium-features #{:metabot-v3}
@@ -100,14 +100,14 @@
                          :state           {:some "state"}}]
       (mt/with-dynamic-fn-redefs [http/post (mock-post! mock-response)]
         (mt/with-current-user (mt/user->id :crowberto)
-          (let [res  (metabot-v3.client/streaming-request req)
+          (let [res  (metabot.client/streaming-request req)
                 body (consume-streaming-response res)]
             (is (instance? StreamingResponse res))
             (is (= "text/event-stream; charset=utf-8" (:content-type (.options ^StreamingResponse res))))
             (is (string? body))
             (is (=? [{:_type :ERROR :content "oof bad error!"}
                      {:_type :FINISH_MESSAGE :finish_reason "error"}]
-                    (metabot-v3.util/aisdk->messages :assistant (str/split-lines body))))))))))
+                    (metabot.util/aisdk->messages :assistant (str/split-lines body))))))))))
 
 (deftest streaming-request-with-callback-test
   (mt/with-premium-features #{:metabot-v3}
@@ -123,24 +123,24 @@
       (testing "collects and returns all lines"
         (mt/with-dynamic-fn-redefs [http/post (mock-post! mock-response)]
           (mt/with-current-user (mt/user->id :crowberto)
-            (let [lines (metabot-v3.client/streaming-request-with-callback req)]
+            (let [lines (metabot.client/streaming-request-with-callback req)]
               (is (sequential? lines))
               (is (pos? (count lines)))
               (is (=? [{:_type :TEXT :content "a1a2a3"}
                        {:_type :FINISH_MESSAGE :finish_reason "stop"}]
-                      (metabot-v3.util/aisdk->messages :assistant lines)))))))
+                      (metabot.util/aisdk->messages :assistant lines)))))))
       (testing "invokes on-line callback for each line"
         (mt/with-dynamic-fn-redefs [http/post (mock-post! mock-response)]
           (mt/with-current-user (mt/user->id :crowberto)
             (let [callback-lines (atom [])
-                  lines          (metabot-v3.client/streaming-request-with-callback
+                  lines          (metabot.client/streaming-request-with-callback
                                   (assoc req :on-line #(swap! callback-lines conj %)))]
               (is (= lines @callback-lines))))))
       (testing "handles stream errors gracefully"
         (mt/with-dynamic-fn-redefs [http/post (mock-post! mock-response {:delay-ms 10})]
           (mt/with-current-user (mt/user->id :crowberto)
             (let [error-lines (atom [])
-                  lines       (metabot-v3.client/streaming-request-with-callback
+                  lines       (metabot.client/streaming-request-with-callback
                                (assoc req :on-line #(swap! error-lines conj %)))]
               (is (sequential? lines))
               (is (= lines @error-lines)))))))))
@@ -155,13 +155,13 @@
         (mt/with-dynamic-fn-redefs [http/post (mock-post! mock-response)]
           (mt/with-current-user (mt/user->id :crowberto)
             (let [result (atom nil)
-                  lines  (metabot-v3.client/streaming-request-with-callback
+                  lines  (metabot.client/streaming-request-with-callback
                           (assoc req :on-complete #(reset! result %)))]
               (is (= lines @result))))))
       (testing "works without on-complete"
         (mt/with-dynamic-fn-redefs [http/post (mock-post! mock-response)]
           (mt/with-current-user (mt/user->id :crowberto)
-            (is (sequential? (metabot-v3.client/streaming-request-with-callback req)))))))))
+            (is (sequential? (metabot.client/streaming-request-with-callback req)))))))))
 
 (deftest streaming-request-error-excludes-headers-test
   (testing "When streaming-request gets an error response, the exception should not include headers"
@@ -181,7 +181,7 @@
                                                  :body          "Error message"})]
           (mt/with-current-user (mt/user->id :crowberto)
             (let [ex (try
-                       (metabot-v3.client/streaming-request req)
+                       (metabot.client/streaming-request req)
                        nil
                        (catch Exception e
                          e))]
@@ -195,8 +195,8 @@
 
 (deftest example-generation-payload-unknown-field-types-test
   (let [mp (mt/metadata-provider)
-        metabot-eid (get-in metabot-v3.config/metabot-config [metabot-v3.config/internal-metabot-id
-                                                              :entity-id])
+        metabot-eid (get-in metabot.config/metabot-config [metabot.config/internal-metabot-id
+                                                           :entity-id])
         original-collection-id (t2/select-one-fn :collection_id :model/Metabot :entity_id metabot-eid)]
     ;; Ensure internal metabot is set to the root collection for generating prompts
     (t2/update! :model/Metabot :entity_id metabot-eid {:collection_id nil})
@@ -219,11 +219,11 @@
                  (try
                    ;; Override calls to ai service as we are interested in no exception being thrown
                    ;; prior to those calls.
-                   (with-redefs [metabot-v3.client/post! (constantly {:status 200
-                                                                      :body {:table_questions []
-                                                                             :metric_questions []}})]
+                   (with-redefs [metabot.client/post! (constantly {:status 200
+                                                                   :body {:table_questions []
+                                                                          :metric_questions []}})]
                      (let [metabot-id (t2/select-one-fn :id :model/Metabot :entity_id metabot-eid)]
-                       (metabot-v3.suggested-prompts/generate-sample-prompts metabot-id)
+                       (metabot.suggested-prompts/generate-sample-prompts metabot-id)
                        :not-thrown))
                    (catch Exception e
                      e))))))

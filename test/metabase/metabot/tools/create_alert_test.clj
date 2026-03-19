@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.channel.settings :as channel.settings]
    [metabase.metabot.tools.create-alert
-    :as metabot-v3.tools.create-alert]
+    :as metabot.tools.create-alert]
    [metabase.test :as mt]))
 
 (defn- alert-data [card-id]
@@ -20,7 +20,7 @@
   (mt/with-model-cleanup [:model/Notification]
     (mt/with-temp [:model/Card {card-id :id} {}]
       (let [invoke-tool #(mt/with-current-user (mt/user->id :rasta)
-                           (metabot-v3.tools.create-alert/create-alert %))
+                           (metabot.tools.create-alert/create-alert %))
             base-data   (alert-data card-id)]
         (with-redefs [channel.settings/slack-configured? (constantly true)
                       channel.settings/slack-cached-channels-and-usernames (constantly fake-channels)]
@@ -40,7 +40,7 @@
 (deftest create-alert-validation-test
   (mt/with-temp [:model/Card {card-id :id} {}]
     (let [invoke-tool #(mt/with-current-user (mt/user->id :rasta)
-                         (metabot-v3.tools.create-alert/create-alert %))
+                         (metabot.tools.create-alert/create-alert %))
           base-data   (alert-data card-id)]
       (with-redefs [channel.settings/slack-configured? (constantly true)
                     channel.settings/slack-cached-channels-and-usernames (constantly fake-channels)]
@@ -63,7 +63,7 @@
 (deftest create-alert-channel-not-configured-test
   (mt/with-temp [:model/Card {card-id :id} {}]
     (let [invoke-tool #(mt/with-current-user (mt/user->id :rasta)
-                         (metabot-v3.tools.create-alert/create-alert %))
+                         (metabot.tools.create-alert/create-alert %))
           base-data   (alert-data card-id)]
       (testing "Slack alert fails when Slack is not configured"
         (with-redefs [channel.settings/slack-configured? (constantly false)]

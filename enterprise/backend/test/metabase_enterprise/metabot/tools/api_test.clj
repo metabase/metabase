@@ -3,7 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
-   [metabase.metabot.client :as metabot-v3.client]
+   [metabase.metabot.client :as metabot.client]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -11,7 +11,7 @@
   ([] (ai-session-token :rasta (str (random-uuid))))
   ([metabot-id] (ai-session-token :rasta metabot-id))
   ([user metabot-id]
-   (-> user mt/user->id (#'metabot-v3.client/get-ai-service-token metabot-id))))
+   (-> user mt/user->id (#'metabot.client/get-ai-service-token metabot-id))))
 
 (deftest get-transforms-test
   (mt/with-premium-features #{:metabot-v3 :transforms-basic :transforms-python}

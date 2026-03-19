@@ -8,7 +8,7 @@
    [clojure.string :as str]
    [metabase.app-db.core :as mdb]
    [metabase.metabot.api :as api]
-   [metabase.metabot.context :as metabot-v3.context]
+   [metabase.metabot.context :as metabot.context]
    [metabase.metabot.util :as metabot.u]
    [metabase.util :as u])
   (:import
@@ -113,7 +113,7 @@
                               :id   43}
                              {:type  :adhoc
                               :query test-query}]}
-          metabot-v3.context/create-context)))
+          metabot.context/create-context)))
 
   (defn- user-repl-with-context [context]
     (user-repl [] context (str (random-uuid))))

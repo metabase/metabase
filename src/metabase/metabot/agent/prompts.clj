@@ -119,7 +119,7 @@
   "Load template with caching. Cache is simple in-memory map.
 
   In development, you can clear the cache to reload templates:
-  (reset! metabot-v3.agent.prompts/template-cache {})"
+  (reset! metabot.agent.prompts/template-cache {})"
   [resource-type resource-name loader-fn]
   (let [key (cache-key resource-type resource-name)]
     (or (get @template-cache key)
