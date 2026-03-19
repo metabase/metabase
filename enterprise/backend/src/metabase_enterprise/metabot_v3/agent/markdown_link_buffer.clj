@@ -8,6 +8,7 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.metabot-v3.agent.links :as links]
+   [metabase.system.core :as system]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -25,10 +26,33 @@
   [state queries charts]
   (assoc state :queries queries :charts charts))
 
+;;; Slack Link Resolution
+
+(def ^:private slack-link-pattern
+  "Regex matching a complete Slack-format link <metabase://type/id|text>."
+  #"<(metabase://[^>|]+)(?:\|([^>]*))?>")
+
+(defn- resolve-slack-link
+  "Resolve a single Slack-format metabase:// link match. Returns the replacement string."
+  [queries charts [_ url link-text]]
+  (if-let [resolved (links/resolve-metabase-uri url queries charts)]
+    (let [absolute-url (str (system/site-url) resolved)]
+      (if link-text
+        (str "<" absolute-url "|" link-text ">")
+        (str "<" absolute-url ">")))
+    (do
+      (log/warn "Failed to resolve Slack link URL" {:url url})
+      (or link-text url))))
+
+(defn- resolve-slack-links
+  "Resolve all Slack-format metabase:// links in text."
+  [text queries charts]
+  (str/replace text slack-link-pattern (partial resolve-slack-link queries charts)))
+
 ;;; Buffering Logic
 
-(defn- find-potential-link-start
-  "Find the index of a potential incomplete link start (unmatched '[').
+(defn- find-potential-markdown-link-start
+  "Find the index of a potential incomplete markdown link start (unmatched '[').
    Returns nil if no potential incomplete link exists."
   [text]
   (let [last-open (str/last-index-of text "[")]
@@ -42,13 +66,38 @@
                     (re-find #"\[[^\]]*\]\([^)]*$" suffix)) ; unclosed (
             last-open))))))
 
+(defn- find-potential-slack-link-start
+  "Find the index of a potential incomplete Slack-format metabase:// link.
+   Only buffers on `<metabase://` prefix — regular `<` characters must NOT trigger buffering.
+   Returns nil if no potential incomplete link exists."
+  [text]
+  (let [idx (str/last-index-of text "<metabase://")]
+    (when idx
+      (let [suffix (subs text idx)]
+        ;; Only buffer if there's no closing > (i.e., the link is incomplete)
+        (when-not (re-find slack-link-pattern suffix)
+          idx)))))
+
+(defn- find-potential-link-start
+  "Find the index of the earliest potential incomplete link start.
+   Checks both markdown [text](url) and Slack <metabase://...|text> formats.
+   Returns nil if no potential incomplete link exists."
+  [text]
+  (let [md-idx    (find-potential-markdown-link-start text)
+        slack-idx (find-potential-slack-link-start text)]
+    (cond
+      (and md-idx slack-idx) (min md-idx slack-idx)
+      md-idx                 md-idx
+      slack-idx              slack-idx)))
+
 (defn step
   "Process a chunk of text through the state machine.
    Returns [new-state output-string]."
   [{:keys [buffer] :as state} chunk]
   (let [text        (str buffer chunk)
-        ;; First resolve any complete links
-        resolved    (links/resolve-links text (:queries state) (:charts state))
+        ;; Resolve complete markdown links, then Slack-format links
+        resolved    (-> (links/resolve-links text (:queries state) (:charts state))
+                        (resolve-slack-links (:queries state) (:charts state)))
         ;; Then check for incomplete link at the end
         split-point (find-potential-link-start resolved)]
     (if split-point

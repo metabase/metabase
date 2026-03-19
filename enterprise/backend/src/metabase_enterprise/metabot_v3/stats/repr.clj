@@ -70,11 +70,11 @@
   "Convert trend direction keyword to readable text."
   [direction]
   (case direction
-    :strongly_increasing "strongly increasing"
+    :strongly-increasing "strongly increasing"
     :increasing "increasing"
     :flat "flat"
     :decreasing "decreasing"
-    :strongly_decreasing "strongly decreasing"
+    :strongly-decreasing "strongly decreasing"
     (name direction)))
 
 (defn- volatility-level-text
@@ -109,19 +109,19 @@
 
 (defn- render-limits-note
   "Render a note when data limits were applied during stats computation."
-  [{:keys [downsampled_series correlations_capped]}]
+  [{:keys [downsampled-series correlations-capped]}]
   (let [parts (cond-> []
-                (seq downsampled_series)
-                (conj (let [entries (for [[name {:keys [original_count sampled_count]}] downsampled_series]
-                                      (str name " (" original_count " → " sampled_count " points)"))]
+                (seq downsampled-series)
+                (conj (let [entries (for [[name {:keys [original-count sampled-count]}] downsampled-series]
+                                      (str name " (" original-count " → " sampled-count " points)"))]
                         (str "Data was downsampled for statistical analysis: "
                              (str/join ", " entries)
                              ". Results are based on a uniform sample of the full dataset.")))
 
-                correlations_capped
+                correlations-capped
                 (conj (str "Cross-series correlations were limited to "
-                           (:max_correlated correlations_capped) " of "
-                           (:total_series correlations_capped)
+                           (:max-correlated correlations-capped) " of "
+                           (:total-series correlations-capped)
                            " series to keep computation tractable.")))]
     (when (seq parts)
       (str "**Data Limits Applied**: " (str/join " " parts)))))
@@ -130,27 +130,27 @@
 
 (defn- compute-data-characteristics
   "Derive data quality flags from pre-computed series stats."
-  [{:keys [data_points category_count summary y_summary]}]
-  (let [n     (or data_points category_count 0)
-        s     (or y_summary summary)
+  [{:keys [data-points category-count summary y-summary]}]
+  (let [n     (or data-points category-count 0)
+        s     (or y-summary summary)
         max-v (some-> s :max)
         cov   (let [mean-v (some-> s :mean)
-                    std-v  (some-> s :std_dev)]
+                    std-v  (some-> s :std-dev)]
                 (if (and mean-v std-v (not (zero? mean-v)))
                   (/ std-v (Math/abs (double mean-v)))
                   0.0))]
-    {:small_counts  (boolean (and max-v (< max-v 20)))
-     :high_variance (> cov 0.5)
-     :sparse_data   (< n 10)}))
+    {:small-counts  (boolean (and max-v (< max-v 20)))
+     :high-variance (> cov 0.5)
+     :sparse-data   (< n 10)}))
 
 (defn- render-data-characteristics-note
   "Render a **Note**: line when any data quality warning applies."
   [series-stats]
-  (let [{:keys [small_counts high_variance sparse_data]} (compute-data-characteristics series-stats)
+  (let [{:keys [small-counts high-variance sparse-data]} (compute-data-characteristics series-stats)
         warnings (cond-> []
-                   small_counts  (conj "small values (percentage changes may be exaggerated)")
-                   high_variance (conj "high variance (fluctuations may be normal noise)")
-                   sparse_data   (conj "limited data points"))]
+                   small-counts  (conj "small values (percentage changes may be exaggerated)")
+                   high-variance (conj "high variance (fluctuations may be normal noise)")
+                   sparse-data   (conj "limited data points"))]
     (when (seq warnings)
       (str "**Note**: " (str/join ", " warnings) "."))))
 
@@ -158,27 +158,27 @@
 
 (defn- render-series-summary
   "Render summary statistics for a series."
-  [{:keys [summary time_range data_points]}]
-  (let [{:keys [min max mean median std_dev]} summary
-        {:keys [start end]} time_range]
-    (str "**Data Points**: " data_points " (" (format-label start) " to " (format-label end) ")\n"
+  [{:keys [summary time-range data-points]}]
+  (let [{:keys [min max mean median std-dev]} summary
+        {:keys [start end]} time-range]
+    (str "**Data Points**: " data-points " (" (format-label start) " to " (format-label end) ")\n"
          "**Value Range**: " (format-number min) " to " (format-number max)
          " (median: " (format-number median) ")\n"
-         "**Mean**: " (format-number mean) " | **Std Dev**: " (format-number std_dev))))
+         "**Mean**: " (format-number mean) " | **Std Dev**: " (format-number std-dev))))
 
 (defn- render-trend
   "Render trend information."
-  [{:keys [direction overall_change_pct start_value end_value]}]
+  [{:keys [direction overall-change-pct start-value end-value]}]
   (str "**Trend**: " (trend-direction-text direction)
-       " (" (format-pct overall_change_pct) " overall, "
-       "from " (format-number start_value) " to " (format-number end_value) ")"))
+       " (" (format-pct overall-change-pct) " overall, "
+       "from " (format-number start-value) " to " (format-number end-value) ")"))
 
 (defn- render-volatility
   "Render volatility information."
-  [{:keys [level coefficient_of_variation max_period_change_pct]}]
+  [{:keys [level coefficient-of-variation max-period-change-pct]}]
   (str "**Volatility**: " (volatility-level-text level)
-       " (CV: " (format "%.2f" (double coefficient_of_variation))
-       ", max period change: " (format-pct max_period_change_pct) ")"))
+       " (CV: " (format "%.2f" (double coefficient-of-variation))
+       ", max period change: " (format-pct max-period-change-pct) ")"))
 
 (defn- render-outliers
   "Render outlier information."
@@ -186,9 +186,9 @@
   (if (seq outliers)
     (str "**Outliers**: " (count outliers) " detected\n"
          (str/join "\n"
-                   (for [{:keys [label value modified_z_score]} outliers]
+                   (for [{:keys [label value modified-z-score]} outliers]
                      (str "  - " (format-label label) ": " (format-number value)
-                          " (z-score: " (format "%.2f" (double modified_z_score)) ")"))))
+                          " (z-score: " (format "%.2f" (double modified-z-score)) ")"))))
     "**Outliers**: None detected"))
 
 (defn- render-patterns
@@ -197,8 +197,8 @@
   (when (seq patterns)
     (str "**Patterns**:\n"
          (str/join "\n"
-                   (for [{:keys [description from_date to_date]} patterns]
-                     (str "  - " description " (" (format-label from_date) " to " (format-label to_date) ")"))))))
+                   (for [{:keys [description from-date to-date]} patterns]
+                     (str "  - " description " (" (format-label from-date) " to " (format-label to-date) ")"))))))
 
 (defn- render-significant-changes
   "Render significant changes."
@@ -206,33 +206,33 @@
   (when (seq changes)
     (str "**Significant Changes**:\n"
          (str/join "\n"
-                   (for [{:keys [from_date to_date from_value to_value change_pct]} changes]
-                     (str "  - " (format-label from_date) " → " (format-label to_date)
-                          ": " (format-number from_value) " → " (format-number to_value)
-                          " (" (format-pct change_pct) ")"))))))
+                   (for [{:keys [from-date to-date from-value to-value change-pct]} changes]
+                     (str "  - " (format-label from-date) " → " (format-label to-date)
+                          ": " (format-number from-value) " → " (format-number to-value)
+                          " (" (format-pct change-pct) ")"))))))
 
 (defn- render-most-recent-change
   "Render most recent change."
-  [{:keys [from_date to_date from_value to_value change_pct] :as change}]
+  [{:keys [from-date to-date from-value to-value change-pct] :as change}]
   (when change
-    (str "**Most Recent Change**: " (format-label from_date) " → " (format-label to_date)
-         ": " (format-number from_value) " → " (format-number to_value)
-         " (" (format-pct change_pct) ")")))
+    (str "**Most Recent Change**: " (format-label from-date) " → " (format-label to-date)
+         ": " (format-number from-value) " → " (format-number to-value)
+         " (" (format-pct change-pct) ")")))
 
 (defn- render-time-series
   "Render complete statistics for a single series."
   [series-name series-stats]
-  (let [{:keys [trend is_cumulative volatility outliers patterns
-                significant_changes most_recent_change]} series-stats
+  (let [{:keys [trend is-cumulative volatility outliers patterns
+                significant-changes most-recent-change]} series-stats
         sections [(str "## Series: " series-name)
                   (render-series-summary series-stats)
                   (render-trend trend)
-                  (when is_cumulative "**Note**: Data appears to be cumulative")
+                  (when is-cumulative "**Note**: Data appears to be cumulative")
                   (when volatility (render-volatility volatility))
                   (render-outliers outliers)
                   (render-patterns patterns)
-                  (render-significant-changes significant_changes)
-                  (render-most-recent-change most_recent_change)]]
+                  (render-significant-changes significant-changes)
+                  (render-most-recent-change most-recent-change)]]
     (str/join "\n" (remove nil? sections))))
 
 ;;; ----------------------------------------- Correlation Representation ---------------------------------------------
@@ -248,8 +248,8 @@
   (when (seq correlations)
     (str "## Cross-Series Correlations\n"
          (str/join "\n"
-                   (for [{:keys [series_a series_b coefficient] :as corr} correlations]
-                     (str "- " series_a " vs " series_b ": "
+                   (for [{:keys [series-a series-b coefficient] :as corr} correlations]
+                     (str "- " series-a " vs " series-b ": "
                           (correlation-label corr)
                           " (r=" (format "%.3f" (double coefficient)) ")"))))))
 
@@ -277,22 +277,22 @@
 
 (defn- render-categorical-series
   "Render stats for a single categorical series."
-  [series-name {:keys [x_name y_name summary data_points category_count
-                       top_categories bottom_categories outliers] :as series-stats}]
+  [series-name {:keys [x-name y-name summary data-points category-count
+                       top-categories bottom-categories outliers] :as series-stats}]
   (let [sections [(str "## Series: " series-name)
-                  (when x_name (str "**X-axis**: " x_name))
-                  (when y_name (str "**Y-axis**: " y_name))
-                  (str "**Data Points**: " data_points)
-                  (str "**Categories**: " category_count)
+                  (when x-name (str "**X-axis**: " x-name))
+                  (when y-name (str "**Y-axis**: " y-name))
+                  (str "**Data Points**: " data-points)
+                  (str "**Categories**: " category-count)
                   (render-data-characteristics-note series-stats)
                   (when summary
                     (str "**Value Range**: " (format-number (:min summary))
                          " to " (format-number (:max summary))
                          " (median: " (format-number (:median summary)) ")"))
-                  (when (seq top_categories)
-                    (str "**Top Categories**:\n" (render-category-list top_categories)))
-                  (when (seq bottom_categories)
-                    (str "**Bottom Categories**:\n" (render-category-list bottom_categories)))
+                  (when (seq top-categories)
+                    (str "**Top Categories**:\n" (render-category-list top-categories)))
+                  (when (seq bottom-categories)
+                    (str "**Bottom Categories**:\n" (render-category-list bottom-categories)))
                   (render-outliers outliers)]]
     (str/join "\n" (remove nil? sections))))
 
@@ -314,15 +314,15 @@
 
 (defn- render-scatter-series
   "Render stats for a single scatter series."
-  [series-name {:keys [x_name y_name x_summary y_summary data_points
-                       correlation regression sampled_points outliers] :as series-stats}]
+  [series-name {:keys [x-name y-name x-summary y-summary data-points
+                       correlation regression sampled-points outliers] :as series-stats}]
   (let [sections [(str "## Series: " series-name)
-                  (str "**Data Points**: " data_points)
-                  (when x_name (str "**X-axis**: " x_name))
-                  (when y_name (str "**Y-axis**: " y_name))
+                  (str "**Data Points**: " data-points)
+                  (when x-name (str "**X-axis**: " x-name))
+                  (when y-name (str "**Y-axis**: " y-name))
                   (render-data-characteristics-note series-stats)
-                  (render-axis-range "X-axis" x_summary)
-                  (render-axis-range "Y-axis" y_summary)
+                  (render-axis-range "X-axis" x-summary)
+                  (render-axis-range "Y-axis" y-summary)
                   (when correlation
                     (str "**Relationship**: " (correlation-label correlation)
                          " (r = " (format "%.2f" (double (:coefficient correlation))) ")"))
@@ -330,7 +330,7 @@
                     (str "**Trend Line**: y = "
                          (format "%.3f" (double (:slope regression))) "x + "
                          (format "%.3f" (double (:intercept regression)))))
-                  (render-sample-data sampled_points)
+                  (render-sample-data sampled-points)
                   (render-scatter-outliers outliers)]]
     (str/join "\n" (remove nil? sections))))
 
@@ -350,46 +350,46 @@
 
 (defn- render-histogram-series
   "Render stats for a single histogram series."
-  [series-name {:keys [x_name y_name estimated_summary total_count data_points
-                       bin_data distribution structure] :as series-stats}]
-  (let [{:keys [weighted_skewness weighted_kurtosis estimated_percentiles estimated_quartiles]} distribution
-        {:keys [weighted_mean weighted_std_dev data_range]} estimated_summary
-        {:keys [mode_bin peak_count concentration_top3 gap_count empty_bin_ratio bin_count]} structure
-        summary-str (str "**Estimated Distribution** (from " bin_count " bins, " total_count " total observations): "
-                         "mean≈" (format-number weighted_mean)
-                         ", std_dev≈" (format-number weighted_std_dev)
-                         ", range=" (format-number data_range))
-        p-str       (when (seq estimated_percentiles)
+  [series-name {:keys [x-name y-name estimated-summary total-count data-points
+                       bin-data distribution structure] :as series-stats}]
+  (let [{:keys [weighted-skewness weighted-kurtosis estimated-percentiles estimated-quartiles]} distribution
+        {:keys [weighted-mean weighted-std-dev data-range]} estimated-summary
+        {:keys [mode-bin peak-count concentration-top3 gap-count empty-bin-ratio bin-count]} structure
+        summary-str (str "**Estimated Distribution** (from " bin-count " bins, " total-count " total observations): "
+                         "mean≈" (format-number weighted-mean)
+                         ", std_dev≈" (format-number weighted-std-dev)
+                         ", range=" (format-number data-range))
+        p-str       (when (seq estimated-percentiles)
                       (str "**Estimated Percentiles**: "
-                           "P25≈" (format-number (get estimated_percentiles 25))
-                           ", P50≈" (format-number (get estimated_percentiles 50))
-                           ", P75≈" (format-number (get estimated_percentiles 75))
-                           ", P90≈" (format-number (get estimated_percentiles 90))))
-        iqr-str     (when estimated_quartiles
-                      (str "**Estimated IQR**: " (format-number (:iqr estimated_quartiles))
-                           " (Q1≈" (format-number (:q1 estimated_quartiles))
-                           " to Q3≈" (format-number (:q3 estimated_quartiles)) ")"))
-        shape-str   (when weighted_skewness
-                      (let [k-desc (when weighted_kurtosis (kurtosis-description weighted_kurtosis))]
-                        (str "**Distribution Shape**: " (skewness-description weighted_skewness)
+                           "P25≈" (format-number (get estimated-percentiles 25))
+                           ", P50≈" (format-number (get estimated-percentiles 50))
+                           ", P75≈" (format-number (get estimated-percentiles 75))
+                           ", P90≈" (format-number (get estimated-percentiles 90))))
+        iqr-str     (when estimated-quartiles
+                      (str "**Estimated IQR**: " (format-number (:iqr estimated-quartiles))
+                           " (Q1≈" (format-number (:q1 estimated-quartiles))
+                           " to Q3≈" (format-number (:q3 estimated-quartiles)) ")"))
+        shape-str   (when weighted-skewness
+                      (let [k-desc (when weighted-kurtosis (kurtosis-description weighted-kurtosis))]
+                        (str "**Distribution Shape**: " (skewness-description weighted-skewness)
                              (when k-desc (str ", " k-desc)))))
         struct-str  (str "**Structure**: "
-                         (when mode_bin (str "mode bin at " (format-number (first mode_bin))
-                                             " (count=" (format-number (second mode_bin)) ")"))
-                         (when (> peak_count 1) (str ", " peak_count " peaks (multimodal)"))
-                         ", top 3 bins contain " (format "%.0f%%" (* 100.0 concentration_top3)) " of data"
-                         (when (pos? gap_count) (str ", " gap_count " gap(s)"))
-                         (when (pos? empty_bin_ratio) (str ", " (format "%.0f%%" (* 100.0 empty_bin_ratio)) " empty bins")))
+                         (when mode-bin (str "mode bin at " (format-number (first mode-bin))
+                                             " (count=" (format-number (second mode-bin)) ")"))
+                         (when (> peak-count 1) (str ", " peak-count " peaks (multimodal)"))
+                         ", top 3 bins contain " (format "%.0f%%" (* 100.0 concentration-top3)) " of data"
+                         (when (pos? gap-count) (str ", " gap-count " gap(s)"))
+                         (when (pos? empty-bin-ratio) (str ", " (format "%.0f%%" (* 100.0 empty-bin-ratio)) " empty bins")))
         sections    [(str "## Series: " series-name)
-                     (when x_name (str "**X-axis**: " x_name))
-                     (when y_name (str "**Y-axis**: " y_name))
-                     (str "**Bins**: " data_points)
+                     (when x-name (str "**X-axis**: " x-name))
+                     (when y-name (str "**Y-axis**: " y-name))
+                     (str "**Bins**: " data-points)
                      (render-data-characteristics-note series-stats)
-                     (when (seq bin_data)
-                       (let [xs (mapv first bin_data)]
+                     (when (seq bin-data)
+                       (let [xs (mapv first bin-data)]
                          (render-axis-range "X-axis" {:min (apply min xs) :max (apply max xs)})))
                      summary-str p-str iqr-str shape-str struct-str
-                     (render-sample-data bin_data)]]
+                     (render-sample-data bin-data)]]
     (str/join "\n" (remove nil? sections))))
 
 ;;; ----------------------------------------- Main Representation ----------------------------------------------------
@@ -400,11 +400,11 @@
    `render-series-fn` — (fn [series-name series-stats] => string)
    `extra-sections`   — seq of additional section strings to insert after limits (may contain nils)"
   [{:keys [title display-type stats timeline-events]} type-label render-series-fn extra-sections]
-  (let [{:keys [series_count series correlations limits]} stats
+  (let [{:keys [series-count series correlations limits]} stats
         header          (str "# Chart Analysis\n"
                              (when title (str "## Chart: " title "\n"))
                              "**Type**: " type-label (when display-type (str " (" display-type ")")) "\n"
-                             "**Series Count**: " series_count)
+                             "**Series Count**: " series-count)
         limits-note     (when limits (render-limits-note limits))
         series-sections (str/join "\n\n"
                                   (for [[sname s] series]
@@ -421,12 +421,12 @@
   "Generate markdown representation for chart statistics.
   Dispatches based on chart type."
   [{:keys [stats] :as context} :- ::stats.types/generate-repr-context]
-  (case (:chart_type stats)
+  (case (:chart-type stats)
     :time-series  (generate-chart-representation context "Time Series" render-time-series
                                                  [(generate-temporal-context)])
     :categorical  (generate-chart-representation context "Categorical" render-categorical-series nil)
     :scatter      (generate-chart-representation context "Scatter" render-scatter-series nil)
     :histogram    (generate-chart-representation context "Histogram" render-histogram-series nil)
     (str "# Chart Analysis\n"
-         "**Type**: " (name (:chart_type stats)) "\n"
+         "**Type**: " (name (:chart-type stats)) "\n"
          "Statistics computation for this chart type is not yet implemented.")))

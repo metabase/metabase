@@ -1178,7 +1178,7 @@
                                           :query {:database (mt/id)
                                                   :type     "native"
                                                   :native   {:query "SELECT 1"}}}
-                                 :target {:type "table" :name "test_table"}})
+                                 :target {:type "table" :name (mt/random-name)}})
           (mt/user-http-request :rasta :put 403 (str "transform/" (:id transform))
                                 {:name "Updated"})
           (mt/user-http-request :rasta :delete 403 (str "transform/" (:id transform))))
@@ -1320,7 +1320,7 @@
                                                                         :type "native"
                                                                         :native {:query "SELECT 1"}}}
                                                        :target {:type "table"
-                                                                :name "test_table"}}
+                                                                :name (mt/random-name)}}
                            :model/TransformTag tag1 {:name "update-tag-1"}
                            :model/TransformTag tag2 {:name "update-tag-2"}
                            :model/TransformTag tag3 {:name "update-tag-3"}]

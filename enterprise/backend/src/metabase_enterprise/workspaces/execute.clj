@@ -94,14 +94,14 @@
          :keys [cols rows]}    (python-runner/execute-and-read-output!
                                 {:code          (:body remapped-source)
                                  :source-tables resolved-source-tables
-                                 :row-limit     preview-row-limit})
-        flatrows               (apply juxt (map (fn [c] (let [cname (:name c)] #(get % cname))) cols))]
+                                 :row-limit     preview-row-limit})]
     (if (= :succeeded (:status result))
-      {:status :succeeded
-       ;; return logs for debugging
-       :logs   (str/join "\n" (:logs result))
-       :data   {:cols cols
-                :rows (mapv flatrows rows)}}
+      (let [flatrows (apply juxt (map (fn [c] (let [cname (:name c)] #(get % cname))) cols))]
+        {:status :succeeded
+         ;; return logs for debugging
+         :logs   (str/join "\n" (:logs result))
+         :data   {:cols cols
+                  :rows (mapv flatrows rows)}})
       {:status  :failed
        :message (:message result)})))
 

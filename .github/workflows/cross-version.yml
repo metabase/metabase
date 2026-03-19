@@ -26,7 +26,7 @@ jobs:
   # Generate matrix for scheduled/PR runs
   generate-matrix:
     if: github.event_name != 'workflow_dispatch'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
@@ -49,7 +49,7 @@ jobs:
   test-matrix:
     if: github.event_name != 'workflow_dispatch'
     needs: generate-matrix
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     strategy:
       matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
@@ -78,7 +78,7 @@ jobs:
   # Manual test for workflow_dispatch
   test-manual:
     if: github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
 
     steps:

@@ -130,7 +130,7 @@
                       :source-incremental-strategy {:type "checkpoint"
                                                     :checkpoint-filter-field-id (checkpoint-filter-field)}}
                :python {:type "python"
-                        :source-tables [{:alias "transforms_products" :table_id (mt/id :transforms_products)}]
+                        :source-tables [(transforms.tu/source-table-entry "transforms_products" (mt/id :transforms_products))]
                         :body incremental-python-body
                         :source-incremental-strategy {:type "checkpoint"
                                                       :checkpoint-filter-field-id (checkpoint-filter-field)}})

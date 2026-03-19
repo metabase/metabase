@@ -217,7 +217,7 @@
   (mt/with-test-user :rasta
     (automagic-dashboards.test/with-rollback-only-transaction
       (doseq [[table cardinality] (map vector
-                                       (t2/select :model/Table :db_id (mt/id) {:order-by [[:name :asc]]})
+                                       (t2/select :model/Table :db_id (mt/id) :active true {:order-by [[:name :asc]]})
                                        [2 8 11 11 15 17 5 7])]
         (test-automagic-analysis table cardinality)))))
 

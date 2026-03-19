@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link/Link";
@@ -64,6 +65,7 @@ export const NotificationChannelsAddMenu = ({
   const hasAddedSlack = channelsSpec.slack?.configured && !!slackHandler;
   const canAddEmail = channelsSpec.email?.configured && !emailHandler;
   const canAddSlack = channelsSpec.slack?.configured && !slackHandler;
+
   const hasChannelsToAdd =
     canAddEmail || canAddSlack || notAddedHookChannels.length > 0;
   const hasAddedNoChannels = !notificationHandlers.length;
@@ -86,17 +88,31 @@ export const NotificationChannelsAddMenu = ({
         </Button>
       </Menu.Target>
       <Menu.Dropdown>
-        {channelsSpec.email?.configured && !emailHandler && (
-          <Menu.Item onClick={() => onAddChannel({ type: "channel/email" })}>
-            <Text className={CS.textList}>{t`Email`}</Text>
-          </Menu.Item>
-        )}
+        {match({ canAddEmail, hasAddedEmail, userCanAccessSettings })
+          .with({ canAddEmail: true }, () => (
+            <Menu.Item onClick={() => onAddChannel({ type: "channel/email" })}>
+              <Text className={CS.textList}>{t`Email`}</Text>
+            </Menu.Item>
+          ))
+          .with({ userCanAccessSettings: true, hasAddedEmail: false }, () => (
+            <MenuItemLink to="/admin/settings/email">
+              {t`Setup Email`}
+            </MenuItemLink>
+          ))
+          .otherwise(() => null)}
 
-        {channelsSpec.slack?.configured && !slackHandler && (
-          <Menu.Item onClick={() => onAddChannel({ type: "channel/slack" })}>
-            <Text className={CS.textList}>{t`Slack`}</Text>
-          </Menu.Item>
-        )}
+        {match({ canAddSlack, hasAddedSlack, userCanAccessSettings })
+          .with({ canAddSlack: true }, () => (
+            <Menu.Item onClick={() => onAddChannel({ type: "channel/slack" })}>
+              <Text className={CS.textList}>{t`Slack`}</Text>
+            </Menu.Item>
+          ))
+          .with({ userCanAccessSettings: true, hasAddedSlack: false }, () => (
+            <MenuItemLink to="/admin/settings/slack">
+              {t`Setup Slack`}
+            </MenuItemLink>
+          ))
+          .otherwise(() => null)}
 
         {notAddedHookChannels.length > 0 && (
           <>
@@ -122,16 +138,9 @@ export const NotificationChannelsAddMenu = ({
         )}
 
         {userCanAccessSettings && (
-          <Button
-            variant="subtle"
-            size="xs"
-            component={Link}
-            to="/admin/settings/notifications"
-            target="_blank"
-            pl="sm"
-          >
-            <Text size="sm" c="inherit">{t`Manage destination channels`}</Text>
-          </Button>
+          <MenuItemLink to="/admin/settings/webhooks">
+            {t`Manage webhooks`}
+          </MenuItemLink>
         )}
       </Menu.Dropdown>
     </Menu>
@@ -139,13 +148,34 @@ export const NotificationChannelsAddMenu = ({
 };
 
 const ManageDestinationsButton = () => (
-  <Button
-    variant="subtle"
-    p={0}
-    mt="-0.75rem"
-    mb="-0.75rem"
-    component={Link}
-    to="/admin/settings/notifications"
-    target="_blank"
-  >{t`Manage destination channels`}</Button>
+  <Text>
+    {t`Set up`}{" "}
+    <Link variant="brand" to="/admin/settings/email">{t`Email`}</Link>
+    {", "}
+    <Link variant="brand" to="/admin/settings/slack">{t`Slack`}</Link>
+    {`, ${t`or add`} `}
+    <Link variant="brand" to="/admin/settings/webhooks">{t`Webhooks`}</Link>
+  </Text>
+);
+
+const MenuItemLink = ({
+  to,
+  children,
+}: {
+  to: string;
+  children: React.ReactNode;
+}) => (
+  <Menu.Item py="0">
+    <Button
+      variant="subtle"
+      size="xs-compact"
+      component={Link}
+      to={to}
+      target="_blank"
+      pl="0"
+      fw="normal"
+    >
+      {children}
+    </Button>
+  </Menu.Item>
 );

@@ -114,6 +114,7 @@
   (let [timeout-seconds 20]
     (mdb/release-migration-locks! timeout-seconds))
   (perf/stop-monitoring!)
+  (shutdown-agents)
   (log/info "Metabase Shutdown COMPLETE"))
 
 (defenterprise ensure-audit-db-installed!
@@ -225,6 +226,7 @@
   (setting/migrate-encrypted-settings!)
   (database/check-health!)
   (startup/run-startup-logic!)
+  (setting/log-deprecated-env-var-usage!)
   (init-status/set-progress! 0.95)
   (task/start-scheduler!)
   (queue/start-listeners!)

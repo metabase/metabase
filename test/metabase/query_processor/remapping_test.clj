@@ -398,7 +398,7 @@
                     {:aggregation [[:sum [:field (mt/id :orders :total)]]]
                      :breakout    [[:field
                                     (mt/id :orders :product_id)
-                                    {:base-type    :type/Integer}]]
+                                    {:base-type :type/Integer}]]
                      :limit       3})]
         (is (= [["Aerodynamic Bronze Hat"     144    5753.63]
                 ["Aerodynamic Concrete Bench" 116   10035.81]
@@ -415,7 +415,7 @@
                            {:aggregation [[:sum [:field (mt/id :orders :total)]]]
                             :breakout    [[:field
                                            (mt/id :orders :product_id)
-                                           {:base-type    :type/Integer}]]
+                                           {:base-type :type/Integer}]]
                             :limit       3})
                          {:pivot_rows [0]
                           :pivot_cols []})]
