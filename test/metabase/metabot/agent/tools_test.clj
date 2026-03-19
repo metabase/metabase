@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.agent.tools :as agent-tools]
+   [metabase.metabot.agent.tools.shared :as shared]
    [metabase.metabot.tools.create-chart :as create-chart-tools]
    [metabase.metabot.tools.filters :as filter-tools]))
 
@@ -214,7 +215,7 @@
           test-tool-def {:tool-name "create_sql_query"
                          :doc "Test tool"
                          :schema [:=> [:cat [:map]] :any]
-                         :fn (fn [_] (reset! seen-memory @#'agent-tools/*memory-atom*) {:output "ok"})
+                         :fn (fn [_] (reset! seen-memory shared/*memory-atom*) {:output "ok"})
                          :prompt "test_tool.md"
                          :capabilities #{}}
           ;; For this test we use a raw map since we're testing wrap behavior with a map
