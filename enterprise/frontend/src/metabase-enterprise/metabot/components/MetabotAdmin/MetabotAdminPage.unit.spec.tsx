@@ -214,7 +214,7 @@ describe("MetabotAdminPage", () => {
 
     expect(
       fetchMock.callHistory.calls(
-        `path:/api/ee/metabot-v3/metabot/${FIXED_METABOT_IDS.EMBEDDED}/prompt-suggestions?limit=10&offset=0`,
+        `path:/api/metabot/metabot/${FIXED_METABOT_IDS.EMBEDDED}/prompt-suggestions?limit=10&offset=0`,
       ).length,
     ).toEqual(1); // should have loaded prompt suggestions
 
@@ -234,13 +234,13 @@ describe("MetabotAdminPage", () => {
 
     const puts = await findRequests("PUT");
     expect(puts[0].url).toMatch(
-      new RegExp(`/api/ee/metabot-v3/metabot/${FIXED_METABOT_IDS.EMBEDDED}`),
+      new RegExp(`/api/metabot/metabot/${FIXED_METABOT_IDS.EMBEDDED}`),
     );
     expect(puts[0].body).toEqual({ collection_id: 31 });
 
     expect(
       fetchMock.callHistory.calls(
-        `path:/api/ee/metabot-v3/metabot/${FIXED_METABOT_IDS.EMBEDDED}/prompt-suggestions?limit=10&offset=0`,
+        `path:/api/metabot/metabot/${FIXED_METABOT_IDS.EMBEDDED}/prompt-suggestions?limit=10&offset=0`,
       ).length,
     ).toEqual(2); // +1 refetch for DELETE, +1 for PUT
   });

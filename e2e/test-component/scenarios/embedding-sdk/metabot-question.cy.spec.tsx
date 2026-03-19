@@ -337,7 +337,7 @@ describe("scenarios > embedding-sdk > metabot-question > enablement", () => {
 const mockSuggestedPrompts = () => {
   cy.intercept(
     "GET",
-    "/api/ee/metabot-v3/metabot/2/prompt-suggestions?limit=3&sample=true",
+    "/api/metabot/metabot/2/prompt-suggestions?limit=3&sample=true",
     {
       statusCode: 200,
       body: {

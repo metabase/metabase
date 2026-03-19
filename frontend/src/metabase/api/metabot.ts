@@ -18,7 +18,7 @@ export const metabotApi = Api.injectEndpoints({
     listMetabots: builder.query<{ items: MetabotInfo[] }, void>({
       query: () => ({
         method: "GET",
-        url: "/api/ee/metabot-v3/metabot",
+        url: "/api/metabot/metabot",
       }),
       providesTags: (result) => [
         listTag("metabot"),
@@ -33,7 +33,7 @@ export const metabotApi = Api.injectEndpoints({
     >({
       query: ({ id, ...updates }) => ({
         method: "PUT",
-        url: `/api/ee/metabot-v3/metabot/${id}`,
+        url: `/api/metabot/metabot/${id}`,
         body: updates,
       }),
       invalidatesTags: (_, error, { id }) =>
@@ -49,7 +49,7 @@ export const metabotApi = Api.injectEndpoints({
     >({
       query: ({ metabot_id, ...params }) => ({
         method: "GET",
-        url: `/api/ee/metabot-v3/metabot/${metabot_id}/prompt-suggestions`,
+        url: `/api/metabot/metabot/${metabot_id}/prompt-suggestions`,
         params,
       }),
       providesTags: (_, __, { metabot_id }) => [
@@ -62,7 +62,7 @@ export const metabotApi = Api.injectEndpoints({
     >({
       query: ({ metabot_id, prompt_id }) => ({
         method: "DELETE",
-        url: `/api/ee/metabot-v3/metabot/${metabot_id}/prompt-suggestions/${prompt_id}`,
+        url: `/api/metabot/metabot/${metabot_id}/prompt-suggestions/${prompt_id}`,
       }),
       invalidatesTags: (_, error, { metabot_id }) =>
         invalidateTags(error, [
@@ -72,7 +72,7 @@ export const metabotApi = Api.injectEndpoints({
     regenerateSuggestedMetabotPrompts: builder.mutation<void, MetabotId>({
       query: (metabot_id) => ({
         method: "POST",
-        url: `/api/ee/metabot-v3/metabot/${metabot_id}/prompt-suggestions/regenerate`,
+        url: `/api/metabot/metabot/${metabot_id}/prompt-suggestions/regenerate`,
       }),
       invalidatesTags: (_, error, metabot_id) =>
         invalidateTags(error, [
@@ -85,14 +85,14 @@ export const metabotApi = Api.injectEndpoints({
     >({
       query: (params) => ({
         method: "POST",
-        url: "/api/ee/metabot-v3/document/native-generate-content",
+        url: "/api/metabot/document/native-generate-content",
         body: params,
       }),
     }),
     submitMetabotFeedback: builder.mutation<void, MetabotFeedback>({
       query: (params) => ({
         method: "POST",
-        url: "/api/ee/metabot-v3/feedback",
+        url: "/api/metabot/feedback",
         body: params,
       }),
     }),
@@ -102,7 +102,7 @@ export const metabotApi = Api.injectEndpoints({
     >({
       query: (settings) => ({
         method: "PUT",
-        url: "/api/ee/metabot-v3/slack/settings",
+        url: "/api/metabot/slack/settings",
         body: settings,
       }),
       invalidatesTags: ["session-properties"],

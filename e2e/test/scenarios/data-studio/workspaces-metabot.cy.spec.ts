@@ -32,7 +32,7 @@ describe.skip("scenarios > data studio > workspaces > metabot", () => {
     });
 
     cy.intercept("POST", "/api/ee/workspace").as("createWorkspace");
-    cy.intercept("POST", "/api/ee/metabot-v3/agent-streaming").as("agentReq");
+    cy.intercept("POST", "/api/metabot/agent-streaming").as("agentReq");
   });
 
   it("should be able to create a transform via metabot in workspace", () => {

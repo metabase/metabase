@@ -47,7 +47,7 @@ function setup() {
   );
 
   fetchMock.get(
-    `path:/api/ee/metabot-v3/metabot/${FIXED_METABOT_IDS.DEFAULT}/prompt-suggestions`,
+    `path:/api/metabot/metabot/${FIXED_METABOT_IDS.DEFAULT}/prompt-suggestions`,
     { prompts: [], offset: 0, limit: 3, total: 0 },
   );
 

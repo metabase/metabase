@@ -342,7 +342,7 @@ describe("metabot > ui", () => {
       await waitFor(async () => {
         expect(
           fetchMock.callHistory.calls(
-            `path:/api/ee/metabot-v3/metabot/1/prompt-suggestions`,
+            `path:/api/metabot/metabot/1/prompt-suggestions`,
           ),
         ).toHaveLength(1);
       });
@@ -352,7 +352,7 @@ describe("metabot > ui", () => {
       await waitFor(async () => {
         expect(
           fetchMock.callHistory.calls(
-            `path:/api/ee/metabot-v3/metabot/1/prompt-suggestions`,
+            `path:/api/metabot/metabot/1/prompt-suggestions`,
           ),
         ).toHaveLength(2);
       });

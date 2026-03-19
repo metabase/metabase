@@ -308,7 +308,7 @@ export const sendAgentRequest = createAsyncThunk<
 
       const response = await aiStreamingQuery(
         {
-          url: "/api/ee/metabot-v3/agent-streaming",
+          url: "/api/metabot/agent-streaming",
           // NOTE: StructuredDatasetQuery as part of the EntityInfo in MetabotChatContext
           // is upsetting the types, casting for now
           body: request as JSONValue,
@@ -420,7 +420,7 @@ export const cancelInflightAgentRequests = createAsyncThunk(
   "metabase/metabot/cancelInflightAgentRequests",
   (agentId: MetabotAgentId) => {
     findMatchingInflightAiStreamingRequests(
-      "/api/ee/metabot-v3/agent-streaming",
+      "/api/metabot/agent-streaming",
       agentId,
     ).forEach((req) => req.abortController.abort());
   },

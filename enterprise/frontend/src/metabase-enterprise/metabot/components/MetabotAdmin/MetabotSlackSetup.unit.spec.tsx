@@ -198,7 +198,7 @@ describe("MetabotSlackSetup", () => {
       expect(await saveButton()).toBeDisabled();
     });
 
-    it("submits settings via PUT /api/ee/metabot-v3/slack/settings", async () => {
+    it("submits settings via PUT /api/metabot/slack/settings", async () => {
       await setup();
 
       await userEvent.type(await clientIdInput(), "123.456");
@@ -210,7 +210,7 @@ describe("MetabotSlackSetup", () => {
       await waitFor(async () => {
         const puts = await findRequests("PUT");
         const req = puts.find((r) =>
-          r.url.includes("/api/ee/metabot-v3/slack/settings"),
+          r.url.includes("/api/metabot/slack/settings"),
         );
         expect(req?.body).toEqual({
           "slack-connect-client-id": "123.456",
@@ -281,7 +281,7 @@ describe("MetabotSlackSetup", () => {
       await waitFor(async () => {
         const puts = await findRequests("PUT");
         const req = puts.find((r) =>
-          r.url.includes("/api/ee/metabot-v3/slack/settings"),
+          r.url.includes("/api/metabot/slack/settings"),
         );
         expect(req?.body).toEqual({
           "slack-connect-client-id": null,

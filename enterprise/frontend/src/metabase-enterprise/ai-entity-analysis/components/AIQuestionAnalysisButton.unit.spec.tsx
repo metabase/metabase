@@ -11,7 +11,7 @@ import { createMockState } from "metabase-types/store/mocks";
 import { AIQuestionAnalysisButton } from "./AIQuestionAnalysisButton";
 
 const mockAgentEndpoint = () =>
-  mockStreamedEndpoint("/api/ee/metabot-v3/agent-streaming", {
+  mockStreamedEndpoint("/api/metabot/agent-streaming", {
     textChunks: [
       `0:"Here is an analysis of the chart."`,
       `d:{"finishReason":"stop","usage":{"promptTokens":100,"completionTokens":10}}`,

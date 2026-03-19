@@ -36,7 +36,7 @@ import { getMetabotInitialState } from "../state/reducer-utils";
 export { createMockReadableStream, createPauses };
 
 export const mockAgentEndpoint = (params: MockStreamedEndpointParams) =>
-  mockStreamedEndpoint("/api/ee/metabot-v3/agent-streaming", params);
+  mockStreamedEndpoint("/api/metabot/agent-streaming", params);
 
 export const chat = () => screen.findByTestId("metabot-chat");
 export const chatMessages = () =>
@@ -75,7 +75,7 @@ export const thumbsUp = (message: HTMLElement) =>
 export const thumbsDown = (message: HTMLElement) =>
   within(message).findByTestId("metabot-chat-message-thumbs-down");
 export const mockFeedbackEndpoint = () => {
-  const path = "path:/api/ee/metabot-v3/feedback";
+  const path = "path:/api/metabot/feedback";
   fetchMock.post(path, 204);
   return {
     calls: () => fetchMock.callHistory.calls(path),
@@ -170,7 +170,7 @@ export function setup(
   } = options || {};
 
   fetchMock.get(
-    `path:/api/ee/metabot-v3/metabot/${FIXED_METABOT_IDS.DEFAULT}/prompt-suggestions`,
+    `path:/api/metabot/metabot/${FIXED_METABOT_IDS.DEFAULT}/prompt-suggestions`,
     { prompts: promptSuggestions, offset: 0, limit: 3, total: 3 },
   );
   setupDatabaseListEndpoint([]);
