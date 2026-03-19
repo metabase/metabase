@@ -132,9 +132,9 @@ export const useRowHeights = <TData extends RowData, TValue>({
 
   const remountElements = useCallback(() => {
     for (const elements of elementsByRowIndex.current.values()) {
-      for (const el of elements) {
-        if (el.isConnected) {
-          resizeObserverRef.current?.observe(el);
+      for (const element of elements) {
+        if (element.isConnected) {
+          resizeObserverRef.current?.observe(element);
         }
       }
     }
@@ -142,10 +142,10 @@ export const useRowHeights = <TData extends RowData, TValue>({
 
   const unwatchUnmountedElements = useCallback(() => {
     for (const [index, elements] of elementsByRowIndex.current) {
-      for (const el of elements) {
-        if (!el.isConnected) {
-          resizeObserverRef.current?.unobserve(el);
-          elements.delete(el);
+      for (const element of elements) {
+        if (!element.isConnected) {
+          resizeObserverRef.current?.unobserve(element);
+          elements.delete(element);
         }
       }
       if (elements.size === 0) {
