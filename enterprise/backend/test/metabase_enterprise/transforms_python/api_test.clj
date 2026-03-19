@@ -98,8 +98,7 @@
                    "  print(\"out2\")"
                    "  print(\"err2\", file=sys.stderr)"
                    "  return pd.DataFrame({'x': [42, 43]})"]
-          table-id (t2/select-one-pk :model/Table :db_id (mt/id))
-          body    {:source_tables [(transforms.tu/source-table-entry "test" table-id)]
+          body    {:source_tables [(transforms.tu/default-source-table-entry)]
                    :code (str/join "\n" program)}
           {:keys [error logs output]} (mt/user-http-request :crowberto :post 200 "ee/transforms-python/test-run" body)]
       (is (nil? error))
@@ -111,7 +110,7 @@
                            user          :crowberto
                            features      #{:transforms :transforms-python}}}]
   (let [source-tables (or source-tables
-                          [(transforms.tu/source-table-entry "test" (t2/select-one-pk :model/Table :db_id (mt/id) :active true))])
+                          [(transforms.tu/default-source-table-entry)])
         body (merge {:source_tables source-tables, :code (str/join "\n" program)} extra-opts)]
     (mt/with-premium-features features
       (mt/user-http-request-full-response user :post "ee/transforms-python/test-run" body))))
