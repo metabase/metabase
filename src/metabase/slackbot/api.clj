@@ -394,7 +394,6 @@
   ack-msg)
 
 ;; ----------------------- ROUTES --------------------------
-;; NOTE: make sure to do premium-features/enable-metabot-v3? checks if you add new endpoints
 
 (api.macros/defendpoint :post "/events" :- slackbot.events/SlackEventsResponse
   "Respond to activities in Slack"
@@ -418,7 +417,7 @@
     ack-msg))
 
 (def SlackBotSettingsRequest
-  "Malli schema for the request body of PUT /api/ee/metabot-v3/slack/settings.
+  "Malli schema for the request body of PUT /api/metabot/slack/settings.
    All credential fields must be provided together (either all set or all nil)."
   [:map
    [:slack-connect-client-id      [:maybe ms/NonBlankString]]
@@ -426,7 +425,7 @@
    [:metabot-slack-signing-secret [:maybe ms/NonBlankString]]])
 
 (def SlackBotSettingsResponse
-  "Malli schema for the response of PUT /api/ee/metabot-v3/slack/settings."
+  "Malli schema for the response of PUT /api/metabot/slack/settings."
   [:map
    [:ok :boolean]])
 
@@ -447,10 +446,6 @@
         all-unset? (and (nil? slack-connect-client-id)
                         (nil? slack-connect-client-secret)
                         (nil? metabot-slack-signing-secret))]
-    ;; require metabot-v3 feature only when setting values (clearing is always allowed)
-    (when (not all-unset?)
-      (throw (ex-info (tru "Metabot feature is not enabled.")
-                      {:status-code 402})))
     ;; all values must be set together or unset together
     (when-not (or all-set? all-unset?)
       (throw (ex-info (tru "Must provide client id, client secret and signing secret together.")
@@ -611,7 +606,7 @@
   {:status 200 :body ""})
 
 (def ^{:arglists '([request respond raise])} routes
-  "`/api/ee/metabot-v3/slack` routes."
+  "`/api/metabot/slack` routes."
   (api.macros/ns-handler *ns*))
 
 ;; -------------- LOCAL DEV SETUP -------------------
