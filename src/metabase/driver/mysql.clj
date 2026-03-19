@@ -51,8 +51,6 @@
     ZonedDateTime)
    (java.time.format DateTimeFormatter)))
 
-; dirt
-
 (set! *warn-on-reflection* true)
 
 (comment
