@@ -1,5 +1,5 @@
 (ns metabase.driver.sql-mbql5
-  "Driver for opt in mbql 5 compilation."
+  "An abstract driver to allow for opt-in MBQL5 compilation."
   (:refer-clojure :exclude [mapv get-in])
   (:require
    [honey.sql.helpers :as sql.helpers]
@@ -103,6 +103,8 @@
         [(sql.qp/->honeysql driver aggregation) direction]))
     [(sql.qp/->honeysql driver expr) direction]))
 
+;; TODO(rileythomp, 2026-03-19): Check if we actually need the options here and below.
+;; If not, update the `:sql` implementations to use `make-clause`
 (defmethod sql.qp/->honeysql [:sql-mbql5 :cum-count]
   [driver [_ opts expr-or-nil]]
   (sql.qp/cum-count->honeysql driver expr-or-nil opts))

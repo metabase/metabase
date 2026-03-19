@@ -8,7 +8,7 @@
   in [[metabase.query-processor.parameters.dates]], we should remove the version here to encourage migration to that
   namespace."
   {:deprecated "0.57.0"}
-  (:refer-clojure :exclude [every? some get-in])
+  (:refer-clojure :exclude [every? get-in])
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
@@ -41,11 +41,10 @@
   [clause unit]
   ;; legacy usages -- use Lib in new code going forward
   #_{:clj-kondo/ignore [:deprecated-var]}
-  (if-not (mbql.u/is-clause? :field clause)
-    clause
-    (if (:lib/uuid (second clause)) ;; mbql5
-      (lib/with-temporal-bucket clause unit)
-      (mbql.u/with-temporal-unit clause unit))))
+  (cond
+    (not (mbql.u/is-clause? :field clause)) clause
+    (:lib/uuid (second clause)) (lib/with-temporal-bucket clause unit)
+    :else (mbql.u/with-temporal-unit clause unit)))
 
 (def ^:private relative-date-string-decoders
   [{:parser #(= % "today")
@@ -214,7 +213,7 @@
   "Takes a string description of a *date* (not datetime) range such as 'lastmonth' or '2016-07-15~2016-08-6', or
   an absolute date *or datetime* string, and returns a corresponding MBQL filter clause for a given field reference."
   [date-string :- :string
-   ; field       :- [:or ::lib.schema.id/field :metabase.legacy-mbql.schema/FieldOrExpressionRef]
+   ; field       :- [:or ::lib.schema.id/field ::mbql.s/FieldOrExpressionRef]
    field]
   #_{:clj-kondo/ignore [:deprecated-var]}
   (or (#'qp.parameters.dates/execute-decoders all-date-string-decoders :filter (mbql.u/wrap-field-id-if-needed field) date-string)

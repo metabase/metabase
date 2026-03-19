@@ -379,8 +379,7 @@
 
 (defmethod make-clause-with-opts :sql
   [_driver tag opts & args]
-  (cond-> (into [tag] args)
-    opts (conj opts)))
+  (cond-> (into [tag] args) opts (conj opts)))
 
 (defn make-clause
   "Return an mbql clause given a tag and arguments"
@@ -721,7 +720,7 @@
       (->honeysql driver value))))
 
 (defn- literal-text-value?
-  [_driver clause]
+  [clause]
   (let [[value base-type effective-type] (driver-api/match-lite clause
                                            [_ (opts :guard :lib/uuid) value] ;; mbql5
                                            [value (:base-type opts) (:effective-type opts)]
@@ -753,7 +752,7 @@
     (->honeysql driver (cond (= source-table driver-api/qp.add.source)
                              (apply h2x/identifier :field source-query-alias source-alias)
 
-                             (literal-text-value? driver expression-definition)
+                             (literal-text-value? expression-definition)
                              (make-clause driver ::expression-literal-text-value expression-definition)
 
                              ;; Handle raw string literals (not wrapped in :value) - needed for
@@ -763,6 +762,8 @@
                              ;; which some databases (like H2) can't handle.
                              (string? expression-definition)
                              (make-clause driver ::expression-literal-text-value
+                                          ;; TODO(rileythomp, 2026-03-19): Should this be `:base-type` for `:sql-mbql5`?
+                                          ;; Or should `make-clause-with-opts :sql-mbql5` convert the option keys?
                                           (make-clause-with-opts driver :value {:base_type :type/Text} expression-definition))
 
                              :else
@@ -1079,20 +1080,22 @@
   "Order by the first breakout, then partition by all the other ones. See #42003 and
   https://metaboat.slack.com/archives/C05MPF0TM3L/p1714084449574689 for more info."
   [driver inner-query]
-  (let [breakouts (into []
-                        (remove
-                         (partial remapped-breakout? driver))
-                        (:breakout inner-query))
-        group-bys (:group-by (apply-top-level-clause driver :breakout {} inner-query))
+  (let [breakouts            (into []
+                                   (remove
+                                    (partial remapped-breakout? driver))
+                                   (:breakout inner-query))
+        group-bys            (:group-by (apply-top-level-clause driver :breakout {} inner-query))
         finest-temp-breakout (finest-temporal-breakout-idx driver breakouts)
-        partition-exprs (when (> (count breakouts) 1)
-                          (if finest-temp-breakout
-                            (m/remove-nth finest-temp-breakout group-bys)
-                            (butlast group-bys)))
-        order-bys (over-order-bys driver (:aggregation inner-query)
-                                  (remove
-                                   (partial remapped-order-by? driver)
-                                   (:order-by inner-query)))]
+        partition-exprs      (when (> (count breakouts) 1)
+                               (if finest-temp-breakout
+                                 (m/remove-nth finest-temp-breakout group-bys)
+                                 (butlast group-bys)))
+        order-bys            (remove
+                              (partial remapped-order-by? driver)
+                              (:order-by inner-query))
+        order-bys            (over-order-bys driver
+                                             (:aggregation inner-query)
+                                             order-bys)]
     (merge
      (when (seq partition-exprs)
        {:partition-by (mapv (fn [expr]
@@ -1175,6 +1178,8 @@
   [driver expr-or-nil opts]
   ;; a cumulative count with no breakouts doesn't really mean anything, just compile it as a normal count.
   (if (empty? (:breakout *inner-query*))
+    ;; TODO(rileythomp, 2026-03-19): Determine if we need the opts here or if we can just
+    ;; use `make-clause`. Simplify here and cum-sum below accordingly if so.
     (->honeysql driver (make-clause-with-opts driver :count opts expr-or-nil))
     (cumulative-aggregation-over-rows
      driver
