@@ -19,12 +19,11 @@ import MetabaseSettings from "metabase/lib/settings";
 import { Button, Flex, Modal, Text, TextInput } from "metabase/ui";
 import type { User } from "metabase-types/api";
 
-import { clearTemporaryPassword, storeTemporaryPassword } from "../people";
+import { clearTemporaryPassword } from "../people";
 import { getUserTemporaryPassword } from "../selectors";
 
-interface UserPasswordResetModalProps {
+interface UserPasswordResetModalInnerProps {
   clearTemporaryPassword: () => void;
-  storeTemporaryPassword: (id: number, password: string) => void;
   onClose: () => void;
   user: User;
   emailConfigured: boolean;
@@ -33,12 +32,11 @@ interface UserPasswordResetModalProps {
 
 const UserPasswordResetModalInner = ({
   clearTemporaryPassword,
-  storeTemporaryPassword,
   emailConfigured,
   onClose,
   temporaryPassword,
   user,
-}: UserPasswordResetModalProps) => {
+}: UserPasswordResetModalInnerProps) => {
   useUnmount(() => {
     clearTemporaryPassword();
   });
@@ -63,7 +61,6 @@ const UserPasswordResetModalInner = ({
     } else {
       const password = generatePassword();
       await updatePassword({ id: user.id, password }).unwrap();
-      storeTemporaryPassword(user.id, password);
     }
   };
 
@@ -166,9 +163,6 @@ export const UserPasswordResetModal = (props: UserPasswordResetModalProps) => {
           {...props}
           clearTemporaryPassword={() =>
             dispatch(clearTemporaryPassword(user.id))
-          }
-          storeTemporaryPassword={(id, password) =>
-            dispatch(storeTemporaryPassword({ id, password }))
           }
           user={user}
           emailConfigured={MetabaseSettings.isEmailConfigured()}
