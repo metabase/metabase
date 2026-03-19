@@ -4,6 +4,7 @@ import { assoc, chain, merge, updateIn } from "icepick";
 import { Actions } from "metabase/entities/actions";
 import { Questions } from "metabase/entities/questions";
 import { combineReducers } from "metabase/lib/redux";
+import { initialize } from "metabase/redux/dashboard";
 import type { Card, WritebackAction } from "metabase-types/api";
 
 import {
@@ -16,7 +17,6 @@ import {
   addCardToDash,
   addManyCardsToDash,
   fetchDashboard,
-  initialize,
   markNewCardSeen,
   onReplaceAllDashCardVisualizationSettings,
   onUpdateDashCardColumnSettings,

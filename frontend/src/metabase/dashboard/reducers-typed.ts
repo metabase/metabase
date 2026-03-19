@@ -11,10 +11,9 @@ import {
 import { Dashboards } from "metabase/entities/dashboards";
 import { Questions } from "metabase/entities/questions";
 import { handleActions } from "metabase/lib/redux";
-import {
-  NAVIGATE_BACK_TO_DASHBOARD,
-  REVERT_TO_REVISION,
-} from "metabase/query_builder/actions";
+import { REVERT_TO_REVISION } from "metabase/query_builder/actions";
+import { INITIALIZE, RESET, initialize, reset } from "metabase/redux/dashboard";
+import { NAVIGATE_BACK_TO_DASHBOARD } from "metabase/redux/query-builder";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Card,
@@ -33,9 +32,7 @@ import type {
 import {
   CLOSE_SIDEBAR,
   HIDE_ADD_PARAMETER_POPOVER,
-  INITIALIZE,
   REMOVE_PARAMETER,
-  RESET,
   RESET_PARAMETERS,
   SET_EDITING_DASHBOARD,
   SET_PARAMETER_VALUE,
@@ -51,9 +48,7 @@ import {
   fetchCardDataAction,
   fetchDashboard,
   fetchDashboardCardDataAction,
-  initialize,
   markCardAsSlow,
-  reset,
   setDashboardAttributes,
   setDocumentTitle,
   setShowLoadingCompleteFavicon,

@@ -14,13 +14,11 @@ import {
   fetchDashboard,
   fetchDashboardCardData,
   hideAddParameterPopover,
-  initialize,
   moveDashboardToCollection,
   onReplaceAllDashCardVisualizationSettings,
   onUpdateDashCardColumnSettings,
   onUpdateDashCardVisualizationSettings,
   removeParameter,
-  reset,
   setArchivedDashboard,
   setDashboardAttributes,
   setEditingDashboard,
@@ -55,6 +53,7 @@ import {
   undoDeleteTab,
 } from "metabase/dashboard/actions/tabs";
 import { connect } from "metabase/lib/redux";
+import { initialize, reset } from "metabase/redux/dashboard";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import {
   canManageSubscriptions,

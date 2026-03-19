@@ -25,6 +25,7 @@ export interface AppBarProps {
   isAppSwitcherVisible?: boolean;
   isCollectionPathVisible?: boolean;
   isQuestionLineageVisible?: boolean;
+  onZoomInRow?: (opts: { objectId: number | string }) => void;
   onToggleNavbar: () => void;
   onCloseNavbar: () => void;
 }

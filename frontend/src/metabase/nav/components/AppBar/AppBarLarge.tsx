@@ -35,6 +35,7 @@ export interface AppBarLargeProps {
   isAppSwitcherVisible?: boolean;
   isCollectionPathVisible?: boolean;
   isQuestionLineageVisible?: boolean;
+  onZoomInRow?: (opts: { objectId: number | string }) => void;
   onToggleNavbar: () => void;
 }
 
@@ -53,6 +54,7 @@ const AppBarLarge = ({
   isAppSwitcherVisible,
   isCollectionPathVisible,
   isQuestionLineageVisible,
+  onZoomInRow,
   onToggleNavbar,
 }: AppBarLargeProps): JSX.Element => {
   const isNavBarVisible = isNavBarOpen && isNavBarEnabled;
@@ -110,7 +112,11 @@ const AppBarLarge = ({
           flex="1 1 auto"
         >
           {isSearchVisible &&
-            (isEmbeddingIframe ? <SearchBar /> : <SearchButton mr="md" />)}
+            (isEmbeddingIframe ? (
+              <SearchBar onZoomInRow={onZoomInRow} />
+            ) : (
+              <SearchButton mr="md" />
+            ))}
           {isNewButtonVisible && <NewItemButton collectionId={collectionId} />}
           {<MetabotAppBarButton />}
           {isAppSwitcherVisible && (

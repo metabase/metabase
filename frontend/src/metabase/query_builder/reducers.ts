@@ -11,7 +11,7 @@ import {
 import {
   EDIT_QUESTION,
   NAVIGATE_TO_NEW_CARD,
-} from "metabase/dashboard/actions";
+} from "metabase/redux/dashboard";
 import { TimelineEvents } from "metabase/entities/timeline-events";
 import type { Deferred } from "metabase/lib/promise";
 import { copy } from "metabase/lib/utils";
@@ -35,16 +35,23 @@ import type {
 } from "metabase-types/store";
 
 import {
-  API_CREATE_QUESTION,
   API_UPDATE_QUESTION,
-  CANCEL_QUERY,
   CANCEL_QUESTION_CHANGES,
+  CLOSE_QB,
+  INITIALIZE_QB,
+  QUERY_COMPLETED,
+  RESET_QB,
+  SOFT_RELOAD_CARD,
+} from "metabase/redux/query-builder";
+
+import {
+  API_CREATE_QUESTION,
+  CANCEL_QUERY,
   CLEAR_OBJECT_DETAIL_FK_REFERENCES,
   CLEAR_QUERY_RESULT,
   CLOSE_AI_QUESTION_ANALYSIS_SIDEBAR,
   CLOSE_CHART_SETTINGS,
   CLOSE_CHART_TYPE,
-  CLOSE_QB,
   CLOSE_QB_NEWB_MODAL,
   CLOSE_QUESTION_INFO,
   CLOSE_QUESTION_SETTINGS,
@@ -53,7 +60,6 @@ import {
   DESELECT_TIMELINE_EVENTS,
   EDIT_SUMMARY,
   HIDE_TIMELINE_EVENTS,
-  INITIALIZE_QB,
   LOAD_OBJECT_DETAIL_FK_REFERENCES,
   ON_CLOSE_SUMMARY,
   OPEN_AI_QUESTION_ANALYSIS_SIDEBAR,
@@ -63,10 +69,8 @@ import {
   OPEN_QUESTION_INFO,
   OPEN_QUESTION_SETTINGS,
   OPEN_TIMELINES,
-  QUERY_COMPLETED,
   QUERY_ERRORED,
   RELOAD_CARD,
-  RESET_QB,
   RESET_ROW_ZOOM,
   RESET_UI_CONTROLS,
   RUN_QUERY,
@@ -86,7 +90,6 @@ import {
   SET_UI_CONTROLS,
   SHOW_CHART_SETTINGS,
   SHOW_TIMELINE_EVENTS,
-  SOFT_RELOAD_CARD,
   TOGGLE_DATA_REFERENCE,
   TOGGLE_SNIPPET_SIDEBAR,
   TOGGLE_TEMPLATE_TAGS_EDITOR,

@@ -22,6 +22,10 @@ import {
   setParameterName as setParamName,
   setParameterType as setParamType,
 } from "metabase/parameters/utils/dashboards";
+import {
+  SET_PARAMETER_VALUES,
+  setParameterValues,
+} from "metabase/redux/dashboard";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Text } from "metabase/ui";
@@ -837,8 +841,7 @@ export const setParameterValue = createThunkAction(
   },
 );
 
-export const SET_PARAMETER_VALUES = "metabase/dashboard/SET_PARAMETER_VALUES";
-export const setParameterValues = createAction(SET_PARAMETER_VALUES);
+export { SET_PARAMETER_VALUES, setParameterValues };
 
 // Auto-apply filters
 const APPLY_DRAFT_PARAMETER_VALUES =
@@ -1037,9 +1040,10 @@ export const setParameterIndex = createThunkAction(
   },
 );
 
-export const SHOW_ADD_PARAMETER_POPOVER =
-  "metabase/dashboard/SHOW_ADD_PARAMETER_POPOVER";
-export const showAddParameterPopover = createAction(SHOW_ADD_PARAMETER_POPOVER);
+export {
+  SHOW_ADD_PARAMETER_POPOVER,
+  showAddParameterPopover,
+} from "metabase/redux/dashboard";
 
 export const HIDE_ADD_PARAMETER_POPOVER =
   "metabase/dashboard/HIDE_ADD_PARAMETER_POPOVER";

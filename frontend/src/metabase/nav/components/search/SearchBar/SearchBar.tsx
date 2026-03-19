@@ -19,7 +19,6 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { modelToUrl } from "metabase/lib/urls";
 import { RecentsList } from "metabase/nav/components/search/RecentsList";
 import { SearchResultsDropdown } from "metabase/nav/components/search/SearchResultsDropdown";
-import { zoomInRow } from "metabase/query_builder/actions";
 import type { SearchAwareLocation, WrappedResult } from "metabase/search/types";
 import {
   getFiltersFromLocation,
@@ -48,11 +47,17 @@ type RouterProps = {
 type OwnProps = {
   onSearchActive?: () => void;
   onSearchInactive?: () => void;
+  onZoomInRow?: (opts: { objectId: number | string }) => void;
 };
 
 type Props = RouterProps & OwnProps;
 
-function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
+function SearchBarView({
+  location,
+  onSearchActive,
+  onSearchInactive,
+  onZoomInRow,
+}: Props) {
   const isTypeaheadEnabled = useSelector((state) =>
     getSetting(state, "search-typeahead-enabled"),
   );
@@ -97,12 +102,12 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
       // if we're already looking at the right model, don't navigate, just update the zoomed in row
       const isSameModel = result?.model_id === location?.state?.cardId;
       if (isSameModel && result.model === "indexed-entity") {
-        dispatch(zoomInRow({ objectId: result.id }));
+        onZoomInRow?.({ objectId: result.id });
       } else {
         onChangeLocation(modelToUrl(result));
       }
     },
-    [dispatch, onChangeLocation, location?.state?.cardId],
+    [onZoomInRow, onChangeLocation, location?.state?.cardId],
   );
 
   useOnClickOutside(container, setInactive);

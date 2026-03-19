@@ -1,0 +1,139 @@
+/**
+ * Shared QB action type constants and simple action creators.
+ *
+ * These are extracted from query_builder/actions/* so that shared-tier modules
+ * (querying, visualizations, parameters, entities, etc.) can import them
+ * without depending on the feature-tier query_builder module.
+ */
+
+import { createAction } from "redux-actions";
+
+import { createThunkAction } from "metabase/lib/redux";
+import { checkNotNull } from "metabase/lib/types";
+import { UserApi } from "metabase/services";
+import type { ParameterId, ParameterValueOrArray } from "metabase-types/api";
+
+// ── from actions/ui.ts ─────────────────────────────────────────────────
+
+export const SET_UI_CONTROLS = "metabase/qb/SET_UI_CONTROLS";
+export const setUIControls = createAction(SET_UI_CONTROLS);
+
+export const RESET_UI_CONTROLS = "metabase/qb/RESET_UI_CONTROLS";
+export const resetUIControls = createAction(RESET_UI_CONTROLS);
+
+export const NAVIGATE_BACK_TO_DASHBOARD =
+  "metabase/qb/NAVIGATE_BACK_TO_DASHBOARD";
+export const navigateBackToDashboard = createAction(NAVIGATE_BACK_TO_DASHBOARD);
+
+export const CLOSE_QB = "metabase/qb/CLOSE_QB";
+export const closeQB = createAction(CLOSE_QB);
+
+export const SHOW_CHART_SETTINGS = "metabase/qb/SHOW_CHART_SETTINGS";
+export const showChartSettings = createAction(SHOW_CHART_SETTINGS);
+
+export const CANCEL_QUESTION_CHANGES = "metabase/qb/CANCEL_QUESTION_CHANGES";
+
+export const onEditSummary = createAction("metabase/qb/EDIT_SUMMARY");
+export const onCloseSummary = createAction("metabase/qb/CLOSE_SUMMARY");
+
+export const onOpenAIQuestionAnalysisSidebar = createAction(
+  "metabase/qb/OPEN_AI_QUESTION_ANALYSIS_SIDEBAR",
+);
+export const onCloseAIQuestionAnalysisSidebar = createAction(
+  "metabase/qb/CLOSE_AI_QUESTION_ANALYSIS_SIDEBAR",
+);
+
+export const onOpenChartSettings = createAction(
+  "metabase/qb/OPEN_CHART_SETTINGS",
+);
+export const onCloseChartSettings = createAction(
+  "metabase/qb/CLOSE_CHART_SETTINGS",
+);
+export const onOpenChartType = createAction("metabase/qb/OPEN_CHART_TYPE");
+
+export const onOpenQuestionInfo = createAction(
+  "metabase/qb/OPEN_QUESTION_INFO",
+);
+export const onCloseQuestionInfo = createAction(
+  "metabase/qb/CLOSE_QUESTION_INFO",
+);
+
+export const onOpenQuestionSettings = createAction(
+  "metabase/qb/OPEN_QUESTION_SETTINGS",
+);
+export const onCloseQuestionSettings = createAction(
+  "metabase/qb/CLOSE_QUESTION_SETTINGS",
+);
+
+export const onOpenTimelines = createAction("metabase/qb/OPEN_TIMELINES");
+export const onCloseTimelines = createAction("metabase/qb/CLOSE_TIMELINES");
+
+export const onCloseChartType = createAction("metabase/qb/CLOSE_CHART_TYPE");
+export const onCloseSidebars = createAction("metabase/qb/CLOSE_SIDEBARS");
+
+// ── from actions/querying.ts ───────────────────────────────────────────
+
+export const CLEAR_QUERY_RESULT = "metabase/query_builder/CLEAR_QUERY_RESULT";
+export const clearQueryResult = createAction(CLEAR_QUERY_RESULT);
+
+export const SET_DOCUMENT_TITLE = "metabase/qb/SET_DOCUMENT_TITLE";
+export const SET_SHOW_LOADING_COMPLETE_FAVICON =
+  "metabase/qb/SET_SHOW_LOADING_COMPLETE_FAVICON";
+export const SET_DOCUMENT_TITLE_TIMEOUT_ID =
+  "metabase/qb/SET_DOCUMENT_TITLE_TIMEOUT_ID";
+
+export const RUN_QUERY = "metabase/qb/RUN_QUERY";
+export const QUERY_COMPLETED = "metabase/qb/QUERY_COMPLETED";
+export const QUERY_ERRORED = "metabase/qb/QUERY_ERRORED";
+export const CANCEL_QUERY = "metabase/qb/CANCEL_QUERY";
+
+// ── from actions/core/types.ts ─────────────────────────────────────────
+
+export const SOFT_RELOAD_CARD = "metabase/qb/SOFT_RELOAD_CARD";
+export const API_UPDATE_QUESTION = "metabase/qb/API_UPDATE_QUESTION";
+
+// ── from actions/core/core.ts ──────────────────────────────────────────
+
+export const RESET_QB = "metabase/qb/RESET_QB";
+export const resetQB = createAction(RESET_QB);
+
+export const SET_PARAMETER_VALUE = "metabase/qb/SET_PARAMETER_VALUE";
+export const setParameterValue = createAction(
+  SET_PARAMETER_VALUE,
+  (parameterId: ParameterId, value: ParameterValueOrArray | null) => {
+    return { id: parameterId, value: normalizeValue(value) };
+  },
+);
+
+function normalizeValue(
+  value: ParameterValueOrArray | null,
+): ParameterValueOrArray | null {
+  if (value === "") {
+    return null;
+  }
+
+  if (Array.isArray(value) && value.length === 0) {
+    return null;
+  }
+
+  return value;
+}
+
+// ── from actions/core/initializeQB.ts ──────────────────────────────────
+
+export const INITIALIZE_QB = "metabase/qb/INITIALIZE_QB";
+
+// ── from actions/zoom.ts ────────────────────────────────────────────────
+
+export const ZOOM_IN_ROW = "metabase/qb/ZOOM_IN_ROW";
+export const RESET_ROW_ZOOM = "metabase/qb/RESET_ROW_ZOOM";
+
+// ── from actions/modal.ts ──────────────────────────────────────────────
+
+export const CLOSE_QB_NEWB_MODAL = "metabase/qb/CLOSE_QB_NEWB_MODAL";
+export const closeQbNewbModal = createThunkAction(CLOSE_QB_NEWB_MODAL, () => {
+  return async (_dispatch, getState) => {
+    const { currentUser } = getState();
+    await UserApi.update_qbnewb({ id: checkNotNull(currentUser).id });
+  };
+});

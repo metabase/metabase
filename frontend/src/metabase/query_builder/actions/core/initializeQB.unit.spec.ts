@@ -9,6 +9,7 @@ import { checkNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import * as questionActions from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
+import * as sharedQB from "metabase/redux/query-builder";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
@@ -43,7 +44,6 @@ import { createMockState } from "metabase-types/store/mocks";
 import * as querying from "../querying";
 
 import * as cardActions from "./card";
-import * as core from "./core";
 import { initializeQB } from "./initializeQB";
 
 type DisplayLock = { displayIsLocked?: boolean };
@@ -240,7 +240,7 @@ describe("QB Actions > initializeQB", () => {
 
       describe(questionType, () => {
         it("resets QB state before doing anything", async () => {
-          const resetQBSpy = jest.spyOn(core, "resetQB");
+          const resetQBSpy = jest.spyOn(sharedQB, "resetQB");
           await setup({ card });
           expect(resetQBSpy).toHaveBeenCalledTimes(1);
         });
