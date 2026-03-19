@@ -260,7 +260,7 @@ export const useDataGridInstance = <TData, TValue>({
       pinnedColumnsCount: pinnedLeftColumnsCount + utilityColumns.length,
     });
 
-  const onResizeRowRef = useRef<(event: HeightChangeEvent) => void>();
+  const onRowHeightChangeRef = useRef<(event: HeightChangeEvent) => void>();
 
   const { tableRef, getRowHeight, rowMeasureRef, remeasureAll, rowSizingMap } =
     useRowHeights({
@@ -270,7 +270,7 @@ export const useDataGridInstance = <TData, TValue>({
       measureBodyCellDimensions,
       datasetIndexAttributeName,
       onHeightChange: useCallback(
-        (event: HeightChangeEvent) => onResizeRowRef.current?.(event),
+        (event: HeightChangeEvent) => onRowHeightChangeRef.current?.(event),
         [],
       ),
     });
@@ -316,7 +316,7 @@ export const useDataGridInstance = <TData, TValue>({
     table,
     defaultRowHeight,
     enableRowVirtualization,
-    onResizeRowRef,
+    onRowHeightChangeRef,
     virtualIndexAttributeName,
   });
 
