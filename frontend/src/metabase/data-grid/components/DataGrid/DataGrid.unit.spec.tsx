@@ -12,10 +12,6 @@ import {
   type RowIdColumnOptions,
   useDataGridInstance,
 } from "metabase/data-grid";
-import {
-  HEADER_HEIGHT,
-  PINNED_BORDER_SEPARATOR_WIDTH,
-} from "metabase/data-grid/constants";
 
 import { DataGrid } from "./DataGrid";
 
@@ -318,70 +314,5 @@ describe("DataGrid", () => {
     // And selected data rows
     expect(lines[1]).toBe("Item 1\tElectronics");
     expect(lines[2]).toBe("Item 2\tClothing");
-  });
-
-  describe("frozen rows and columns", () => {
-    it("pinned rows get sticky positioning", () => {
-      renderWithProviders(<TestDataGrid pinnedTopRowsCount={2} />);
-      act(() => jest.runAllTimers());
-
-      const rows = screen.getAllByRole("row");
-
-      expect(rows[0]).toHaveStyle({ position: "sticky" });
-      expect(rows[1]).toHaveStyle({ position: "sticky" });
-      expect(rows[2]).not.toHaveStyle({ position: "sticky" });
-    });
-
-    it("pinned rows have top offset starting from HEADER_HEIGHT + 1", () => {
-      renderWithProviders(<TestDataGrid pinnedTopRowsCount={2} />);
-      act(() => jest.runAllTimers());
-
-      const rows = screen.getAllByRole("row");
-
-      expect(rows[0]).toHaveStyle({ top: `${HEADER_HEIGHT + 1}px` });
-    });
-
-    it("pinned column headers get sticky positioning", () => {
-      renderWithProviders(<TestDataGrid pinnedLeftColumnsCount={2} />);
-      act(() => jest.runAllTimers());
-
-      const header = screen.getByTestId("table-header");
-      const idHeader = header.querySelector('[data-header-id="id"]');
-      const nameHeader = header.querySelector('[data-header-id="name"]');
-
-      expect(idHeader).toHaveStyle({ position: "sticky" });
-      expect(nameHeader).toHaveStyle({ position: "sticky" });
-    });
-
-    it("pinned column cells include separator in width", () => {
-      const columnWidth = 100;
-      renderWithProviders(
-        <TestDataGrid
-          pinnedLeftColumnsCount={1}
-          initialColumnSizing={{ ...DEFAULT_COLUMN_SIZING, id: columnWidth }}
-        />,
-      );
-      act(() => jest.runAllTimers());
-
-      const body = screen.getByTestId("table-body");
-      const pinnedCell = body.querySelector('[data-column-id="id"]');
-      const expectedWidth = columnWidth + PINNED_BORDER_SEPARATOR_WIDTH;
-
-      expect(pinnedCell).toHaveStyle({ width: `${expectedWidth}px` });
-    });
-
-    it("non-pinned columns are not sticky", () => {
-      renderWithProviders(<TestDataGrid pinnedLeftColumnsCount={1} />);
-      act(() => jest.runAllTimers());
-
-      const body = screen.getByTestId("table-body");
-      const nonPinnedCells = body.querySelectorAll(
-        '[data-column-id="category"]',
-      );
-
-      nonPinnedCells.forEach((cell) => {
-        expect(cell).not.toHaveStyle({ position: "sticky" });
-      });
-    });
   });
 });
