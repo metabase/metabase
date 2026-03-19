@@ -255,8 +255,7 @@
                     (lib.convert/->pMBQL)
                     (sql.qp/join->honeysql :h2))))))))
 
-(defn- compile-join
-  [driver]
+(defn- compile-join [driver]
   (driver/with-driver driver
     (qp.store/with-metadata-provider meta/metadata-provider
       (let [join (cond->> {:source-query {:native "SELECT * FROM VENUES;", :params []}

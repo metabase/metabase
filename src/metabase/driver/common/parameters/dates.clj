@@ -14,6 +14,7 @@
    [java-time.api :as t]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.core :as lib]
+   [metabase.lib.options :as lib.options]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.parameters.dates :as qp.parameters.dates]
    [metabase.util.i18n :refer [tru]]
@@ -43,7 +44,7 @@
   #_{:clj-kondo/ignore [:deprecated-var]}
   (cond
     (not (mbql.u/is-clause? :field clause)) clause
-    (:lib/uuid (second clause)) (lib/with-temporal-bucket clause unit)
+    (lib.options/uuid clause) (lib/with-temporal-bucket clause unit)
     :else (mbql.u/with-temporal-unit clause unit)))
 
 (def ^:private relative-date-string-decoders

@@ -1018,6 +1018,7 @@
                 (or (clause-pred (first form))
                     (m/find-first (partial contains-clause? clause-pred) (rest form))))))
 
+;; TODO(rileythomp, 2026-03-19): Make this its own multimethod, not a ->honeysql hack.
 (defmethod ->honeysql [:sql ::over-order-bys]
   [driver [_op aggregations [direction expr]]]
   (if (aggregation? expr)
