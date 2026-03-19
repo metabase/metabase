@@ -10,7 +10,9 @@ import type {
 } from "metabase/data-studio/common/types";
 import { createEmptyStateItem } from "metabase/data-studio/common/utils";
 import { getIcon } from "metabase/lib/icon";
+import { useSelector } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type { Collection, CollectionId } from "metabase-types/api";
 
 export const useBuildTreeForCollection = (
@@ -29,6 +31,7 @@ export const useBuildTreeForCollection = (
   } = useListCollectionItemsQuery(
     collection ? { id: collection.id, models: ["metric", "table"] } : skipToken,
   );
+  const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
 
   return useMemo(() => {
     if (isLoading || !items || !collection) {
@@ -49,7 +52,13 @@ export const useBuildTreeForCollection = (
           id: `${item.model}:${item.id}`,
           model: item.model,
         }))
-      : [createEmptyStateItem(sectionType, metricCollectionId)];
+      : [
+          createEmptyStateItem(
+            sectionType,
+            metricCollectionId,
+            isRemoteSyncReadOnly,
+          ),
+        ];
 
     return {
       isLoading,
@@ -65,7 +74,15 @@ export const useBuildTreeForCollection = (
         },
       ],
     };
-  }, [isLoading, items, collection, error, sectionType, metricCollectionId]);
+  }, [
+    isLoading,
+    items,
+    collection,
+    error,
+    sectionType,
+    metricCollectionId,
+    isRemoteSyncReadOnly,
+  ]);
 };
 
 export const useErrorHandling = (_error: unknown) => {
