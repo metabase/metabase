@@ -825,6 +825,23 @@
   all models."
   #{'metabase.models.resolution})
 
+(defn- model-reference-violations
+  "Return violation types for a single model reference. Pure function — no IO."
+  [model defining-mod model-exports model-imports]
+  (cond-> []
+    (nil? defining-mod)
+    (conj :unknown-model)
+
+    (and defining-mod
+         (not= model-exports :any)
+         (not (contains? model-exports model)))
+    (conj :not-exported)
+
+    (and defining-mod
+         (not= model-imports :any)
+         (not (contains? model-imports model)))
+    (conj :not-imported)))
+
 (defn model-boundary-violations
   "Find all model boundary violations across the codebase.
   For each source file, checks that:
@@ -856,19 +873,8 @@
                              :when          (not= defining-mod mod)
                              :let           [model-exports (when defining-mod
                                                              (get-in kondo-config [defining-mod :model-exports] :any))]
-                             violation-type (cond-> []
-                                              (nil? defining-mod)
-                                              (conj :unknown-model)
-
-                                              (and defining-mod
-                                                   (not= model-exports :any)
-                                                   (not (contains? model-exports model)))
-                                              (conj :not-exported)
-
-                                              (and defining-mod
-                                                   (not= model-imports :any)
-                                                   (not (contains? model-imports model)))
-                                              (conj :not-imported))]
+                             violation-type (model-reference-violations
+                                             model defining-mod model-exports model-imports)]
                          {:file            rel-path
                           :module          mod
                           :model           model
