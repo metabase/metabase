@@ -32,7 +32,7 @@ interface TagEditorSidebarProps {
   query: NativeQuery;
   databases?: Database[];
   question: Question;
-  sampleDatabaseId: DatabaseId;
+  sampleDatabaseId?: DatabaseId;
   setDatasetQuery: (query: NativeDatasetQuery) => void;
   setTemplateTag: (tag: TemplateTag) => void;
   setTemplateTagConfig?: (
