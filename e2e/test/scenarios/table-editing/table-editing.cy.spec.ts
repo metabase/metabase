@@ -656,8 +656,19 @@ function openTableEdit(tableName: RegExp) {
 function openEditRowModal(rowIndex: number) {
   cy.findByTestId("table-root")
     .findAllByRole("row")
-    .should("have.length.gte", 2)
-    .eq(rowIndex)
+    .should("have.length.gte", 4)
+    .filter((_, el) => rowIndex === Number(el.dataset.datasetIndex))
+    .as("rowSections");
+
+  cy.get("@rowSections")
+    .eq(0)
+    .within(() => {
+      cy.get("[data-column-id]").first().realHover();
+      cy.findByTestId("row-edit-icon").click();
+    });
+
+  cy.get("@rowSections")
+    .eq(1)
     .within(() => {
       cy.findAllByTestId("cell-data")
         .eq(0)
@@ -665,10 +676,6 @@ function openEditRowModal(rowIndex: number) {
         .then((text) => {
           cy.wrap(text).as("rowId");
         });
-
-      cy.findAllByTestId("cell-data").first().realHover();
-
-      cy.findByTestId("row-edit-icon").click();
     });
 
   H.modal().findByText("Edit record").should("be.visible");
