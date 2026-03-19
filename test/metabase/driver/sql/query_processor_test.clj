@@ -223,14 +223,13 @@
       (testing "params from source queries should get passed in to the top-level. Semicolons should be removed"
         (is (= {:query  "SELECT \"source\".* FROM (SELECT * FROM some_table WHERE name = ?) AS \"source\" WHERE (\"source\".\"name\" <> ?) OR (\"source\".\"name\" IS NULL)"
                 :params ["Cam" "Lucky Pigeon"]}
-               (sql.qp/mbql->native
-                :h2
-                (->> {:source-query    {:native "SELECT * FROM some_table WHERE name = ?;", :params ["Cam"]}
-                      :source-metadata [{:name "name", :display_name "Name", :base_type :type/Integer}]
-                      :filter          [:!= *name/Integer "Lucky Pigeon"]}
-                     (lib.tu.macros/mbql-query venues)
-                     (lib.convert/->pMBQL)
-                     (lib/query meta/metadata-provider)))))))))
+               (->> {:source-query    {:native "SELECT * FROM some_table WHERE name = ?;", :params ["Cam"]}
+                     :source-metadata [{:name "name", :display_name "Name", :base_type :type/Integer}]
+                     :filter          [:!= *name/Integer "Lucky Pigeon"]}
+                    (lib.tu.macros/mbql-query venues)
+                    (lib.convert/->pMBQL)
+                    (lib/query meta/metadata-provider)
+                    (sql.qp/mbql->native :h2))))))))
 
 (deftest ^:parallel joins-against-native-queries-test
   (testing "Joins against native SQL queries should get converted appropriately! make sure correct HoneySQL is generated"
@@ -241,35 +240,34 @@
                 [:=
                  (h2x/with-database-type-info (h2x/identifier :field "PUBLIC" "CHECKINS" "VENUE_ID") "integer")
                  (h2x/identifier :field "card" "id")]]
-               (sql.qp/join->honeysql :h2
-                                      (->> {:source-query {:native "SELECT * FROM VENUES;", :params []}
-                                            :alias        "card"
-                                            :strategy     :left-join
-                                            :condition    [:=
-                                                           [:field %venue-id {::add/source-table $$checkins
-                                                                              ::add/source-alias "VENUE_ID"}]
-                                                           [:field "id" {:join-alias        "card"
-                                                                         :base-type         :type/Integer
-                                                                         ::add/source-table "card"
-                                                                         ::add/source-alias "id"}]]}
-                                           (lib.tu.macros/$ids checkins)
-                                           (#'lib.util/join->pipeline)
-                                           (lib.convert/->pMBQL)))))))))
+               (->> {:source-query {:native "SELECT * FROM VENUES;", :params []}
+                     :alias        "card"
+                     :strategy     :left-join
+                     :condition    [:=
+                                    [:field %venue-id {::add/source-table $$checkins
+                                                       ::add/source-alias "VENUE_ID"}]
+                                    [:field "id" {:join-alias        "card"
+                                                  :base-type         :type/Integer
+                                                  ::add/source-table "card"
+                                                  ::add/source-alias "id"}]]}
+                    (lib.tu.macros/$ids checkins)
+                    (#'lib.util/join->pipeline)
+                    (lib.convert/->pMBQL)
+                    (sql.qp/join->honeysql :h2))))))))
 
 (defn- compile-join
   [driver]
   (driver/with-driver driver
     (qp.store/with-metadata-provider meta/metadata-provider
-      (let [join-query {:source-query {:native "SELECT * FROM VENUES;", :params []}
-                        :alias        "card"
-                        :strategy     :left-join
-                        :condition    [:=
-                                       [:field (meta/id :checkins :id) {::add/source-table (meta/id :checkins)
-                                                                        ::add/source-alias "VENUE_ID"}]
-                                       [:field "id" {:base-type         :type/Text
-                                                     ::add/source-table "card"
-                                                     ::add/source-alias "id"}]]}
-            join (cond->> join-query
+      (let [join (cond->> {:source-query {:native "SELECT * FROM VENUES;", :params []}
+                           :alias        "card"
+                           :strategy     :left-join
+                           :condition    [:=
+                                          [:field (meta/id :checkins :id) {::add/source-table (meta/id :checkins)
+                                                                           ::add/source-alias "VENUE_ID"}]
+                                          [:field "id" {:base-type         :type/Text
+                                                        ::add/source-table "card"
+                                                        ::add/source-alias "id"}]]}
                    (isa? driver/hierarchy driver :sql-mbql5)
                    ((comp lib.convert/->pMBQL #'lib.util/join->pipeline))
 
