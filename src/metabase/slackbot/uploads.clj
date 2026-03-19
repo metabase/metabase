@@ -3,9 +3,9 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase.slackbot.client :as slackbot.client]
    [metabase.analytics.core :as analytics]
    [metabase.channel.settings :as channel.settings]
+   [metabase.slackbot.client :as slackbot.client]
    [metabase.upload.core :as upload]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
