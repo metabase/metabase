@@ -35,7 +35,6 @@ import {
 import { getInitialEditorHeight } from "metabase/query_builder/components/NativeQueryEditor/utils";
 import { QueryVisualization } from "metabase/query_builder/components/QueryVisualization";
 import { DataReference } from "metabase/query_builder/components/dataref/DataReference";
-import { SnippetSidebar } from "metabase/query_builder/components/template_tags/SnippetSidebar/SnippetSidebar";
 import { TagEditorSidebar } from "metabase/query_builder/components/template_tags/TagEditorSidebar";
 import { ViewSidebar } from "metabase/query_builder/components/view/ViewSidebar";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
@@ -49,6 +48,7 @@ import {
   isResultsMetadataDirty,
 } from "metabase/query_builder/selectors";
 import { getWritableColumnProperties } from "metabase/query_builder/utils";
+import { SnippetSidebar } from "metabase/querying/components/SnippetSidebar";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, Tooltip } from "metabase/ui";
 import {
