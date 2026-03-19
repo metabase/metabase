@@ -134,8 +134,8 @@ export function nestedSettings<
 
     return widgets.map((widget) => ({
       ...widget,
-      wrapperStyle: {
-        ...widget.wrapperStyle,
+      style: {
+        ...widget.style,
         marginLeft: 0,
         marginRight: 0,
       },
