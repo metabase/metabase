@@ -2,7 +2,7 @@
   (:require
    [medley.core :as m]
    [metabase.lib-be.core :as lib-be]
-   [metabase.metabot.client :as metabot-v3.client]
+   [metabase.metabot.client :as metabot.client]
    [metabase.metabot.example-question-generator :as native-generator]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.tools.entity-details :as metabot.tools.entity-details]
@@ -57,8 +57,8 @@
         (log/error e "Native example question generation failed, falling back to Python ai-service"
                    {:error-class (.getName (class e))
                     :error-msg   (ex-message e)})
-        (metabot-v3.client/generate-example-questions payload)))
-    (metabot-v3.client/generate-example-questions payload)))
+        (metabot.client/generate-example-questions payload)))
+    (metabot.client/generate-example-questions payload)))
 
 (defn generate-sample-prompts
   "Generate suggested prompts for instance of Metabot."

@@ -9,7 +9,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.example-question-generator :as native-generator]
-   [metabase.metabot.settings :as metabot-v3.settings]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -52,7 +52,7 @@
                 native-mock (make-native-prompt-generator prompts-by-name)]
 
             (testing "regenerate endpoint works with native path (use-native-agent=true)"
-              (with-redefs [metabot-v3.settings/use-native-agent        (constantly true)
+              (with-redefs [metabot.settings/use-native-agent        (constantly true)
                             native-generator/generate-example-questions  native-mock]
                 (mt/user-http-request :crowberto :post 204
                                       (format "metabot/metabot/%d/prompt-suggestions/regenerate" metabot-id)))
@@ -69,7 +69,7 @@
 
             (testing "native path prompts are replaced on re-regenerate"
               (let [old-ids (t2/select-pks-set :model/MetabotPrompt :metabot_id metabot-id)]
-                (with-redefs [metabot-v3.settings/use-native-agent        (constantly true)
+                (with-redefs [metabot.settings/use-native-agent        (constantly true)
                               native-generator/generate-example-questions  native-mock]
                   (mt/user-http-request :crowberto :post 204
                                         (format "metabot/metabot/%d/prompt-suggestions/regenerate" metabot-id)))

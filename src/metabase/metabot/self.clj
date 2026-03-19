@@ -258,7 +258,7 @@
                                       (stream-fn streaming-opts)))]
        (reify clojure.lang.IReduceInit
          (reduce [_ rf init]
-           (with-span :info {:name       :metabot-v3.agent/call-llm
+           (with-span :info {:name       :metabot.agent/call-llm
                              :provider   provider
                              :model      model
                              :part-count (count parts)
@@ -293,7 +293,7 @@
                         :schema      json-schema
                         :temperature temperature
                         :max-tokens  max-tokens}]
-    (with-span :info {:name      :metabot-v3.agent/call-llm-structured
+    (with-span :info {:name      :metabot.agent/call-llm-structured
                       :model     model
                       :msg-count (count messages)}
       (with-retries

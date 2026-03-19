@@ -11,7 +11,7 @@
    [metabase.metabot.api :as api]
    [metabase.metabot.client :as client]
    [metabase.metabot.client-test :as client-test]
-   [metabase.metabot.config :as metabot-v3.config]
+   [metabase.metabot.config :as metabot.config]
    [metabase.metabot.context :as metabot.context]
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.settings :as metabot.settings]
@@ -355,7 +355,7 @@
                                     [:model/MetabotConversation :created_at]]
               (mt/user-http-request :rasta :post 403 "metabot/agent-streaming"
                                     (assoc base-request
-                                           :metabot_id metabot-v3.config/embedded-metabot-id
+                                           :metabot_id metabot.config/embedded-metabot-id
                                            :conversation_id (str (random-uuid)))))))
 
         (testing "Embedded metabot works when embedded-metabot-enabled? is true"
@@ -364,7 +364,7 @@
                                     [:model/MetabotConversation :created_at]]
               (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
                                     (assoc base-request
-                                           :metabot_id metabot-v3.config/embedded-metabot-id
+                                           :metabot_id metabot.config/embedded-metabot-id
                                            :conversation_id (str (random-uuid)))))))
 
         (testing "Regular metabot still works when only embedded is disabled"
@@ -382,7 +382,7 @@
                                     [:model/MetabotConversation :created_at]]
               (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
                                     (assoc base-request
-                                           :metabot_id metabot-v3.config/embedded-metabot-id
+                                           :metabot_id metabot.config/embedded-metabot-id
                                            :conversation_id (str (random-uuid)))))))))))
 
 (deftest extract-usage-test

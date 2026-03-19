@@ -11,9 +11,9 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [metabase.api.common :as api]
-   [metabase.metabot.client.schema :as metabot-v3.client.schema]
-   [metabase.metabot.config :as metabot-v3.config]
-   [metabase.metabot.context :as metabot-v3.context]
+   [metabase.metabot.client.schema :as metabot.client.schema]
+   [metabase.metabot.config :as metabot.config]
+   [metabase.metabot.context :as metabot.context]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.premium-features.core :as premium-features]
    [metabase.server.streaming-response :as sr]
@@ -35,7 +35,7 @@
 (defn get-ai-service-token
   "Get the token for the AI service."
   ([]
-   (get-ai-service-token api/*current-user-id* metabot-v3.config/internal-metabot-id))
+   (get-ai-service-token api/*current-user-id* metabot.config/internal-metabot-id))
 
   ([user-id metabot-id]
    (let [secret (buddy-hash/sha256 (metabot.settings/site-uuid-for-metabot-tools))
@@ -70,7 +70,7 @@
 (defn- post! [url options]
   (let [response-metadata (promise)
         response-status (promise)]
-    (with-span :info {:name :metabot-v3.client/request
+    (with-span :info {:name :metabot.client/request
                       :url url
                       :metadata response-metadata
                       :status response-status}
@@ -138,7 +138,7 @@
                           :user_id         api/*current-user-id*
                           :state           state}
                    debug? (assoc :debug true))
-        _        (metabot-v3.context/log body :llm.log/be->llm)
+        _        (metabot.context/log body :llm.log/be->llm)
         _        (log/debugf "V2 request to AI Proxy:\n%s" (u/pprint-to-str body))
         options  (cond-> {:headers          {"Accept"                    "text/event-stream"
                                              "Content-Type"              "application/json;charset=UTF-8"
@@ -176,8 +176,8 @@
   [{:keys [on-complete] :as opts}
    :- [:map
        [:context :map]
-       [:message ::metabot-v3.client.schema/message]
-       [:history ::metabot-v3.client.schema/messages]
+       [:message ::metabot.client.schema/message]
+       [:history ::metabot.client.schema/messages]
        [:profile-id :string]
        [:conversation-id :string]
        [:session-id :string]
@@ -222,8 +222,8 @@
   [{:keys [on-line on-complete] :as opts}
    :- [:map
        [:context :map]
-       [:message ::metabot-v3.client.schema/message]
-       [:history ::metabot-v3.client.schema/messages]
+       [:message ::metabot.client.schema/message]
+       [:history ::metabot.client.schema/messages]
        [:profile-id :string]
        [:conversation-id :string]
        [:session-id :string]
@@ -247,7 +247,7 @@
 
 (mu/defn select-metric-request
   "Make a request to AI Service to select a metric."
-  [metrics :- [:sequential ::metabot-v3.client.schema/metric]
+  [metrics :- [:sequential ::metabot.client.schema/metric]
    query   :- :string]
   (try
     (let [url (metric-selection-endpoint-url)

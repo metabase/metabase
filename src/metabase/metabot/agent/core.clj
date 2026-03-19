@@ -3,6 +3,9 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [metabase.analytics.prometheus :as prometheus]
+   [metabase.config.core :as config]
+   [metabase.llm.settings :as llm.settings]
    [metabase.metabot.agent.analytics :as agent-analytics]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.messages :as messages]
@@ -10,9 +13,6 @@
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.agent.tools :as agent-tools]
    [metabase.metabot.self :as self]
-   [metabase.analytics.prometheus :as prometheus]
-   [metabase.config.core :as config]
-   [metabase.llm.settings :as llm.settings]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -400,7 +400,7 @@
   Streams parts to the consumer as they arrive while simultaneously accumulating
   them for memory updates and control flow decisions."
   [{:keys [agent rf result iteration usage-atom] :as loop-state}]
-  (with-span :debug {:name      :metabot-v3.agent/loop-step
+  (with-span :debug {:name      :metabot.agent/loop-step
                      :iteration iteration}
     (let [{:keys [profile tools context memory-atom tracking-opts]} agent
           max-iter      (:max-iterations profile 10)
@@ -497,7 +497,7 @@
                                 (some-> opts :tracking-opts :track-user-intent?))]
     (reify clojure.lang.IReduceInit
       (reduce [_ rf init]
-        (with-span :info {:name       :metabot-v3.agent/run-agent-loop
+        (with-span :info {:name       :metabot.agent/run-agent-loop
                           :profile-id profile-id
                           :msg-count  (count (:messages opts))}
           (prometheus/inc! :metabase-metabot/agent-requests labels)

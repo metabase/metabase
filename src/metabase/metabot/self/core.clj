@@ -403,7 +403,7 @@
 
   Chunks have a ::duration-ms key added for internal use which is not part of the aisdk spec."
   [tool-call-id tool-name tool chunks]
-  (with-span :info {:name         :metabot-v3.agent/run-tool
+  (with-span :info {:name         :metabot.agent/run-tool
                     :tool-name    tool-name
                     :tool-call-id tool-call-id}
     (let [start-ms (u/start-timer)

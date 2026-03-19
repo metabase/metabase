@@ -7,15 +7,15 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.metabot.client :as metabot-v3.client]
-   [metabase.metabot.tools.api :as metabot-v3.tools.api]
-   [metabase.metabot.tools.create-alert :as metabot-v3.tools.create-alert]
-   [metabase.metabot.tools.create-dashboard-subscription :as metabot-v3.tools.create-dashboard-subscription]
-   [metabase.metabot.tools.entity-details :as metabot-v3.tools.entity-details]
-   [metabase.metabot.tools.filters :as metabot-v3.tools.filters]
+   [metabase.metabot.client :as metabot.client]
+   [metabase.metabot.tools.api :as metabot.tools.api]
+   [metabase.metabot.tools.create-alert :as metabot.tools.create-alert]
+   [metabase.metabot.tools.create-dashboard-subscription :as metabot.tools.create-dashboard-subscription]
+   [metabase.metabot.tools.entity-details :as metabot.tools.entity-details]
+   [metabase.metabot.tools.filters :as metabot.tools.filters]
    [metabase.metabot.tools.test-util :as tools.tu]
-   [metabase.metabot.tools.util :as metabot-v3.tools.u]
-   [metabase.metabot.util :as metabot-v3.u]
+   [metabase.metabot.tools.util :as metabot.tools.u]
+   [metabase.metabot.util :as metabot.u]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
@@ -32,14 +32,14 @@
                                             {:test-case "unknown type", :type-value nil}]]
       (testing test-case
         (let [col (assoc base-col :type type-value)
-              decoded (mc/decode ::metabot-v3.tools.api/column col (mtx/transformer {:name :tool-api-response}))]
-          (is (mr/validate ::metabot-v3.tools.api/column decoded)))))))
+              decoded (mc/decode ::metabot.tools.api/column col (mtx/transformer {:name :tool-api-response}))]
+          (is (mr/validate ::metabot.tools.api/column decoded)))))))
 
 (defn- ai-session-token
   ([] (ai-session-token :rasta (str (random-uuid))))
   ([metabot-id] (ai-session-token :rasta metabot-id))
   ([user metabot-id]
-   (-> user mt/user->id (#'metabot-v3.client/get-ai-service-token metabot-id))))
+   (-> user mt/user->id (#'metabot.client/get-ai-service-token metabot-id))))
 
 (deftest create-alert-test
   (mt/with-premium-features #{:metabot-v3}
@@ -47,7 +47,7 @@
           conversation-id (str (random-uuid))
           output (str (random-uuid))
           ai-token (ai-session-token)]
-      (with-redefs [metabot-v3.tools.create-alert/create-alert
+      (with-redefs [metabot.tools.create-alert/create-alert
                     (fn [arguments]
                       (swap! tool-requests conj arguments)
                       {:output output})]
@@ -75,7 +75,7 @@
           conversation-id (str (random-uuid))
           output (str (random-uuid))
           ai-token (ai-session-token)]
-      (with-redefs [metabot-v3.tools.create-dashboard-subscription/create-dashboard-subscription
+      (with-redefs [metabot.tools.create-dashboard-subscription/create-dashboard-subscription
                     (fn [arguments]
                       (swap! tool-requests conj arguments)
                       {:output output})]
@@ -103,7 +103,7 @@
           ai-token (ai-session-token)
           table-id (mt/id :people)
           field-id (-> table-id
-                       metabot-v3.tools.u/table-field-id-prefix
+                       metabot.tools.u/table-field-id-prefix
                        (str 4))
           response (mt/user-http-request :rasta :post 200 "metabot/tools/field-values"
                                          {:request-options {:headers {"x-metabase-session" ai-token}}}
@@ -135,7 +135,7 @@
             conversation-id (str (random-uuid))
             query-id (str (random-uuid))
             ai-token (ai-session-token)]
-        (with-redefs [metabot-v3.tools.filters/filter-records
+        (with-redefs [metabot.tools.filters/filter-records
                       (fn [arguments]
                         (swap! tool-requests conj arguments)
                         {:structured-output {:type :query
@@ -154,7 +154,7 @@
                                                {:arguments       {:data_source data-source
                                                                   :filters     filters}
                                                 :conversation_id conversation-id})]
-            (is (=? [{:data-source (metabot-v3.u/recursive-update-keys data-source u/->kebab-case-en)}]
+            (is (=? [{:data-source (metabot.u/recursive-update-keys data-source u/->kebab-case-en)}]
                     @tool-requests))
             (is (=? {:structured_output {:type "query"
                                          :query_id query-id
@@ -169,7 +169,7 @@
           conversation-id (str (random-uuid))
           output (str (random-uuid))
           ai-token (ai-session-token)]
-      (with-redefs [metabot-v3.tools.filters/query-metric
+      (with-redefs [metabot.tools.filters/query-metric
                     (fn [arguments]
                       (swap! tool-requests conj arguments)
                       {:structured-output {:type :query
@@ -277,7 +277,7 @@
           conversation-id (str (random-uuid))
           output (str (random-uuid))
           ai-token (ai-session-token)]
-      (with-redefs [metabot-v3.tools.filters/query-model
+      (with-redefs [metabot.tools.filters/query-model
                     (fn [arguments]
                       (swap! tool-requests conj arguments)
                       {:structured-output {:type :query
@@ -323,7 +323,7 @@
                           :query {:source-table 1}}
                   :result-columns []}
           ai-token (ai-session-token)]
-      (with-redefs [metabot-v3.tools.filters/query-model
+      (with-redefs [metabot.tools.filters/query-model
                     (fn [arguments]
                       (swap! tool-requests conj arguments)
                       {:structured-output output})]
@@ -377,7 +377,7 @@
                      :model/Card {model-id :id}  (assoc model-data  :collection_id collection-id)
                      :model/Metabot {metabot-eid :entity_id} {:name "Test Metabot"
                                                               :collection_id collection-id}]
-        (with-redefs [metabot-v3.tools.entity-details/verified-review? (constantly true)]
+        (with-redefs [metabot.tools.entity-details/verified-review? (constantly true)]
           (let [model-metric-base-query (lib/query mp (lib.metadata/card mp model-id))
                 rating-column (m/find-first (comp #{"RATING"} :name) (lib/visible-columns model-metric-base-query))
                 created-at-column (m/find-first (comp #{"CREATED_AT"} :name) (lib/breakoutable-columns model-metric-base-query))
@@ -503,7 +503,7 @@
   (mt/with-premium-features #{:metabot-v3}
     (let [dash-data {:name "dashing dash", :description "dash description"}]
       (mt/with-temp [:model/Dashboard {dash-id :id} dash-data]
-        (with-redefs [metabot-v3.tools.entity-details/verified-review? (constantly true)]
+        (with-redefs [metabot.tools.entity-details/verified-review? (constantly true)]
           (let [conversation-id (str (random-uuid))
                 ai-token (ai-session-token)
                 response (mt/user-http-request :rasta :post 200 "metabot/tools/get-dashboard-details"
@@ -574,7 +574,7 @@
                                           {:arguments arguments
                                            :conversation_id conversation-id}))]
       (mt/with-temp [:model/Card {metric-id :id} metric-data]
-        (with-redefs [metabot-v3.tools.entity-details/verified-review? (constantly true)]
+        (with-redefs [metabot.tools.entity-details/verified-review? (constantly true)]
           (testing "Normal call"
             (is (=? {:structured_output (-> metric-data
                                             (select-keys [:name :display_name :description])
@@ -673,7 +673,7 @@
                          :dataset_query (lib/->legacy-MBQL source-query)
                          :type :question}]
       (mt/with-temp [:model/Card {question-id :id} question-data]
-        (with-redefs [metabot-v3.tools.entity-details/verified-review? (constantly true)]
+        (with-redefs [metabot.tools.entity-details/verified-review? (constantly true)]
           (let [conversation-id (str (random-uuid))
                 ai-token (ai-session-token)
                 arguments {:report_id question-id}
@@ -816,7 +816,7 @@
                                                           {:source-table (str "card__" model-id)
                                                            :aggregation [[:count]]
                                                            :breakout [!month.*created_at *quantity]}))]
-        (with-redefs [metabot-v3.tools.entity-details/verified-review? (constantly true)]
+        (with-redefs [metabot.tools.entity-details/verified-review? (constantly true)]
           (let [request (fn [arguments]
                           (mt/user-http-request :rasta :post 200 "metabot/tools/get-table-details"
                                                 {:request-options {:headers {"x-metabase-session" ai-token}}}
@@ -860,7 +860,7 @@
                                                           {:source-table (str "card__" model-id)
                                                            :aggregation [[:count]]
                                                            :breakout [!month.*created_at *quantity]}))]
-        (with-redefs [metabot-v3.tools.entity-details/verified-review? (constantly true)]
+        (with-redefs [metabot.tools.entity-details/verified-review? (constantly true)]
           (let [request (fn [arguments]
                           (mt/user-http-request :rasta :post 200 "metabot/tools/get-table-details"
                                                 {:request-options {:headers {"x-metabase-session" ai-token}}}
@@ -909,7 +909,7 @@
                                                           {:source-table (str "card__" model-id)
                                                            :aggregation [[:count]]
                                                            :breakout [!month.*created_at *quantity]}))]
-        (with-redefs [metabot-v3.tools.entity-details/verified-review? (constantly true)]
+        (with-redefs [metabot.tools.entity-details/verified-review? (constantly true)]
           (let [request (fn [arguments]
                           (mt/user-http-request :rasta :post 200 "metabot/tools/get-table-details"
                                                 {:request-options {:headers {"x-metabase-session" ai-token}}}
@@ -945,7 +945,7 @@
                                                           {:source-table (str "card__" model-id)
                                                            :aggregation [[:count]]
                                                            :breakout [!month.*created_at *quantity]}))]
-        (with-redefs [metabot-v3.tools.entity-details/verified-review? (constantly true)]
+        (with-redefs [metabot.tools.entity-details/verified-review? (constantly true)]
           (let [request (fn [arguments]
                           (mt/user-http-request :rasta :post 200 "metabot/tools/get-table-details"
                                                 {:request-options {:headers {"x-metabase-session" ai-token}}}
@@ -983,7 +983,7 @@
                                                            {:source-table (str "card__" model-id)
                                                             :aggregation [[:count]]
                                                             :breakout [!month.*created_at *quantity]}))]
-        (with-redefs [metabot-v3.tools.entity-details/verified-review? (constantly true)]
+        (with-redefs [metabot.tools.entity-details/verified-review? (constantly true)]
           (let [request (fn [arguments]
                           (mt/user-http-request :rasta :post 200 "metabot/tools/get-table-details"
                                                 {:request-options {:headers {"x-metabase-session" ai-token}}}
@@ -1018,7 +1018,7 @@
                                                            {:source-table (str "card__" model-id)
                                                             :aggregation [[:count]]
                                                             :breakout [!month.*created_at *quantity]}))]
-        (with-redefs [metabot-v3.tools.entity-details/verified-review? (constantly true)]
+        (with-redefs [metabot.tools.entity-details/verified-review? (constantly true)]
           (let [request (fn [arguments]
                           (mt/user-http-request :rasta :post 200 "metabot/tools/get-table-details"
                                                 {:request-options {:headers {"x-metabase-session" ai-token}}}
@@ -1053,7 +1053,7 @@
                                           {:entity_type "table"
                                            :entity_id   table-id
                                            :field_id    (-> table-id
-                                                            metabot-v3.tools.u/table-field-id-prefix
+                                                            metabot.tools.u/table-field-id-prefix
                                                             (str 8)) ; quantity
                                            :limit       15}
                                           :conversation_id conversation-id})]

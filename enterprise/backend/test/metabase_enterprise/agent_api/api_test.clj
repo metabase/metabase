@@ -10,7 +10,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.metabot.settings] ; for setting definitions
-   [metabase.metabot.tools.util :as metabot-v3.tools.u]
+   [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.test-util :as search.tu]
    [metabase.session.models.session :as session.models]
@@ -259,7 +259,7 @@
   [table-id field-display-name]
   (let [mp            (mt/metadata-provider)
         query         (lib/query mp (lib.metadata/table mp table-id))
-        field-prefix  (metabot-v3.tools.u/table-field-id-prefix table-id)
+        field-prefix  (metabot.tools.u/table-field-id-prefix table-id)
         visible-cols  (lib/visible-columns query)]
     (->> (keep-indexed (fn [i col]
                          (when (= (lib/display-name query col) field-display-name)

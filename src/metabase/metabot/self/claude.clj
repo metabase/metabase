@@ -208,7 +208,7 @@
                                              :tools [{:name         "structured_output"
                                                       :description  "Output structured data"
                                                       :input_schema schema}]))]
-    (with-span :info {:name       :metabot-v3.claude/request
+    (with-span :info {:name       :metabot.claude/request
                       :model      model
                       :msg-count  (count input)
                       :tool-count (count tools)}

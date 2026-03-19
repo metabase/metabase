@@ -26,7 +26,7 @@
               :_type         :FINISH_MESSAGE
               :usage         {}}]
             (metabot.u/aisdk->messages "assistant"
-                                       (-> (io/resource "metabase_enterprise/metabot_v3/aisdkstream1.txt")
+                                       (-> (io/resource "metabase/metabot/aisdkstream1.txt")
                                            io/reader
                                            line-seq)))))
   (testing "We should be able to parse AI SDK streaming format to ai-service format 2"
@@ -63,7 +63,7 @@
               :_type         :FINISH_MESSAGE
               :usage         {}}]
             (metabot.u/aisdk->messages "assistant"
-                                       (-> (io/resource "metabase_enterprise/metabot_v3/aisdkstream2.txt")
+                                       (-> (io/resource "metabase/metabot/aisdkstream2.txt")
                                            io/reader
                                            line-seq)))))
   (testing "We should be able to parse AI SDK streaming format with error messages 3"
@@ -74,7 +74,7 @@
               :_type         :FINISH_MESSAGE
               :usage         {}}]
             (metabot.u/aisdk->messages "assistant"
-                                       (-> (io/resource "metabase_enterprise/metabot_v3/aisdkstream3.txt")
+                                       (-> (io/resource "metabase/metabot/aisdkstream3.txt")
                                            io/reader
                                            line-seq)))))
   (testing "We should be able to parse AI SDK streaming format with error messages 4"
@@ -97,6 +97,6 @@
               :_type         :FINISH_MESSAGE
               :usage         {}}]
             (metabot.u/aisdk->messages "assistant"
-                                       (-> (io/resource "metabase_enterprise/metabot_v3/aisdkstream4.txt")
+                                       (-> (io/resource "metabase/metabot/aisdkstream4.txt")
                                            io/reader
                                            line-seq))))))

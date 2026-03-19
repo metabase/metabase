@@ -3,7 +3,7 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.metabot.config :as metabot-v3.config]
+   [metabase.metabot.config :as metabot.config]
    [metabase.metabot.tools.entity-details :as entity-details-tools]
    [metabase.metabot.tools.field-stats :as field-stats-tools]
    [metabase.metabot.tools.get-metadata :as metadata-tools]
@@ -51,7 +51,7 @@
    :schema    [:=> [:cat [:maybe [:map {:closed true}]]] :any]
    :fn        (fn [_args]
                 (add-output
-                 (entity-details-tools/answer-sources {:metabot-id metabot-v3.config/embedded-metabot-id
+                 (entity-details-tools/answer-sources {:metabot-id metabot.config/embedded-metabot-id
                                                        :with-field-values? false})
                  format-answer-sources-output))})
 
