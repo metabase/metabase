@@ -355,7 +355,7 @@
                 (is (= {:status     "failed"
                         :error      "An error occurred while running the query."
                         :error_type "invalid-query"}
-                       (client/real-client :get 500 (card-query-url (:entity_id card) response-format))))))))))))
+                       (client/real-client :get 500 (card-query-url (:entity_id card) response-format)))))))))))
 
 (deftest card-query-test-4
   (testing "GET /api/embed/card/:token/query and GET /api/embed/card/:token/query/:export-format"
