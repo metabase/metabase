@@ -5,7 +5,6 @@ import styled from "@emotion/styled";
 
 export const Root = styled.div<{
   inline?: boolean;
-  marginBottom?: string;
 }>`
   ${(props) =>
     props.hidden &&
@@ -16,7 +15,7 @@ export const Root = styled.div<{
   ${(props) =>
     !props.hidden &&
     css`
-      margin-bottom: ${props.marginBottom || "1.5em"};
+      margin-bottom: "1.5em";
     `}
 
   ${(props) =>
