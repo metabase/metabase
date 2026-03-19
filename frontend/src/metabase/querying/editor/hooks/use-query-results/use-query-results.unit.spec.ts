@@ -2,10 +2,7 @@ import { setupCardDataset } from "__support__/server-mocks";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
 import Question from "metabase-lib/v1/Question";
 import type { Dataset } from "metabase-types/api";
-import {
-  createMockDataset,
-  createMockDatasetData,
-} from "metabase-types/api/mocks";
+import { createMockDataset } from "metabase-types/api/mocks";
 import { createMockNativeDatasetQuery } from "metabase-types/api/mocks/query";
 
 import type { QueryEditorUiState } from "../../types";
@@ -16,13 +13,11 @@ const NATIVE_QUERY = createMockNativeDatasetQuery({
   native: { query: "SELECXT 1" },
 });
 
-const ERROR_DATASET: Dataset = {
-  ...createMockDataset(),
-  data: createMockDatasetData({}),
+const ERROR_DATASET = createMockDataset({
   error: 'ERROR: syntax error at or near "SELECXT"',
   error_type: "invalid-query",
   status: "failed",
-};
+});
 
 function setup({
   mockResponse,
