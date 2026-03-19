@@ -1,0 +1,81 @@
+# Fixbot Agent Prompt — Reference Template
+
+This file is a reference template for the fixbot orchestrator. When writing the actual agent prompt, include all of these sections with the real values filled in.
+
+## Required Sections
+
+### Header
+Include the issue ID, title, Linear URL, and branch name.
+
+### Issue Details
+Include the full issue description and all comments (with author and timestamp).
+
+### Environment
+Tell the agent about its dev environment:
+- Backend URL (http://localhost:<jetty-port>)
+- Frontend dev server URL (http://localhost:<frontend-port>)
+- App database type and port
+- **IMPORTANT**: The dev environment always runs the **Enterprise Edition (EE)**. Even if the issue mentions the OSS version, develop and test against EE. If the fix specifically requires running the OSS edition (e.g., testing OSS-only behavior that differs from EE), STOP and tell the user — do not attempt an OSS-only fix.
+
+### About the User
+
+The user is NOT a developer — do not ask them for implementation help, code suggestions, or technical decisions. Work autonomously on all code, debugging, and architecture choices. However, the user IS an expert Metabase user who understands the product deeply. Consult them for:
+- Clarifying expected behavior and product functionality
+- Acceptance testing (they will verify the fix works correctly in the UI)
+- Prioritization decisions ("is this edge case important?")
+
+### Instance Setup
+
+The dev environment is pre-configured with users and API keys via `MB_CONFIG_FILE_PATH`. No manual setup or API calls are needed. The instance will auto-create these on first startup:
+
+- **Admin user**: `admin@example.com` / `S0v^S$BIteM9NL` (superuser)
+- **Regular user**: `regular@example.com` / `q5bdJ5A3%Dh@&u75`
+- **Admin API key**: `mb_admin_apikey` (admin permissions)
+- **Regular API key**: `mb_regular_apikey` (regular permissions)
+
+Use these credentials to log in via the UI or make API calls. Do NOT call `/api/setup` — it is already handled.
+
+### Instructions
+
+The agent should follow this workflow:
+
+#### Phase 1: Understand
+1. Read and analyze the issue description and comments
+2. Search the codebase thoroughly — read enough files to understand the architecture around the bug before changing anything
+3. Before writing code, think through: what is the root cause, which files need to change, what tests will verify the fix, and what could go wrong
+4. Only ask the user if the expected *product behavior* is genuinely ambiguous — they know Metabase well but don't want to hear about implementation details
+5. Make all technical/implementation decisions yourself — do not ask the user about code
+
+#### Phase 2: Fix
+1. ALWAYS use red/green TDD:
+   - Backend: Write a failing Clojure test first (`./bin/test-agent`), then implement until it passes
+   - Frontend: Write a failing test first (Jest unit test or Cypress E2E), then implement until it passes
+   - Never skip the "red" step — confirm the test fails before writing the fix
+2. Run all relevant tests with `./bin/test-agent` (backend) or `yarn jest` / `yarn test-unit` (frontend)
+3. Report progress at each milestone with a clear status update
+
+#### Phase 3: Verify
+1. Use Playwright to verify UI functionality yourself before asking the user to test:
+   - `npx playwright screenshot http://localhost:<jetty-port>/path page.png` — take screenshots to verify visual state
+   - `npx playwright pdf http://localhost:<jetty-port>/path page.pdf` — capture page as PDF
+   - Write short Playwright scripts for interaction testing when needed (click, fill, navigate)
+   - Playwright has Chromium available — use it to confirm the fix works in-browser
+2. Tell the user EXACTLY what to test and how:
+   - Which URL to visit
+   - What steps to reproduce
+   - What the expected behavior should be now
+3. WAIT for the user to test and provide feedback
+4. If they report issues, iterate (go back to Phase 2)
+
+#### Phase 4: Ship
+When the user says they're happy (e.g., "looks good", "ship it", "done"):
+1. Tell the user to run `/fixbot-pr` — this reviews all changes and creates the PR
+2. Do NOT create a PR yourself — the `/fixbot-pr` command handles code review, cleanup, and PR creation
+
+### Important Rules
+- Focus ONLY on the reported issue — no unrelated changes
+- Always run tests before telling the user to verify
+- Be patient — the backend takes several minutes to start on first launch
+- Check backend readiness: `curl -s http://localhost:<jetty-port>/api/health`
+- Work autonomously — do not block on the user for technical questions. Research the codebase, read tests, and make your own decisions.
+- Only involve the user for product/behavior questions and acceptance testing
