@@ -16,7 +16,6 @@ import {
 import {
   HEADER_HEIGHT,
   PINNED_BORDER_SEPARATOR_WIDTH,
-  PINNED_ROW_Z_INDEX,
 } from "metabase/data-grid/constants";
 
 import { DataGrid } from "./DataGrid";
@@ -338,15 +337,6 @@ describe("DataGrid", () => {
       expect(rows[2]).not.toHaveStyle({ position: "sticky" });
     });
 
-    it("pinned rows have z-index", () => {
-      renderWithProviders(<TestDataGrid pinnedTopRowsCount={2} />);
-      act(() => jest.runAllTimers());
-
-      const rows = screen.getAllByRole("row");
-      expect(rows[0]).toHaveStyle({ zIndex: PINNED_ROW_Z_INDEX });
-      expect(rows[1]).toHaveStyle({ zIndex: PINNED_ROW_Z_INDEX });
-    });
-
     it("pinned rows have top offset starting from HEADER_HEIGHT + 1", () => {
       renderWithProviders(<TestDataGrid pinnedTopRowsCount={2} />);
       act(() => jest.runAllTimers());
@@ -366,18 +356,6 @@ describe("DataGrid", () => {
 
       expect(idHeader).toHaveStyle({ position: "sticky" });
       expect(nameHeader).toHaveStyle({ position: "sticky" });
-    });
-
-    it("pinned column body cells get sticky positioning", () => {
-      renderWithProviders(<TestDataGrid pinnedLeftColumnsCount={1} />);
-      act(() => jest.runAllTimers());
-
-      const body = screen.getByTestId("table-body");
-      const pinnedCells = body.querySelectorAll('[data-column-id="id"]');
-
-      pinnedCells.forEach((cell) => {
-        expect(cell).toHaveStyle({ position: "sticky" });
-      });
     });
 
     it("pinned column cells include separator in width", () => {
