@@ -2,10 +2,8 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase.util :as u]
    [metabase.util.json :as json]
-   [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -105,42 +103,45 @@
 ;;;   - self_test (tool-executor-xf — tools are actually called)
 ;;; ──────────────────────────────────────────────────────────────────
 
-(mu/defn get-time
-  "Return current time for a given IANA timezone."
-  [{:keys [tz]} :- [:map {:closed true}
-                    [:tz [:string {:description "IANA timezone, e.g. Europe/Bucharest"}]]]]
-  (str (java.time.ZonedDateTime/now (java.time.ZoneId/of tz))))
+(defn get-time-tool []
+  {:tool-name "get-time"
+   :doc       "Return current time for a given IANA timezone."
+   :schema    [:=> [:cat [:map {:closed true}
+                          [:tz [:string {:description "IANA timezone, e.g. Europe/Bucharest"}]]]] :any]
+   :fn        (fn [{:keys [tz]}]
+                (str (java.time.ZonedDateTime/now (java.time.ZoneId/of tz))))})
 
-(mu/defn convert-currency
-  "Convert an amount between two ISO currencies using a dummy rate."
-  [{:keys [amount from to]} :- [:map {:closed true}
-                                [:amount :float]
-                                [:from :string]
-                                [:to :string]]]
-  (let [rate (if (= [from to] ["EUR" "USD"]) 1.16 1.0)]
-    {:amount    amount
-     :from      from
-     :to        to
-     :rate      rate
-     :converted (* amount rate)}))
+(defn convert-currency-tool []
+  {:tool-name "convert-currency"
+   :doc       "Convert an amount between two ISO currencies using a dummy rate."
+   :schema    [:=> [:cat [:map {:closed true}
+                          [:amount :float]
+                          [:from :string]
+                          [:to :string]]] :any]
+   :fn        (fn [{:keys [amount from to]}]
+                (let [rate (if (= [from to] ["EUR" "USD"]) 1.16 1.0)]
+                  {:amount    amount
+                   :from      from
+                   :to        to
+                   :rate      rate
+                   :converted (* amount rate)}))})
 
-(mu/defn mock-llm
-  "Return aisdk-formatted results as a reducible (IReduceInit).
+(defn mock-llm-tool []
+  {:tool-name "mock-llm"
+   :doc       "Return aisdk-formatted results as a reducible (IReduceInit).
   Useful for testing tool-executor-xf with tools that call back to an LLM."
-  [{:keys [id input]} :- [:map {:closed true}
+   :schema    [:=> [:cat [:map {:closed true}
                           [:id :string]
-                          [:input :string]]]
-  (let [chunks (parts->aisdk-chunks
-                [{:type :start :id "mock-1"}
-                 {:type :text :id id :text input}])]
-    (reify clojure.lang.IReduceInit
-      (reduce [_ rf init]
-        (reduce rf init chunks)))))
+                          [:input :string]]] :any]
+   :fn        (fn [{:keys [id input]}]
+                (let [chunks (parts->aisdk-chunks
+                              [{:type :start :id "mock-1"}
+                               {:type :text :id id :text input}])]
+                  (reify clojure.lang.IReduceInit
+                    (reduce [_ rf init]
+                      (reduce rf init chunks)))))})
 
 (def TOOLS
   "Tool map for tests — keyed by tool name string."
-  (u/index-by
-   #(-> % meta :name name)
-   [#'get-time
-    #'convert-currency
-    #'mock-llm]))
+  (let [tool-defs (map #(%) [get-time-tool convert-currency-tool mock-llm-tool])]
+    (into {} (map (juxt :tool-name identity)) tool-defs)))

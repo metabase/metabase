@@ -2,8 +2,7 @@
   "Snippet tool wrappers."
   (:require
    [clojure.string :as str]
-   [metabase.metabot.tools.snippets :as snippet-tools]
-   [metabase.util.malli :as mu]))
+   [metabase.metabot.tools.snippets :as snippet-tools]))
 
 (set! *warn-on-reflection* true)
 
@@ -33,23 +32,25 @@
     (assoc result :output (format-fn structured))
     result))
 
-(mu/defn ^{:tool-name "list_snippets"
-           :capabilities #{:feature-snippets}} list-snippets-tool
-  "List all SQL snippets available in the Metabase instance.
+(defn list-snippets-tool "list-snippets-tool" []
+  {:tool-name    "list_snippets"
+   :capabilities #{:feature-snippets}
+   :doc          "List all SQL snippets available in the Metabase instance.
 
   Use this tool before editing or creating SQL transforms to understand what
   snippets are available. If any snippets may be relevant to the user's request,
   fetch their content using the get_snippet_details tool."
-  [_args :- [:maybe [:map {:closed true}]]]
-  (add-output (snippet-tools/get-snippets {}) format-snippet-list-output))
+   :schema       [:=> [:cat [:maybe [:map {:closed true}]]] :any]
+   :fn           (fn [_args]
+                   (add-output (snippet-tools/get-snippets {}) format-snippet-list-output))})
 
-(mu/defn ^{:tool-name "get_snippet_details"
-           :capabilities #{:feature-snippets}} get-snippet-details-tool
-  "Get the full details of a SQL snippet including its content.
+(defn get-snippet-details-tool "get-snippet-details-tool" []
+  {:tool-name    "get_snippet_details"
+   :capabilities #{:feature-snippets}
+   :doc          "Get the full details of a SQL snippet including its content.
 
   Use this tool to retrieve the actual SQL content of a snippet after identifying
   it with list_snippets."
-  [{:keys [snippet_id]}
-   :- [:map {:closed true}
-       [:snippet_id :int]]]
-  (add-output (snippet-tools/get-snippet-details {:snippet-id snippet_id}) format-snippet-details-output))
+   :schema       [:=> [:cat [:map {:closed true} [:snippet_id :int]]] :any]
+   :fn           (fn [{:keys [snippet_id]}]
+                   (add-output (snippet-tools/get-snippet-details {:snippet-id snippet_id}) format-snippet-details-output))})

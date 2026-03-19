@@ -58,7 +58,7 @@
               (run! identity (self/call-llm model
                                             nil
                                             []
-                                            {"search" #'test-util/get-time}
+                                            {"search" (get test-util/TOOLS "get-time")}
                                             {:tag "agent"}
                                             {:tool-choice "required"}))
               (catch Exception e
@@ -267,20 +267,17 @@
       decode-fn (assoc :decode decode-fn))))
 
 (deftest ^:parallel tool-decode-var-test
-  (testing "tool with :decode metadata on a fn has decode applied before invocation"
+  (testing "tool definition map with :decode has decode applied before invocation"
     (let [received (atom nil)
           decode-fn (fn [args]
                       (update args :x inc))
-          ;; with-meta on a fn attaches metadata; tool-decode-fn reads it via (meta tool)
-          tool-fn (with-meta
-                   (fn [args]
-                     (reset! received args)
-                     {:output "ok"})
-                   {:name   'decode-inc
+          tool-def {:fn     (fn [args]
+                              (reset! received args)
+                              {:output "ok"})
                     :decode decode-fn
                     :schema [:=> [:cat [:map [:x :int]]] :any]
-                    :doc    "increment x"})
-          tools {"decode-inc" tool-fn}
+                    :doc    "increment x"}
+          tools {"decode-inc" tool-def}
           chunks (test-util/parts->aisdk-chunks
                   [{:type :start :id "msg-dec-1"}
                    {:type :tool-input :id "call-d1" :function "decode-inc" :arguments {:x 41}}])

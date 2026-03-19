@@ -167,7 +167,7 @@
 
   For each tool, loads a markdown prompt file from `resources/metabot/prompts/tools/`.
   The filename is determined by:
-  1. `:prompt` key in the tool's metadata (if present), or
+  1. `:prompt` key in the tool definition map (if present), or
   2. `\"<tool-name>.md\"` as default.
 
   Only tools with a corresponding prompt resource file are included.
@@ -175,8 +175,8 @@
   Returns vector of maps: [{:tool_name \"search\" :instructions \"...\"}]"
   [tools]
   (vec
-   (for [[tool-name tool] tools
-         :let [fname  (or (-> tool meta :prompt)
+   (for [[tool-name tool-def] tools
+         :let [fname  (or (:prompt tool-def)
                           (str tool-name ".md"))
                prompt (some-> (io/resource (str "metabot/prompts/tools/" fname))
                               slurp)]
