@@ -2567,9 +2567,9 @@
 
   enterprise/transforms
   {:team "Gadget"
-   :api  #{metabase-enterprise.transforms-inspector.api
-           metabase-enterprise.transforms-inspector.core
-           metabase-enterprise.transforms-inspector.schema}
+   :api  #{metabase-enterprise.transforms.inspector.api
+           metabase-enterprise.transforms.inspector.core
+           metabase-enterprise.transforms.inspector.schema}
    :uses #{api
            driver
            events
