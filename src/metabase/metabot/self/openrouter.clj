@@ -11,9 +11,9 @@
    [clj-http.client :as http]
    [clojure.string :as str]
    [malli.json-schema :as mjs]
+   [metabase.llm.settings :as llm]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.schema :as schema]
-   [metabase.llm.settings :as llm]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -93,7 +93,7 @@
                        (when (var? tool) (name (:name (meta tool))))
                        "unknown")]
     {:type     "function"
-     :function {:name        final-name
+     :function {:name        tool-name
                 :description doc
                 :parameters  (mjs/transform params {:additionalProperties false})}}))
 

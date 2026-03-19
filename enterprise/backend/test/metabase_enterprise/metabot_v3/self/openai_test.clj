@@ -32,7 +32,7 @@
 (deftest ^:parallel openai-tool-calls-conv-test
   (let [raw-chunks (fixture "openai-tool-calls"
                             {:input [{:role :user :content "What time is it in Kyiv?"}]
-                             :tools [#'test-util/get-time]})]
+                             :tools [(test-util/get-time-tool)]})]
     (testing "tool call chunks are mapped correctly"
       (is (=? [{:type :start} {:type :tool-input-start} {:type :tool-input-delta} {:type :tool-input-available} {:type :usage}]
               (into [] (comp (openai/openai->aisdk-chunks-xf) (m/distinct-by :type)) raw-chunks))))
@@ -64,7 +64,7 @@
 (deftest ^:parallel openai-text-and-tool-calls-conv-test
   (let [raw-chunks (fixture "openai-text-and-tool-calls"
                             {:input [{:role :user :content "Tell me what time it is in Kyiv. First explain what you're going to do, then call the tool."}]
-                             :tools [#'test-util/get-time]})]
+                             :tools [(test-util/get-time-tool)]})]
     (testing "text + tool call chunks contain expected types"
       (is (=? [{:type :start}
                {:type :text-start} {:type :text-delta} {:type :text-end}

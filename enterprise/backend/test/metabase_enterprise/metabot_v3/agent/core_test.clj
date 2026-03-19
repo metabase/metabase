@@ -25,7 +25,10 @@
   {:structured-output {:data [{:id 1 :name "Test Result"}]}})
 
 (def test-tools
-  {"search" #'test-search-tool})
+  {"search" {:tool-name "search"
+             :schema    (:schema (meta #'test-search-tool))
+             :doc       (:doc (meta #'test-search-tool))
+             :fn        test-search-tool}})
 
 (defn- run-agent-loop!
   "run-agent-loop for side effects, discarding results"

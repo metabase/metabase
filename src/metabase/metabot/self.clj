@@ -11,13 +11,13 @@
   - figure out what's lacking compared to ai-service"
   (:require
    [clojure.string :as str]
+   [metabase.analytics.core :as analytics]
+   [metabase.analytics.prometheus :as prometheus]
+   [metabase.api.common :as api]
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.openai :as openai]
    [metabase.metabot.self.openrouter :as openrouter]
-   [metabase.analytics.core :as analytics]
-   [metabase.analytics.prometheus :as prometheus]
-   [metabase.api.common :as api]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.o11y :refer [with-span]]))
@@ -245,7 +245,7 @@
      (log/info "Calling LLM" {:provider    provider :model model :parts (count parts) :tools (count tools)
                               :tool-choice tool-choice})
      (let [tracking-opts  (assoc tracking-opts :model model)
-           streaming-opts (cond-> {:model model :input parts :tools (vec tools)}
+           streaming-opts (cond-> {:model model :input parts :tools (vals tools)}
                             system-msg        (assoc :system system-msg)
                             (and (seq tools)
                                  tool-choice) (assoc :tool_choice tool-choice))

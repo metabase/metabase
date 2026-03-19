@@ -3,9 +3,9 @@
    [clj-http.client :as http]
    [clojure.string :as str]
    [malli.json-schema :as mjs]
+   [metabase.llm.settings :as llm]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.schema :as schema]
-   [metabase.llm.settings :as llm]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]))
@@ -148,12 +148,12 @@
   (let [{:keys [doc schema] :as tool} (if (map? tool) tool (meta tool))
         [_:=> [_:cat params] _out]    schema
         params                        (schema/filter-schema-by-features params)
-        doc                           (if (str/starts-with? doc "Inputs: ")
+        doc                           (if (str/starts-with? (or doc "") "Inputs: ")
                                         ;; strip that stuff we're appending in mu/defn
                                         (second (str/split doc #"\n\n  " 2))
                                         doc)]
     {:type        "function"
-     :name        (or tool-name (name (:name tool)))
+     :name        tool-name
      :description doc
      :parameters  (mjs/transform params {:additionalProperties false})}))
 

@@ -94,7 +94,7 @@
 (deftest ^:parallel openrouter-tool-calls-conv-test
   (let [raw-chunks (fixture "openrouter-tool-calls"
                             {:input [{:role :user :content "What time is it in Kyiv?"}]
-                             :tools [#'test-util/get-time]})]
+                             :tools [(test-util/get-time-tool)]})]
     (testing "single tool call chunks are mapped correctly"
       (is (=? [{:type :start} {:type :tool-input-start} {:type :tool-input-delta} {:type :tool-input-available} {:type :usage}]
               (into [] (comp (openrouter/openrouter->aisdk-chunks-xf) (m/distinct-by :type)) raw-chunks))))
@@ -112,7 +112,8 @@
 (deftest ^:parallel openrouter-parallel-tool-calls-conv-test
   (let [raw-chunks (fixture "openrouter-parallel-tool-calls"
                             {:input [{:role :user :content "What time is it in Kyiv AND convert 100 EUR to USD? Use both tools in parallel."}]
-                             :tools [#'test-util/get-time #'test-util/convert-currency]})]
+                             :tools [(test-util/get-time-tool)
+                                     (test-util/convert-currency-tool)]})]
     (testing "parallel tool calls are mapped correctly"
       (is (=? [{:type :start} {:type :tool-input-start} {:type :tool-input-delta} {:type :tool-input-available} {:type :usage}]
               (into [] (comp (openrouter/openrouter->aisdk-chunks-xf) (m/distinct-by :type)) raw-chunks))))
@@ -132,7 +133,7 @@
 (deftest ^:parallel openrouter-text-and-tool-calls-conv-test
   (let [raw-chunks (fixture "openrouter-text-and-tool-calls"
                             {:input [{:role :user :content "Tell me what time it is in Kyiv. First explain what you're going to do, then call the tool."}]
-                             :tools [#'test-util/get-time]})]
+                             :tools [(test-util/get-time-tool)]})]
     (testing "text + tool call chunks contain expected types"
       (is (=? [{:type :start}
                {:type :text-start} {:type :text-delta} {:type :text-end}
@@ -155,7 +156,7 @@
   (testing "lite-aisdk-xf streams text deltas for openrouter format"
     (let [raw-chunks (fixture "openrouter-text-and-tool-calls"
                               {:input [{:role :user :content "Tell me what time it is in Kyiv. First explain what you're going to do, then call the tool."}]
-                               :tools [#'test-util/get-time]})
+                               :tools [(test-util/get-time-tool)]})
           res (into [] (comp (openrouter/openrouter->aisdk-chunks-xf)
                              (self.core/lite-aisdk-xf))
                     raw-chunks)]

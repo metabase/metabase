@@ -32,7 +32,7 @@
 (deftest ^:parallel claude-tool-input-conv-test
   (let [raw-chunks (fixture "claude-tool-input"
                             {:input [{:role :user :content "What time is it in Kyiv?"}]
-                             :tools [#'test-util/get-time]})]
+                             :tools [(test-util/get-time-tool)]})]
     (testing "tool input chunks are mapped correctly"
       (is (=? [{:type :start} {:type :tool-input-start} {:type :tool-input-delta} {:type :tool-input-available} {:type :usage}]
               (into [] (comp (claude/claude->aisdk-chunks-xf) (m/distinct-by :type)) raw-chunks))))
@@ -45,7 +45,7 @@
 (deftest ^:parallel claude-text-and-tool-input-conv-test
   (let [raw-chunks (fixture "claude-text-and-tool-input"
                             {:input [{:role :user :content "Tell me what time it is in Kyiv. First explain what you're going to do, then call the tool."}]
-                             :tools [#'test-util/get-time]})]
+                             :tools [(test-util/get-time-tool)]})]
     (testing "text + tool input chunks are mapped correctly"
       (is (=? [{:type :start}
                {:type :text-start} {:type :text-delta} {:type :text-end}
@@ -62,7 +62,7 @@
 (deftest ^:parallel claude-lite-aisdk-xf-test
   (let [raw-chunks (fixture "claude-text-and-tool-input"
                             {:input [{:role :user :content "Tell me what time it is in Kyiv. First explain what you're going to do, then call the tool."}]
-                             :tools [#'test-util/get-time]})
+                             :tools [(test-util/get-time-tool)]})
         res        (into [] (comp (claude/claude->aisdk-chunks-xf) (self.core/lite-aisdk-xf)) raw-chunks)]
     (testing "lite-aisdk-xf collects tool inputs"
       (is (=? [{:type :start}
