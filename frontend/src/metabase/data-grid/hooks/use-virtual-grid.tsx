@@ -7,16 +7,13 @@ import {
 import type React from "react";
 import { useCallback, useMemo } from "react";
 
-import type { HeightChangeEvent } from "./use-row-heights";
-
 interface VirtualGridProps<TData> {
   gridRef: React.RefObject<HTMLDivElement>;
   table: ReactTable<TData>;
   defaultRowHeight: number;
   enableRowVirtualization?: boolean;
-  onRowHeightChangeRef: React.MutableRefObject<
-    ((event: HeightChangeEvent) => void) | undefined
-  >;
+  getRowHeight: (index: number) => number;
+  datasetIndexAttributeName: string;
   virtualIndexAttributeName: string;
 }
 
@@ -25,7 +22,8 @@ export interface VirtualGrid {
   virtualRows: VirtualItem[];
   rowVirtualizer: Virtualizer<HTMLDivElement, Element>;
   columnVirtualizer: Virtualizer<HTMLDivElement, Element>;
-  measureGrid: () => void;
+  rowMeasureRef: (element: Element | null) => void;
+  remeasureRowHeights: () => void;
   virtualIndexAttributeName: string;
 }
 
@@ -34,7 +32,8 @@ export const useVirtualGrid = <TData,>({
   table,
   defaultRowHeight,
   enableRowVirtualization,
-  onRowHeightChangeRef,
+  getRowHeight,
+  datasetIndexAttributeName,
   virtualIndexAttributeName,
 }: VirtualGridProps<TData>): VirtualGrid => {
   const centerColumns = table.getCenterLeafColumns();
@@ -44,12 +43,7 @@ export const useVirtualGrid = <TData,>({
   const columnVirtualizer = useVirtualizer({
     count: centerColumns.length,
     getScrollElement: () => gridRef.current,
-    estimateSize: (index) => {
-      const column = centerColumns[index];
-      const size = column.getSize();
-      const actualSize = table.getState().columnSizing[column.id];
-      return actualSize ?? size;
-    },
+    estimateSize: (index) => centerColumns[index].getSize(),
     horizontal: true,
     overscan: 3,
     scrollMargin: leftPinnedColumnsWidth,
@@ -62,24 +56,21 @@ export const useVirtualGrid = <TData,>({
     estimateSize: () => defaultRowHeight,
     overscan: 3,
     enabled: enableRowVirtualization,
+    measureElement: (element) => {
+      const indexRaw = element?.getAttribute(datasetIndexAttributeName);
+      const index = indexRaw != null ? parseInt(indexRaw, 10) : null;
+      if (index == null || !isFinite(index)) {
+        return defaultRowHeight;
+      }
+      return getRowHeight(index);
+    },
   });
 
-  onRowHeightChangeRef.current = ({ elements, height }: HeightChangeEvent) => {
-    const element = elements[0];
-    if (!element) {
-      return;
-    }
-    const virtualIndexRaw = element.getAttribute(virtualIndexAttributeName);
-    const virtualIndex = virtualIndexRaw ? parseInt(virtualIndexRaw, 10) : null;
-    if (virtualIndex === null) {
-      return;
-    }
-    rowVirtualizer.resizeItem(virtualIndex, height);
-  };
-
-  const measureGrid = useCallback(() => {
-    columnVirtualizer.measure();
-  }, [columnVirtualizer]);
+  const remeasureRowHeights = useCallback(() => {
+    Array.from(rowVirtualizer.elementsCache.values()).forEach((element) =>
+      rowVirtualizer.measureElement(element),
+    );
+  }, [rowVirtualizer]);
 
   const rawVirtualColumns = columnVirtualizer.getVirtualItems();
   const virtualColumns = useMemo(
@@ -99,7 +90,8 @@ export const useVirtualGrid = <TData,>({
     virtualRows,
     rowVirtualizer,
     columnVirtualizer,
-    measureGrid,
+    rowMeasureRef: rowVirtualizer.measureElement,
+    remeasureRowHeights,
     virtualIndexAttributeName,
   };
 };

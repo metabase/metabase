@@ -4,7 +4,7 @@ import type {
 } from "@tanstack/react-table";
 import { type RefObject, useMemo, useState } from "react";
 
-import { useItemsLimiter } from "./use-items-limiter";
+import { countWithinLimit } from "../utils/count-within-limit";
 
 type UseColumnPinningByCountProps = {
   gridRef: RefObject<HTMLDivElement>;
@@ -19,30 +19,33 @@ export const useColumnPinningByCount = ({
   columnOrder,
   columnSizingMap,
 }: UseColumnPinningByCountProps) => {
-  const [isEnabled, setIsEnabled] = useState<boolean>(false);
+  const [isLimitBypassed, setIsLimitBypassed] = useState<boolean>(false);
 
-  const pinnedColumnSizes = useMemo(
-    () =>
+  const containerWidth =
+    gridRef.current?.getBoundingClientRect().width ?? window.innerWidth;
+
+  const columnPinning = useMemo<ColumnPinningState>(() => {
+    if (isLimitBypassed) {
+      return { left: columnOrder.slice(0, pinnedColumnsCount) };
+    }
+
+    const maxWidth = containerWidth * 0.9;
+
+    const effectiveCount = countWithinLimit(
       columnOrder
         .slice(0, pinnedColumnsCount)
         .map((id) => columnSizingMap[id] ?? 0),
-    [columnOrder, pinnedColumnsCount, columnSizingMap],
-  );
+      maxWidth,
+    );
 
-  const effectivePinnedColumnsCount = useItemsLimiter({
-    containerRef: gridRef,
-    dimension: "width",
-    sizes: pinnedColumnSizes,
-    maxRatio: 0.9,
-    isEnabled,
-  });
+    return { left: columnOrder.slice(0, effectiveCount) };
+  }, [
+    isLimitBypassed,
+    containerWidth,
+    pinnedColumnsCount,
+    columnOrder,
+    columnSizingMap,
+  ]);
 
-  const columnPinning = useMemo<ColumnPinningState>(
-    () => ({
-      left: columnOrder.slice(0, effectivePinnedColumnsCount),
-    }),
-    [columnOrder, effectivePinnedColumnsCount],
-  );
-
-  return { columnPinning, toggle: setIsEnabled };
+  return { columnPinning, toggle: setIsLimitBypassed };
 };
