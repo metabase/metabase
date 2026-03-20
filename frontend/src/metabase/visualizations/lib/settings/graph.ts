@@ -431,18 +431,14 @@ export const TOOLTIP_SETTINGS: VisualizationSettingsDefinitions = {
     getHidden: (rawSeries, vizSettings) => {
       return getAvailableAdditionalColumns(rawSeries, vizSettings).length === 0;
     },
-    getProps: (rawSeries, vizSettings) => {
-      const options = getAvailableAdditionalColumns(rawSeries, vizSettings).map(
+    getProps: (rawSeries, vizSettings) => ({
+      options: getAvailableAdditionalColumns(rawSeries, vizSettings).map(
         (col) => ({
           label: col.display_name,
           value: getColumnKey(col),
         }),
-      );
-
-      return {
-        options,
-      };
-    },
+      ),
+    }),
     readDependencies: ["graph.metrics", "graph.dimensions"],
   },
 };

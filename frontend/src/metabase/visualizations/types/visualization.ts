@@ -417,6 +417,7 @@ type Props = Record<string, unknown>;
 
 /** Object keys are kept in alphabetical order */
 export type VisualizationSettingsDefinitions<
+  // TODO: remove this generic type
   LabelValueFrequencyWidgetProps extends Props =
     | ChartSettingEnumToggleProps<"fit" | "all">
     | ChartSettingSegmentedControlProps,
