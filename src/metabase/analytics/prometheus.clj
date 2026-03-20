@@ -603,7 +603,7 @@
                        {:description "Number of unhandled API errors (500s without explicit status code)."})
    (prometheus/counter :metabase-frontend/errors
                        {:description "Number of frontend errors reported by the browser."
-                        :labels [:context]})
+                        :labels [:type]})
    (prometheus/counter :metabase-export/errors
                        {:description "Number of errors during data export."
                         :labels [:format]})])

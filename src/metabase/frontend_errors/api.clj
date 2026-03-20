@@ -4,18 +4,18 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]))
 
-(def ^:private Context
-  "Allowed context values for frontend error reporting."
-  [:enum "render-page" "render-chart"])
+(def ^:private Type
+  "Allowed type values for frontend error reporting."
+  [:enum "component-crash" "chart-render-error"])
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
   "Endpoint for the frontend to report errors. Increments a Prometheus counter
-   with the given `context` label."
+   with the given `type` label."
   [_route-params
    _query-params
-   {:keys [context]} :- [:map [:context Context]]]
-  (prometheus/inc! :metabase-frontend/errors {:context context})
+   {:keys [type]} :- [:map [:type Type]]]
+  (prometheus/inc! :metabase-frontend/errors {:type type})
   api/generic-204-no-content)
 
 ;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

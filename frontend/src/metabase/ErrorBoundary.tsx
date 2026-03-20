@@ -36,7 +36,7 @@ class ErrorBoundaryInner extends Component<
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error(error, errorInfo);
-    FrontendErrorsApi.report({ context: "component-crash" }).catch(() => {});
+    FrontendErrorsApi.report({ type: "component-crash" }).catch(() => {});
     // if we don't provide a specific onError action, the component will display a generic error message
     if (this.props.onError) {
       this.props.onError(errorInfo);

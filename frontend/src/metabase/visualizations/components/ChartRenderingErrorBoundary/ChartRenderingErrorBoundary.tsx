@@ -13,7 +13,7 @@ export class ChartRenderingErrorBoundary extends Component<ChartRenderingErrorBo
   }
 
   componentDidCatch(error: any) {
-    FrontendErrorsApi.report({ context: "render-chart" }).catch(() => {});
+    FrontendErrorsApi.report({ type: "chart-render-error" }).catch(() => {});
     this.props.onRenderError(error.message || error);
   }
 
