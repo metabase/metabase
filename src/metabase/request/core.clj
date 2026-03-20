@@ -46,6 +46,7 @@
  [metabase.request.util
   DeviceInfo
   api-call?
+  auth-call?
   cacheable?
   describe-user-agent
   device-info

@@ -13,7 +13,6 @@
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
    [metabase.driver.sql.query-processor.deprecated :as sql.qp.deprecated]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -990,35 +989,19 @@
                 (or (clause-pred (first form))
                     (m/find-first (partial contains-clause? clause-pred) (rest form))))))
 
-(defn- pivot-query-group-constant-expression?
-  "Whether this is a reference to the `pivot-group` constant expression added
-  by [[metabase.query-processor.pivot/add-pivot-group-breakout]]; if it is, we can safely exclude it from `GROUP BY`
-  and `ORDER BY` when generating an `OVER` window expression, since it is a constant value. (Some databases like
-  Redshift aren't happy if they include constant expressions in `OVER`).
-
-  See [[metabase.query-processor.pivot-test/offset-pivot-test]] for a test that fails if this is removed."
-  [expr]
-  (lib.util.match/match-lite expr
-    [(_ :guard #{:field :expression}) (_name :guard string?) (_opts :guard :qp.pivot/pivot-grouping?)]
-    true))
-
 (defn- over-order-bys
   "Returns a vector containing the `aggregations` specified by `order-bys` compiled to
   honeysql expressions for `driver` suitable for ordering in the over clause of a window function."
   [driver aggregations order-bys]
   (let [aggregations (vec aggregations)]
     (into []
-          (comp (remove (fn [[_direction expr]]
-                          (when (pivot-query-group-constant-expression? expr)
-                            (log/debugf "Excluding %s from ORDER BY in OVER expression since it is a constant" (pr-str expr))
-                            true)))
-                (keep (fn [[direction expr]]
-                        (if (aggregation? expr)
-                          (let [[_aggregation index] expr
-                                agg                  (unwrap-aggregation-option (aggregations index))]
-                            (when-not (contains-clause? #{:cum-count :cum-sum :offset} agg)
-                              [(->honeysql driver agg) direction]))
-                          [(->honeysql driver expr) direction]))))
+          (keep (fn [[direction expr]]
+                  (if (aggregation? expr)
+                    (let [[_aggregation index] expr
+                          agg                  (unwrap-aggregation-option (aggregations index))]
+                      (when-not (contains-clause? #{:cum-count :cum-sum :offset} agg)
+                        [(->honeysql driver agg) direction]))
+                    [(->honeysql driver expr) direction])))
           order-bys)))
 
 (defn- window-aggregation-over-expr-for-query-with-breakouts
@@ -1026,14 +1009,9 @@
   https://metaboat.slack.com/archives/C05MPF0TM3L/p1714084449574689 for more info."
   [driver inner-query]
   (let [breakouts            (into []
-                                   (comp (remove
-                                          (comp driver-api/qp.util.transformations.nest-breakouts.externally-remapped-field
-                                                #(nth % 2)))
-                                         (remove (fn [expr]
-                                                   (when (pivot-query-group-constant-expression? expr)
-                                                     (log/debugf "Excluding %s from GROUP BY in OVER expression since it is a constant"
-                                                                 (pr-str expr))
-                                                     true))))
+                                   (remove
+                                    (comp driver-api/qp.util.transformations.nest-breakouts.externally-remapped-field
+                                          #(nth % 2)))
                                    (:breakout inner-query))
         group-bys            (:group-by (apply-top-level-clause driver :breakout {} inner-query))
         finest-temp-breakout (driver-api/finest-temporal-breakout-index breakouts 2)
@@ -1072,14 +1050,10 @@
              window-aggregation-over-expr-for-query-with-breakouts
 
              (seq (:order-by *inner-query*))
-             window-aggregation-over-expr-for-query-without-breakouts
-
-             :else
-             (throw (ex-info (tru "Window function requires either breakouts or order by in the query")
-                             {:type  driver-api/qp.error-type.invalid-query
-                              :query *inner-query*})))
-         m (-> (f driver *inner-query*)
-               (merge additional-hsql))]
+             window-aggregation-over-expr-for-query-without-breakouts)
+         m (when f
+             (-> (f driver *inner-query*)
+                 (merge additional-hsql)))]
      (-> (if (seq m)
            [:over [expr m]]
            (do

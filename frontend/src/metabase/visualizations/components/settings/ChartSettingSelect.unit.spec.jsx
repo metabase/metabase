@@ -128,4 +128,31 @@ describe("ChartSettingSelect", () => {
     );
     expect(screen.getByTestId("chart-setting-select")).toBeDisabled();
   });
+
+  it("should show placeholder text when value is cleared", () => {
+    const simpleOptions = [
+      { name: "Option 1", value: "value1" },
+      { name: "Option 2", value: "value2" },
+    ];
+    const { rerender } = render(
+      <ChartSettingSelect
+        options={simpleOptions}
+        value="value1"
+        onChange={jest.fn()}
+        placeholder="Pick a value"
+      />,
+    );
+    expect(screen.getByDisplayValue("Option 1")).toBeInTheDocument();
+
+    rerender(
+      <ChartSettingSelect
+        options={simpleOptions}
+        value={null}
+        onChange={jest.fn()}
+        placeholder="Pick a value"
+      />,
+    );
+
+    expect(screen.getByPlaceholderText("Pick a value")).toHaveValue("");
+  });
 });

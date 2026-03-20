@@ -7,7 +7,7 @@ on:
 jobs:
   on-escalation-label:
     if: github.event.label.name == '.Escalation'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     steps:
       - name: Format issue title (escape quotes)

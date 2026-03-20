@@ -335,13 +335,23 @@ describe("issue 54124", () => {
   it("should be possible to close the data reference sidebar (metabase#54124)", () => {
     H.startNewNativeQuestion();
 
-    cy.get("@questionId").then((questionId) => {
-      H.NativeEditor.type(
-        `{{#${questionId}-reference-question }}{leftarrow}{leftarrow}{leftarrow}`,
-      );
-    });
+    cy.findByTestId("sidebar-content")
+      .should("be.visible")
+      .icon("close")
+      .click();
 
-    cy.findByTestId("sidebar-content").icon("close").click();
+    cy.get("@questionId").then((questionId) => {
+      H.NativeEditor.type(`{{#${questionId}-reference-question }}`, {
+        allowFastSet: true,
+      });
+    });
+    H.NativeEditor.type("{leftarrow}{leftarrow}{leftarrow}");
+
+    cy.findByTestId("sidebar-content")
+      .should("be.visible")
+      .icon("close")
+      .click();
+
     cy.findByTestId("sidebar-content").should("not.exist");
 
     cy.log("moving cursor should open the reference sidebar again");

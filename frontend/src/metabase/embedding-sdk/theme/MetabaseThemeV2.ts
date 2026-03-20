@@ -2,7 +2,7 @@ import type {
   ChartColorV2,
   MetabaseColorKey,
   ProtectedColorKey,
-} from "metabase/lib/colors";
+} from "metabase/ui/colors";
 
 /**
  * Color keys available for theming in modular embedding.

@@ -111,6 +111,7 @@ function setup({ hideOrdersTable = false }: SetupOpts = {}) {
       isObjectDetail
       onVisualizationClick={jest.fn()}
       visualizationIsClickable={jest.fn()}
+      isDashboard={false}
     />,
     {
       storeInitialState: state,

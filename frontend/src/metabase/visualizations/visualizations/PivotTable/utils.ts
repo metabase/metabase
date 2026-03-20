@@ -3,8 +3,8 @@ import _ from "underscore";
 
 import { DEFAULT_METABASE_COMPONENT_THEME } from "metabase/embedding-sdk/theme";
 import { sumArray } from "metabase/lib/arrays";
-import { isPivotGroupColumn } from "metabase/lib/data_grid";
 import { measureText } from "metabase/lib/measure-text";
+import { isPivotGroupColumn } from "metabase/visualizations/lib/data_grid";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";
 import type {
@@ -246,14 +246,14 @@ export const leftHeaderCellSizeAndPositionGetter = (
   leftHeaderWidths: number[],
   rowIndexes: number[],
 ) => {
-  const { offset, span, depth, maxDepthBelow } = item;
+  const { offset, span, depth, maxDepthBelow, isSubtotal } = item;
 
   const columnsToSpan = rowIndexes.length - depth - maxDepthBelow;
 
-  // add up all the widths of the columns, other than itself, that this cell spans
-  const spanWidth = sumArray(
-    leftHeaderWidths.slice(depth + 1, depth + columnsToSpan),
-  );
+  // for subtotals, add up all the widths of the columns, other than itself, that this cell spans
+  const spanWidth = isSubtotal
+    ? sumArray(leftHeaderWidths.slice(depth + 1, depth + columnsToSpan))
+    : 0;
   const columnPadding = depth === 0 ? LEFT_HEADER_LEFT_SPACING : 0;
   const columnWidth = leftHeaderWidths[depth];
 

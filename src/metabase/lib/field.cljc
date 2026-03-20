@@ -427,8 +427,7 @@
     [:base-type
      :inherited-temporal-unit
      :lib/original-binning
-     :lib/original-effective-type
-     :qp.pivot/pivot-grouping?])
+     :lib/original-effective-type])
    {:lib/binning          :binning
     :lib/temporal-unit    :temporal-unit
     :lib/ref-name         :name
