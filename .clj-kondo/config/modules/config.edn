@@ -1237,13 +1237,13 @@
                     :model/MetabotPrompt}
    :model-imports #{:model/Card
                     :model/Collection
+                    :model/Dashboard
                     :model/Database
                     :model/Field
                     :model/Glossary
                     :model/ModerationReview
                     :model/QueryTable
                     :model/Table
-                    :model/Dashboard
                     :model/Transform
                     :model/User}}
 
