@@ -112,7 +112,8 @@
           (mt/with-column-remappings [orders.product_id products.title
                                       reviews.product_id products.title]
             (testing "Test parameter remapping for multi-field scenario"
-              (binding [api/*current-user-id* (mt/user->id :rasta)]
+              (binding [api/*current-user-id* (mt/user->id :rasta)
+                        qp.perms/*param-values-query* true]
                 (let [dashboard (t2/select-one :model/Dashboard :id dashboard-id)
                       parameter (first (:parameters dashboard))]
 
@@ -259,7 +260,8 @@
             (mt/with-column-remappings [orders.product_id products.title
                                         reviews.product_id products.category ; Different remapping
                                         products.id products.title] ; PK remapping (ignored)
-              (binding [api/*current-user-id* (mt/user->id :rasta)]
+              (binding [api/*current-user-id* (mt/user->id :rasta)
+                        qp.perms/*param-values-query* true]
                 (let [dashboard       (t2/select-one :model/Dashboard :id dashboard-id)
                       parameter       (first (:parameters dashboard))
                       remapped-values (parameters.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1)]
@@ -270,7 +272,8 @@
             (mt/with-column-remappings [orders.product_id products.title
                                         reviews.product_id products.title ; Same remapping as FK1
                                         products.id products.category] ; Different PK remapping
-              (binding [api/*current-user-id* (mt/user->id :rasta)]
+              (binding [api/*current-user-id* (mt/user->id :rasta)
+                        qp.perms/*param-values-query* true]
                 (let [dashboard       (t2/select-one :model/Dashboard :id dashboard-id)
                       parameter       (first (:parameters dashboard))
                       remapped-values (parameters.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1)]
@@ -281,7 +284,8 @@
             ;; Set up FK2 with remapping, but leave FK1 without remapping, PK with different remapping
             (mt/with-column-remappings [reviews.product_id products.title
                                         products.id products.category]
-              (binding [api/*current-user-id* (mt/user->id :rasta)]
+              (binding [api/*current-user-id* (mt/user->id :rasta)
+                        qp.perms/*param-values-query* true]
                 (let [dashboard       (t2/select-one :model/Dashboard :id dashboard-id)
                       parameter       (first (:parameters dashboard))
                       remapped-values (parameters.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1)]
@@ -290,7 +294,8 @@
 
           (testing "Scenario 4: No remappings at all should return raw value"
             ;; No remappings set up
-            (binding [api/*current-user-id* (mt/user->id :rasta)]
+            (binding [api/*current-user-id* (mt/user->id :rasta)
+                      qp.perms/*param-values-query* true]
               (let [dashboard       (t2/select-one :model/Dashboard :id dashboard-id)
                     parameter       (first (:parameters dashboard))
                     remapped-values (parameters.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1)]
@@ -299,7 +304,8 @@
 
           (testing "Scenario 5: Only PK remapping should return raw value (PK ignored)"
             (mt/with-column-remappings [products.id products.title]
-              (binding [api/*current-user-id* (mt/user->id :rasta)]
+              (binding [api/*current-user-id* (mt/user->id :rasta)
+                        qp.perms/*param-values-query* true]
                 (let [dashboard       (t2/select-one :model/Dashboard :id dashboard-id)
                       parameter       (first (:parameters dashboard))
                       remapped-values (parameters.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1)]
