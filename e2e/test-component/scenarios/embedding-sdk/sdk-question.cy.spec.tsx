@@ -75,7 +75,7 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
 
       cy.findByTestId("viz-settings-button").click();
 
-      H.popover().within(() => {
+      cy.findByTestId("chartsettings-sidebar").within(() => {
         cy.findByText("Display").click();
         cy.findByText("Show row index").click();
       });
