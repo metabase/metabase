@@ -35,3 +35,11 @@
   {:added "0.57.0" :arglists '([transform options])}
   (fn [transform _options]
     (transforms-base.i/transform->transform-type transform)))
+
+(defmethod execute! :default
+  [transform _options]
+  (let [transform-type (-> transform :source :type)]
+    (throw (ex-info (format "Cannot execute transform %d: no implementation for transform type %s"
+                            (:id transform) transform-type)
+                    {:transform-id   (:id transform)
+                     :transform-type transform-type}))))
