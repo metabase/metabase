@@ -82,6 +82,7 @@ describe("scenarios > question > view", () => {
       cy.findAllByText("VENDOR").first().click();
       H.popover().within(() => {
         cy.findByPlaceholderText("Search the list").type("Balistreri-Muller");
+        cy.findByText("Balistreri-Muller").click();
         cy.findByText("Add filter").click();
       });
       cy.findAllByText("CATEGORY").first().click();
@@ -113,6 +114,7 @@ describe("scenarios > question > view", () => {
       cy.findAllByText("VENDOR").first().click();
       H.popover().within(() => {
         cy.findByPlaceholderText("Search the list").type("Balistreri-Muller");
+        cy.findByText("Balistreri-Muller").click();
         cy.findByText("Add filter").click();
       });
       cy.findAllByTestId("run-button").first().click();
