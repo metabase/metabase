@@ -67,9 +67,9 @@
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"
                                        oauth-server-dynamic-registration-enabled true]
       (t2/with-transaction [_conn nil {:rollback-only true}]
-        (let [response (register-client! {"redirect_uris"               ["https://example.com/callback"]
-                                          "client_name"                "Test Client"
-                                          "token_endpoint_auth_method" "client_secret_basic"})]
+        (let [response (register-client! {:redirect_uris               ["https://example.com/callback"]
+                                          :client_name                "Test Client"
+                                          :token_endpoint_auth_method "client_secret_basic"})]
           (is (=? {:client_id                 string?
                    :client_secret             string?
                    :registration_access_token string?
@@ -81,7 +81,7 @@
   (testing "POST /oauth/register with missing redirect_uris returns 400"
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"
                                        oauth-server-dynamic-registration-enabled true]
-      (let [response (register-client! {"client_name" "No Redirects"}
+      (let [response (register-client! {:client_name "No Redirects"}
                                        :expected-status 400)]
         (is (=? {:error "invalid_client_metadata"} response))))))
 
@@ -89,7 +89,7 @@
   (testing "POST /oauth/register with non-HTTPS redirect URI returns 400"
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"
                                        oauth-server-dynamic-registration-enabled true]
-      (let [response (register-client! {"redirect_uris" ["http://example.com/callback"]}
+      (let [response (register-client! {:redirect_uris ["http://example.com/callback"]}
                                        :expected-status 400)]
         (is (=? {:error "invalid_client_metadata"} response))))))
 
@@ -98,8 +98,8 @@
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"
                                        oauth-server-dynamic-registration-enabled true]
       (t2/with-transaction [_conn nil {:rollback-only true}]
-        (let [response (register-client! {"redirect_uris"    ["http://localhost:8080/callback"]
-                                          "application_type" "native"})]
+        (let [response (register-client! {:redirect_uris    ["http://localhost:8080/callback"]
+                                          :application_type "native"})]
           (is (=? {:client_id     string?
                    :redirect_uris ["http://localhost:8080/callback"]}
                   response)))))))
@@ -109,7 +109,7 @@
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"
                                        oauth-server-dynamic-registration-enabled true]
       (t2/with-transaction [_conn nil {:rollback-only true}]
-        (let [response  (register-client! {"redirect_uris" ["https://example.com/callback"]})
+        (let [response  (register-client! {:redirect_uris ["https://example.com/callback"]})
               client-id (:client_id response)
               db-client (t2/select-one :model/OAuthClient :client_id client-id)]
           (is (= "dynamic" (:registration_type db-client))))))))
@@ -119,8 +119,8 @@
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"
                                        oauth-server-dynamic-registration-enabled true]
       (t2/with-transaction [_conn nil {:rollback-only true}]
-        (let [reg-response  (register-client! {"redirect_uris" ["https://example.com/callback"]
-                                               "client_name"   "Read Test"})
+        (let [reg-response  (register-client! {:redirect_uris ["https://example.com/callback"]
+                                               :client_name   "Read Test"})
               client-id     (:client_id reg-response)
               token         (:registration_access_token reg-response)
               read-response (read-client-config client-id token)]
@@ -133,7 +133,7 @@
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"
                                        oauth-server-dynamic-registration-enabled true]
       (t2/with-transaction [_conn nil {:rollback-only true}]
-        (let [reg-response (register-client! {"redirect_uris" ["https://example.com/callback"]})
+        (let [reg-response (register-client! {:redirect_uris ["https://example.com/callback"]})
               client-id    (:client_id reg-response)
               response     (read-client-config client-id "wrong-token" :expected-status 401)]
           (is (= "invalid_token" (:error response))))))))
@@ -143,7 +143,7 @@
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"
                                        oauth-server-dynamic-registration-enabled true]
       (t2/with-transaction [_conn nil {:rollback-only true}]
-        (let [reg-response (register-client! {"redirect_uris" ["https://example.com/callback"]})
+        (let [reg-response (register-client! {:redirect_uris ["https://example.com/callback"]})
               client-id    (:client_id reg-response)]
           ;; Use mt/user-http-request (which doesn't set Authorization header, only session header)
           (is (= "invalid_token"
@@ -155,7 +155,7 @@
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"
                                        oauth-server-dynamic-registration-enabled true]
       (t2/with-transaction [_conn nil {:rollback-only true}]
-        (let [reg-response (register-client! {"redirect_uris" ["https://example.com/callback"]})
+        (let [reg-response (register-client! {:redirect_uris ["https://example.com/callback"]})
               token        (:registration_access_token reg-response)
               response     (read-client-config "nonexistent-client" token :expected-status 401)]
           (is (= "invalid_token" (:error response))))))))
@@ -166,7 +166,7 @@
   (testing "POST /oauth/register returns 403 when dynamic registration is disabled"
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"
                                        oauth-server-dynamic-registration-enabled false]
-      (let [response (register-client! {"redirect_uris" ["https://example.com/callback"]}
+      (let [response (register-client! {:redirect_uris ["https://example.com/callback"]}
                                        :expected-status 403)]
         (is (= "registration_not_supported" (:error response)))))))
 

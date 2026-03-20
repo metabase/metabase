@@ -57,7 +57,6 @@
 (api.macros/defendpoint :post "/register"
   :- [:map [:status [:enum 201 400 403 404]] [:body :any]]
   "Handles dynamic client registration (RFC 7591)."
-
   [_route-params _query-params body :- :any]
   (if-not (oauth-settings/oauth-server-dynamic-registration-enabled)
     {:status  403
@@ -70,7 +69,15 @@
              :body    {"error"             "invalid_client_metadata"
                        "error_description" "Invalid or missing JSON body"}}
             (try
-              (let [response   (oidc/dynamic-register-client provider body)
+              ;; Default to "native" (not the RFC default "web") so that dynamically
+              ;; registered clients (CLI tools, desktop apps) can use HTTP loopback redirects.
+              ;; Default scopes to all provider-supported scopes when not specified.
+              (let [body       (cond-> body
+                                 (not (contains? body :application_type))
+                                 (assoc :application_type "native")
+                                 (not (contains? body :scope))
+                                 (assoc :scope (str/join " " (oauth-server/all-agent-scopes))))
+                    response   (oidc/dynamic-register-client provider body)
                     client-id  (:client_id response)]
                 ;; Mark as dynamically registered (the library doesn't know about registration_type)
                 (proto/update-client (:client-store provider) client-id {:registration-type "dynamic"})
@@ -86,7 +93,6 @@
 (api.macros/defendpoint :get "/register/:client-id"
   :- [:map [:status [:enum 200 401 404]] [:body :map]]
   "Handles client configuration read (RFC 7592)."
-
   [{:keys [client-id]}
    _query-params _body
    request]
@@ -146,7 +152,6 @@
 (api.macros/defendpoint :post "/authorize/decision"
   :- [:map [:status [:enum 302 400 401 403 404]] [:body [:or :string :map]]]
   "Handles the authorization decision (POST /oauth/authorize/decision)."
-
   [_route-params _query-params body
    request]
   (if-not (:metabase-user-id request)
@@ -194,7 +199,6 @@
 (api.macros/defendpoint :post "/token"
   :- [:map [:status [:enum 200 400 401 404]] [:body :map]]
   "Handles the token endpoint (POST /oauth/token)."
-
   [_route-params _query-params body
    request]
   (or (when-let [provider (oauth-server/get-provider)]
@@ -219,7 +223,6 @@
 (api.macros/defendpoint :post "/revoke"
   :- [:map [:status [:enum 200 404]]]
   "Handles the token revocation endpoint (POST /oauth/revoke) per RFC 7009."
-
   [_route-params _query-params _body
    request]
   (or (when-let [provider (oauth-server/get-provider)]

@@ -3,7 +3,6 @@
    [clojure.string :as str]
    [metabase.oauth-server.settings :as oauth-settings]
    [metabase.oauth-server.store :as store]
-   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.system.core :as system]
    [metabase.util :as u]
    [oidc-provider.core :as oidc]
@@ -35,12 +34,11 @@
       (oauth-settings/oauth-server-signing-key! (serialize-key k))
       k)))
 
-(defenterprise all-agent-scopes
-  "All supported OAuth scopes for the MCP/agent API, derived from endpoint metadata.
-   Returns empty vector in OSS; EE implementation derives scopes from agent API endpoints."
-  metabase-enterprise.oauth-server.core
+(defn all-agent-scopes
+  "All supported OAuth scopes: standard OIDC scopes plus tool-derived scopes.
+   Uses requiring-resolve to avoid a cyclic dependency with metabase.mcp.tools."
   []
-  [])
+  (vec ((requiring-resolve 'metabase.mcp.tools/all-tool-scopes))))
 
 (defn- build-provider-config
   "Build the configuration map for the OIDC provider from Metabase settings."
