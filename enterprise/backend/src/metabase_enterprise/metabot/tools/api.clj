@@ -3,9 +3,7 @@
   (:require
    [clojure.set :as set]
    [metabase-enterprise.metabot.tools.dependencies :as metabot.tools.dependencies]
-   [metabase-enterprise.metabot.tools.transforms :as metabot.tools.transforms.ee]
-   [metabase.api.macros :as api.macros]
-   [metabase.metabot.tools.api :as tools.api]
+   [metabase-enterprise.metabot.tools.transforms-write :as metabot.tools.transforms-write]
    [metabase.metabot.tools.deftool :refer [deftool]]
    [metabase.metabot.tools.transforms :as metabot.tools.transforms]
    [metabase.metabot.util :as metabot.u]
@@ -88,7 +86,7 @@
   "Get information about a Python library by path."
   {:args-schema   ::get-transform-python-library-details-arguments
    :result-schema ::get-transform-python-library-details-result
-   :handler       metabot.tools.transforms.ee/get-transform-python-library-details})
+   :handler       metabot.tools.transforms-write/get-transform-python-library-details})
 
 ;;; --------------------------------------------- Dependency Tools ----------------------------------------------------
 
@@ -127,8 +125,3 @@
    :result-schema ::check-transform-dependencies-result
    :handler       metabot.tools.dependencies/check-transform-dependencies})
 
-;;; ---------------------------------------------------- Routes -------------------------------------------------------
-
-(def ^{:arglists '([request respond raise])} routes
-  "`/api/ee/metabot-tools` EE-only tool routes for transforms and dependencies."
-  (api.macros/ns-handler *ns* tools.api/+tool-session))

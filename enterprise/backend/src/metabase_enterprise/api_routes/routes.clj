@@ -27,7 +27,6 @@
    [metabase-enterprise.embedding-hub.api]
    [metabase-enterprise.gsheets.api :as gsheets.api]
    [metabase-enterprise.library.api]
-   [metabase-enterprise.metabot.tools.api]
    [metabase-enterprise.permission-debug.api]
    [metabase-enterprise.remote-sync.api]
    [metabase-enterprise.replacement.api]
@@ -88,8 +87,7 @@
   `/ee/<feature>/`).
 
   TODO -- Please fix them! See #22687"
-  {"/agent"             {"/v1" {"/workspace" (premium-handler (agent-api.workspace/workspace-handler agent-api/+auth) :workspaces)}}
-   "/moderation-review" metabase-enterprise.content-verification.api.routes/routes
+  {"/moderation-review" metabase-enterprise.content-verification.api.routes/routes
    "/mt"                metabase-enterprise.sandbox.api.routes/sandbox-routes
    "/table"             metabase-enterprise.sandbox.api.routes/sandbox-table-routes})
 
@@ -124,7 +122,6 @@
                                        (premium-handler :etl-connections))
    "/library"                      (premium-handler metabase-enterprise.library.api/routes :library)
    "/logs"                         (premium-handler 'metabase-enterprise.advanced-config.api.logs :audit-app)
-   "/metabot-tools"                metabase-enterprise.metabot.tools.api/routes
    "/permission_debug"             (premium-handler metabase-enterprise.permission-debug.api/routes :advanced-permissions)
    ;; TODO (Ngoc 2026-03-25) -- use :transforms-advanced feature flag once it exists
    "/transforms"                   (premium-handler metabase-enterprise.transforms.api/routes :transforms-python)
@@ -142,7 +139,8 @@
 (def ^:private routes-map
   (merge
    naughty-routes-map
-   {"/ee" ee-routes-map}))
+   {"/agent" {"/v1" {"/workspace" (premium-handler (agent-api.workspace/workspace-handler agent-api/+auth) :workspaces)}}
+    "/ee"    ee-routes-map}))
 
 (def ^{:arglists '([request respond raise])} routes
   "API routes only available when running Metabase® Enterprise Edition™.
