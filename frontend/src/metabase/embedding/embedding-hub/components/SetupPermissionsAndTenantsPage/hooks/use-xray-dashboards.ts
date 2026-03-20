@@ -17,8 +17,9 @@ const AUTO_GENERATED_DASHBOARDS_COLLECTION_NAME =
   "Automatically Generated Dashboards";
 
 /**
- * Returns the last dashboard from the "Automatically Generated Dashboards"
- * collection, useful for pre-filling the dashboard picker.
+ * Returns the most recently edited dashboard from the
+ * "Automatically Generated Dashboards" collection, useful for pre-filling
+ * the dashboard picker.
  */
 export const useLastXrayDashboard = () => {
   const { data: rootItems, isLoading: isLoadingRoot } =
@@ -35,14 +36,18 @@ export const useLastXrayDashboard = () => {
   const { data: dashboardItems, isLoading: isLoadingDashboards } =
     useListCollectionItemsQuery(
       autoGenCollection
-        ? { id: autoGenCollection.id, models: ["dashboard"] }
+        ? {
+            id: autoGenCollection.id,
+            models: ["dashboard"],
+            sort_column: "last_edited_at",
+            sort_direction: "desc",
+          }
         : ({} as never),
       { skip: !autoGenCollection },
     );
 
   const dashboards = dashboardItems?.data ?? [];
-  const lastDashboard =
-    dashboards.length > 0 ? dashboards[dashboards.length - 1] : null;
+  const lastDashboard = dashboards.length > 0 ? dashboards[0] : null;
 
   return {
     lastDashboard,
