@@ -1195,6 +1195,7 @@
               enterprise/metabot
               slackbot}
    :uses    #{activity-feed
+              analyze
               analytics
               api
               app-db
