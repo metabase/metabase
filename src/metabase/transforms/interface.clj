@@ -1,5 +1,6 @@
 (ns metabase.transforms.interface
-  (:require [metabase.util.log :as log]))
+  (:require
+   [metabase.util.log :as log]))
 
 (defn- transform->transform-type
   [transform]
