@@ -59,7 +59,7 @@ CRITICAL: When a user asks to be alerted or notified about a saved question's re
 NEVER tell the user you have created an alert without actually calling the create_alert tool. If you cannot call the tool
 (e.g. missing required information), explain what is needed instead of pretending the alert was created.")
 
-(def ^:private schema
+(def ^:private alert-schema
   [:map {:closed true}
    [:card_id :int]
    [:send_condition [:enum "has_result" "goal_above" "goal_below"]]
@@ -69,7 +69,7 @@ NEVER tell the user you have created an alert without actually calling the creat
 (mu/defn ^{:tool-name           "create_alert"
            :system-instructions create-alert-system-instructions} create-alert-tool
   "Create an alert based on a saved question's results on a recurring schedule."
-  [{:keys [card_id send_condition schedule send_once]} :- schema]
+  [{:keys [card_id send_condition schedule send_once]} :- alert-schema]
   (let [slack-channel-id (:slack_channel_id (shared/current-context))]
     (when-not slack-channel-id
       (throw (ex-info "This tool can only be used from a Slack channel"
