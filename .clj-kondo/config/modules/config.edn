@@ -52,9 +52,8 @@
 ;;
 ;; ## `model-exports`:
 ;;
-;; Set of `:model/X` keywords that this module allows others to reference. Defaults to `#{}` when omitted,
-;; meaning no models are exported unless explicitly listed. A module must opt-in to exporting each model.
-;; `:any` can be used to export all models (no restrictions), but prefer explicit sets.
+;; Set of `:model/X` keywords defined by this module that it allows others to reference. By default all are private.
+;; If you know what you're doing, we support an :all keyword, but let's prefer explicit sets for now.
 ;;
 ;;    enterprise/workspaces
 ;;    {...
@@ -62,10 +61,8 @@
 ;;
 ;; ## `model-imports`:
 ;;
-;; Set of `:model/X` keywords that this module is allowed to reference from other modules. Defaults to `#{}`
-;; when omitted, meaning the module may not reference any external models unless explicitly listed. `:any` can
-;; be used to allow all models (no restrictions). A set restricts the module to only the listed models; any
-;; other `:model/X` keyword in the module's source files will be flagged as a violation.
+;; Set of `:model/X` keywords that this module is allowed to reference from other modules. Defaults to none.
+;; If you know what you're doing, we support an :all keyword, but let's prefer explicit sets for now.
 ;;
 ;;    transforms-base
 ;;    {...
