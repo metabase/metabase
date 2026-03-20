@@ -129,12 +129,13 @@ export const DataGrid = function DataGrid<TData>({
     row: DataGridRowType<TData>,
     columns: DataGridColumnType<TData>[],
     index: number,
+    measureRef?: (element: Element | null) => void,
   ) => (
     <DataGridRow
       key={index}
       row={row}
+      rowMeasureRef={measureRef}
       pinnedRowsCount={pinnedRows.length}
-      rowMeasureRef={rowMeasureRef}
       columns={columns}
       datasetIndexAttributeName={datasetIndexAttributeName}
       virtualIndexAttributeName={virtualIndexAttributeName}
@@ -198,6 +199,7 @@ export const DataGrid = function DataGrid<TData>({
 
   const renderBodyGridPanels = (
     rows: DataGridRowType<TData>[],
+    measureRef?: (element: Element | null) => void,
     minHeight?: string,
   ) =>
     renderGridPanels({
@@ -205,7 +207,7 @@ export const DataGrid = function DataGrid<TData>({
         renderRow(row, pinnedColumns, index),
       ),
       centerContent: rows.map((row, index) =>
-        renderRow(row, centerColumns, index),
+        renderRow(row, centerColumns, index, measureRef),
       ),
       minHeight,
     });
@@ -291,7 +293,11 @@ export const DataGrid = function DataGrid<TData>({
                   </div>
                 )}
                 <div className={S.centerRowsSection}>
-                  {renderBodyGridPanels(centerRows, `${totalHeight}px`)}
+                  {renderBodyGridPanels(
+                    centerRows,
+                    rowMeasureRef,
+                    `${totalHeight}px`,
+                  )}
                 </div>
               </div>
             )}

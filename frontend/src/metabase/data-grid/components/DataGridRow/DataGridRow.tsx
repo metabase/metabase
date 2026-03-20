@@ -19,7 +19,7 @@ import type { DataGridStylesProps } from "../DataGrid/types";
 export interface DataGridRowProps<TData> extends DataGridStylesProps {
   row: DataGridRowType<TData>;
   columns: DataGridColumnType<TData>[];
-  rowMeasureRef?: ((element: HTMLDivElement | null) => void) | undefined;
+  rowMeasureRef?: ((element: Element | null) => void) | undefined;
   zoomedRowIndex: number | undefined;
   pinnedRowsCount: number;
   selection: DataGridSelection;
@@ -34,8 +34,8 @@ export interface DataGridRowProps<TData> extends DataGridStylesProps {
 
 export const DataGridRow = <TData,>({
   row,
-  rowMeasureRef,
   columns,
+  rowMeasureRef,
   pinnedRowsCount,
   zoomedRowIndex,
   selection,

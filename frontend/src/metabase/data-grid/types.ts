@@ -320,7 +320,7 @@ export interface DataGridInstance<TData> {
   getPinnedColumns: () => DataGridColumnType<TData>[];
   getCenterColumns: () => DataGridColumnType<TData>[];
   datasetIndexAttributeName: string;
-  rowMeasureRef: (element: HTMLDivElement | null) => void;
+  rowMeasureRef: (element: Element | null) => void;
   scrollTo: (destinations: ScrollToDestinations) => void;
   onHeaderCellClick?: (
     event: React.MouseEvent<HTMLDivElement>,

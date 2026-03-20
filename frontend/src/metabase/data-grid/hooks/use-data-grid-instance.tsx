@@ -31,10 +31,7 @@ import { useBodyCellMeasure } from "metabase/data-grid/hooks/use-body-cell-measu
 import { useColumnResizeObserver } from "metabase/data-grid/hooks/use-column-resize-observer";
 import { useColumnsReordering } from "metabase/data-grid/hooks/use-columns-reordering";
 import { useMeasureColumnWidths } from "metabase/data-grid/hooks/use-measure-column-widths";
-import {
-  type HeightChangeEvent,
-  useRowHeights,
-} from "metabase/data-grid/hooks/use-row-heights";
+import { useRowSizing } from "metabase/data-grid/hooks/use-row-sizing";
 import { useVirtualGrid } from "metabase/data-grid/hooks/use-virtual-grid";
 import type {
   DataGridColumnType,
@@ -260,28 +257,20 @@ export const useDataGridInstance = <TData, TValue>({
       pinnedColumnsCount: pinnedLeftColumnsCount + utilityColumns.length,
     });
 
-  const onRowHeightChangeRef = useRef<(event: HeightChangeEvent) => void>();
-
-  const { getRowHeight, rowMeasureRef, remeasureAll, rowSizingMap } =
-    useRowHeights({
-      data,
-      defaultRowHeight,
-      columnSizingMap,
-      wrappedColumnsOptions,
-      measureBodyCellDimensions,
-      datasetIndexAttributeName,
-      onHeightChange: useCallback(
-        (event: HeightChangeEvent) => onRowHeightChangeRef.current?.(event),
-        [],
-      ),
-    });
+  const { getRowHeight } = useRowSizing({
+    data,
+    defaultRowHeight,
+    columnSizingMap,
+    wrappedColumnsOptions,
+    measureBodyCellDimensions,
+  });
 
   const rowPinning = useRowPinningByCount({
     top: pinnedTopRowsCount,
     data,
     getRowId,
     gridRef,
-    rowSizingMap,
+    getRowHeight,
   });
 
   const table = useReactTable({
@@ -317,7 +306,8 @@ export const useDataGridInstance = <TData, TValue>({
     table,
     defaultRowHeight,
     enableRowVirtualization,
-    onRowHeightChangeRef,
+    getRowHeight,
+    datasetIndexAttributeName,
     virtualIndexAttributeName,
   });
 
@@ -377,7 +367,7 @@ export const useDataGridInstance = <TData, TValue>({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const { measureGrid } = virtualGrid;
+  const { columnVirtualizer, remeasureRowHeights } = virtualGrid;
   const prevColumnSizing = useRef<ColumnSizingState>();
   const prevWrappedColumns = useRef<string[]>();
 
@@ -386,22 +376,28 @@ export const useDataGridInstance = <TData, TValue>({
       prevColumnSizing.current != null &&
       !_.isEqual(prevColumnSizing.current, columnSizingMap);
 
+    const wrappedColumnIds = wrappedColumnsOptions.map((column) => column.id);
     const didColumnWrappingChange =
       prevWrappedColumns.current != null &&
-      !_.isEqual(
-        wrappedColumnsOptions.map((column) => column.id),
-        prevWrappedColumns.current,
-      );
+      !_.isEqual(wrappedColumnIds, prevWrappedColumns.current);
+
     if (didColumnSizingChange || didColumnWrappingChange) {
-      measureGrid();
-      remeasureAll();
+      columnVirtualizer.measure();
+      remeasureRowHeights();
     }
 
     prevColumnSizing.current = columnSizingMap;
-    prevWrappedColumns.current = wrappedColumnsOptions.map(
-      (column) => column.id,
-    );
-  }, [columnSizingMap, measureGrid, remeasureAll, wrappedColumnsOptions]);
+    prevWrappedColumns.current = wrappedColumnIds;
+  }, [
+    columnSizingMap,
+    columnVirtualizer,
+    remeasureRowHeights,
+    wrappedColumnsOptions,
+  ]);
+
+  useEffect(() => {
+    columnVirtualizer.measure();
+  }, [columnVirtualizer, columnOrder]);
 
   // Handle column resize from resize observer
   const handleColumnResize = useCallback(
@@ -602,7 +598,7 @@ export const useDataGridInstance = <TData, TValue>({
     getCenterColumns,
     getPinnedColumns,
     getPinnedRows,
-    rowMeasureRef,
+    rowMeasureRef: virtualGrid.rowMeasureRef,
     datasetIndexAttributeName,
     enablePagination,
     sorting,

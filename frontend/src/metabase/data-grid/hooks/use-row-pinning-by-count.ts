@@ -3,16 +3,14 @@ import type { RefObject } from "react";
 import { useMemo } from "react";
 
 import { HEADER_HEIGHT } from "../constants";
-
-import { useItemsLimiter } from "./use-items-limiter";
-import type { RowSizingState } from "./use-row-heights/types";
+import { countWithinLimit } from "../utils/count-within-limit";
 
 type UseRowPinningByCountProps<TData> = {
   top?: number;
   data: TData[];
   getRowId: (originalRow: TData, index: number, parent?: Row<TData>) => string;
   gridRef: RefObject<HTMLDivElement | null>;
-  rowSizingMap: RowSizingState;
+  getRowHeight: (index: number) => number;
 };
 
 export const useRowPinningByCount = <TData>({
@@ -20,30 +18,26 @@ export const useRowPinningByCount = <TData>({
   data,
   getRowId,
   gridRef,
-  rowSizingMap,
+  getRowHeight,
 }: UseRowPinningByCountProps<TData>): RowPinningState => {
-  const candidateHeights = useMemo(() => {
-    const topRowHeights = rowSizingMap
-      .entries()
-      .toArray()
-      .sort((a, b) => a[0] - b[0])
-      .slice(0, top)
-      .map(([, value]) => value);
-    return [HEADER_HEIGHT, ...topRowHeights];
-  }, [rowSizingMap, top]);
-
-  const effectivePinnedRowsCount = useItemsLimiter({
-    containerRef: gridRef,
-    dimension: "height",
-    sizes: candidateHeights,
-    maxRatio: 0.8,
-  });
+  const containerHeight =
+    gridRef.current?.getBoundingClientRect().height ?? window.innerHeight;
 
   return useMemo(() => {
-    const actualPinnedCount = Math.max(0, effectivePinnedRowsCount - 1);
+    const maxHeight = containerHeight * 0.8;
+
+    const candidateSizes = [HEADER_HEIGHT];
+    for (let index = 0; index < top && index < data.length; index++) {
+      candidateSizes.push(getRowHeight(index));
+    }
+
+    const includedCount = countWithinLimit(candidateSizes, maxHeight);
+    const pinnedRowsCount = Math.max(0, includedCount - 1);
+
     const topIds = data
-      .slice(0, actualPinnedCount)
+      .slice(0, pinnedRowsCount)
       .map((row, index) => getRowId(row, index));
+
     return { top: topIds };
-  }, [effectivePinnedRowsCount, data, getRowId]);
+  }, [containerHeight, data, top, getRowHeight, getRowId]);
 };
