@@ -27,7 +27,8 @@ export const useRowPinningByCount = <TData>({
     const maxHeight = containerHeight * 0.8;
 
     const candidateSizes = [HEADER_HEIGHT];
-    for (let index = 0; index < top && index < data.length; index++) {
+    const cap = Math.min(top, data.length);
+    for (let index = 0; index < cap; index++) {
       candidateSizes.push(getRowHeight(index));
     }
 
