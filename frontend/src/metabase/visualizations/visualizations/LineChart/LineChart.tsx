@@ -15,6 +15,10 @@ import type {
   VisualizationSettingsDefinitions,
 } from "../../types";
 
+const settings: VisualizationSettingsDefinitions = {
+  ...COMBO_CHARTS_SETTINGS_DEFINITIONS,
+};
+
 Object.assign(
   LineChart,
   getCartesianChartDefinition({
@@ -25,9 +29,7 @@ Object.assign(
     noun: t`line chart`,
     minSize: getMinSize("line"),
     defaultSize: getDefaultSize("line"),
-    settings: {
-      ...COMBO_CHARTS_SETTINGS_DEFINITIONS,
-    } as any as VisualizationSettingsDefinitions,
+    settings,
   }),
 );
 
