@@ -19,6 +19,13 @@
 ;; plugin-id -> monotonic nano-time timestamp of last failed fetch
 (defonce ^:private last-fetch-failure-ns (atom {}))
 
+;;; ---------------------------------------- In-memory dev bundle URLs -----------------------------------------
+
+;; dev_bundle_url is transient (only useful while a dev server is running),
+;; so we store it in memory rather than the database. Cleared on restart.
+(defonce dev-bundle-urls
+  (atom {})) ;; {plugin-id -> url-string}
+
 (def ^:private ^:const fetch-failure-cooldown-ms (* 5 60 1000))
 
 ;;; ------------------------------------------------ Disk Cache ------------------------------------------------
@@ -113,3 +120,27 @@
   (swap! bundle-cache dissoc plugin-id)
   (swap! last-fetch-failure-ns dissoc plugin-id)
   (delete-from-disk! plugin-id))
+
+;;; ------------------------------------------------ Dev Bundle ------------------------------------------------
+
+(defn fetch-dev-bundle
+  "Fetch a JS bundle from a dev URL. Returns {:content str :hash str} or nil."
+  [^String url]
+  (try
+    (let [content (slurp (java.net.URI. url))]
+      {:content content
+       :hash    (str (hash content))})
+    (catch Exception e
+      (throw (ex-info (str "Failed to fetch dev bundle from " url ": " (.getMessage e))
+                      {:status-code 502})))))
+
+(defn resolve-bundle
+  "Resolve the JS bundle for a plugin, respecting dev bundle URL if set.
+   Returns {:content str :hash str} or nil."
+  [plugin]
+  (let [id      (:id plugin)
+        dev-url (get @dev-bundle-urls id)]
+    (if dev-url
+      (fetch-dev-bundle dev-url)
+      (or (get-bundle id)
+          (fetch-and-cache! plugin)))))
