@@ -428,6 +428,38 @@
         :data_authority      :computed
         :initial_sync_status "complete"}))))
 
+(defn delete-orphaned-provisional-table!
+  "If `table-id` points at an inactive provisional table that is not referenced by any other
+   transform or workspace row (excluding `exclude-transform-id`), delete it."
+  [table-id exclude-transform-id]
+  (when table-id
+    (when-let [table (t2/select-one :model/Table :id table-id
+                                    :active false :transform_target true :deactivated_at nil
+                                    :data_source :metabase-transform)]
+      (let [referenced?
+            (seq
+             (t2/query {:union
+                        (cons
+                         {:select [[[:inline 1] :ref]]
+                          :from   [:transform]
+                          :where  [:and
+                                   [:= :target_table_id (:id table)]
+                                   [:not= :id exclude-transform-id]]
+                          :limit  1}
+                         (for [[table-name column-name]
+                               [["workspace_input" "table_id"]
+                                ["workspace_output" "global_table_id"]
+                                ["workspace_output" "isolated_table_id"]
+                                ["workspace_output_external" "global_table_id"]
+                                ["workspace_output_external" "isolated_table_id"]
+                                ["workspace_input_external" "table_id"]]]
+                           {:select [[[:inline 1] :ref]]
+                            :from   [(keyword table-name)]
+                            :where  [:= (keyword column-name) (:id table)]
+                            :limit  1}))}))]
+        (when-not referenced?
+          (t2/delete! :model/Table :id (:id table)))))))
+
 (defn gc-transform-target-tables!
   "Deletes provisional table rows (created by [[upsert-transform-target-table!]]) that are no longer
    referenced by any Transform or workspace table. Safe because these rows were never active,

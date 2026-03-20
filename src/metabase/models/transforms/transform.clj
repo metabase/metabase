@@ -20,6 +20,7 @@
    [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.warehouse-schema.models.table :as ws.table]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.instance :as t2.instance]))
@@ -257,9 +258,7 @@
   transform)
 
 (t2/define-before-delete :model/Transform [transform]
-  ;; TODO (Chris 2026-03-19) -- Once we have indexed FKs pointing from both global and workspace transforms
-  ;; to their target table, we should consider synchronously deleting orphaned provisional table rows
-  ;; (tables that have never been physically materialized). See gc-transform-target-tables! for the batch equivalent.
+  (ws.table/delete-orphaned-provisional-table! (:target_table_id transform) (:id transform))
   (events/publish-event! :event/delete-transform {:id (:id transform)})
   (search.core/delete! :model/Transform [(str (:id transform))])
   transform)
