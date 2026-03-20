@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import {
   Api,
+  skipToken,
   useCreateDashboardMutation,
   useListCollectionItemsQuery,
   useUpdateDashboardMutation,
@@ -42,8 +43,7 @@ export const useLastXrayDashboard = () => {
             sort_column: "last_edited_at",
             sort_direction: "desc",
           }
-        : ({} as never),
-      { skip: !autoGenCollection },
+        : skipToken,
     );
 
   const dashboards = dashboardItems?.data ?? [];
@@ -57,25 +57,20 @@ export const useLastXrayDashboard = () => {
 
 export const useMoveXrayDashboardToSharedCollection = () => {
   const dispatch = useDispatch();
-  const [updateDashboard] = useUpdateDashboardMutation();
-  const [isMoving, setIsMoving] = useState(false);
+  const [updateDashboard, { isLoading: isMoving }] =
+    useUpdateDashboardMutation();
 
   const moveDashboard = useCallback(
     async (
       dashboardId: number,
       targetCollectionId: CollectionId,
     ): Promise<void> => {
-      setIsMoving(true);
-      try {
-        await updateDashboard({
-          id: dashboardId,
-          collection_id: targetCollectionId,
-        }).unwrap();
+      await updateDashboard({
+        id: dashboardId,
+        collection_id: targetCollectionId,
+      }).unwrap();
 
-        dispatch(Api.util.invalidateTags([listTag("embedding-hub-checklist")]));
-      } finally {
-        setIsMoving(false);
-      }
+      dispatch(Api.util.invalidateTags([listTag("embedding-hub-checklist")]));
     },
     [updateDashboard, dispatch],
   );

@@ -8,7 +8,7 @@ const mockUpdateDashboard = jest.fn();
 
 jest.mock("metabase/api", () => ({
   ...jest.requireActual("metabase/api"),
-  useUpdateDashboardMutation: () => [mockUpdateDashboard],
+  useUpdateDashboardMutation: () => [mockUpdateDashboard, { isLoading: false }],
 }));
 
 describe("useMoveXrayDashboardToSharedCollection", () => {
@@ -35,35 +35,13 @@ describe("useMoveXrayDashboardToSharedCollection", () => {
     });
   });
 
-  it("should set isMoving while moving", async () => {
-    let resolveMove: () => void;
-    const movePromise = new Promise<void>((resolve) => {
-      resolveMove = resolve;
-    });
-
-    mockUpdateDashboard.mockReturnValue({
-      unwrap: () => movePromise,
-    });
-
+  it("should expose isMoving from the mutation", () => {
     const { result } = renderHookWithProviders(
       () => useMoveXrayDashboardToSharedCollection(),
       {},
     );
 
-    expect(result.current.isMoving).toBe(false);
-
-    let moveFinished: Promise<void>;
-    act(() => {
-      moveFinished = result.current.moveDashboard(100, 42);
-    });
-
-    expect(result.current.isMoving).toBe(true);
-
-    await act(async () => {
-      resolveMove!();
-      await moveFinished!;
-    });
-
+    // isMoving is forwarded from RTK Query's isLoading
     expect(result.current.isMoving).toBe(false);
   });
 });

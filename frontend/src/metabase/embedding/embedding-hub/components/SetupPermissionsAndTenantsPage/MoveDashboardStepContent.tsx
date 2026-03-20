@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import {
+  skipToken,
   useListCollectionItemsQuery,
   useListCollectionsTreeQuery,
 } from "metabase/api";
@@ -39,8 +40,7 @@ export const MoveDashboardStepContent = ({
   const { data: sharedCollectionItems } = useListCollectionItemsQuery(
     sharedCollectionId
       ? { id: sharedCollectionId, models: ["dashboard"] }
-      : ({} as never),
-    { skip: !sharedCollectionId },
+      : skipToken,
   );
 
   const sharedCollectionHasDashboards =
