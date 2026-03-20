@@ -4,7 +4,6 @@ const { H } = cy;
 
 describe("Cross-version questions - joins", () => {
   it("setup: creates a joined question", { tags: ["@source"] }, () => {
-    H.restore("setup");
     cy.signIn("admin", { skipCache: true });
 
     cy.visit("/");
