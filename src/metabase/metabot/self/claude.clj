@@ -178,8 +178,8 @@
         params                     (schema/filter-schema-by-features params)
         doc                        (if (str/starts-with? (or doc "") "Inputs: ")
                                     ;; strip that stuff we're appending in mu/defn
-                                    (second (str/split doc #"\n\n  " 2))
-                                    doc)]
+                                     (second (str/split doc #"\n\n  " 2))
+                                     doc)]
     {:name         (or tool-name "unknown")
      :description  doc
      :input_schema (mjs/transform params {:additionalProperties false})}))
