@@ -68,11 +68,3 @@
   :export?    true
   :doc        false)
 
-(defsetting use-native-agent
-  (deferred-tru "Enable native Clojure agent instead of external Python AI Service.")
-  :type       :boolean
-  :default    false
-  :visibility :internal
-  :feature    :metabot-v3
-  :export?    false
-  :doc        false)
