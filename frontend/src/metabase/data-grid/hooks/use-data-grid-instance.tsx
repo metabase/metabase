@@ -2,7 +2,6 @@ import {
   type ColumnSizingState,
   type PaginationState,
   type Row,
-  type RowData,
   getCoreRowModel,
   getPaginationRowModel,
   getSortedRowModel,
@@ -62,12 +61,6 @@ const getColumnOrder = (
   utilityColumnIds: string[],
 ) => _.uniq([...utilityColumnIds, ...dataColumnsOrder]);
 
-export const defaultGetRowId = <TData extends RowData>(
-  originalRow: TData,
-  index: number,
-  parent?: Row<TData>,
-) => `${parent ? [parent.id, index].join(".") : index}`;
-
 /**
  * Main hook for creating and managing a data grid instance.
  * Handles virtualization, column sizing/reordering, cell selection,
@@ -95,7 +88,6 @@ export const useDataGridInstance = <TData, TValue>({
   onColumnResize,
   onColumnReorder,
   measurementRenderWrapper,
-  getRowId = defaultGetRowId,
 }: DataGridOptions<TData, TValue>): DataGridInstance<TData> => {
   const datasetIndexAttributeName = DATASET_INDEX_ATTRIBUTE_NAME;
   const virtualIndexAttributeName = VIRTUAL_INDEX_ATTRIBUTE_NAME;
@@ -265,10 +257,11 @@ export const useDataGridInstance = <TData, TValue>({
     measureBodyCellDimensions,
   });
 
+  const [sortedRows, setSortedRows] = useState<Row<TData>[]>([]);
+
   const rowPinning = useRowPinningByCount({
     top: pinnedTopRowsCount,
-    data,
-    getRowId,
+    sortedRows,
     gridRef,
     getRowHeight,
   });
@@ -276,7 +269,6 @@ export const useDataGridInstance = <TData, TValue>({
   const table = useReactTable({
     data,
     columns,
-    getRowId,
     state: {
       columnSizing: columnSizingMap,
       columnOrder,
@@ -366,6 +358,11 @@ export const useDataGridInstance = <TData, TValue>({
     applyMeasuredColumnWidths(controlledColumnSizingMap, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // For pinning row state we need to work with client-side sorted data
+  useLayoutEffect(() => {
+    setSortedRows(table.getSortedRowModel().rows);
+  }, [sorting, data, table]);
 
   const { measureGrid, columnVirtualizer } = virtualGrid;
   const prevColumnSizing = useRef<ColumnSizingState>();

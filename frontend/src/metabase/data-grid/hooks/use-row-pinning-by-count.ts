@@ -7,16 +7,14 @@ import { countWithinLimit } from "../utils/count-within-limit";
 
 type UseRowPinningByCountProps<TData> = {
   top?: number;
-  data: TData[];
-  getRowId: (originalRow: TData, index: number, parent?: Row<TData>) => string;
+  sortedRows: Row<TData>[];
   gridRef: RefObject<HTMLDivElement | null>;
   getRowHeight: (index: number) => number;
 };
 
 export const useRowPinningByCount = <TData>({
   top = 0,
-  data,
-  getRowId,
+  sortedRows,
   gridRef,
   getRowHeight,
 }: UseRowPinningByCountProps<TData>): RowPinningState => {
@@ -27,7 +25,7 @@ export const useRowPinningByCount = <TData>({
     const maxHeight = containerHeight * 0.8;
 
     const candidateSizes = [HEADER_HEIGHT];
-    const cap = Math.min(top, data.length);
+    const cap = Math.min(top, sortedRows.length);
     for (let index = 0; index < cap; index++) {
       candidateSizes.push(getRowHeight(index));
     }
@@ -35,10 +33,8 @@ export const useRowPinningByCount = <TData>({
     const includedCount = countWithinLimit(candidateSizes, maxHeight);
     const pinnedRowsCount = Math.max(0, includedCount - 1);
 
-    const topIds = data
-      .slice(0, pinnedRowsCount)
-      .map((row, index) => getRowId(row, index));
+    const topIds = sortedRows.slice(0, pinnedRowsCount).map((row) => row.id);
 
     return { top: topIds };
-  }, [containerHeight, data, top, getRowHeight, getRowId]);
+  }, [containerHeight, sortedRows, top, getRowHeight]);
 };
