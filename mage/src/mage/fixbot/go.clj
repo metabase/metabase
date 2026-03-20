@@ -24,19 +24,34 @@
 (def ^:private workmux-global-config-path
   (str (System/getProperty "user.home") "/.config/workmux/config.yaml"))
 
-(defn- ensure-global-sandbox-image!
-  "Ensure the global workmux config has sandbox.image set to metabase-fixbot.
-   The image field is global-config-only in workmux, so we set it permanently."
+(def ^:private sandbox-config-dir
+  (str (System/getProperty "user.home") "/.claude-sandbox-config/claude"))
+
+(defn- ensure-global-sandbox-config!
+  "Ensure the global workmux config has sandbox.image and agent_config_dir set.
+   Both are global-config-only in workmux, so we set them permanently.
+   Also ensures the sandbox config directory exists with a settings.json."
   []
   (let [config-file (java.io.File. ^String workmux-global-config-path)]
     (.mkdirs (.getParentFile config-file))
     (let [content (if (.exists config-file) (slurp config-file) "")]
-      (when-not (re-find #"(?m)^\s*image:\s*metabase-fixbot" content)
+      (when (or (not (re-find #"(?m)^\s*image:\s*metabase-fixbot" content))
+                (not (re-find #"(?m)^\s*agent_config_dir:" content)))
         (spit workmux-global-config-path
               (str content
                    (when-not (re-find #"(?m)^sandbox:" content)
                      "\nsandbox:\n")
-                   "  image: metabase-fixbot\n"))))))
+                   (when-not (re-find #"(?m)^\s*image:\s*metabase-fixbot" content)
+                     "  image: metabase-fixbot\n")
+                   (when-not (re-find #"(?m)^\s*agent_config_dir:" content)
+                     "  agent_config_dir: ~/.claude-sandbox-config/{agent}\n"))))))
+  ;; Ensure sandbox config directory exists with settings.json
+  (let [config-dir (java.io.File. ^String sandbox-config-dir)
+        settings-file (java.io.File. ^String (str sandbox-config-dir "/settings.json"))
+        source-file (java.io.File. ^String (str u/project-root-directory "/.claude/fixbot/sandbox-settings.local.json"))]
+    (.mkdirs config-dir)
+    (when (and (.exists source-file) (not (.exists settings-file)))
+      (spit (.getPath settings-file) (slurp (.getPath source-file))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Main orchestrator
@@ -76,8 +91,8 @@
             issue-url (str "https://linear.app/metabase/issue/" issue-id)
             in-tmux? (not (str/blank? (u/env "TMUX" (constantly nil))))]
 
-        ;; Ensure global workmux config has our sandbox image
-        (ensure-global-sandbox-image!)
+        ;; Ensure global workmux config has sandbox image and agent_config_dir
+        (ensure-global-sandbox-config!)
 
         ;; Write Claude Code hooks to main repo so workmux doesn't prompt
         (let [hooks-dir (str u/project-root-directory "/.github/hooks/workmux-status")]
