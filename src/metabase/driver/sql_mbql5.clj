@@ -116,35 +116,19 @@
                                                                opts-or-default
                                                                {:default opts-or-default})]))
 
-;; For clauses that DO NOT have their opts propogated
-(doseq [op [;; unary
-            :not :asc :desc :aggregation-options :date
-            :length :trim :ltrim :rtrim :upper :lower ::sql.qp/cast-to-text
-            :integer :float  :floor :ceil :round :abs :log :exp :sqrt
-            :avg :median :stddev :var :sum :min :max :count :distinct
-            :text :count-where :share
-            ;; binary
-            := :!= :> :>= :< :<=
-            :power :percentile
-            :time :temporal-extract
-            :absolute-datetime :relative-datetime
-            :sum-where :distinct-where
-            ;; ternary
-            :between :replace :substring
-            :datetime-add :datetime-subtract :datetime-diff
-            ;; n-ary
-            :+ :- :* :/ :and :or :concat :coalesce
-            ;; cumulative functions
-            :cum-sum :cum-count]]
+;; For clauses that DO NOT have their opts propagated
+(doseq [op [:!= :* :+ :- :/ :< :<= := :> :>= :abs :absolute-datetime :aggregation-options :and :asc :avg :between
+            ::sql.qp/cast ::sql.qp/cast-to-text :ceil :coalesce :concat :count :count-where :cum-count :cum-sum :date
+            :datetime-add :datetime-diff :datetime-subtract :desc :distinct :distinct-where :exp
+            ::sql.qp/expression-literal-text-value :float :floor :integer :length :log :lower :ltrim :max :median :min
+            :not :now :or :percentile :power :relative-datetime :replace :round :rtrim :share :sqrt :stddev :substring
+            :sum :sum-where :temporal-extract :text :time :today :trim :upper :var]]
   (defmethod sql.qp/->honeysql [:sql-mbql5 op]
     [driver [op _opts & args]]
     ((get-method sql.qp/->honeysql [:sql op]) driver (into [op] args))))
 
-;; For clauses that DO have their opts propogated
-(doseq [op [;; unary
-            :field :expression :datetime
-            ;; binary
-            :contains :starts-with :ends-with]]
+;; For clauses that DO have their opts propagated
+(doseq [op [:expression :field :datetime :contains :starts-with :ends-with]]
   (defmethod sql.qp/->honeysql [:sql-mbql5 op]
     [driver [op opts & args]]
     ((get-method sql.qp/->honeysql [:sql op]) driver (cond-> (into [op] args) opts (conj opts)))))
