@@ -9,6 +9,7 @@ import * as LibMetric from "metabase-lib/metric";
 import type { Dataset, TemporalUnit } from "metabase-types/api";
 
 import type {
+  ExpressionItemResult,
   MetricSourceId,
   MetricsViewerDefinitionEntry,
   MetricsViewerDisplayType,
@@ -28,13 +29,6 @@ import {
 import { getTabConfig } from "../../../utils/tab-config";
 import { MetricControls } from "../../MetricControls";
 import { MetricsViewerVisualization } from "../../MetricsViewerVisualization";
-
-type ExpressionItemResult = {
-  name: string;
-  result: Dataset | null;
-  isExecuting: boolean;
-  error: string | null;
-};
 
 type MetricsViewerTabContentProps = {
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
@@ -82,40 +76,17 @@ export function MetricsViewerTabContent({
     [formulaEntities],
   );
 
-  const isLoading = useMemo(() => {
-    const expressionLoading = expressionItems.some((item) => item.isExecuting);
-    const individualLoading = metricSourceIds.some((id) => isExecuting(id));
-    return expressionLoading || individualLoading;
-  }, [expressionItems, isExecuting, metricSourceIds]);
-
-  const firstError = useMemo(() => {
-    const expressionError =
-      expressionItems.find((item) => item.error)?.error ?? null;
-    if (expressionError) {
-      return expressionError;
-    }
-    for (const id of metricSourceIds) {
-      const err = errorsByDefinitionId.get(id);
-      if (err) {
-        return err;
-      }
-    }
-    return null;
-  }, [expressionItems, metricSourceIds, errorsByDefinitionId]);
-
-  const dimensionFilter = getTabConfig(tab.type).dimensionPredicate;
-
   const { series: rawSeries, cardIdToDimensionId } = useMemo(() => {
     // Build one arithmetic series per expression item that has a result.
     const expressionSeries = expressionItems.flatMap((item) =>
-      item.result && item.name
+      item.result && item.entry.name
         ? buildArithmeticSeriesFromResult(
             definitions,
             tab.dimensionMapping,
             tab.display,
             item.result,
             modifiedDefinitions,
-            item.name,
+            item.entry.name,
           )
         : [],
     );
@@ -147,6 +118,41 @@ export function MetricsViewerTabContent({
     sourceColors,
     definitions,
   ]);
+
+  const isLoading = useMemo(() => {
+    const expressionLoading = expressionItems.some((item) => item.isExecuting);
+    const individualLoading = metricSourceIds.some((id) => isExecuting(id));
+    return expressionLoading || individualLoading;
+  }, [expressionItems, isExecuting, metricSourceIds]);
+
+  const firstError = useMemo(() => {
+    for (const id of metricSourceIds) {
+      const err = errorsByDefinitionId.get(id);
+      if (err) {
+        return err;
+      }
+    }
+    for (const item of expressionItems) {
+      if (item.requestError) {
+        return item.requestError;
+      }
+    }
+    for (const item of expressionItems) {
+      // we always show request errors, but we only show expression errors if we have no other data to show
+      if (!isLoading && rawSeries.length === 0 && item.expressionError) {
+        return item.expressionError;
+      }
+    }
+    return null;
+  }, [
+    expressionItems,
+    metricSourceIds,
+    errorsByDefinitionId,
+    isLoading,
+    rawSeries.length,
+  ]);
+
+  const dimensionFilter = getTabConfig(tab.type).dimensionPredicate;
 
   const dimensionItems = useMemo(
     () =>

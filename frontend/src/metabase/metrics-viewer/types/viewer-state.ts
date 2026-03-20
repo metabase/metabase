@@ -2,6 +2,7 @@ import type { MetricDefinition } from "metabase-lib/metric";
 import type {
   CardDisplayType,
   ConcreteTableId,
+  Dataset,
   DimensionId,
   TemporalUnit,
 } from "metabase-types/api";
@@ -143,4 +144,16 @@ export type SelectedMetric = {
   sourceType: "metric" | "measure";
   tableId?: ConcreteTableId;
   isLoading?: boolean;
+};
+
+/**
+ * One entry per expression definition in the formulaEntities list.
+ */
+export type ExpressionItemResult = {
+  /** The expression definition entry. */
+  entry: ExpressionDefinitionEntry;
+  result: Dataset | null;
+  isExecuting: boolean;
+  requestError: string | null; // error from http request
+  expressionError: string | null; // error building the expression
 };

@@ -16,30 +16,21 @@ import type { State } from "metabase-types/store";
 import type { MathOperator } from "../types/operators";
 import type {
   ExpressionDefinitionEntry,
+  type ExpressionItemResult,
   ExpressionSubToken,
   MetricSourceId,
   MetricsViewerDefinitionEntry,
   MetricsViewerFormulaEntity,
   MetricsViewerTabState,
+  isExpressionEntry,
+  isMetricEntry,
 } from "../types/viewer-state";
-import { isExpressionEntry, isMetricEntry } from "../types/viewer-state";
 import {
   getModifiedDefinition,
   toJsDefinition,
 } from "../utils/definition-cache";
 import { entryHasBreakout } from "../utils/definition-entries";
 import { getTabConfig } from "../utils/tab-config";
-
-/**
- * One entry per expression definition in the formulaEntities list.
- */
-export type ExpressionItemResult = {
-  /** The expression definition entry. */
-  entry: ExpressionDefinitionEntry;
-  result: Dataset | null;
-  isExecuting: boolean;
-  error: string | null;
-};
 
 export interface UseDefinitionQueriesResult {
   resultsByDefinitionId: Map<MetricSourceId, Dataset>;
@@ -134,6 +125,11 @@ type ExpressionItemConfig = {
   };
 };
 
+type ExpressionItemError = {
+  entry: ExpressionDefinitionEntry;
+  error: string;
+};
+
 function getModifiedDefinitionForTab(
   definition: MetricsViewerDefinitionEntry,
   tab: MetricsViewerTabState,
@@ -159,13 +155,18 @@ function getModifiedDefinitionForTab(
 function buildArithmeticRequest(
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
   tab: MetricsViewerTabState,
-  tokens: ExpressionSubToken[],
-): {
-  definition: JsMetricDefinition;
-  modifiedDefinitions: {
-    [sourceId: MetricSourceId]: MetricDefinition;
-  };
-} | null {
+  entity: ExpressionDefinitionEntry,
+):
+  | {
+      definition: JsMetricDefinition;
+      modifiedDefinitions: {
+        [sourceId: MetricSourceId]: MetricDefinition;
+      };
+    }
+  | { error: string }
+  | null {
+  const { tokens, name } = entity;
+
   // Build leaf refs and projections for each metric occurrence in the expression.
   // Each occurrence gets its own unique UUID keyed by token position so the same
   // metric can appear multiple times (e.g. Revenue / Revenue).
@@ -182,13 +183,13 @@ function buildArithmeticRequest(
       continue;
     }
 
-    const modifiedDefinition = getModifiedDefinitionForTab(
-      definitions[token.sourceId],
-      tab,
-    );
-
+    const definition = definitions[token.sourceId];
+    const modifiedDefinition = getModifiedDefinitionForTab(definition, tab);
     if (!modifiedDefinition) {
-      return null;
+      if (!definition) {
+        return null; // still loading the metric, not an error
+      }
+      return { error: `No compatible dimensions for ${name}` };
     }
 
     modifiedDefinitions[token.sourceId] = modifiedDefinition;
@@ -245,16 +246,19 @@ function buildQueryItems(
 ): {
   datasetRequests: DatasetRequest[];
   expressionItemsConfig: ExpressionItemConfig[];
+  expressionItemsErrors: ExpressionItemError[];
 } {
   if (!tab) {
     return {
       datasetRequests: [],
       expressionItemsConfig: [],
+      expressionItemsErrors: [],
     };
   }
 
   const datasetRequests: DatasetRequest[] = [];
   const expressionItemsConfig: ExpressionItemConfig[] = [];
+  const expressionItemsErrors: ExpressionItemError[] = [];
 
   for (const entity of formulaEntities) {
     if (isMetricEntry(entity)) {
@@ -276,13 +280,14 @@ function buildQueryItems(
     }
 
     if (isExpressionEntry(entity)) {
-      const requestData = buildArithmeticRequest(
-        definitions,
-        tab,
-        entity.tokens,
-      );
+      const requestData = buildArithmeticRequest(definitions, tab, entity);
 
-      if (requestData) {
+      if (requestData && "error" in requestData) {
+        expressionItemsErrors.push({
+          entry: entity,
+          error: requestData.error,
+        });
+      } else if (requestData) {
         expressionItemsConfig.push({
           entry: entity,
           modifiedDefinitions: requestData.modifiedDefinitions,
@@ -297,6 +302,7 @@ function buildQueryItems(
   return {
     datasetRequests,
     expressionItemsConfig,
+    expressionItemsErrors,
   };
 }
 
@@ -307,10 +313,11 @@ export function useDefinitionQueries(
 ): UseDefinitionQueriesResult {
   const dispatch = useDispatch();
 
-  const { datasetRequests, expressionItemsConfig } = useMemo(
-    () => buildQueryItems(definitions, formulaEntities, tab),
-    [definitions, formulaEntities, tab],
-  );
+  const { datasetRequests, expressionItemsConfig, expressionItemsErrors } =
+    useMemo(
+      () => buildQueryItems(definitions, formulaEntities, tab),
+      [definitions, formulaEntities, tab],
+    );
 
   const breakoutRequests = useMemo(() => {
     return Object.values(definitions).flatMap((entry) => {
@@ -437,17 +444,30 @@ export function useDefinitionQueries(
   }, [breakoutResults]);
 
   const expressionItems: ExpressionItemResult[] = useMemo(
-    () =>
-      expressionItemsConfig.map(({ entry }, idx) => {
+    () => [
+      ...expressionItemsConfig.map(({ entry }, idx) => {
         const queryResult = expressionItemQueryResults[idx];
         return {
           entry,
           result: queryResult?.data ?? null,
           isExecuting: queryResult?.isLoading ?? false,
-          error: queryResult?.error ? getErrorMessage(queryResult.error) : null,
+          requestError: queryResult?.error
+            ? getErrorMessage(queryResult.error)
+            : null,
+          expressionError: null,
         };
       }),
-    [expressionItemsConfig, expressionItemQueryResults],
+      ...expressionItemsErrors.map(({ entry, error }) => {
+        return {
+          entry,
+          result: null,
+          isExecuting: false,
+          requestError: null,
+          expressionError: error,
+        };
+      }),
+    ],
+    [expressionItemsConfig, expressionItemQueryResults, expressionItemsErrors],
   );
 
   return {

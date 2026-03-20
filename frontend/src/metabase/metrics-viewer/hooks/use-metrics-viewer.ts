@@ -11,6 +11,7 @@ import type { Dataset, MetricBreakoutValuesResponse } from "metabase-types/api";
 
 import type { MetricsViewerPageProps } from "../pages/MetricsViewerPage/MetricsViewerPage";
 import type {
+  ExpressionItemResult,
   MetricSourceId,
   MetricsViewerDefinitionEntry,
   MetricsViewerFormulaEntity,
@@ -64,18 +65,7 @@ export interface UseMetricsViewerResult {
   errorsByDefinitionId: Map<MetricSourceId, string>;
   modifiedDefinitions: Map<MetricSourceId, MetricDefinition>;
   isExecuting: (id: MetricSourceId) => boolean;
-
-  /**
-   * One entry per expression item in the formulaEntities list (expression entries).
-   * Each entry's `name` is the human-readable expression text.
-   */
-  expressionItems: Array<{
-    name: string;
-    result: Dataset | null;
-    isExecuting: boolean;
-    error: string | null;
-  }>;
-
+  expressionItems: ExpressionItemResult[];
   sourceColors: SourceColorMap;
   breakoutValuesBySourceId: Map<MetricSourceId, MetricBreakoutValuesResponse>;
   selectedMetrics: SelectedMetric[];
@@ -231,7 +221,7 @@ export function useMetricsViewer({
     modifiedDefinitions,
     breakoutValuesBySourceId,
     isExecuting,
-    expressionItems: rawExpressionItems,
+    expressionItems,
   } = useDefinitionQueries(state.definitions, state.formulaEntities, activeTab);
 
   const definitionValues = useMemo(
@@ -242,20 +232,6 @@ export function useMetricsViewer({
   const selectedMetrics = useMemo(
     () => getSelectedMetricsInfo(definitionValues, loadingIds),
     [definitionValues, loadingIds],
-  );
-
-  // Map expression items to include the human-readable name
-  const expressionItems = useMemo(
-    () =>
-      rawExpressionItems.map(
-        ({ entry, result, isExecuting: itemExec, error }) => ({
-          name: entry.name,
-          result,
-          isExecuting: itemExec,
-          error,
-        }),
-      ),
-    [rawExpressionItems],
   );
 
   const sourceColors = useMemo(
