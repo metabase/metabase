@@ -79,7 +79,7 @@ export function QueryVisualization(props) {
         )}
         data-testid="query-visualization-root"
       >
-        {result?.error ? (
+        {result?.error && props.queryBuilderMode !== "dataset" ? (
           <VisualizationError
             className={CS.spread}
             error={result.error}
@@ -88,7 +88,7 @@ export function QueryVisualization(props) {
             question={question}
             duration={result.duration}
           />
-        ) : result?.data ? (
+        ) : result?.data && !result?.error ? (
           <VisualizationResult
             {...props}
             maxTableRows={maxTableRows}

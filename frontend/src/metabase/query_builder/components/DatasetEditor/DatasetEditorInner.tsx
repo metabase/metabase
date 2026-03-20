@@ -153,7 +153,6 @@ function getSidebar(
   props: DatasetEditorInnerProps & { modelIndexes?: unknown },
   {
     datasetEditorTab,
-    isQueryError,
     focusedField,
     focusedFieldIndex,
     focusFirstField,
@@ -162,7 +161,6 @@ function getSidebar(
     onUpdateModelSettings,
   }: {
     datasetEditorTab: DatasetEditorTab;
-    isQueryError?: unknown;
     focusedField?: DatasetColumn;
     focusedFieldIndex: number;
     focusFirstField: () => void;
@@ -185,9 +183,6 @@ function getSidebar(
   } = props;
 
   if (datasetEditorTab === "columns") {
-    if (isQueryError) {
-      return null;
-    }
     if (!focusedField) {
       // Returning a div, so the sidebar is visible while the data is loading.
       // The field metadata sidebar will appear with an animation once a query completes
@@ -209,15 +204,6 @@ function getSidebar(
   }
 
   if (datasetEditorTab === "metadata") {
-    if (isQueryError || !props.rawSeries) {
-      return null;
-    }
-
-    if (!focusedField) {
-      // Returning a div, so the sidebar is visible while the data is loading.
-      return <div />;
-    }
-
     return (
       <DatasetEditorSettingsSidebar
         display={question.display()}
@@ -323,13 +309,20 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
   const { isNative, isEditable } = Lib.queryDisplayInfo(question.query());
   const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure();
 
+  const savedResultMetadata = question.getResultMetadata();
+  const effectiveMetadataColumns =
+    (resultsMetadata?.columns as unknown as Field[]) ??
+    (savedResultMetadata as unknown as Field[]) ??
+    [];
+
   const fields = useMemo(
     () =>
       getSortedModelFields(
-        (resultsMetadata?.columns as unknown as Field[]) ?? [],
+        effectiveMetadataColumns,
         visualizationSettings ?? {},
       ),
-    [resultsMetadata, visualizationSettings],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [resultsMetadata, savedResultMetadata, visualizationSettings],
   );
 
   /**
@@ -409,11 +402,20 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
   useEffect(() => {
     // Focused field has to be set once the query is completed and the result is rendered
     // Visualization render can remove the focus
-    const hasQueryResults = !!result;
-    if (!focusedField && hasQueryResults && !result.error) {
+    // When the query has an error, fall back to saved result metadata
+    const hasQueryResults = !!result && !result.error;
+    const hasFallbackMetadata = savedResultMetadata.length > 0;
+    if (!focusedField && (hasQueryResults || hasFallbackMetadata)) {
       focusFirstField();
     }
-  }, [result, focusedFieldName, fields, focusFirstField, focusedField]);
+  }, [
+    result,
+    focusedFieldName,
+    fields,
+    focusFirstField,
+    focusedField,
+    savedResultMetadata,
+  ]);
 
   const inheritMappedFieldProperties = useCallback(
     (changes: { id: number } & Partial<DatasetColumn>) => {
@@ -648,7 +650,6 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
     { ...props, modelIndexes },
     {
       datasetEditorTab,
-      isQueryError: result?.error,
       focusedField,
       focusedFieldIndex,
       focusFirstField,
@@ -679,7 +680,9 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
           <EditorTabs
             currentTab={datasetEditorTab}
             disabledQuery={!isEditable}
-            disabledColumns={!resultsMetadata}
+            disabledColumns={
+              !resultsMetadata && savedResultMetadata.length === 0
+            }
             onChange={onChangeEditorTab}
           />
         }

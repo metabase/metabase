@@ -17,6 +17,7 @@ import {
   createMockUnsavedCard,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+import { createMockQueryBuilderUIControlsState } from "metabase-types/store/mocks";
 
 const TEST_DB = createSampleDatabase();
 const ROOT_COLLECTION = createMockCollection({ id: "root" });
@@ -63,7 +64,16 @@ const defaultDatasetEditorProps = {
   runDirtyQuestionQuery: noop,
 };
 
-const renderDatasetEditor = async (card: Card | UnsavedCard) => {
+const renderDatasetEditor = async (
+  card: Card | UnsavedCard,
+  {
+    propOverrides = {},
+    storeInitialState = {},
+  }: {
+    propOverrides?: Record<string, unknown>;
+    storeInitialState?: object;
+  } = {},
+) => {
   setupDatabasesEndpoints([TEST_DB]);
   setupCollectionsEndpoints({ collections: [ROOT_COLLECTION] });
   setupNativeQuerySnippetEndpoints();
@@ -74,7 +84,12 @@ const renderDatasetEditor = async (card: Card | UnsavedCard) => {
   fetchMock.get("path:/api/model-index", { body: [] });
 
   renderWithProviders(
-    <DatasetEditor {...defaultDatasetEditorProps} question={question} />,
+    <DatasetEditor
+      {...defaultDatasetEditorProps}
+      question={question}
+      {...propOverrides}
+    />,
+    { storeInitialState },
   );
 
   await screen.findByText("Query");
@@ -106,5 +121,22 @@ describe("DatasetEditor", () => {
     await renderDatasetEditor(mockUnsavedCard);
     const calls = fetchMock.callHistory.calls("path:/api/model-index");
     expect(calls).toHaveLength(0);
+  });
+
+  it("shows the settings sidebar on the metadata tab even when the query has an error", async () => {
+    await renderDatasetEditor(mockSavedModel, {
+      propOverrides: {
+        result: { error: "Column not found" },
+      },
+      storeInitialState: {
+        qb: {
+          uiControls: createMockQueryBuilderUIControlsState({
+            datasetEditorTab: "metadata",
+          }),
+        },
+      },
+    });
+
+    expect(screen.getByText("Model Settings")).toBeInTheDocument();
   });
 });
