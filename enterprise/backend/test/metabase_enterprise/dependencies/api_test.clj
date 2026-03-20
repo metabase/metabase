@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase-enterprise.dependencies.api :as deps.api]
+   [metabase-enterprise.dependencies.async :as dependencies.async]
    [metabase-enterprise.dependencies.core :as dependencies]
    [metabase-enterprise.dependencies.events]
    [metabase-enterprise.dependencies.findings :as dependencies.findings]
@@ -129,6 +130,19 @@
    Must be called within lib-be/with-metadata-provider-cache."
   [card-id]
   (dependencies.findings/upsert-analysis! (t2/select-one :model/Card :id card-id)))
+
+; dependencies.async/submit! effectively awaits all pending tasks on the executor.
+; Those tasks would be executed regardless; this is just changing the timing to be
+; less problematic for multiple test runs in sequence.
+#_{:clj-kondo/ignore [:metabase/validate-deftest]}
+(use-fixtures :each
+  (fn drained-dependency-async-executor-fixture [t]
+    (try
+      (t)
+      (finally
+        ;; Drain the single-threaded async executor to ensure all pending dependency
+        ;; work completes before model cleanup deletes cards, avoiding lock timeouts.
+        @(dependencies.async/submit! (fn [] nil))))))
 
 (deftest check-card-test
   (testing "POST /api/ee/dependencies/check-card"
@@ -1327,21 +1341,25 @@
                                                                        :source {:type :query
                                                                                 :query (lib/query mp products)}
                                                                        :target {:schema "PUBLIC"
-                                                                                :name "referenced_transform_table"}}
-                       :model/Table _ {:name "referenced_transform_table"
-                                       :db_id (mt/id)
-                                       :schema "PUBLIC"}]
+                                                                                :name "referenced_transform_table"}}]
+          ;; Simulate the referenced transform having been run: activate its provisional target table
+          ;; so the table→transform dep is visible in the dependency graph (which filters active=true).
+          (t2/update! :model/Table {:db_id (mt/id) :schema "PUBLIC" :name "referenced_transform_table"} {:active true})
           (events/publish-event! :event/transform-run-complete
                                  {:object {:db-id (mt/id)
                                            :output-schema "PUBLIC"
                                            :output-table "referenced_transform_table"
                                            :transform-id referenced-transform-id}})
           (while (#'dependencies.backfill/backfill-dependencies!))
-          (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=transform&query=unreftest")]
-            (is (=? {:data [{:id unreffed-transform-id
-                             :type "transform"
-                             :data {:name "Unreferenced Transform - unreftest"}}]}
-                    response))))))))
+          (try
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=transform&query=unreftest")]
+              (is (=? {:data [{:id unreffed-transform-id
+                               :type "transform"
+                               :data {:name "Unreferenced Transform - unreftest"}}]}
+                      response)))
+            (finally
+              ;; Clean up provisional table rows created by define-after-insert
+              (t2/delete! :model/Table :db_id (mt/id) :name [:in ["referenced_transform_table" "unreferenced_transform_table"]]))))))))
 
 (deftest ^:sequential unreferenced-snippets-test
   (testing "GET /api/ee/dependencies/unreferenced - only unreferenced snippets are returned"
@@ -2687,7 +2705,7 @@
                     names (mapv #(get-in % [:data :name]) response)]
                 (is (= ["B Dependent - countsorttest" "A Dependent - countsorttest"] names))))))))))
 
-(deftest ^:parallel broken-requires-id-and-type-test
+(deftest broken-requires-id-and-type-test
   (testing "GET /api/ee/dependencies/graph/broken - requires id and type parameters"
     (mt/with-premium-features #{:dependencies}
       (testing "missing both id and type returns 400"

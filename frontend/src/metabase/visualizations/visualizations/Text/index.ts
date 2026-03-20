@@ -28,15 +28,14 @@ const TextWrapper = Object.assign(Text, {
   settings: {
     "card.title": {
       dashboard: false,
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-      default: t`Text card`,
+      getDefault: () => t`Text card`,
     },
     "card.description": {
       dashboard: false,
     },
     text: {
       value: "",
-      default: "",
+      getDefault: () => "",
     },
     "text.align_vertical": {
       // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
@@ -44,17 +43,14 @@ const TextWrapper = Object.assign(Text, {
       // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
       title: t`Vertical Alignment`,
       widget: "select",
-      props: {
+      getProps: () => ({
         options: [
-          // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
           { name: t`Top`, value: "top" },
-          // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
           { name: t`Middle`, value: "middle" },
-          // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
           { name: t`Bottom`, value: "bottom" },
         ],
-      },
-      default: "top",
+      }),
+      getDefault: () => "top",
     },
     "text.align_horizontal": {
       // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
@@ -62,17 +58,14 @@ const TextWrapper = Object.assign(Text, {
       // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
       title: t`Horizontal Alignment`,
       widget: "select",
-      props: {
+      getProps: () => ({
         options: [
-          // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
           { name: t`Left`, value: "left" },
-          // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
           { name: t`Center`, value: "center" },
-          // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
           { name: t`Right`, value: "right" },
         ],
-      },
-      default: "left",
+      }),
+      getDefault: () => "left",
     },
     "dashcard.background": {
       // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
@@ -82,7 +75,7 @@ const TextWrapper = Object.assign(Text, {
       dashboard: true,
       inline: true,
       widget: "toggle",
-      default: true,
+      getDefault: () => true,
     },
   },
 });
