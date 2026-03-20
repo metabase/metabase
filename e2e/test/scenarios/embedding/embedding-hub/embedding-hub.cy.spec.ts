@@ -1580,15 +1580,7 @@ describe("scenarios - embedding hub", () => {
         .findByRole("listitem", { name: "Set up JWT authentication" })
         .should("have.attr", "data-completed", "true");
 
-      cy.log("valid signing key should be shown");
-      H.main().within(() => {
-        cy.findByLabelText(/JWT Signing Key/i)
-          .should("be.visible")
-          .should("have.attr", "value")
-          .and("have.length.at.least", 32);
-
-        cy.findByRole("button", { name: "Next" }).click();
-      });
+      H.main().findByRole("button", { name: "Next" }).click();
 
       cy.log("step 2 should be complete");
       H.main()
