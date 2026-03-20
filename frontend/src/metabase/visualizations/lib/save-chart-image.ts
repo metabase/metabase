@@ -69,13 +69,19 @@ export const saveChartImage = async ({
     },
   });
 
-  canvas.toBlob((blob) => {
+  if (isStorybookActive) {
+    // In storybook/loki we must wait for the blob and image to be ready
+    // before the play function returns, otherwise the async callback may
+    // be garbage-collected ("Promise was collected").
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve),
+    );
     if (blob) {
-      if (isStorybookActive) {
-        // if we're running storybook we open the image in place
-        // so we can test the export result with loki
-        openImageBlobOnStorybook({ canvas, blob });
-      } else {
+      openImageBlobOnStorybook({ canvas, blob });
+    }
+  } else {
+    canvas.toBlob((blob) => {
+      if (blob) {
         const link = document.createElement("a");
         const url = URL.createObjectURL(blob);
         link.rel = "noopener";
@@ -85,6 +91,6 @@ export const saveChartImage = async ({
         link.remove();
         setTimeout(() => URL.revokeObjectURL(url), 60_000);
       }
-    }
-  });
+    });
+  }
 };
