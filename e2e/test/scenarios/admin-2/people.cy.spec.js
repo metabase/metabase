@@ -304,7 +304,7 @@ describe("scenarios > admin > people", () => {
         cy.button("Reset password").click();
       });
 
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(`${normalUserName}'s password has been reset`);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/^temporary password$/i);
@@ -319,7 +319,7 @@ describe("scenarios > admin > people", () => {
 
       cy.visit("/admin/people");
       showUserOptions(normalUserName);
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Reset password").click();
 
       H.modal().within(() => {
