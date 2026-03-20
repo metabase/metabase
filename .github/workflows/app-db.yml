@@ -60,7 +60,7 @@ jobs:
           # MYSQL_* isn't supported on :latest aka 12.2.2
           # MARIADB_* isn't supported on 10.2.23
           # Send both until we upgrade to 10.6+ then remove MYSQL_*
-          MYSQL_ALLOW_EMPTY_ROOT_PASSWORD: true
+          MYSQL_ALLOW_EMPTY_PASSWORD: true
           MYSQL_DATABASE: mb_test
           MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: true
           MARIADB_DATABASE: mb_test
