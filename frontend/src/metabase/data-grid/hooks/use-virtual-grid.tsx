@@ -23,7 +23,7 @@ export interface VirtualGrid {
   rowVirtualizer: Virtualizer<HTMLDivElement, Element>;
   columnVirtualizer: Virtualizer<HTMLDivElement, Element>;
   rowMeasureRef: (element: Element | null) => void;
-  remeasureRowHeights: () => void;
+  measureGrid: () => void;
   virtualIndexAttributeName: string;
 }
 
@@ -57,20 +57,14 @@ export const useVirtualGrid = <TData,>({
     overscan: 3,
     enabled: enableRowVirtualization,
     measureElement: (element) => {
-      const indexRaw = element?.getAttribute(datasetIndexAttributeName);
-      const index = indexRaw != null ? parseInt(indexRaw, 10) : null;
-      if (index == null || !isFinite(index)) {
+      const indexRaw = element.getAttribute(datasetIndexAttributeName);
+      if (!indexRaw) {
         return defaultRowHeight;
       }
+      const index = parseInt(indexRaw, 10);
       return getRowHeight(index);
     },
   });
-
-  const remeasureRowHeights = useCallback(() => {
-    Array.from(rowVirtualizer.elementsCache.values()).forEach((element) =>
-      rowVirtualizer.measureElement(element),
-    );
-  }, [rowVirtualizer]);
 
   const rawVirtualColumns = columnVirtualizer.getVirtualItems();
   const virtualColumns = useMemo(
@@ -85,13 +79,20 @@ export const useVirtualGrid = <TData,>({
 
   const virtualRows = rowVirtualizer.getVirtualItems();
 
+  const measureGrid = useCallback(() => {
+    Array.from(rowVirtualizer.elementsCache.values()).forEach((element) =>
+      rowVirtualizer.measureElement(element),
+    );
+    columnVirtualizer.measure();
+  }, [rowVirtualizer, columnVirtualizer]);
+
   return {
     virtualColumns,
     virtualRows,
     rowVirtualizer,
     columnVirtualizer,
     rowMeasureRef: rowVirtualizer.measureElement,
-    remeasureRowHeights,
+    measureGrid,
     virtualIndexAttributeName,
   };
 };

@@ -367,7 +367,7 @@ export const useDataGridInstance = <TData, TValue>({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const { columnVirtualizer, remeasureRowHeights } = virtualGrid;
+  const { measureGrid, columnVirtualizer } = virtualGrid;
   const prevColumnSizing = useRef<ColumnSizingState>();
   const prevWrappedColumns = useRef<string[]>();
 
@@ -382,18 +382,12 @@ export const useDataGridInstance = <TData, TValue>({
       !_.isEqual(wrappedColumnIds, prevWrappedColumns.current);
 
     if (didColumnSizingChange || didColumnWrappingChange) {
-      columnVirtualizer.measure();
-      remeasureRowHeights();
+      measureGrid();
     }
 
     prevColumnSizing.current = columnSizingMap;
     prevWrappedColumns.current = wrappedColumnIds;
-  }, [
-    columnSizingMap,
-    columnVirtualizer,
-    remeasureRowHeights,
-    wrappedColumnsOptions,
-  ]);
+  }, [columnSizingMap, measureGrid, wrappedColumnsOptions]);
 
   useEffect(() => {
     columnVirtualizer.measure();
