@@ -12,7 +12,7 @@ export const initializeHandleLinkPlugin = () => {
         const requestId = crypto.randomUUID();
 
         const handler = (event: MessageEvent<SdkIframeEmbedMessage>) => {
-          if (!event.data) {
+          if (!event.data || event.source !== window.parent) {
             return;
           }
 

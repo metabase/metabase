@@ -20,7 +20,7 @@ export function requestSessionTokenFromEmbedJs(): Promise<MetabaseEmbeddingSessi
     }, WAIT_FOR_SESSION_TOKEN_TIMEOUT);
 
     const handler = (event: MessageEvent<SdkIframeEmbedMessage>) => {
-      if (!isWithinIframe() || !event.data) {
+      if (!isWithinIframe() || !event.data || event.source !== window.parent) {
         return;
       }
 

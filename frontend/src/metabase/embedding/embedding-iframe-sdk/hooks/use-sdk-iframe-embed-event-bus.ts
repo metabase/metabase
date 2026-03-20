@@ -35,7 +35,7 @@ export function useSdkIframeEmbedEventBus({
 
   useEffect(() => {
     const messageHandler: Handler = (event) => {
-      if (!isWithinIframe() || !event.data) {
+      if (!isWithinIframe() || !event.data || event.source !== window.parent) {
         return;
       }
 
