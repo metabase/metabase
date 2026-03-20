@@ -14,7 +14,7 @@
 
 ;;; ------------------------------------------------ In-Memory Cache ------------------------------------------------
 
-;; plugin-id -> {:content str, :iife-content str-or-nil, :hash str, :commit str}
+;; plugin-id -> {:content str, :hash str, :commit str}
 (defonce ^:private bundle-cache (atom {}))
 ;; plugin-id -> monotonic nano-time timestamp of last failed fetch
 (defonce ^:private last-fetch-failure-ns (atom {}))
@@ -29,30 +29,20 @@
 (defn- disk-cache-file ^File [plugin-id]
   (io/file (disk-cache-dir) (str plugin-id ".js")))
 
-(defn- disk-cache-iife-file ^File [plugin-id]
-  (io/file (disk-cache-dir) (str plugin-id ".iife.js")))
-
-(defn- write-to-disk! [plugin-id ^String content ^String iife-content]
+(defn- write-to-disk! [plugin-id ^String content]
   (let [f (disk-cache-file plugin-id)]
     (io/make-parents f)
-    (spit f content))
-  (when iife-content
-    (spit (disk-cache-iife-file plugin-id) iife-content)))
+    (spit f content)))
 
 (defn- read-from-disk [plugin-id]
-  (let [f      (disk-cache-file plugin-id)
-        iife-f (disk-cache-iife-file plugin-id)]
+  (let [f (disk-cache-file plugin-id)]
     (when (.exists f)
-      {:content      (slurp f)
-       :iife-content (when (.exists iife-f) (slurp iife-f))})))
+      {:content (slurp f)})))
 
 (defn- delete-from-disk! [plugin-id]
-  (let [f      (disk-cache-file plugin-id)
-        iife-f (disk-cache-iife-file plugin-id)]
+  (let [f (disk-cache-file plugin-id)]
     (when (.exists f)
-      (.delete f))
-    (when (.exists iife-f)
-      (.delete iife-f))))
+      (.delete f))))
 
 ;;; ------------------------------------------------ Hash ------------------------------------------------
 
@@ -87,13 +77,12 @@
              content       (git/read-file conn commit-sha "dist/index.js")
              _             (when-not content
                              (throw (ex-info "dist/index.js not found in repository" {:commit commit-sha})))
-             iife-content  (git/read-file conn commit-sha "dist/index.iife.js")
              hash          (content-hash content)
-             cache-entry   {:content content :iife-content iife-content :hash hash :commit commit-sha}]
+             cache-entry   {:content content :hash hash :commit commit-sha}]
          ;; update caches
          (swap! bundle-cache assoc id cache-entry)
          (swap! last-fetch-failure-ns dissoc id)
-         (write-to-disk! id content iife-content)
+         (write-to-disk! id content)
          ;; update DB
          (t2/update! :model/CustomVizPlugin id
                      {:status           :active
@@ -113,8 +102,8 @@
   "Get the JS bundle for a plugin. Checks in-memory first, then disk."
   [plugin-id]
   (or (get @bundle-cache plugin-id)
-      (when-let [{:keys [content iife-content]} (read-from-disk plugin-id)]
-        (let [entry {:content content :iife-content iife-content :hash (content-hash content)}]
+      (when-let [{:keys [content]} (read-from-disk plugin-id)]
+        (let [entry {:content content :hash (content-hash content)}]
           (swap! bundle-cache assoc plugin-id entry)
           entry))))
 

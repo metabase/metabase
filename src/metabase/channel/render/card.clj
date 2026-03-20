@@ -113,7 +113,7 @@
         (and (str/starts-with? (name display-type) "custom:")
              (let [identifier (subs (name display-type) (count "custom:"))
                    plugin     (t2/select-one :model/CustomVizPlugin :identifier identifier :enabled true)]
-               (some-> plugin :id custom-viz-plugin.cache/get-bundle :iife-content)))
+               (some-> plugin :id custom-viz-plugin.cache/get-bundle :content)))
         (chart-type :javascript_visualization "display-type is a custom visualization with static support")
 
         (#{:pin_map :state :country} display-type)

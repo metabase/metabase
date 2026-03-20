@@ -2,6 +2,7 @@ import cx from "classnames";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import { useToast } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/lib/redux";
 import {
@@ -40,6 +41,7 @@ export const ChartTypeSidebar = ({
   result,
 }: ChartTypeSidebarProps) => {
   const dispatch = useDispatch();
+  const [sendToast] = useToast();
   const customVizPlugins = useCustomVizPlugins();
 
   const onUpdateQuestion = (newQuestion: Question) => {
@@ -70,12 +72,16 @@ export const ChartTypeSidebar = ({
 
   const handleSelectCustomVizPlugin = useCallback(
     async (plugin: CustomVizPluginRuntime) => {
-      const identifier = await loadCustomVizPlugin(plugin);
+      const identifier = await loadCustomVizPlugin(
+        plugin,
+        undefined,
+        (message) => sendToast({ message }),
+      );
       if (identifier) {
         updateQuestionVisualization(identifier as CardDisplayType);
       }
     },
-    [updateQuestionVisualization],
+    [sendToast, updateQuestionVisualization],
   );
 
   const onOpenVizSettings = () => {

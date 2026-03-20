@@ -10,7 +10,7 @@ import * as jsxRuntime from "react/jsx-runtime";
 import enterpriseOverrides from "ee-overrides";
 import "metabase/lib/dayjs";
 
-// Expose React and jsxRuntime for custom viz IIFE bundles that reference
+// Expose React and jsxRuntime for custom viz bundles that reference
 // window.__METABASE_VIZ_API__ via the metabaseVizExternals Vite plugin.
 window.__METABASE_VIZ_API__ = { React, jsxRuntime };
 
@@ -28,6 +28,8 @@ import {
   shouldSplitVisualizerSeries,
   splitVisualizerSeries,
 } from "metabase/visualizer/utils";
+
+import visualizations, { registerVisualization } from "metabase/visualizations";
 
 import { customVizRegistry } from "./custom-viz-registry";
 import { LegacyStaticChart } from "./containers/LegacyStaticChart";
@@ -101,7 +103,26 @@ function getVisualizerRawSeries(rawSeries, dashcardSettings) {
 
 export function registerCustomVizPlugin(factory, identifier) {
   const vizDef = factory({});
-  customVizRegistry.set(`custom:${identifier}`, vizDef);
+  const display = `custom:${identifier}`;
+  customVizRegistry.set(display, vizDef);
+
+  // Register in main visualizations Map so getVisualizationRaw() resolves
+  // the plugin's settings for getComputedSettingsForSeries()
+  const Component = vizDef.StaticVisualizationComponent ?? (() => null);
+  Object.assign(Component, {
+    identifier: display,
+    getUiName: () => identifier,
+    iconName: "area",
+    settings: vizDef.settings ?? {},
+    isSensible: vizDef.isSensible,
+    checkRenderable: vizDef.checkRenderable,
+    hidden: true,
+    noHeader: false,
+    canSavePng: false,
+  });
+  if (!visualizations.has(display)) {
+    registerVisualization(Component);
+  }
 }
 
 export function RenderChart(rawSeries, dashcardSettings, options) {

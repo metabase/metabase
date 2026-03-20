@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import * as jsxRuntime from "react/jsx-runtime";
+import { t } from "ttag";
 
 import { useListCustomVizPluginsQuery } from "metabase/api";
+import { useToast } from "metabase/common/hooks";
 import type { IconName } from "metabase/ui";
 import type {
   CustomVizPluginRuntime,
@@ -11,6 +13,15 @@ import type {
 import type { Visualization } from "./types/visualization";
 
 import visualizations, { registerVisualization } from ".";
+
+type CustomVizPluginDefinition = {
+  VisualizationComponent: Visualization;
+  minSize?: Visualization["minSize"];
+  defaultSize?: Visualization["defaultSize"];
+  isSensible?: Visualization["isSensible"];
+  checkRenderable?: Visualization["checkRenderable"];
+  settings?: Visualization["settings"];
+};
 
 // ---------------------------------------------------------------------------
 // Global API exposed to plugin bundles via window.__METABASE_VIZ_API__
@@ -23,6 +34,10 @@ declare global {
       React: typeof React;
       jsxRuntime: typeof jsxRuntime;
     };
+    // Set by custom viz IIFE bundles during loading, read and cleared by loadCustomVizPlugin
+    __customVizPlugin__?: (
+      ...args: unknown[]
+    ) => CustomVizPluginDefinition | null | undefined;
   }
 }
 
@@ -70,6 +85,7 @@ function useCustomVizDevReload(
   display: string | undefined,
   plugins: CustomVizPluginRuntime[] | undefined,
   setLoading: (loading: boolean) => void,
+  onInfo: (message: string) => void,
 ) {
   useEffect(() => {
     if (!isCustomVizDisplay(display) || !plugins) {
@@ -95,7 +111,7 @@ function useCustomVizDevReload(
       );
       setLoading(true);
       try {
-        await loadCustomVizPlugin(plugin, `?t=${Date.now()}`);
+        await loadCustomVizPlugin(plugin, `?t=${Date.now()}`, onInfo);
       } finally {
         setLoading(false);
       }
@@ -108,7 +124,7 @@ function useCustomVizDevReload(
     return () => {
       eventSource.close();
     };
-  }, [display, plugins, setLoading]);
+  }, [display, onInfo, plugins, setLoading]);
 }
 
 /**
@@ -123,31 +139,42 @@ export function useAutoLoadCustomVizPlugin(display: string | undefined): {
   loading: boolean;
 } {
   const plugins = useCustomVizPlugins();
+  const [sendToast] = useToast();
   const [loading, setLoading] = useState(false);
   const loadingRef = useRef<string | null>(null);
 
-  const load = useCallback(async (pluginToLoad: CustomVizPluginRuntime) => {
-    const ident = `custom:${pluginToLoad.identifier}`;
-    if (loadingRef.current === ident) {
-      return;
-    }
-    const existing = loadedPlugins.get(pluginToLoad.id);
-    if (
-      existing &&
-      existing.commit === pluginToLoad.resolved_commit &&
-      !pluginToLoad.dev_bundle_url
-    ) {
-      return;
-    }
-    loadingRef.current = ident;
-    setLoading(true);
-    try {
-      await loadCustomVizPlugin(pluginToLoad);
-    } finally {
-      loadingRef.current = null;
-      setLoading(false);
-    }
-  }, []);
+  const onInfo = useCallback(
+    (message: string) => {
+      sendToast({ message });
+    },
+    [sendToast],
+  );
+
+  const load = useCallback(
+    async (pluginToLoad: CustomVizPluginRuntime) => {
+      const ident = `custom:${pluginToLoad.identifier}`;
+      if (loadingRef.current === ident) {
+        return;
+      }
+      const existing = loadedPlugins.get(pluginToLoad.id);
+      if (
+        existing &&
+        existing.commit === pluginToLoad.resolved_commit &&
+        !pluginToLoad.dev_bundle_url
+      ) {
+        return;
+      }
+      loadingRef.current = ident;
+      setLoading(true);
+      try {
+        await loadCustomVizPlugin(pluginToLoad, undefined, onInfo);
+      } finally {
+        loadingRef.current = null;
+        setLoading(false);
+      }
+    },
+    [onInfo],
+  );
 
   useEffect(() => {
     if (!isCustomVizDisplay(display) || !plugins) {
@@ -165,7 +192,7 @@ export function useAutoLoadCustomVizPlugin(display: string | undefined): {
     }
   }, [display, plugins, load]);
 
-  useCustomVizDevReload(display, plugins, setLoading);
+  useCustomVizDevReload(display, plugins, setLoading, onInfo);
 
   // `loading` state drives re-renders when async load completes.
   // Without it, the Map-based check alone wouldn't trigger a re-render.
@@ -193,6 +220,7 @@ export function useAutoLoadCustomVizPlugin(display: string | undefined): {
 export async function loadCustomVizPlugin(
   plugin: CustomVizPluginRuntime,
   cacheBustSuffix?: string,
+  onInfo?: (message: string) => void,
 ): Promise<string | null> {
   const existing = loadedPlugins.get(plugin.id);
   if (
@@ -201,10 +229,6 @@ export async function loadCustomVizPlugin(
     !plugin.dev_bundle_url &&
     !cacheBustSuffix
   ) {
-    // eslint-disable-next-line no-console
-    console.log(
-      `[custom-viz] Plugin "${plugin.display_name}" already registered as "${existing.identifier}"`,
-    );
     return existing.identifier;
   }
 
@@ -220,17 +244,27 @@ export async function loadCustomVizPlugin(
     } else if (plugin.resolved_commit) {
       bundleUrl.searchParams.set("v", plugin.resolved_commit);
     }
-    // Use fetch + Blob URL instead of direct import() to avoid
-    // "base URL is about:blank" errors when JS is served cross-origin
-    // (e.g. webpack dev server on a different port).
     const res = await fetch(bundleUrl.href, { cache: "no-store" });
-    const text = await res.text();
-    const blob = new Blob([text], { type: "application/javascript" });
-    const blobUrl = URL.createObjectURL(blob);
-    const imported = await import(/* webpackIgnore: true */ blobUrl);
-    URL.revokeObjectURL(blobUrl);
+    if (!res.ok) {
+      onInfo?.(
+        t`Couldn't load "${plugin.display_name}" plugin bundle (HTTP ${res.status}).`,
+      );
+      return null;
+    }
 
-    const factory = imported.default;
+    const text = await res.text();
+
+    // Execute in global scope so `var __customVizPlugin__` assigns to window
+    const script = document.createElement("script");
+    if (window.MetabaseNonce) {
+      script.nonce = window.MetabaseNonce;
+    }
+    script.textContent = text;
+    document.head.appendChild(script);
+    document.head.removeChild(script);
+    const factory = window.__customVizPlugin__;
+    window.__customVizPlugin__ = undefined;
+
     if (typeof factory !== "function") {
       throw new Error(
         "Plugin bundle must have a default export that is a factory function",
