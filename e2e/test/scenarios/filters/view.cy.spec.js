@@ -117,8 +117,6 @@ describe("scenarios > question > view", () => {
         cy.findByPlaceholderText("Search the list").type("Widget");
         cy.findByText("Add filter").click();
       });
-      // eslint-disable-next-line metabase/no-unsafe-element-filtering
-      cy.findAllByTestId("run-button").last().click();
 
       cy.get(".test-TableInteractive-cellWrapper--firstColumn").should(
         "have.length",
