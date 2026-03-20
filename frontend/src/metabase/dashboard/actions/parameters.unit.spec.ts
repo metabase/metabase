@@ -1,6 +1,7 @@
 import { getStore } from "__support__/entities-store";
 import { getParameters } from "metabase/dashboard/selectors";
 import { mainReducers } from "metabase/reducers-main";
+import type { MetabaseTypeName } from "metabase-types/api";
 import {
   createMockCard,
   createMockDashboardCard,
@@ -224,7 +225,7 @@ describe("setParameterMapping", () => {
       fieldBaseType,
     }: {
       fieldId: number | undefined;
-      fieldBaseType: string;
+      fieldBaseType: MetabaseTypeName;
     }) {
       const state = createMockState({
         dashboard: createMockDashboardState({

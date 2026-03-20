@@ -19,6 +19,7 @@ import type { ParameterOptions } from "./parameters";
 import type { DownloadPermission } from "./permissions";
 import type { DatasetQuery, DatetimeUnit, DimensionReference } from "./query";
 import type { TableId } from "./table";
+import type { MetabaseTypeName } from "./types";
 
 export type RowValue = string | number | null | boolean | object;
 export type RowValues = RowValue[];
@@ -74,11 +75,11 @@ export interface DatasetColumn {
   field_ref?: DimensionReference;
   // Deprecated. Columns from old saved questions might have expression_name, but new columns do not.
   expression_name?: any;
-  base_type?: string;
-  semantic_type?: string | null;
+  base_type?: MetabaseTypeName;
+  semantic_type?: MetabaseTypeName | null;
   remapped_from?: string;
   remapped_to?: string;
-  effective_type?: string;
+  effective_type?: MetabaseTypeName;
   binning_info?: BinningMetadata | null;
   settings?: ColumnSettings;
   fingerprint?: FieldFingerprint | null;

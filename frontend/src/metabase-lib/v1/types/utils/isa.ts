@@ -17,16 +17,20 @@ import {
   TYPE,
   TYPE_HIERARCHIES,
 } from "metabase-lib/v1/types/constants";
-import type { DatasetColumn, TableId } from "metabase-types/api";
+import type {
+  DatasetColumn,
+  MetabaseTypeName,
+  TableId,
+} from "metabase-types/api";
 
 /**
  * A minimal field-like shape shared by both Field and DatasetColumn,
  * used by functions that only need type-checking properties.
  */
 export interface FieldTypeInfo {
-  base_type?: string;
-  effective_type?: string | null;
-  semantic_type?: string | null;
+  base_type?: MetabaseTypeName;
+  effective_type?: MetabaseTypeName | null;
+  semantic_type?: MetabaseTypeName | null;
 }
 
 /**

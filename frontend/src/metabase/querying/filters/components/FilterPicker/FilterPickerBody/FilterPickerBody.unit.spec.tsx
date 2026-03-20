@@ -3,6 +3,7 @@ import { renderWithProviders, screen } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import { columnFinder } from "metabase-lib/test-helpers";
+import type { MetabaseTypeName } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockField,
@@ -81,8 +82,8 @@ const TABLE = createMockTable({
       id: 10,
       name: "UNKNOWN",
       display_name: "Unknown",
-      base_type: "type/*",
-      effective_type: "type/*",
+      base_type: "type/*" as MetabaseTypeName,
+      effective_type: "type/*" as MetabaseTypeName,
     }),
   ],
 });

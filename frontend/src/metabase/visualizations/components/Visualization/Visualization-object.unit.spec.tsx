@@ -29,12 +29,12 @@ function setup({
           rows,
           cols: [
             createMockColumn({
-              base_type: "string",
+              base_type: "type/Text",
               name: "Short name",
               display_name: "Short name",
             }),
             createMockColumn({
-              base_type: "string",
+              base_type: "type/Text",
               name: "Long name",
               display_name: "Long name",
               visibility_type: longNameVisibility,

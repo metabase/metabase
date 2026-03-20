@@ -1,6 +1,7 @@
 import { screen, waitFor } from "__support__/ui";
 import { setupForContentTranslationTest } from "metabase/i18n/test-utils";
 import type { HoveredObject } from "metabase/visualizations/types";
+import type { MetabaseTypeName } from "metabase-types/api";
 import { createMockColumn, createMockSeries } from "metabase-types/api/mocks";
 
 import {
@@ -22,7 +23,7 @@ describe("Content translation hooks (other than useTranslateContent)", () => {
         createMockColumn({
           name: "col2",
           display_name: "Column 2",
-          semantic_type: "not translatable",
+          semantic_type: "not translatable" as MetabaseTypeName,
         }),
       ];
       untranslatedSeries[0].data.rows = [["a", "b"]];
@@ -94,7 +95,7 @@ describe("Content translation hooks (other than useTranslateContent)", () => {
         createMockColumn({
           name: "col2",
           display_name: "Column 2",
-          semantic_type: "not translatable",
+          semantic_type: "not translatable" as MetabaseTypeName,
         }),
       ];
       untranslatedSeries[0].data.rows = [

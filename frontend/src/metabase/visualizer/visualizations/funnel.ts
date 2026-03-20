@@ -20,6 +20,7 @@ import {
 import type {
   Dataset,
   DatasetColumn,
+  MetabaseTypeName,
   VisualizerColumnReference,
   VisualizerDataSource,
 } from "metabase-types/api";
@@ -261,7 +262,7 @@ export function removeColumnFromFunnel(
 
 export function createMetricColumn(
   name: string,
-  type = "type/Integer",
+  type: MetabaseTypeName = "type/Integer",
 ): DatasetColumn {
   return {
     name,

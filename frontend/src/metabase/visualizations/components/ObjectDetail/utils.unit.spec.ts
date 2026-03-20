@@ -74,8 +74,8 @@ describe("ObjectDetail utils", () => {
   const productIdCol = createMockColumn({
     name: "product_id",
     display_name: "Product ID",
-    base_type: "int",
-    effective_type: "int",
+    base_type: "type/Integer",
+    effective_type: "type/Integer",
     semantic_type: "type/PK",
     table_id: PRODUCTS_ID,
   });
@@ -83,8 +83,8 @@ describe("ObjectDetail utils", () => {
   const idCol = createMockColumn({
     name: "id",
     display_name: "ID",
-    base_type: "int",
-    effective_type: "int",
+    base_type: "type/Integer",
+    effective_type: "type/Integer",
     semantic_type: "type/PK",
     table_id: ORDERS_ID,
   });
@@ -92,17 +92,17 @@ describe("ObjectDetail utils", () => {
   const qtyCol = createMockColumn({
     name: "qty",
     display_name: "qty",
-    base_type: "int",
-    effective_type: "int",
-    semantic_type: "type/int",
+    base_type: "type/Integer",
+    effective_type: "type/Integer",
+    semantic_type: "type/Quantity",
     table_id: ORDERS_ID,
   });
 
   const nameCol = createMockColumn({
     name: "id",
     display_name: "ID",
-    base_type: "string",
-    effective_type: "string",
+    base_type: "type/Text",
+    effective_type: "type/Text",
     semantic_type: "type/Name",
     table_id: ORDERS_ID,
   });

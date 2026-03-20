@@ -55,13 +55,13 @@ describe("Entities > model-indexes > utils", () => {
     });
 
     it("should return false for string field in a model with multiple pks", () => {
-      const field = createMockField({ name: "foo", base_type: "type/String" });
+      const field = createMockField({ name: "foo", base_type: "type/Text" });
 
       const model = createModelWithResultMetadata([
         createMockField({ name: "foo", base_type: "type/Boolean" }),
         createMockField({
           name: "id",
-          base_type: "type/String",
+          base_type: "type/Text",
           semantic_type: "type/PK",
         }),
         createMockField({
@@ -75,7 +75,7 @@ describe("Entities > model-indexes > utils", () => {
     });
 
     it("should return false for string field in a model with multiple integer pks", () => {
-      const field = createMockField({ name: "foo", base_type: "type/String" });
+      const field = createMockField({ name: "foo", base_type: "type/Text" });
 
       const model = createModelWithResultMetadata([
         createMockField({ name: "foo", base_type: "type/Boolean" }),
@@ -101,7 +101,7 @@ describe("Entities > model-indexes > utils", () => {
         createMockField({ name: "foo", base_type: "type/Boolean" }),
         createMockField({
           name: "id",
-          base_type: "type/String",
+          base_type: "type/Text",
           semantic_type: "type/PK",
         }),
       ]);

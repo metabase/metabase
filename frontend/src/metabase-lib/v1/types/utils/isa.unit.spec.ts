@@ -17,6 +17,7 @@ import {
   isNumber,
   isString,
 } from "metabase-lib/v1/types/utils/isa";
+import type { MetabaseTypeName } from "metabase-types/api";
 import { createMockColumn } from "metabase-types/api/mocks";
 
 describe("isa", () => {
@@ -150,7 +151,9 @@ describe("isa", () => {
     });
 
     it("should know what it doesn't know", () => {
-      expect(getFieldType({ base_type: "DERP DERP DERP" })).toEqual(undefined);
+      expect(
+        getFieldType({ base_type: "DERP DERP DERP" as MetabaseTypeName }),
+      ).toEqual(undefined);
     });
   });
 
