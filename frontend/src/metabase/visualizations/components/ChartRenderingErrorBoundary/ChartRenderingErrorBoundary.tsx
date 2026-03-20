@@ -1,5 +1,7 @@
 import { Component } from "react";
 
+import { FrontendErrorsApi } from "metabase/services";
+
 interface ChartRenderingErrorBoundaryProps {
   onRenderError: (errorMessage: string) => void;
   children: React.ReactNode;
@@ -11,11 +13,7 @@ export class ChartRenderingErrorBoundary extends Component<ChartRenderingErrorBo
   }
 
   componentDidCatch(error: any) {
-    fetch("/api/frontend-errors", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ context: "render-chart" }),
-    }).catch(() => {});
+    FrontendErrorsApi.report({ context: "render-chart" }).catch(() => {});
     this.props.onRenderError(error.message || error);
   }
 
