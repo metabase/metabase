@@ -59,32 +59,56 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Commands
 
+(defn- all-fixbot-sessions
+  "Return a list of all fixbot worktree names."
+  []
+  (let [lines (workmux-list-raw)
+        data  (rest lines)]
+    (->> data
+         (keep parse-worktree-name)
+         (filter #(str/starts-with? % "fixbot-"))
+         vec)))
+
+(defn- pause-one!
+  "Pause a single fixbot session by worktree name."
+  [session]
+  ;; Get worktree path and tear down dev env
+  (let [{:keys [exit out]} (shell/sh* {:quiet? true} "workmux" "path" session)
+        worktree-path      (when (zero? exit) (str/trim (str/join "" out)))]
+    (when (and worktree-path (seq worktree-path))
+      (println (c/yellow "Stopping dev environment in " worktree-path "..."))
+      (let [{:keys [exit]} (shell/sh* {:dir worktree-path} "./bin/mage" "-fixbot-dev-env" "--down")]
+        (when-not (zero? exit)
+          (println (c/yellow "Warning: dev-env teardown returned non-zero exit code"))))))
+  ;; Close tmux window (keeps worktree)
+  (println (c/yellow "Closing tmux window for " session "..."))
+  (shell/sh* {:quiet? true} "workmux" "close" session)
+  (println)
+  (println (c/bold (c/green "Session paused: ") (c/cyan session)))
+  (println (c/yellow "Resume with: ") (str "./bin/mage -fixbot-resume " session)))
+
 (defn pause!
-  "Pause a fixbot session: stop containers, close tmux window, keep worktree."
+  "Pause a fixbot session: stop containers, close tmux window, keep worktree.
+   Pass 'all' to pause all running fixbot sessions."
   [{:keys [arguments]}]
   (let [name-or-id (first arguments)]
     (when (str/blank? name-or-id)
-      (println (c/red "Usage: ./bin/mage -fixbot-pause <name-or-issue-id>"))
+      (println (c/red "Usage: ./bin/mage -fixbot-pause <name-or-issue-id|all>"))
       (u/exit 1))
-    (let [session (find-session name-or-id)]
-      (when-not session
-        (println (c/red "No session found matching: ") name-or-id)
-        (print-available-sessions!)
-        (u/exit 1))
-      ;; Get worktree path and tear down dev env
-      (let [{:keys [exit out]} (shell/sh* {:quiet? true} "workmux" "path" session)
-            worktree-path      (when (zero? exit) (str/trim (str/join "" out)))]
-        (when (and worktree-path (seq worktree-path))
-          (println (c/yellow "Stopping dev environment in " worktree-path "..."))
-          (let [{:keys [exit]} (shell/sh* {:dir worktree-path} "./bin/mage" "-fixbot-dev-env" "--down")]
-            (when-not (zero? exit)
-              (println (c/yellow "Warning: dev-env teardown returned non-zero exit code"))))))
-      ;; Close tmux window (keeps worktree)
-      (println (c/yellow "Closing tmux window for " session "..."))
-      (shell/sh* {:quiet? true} "workmux" "close" session)
-      (println)
-      (println (c/bold (c/green "Session paused: ") (c/cyan session)))
-      (println (c/yellow "Resume with: ") (str "./bin/mage -fixbot-resume " session)))))
+    (if (= "all" (str/lower-case (str/trim name-or-id)))
+      ;; Pause all fixbot sessions
+      (let [sessions (all-fixbot-sessions)]
+        (if (empty? sessions)
+          (println (c/yellow "No active fixbot sessions to pause."))
+          (doseq [session sessions]
+            (pause-one! session))))
+      ;; Pause a single session
+      (let [session (find-session name-or-id)]
+        (when-not session
+          (println (c/red "No session found matching: ") name-or-id)
+          (print-available-sessions!)
+          (u/exit 1))
+        (pause-one! session)))))
 
 (defn resume!
   "Resume a paused fixbot session."
@@ -158,6 +182,20 @@
       (shell/sh* {:quiet? true} "tmux" "kill-session" "-t" session)
       (println)
       (println (c/bold (c/green "Session removed: ") (c/cyan session))))))
+
+(defn write-sandbox-settings!
+  "Copy the sandbox-specific settings.local.json into the current worktree's .claude/ directory.
+   This overrides the host's settings.json hooks with container-compatible versions."
+  [_parsed]
+  (let [source (str u/project-root-directory "/.claude/fixbot/sandbox-settings.local.json")
+        target ".claude/settings.local.json"]
+    (if (.exists (java.io.File. ^String source))
+      (do
+        (spit target (slurp source))
+        (println (c/green "Wrote ") target))
+      (do
+        (println (c/red "Source not found: ") source)
+        (u/exit 1)))))
 
 (defn dashboard!
   "Open the workmux TUI dashboard."

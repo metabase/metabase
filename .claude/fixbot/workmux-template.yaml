@@ -1,0 +1,56 @@
+agent: claude
+
+sandbox:
+  enabled: true
+  target: all
+  host_commands:
+    - .claude/fixbot/capture-pane.sh
+  env_passthrough:
+    - ANTHROPIC_API_KEY
+    - CLAUDE_CODE_OAUTH_TOKEN
+    - MB_PREMIUM_EMBEDDING_TOKEN
+    - LINEAR_API_KEY
+  extra_mounts:
+    - host_path: ~/.m2
+      guest_path: /tmp/.m2
+      writable: true
+    - host_path: ~/.gitlibs
+      guest_path: /tmp/.gitlibs
+      writable: true
+    - host_path: ~/.deps.clj
+      guest_path: /tmp/.deps.clj
+      writable: true
+
+files:
+  symlink:
+    - node_modules
+    - bin/bb
+
+post_create:
+  - mkdir -p .fixbot
+  - echo '{{ISSUE_ID}} | {{ISSUE_URL}}' > .fixbot/issue.txt
+  - rm -f .claude/commands/fixbot*.md
+  - cp .claude/fixbot/commands/*.md .claude/commands/
+  - mkdir -p .github/hooks/workmux-status
+  - echo '{"version":1,"hooks":{"userPromptSubmitted":[{"type":"command","bash":"workmux set-window-status working"}],"postToolUse":[{"type":"command","bash":"workmux set-window-status working"}],"agentStop":[{"type":"command","bash":"workmux set-window-status done"}]}}' > .github/hooks/workmux-status/hooks.json
+  - ./bin/mage -fixbot-write-sandbox-settings
+  - ./bin/mage -fixbot-dev-env --app-db {{APP_DB}}
+  - bun install
+
+pre_remove:
+  - ./bin/mage -fixbot-dev-env --down
+
+panes:
+  - command: <agent>
+    focus: true
+
+  - command: clj -M:dev:dev-start:drivers:drivers-dev:ee:ee-dev
+    split: horizontal
+    percentage: 30
+
+  - command: bun run build-hot
+    split: vertical
+
+  - command: ./bin/mage -fixbot-status-watch
+    split: vertical
+    size: 5

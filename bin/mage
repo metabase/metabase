@@ -8,7 +8,7 @@ BINDIR=$(cd -- "${_REL_BINDIR}" > /dev/null 2>&1 && pwd)
 MB="$BINDIR/.."
 
 BB_BIN_DIR="${BINDIR}"
-BB_EXEC="${BB_PATH:-${BB_BIN_DIR}/bb}"
+BB_EXEC="${BB_BIN_DIR}/bb"
 
 # Colors for output
 RED='\033[0;31m'

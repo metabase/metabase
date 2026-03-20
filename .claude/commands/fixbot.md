@@ -17,6 +17,12 @@ The user provided: `$ARGUMENTS`
 
 Validate that this looks like a Linear issue ID (e.g., MB-12345). If not, tell the user the expected format and stop.
 
+Run `./bin/mage -fixbot-list` and check if a session already exists for this issue (look for the issue ID in the branch name or session name). If one exists:
+- Tell the user the session already exists
+- Show them how to connect: `tmux attach -t <session-name>`
+- Show them how to stop it: `/fixbot-quit <issue-id>`
+- **STOP** — do not proceed with the remaining steps. Do not attempt to shut it down or clean it up.
+
 ### 3. Fetch the issue from Linear
 
 Run:

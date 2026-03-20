@@ -675,6 +675,12 @@
    :arg-schema [:tuple [:string {:name "name-or-id"}]]
    :task (task! (session/quit! parsed))}
 
+  -fixbot-write-sandbox-settings
+  {:doc "Write container-compatible settings.local.json for sandbox"
+   :examples [["./bin/mage -fixbot-write-sandbox-settings" "Write sandbox settings"]]
+   :requires [[mage.fixbot.session :as session]]
+   :task (task! (session/write-sandbox-settings! parsed))}
+
   -fixbot-dashboard
   {:doc "Open fixbot TUI dashboard"
    :examples [["./bin/mage -fixbot-dashboard" "Open dashboard"]]

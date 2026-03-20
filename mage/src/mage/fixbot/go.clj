@@ -11,51 +11,32 @@
 ;; Workmux config
 
 (defn- generate-workmux-config
-  "Generate the .workmux.yaml content."
+  "Generate the .workmux.yaml content from the template file."
   [issue-id issue-url app-db]
-  (str "agent: claude\n"
-       "\n"
-       "sandbox:\n"
-       "  enabled: true\n"
-       "  target: all\n"
-       "  image: metabase-fixbot\n"
-       "  env_passthrough:\n"
-       "    - ANTHROPIC_API_KEY\n"
-       "    - CLAUDE_CODE_OAUTH_TOKEN\n"
-       "    - MB_PREMIUM_EMBEDDING_TOKEN\n"
-       "    - LINEAR_API_KEY\n"
-       "\n"
-       "files:\n"
-       "  symlink:\n"
-       "    - node_modules\n"
-       "\n"
-       "post_create:\n"
-       "  - mkdir -p .fixbot\n"
-       "  - echo '" issue-id " | " issue-url "' > .fixbot/issue.txt\n"
-       "  - rm -f .claude/commands/fixbot*.md\n"
-       "  - cp .claude/fixbot/commands/*.md .claude/commands/\n"
-       "  - mkdir -p .github/hooks/workmux-status\n"
-       "  - echo '{\"version\":1,\"hooks\":{\"userPromptSubmitted\":[{\"type\":\"command\",\"bash\":\"workmux set-window-status working\"}],\"postToolUse\":[{\"type\":\"command\",\"bash\":\"workmux set-window-status working\"}],\"agentStop\":[{\"type\":\"command\",\"bash\":\"workmux set-window-status done\"}]}}' > .github/hooks/workmux-status/hooks.json\n"
-       "  - ./bin/mage -fixbot-dev-env --app-db " app-db "\n"
-       "  - bun install\n"
-       "\n"
-       "pre_remove:\n"
-       "  - ./bin/mage -fixbot-dev-env --down\n"
-       "\n"
-       "panes:\n"
-       "  - command: <agent>\n"
-       "    focus: true\n"
-       "\n"
-       "  - command: clj -M:dev:dev-start:drivers:drivers-dev:ee:ee-dev\n"
-       "    split: horizontal\n"
-       "    percentage: 30\n"
-       "\n"
-       "  - command: bun run build-hot\n"
-       "    split: vertical\n"
-       "\n"
-       "  - command: ./bin/mage -fixbot-status-watch\n"
-       "    split: vertical\n"
-       "    size: 5\n"))
+  (-> (slurp (str u/project-root-directory "/.claude/fixbot/workmux-template.yaml"))
+      (str/replace "{{ISSUE_ID}}" issue-id)
+      (str/replace "{{ISSUE_URL}}" issue-url)
+      (str/replace "{{APP_DB}}" app-db)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Global workmux config
+
+(def ^:private workmux-global-config-path
+  (str (System/getProperty "user.home") "/.config/workmux/config.yaml"))
+
+(defn- ensure-global-sandbox-image!
+  "Ensure the global workmux config has sandbox.image set to metabase-fixbot.
+   The image field is global-config-only in workmux, so we set it permanently."
+  []
+  (let [config-file (java.io.File. ^String workmux-global-config-path)]
+    (.mkdirs (.getParentFile config-file))
+    (let [content (if (.exists config-file) (slurp config-file) "")]
+      (when-not (re-find #"(?m)^\s*image:\s*metabase-fixbot" content)
+        (spit workmux-global-config-path
+              (str content
+                   (when-not (re-find #"(?m)^sandbox:" content)
+                     "\nsandbox:\n")
+                   "  image: metabase-fixbot\n"))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Main orchestrator
@@ -95,6 +76,15 @@
             issue-url (str "https://linear.app/metabase/issue/" issue-id)
             in-tmux? (not (str/blank? (u/env "TMUX" (constantly nil))))]
 
+        ;; Ensure global workmux config has our sandbox image
+        (ensure-global-sandbox-image!)
+
+        ;; Write Claude Code hooks to main repo so workmux doesn't prompt
+        (let [hooks-dir (str u/project-root-directory "/.github/hooks/workmux-status")]
+          (.mkdirs (java.io.File. ^String hooks-dir))
+          (spit (str hooks-dir "/hooks.json")
+                "{\"version\":1,\"hooks\":{\"userPromptSubmitted\":[{\"type\":\"command\",\"bash\":\"workmux set-window-status working\"}],\"postToolUse\":[{\"type\":\"command\",\"bash\":\"workmux set-window-status working\"}],\"agentStop\":[{\"type\":\"command\",\"bash\":\"workmux set-window-status done\"}]}}"))
+
         ;; Back up existing .workmux.yaml if it exists
         (when had-backup?
           (println (c/yellow "Backing up existing .workmux.yaml..."))
@@ -129,6 +119,11 @@
               (do
                 (println (c/yellow "Not inside tmux. Creating detached tmux session..."))
                 (shell/sh "tmux" "new-session" "-d" "-s" session-name)
+                ;; Pass env vars that may come from mise and not be in the tmux login shell
+                (doseq [var-name ["MB_PREMIUM_EMBEDDING_TOKEN" "LINEAR_API_KEY"]]
+                  (when-let [val (u/env var-name (constantly nil))]
+                    (when-not (str/blank? val)
+                      (shell/sh "tmux" "set-environment" "-t" session-name var-name val))))
                 (shell/sh "tmux" "send-keys" "-t" session-name workmux-cmd "Enter")
                 (println)
                 (println (c/bold (c/green "Tmux session created: ") (c/cyan session-name)))

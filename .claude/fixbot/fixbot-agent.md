@@ -55,11 +55,12 @@ The agent should follow this workflow:
 3. Report progress at each milestone with a clear status update
 
 #### Phase 3: Verify
-1. Use Playwright to verify UI functionality yourself before asking the user to test:
+Playwright is available for ad-hoc verification — use it to visually confirm your fix before asking the user to test:
    - `npx playwright screenshot http://localhost:<jetty-port>/path page.png` — take screenshots to verify visual state
    - `npx playwright pdf http://localhost:<jetty-port>/path page.pdf` — capture page as PDF
    - Write short Playwright scripts for interaction testing when needed (click, fill, navigate)
    - Playwright has Chromium available — use it to confirm the fix works in-browser
+   - **Important**: Playwright is for ad-hoc spot-checks and troubleshooting only. Always prefer writing actual unit tests (Jest) or E2E tests (Cypress) to prevent regressions — Playwright scripts are throwaway and don't run in CI.
 2. Tell the user EXACTLY what to test and how:
    - Which URL to visit
    - What steps to reproduce
@@ -116,14 +117,14 @@ Your session has multiple tmux panes running side by side:
 - **Pane 2**: Frontend dev server (rspack/build-hot logs)
 - **Pane 3**: Status watch (health checks)
 
-To read logs from the backend or frontend panes, use `tmux capture-pane`:
+To read logs from the backend or frontend panes, use the capture script:
 
 ```bash
 # Capture last 200 lines from backend logs
-tmux capture-pane -t 1 -p -S -200
+.claude/fixbot/capture-pane.sh 1 200
 
 # Capture last 200 lines from frontend logs
-tmux capture-pane -t 2 -p -S -200
+.claude/fixbot/capture-pane.sh 2 200
 ```
 
 Use this when:

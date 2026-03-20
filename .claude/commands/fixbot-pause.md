@@ -1,4 +1,4 @@
-Pause a fixbot worktree session — stops Docker containers and dev servers, closes tmux window, but preserves the worktree and branch for later resuming.
+Pause a fixbot worktree session — stops Docker containers and dev servers, closes tmux window, but preserves the worktree and branch for later resuming. Pass `all` to pause all running fixbot sessions.
 
 The user provided: `$ARGUMENTS`
 
