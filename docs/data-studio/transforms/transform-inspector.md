@@ -35,7 +35,7 @@ Data summary gives you a quick snapshot of the transform's input and output tabl
 
 The Column distributions lens visualizes how data distributions change through the transform. This lens can help you spot unexpected filtering, aggregation effects, or type changes. This lens is only available when columns match between input and output tables (so you may not see it for transforms that aggregate data).
 
-Column distributions can be slow on large datasets because it computes distribution stats for every matched column.
+The Column distributions lens can be slow on large datasets because it computes distribution stats for every matched column.
 
 ### Join analysis
 
