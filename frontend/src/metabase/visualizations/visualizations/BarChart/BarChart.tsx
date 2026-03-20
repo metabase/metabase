@@ -15,6 +15,10 @@ import type {
   VisualizationSettingsDefinitions,
 } from "../../types";
 
+const settings: VisualizationSettingsDefinitions = {
+  ...COMBO_CHARTS_SETTINGS_DEFINITIONS,
+};
+
 Object.assign(
   BarChart,
   getCartesianChartDefinition({
@@ -25,9 +29,7 @@ Object.assign(
     noun: t`bar chart`,
     minSize: getMinSize("bar"),
     defaultSize: getDefaultSize("bar"),
-    settings: {
-      ...COMBO_CHARTS_SETTINGS_DEFINITIONS,
-    } as any as VisualizationSettingsDefinitions,
+    settings,
   }),
 );
 

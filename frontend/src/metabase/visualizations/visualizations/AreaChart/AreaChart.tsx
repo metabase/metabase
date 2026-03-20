@@ -15,6 +15,10 @@ import type {
   VisualizationSettingsDefinitions,
 } from "../../types";
 
+const settings: VisualizationSettingsDefinitions = {
+  ...COMBO_CHARTS_SETTINGS_DEFINITIONS,
+};
+
 Object.assign(
   AreaChart,
   getCartesianChartDefinition({
@@ -25,9 +29,7 @@ Object.assign(
     noun: t`area chart`,
     minSize: getMinSize("area"),
     defaultSize: getDefaultSize("area"),
-    settings: {
-      ...COMBO_CHARTS_SETTINGS_DEFINITIONS,
-    } as any as VisualizationSettingsDefinitions,
+    settings,
   }),
 );
 
