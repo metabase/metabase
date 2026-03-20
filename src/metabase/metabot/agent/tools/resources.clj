@@ -7,7 +7,8 @@
 
 (set! *warn-on-reflection* true)
 
-(mu/defn ^{:tool-name "read_resource"} read-resource-tool
+(mu/defn ^{:tool-name "read_resource"}
+  read-resource-tool
   "Read detailed information about Metabase resources via URI patterns.
 
   Supports fetching multiple resources in parallel using metabase:// URIs:

@@ -55,7 +55,8 @@
    [:entity_types {:optional true}
     [:maybe [:sequential [:enum "table" "model" "metric" "dashboard" "question"]]]]])
 
-(mu/defn ^{:tool-name "search"} search-tool
+(mu/defn ^{:tool-name "search"}
+  search-tool
   "Search for tables, models, metrics, dashboards, and saved questions."
   [args :- search-schema]
   (do-search "search" #{"table" "model" "metric" "dashboard" "question"} {} args))
@@ -69,7 +70,8 @@
     [:maybe [:sequential [:enum "table" "model"]]]]])
 
 (mu/defn ^{:tool-name "search"
-           :prompt    "sql_search.md"} sql-search-tool
+           :prompt    "sql_search.md"}
+  sql-search-tool
   "Search for SQL-queryable data sources (tables and models) within a database."
   [{:keys [database_id] :as args} :- sql-search-schema]
   (do-search "SQL search" #{"table" "model"} {:database-id database_id} args))
@@ -82,7 +84,8 @@
     [:maybe [:sequential [:enum "model" "metric" "table"]]]]])
 
 (mu/defn ^{:tool-name "search"
-           :prompt    "nql_search.md"} nlq-search-tool
+           :prompt    "nql_search.md"}
+  nlq-search-tool
   "Search for NLQ-queryable data sources (models, metrics, tables)."
   [args :- nlq-search-schema]
   (do-search "NLQ search" #{"model" "metric" "table"} {:profile-id "nlq"} args))
@@ -96,7 +99,8 @@
     [:maybe [:sequential [:enum "table" "model" "transform"]]]]])
 
 (mu/defn ^{:tool-name "search"
-           :prompt    "transform_search"} transform-search-tool
+           :prompt    "transform_search"}
+  transform-search-tool
   "Search for transforms, tables, and models."
   [{:keys [search_native_query] :as args} :- transform-search-schema]
   (do-search "transform search" #{"table" "model" "transform"}

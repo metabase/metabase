@@ -7,7 +7,8 @@
 
 (set! *warn-on-reflection* true)
 
-(mu/defn ^{:tool-name "static_viz"} static-viz-tool
+(mu/defn ^{:tool-name "static_viz"}
+  static-viz-tool
   "Generate a static visualization (PNG image) of a saved question or metric. The visualization will be posted as a separate follow-up message in the thread."
   [{:keys [entity_id]} :- [:map {:closed true}
                            [:entity_id :int]]]

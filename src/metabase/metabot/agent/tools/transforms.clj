@@ -78,7 +78,8 @@
 ;;; Tool definitions
 ;;; ──────────────────────────────────────────────────────────────────
 
-(mu/defn ^{:tool-name "get_transform_details"} get-transform-details-tool
+(mu/defn ^{:tool-name "get_transform_details"}
+  get-transform-details-tool
   "Get information about a transform."
   [{:keys [transform_id]} :- [:map {:closed true} [:transform_id :int]]]
   (add-output (transform-tools/get-transform-details {:transform-id transform_id})
@@ -89,7 +90,8 @@
 
 (defenterprise ^{:tool-name  "get_transform_python_library_details"
                  :schema     [:=> [:cat python-lib-schema] :map]
-                 :ee-feature :transforms} get-transform-python-library-details-tool
+                 :ee-feature :transforms}
+  get-transform-python-library-details-tool
   "Get Python library details. EE-only; returns an error in OSS."
   metabase-enterprise.metabot.agent.tools.transforms
   [{:keys [_path]}]
@@ -112,7 +114,8 @@
    [:source_tables {:optional true} [:maybe :map]]])
 
 (mu/defn ^{:tool-name    "write_transform_sql"
-           :capabilities #{:feature-transforms :permission-write-transforms}} write-transform-sql-tool
+           :capabilities #{:feature-transforms :permission-write-transforms}}
+  write-transform-sql-tool
   "Write new SQL queries or edit existing queries for transforms.
 
   Supports two modes:
@@ -148,7 +151,8 @@
 (defenterprise ^{:tool-name    "write_transform_python"
                  :schema       [:=> [:cat write-transform-sql-schema] :map]
                  :capabilities #{:feature-transforms :feature-transforms-python :permission-write-transforms}
-                 :ee-feature   :transforms} write-transform-python-tool
+                 :ee-feature   :transforms}
+  write-transform-python-tool
   "Write Python transforms. EE-only; returns an error in OSS."
   metabase-enterprise.metabot.agent.tools.transforms
   [{:keys [_transform_id]}]
