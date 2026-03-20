@@ -28,6 +28,7 @@ import {
   toJsDefinition,
 } from "../utils/definition-cache";
 import { entryHasBreakout } from "../utils/definition-entries";
+import { getTabConfig } from "../utils/tab-config";
 
 /**
  * One entry per expression definition in the formulaEntities list.
@@ -133,6 +134,28 @@ type ExpressionItemConfig = {
   };
 };
 
+function getModifiedDefinitionForTab(
+  definition: MetricsViewerDefinitionEntry,
+  tab: MetricsViewerTabState,
+): MetricDefinition | null {
+  if (!definition.definition) {
+    return null;
+  }
+  const tabConfig = getTabConfig(tab.type);
+  const dimensionId = tab.dimensionMapping[definition.id];
+  if (!dimensionId) {
+    if (tabConfig.minDimensions > 0) {
+      return null;
+    }
+    return definition.definition;
+  }
+  return getModifiedDefinition(
+    definition.definition,
+    dimensionId,
+    tab.projectionConfig,
+  );
+}
+
 function buildArithmeticRequest(
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
   tab: MetricsViewerTabState,
@@ -159,16 +182,9 @@ function buildArithmeticRequest(
       continue;
     }
 
-    const dimensionId = tab.dimensionMapping[token.sourceId];
-    const definition = definitions[token.sourceId]?.definition;
-    if (!dimensionId || !definition) {
-      return null; // metric not in a tab yet
-    }
-
-    const modifiedDefinition = getModifiedDefinition(
-      definition,
-      dimensionId,
-      tab.projectionConfig,
+    const modifiedDefinition = getModifiedDefinitionForTab(
+      definitions[token.sourceId],
+      tab,
     );
 
     if (!modifiedDefinition) {
@@ -242,16 +258,9 @@ function buildQueryItems(
 
   for (const entity of formulaEntities) {
     if (isMetricEntry(entity)) {
-      const dimensionId = tab.dimensionMapping[entity.id];
-      const definition = definitions[entity.id]?.definition;
-      if (!dimensionId || !definition) {
-        continue;
-      }
-
-      const modifiedDefinition = getModifiedDefinition(
-        definition,
-        dimensionId,
-        tab.projectionConfig,
+      const modifiedDefinition = getModifiedDefinitionForTab(
+        definitions[entity.id],
+        tab,
       );
 
       if (!modifiedDefinition) {

@@ -28,6 +28,7 @@ import {
   createMeasureSourceId,
   createMetricSourceId,
 } from "../utils/source-ids";
+import { getTabConfig } from "../utils/tab-config";
 import { computeDefaultTabs, findMatchingDimensionForTab } from "../utils/tabs";
 
 async function loadMetricDefinition(
@@ -124,6 +125,14 @@ function addDefinitionToTabs(
 
     return tab;
   });
+}
+
+function areTabDimensionsValid(tab: MetricsViewerTabState): boolean {
+  const tabConfig = getTabConfig(tab.type);
+  return (
+    Object.values(tab.dimensionMapping).filter(isNotNull).length >=
+    tabConfig.minDimensions
+  );
 }
 
 export interface UseViewerStateResult {
@@ -228,7 +237,7 @@ export function useViewerState(): UseViewerStateResult {
             const { [id]: __, ...rest } = tab.dimensionMapping;
             return { ...tab, dimensionMapping: rest };
           })
-          .filter((tab) => Object.values(tab.dimensionMapping).some(isNotNull));
+          .filter((tab) => areTabDimensionsValid(tab));
 
         return {
           ...prev,
@@ -264,9 +273,7 @@ export function useViewerState(): UseViewerStateResult {
           definition,
         );
 
-        const newTabs = updatedTabs.filter((tab) =>
-          Object.values(tab.dimensionMapping).some(isNotNull),
-        );
+        const newTabs = updatedTabs.filter((tab) => areTabDimensionsValid(tab));
 
         return {
           ...prev,

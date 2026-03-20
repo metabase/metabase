@@ -21,13 +21,20 @@ export interface ChartTypeOption {
   icon: IconName;
 }
 
-interface DisplayTypeDefinition {
-  supportsMultipleSeries: boolean;
-  getSettings: (
-    def: MetricDefinition,
-    dimension: DimensionMetadata,
-  ) => VisualizationSettings;
-}
+type DisplayTypeDefinition =
+  | {
+      dimensionRequired: true;
+      supportsMultipleSeries: boolean;
+      getSettings: (
+        def: MetricDefinition,
+        dimension: DimensionMetadata,
+      ) => VisualizationSettings;
+    }
+  | {
+      dimensionRequired: false;
+      supportsMultipleSeries: boolean;
+      getSettings: (def: MetricDefinition) => VisualizationSettings;
+    };
 
 interface BaseTabTypeDefinition {
   type: MetricsViewerTabType;
@@ -36,6 +43,8 @@ interface BaseTabTypeDefinition {
   dimensionSubtype?: (dimension: DimensionMetadata) => string | null;
   defaultDisplayType: MetricsViewerDisplayType;
   availableDisplayTypes: ChartTypeOption[];
+  minDimensions: number;
+  index?: number;
 }
 
 interface AggregateTabType extends BaseTabTypeDefinition {
@@ -78,6 +87,7 @@ export const TAB_TYPE_REGISTRY: TabTypeDefinition[] = [
     dimensionPredicate: LibMetric.isDateOrDateTime,
     defaultDisplayType: "line",
     availableDisplayTypes: STANDARD_CHART_TYPES,
+    minDimensions: 1,
   },
   {
     type: "geo",
@@ -89,6 +99,19 @@ export const TAB_TYPE_REGISTRY: TabTypeDefinition[] = [
     dimensionSubtype: getGeoSubtype,
     defaultDisplayType: "map",
     availableDisplayTypes: GEO_CHART_TYPES,
+    minDimensions: 1,
+  },
+  {
+    type: "scalar",
+    autoCreate: true,
+    matchMode: "aggregate",
+    fixedId: "scalar",
+    fixedLabel: "Results",
+    dimensionPredicate: () => false,
+    defaultDisplayType: "scalar",
+    availableDisplayTypes: [{ type: "scalar", icon: "number" }],
+    index: 5,
+    minDimensions: 0,
   },
   {
     type: "category",
@@ -100,6 +123,7 @@ export const TAB_TYPE_REGISTRY: TabTypeDefinition[] = [
       !LibMetric.isBoolean(dimension),
     defaultDisplayType: "bar",
     availableDisplayTypes: STANDARD_CHART_TYPES,
+    minDimensions: 1,
   },
   {
     type: "boolean",
@@ -108,6 +132,7 @@ export const TAB_TYPE_REGISTRY: TabTypeDefinition[] = [
     dimensionPredicate: LibMetric.isBoolean,
     defaultDisplayType: "bar",
     availableDisplayTypes: STANDARD_CHART_TYPES,
+    minDimensions: 1,
   },
   {
     type: "numeric",
@@ -119,6 +144,7 @@ export const TAB_TYPE_REGISTRY: TabTypeDefinition[] = [
       !LibMetric.isCoordinate(dimension),
     defaultDisplayType: "bar",
     availableDisplayTypes: NUMERIC_CHART_TYPES,
+    minDimensions: 1,
   },
 ];
 
@@ -204,15 +230,52 @@ function getMapSettings(
   };
 }
 
+function getScalarSettings(_def: MetricDefinition): VisualizationSettings {
+  return {};
+}
+
 export const DISPLAY_TYPE_REGISTRY: Record<
   MetricsViewerDisplayType,
   DisplayTypeDefinition
 > = {
-  line: { supportsMultipleSeries: true, getSettings: getChartSettings },
-  area: { supportsMultipleSeries: true, getSettings: getChartSettings },
-  bar: { supportsMultipleSeries: true, getSettings: getChartSettings },
-  row: { supportsMultipleSeries: true, getSettings: getChartSettings },
-  scatter: { supportsMultipleSeries: true, getSettings: getScatterSettings },
-  map: { supportsMultipleSeries: false, getSettings: getMapSettings },
-  pie: { supportsMultipleSeries: false, getSettings: getPieSettings },
+  line: {
+    dimensionRequired: true,
+    supportsMultipleSeries: true,
+    getSettings: getChartSettings,
+  },
+  area: {
+    dimensionRequired: true,
+    supportsMultipleSeries: true,
+    getSettings: getChartSettings,
+  },
+  bar: {
+    dimensionRequired: true,
+    supportsMultipleSeries: true,
+    getSettings: getChartSettings,
+  },
+  row: {
+    dimensionRequired: true,
+    supportsMultipleSeries: true,
+    getSettings: getChartSettings,
+  },
+  scatter: {
+    dimensionRequired: true,
+    supportsMultipleSeries: true,
+    getSettings: getScatterSettings,
+  },
+  map: {
+    dimensionRequired: true,
+    supportsMultipleSeries: false,
+    getSettings: getMapSettings,
+  },
+  pie: {
+    dimensionRequired: true,
+    supportsMultipleSeries: false,
+    getSettings: getPieSettings,
+  },
+  scalar: {
+    dimensionRequired: false,
+    supportsMultipleSeries: false,
+    getSettings: getScalarSettings,
+  },
 };

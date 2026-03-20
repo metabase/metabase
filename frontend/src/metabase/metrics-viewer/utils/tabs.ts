@@ -419,7 +419,7 @@ export function computeDefaultTabs(
     return [];
   }
 
-  const tabs: MetricsViewerTabState[] = [];
+  const tabs: (MetricsViewerTabState & { index?: number })[] = [];
 
   for (const config of TAB_TYPE_REGISTRY) {
     if (!config.autoCreate || tabs.length >= MAX_AUTO_TABS) {
@@ -432,7 +432,7 @@ export function computeDefaultTabs(
         sourceOrder,
         config,
       );
-      if (Object.keys(mapping).length === 0) {
+      if (Object.keys(mapping).length < config.minDimensions) {
         continue;
       }
 
@@ -444,6 +444,7 @@ export function computeDefaultTabs(
         display: config.defaultDisplayType,
         dimensionMapping: mapping,
         projectionConfig: {},
+        index: config.index,
       });
       continue;
     }
@@ -480,11 +481,14 @@ export function computeDefaultTabs(
         display: config.defaultDisplayType,
         dimensionMapping: mapping,
         projectionConfig: {},
+        index: config.index,
       });
     }
   }
 
-  return tabs;
+  tabs.sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
+
+  return tabs.map(({ index, ...tab }) => tab);
 }
 
 // ── Manual tab creation ──

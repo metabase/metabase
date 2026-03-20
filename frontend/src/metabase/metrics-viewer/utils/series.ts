@@ -57,38 +57,16 @@ export function buildArithmeticSeriesFromResult(
     return [];
   }
 
-  const defEntries = Object.values(definitions);
-  const firstSettingsEntry = defEntries.reduce<{
-    def: MetricDefinition;
-    dimension: DimensionMetadata;
-  } | null>((found, entry) => {
-    if (found) {
-      return found;
-    }
-    const dimensionId = dimensionMapping[entry.id];
-    const definition = definitions[entry.id]?.definition;
-    if (!dimensionId || !definition) {
-      return null;
-    }
-    const dimension = findDimensionById(definition, dimensionId);
-    if (!dimension) {
-      return null;
-    }
-    const def = modifiedDefinitions.get(entry.id);
-    if (!def) {
-      return null;
-    }
-    return { def, dimension };
-  }, null);
-
-  if (!firstSettingsEntry) {
+  const vizSettings = getVizSettings(
+    display,
+    Object.values(definitions),
+    definitions,
+    modifiedDefinitions,
+    dimensionMapping,
+  );
+  if (!vizSettings) {
     return [];
   }
-
-  const vizSettings = DISPLAY_TYPE_REGISTRY[display].getSettings(
-    firstSettingsEntry.def,
-    firstSettingsEntry.dimension,
-  );
 
   const cardId = nextSyntheticCardId();
   const cols = arithmeticResult.data.cols;
@@ -115,6 +93,42 @@ export function buildArithmeticSeriesFromResult(
       data: arithmeticResult.data,
     },
   ];
+}
+
+function getVizSettings(
+  display: MetricsViewerDisplayType,
+  entries: MetricsViewerDefinitionEntry[],
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
+  modifiedDefinitions: Map<MetricSourceId, MetricDefinition>,
+  dimensionMapping: Record<MetricSourceId, DimensionId | null>,
+): VisualizationSettings | null {
+  const displayConfig = DISPLAY_TYPE_REGISTRY[display];
+
+  return entries.reduce<VisualizationSettings | null>((found, entry) => {
+    if (found) {
+      return found;
+    }
+    const definition = definitions[entry.id]?.definition;
+    const modifiedDefinition = modifiedDefinitions.get(entry.id);
+    if (!definition || !modifiedDefinition) {
+      return null;
+    }
+
+    const dimensionId = dimensionMapping[entry.id];
+
+    if (displayConfig.dimensionRequired) {
+      if (!dimensionId) {
+        return null;
+      }
+      const dimension = findDimensionById(definition, dimensionId);
+      if (!dimension) {
+        return null;
+      }
+      return displayConfig.getSettings(modifiedDefinition, dimension);
+    }
+
+    return displayConfig.getSettings(modifiedDefinition);
+  }, null);
 }
 
 function getDefinitionCardId(def: MetricDefinition): number | null {
@@ -314,55 +328,30 @@ export function buildRawSeriesFromDefinitions(
   series: SingleSeries[];
   cardIdToDimensionId: Record<CardId, MetricSourceId>;
 } {
-  const firstSettingsEntry = metrics.reduce<{
-    def: MetricDefinition;
-    dimension: DimensionMetadata;
-  } | null>((found, entry) => {
-    if (found) {
-      return found;
-    }
-    const dimensionId = dimensionMapping[entry.id];
-    const definition = definitions[entry.id]?.definition;
-    if (!dimensionId || !definition) {
-      return null;
-    }
-    const dimension = findDimensionById(definition, dimensionId);
-    if (!dimension) {
-      return null;
-    }
-    const def = modifiedDefinitions.get(entry.id);
-    if (!def) {
-      return null;
-    }
-    return { def, dimension };
-  }, null);
+  const vizSettings = getVizSettings(
+    display,
+    metrics,
+    definitions,
+    modifiedDefinitions,
+    dimensionMapping,
+  );
 
-  if (!firstSettingsEntry) {
+  if (!vizSettings) {
     return { series: [], cardIdToDimensionId: {} };
   }
-
-  const vizSettings = DISPLAY_TYPE_REGISTRY[display].getSettings(
-    firstSettingsEntry.def,
-    firstSettingsEntry.dimension,
-  );
 
   const cardIdToDimensionId: Record<CardId, MetricSourceId> = {};
   const defCount = metrics.length;
 
   const series = metrics.flatMap((entry) => {
-    const dimensionId = dimensionMapping[entry.id];
     const definition = definitions[entry.id]?.definition;
-    if (!dimensionId || !definition) {
+    if (!definition) {
       return [];
     }
 
     const modDef = modifiedDefinitions.get(entry.id);
     const result = resultsByDefinitionId.get(entry.id);
     if (!modDef || !result?.data?.cols?.length) {
-      return [];
-    }
-
-    if (LibMetric.projections(modDef).length === 0) {
       return [];
     }
 
@@ -374,7 +363,7 @@ export function buildRawSeriesFromDefinitions(
     const name = getDefinitionName(definition);
 
     const seriesKey = getSeriesVizSettingsKey(
-      result.data.cols[1], // metric API returns [projection_cols..., aggregation_col]
+      result.data.cols[Math.min(1, result.data.cols.length - 1)], // metric API returns [projection_cols..., aggregation_col]
       false,
       true,
       1,
@@ -423,13 +412,19 @@ function computeColorVizSettings({
   displayType: VisualizationDisplay;
   seriesKey: string;
   color: string | undefined;
-}): Partial<Pick<VisualizationSettings, "series_settings" | "map.colors">> {
+}): Partial<
+  Pick<VisualizationSettings, "series_settings" | "map.colors" | "scalar.color">
+> {
   if (color == null) {
     return {};
   }
   if (displayType === "map") {
     return {
       "map.colors": getColorplethColorScale(color),
+    };
+  } else if (displayType === "scalar") {
+    return {
+      "scalar.color": color,
     };
   } else {
     return {

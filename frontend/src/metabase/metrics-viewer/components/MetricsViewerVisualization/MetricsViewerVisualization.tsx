@@ -4,7 +4,10 @@ import { noop } from "underscore";
 import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
 import type { DimensionItem } from "metabase/metrics-viewer/components/DimensionPillBar";
 import { DimensionPillBar } from "metabase/metrics-viewer/components/DimensionPillBar";
-import { DISPLAY_TYPE_REGISTRY } from "metabase/metrics-viewer/utils";
+import {
+  DISPLAY_TYPE_REGISTRY,
+  getTabConfig,
+} from "metabase/metrics-viewer/utils";
 import { MetricsViewerClickActionsMode } from "metabase/metrics-viewer/utils/MetricsViewerClickActionsMode";
 import { getGridColumns } from "metabase/metrics-viewer/utils/grid-columns";
 import { Flex, SimpleGrid, Stack, useElementSize } from "metabase/ui";
@@ -62,6 +65,12 @@ export function MetricsViewerVisualization({
     [cardIdToDimensionId, definitions, onTabUpdate, tab],
   );
 
+  const tabConfig = getTabConfig(tab.type);
+  const hideDimensionPill =
+    tabConfig.minDimensions === 0 &&
+    dimensionItems.filter((item) => item.availableOptions.length > 0).length ===
+      0;
+
   return (
     <Flex
       ref={ref}
@@ -109,7 +118,7 @@ export function MetricsViewerVisualization({
         </DebouncedFrame>
       )}
 
-      {dimensionItems.length > 0 && onDimensionChange && (
+      {!hideDimensionPill && dimensionItems.length > 0 && onDimensionChange && (
         <DimensionPillBar
           items={dimensionItems}
           onDimensionChange={onDimensionChange}

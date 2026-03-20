@@ -14,7 +14,7 @@ import type { MathOperator } from "./operators";
 
 export type MetricsViewerDisplayType = Extract<
   CardDisplayType,
-  "line" | "area" | "bar" | "map" | "row" | "pie" | "scatter"
+  "line" | "area" | "bar" | "map" | "row" | "pie" | "scatter" | "scalar"
 >;
 
 export type MetricSourceId = `metric:${number}` | `measure:${number}`;
@@ -25,7 +25,8 @@ export type MetricsViewerTabType =
   | "geo"
   | "category"
   | "boolean"
-  | "numeric";
+  | "numeric"
+  | "scalar";
 
 export interface StoredMetricsViewerTab {
   id: string;

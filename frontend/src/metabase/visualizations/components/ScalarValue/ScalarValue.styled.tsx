@@ -18,6 +18,7 @@ export const ScalarRoot = styled.div`
 interface ScalarValueWrapperProps {
   fontSize?: string | number;
   lineHeight?: string;
+  disableHover?: boolean;
 }
 
 export const ScalarValueWrapper = styled.h1<ScalarValueWrapperProps>`
@@ -28,7 +29,8 @@ export const ScalarValueWrapper = styled.h1<ScalarValueWrapperProps>`
   color: ${({ color }) => color};
 
   &:hover {
-    color: var(--mb-color-brand);
+    color: ${({ disableHover }) =>
+      disableHover ? undefined : "var(--mb-color-brand)"};
   }
 `;
 

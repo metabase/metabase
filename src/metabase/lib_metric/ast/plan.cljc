@@ -86,11 +86,6 @@
    Throws ex-info with :status-code 400 on validation failure."
   [expression-node]
   (let [leaf-infos (collect-leaf-group-bys expression-node)]
-    (when (perf/some #(not (:has-group-by %)) leaf-infos)
-      (throw (ex-info "Arithmetic expressions require projections (group-by) on all leaves"
-                      {:status-code 400
-                       :leaves-missing-projections
-                       (into [] (comp (remove :has-group-by) (map :uuid)) leaf-infos)})))
     (let [breakout-counts (map :breakout-count leaf-infos)]
       (when-not (apply = breakout-counts)
         (throw (ex-info "All leaves in arithmetic expression must have the same number of breakout dimensions"
