@@ -12,12 +12,6 @@ export function MetabotNavPane() {
     <Flex direction="column" flex="0 0 auto">
       <AdminNavWrapper>
         <AdminNavItem
-          key="sql"
-          icon="sql"
-          label={t`SQL Generation`}
-          path="/admin/metabot/sql-generation"
-        />
-        <AdminNavItem
           icon="metabot"
           label={t`Metabot`}
           path={`/admin/metabot/${FIXED_METABOT_IDS.DEFAULT}`}

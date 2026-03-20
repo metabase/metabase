@@ -349,6 +349,7 @@ export const tokenFeatures = [
   "ai_sql_fixer",
   "ai_sql_generation",
   "ai_entity_analysis",
+  "metabot_v3",
   "database_routing",
   "development_mode",
   "etl_connections",

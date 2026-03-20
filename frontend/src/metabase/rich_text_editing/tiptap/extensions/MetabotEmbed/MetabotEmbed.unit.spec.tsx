@@ -1,7 +1,9 @@
 import userEvent from "@testing-library/user-event";
 
+import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, within } from "__support__/ui";
+import { createMockTokenFeatures } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
 import { MetabotComponent } from "./MetabotEmbed";
@@ -26,6 +28,10 @@ describe("MetabotEmbed", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockSettings({
+      "token-features": createMockTokenFeatures({ metabot_v3: true }),
+    });
+    setupEnterprisePlugins();
   });
 
   describe("when metabot is disabled", () => {

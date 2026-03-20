@@ -134,6 +134,7 @@ export const createMockTokenFeatures = (
   ai_entity_analysis: false,
   ai_sql_fixer: false,
   ai_sql_generation: false,
+  metabot_v3: false,
   database_routing: false,
   development_mode: false,
   table_data_editing: false,

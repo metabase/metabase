@@ -70,6 +70,7 @@ export {
   type PublishTablesModalProps,
   type UnpublishTablesModalProps,
 } from "./oss/library";
+export { PLUGIN_METABOT, type PluginMetabotType } from "./oss/metabot";
 export { PLUGIN_MODEL_PERSISTENCE } from "./oss/model-persistence";
 export {
   PLUGIN_MODERATION,
@@ -166,6 +167,7 @@ import { reinitialize as reinitializeEmbeddingIframeSdkSetup } from "./oss/embed
 import { reinitialize as reinitializeEmbeddingSdk } from "./oss/embedding-sdk";
 import { reinitialize as reinitializeEntities } from "./oss/entities";
 import { reinitialize as reinitializeLibrary } from "./oss/library";
+import { reinitialize as reinitializeMetabot } from "./oss/metabot";
 import { reinitialize as reinitializeModelPersistence } from "./oss/model-persistence";
 import { reinitialize as reinitializeModeration } from "./oss/moderation";
 import { reinitialize as reinitializePermissions } from "./oss/permissions";
@@ -206,6 +208,7 @@ export function reinitialize() {
   reinitializeEntities();
   reinitializeLibrary();
   reinitializeModelPersistence();
+  reinitializeMetabot();
   reinitializeModeration();
   reinitializePermissions();
   reinitializeRemoteSync();
