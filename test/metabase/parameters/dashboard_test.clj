@@ -114,20 +114,21 @@
             (testing "Test parameter remapping for multi-field scenario"
               ;; Ensure clean permissions state — block perms from prior sequential tests can leak.
               (perms.test-util/with-full-data-perms-for-all-users!
-                (binding [api/*current-user-id* (mt/user->id :rasta)
-                          qp.perms/*param-values-query* true]
-                  (let [dashboard (t2/select-one :model/Dashboard :id dashboard-id)
-                        parameter (first (:parameters dashboard))]
+                (data-perms/disable-perms-cache
+                  (binding [api/*current-user-id* (mt/user->id :rasta)
+                            qp.perms/*param-values-query* true]
+                    (let [dashboard (t2/select-one :model/Dashboard :id dashboard-id)
+                          parameter (first (:parameters dashboard))]
 
-                    (testing "Should get remapped values for parameter with multiple FK fields pointing to same PK"
-                      (let [remapped-values (parameters.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1)]
-                        (is (some? remapped-values)
-                            "Should get remapped values for multi-field FK scenario")
+                      (testing "Should get remapped values for parameter with multiple FK fields pointing to same PK"
+                        (let [remapped-values (parameters.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1)]
+                          (is (some? remapped-values)
+                              "Should get remapped values for multi-field FK scenario")
 
-                        (when remapped-values
-                          (is
-                           (= [1 "Rustic Paper Wallet"]
-                              remapped-values)))))))))))))))
+                          (when remapped-values
+                            (is
+                             (= [1 "Rustic Paper Wallet"]
+                                remapped-values))))))))))))))))
 
 (deftest ^:sequential dashboard-remapping-restricted-permissions-test
   ;; Test for issue #47951: Dashboard filters should show remapped values even when
