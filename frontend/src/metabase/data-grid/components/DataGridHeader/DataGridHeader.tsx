@@ -4,7 +4,6 @@ import type React from "react";
 
 import { getColumnPositionStyles } from "metabase/data-grid/utils/stylings";
 
-import { HEADER_BASE_HEIGHT } from "../../constants";
 import type { DataGridColumnType } from "../../types";
 import S from "../DataGrid/DataGrid.module.css";
 import type { DataGridStylesProps } from "../DataGrid/types";
@@ -36,7 +35,6 @@ export const DataGridHeader = <TData,>({
     <div
       className={cx(S.row, classNames?.row)}
       style={{
-        height: `${HEADER_BASE_HEIGHT}px`,
         backgroundColor,
         paddingLeft,
         ...styles?.row,

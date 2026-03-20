@@ -6,7 +6,7 @@ import {
 import type { HeaderGroup } from "@tanstack/react-table";
 import cx from "classnames";
 import type React from "react";
-import { useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import _ from "underscore";
 
 import { useForceUpdate } from "metabase/common/hooks/use-force-update";
@@ -76,6 +76,11 @@ export const DataGrid = function DataGrid<TData>({
 }: DataGridProps<TData>) {
   const { rowVirtualizer, columnVirtualizer, virtualIndexAttributeName } =
     virtualGrid;
+
+  const [headerHeight, setHeaderHeight] = useState(HEADER_HEIGHT);
+  const headerRef = useCallback((node: HTMLDivElement | null) => {
+    setHeaderHeight(node?.offsetHeight ?? HEADER_HEIGHT);
+  }, []);
 
   const forceUpdate = useForceUpdate();
   useEffect(() => {
@@ -157,6 +162,7 @@ export const DataGrid = function DataGrid<TData>({
       backgroundColor={backgroundColor}
       onHeaderCellClick={onHeaderCellClick}
       isColumnReorderingDisabled={isColumnReorderingDisabled}
+      styles={styles}
     />
   );
 
@@ -249,6 +255,7 @@ export const DataGrid = function DataGrid<TData>({
             onWheel={onWheel}
           >
             <div
+              ref={headerRef}
               data-testid="table-header"
               className={cx(S.headerContainer, classNames?.headerContainer)}
               style={{
@@ -293,7 +300,7 @@ export const DataGrid = function DataGrid<TData>({
                     className={S.pinnedRowsSection}
                     style={{
                       backgroundColor: stickyElementsBackgroundColor,
-                      top: `${HEADER_HEIGHT}px`,
+                      top: `${headerHeight}px`,
                     }}
                   >
                     {renderBodyGridPanels(pinnedRows, "pinned")}
