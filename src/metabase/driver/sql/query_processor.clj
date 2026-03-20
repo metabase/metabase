@@ -725,13 +725,13 @@
 
 (defn- literal-text-value?
   [clause]
-  (let [clause' (driver-api/match-lite clause
-                  [_ (opts :guard :lib/uuid) value] ;; mbql5
-                  [value (:base-type opts) (:effective-type opts)]
+  (literal-text-value?*
+   (driver-api/match-lite clause
+     [_ (opts :guard :lib/uuid) value] ;; mbql5
+     [value (:base-type opts) (:effective-type opts)]
 
-                  [_ value opts] ;; mbql4
-                  [value (:base_type opts) (:effective_type opts)])]
-    (literal-text-value?* clause')))
+     [_ value opts] ;; mbql4
+     [value (:base_type opts) (:effective_type opts)])))
 
 (defmulti expression-by-name
   "Gets an expression from a query or stage (`*inner-query`) by name."
