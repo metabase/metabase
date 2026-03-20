@@ -817,6 +817,47 @@ describe("scenarios > visualizations > table > dashboards context", () => {
       .should("have.text", 1);
   });
 
+  it("should sort pinned rows correctly with client-side sorting", () => {
+    H.createQuestionAndDashboard({
+      questionDetails: {
+        display: "table",
+        query: { "source-table": SAMPLE_DATABASE.ORDERS_ID },
+        visualization_settings: {
+          "table.freeze_rows": true,
+          "table.freeze_rows_count": 1,
+        },
+      },
+      cardDetails: {
+        size_x: 24,
+        size_y: 12,
+      },
+    }).then(({ body: { dashboard_id } }) => {
+      H.visitDashboard(dashboard_id);
+    });
+
+    cy.findByTestId("pinned-center-quadrant")
+      .findByRole("row")
+      .find("[data-column-id=ID]")
+      .findByTestId("cell-data")
+      .should("have.text", "1");
+
+    H.tableHeaderClick("ID");
+
+    cy.findByTestId("pinned-center-quadrant")
+      .findByRole("row")
+      .find("[data-column-id=ID]")
+      .findByTestId("cell-data")
+      .should("have.text", "2000");
+
+    H.tableHeaderClick("ID");
+
+    cy.findByTestId("pinned-center-quadrant")
+      .findByRole("row")
+      .find("[data-column-id=ID]")
+      .findByTestId("cell-data")
+      .should("have.text", "1");
+  });
+
   it("should expand columns to the full width of the dashcard (metabase#57381)", () => {
     const sideColumnsWidth = 200;
     const expandedSideColumnsWidth = 2 * sideColumnsWidth;
