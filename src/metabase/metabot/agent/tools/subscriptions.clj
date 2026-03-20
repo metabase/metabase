@@ -18,7 +18,8 @@
                [:day_of_week {:optional true} [:maybe :string]]
                [:day_of_month {:optional true} [:maybe :string]]]]])
 
-(mu/defn ^{:tool-name "create_dashboard_subscription"} create-dashboard-subscription-tool
+(mu/defn ^{:tool-name "create_dashboard_subscription"}
+  create-dashboard-subscription-tool
   "Create a dashboard subscription to send regular updates via email or Slack.
 
   Use when a user wants to receive or send regular updates on a dashboard's contents.

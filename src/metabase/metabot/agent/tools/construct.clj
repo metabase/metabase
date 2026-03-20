@@ -316,7 +316,8 @@
       {:output (str "Unsupported query_type: " query-type)})))
 
 (mu/defn ^{:tool-name "construct_notebook_query"
-           :decode    decode-tool-args} construct-notebook-query-tool
+           :decode    decode-tool-args}
+  construct-notebook-query-tool
   "Construct and visualize a notebook query from a metric, model, or table."
   [{:keys [_reasoning query visualization]} :- construct-notebook-query-args-schema]
   (try

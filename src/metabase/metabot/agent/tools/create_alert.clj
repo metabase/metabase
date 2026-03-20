@@ -67,7 +67,8 @@ NEVER tell the user you have created an alert without actually calling the creat
    [:send_once {:optional true :default false} :boolean]])
 
 (mu/defn ^{:tool-name           "create_alert"
-           :system-instructions create-alert-system-instructions} create-alert-tool
+           :system-instructions create-alert-system-instructions}
+  create-alert-tool
   "Create an alert based on a saved question's results on a recurring schedule."
   [{:keys [card_id send_condition schedule send_once]} :- alert-schema]
   (let [slack-channel-id (:slack_channel_id (shared/current-context))]

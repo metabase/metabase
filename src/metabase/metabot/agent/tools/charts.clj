@@ -30,7 +30,8 @@
    [:viz_settings [:map {:closed true}
                    [:chart_type chart-type-enum]]]])
 
-(mu/defn ^{:tool-name "create_chart"} create-chart-tool
+(mu/defn ^{:tool-name "create_chart"}
+  create-chart-tool
   "Create a chart from a query.
 
   Provide a query_id in data_source and a chart_type in viz_settings."
@@ -57,7 +58,8 @@
    [:new_viz_settings [:map {:closed true}
                        [:chart_type chart-type-enum]]]])
 
-(mu/defn ^{:tool-name "edit_chart"} edit-chart-tool
+(mu/defn ^{:tool-name "edit_chart"}
+  edit-chart-tool
   "Edit an existing chart's visualization type.
 
   Provide a new chart_type in new_viz_settings."
