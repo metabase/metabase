@@ -7,7 +7,7 @@ on:
 
 jobs:
   optimize-images:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     if: ${{ contains(github.event.pull_request.labels.*.name,'Type:Documentation') }}
     steps:
     - name: Checkout repository
