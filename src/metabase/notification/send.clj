@@ -448,14 +448,7 @@
                               {:run_type    :alert
                                :entity_type :card
                                :entity_id   card-id})
-    :notification/dashboard (when-let [dashboard-id (or (:dashboard_id payload)
-                                                        ;; TODO (Chris 2023-03-19) -- this model oesn't appear to be
-                                                        ;; defined anywhere (no defmethod, no migration). Looks like
-                                                        ;; dashboard notifications always carry :dashboard_id inline
-                                                        ;; via :dashboard_subscription instead.
-                                                        ;; Is this dead code?
-                                                        (some->> payload_id
-                                                                 (t2/select-one-fn :dashboard_id :model/NotificationDashboard :id)))]
+    :notification/dashboard (when-let [dashboard-id (:dashboard_id payload)]
                               {:run_type    :subscription
                                :entity_type :dashboard
                                :entity_id   dashboard-id})
