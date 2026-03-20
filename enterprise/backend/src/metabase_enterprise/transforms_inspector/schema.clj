@@ -1,4 +1,4 @@
-(ns metabase.transforms-inspector.schema
+(ns metabase-enterprise.transforms-inspector.schema
   "Schemas for Transform Inspector.
 
    Key principles:

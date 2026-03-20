@@ -1,12 +1,12 @@
-(ns ^:mb/driver-tests metabase.transforms-inspector.lens.join-analysis-test
+(ns ^:mb/driver-tests metabase-enterprise.transforms-inspector.lens.join-analysis-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.transforms-inspector.lens.join-analysis :as join-analysis]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.test :as mt]
-   [metabase.transforms-base.util :as transforms-base.u]
-   [metabase.transforms-inspector.lens.join-analysis :as join-analysis]))
+   [metabase.transforms-base.util :as transforms-base.u]))
 
 (set! *warn-on-reflection* true)
 

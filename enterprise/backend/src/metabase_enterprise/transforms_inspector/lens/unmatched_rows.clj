@@ -1,4 +1,4 @@
-(ns metabase.transforms-inspector.lens.unmatched-rows
+(ns metabase-enterprise.transforms-inspector.lens.unmatched-rows
   "Drill-down lens triggered from join-analysis when null counts are significant.
 
    For each outer join, produces up to four sample cards:
@@ -11,11 +11,11 @@
    Trigger threshold: >5% null rate.  Alert threshold: >20%.
    Accepts `{:join_step N}` params to scope to a single join."
   (:require
+   [metabase-enterprise.transforms-inspector.lens.core :as lens.core]
+   [metabase-enterprise.transforms-inspector.lens.query-util :as query-util]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.transforms-inspector.lens.core :as lens.core]
-   [metabase.transforms-inspector.lens.query-util :as query-util]
    [metabase.util.i18n :refer [tru trun]]))
 
 (set! *warn-on-reflection* true)

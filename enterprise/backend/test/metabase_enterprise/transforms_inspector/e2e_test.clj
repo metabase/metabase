@@ -1,14 +1,15 @@
-(ns ^:mb/driver-tests metabase.transforms-inspector.e2e-test
+(ns ^:mb/driver-tests metabase-enterprise.transforms-inspector.e2e-test
   "End-to-end tests for the Transform Inspector loop:
    discover → get-lens → execute cards → compute results → evaluate triggers → drill."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.transforms-inspector.core :as inspector]
    [metabase.driver :as driver]
    [metabase.driver.sql.util :as sql.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
-   [metabase.transforms-inspector.core :as inspector]
+   [metabase.transforms-inspector.core :as inspector.oss]
    [metabase.transforms.execute :as transforms.execute]
    [metabase.transforms.test-util :as transforms.tu]
    [toucan2.core :as t2]))
@@ -33,7 +34,7 @@
   (into {}
         (map (fn [card]
                (let [row    (execute-card card)
-                     result (inspector/compute-card-result
+                     result (inspector.oss/compute-card-result
                              (keyword lens-id) card row)]
                  [(:id card) result]))
              (:cards lens))))
@@ -130,7 +131,7 @@
                (for [lens-id lens-ids]
                  (let [lens         (inspector/get-lens transform lens-id nil)
                        card-results (execute-all-cards lens-id lens)
-                       triggers     (inspector/evaluate-triggers lens card-results)
+                       triggers     (inspector.oss/evaluate-triggers lens card-results)
                        drill-results
                        (into []
                              (for [{:keys [lens_id params]} (:drill_lenses triggers)]

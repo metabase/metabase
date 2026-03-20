@@ -1,9 +1,9 @@
-(ns ^:mb/driver-tests metabase.transforms-inspector-test
+(ns ^:mb/driver-tests metabase-enterprise.transforms-inspector-test
   "Integration tests for the Transform Inspector API."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.transforms-inspector.core :as inspector]
    [metabase.test :as mt]
-   [metabase.transforms-inspector.core :as inspector]
    [metabase.transforms.execute :as transforms.execute]
    [metabase.transforms.test-util :as transforms.tu]
    [toucan2.core :as t2]))

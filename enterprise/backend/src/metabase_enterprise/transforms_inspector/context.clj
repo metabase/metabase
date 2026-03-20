@@ -1,15 +1,15 @@
-(ns metabase.transforms-inspector.context
+(ns metabase-enterprise.transforms-inspector.context
   "Context building for Transform Inspector."
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [metabase-enterprise.transforms-inspector.query-analysis :as query-analysis]
+   [metabase-enterprise.transforms-inspector.schema :as transforms-inspector.schema]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.util :as transforms-base.u]
-   [metabase.transforms-inspector.query-analysis :as query-analysis]
-   [metabase.transforms-inspector.schema :as transforms-inspector.schema]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]

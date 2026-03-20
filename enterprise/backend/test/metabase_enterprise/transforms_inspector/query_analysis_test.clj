@@ -1,12 +1,12 @@
-(ns ^:mb/driver-tests metabase.transforms-inspector.query-analysis-test
+(ns ^:mb/driver-tests metabase-enterprise.transforms-inspector.query-analysis-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.transforms-inspector.query-analysis :as query-analysis]
    [metabase.driver :as driver]
    [metabase.driver.sql.util :as sql.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
-   [metabase.transforms-inspector.query-analysis :as query-analysis]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)

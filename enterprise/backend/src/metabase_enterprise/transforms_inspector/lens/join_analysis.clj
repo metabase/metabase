@@ -1,4 +1,4 @@
-(ns metabase.transforms-inspector.lens.join-analysis
+(ns metabase-enterprise.transforms-inspector.lens.join-analysis
   "Join Analysis lens - analyze join quality and data flow.
 
    Cards returned:
@@ -14,13 +14,13 @@
    Layout: :flat (FE renders as table based on lens type)"
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.transforms-inspector.lens.core :as lens.core]
+   [metabase-enterprise.transforms-inspector.lens.query-util :as query-util]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.util :as lib.util]
-   [metabase.transforms-inspector.lens.core :as lens.core]
-   [metabase.transforms-inspector.lens.query-util :as query-util]
    [metabase.util.i18n :refer [tru trun]]))
 
 (set! *warn-on-reflection* true)

@@ -1,4 +1,4 @@
-(ns metabase.transforms-inspector.lens.core
+(ns metabase-enterprise.transforms-inspector.lens.core
   "Lens orchestration for Transform Inspector.
 
    A lens is a 'view' into the transform data with:

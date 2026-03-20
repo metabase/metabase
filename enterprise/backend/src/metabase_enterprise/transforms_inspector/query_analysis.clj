@@ -1,4 +1,4 @@
-(ns metabase.transforms-inspector.query-analysis
+(ns metabase-enterprise.transforms-inspector.query-analysis
   "Query analysis for Transform Inspector.
 
    Extracts structural information from MBQL and native SQL queries:

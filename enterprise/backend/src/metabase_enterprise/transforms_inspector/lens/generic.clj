@@ -1,4 +1,4 @@
-(ns metabase.transforms-inspector.lens.generic
+(ns metabase-enterprise.transforms-inspector.lens.generic
   "Generic Summary lens - basic overview for any transform.
 
    This lens is always applicable and provides:
@@ -6,10 +6,10 @@
 
    Layout: :comparison"
   (:require
+   [metabase-enterprise.transforms-inspector.lens.core :as lens.core]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.transforms-inspector.lens.core :as lens.core]
    [metabase.util.i18n :refer [tru]]))
 
 (set! *warn-on-reflection* true)

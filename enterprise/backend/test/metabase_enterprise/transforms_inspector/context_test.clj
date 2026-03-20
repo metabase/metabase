@@ -1,10 +1,10 @@
-(ns ^:mb/driver-tests metabase.transforms-inspector.context-test
+(ns ^:mb/driver-tests metabase-enterprise.transforms-inspector.context-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.transforms-inspector.context :as context]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
-   [metabase.transforms-inspector.context :as context]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
