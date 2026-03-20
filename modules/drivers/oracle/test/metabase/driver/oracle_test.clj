@@ -156,6 +156,7 @@
                       {:name "tunnel-pass"}
                       {:name "tunnel-private-key"}
                       {:name "tunnel-private-key-passphrase"}
+                      {:name "tunnel-known-hosts"}
                       {:name "advanced-options"}
                       {:name "destination-database"}
                       {:name "write-data-connection"}
