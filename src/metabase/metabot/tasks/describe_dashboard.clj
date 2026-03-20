@@ -1,9 +1,9 @@
-(ns metabase.llm.tasks.describe-dashboard
+(ns metabase.metabot.tasks.describe-dashboard
   "LLM task(s) for generating dashboard descriptions"
   (:require
    [clojure.set :refer [rename-keys]]
    [clojure.walk :as walk]
-   [metabase.llm.client :as llm-client]
+   [metabase.metabot.openai-client :as openai-client]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
@@ -61,8 +61,8 @@
                                      :keywords    "%%FILL_THESE_KEYWORDS_IN%%"
                                      :questions   "%%FILL_THESE_QUESTIONS_IN%%"})
         json-str             (json/encode summary-with-prompts)
-        client               (-> (llm-client/create-chat-completion)
-                                 (llm-client/wrap-parse-json
+        client               (-> (openai-client/create-chat-completion)
+                                 (openai-client/wrap-parse-json
                                   (fn [{:keys [description keywords questions]}]
                                     {:description (format "Keywords: %s\n\nDescription: %s\n\nQuestions:\n%s"
                                                           keywords

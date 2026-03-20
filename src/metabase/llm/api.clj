@@ -1,11 +1,10 @@
 (ns metabase.llm.api
-  "API endpoints for LLM-powered features: SQL generation and autodescription."
+  "API endpoints for LLM-powered features: SQL generation."
   (:require
    [clojure.java.io :as io]
    [clojure.set :as set]
    [metabase.analytics.core :as analytics]
    [metabase.analytics.snowplow :as snowplow]
-   [metabase.analyze.query-results :as qr]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -14,13 +13,9 @@
    [metabase.llm.anthropic :as llm.anthropic]
    [metabase.llm.context :as llm.context]
    [metabase.llm.settings :as llm.settings]
-   [metabase.llm.tasks.describe-dashboard :refer [describe-dashboard]]
-   [metabase.llm.tasks.describe-question :refer [describe-question]]
-   [metabase.parameters.schema :as parameters.schema]
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli.schema :as ms]
    [stencil.core :as stencil]
    [throttle.core :as throttle]
    [toucan2.core :as t2])
@@ -249,40 +244,6 @@
                                     :result "failure"
                                     :engine engine})
               (throw e))))))))
-
-;;; ------------------------------------------------ Autodescribe ------------------------------------------------
-
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/describe/card"
-  "Summarize a question."
-  [_route-params
-   _query-params
-   body :- [:map
-            [:dataset                {:optional true} [:maybe :boolean]]
-            [:dataset_query          ms/Map]
-            [:parameters             {:optional true} [:maybe [:sequential ::parameters.schema/parameter]]]
-            [:parameter_mappings     {:optional true} [:maybe [:sequential ::parameters.schema/parameter-mapping]]]
-            [:description            {:optional true} [:maybe ms/NonBlankString]]
-            [:display                ms/NonBlankString]
-            [:visualization_settings ms/Map]
-            [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
-            [:collection_position    {:optional true} [:maybe ms/PositiveInt]]
-            [:result_metadata        {:optional true} [:maybe qr/ResultsMetadata]]
-            [:cache_ttl              {:optional true} [:maybe ms/PositiveInt]]]]
-  {:summary (describe-question body)})
-
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/describe/dashboard/:id"
-  "Provide a summary of a dashboard."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
-  {:summary (describe-dashboard id)})
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/llm` routes."

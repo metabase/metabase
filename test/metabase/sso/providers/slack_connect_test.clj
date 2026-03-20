@@ -1,4 +1,4 @@
-(ns metabase-enterprise.sso.providers.slack-connect-test
+(ns metabase.sso.providers.slack-connect-test
   (:require
    [clj-http.client :as http]
    [clojure.test :refer :all]
