@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useListKeyboardNavigation } from "metabase/common/hooks/use-list-keyboard-navigation";
@@ -22,6 +22,7 @@ type MetricSearchDropdownProps = {
   excludeMetric?: ExcludeMetric;
   showSearchInput?: boolean;
   externalSearchText?: string;
+  onHasSelectionChange?: (hasSelection: boolean) => void;
 };
 
 export function MetricSearchDropdown({
@@ -32,6 +33,7 @@ export function MetricSearchDropdown({
   excludeMetric,
   showSearchInput = false,
   externalSearchText,
+  onHasSelectionChange,
 }: MetricSearchDropdownProps) {
   const [internalSearchText, setInternalSearchText] = useState("");
   const searchText = showSearchInput
@@ -83,6 +85,10 @@ export function MetricSearchDropdown({
     list: filteredResults,
     onEnter: handleEnter,
   });
+
+  useEffect(() => {
+    onHasSelectionChange?.(cursorIndex != null);
+  }, [cursorIndex, onHasSelectionChange]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {

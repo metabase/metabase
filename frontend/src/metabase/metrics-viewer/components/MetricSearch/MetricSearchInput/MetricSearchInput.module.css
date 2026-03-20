@@ -53,6 +53,12 @@
   color: var(--mb-color-syntax-parameters);
 }
 
+.cmMetricToken {
+  border: 1px solid var(--mb-color-border);
+  border-radius: 0.25rem;
+  padding: 0 0.25rem;
+}
+
 .cmErrorUnderline {
   text-decoration: underline wavy;
   text-decoration-color: var(--mb-color-error);

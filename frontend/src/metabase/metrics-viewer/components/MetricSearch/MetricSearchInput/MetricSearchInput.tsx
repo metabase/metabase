@@ -1,3 +1,4 @@
+import { history, isolateHistory, redo, undo } from "@codemirror/commands";
 import { EditorSelection } from "@codemirror/state";
 import { keymap, placeholder } from "@codemirror/view";
 import type { ReactCodeMirrorRef } from "@uiw/react-codemirror";
@@ -5,7 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { CodeMirror } from "metabase/common/components/CodeMirror";
-import { Button, Flex, Popover } from "metabase/ui";
+import { Button, Flex, Icon, Popover } from "metabase/ui";
 import type { ProjectionClause } from "metabase-lib/metric";
 
 import type {
@@ -39,6 +40,7 @@ import {
 
 import S from "./MetricSearchInput.module.css";
 import { errorHighlight, setErrorDecoration } from "./errorHighlight";
+import { metricTokenHighlight, setMetricEntries } from "./metricTokenHighlight";
 import { operatorHighlight } from "./operatorHighlight";
 
 // Metrics in the expression input can be used multiple times, so nothing is filtered out
@@ -97,6 +99,9 @@ export function MetricSearchInput({
   // handleInputFocus initializes the session; set back to false in commitAndCollapse.
   // Used to prevent autoFocus / view.focus() re-entrancy from reinitializing text.
   const isEditingSessionActiveRef = useRef(false);
+  // Tracks whether the dropdown has a keyboard-highlighted item.
+  // When true, Enter should select from the dropdown, not run the expression.
+  const dropdownHasSelectionRef = useRef(false);
 
   const handleRunRef = useRef<() => void>(() => {});
   // Text captured at focus time — used to detect whether the user actually
@@ -104,6 +109,10 @@ export function MetricSearchInput({
   const [textAtFocus, setTextAtFocus] = useState("");
   const textAtFocusRef = useRef(textAtFocus);
   textAtFocusRef.current = textAtFocus;
+  // Explicitly tracks whether the expression was modified during this editing
+  // session (metric selected from dropdown, or text typed). Avoids timing
+  // issues with comparing editText vs textAtFocus across async state updates.
+  const [isExpressionDirty, setIsExpressionDirty] = useState(false);
 
   const metricEntries = useMemo(
     () =>
@@ -172,13 +181,25 @@ export function MetricSearchInput({
     setIsFocused(true);
     setEditText(fullText);
     setValidationError(null);
-    // After CodeMirror renders the initial text, move the caret to the end.
+    setIsExpressionDirty(false);
+    // After CodeMirror renders the initial text, position the caret and
+    // create an undo boundary. The @uiw/react-codemirror value sync adds
+    // to the undo history, so without isolateHistory("before"), a quick
+    // Cmd+Z after deleting a metric token would undo both the deletion
+    // AND the initial text insertion (they'd be grouped together).
     setTimeout(() => {
       const view = editorRef.current?.view;
       if (view) {
+        const endPos = view.state.doc.length;
         view.dispatch({
-          selection: EditorSelection.cursor(view.state.doc.length),
+          selection: EditorSelection.cursor(endPos),
+          effects: setMetricEntries.of(metricEntriesRef.current),
+          annotations: isolateHistory.of("full"),
         });
+        const coords = view.coordsAtPos(endPos);
+        if (coords) {
+          setAnchorRect({ left: coords.left, top: coords.bottom });
+        }
       }
     }, 0);
   }, []);
@@ -227,18 +248,23 @@ export function MetricSearchInput({
     setCurrentWord("");
     setEditText("");
     setValidationError(null);
+    setIsExpressionDirty(false);
   }, [onRemoveMetric, onFormulaEntitiesChange, selectedMetrics]);
 
   const handleInputBlur = useCallback(() => {
     // If the text hasn't changed since focus, collapse back to pills view
     // without requiring the user to click "Run".
-    if (editTextRef.current === textAtFocusRef.current) {
+    if (
+      editTextRef.current === textAtFocusRef.current &&
+      !dropdownHasSelectionRef.current
+    ) {
       isEditingSessionActiveRef.current = false;
       setIsFocused(false);
       setIsOpen(false);
       setCurrentWord("");
       setEditText("");
       setValidationError(null);
+      setIsExpressionDirty(false);
       return;
     }
 
@@ -264,6 +290,9 @@ export function MetricSearchInput({
   const handleChange = useCallback((newText: string) => {
     setEditText(newText);
     setValidationError(null);
+    if (newText !== textAtFocusRef.current) {
+      setIsExpressionDirty(true);
+    }
 
     // Extract the word at the cursor for the dropdown search
     const view = editorRef.current?.view;
@@ -306,11 +335,13 @@ export function MetricSearchInput({
       }
 
       setEditText(newText);
+      setIsExpressionDirty(true);
 
       onAddMetric(metric);
 
       setCurrentWord("");
       setIsOpen(false);
+      dropdownHasSelectionRef.current = false;
 
       // Reposition cursor right after the inserted metric name
       setTimeout(() => {
@@ -400,10 +431,22 @@ export function MetricSearchInput({
     // Re-extract word at the new cursor position after a click
     const cursorPos = view.state.selection.main.head;
     const text = view.state.doc.toString();
-    const { word } = getWordAtCursor(text, cursorPos);
+    const { word, start: wordStart } = getWordAtCursor(text, cursorPos);
+    // Update the anchor position so the dropdown is correctly placed
+    const coords = view.coordsAtPos(wordStart);
+    if (coords) {
+      setAnchorRect({ left: coords.left, top: coords.bottom });
+    }
     setCurrentWord(word);
     setIsOpen(true);
   }, []);
+
+  const handleDropdownHasSelectionChange = useCallback(
+    (hasSelection: boolean) => {
+      dropdownHasSelectionRef.current = hasSelection;
+    },
+    [],
+  );
 
   /** Validate the expression and either show an error or commit + run the query. */
   const handleRun = useCallback(() => {
@@ -439,18 +482,36 @@ export function MetricSearchInput({
     view.dispatch({ effects: setErrorDecoration.of(ranges) });
   }, [validationError]);
 
-  // CodeMirror extensions for the formula editor
+  // Sync metric entries into the CodeMirror state for atomic token ranges
+  useEffect(() => {
+    const view = editorRef.current?.view;
+    if (!view || !isFocused) {
+      return;
+    }
+    view.dispatch({ effects: setMetricEntries.of(metricEntries) });
+  }, [metricEntries, isFocused]);
+
+  // CodeMirror extensions for the formula editor.
+  // basicSetup is disabled, so we add history() explicitly for undo/redo.
   const editorExtensions = useMemo(
     () => [
+      history(),
       operatorHighlight,
       errorHighlight,
+      metricTokenHighlight,
       placeholder(formulaEntities.length === 0 ? t`Search for metrics...` : ""),
-      // Prevent Enter from creating newlines; trigger run when dirty
+      // Prevent Enter from creating newlines; trigger run when dirty.
+      // If the dropdown has a keyboard-highlighted item, skip running —
+      // let the dropdown's Enter handler select the item instead.
       keymap.of([
+        { key: "Mod-z", run: undo, preventDefault: true },
+        { key: "Mod-Shift-z", run: redo, preventDefault: true },
         {
           key: "Enter",
           run: () => {
-            handleRunRef.current();
+            if (!dropdownHasSelectionRef.current) {
+              handleRunRef.current();
+            }
             return true;
           },
         },
@@ -611,6 +672,7 @@ export function MetricSearchInput({
                     selectedMeasureIds={EMPTY_SET}
                     onSelect={handleSelect}
                     externalSearchText={currentWord}
+                    onHasSelectionChange={handleDropdownHasSelectionChange}
                   />
                 )}
               </Popover.Dropdown>
@@ -618,10 +680,14 @@ export function MetricSearchInput({
           </>
         )}
       </Flex>
-      {isFocused && !pendingFocusRef.current && editText !== textAtFocus && (
+      {isFocused && !pendingFocusRef.current && isExpressionDirty && (
         <Button
-          variant="filled"
+          variant="light"
+          color="brand"
           size="xs"
+          py="sm"
+          px="sm"
+          leftSection={<Icon size="0.75rem" name="enter_or_return" />}
           disabled={!!validationError}
           data-testid="run-expression-button"
           onClick={(e: React.MouseEvent) => {

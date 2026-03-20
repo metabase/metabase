@@ -77,7 +77,7 @@ export function MetricSearchPanel({
   const toggleLabel = isFilterPillsExpanded ? t`Hide filters` : t`Show filters`;
 
   return (
-    <Stack gap="sm">
+    <Stack gap="md">
       <Flex align="center" justify="space-between" mih="1.875rem">
         <Text fw={700} size="lg">{t`Explore`}</Text>
         {hasDefinitions && (
@@ -95,7 +95,7 @@ export function MetricSearchPanel({
                 leftSection={
                   <Icon
                     name={hasFilters ? "filter_plus" : "filter"}
-                    size={14}
+                    size="0.75rem"
                   />
                 }
                 className={hasFilters ? S.filterButtonWithCount : undefined}

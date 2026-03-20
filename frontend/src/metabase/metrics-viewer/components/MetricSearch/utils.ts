@@ -444,10 +444,10 @@ export function validateExpression(
 
 // ── Positioned token type (internal) ────────────────────────────────────────
 
-type PositionedToken = ExpressionSubToken & { from: number; to: number };
+export type PositionedToken = ExpressionSubToken & { from: number; to: number };
 
 /** Same as the main parser but records character positions for each token. */
-function parseFullTextWithPositions(
+export function parseFullTextWithPositions(
   text: string,
   metricEntries: MetricDefinitionEntry[],
 ): PositionedToken[] {
