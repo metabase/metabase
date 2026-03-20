@@ -162,13 +162,15 @@
                                      :value "local"}
                                     {:name  "Uploaded file path"
                                      :value "uploaded"}]
-                       :visible-if {:tunnel-enabled true}}
+                       :visible-if {"tunnel-enabled" true}}
                       {:name       "tunnel-known-hosts-value"
                        :type       "textFile"
-                       :visible-if {:tunnel-known-hosts-options "uploaded"}}
+                       :visible-if {:tunnel-known-hosts-options "uploaded"
+                                    "tunnel-enabled" true}}
                       {:name       "tunnel-known-hosts-path"
                        :type       "string"
-                       :visible-if {:tunnel-known-hosts-options "local"}}
+                       :visible-if {:tunnel-known-hosts-options "local"
+                                    "tunnel-enabled" true}}
                       {:name "advanced-options"}
                       {:name "destination-database"}
                       {:name "write-data-connection"}
