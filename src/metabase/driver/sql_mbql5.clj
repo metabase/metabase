@@ -125,16 +125,6 @@
   [driver [op _opts cases default]]
   ((get-method sql.qp/->honeysql [:sql op]) driver [op cases {:default default}]))
 
-(defmethod sql.qp/date [:sql-mbql5 :week-of-year]
-  [driver _ expr]
-  ;; We can't wrap the `[:ceil ...]` in `mbql-clause` and just use the `:sql` implementation
-  ;; because it's already marked as compiled to HoneySQL by the call to `sql.qp/compiled`.
-  ;; We need to add the options so that we `->honeysql` the `:ceil` correctly.
-  (sql.qp/->honeysql driver (lib.options/ensure-uuid
-                             [:ceil (-> (sql.qp/date driver :day-of-year (sql.qp/date driver :week expr))
-                                        (h2x// 7.0)
-                                        (sql.qp/compiled))])))
-
 (defmethod sql.qp/->honeysql [:sql-mbql5 :value]
   [driver [op {:keys [base-type effective-type]} value]]
   ((get-method sql.qp/->honeysql [:sql op]) driver [op value {:base_type base-type :effective_type effective-type}]))
@@ -173,12 +163,20 @@
 
 (defmethod sql.qp/mbql-clause :sql-mbql5
   [driver [tag & args :as clause]]
-  (if (lib.options/uuid clause)
-    clause ;; return the clause as is if it is MBQL5
-    (if (simple-keyword? tag)
-      (lib.convert/->pMBQL clause) ;; convert the clause to MBQL5 if it's a regular MBQL4 clause
-      (into [tag {:lib/uuid (str (random-uuid))}] ;; handle custom namespaced keywords
-            (map (fn [x] (sql.qp/mbql-clause driver x))) args))))
+  (cond
+    ;; Return the clause as is if it's already MBQL5 or if it's already compiled to HoneySQL
+    (or (lib.options/uuid clause)
+        (= ::sql.qp/compiled tag))
+    clause
+
+    ;; Convert the clause to MBQL5 if it's a regular MBQL4 clause
+    (and (simple-keyword? tag)
+         (not (driver-api/match-lite clause ::sql.qp/compiled true)))
+    (lib.convert/->pMBQL clause)
+
+    :else ;; Handle namespaced or partially compiled clauses manually
+    (into [tag {:lib/uuid (str (random-uuid))}]
+          (map (fn [x] (sql.qp/mbql-clause driver x))) args)))
 
 (defmethod sql.params.substitution/field->clause :sql-mbql5
   [driver field other-opts]

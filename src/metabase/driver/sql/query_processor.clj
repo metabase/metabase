@@ -301,6 +301,14 @@
 
 (sql/register-fn! ::compiled #'format-compiled)
 
+(defmulti mbql-clause
+  "Returns an MBQL clause in the desired MBQL format of the driver."
+  {:added "0.60.0" :arglists '([driver clause])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod mbql-clause :sql [_driver clause] clause)
+
 (defmulti current-datetime-honeysql-form
   "HoneySQL form that should be used to get the current `datetime` (or equivalent). Defaults to `:%now`. Should ideally
   include the database type info on the form (ex: via [[h2x/with-type-info]])."
@@ -333,9 +341,11 @@
 (defmethod date [:sql :week-of-year]
   [driver _ expr]
   ;; Some DBs truncate when doing integer division, therefore force float arithmetic
-  (->honeysql driver [:ceil (-> (date driver :day-of-year (date driver :week expr))
-                                (h2x// 7.0)
-                                (compiled))]))
+  (->> [:ceil (-> (date driver :day-of-year (date driver :week expr))
+                  (h2x// 7.0)
+                  (compiled))]
+       (mbql-clause driver)
+       (->honeysql driver)))
 
 (defmethod date [:sql :month-of-year]    [_driver _ expr] (h2x/month expr))
 (defmethod date [:sql :quarter-of-year]  [_driver _ expr] (h2x/quarter expr))
@@ -370,14 +380,6 @@
   (let [start-of-year                (date driver :year honeysql-expr)
         day-of-week-of-start-of-year (date driver :day-of-week start-of-year)]
     (h2x/- 8 day-of-week-of-start-of-year)))
-
-(defmulti mbql-clause
-  "Returns an MBQL clause in the desired MBQL format of the driver."
-  {:added "0.60.0" :arglists '([driver clause])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defmethod mbql-clause :sql [_driver clause] clause)
 
 (defn- week-of-year
   "Calculate the week of year for `:us` or `:instance` `mode`. Returns a Honey SQL expression.
