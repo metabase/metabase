@@ -109,6 +109,13 @@
   ;; We need to rename just these keys for `sql.qp/->honeysql [:sql :value]`
   ((get-method sql.qp/->honeysql [:sql op]) driver [op value {:base_type base-type :effective_type effective-type}]))
 
+(defmethod sql.qp/->honeysql [:sql-mbql5 :case]
+  [driver [op _opts cases opts-or-default]]
+  ;; Handle the default options coming in as a map from `mbql-clause`, or as a single value from ->pMBQL
+  ((get-method sql.qp/->honeysql [:sql op]) driver [op cases (if (map? opts-or-default)
+                                                               opts-or-default
+                                                               {:default opts-or-default})]))
+
 ;; For clauses that DO NOT have their opts propogated
 (doseq [op [;; unary
             :not :asc :desc :aggregation-options :date
@@ -137,7 +144,7 @@
 (doseq [op [;; unary
             :field :expression :datetime
             ;; binary
-            :contains :starts-with :ends-with :case]]
+            :contains :starts-with :ends-with]]
   (defmethod sql.qp/->honeysql [:sql-mbql5 op]
     [driver [op opts & args]]
     ((get-method sql.qp/->honeysql [:sql op]) driver (cond-> (into [op] args) opts (conj opts)))))
@@ -153,9 +160,9 @@
 (defmethod sql.qp/clause-value-idx :sql-mbql5 [_driver] 2)
 
 (defmethod sql.qp/expression-by-name :sql-mbql5
-  [_driver expression-name]
+  [_driver inner-query expression-name]
   (m/find-first (comp #{expression-name} lib.util/expression-name)
-                (:expressions sql.qp/*inner-query*)))
+                (:expressions inner-query)))
 
 ;; TODO(rileythomp, 2026-03-19): Check if we actually need to dissoc here and below
 (defmethod sql.qp/remapped-order-by? :sql-mbql5
