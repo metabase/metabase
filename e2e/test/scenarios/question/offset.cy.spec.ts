@@ -573,8 +573,8 @@ describe("scenarios > question > offset", () => {
 
       verifyNoQuestionError();
       verifyTableContent([
-        ["April 2025", "Gadget", "15,713", "31,426.01"],
-        ["September 2025", "Gadget", "15,017.31", "30,034.62"],
+        ["", "April 2025", "Gadget", "15,713", "31,426.01"],
+        ["", "September 2025", "Gadget", "15,017.31", "30,034.62"],
       ]);
     });
   });

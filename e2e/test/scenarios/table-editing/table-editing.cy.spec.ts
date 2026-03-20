@@ -309,7 +309,7 @@ describe("scenarios > table-editing", () => {
           // Locate the table and the specific cell to edit
           cy.findByTestId("table-root")
             .findAllByRole("row")
-            .eq(1) // Select the second row (index 1)
+            .eq(2) // Select the second row
             .within(() => {
               cy.get(`[data-column-id='${column}']`).as("targetCell").click(); // Activate inline editing
             });
@@ -353,7 +353,7 @@ describe("scenarios > table-editing", () => {
       it("should allow to edit a cell with date type", () => {
         cy.findByTestId("table-root")
           .findAllByRole("row")
-          .eq(1)
+          .eq(2)
           .within(() => {
             cy.get("[data-column-id='date']").as("targetCell").click({
               scrollBehavior: false,
@@ -381,7 +381,7 @@ describe("scenarios > table-editing", () => {
       it("should allow to edit a cell with datetime type", () => {
         cy.findByTestId("table-root")
           .findAllByRole("row")
-          .eq(1)
+          .eq(2)
           .within(() => {
             cy.get("[data-column-id='datetime']").as("targetCell").click({
               scrollBehavior: false,
@@ -425,7 +425,7 @@ describe("scenarios > table-editing", () => {
       it("should allow to edit a cell with select type", () => {
         cy.findByTestId("table-root")
           .findAllByRole("row")
-          .eq(1)
+          .eq(2)
           .within(() => {
             cy.get("[data-column-id='boolean']").as("targetCell").click({
               scrollBehavior: false,
@@ -447,7 +447,7 @@ describe("scenarios > table-editing", () => {
       it("should not allow to edit PK cells", () => {
         cy.findByTestId("table-root")
           .findAllByRole("row")
-          .eq(1)
+          .eq(2)
           .within(() => {
             cy.get("[data-column-id='id']")
               .as("targetCell")
@@ -462,7 +462,7 @@ describe("scenarios > table-editing", () => {
       it("should handle errors", () => {
         cy.findByTestId("table-root")
           .findAllByRole("row")
-          .eq(1)
+          .eq(2)
           .within(() => {
             cy.get("[data-column-id='tinyint']")
               .as("targetCell")
