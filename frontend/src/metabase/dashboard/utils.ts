@@ -86,15 +86,6 @@ export function expandInlineCard(card?: Card | VirtualCard) {
   };
 }
 
-export {
-  getDashboardType,
-  isActionDashCard,
-  isQuestionCard,
-  isQuestionDashCard,
-  isTransientId,
-  isVirtualDashCard,
-} from "metabase/lib/dashboard";
-
 export function getVirtualCardType(dashcard: BaseDashboardCard) {
   return dashcard?.visualization_settings?.virtual_card?.display;
 }

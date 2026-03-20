@@ -2,6 +2,12 @@ import cx from "classnames";
 import { useState } from "react";
 import { t } from "ttag";
 
+import {
+  type FormatPreference,
+  QuestionDownloadWidget,
+  type UseDownloadDataParams,
+  useDownloadData,
+} from "metabase/common/components/QuestionDownloadWidget";
 import { useEmbeddingEntityContext } from "metabase/embedding/context";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import {
@@ -13,13 +19,6 @@ import {
   Tooltip,
 } from "metabase/ui";
 import type { Dataset } from "metabase-types/api";
-
-import {
-  type FormatPreference,
-  QuestionDownloadWidget,
-  type UseDownloadDataParams,
-  useDownloadData,
-} from "../QuestionDownloadWidget";
 
 import S from "./QuestionDownloadPopover.module.css";
 

@@ -21,10 +21,12 @@ import {
   fetchDataOrError,
   getAllDashboardCards,
   getCurrentTabDashboardCards,
+} from "metabase/dashboard/utils";
+import {
   getDashboardType,
   isQuestionDashCard,
   isVirtualDashCard,
-} from "metabase/dashboard/utils";
+} from "metabase/lib/dashboard";
 import { entityCompatibleQuery } from "metabase/lib/entities";
 import type { Deferred } from "metabase/lib/promise";
 import { defer } from "metabase/lib/promise";
