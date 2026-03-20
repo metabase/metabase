@@ -16,6 +16,11 @@ import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_METABOT, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { SnippetFormModal } from "metabase/query_builder/components/template_tags/SnippetFormModal";
 import { useNotebookScreenSize } from "metabase/query_builder/hooks/use-notebook-screen-size";
+import {
+  CodeMirrorEditor,
+  type CodeMirrorEditorProps,
+  type CodeMirrorEditorRef,
+} from "metabase/querying/components/CodeMirrorEditor";
 import type { QueryModalType } from "metabase/querying/constants";
 import { Button, Flex, Icon, Stack, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -30,11 +35,6 @@ import type {
   ParameterId,
 } from "metabase-types/api";
 
-import {
-  CodeMirrorEditor,
-  type CodeMirrorEditorProps,
-  type CodeMirrorEditorRef,
-} from "./CodeMirrorEditor";
 import S from "./NativeQueryEditor.module.css";
 import { NativeQueryEditorRunButton } from "./NativeQueryEditorRunButton/NativeQueryEditorRunButton";
 import { NativeQueryEditorTopBar } from "./NativeQueryEditorTopBar/NativeQueryEditorTopBar";

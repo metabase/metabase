@@ -19,6 +19,7 @@ import { Bookmarks } from "metabase/entities/bookmarks";
 import { Timelines } from "metabase/entities/timelines";
 import { usePageTitleWithLoadingTime } from "metabase/hooks/use-page-title";
 import { connect, useSelector } from "metabase/lib/redux";
+import { VISUALIZATION_SLOW_TIMEOUT } from "metabase/querying/constants";
 import {
   getDatabasesList,
   getSampleDatabaseId,
@@ -43,7 +44,6 @@ import type { QueryBuilderUIControls, State } from "metabase-types/store";
 import * as actions from "../actions";
 import { trackCardBookmarkAdded } from "../analytics";
 import { View } from "../components/view/View";
-import { VISUALIZATION_SLOW_TIMEOUT } from "../constants";
 import {
   getCard,
   getDataReferenceStack,
