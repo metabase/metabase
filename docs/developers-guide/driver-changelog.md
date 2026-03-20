@@ -16,8 +16,10 @@ title: Driver interface changelog
   - `remapped-order-by?` - Looks for the `externally-remapped-field` key in the order by field options.
   - `remapped-breakout?` - Looks for the `externally-remapped-field` key in the breakout options.
   - `finest-temporal-breakout-idx` - Wrapper around `driver-api/finest-temporal-breakout-index`.
-  These methods have implementations for the `:sql` and `:sql-mbql5` drivers. Concrete drivers should not need
-  to implement these methods. Drivers can opt-in to MBQL5 compilation by adding the `:sql-mbql5` driver as a parent. See the `:h2` driver for an example. These methods will eventually be deprecated in favour of the `:sql-mbql5` implementations once all drivers have been migrated.
+  These methods have implementations for the `:sql` and `:sql-mbql5` drivers. Concrete drivers should not need to
+  implement these methods. Drivers can opt-in to MBQL5 compilation by adding the `:sql-mbql5` driver as a parent.
+  See the `:h2` driver for an example. These methods will eventually be deprecated in favour of the `:sql-mbql5`
+  implementations once all drivers have been migrated.
 
 ## Metabase 0.59.0
 

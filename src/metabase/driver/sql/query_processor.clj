@@ -1222,7 +1222,7 @@
 (defn- interval? [expr]
   (driver-api/is-clause? :interval expr))
 
-(defn- get-interval [interval]
+(defn- normalize-interval [interval]
   (driver-api/match-lite interval
     [tag (_opts :guard :lib/uuid) amount unit] [tag amount unit] ;; mbql5
     _ interval))
@@ -1234,7 +1234,7 @@
       (reduce (fn [hsql-form [_ amount unit]]
                 (add-interval-honeysql-form driver hsql-form amount unit))
               (->honeysql driver field)
-              (map get-interval intervals))
+              (map normalize-interval intervals))
       (throw (ex-info "Summing intervals is not supported" {:args args})))
     (into [:+]
           (map (partial ->honeysql driver))
@@ -1256,7 +1256,7 @@
               ;; We are adding negative amount. Inspired by `->honeysql [:sql :datetime-subtract]`.
               (add-interval-honeysql-form driver hsql-form (- amount) unit))
             (->honeysql driver first-arg)
-            (map get-interval other-args))
+            (map normalize-interval other-args))
     (into [:-]
           (map (partial ->honeysql driver))
           args)))
@@ -1864,7 +1864,7 @@
        [:= (->honeysql driver field-arg) nil]]
       honeysql-clause)))
 
-(defn unwrap-value-literal
+(defn- unwrap-value-literal
   "Extract value literal from `:value` form or returns form as is if not a `:value` form."
   [maybe-value-form]
   (driver-api/match-lite maybe-value-form
