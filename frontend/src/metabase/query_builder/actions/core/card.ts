@@ -1,4 +1,5 @@
-import { Questions } from "metabase/entities/questions";
+import { cardApi } from "metabase/api";
+import type { Card } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
 import type { Dispatch, GetState } from "metabase-types/store";
 
@@ -11,29 +12,18 @@ export async function loadCard(
     cardId: string | number;
     token?: EntityToken | null;
   },
-  { dispatch, getState }: { dispatch: Dispatch; getState: GetState },
-) {
+  { dispatch }: { dispatch: Dispatch; getState: GetState },
+): Promise<Card> {
   try {
-    const actionResult = await dispatch(
-      Questions.actions.fetch(
-        { id: token ?? cardId },
-        {
-          properties: [
-            "id",
-            "dataset_query",
-            "display",
-            "visualization_settings",
-          ], // complies with Card interface
-        },
-      ),
+    const result = await dispatch(
+      cardApi.endpoints.getCard.initiate({ id: token ?? cardId }),
     );
 
-    const card = Questions.HACK_getObjectFromAction(actionResult);
-    const question = Questions.selectors.getObject(getState(), {
-      entityId: card.id ?? cardId,
-    });
+    if (result.data != null) {
+      return result.data;
+    }
 
-    return question?.card();
+    throw new Error("Failed to fetch card");
   } catch (error) {
     console.error("error loading card", error);
     throw error;
