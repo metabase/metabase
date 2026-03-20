@@ -46,7 +46,10 @@
    [:schema
     {:decode/normalize (fn [xs]
                          (when xs
-                           (if-not (mr/validate [:sequential ::lib.schema.metadata/lib-or-legacy-column] xs)
+                           (if-not
+                            (or
+                             (nil? xs)
+                             (mr/validate [:sequential ::lib.schema.metadata/lib-or-legacy-column] xs))
                              (do
                                (log/warn "Ignoring invalid Card result_metadata")
                                nil)
