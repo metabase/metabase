@@ -78,13 +78,10 @@
 ;;; Tool definition format
 
 (defn- tool->openai-chat
-  "Convert a tool (name + var/map pair) to Chat Completions tool format.
-
-  Accepts [name, var] or [name, {:doc :schema :fn}] pairs — the same format
-  that the agent loop provides."
-  [[tool-name tool]]
-  (let [{:keys [doc schema]} (if (map? tool) tool (meta tool))
-        [_:=> [_:cat params] _out] schema
+  "Convert a tool definition map to Chat Completions tool format.
+  Accepts a ToolEntry map with :tool-name, :doc, :schema, :fn."
+  [{:keys [tool-name doc schema]}]
+  (let [[_:=> [_:cat params] _out] schema
         params     (schema/filter-schema-by-features params)
         doc        (if (str/starts-with? (or doc "") "Inputs: ")
                      (second (str/split doc #"\n\n  " 2))
