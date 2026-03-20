@@ -1,4 +1,5 @@
-(ns metabase.transforms.interface)
+(ns metabase.transforms.interface
+  (:require [metabase.util.log :as log]))
 
 (defn- transform->transform-type
   [transform]
@@ -66,3 +67,29 @@
   An empty set indicates no dependencies."
   {:added "0.57.0" :arglists '([transform])}
   transform->transform-type)
+
+(defmethod execute! :default
+  [transform _options]
+  (let [transform-type (transform->transform-type transform)]
+    (throw (ex-info (format "Cannot execute transform %d: no implementation for transform type %s"
+                            (:id transform) transform-type)
+                    {:transform-id   (:id transform)
+                     :transform-type transform-type}))))
+
+(defmethod source-db-id :default
+  [transform]
+  (log/warnf "No source-db-id implementation for transform type %s (id: %s)"
+             (transform->transform-type transform) (:id transform))
+  nil)
+
+(defmethod target-db-id :default
+  [transform]
+  (log/warnf "No target-db-id implementation for transform type %s (id: %s)"
+             (transform->transform-type transform) (:id transform))
+  nil)
+
+(defmethod table-dependencies :default
+  [transform]
+  (log/warnf "No table-dependencies implementation for transform type %s (id: %s)"
+             (transform->transform-type transform) (:id transform))
+  #{})
