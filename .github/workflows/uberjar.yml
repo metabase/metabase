@@ -27,7 +27,7 @@ on:
 
 jobs:
   get-container-info:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     name: Get container info
     outputs:
@@ -74,7 +74,7 @@ jobs:
   build:
     needs: get-container-info
     name: Build MB ${{ matrix.edition }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     strategy:
       matrix:
@@ -103,7 +103,7 @@ jobs:
           name: metabase-${{ matrix.edition }}-${{ github.event.inputs.commit || github.sha  }}-uberjar
 
   check-jar-health:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     name: Is ${{ matrix.edition }} (java ${{ matrix.java-version }}) healthy?
     needs: [build, get-container-info]
     timeout-minutes: 10
@@ -150,7 +150,7 @@ jobs:
     strategy:
       matrix:
         edition: ${{ fromJson(needs.get-container-info.outputs.editions) }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     name: Run Trivy vulnerability scanner
     steps:
       - name: Check out the code

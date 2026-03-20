@@ -13,7 +13,7 @@ on:
 jobs:
   push_and_merge_workflow_to_docs_metabase_github_io_job:
     if: github.event.pull_request.merged == false
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     env:
       SOURCE_BRANCH: ${{ github.head_ref || github.ref  }}
       TARGET_BRANCH: ${{ github.event.pull_request.base.ref }}

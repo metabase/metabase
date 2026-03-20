@@ -21,7 +21,7 @@ on:
       runner:
         required: false
         type: string
-        default: ubuntu-22.04
+        default: ${{ vars.DEFAULT_RUNNER_KEY }}
       total_chunks: # number of chunks
         required: false
         type: number

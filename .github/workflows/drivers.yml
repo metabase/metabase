@@ -15,7 +15,7 @@ jobs:
   # This job will determine if the tier 3 driver tests should be skipped.
   # It will always run first.
   determine-driver-skips:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     outputs:
       skip: ${{ steps.check_team_and_branch.outputs.skip }}
     steps:
@@ -67,7 +67,7 @@ jobs:
   be-tests-athena-ee:
     needs: determine-driver-skips
     if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     env:
       CI: 'true'
@@ -102,7 +102,7 @@ jobs:
 
   be-tests-bigquery-cloud-sdk-ee:
     if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     env:
       CI: 'true'
@@ -137,7 +137,7 @@ jobs:
 
   be-tests-clickhouse-ee:
     if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     env:
       CI: 'true'
@@ -185,7 +185,7 @@ jobs:
   be-tests-druid-ee:
     needs: determine-driver-skips
     if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     env:
       CI: 'true'
@@ -221,7 +221,7 @@ jobs:
   be-tests-druid-jdbc-ee:
     needs: determine-driver-skips
     if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     env:
       CI: 'true'
@@ -257,7 +257,7 @@ jobs:
   be-tests-databricks-ee:
     needs: determine-driver-skips
     if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     env:
       CI: 'true'
@@ -292,7 +292,7 @@ jobs:
   be-tests-databricks-multi-catalog-ee:
     needs: determine-driver-skips
     if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     env:
       CI: 'true'
@@ -327,7 +327,7 @@ jobs:
 
   be-tests-h2:
     if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     env:
       CI: 'true'
@@ -354,7 +354,7 @@ jobs:
 
   be-tests-mysql-mariadb:
     if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     strategy:
       fail-fast: false
@@ -481,7 +481,7 @@ jobs:
   be-tests-mongo:
     needs: determine-driver-skips
     if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     strategy:
       fail-fast: false
@@ -531,7 +531,7 @@ jobs:
   be-tests-mongo-ssl:
     needs: determine-driver-skips
     if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     strategy:
       fail-fast: false
@@ -596,7 +596,7 @@ jobs:
   be-tests-mongo-sharded-cluster-ee:
     needs: determine-driver-skips
     if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     env:
       CI: 'true'
@@ -630,7 +630,7 @@ jobs:
   be-tests-oracle:
     needs: determine-driver-skips
     if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     strategy:
       fail-fast: false
@@ -701,7 +701,7 @@ jobs:
 
   be-tests-postgres:
     if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     strategy:
       fail-fast: false
@@ -806,7 +806,7 @@ jobs:
   be-tests-presto-jdbc-ee:
     needs: determine-driver-skips
     if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     env:
       CI: 'true'
@@ -874,7 +874,7 @@ jobs:
 
   be-tests-redshift-ee:
     if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     strategy:
       fail-fast: false
@@ -925,7 +925,7 @@ jobs:
   # issues. https://linear.app/metabase/issue/DEV-997/reenable-snowflake-in-ci.
   # be-tests-snowflake-ee:
   #   if: ${{ !inputs.skip }}
-  #   runs-on: ubuntu-22.04
+  #   runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
   #   timeout-minutes: 60
   #   env:
   #     CI: 'true'
@@ -969,7 +969,7 @@ jobs:
   be-tests-sparksql-ee:
     needs: determine-driver-skips
     if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     env:
       CI: 'true'
@@ -1003,7 +1003,7 @@ jobs:
   be-tests-sqlite-ee:
     needs: determine-driver-skips
     if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     env:
       CI: 'true'
@@ -1032,7 +1032,7 @@ jobs:
   be-tests-sqlserver:
     needs: determine-driver-skips
     if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     strategy:
       fail-fast: false
@@ -1084,7 +1084,7 @@ jobs:
   # be-tests-starburst-ee:
   #   needs: determine-driver-skips
   #   if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
-  #   runs-on: ubuntu-22.04
+  #   runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
   #   timeout-minutes: 60
   #   env:
   #     CI: 'true'
@@ -1123,7 +1123,7 @@ jobs:
   # be-tests-vertica-ee:
   #   needs: determine-driver-skips
   #   if: ${{ false && !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
-  #   runs-on: ubuntu-22.04
+  #   runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
   #   timeout-minutes: 60
   #   env:
   #     CI: 'true'
@@ -1182,7 +1182,7 @@ jobs:
       # TODO(rileythomp, 2025-08-20): Re-enable vertica tests once the docker image is updated
       # - be-tests-vertica-ee
       - be-tests-clickhouse-ee
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     name: drivers-tests-result
     if: always() && !cancelled()
