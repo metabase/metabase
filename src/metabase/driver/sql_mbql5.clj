@@ -104,29 +104,15 @@
         [(sql.qp/->honeysql driver aggregation) direction]))
     [(sql.qp/->honeysql driver expr) direction]))
 
-(defmethod sql.qp/->honeysql [:sql-mbql5 :distinct-where]
-  [driver [_ opts arg pred]]
-  [::h2x/distinct-count
-   (sql.qp/->honeysql driver [:case opts [[pred arg]]])])
-
-(defmethod sql.qp/->honeysql [:sql-mbql5 :sum-where]
-  [driver [_ opts arg pred]]
-  (sql.qp/->honeysql driver [:sum opts [:case opts [[pred arg]] 0.0]]))
-
-(defmethod sql.qp/->honeysql [:sql-mbql5 :count-where]
-  [driver [_ opts pred]]
-  (sql.qp/->honeysql driver [:sum-where opts 1 pred]))
-
-(defmethod sql.qp/->honeysql [:sql-mbql5 :share]
-  [driver [_ opts pred]]
-  [:/ (sql.qp/->honeysql driver [:count-where opts pred]) :%count.*])
-
 (defmethod sql.qp/->honeysql [:sql-mbql5 :case]
   [driver [op _opts cases default]]
+  ;; `mbql-clause` drops the `{:default 0.0}` from `:sum-where` to just `0.0`
+  ;; so we need to add the key back for `sql.qp/->honeysql[:sql :case]`
   ((get-method sql.qp/->honeysql [:sql op]) driver [op cases {:default default}]))
 
 (defmethod sql.qp/->honeysql [:sql-mbql5 :value]
   [driver [op {:keys [base-type effective-type]} value]]
+  ;; We need to rename the keys for `sql.qp/->honeysql [:sql :value]`
   ((get-method sql.qp/->honeysql [:sql op]) driver [op value {:base_type base-type :effective_type effective-type}]))
 
 ;; For clauses that DO NOT have their opts propogated
@@ -135,12 +121,13 @@
             :length :trim :ltrim :rtrim :upper :lower ::sql.qp/cast-to-text
             :integer :float  :floor :ceil :round :abs :log :exp :sqrt
             :avg :median :stddev :var :sum :min :max :count :distinct
-            :text
+            :text :count-where :share
             ;; binary
             := :!= :> :>= :< :<=
             :power :percentile
             :time :temporal-extract
             :absolute-datetime :relative-datetime
+            :sum-where :distinct-where
             ;; ternary
             :between :replace :substring
             :datetime-add :datetime-subtract :datetime-diff

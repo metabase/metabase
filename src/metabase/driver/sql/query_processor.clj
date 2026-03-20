@@ -1308,20 +1308,20 @@
 
 (defmethod ->honeysql [:sql :sum-where]
   [driver [_ arg pred]]
-  (->honeysql driver [:sum [:case [[pred arg]] {:default 0.0}]]))
+  (->honeysql driver (mbql-clause driver [:sum [:case [[pred arg]] {:default 0.0}]])))
 
 (defmethod ->honeysql [:sql :count-where]
   [driver [_ pred]]
-  (->honeysql driver [:sum-where 1 pred]))
+  (->honeysql driver (mbql-clause driver [:sum-where 1 pred])))
 
 (defmethod ->honeysql [:sql :share]
   [driver [_ pred]]
-  [:/ (->honeysql driver [:count-where pred]) :%count.*])
+  [:/ (->honeysql driver (mbql-clause driver [:count-where pred])) :%count.*])
 
 (defmethod ->honeysql [:sql :distinct-where]
   [driver [_ arg pred]]
   [::h2x/distinct-count
-   (->honeysql driver [:case [[pred arg]]])])
+   (->honeysql driver (mbql-clause driver [:case [[pred arg]]]))])
 
 (defmethod ->honeysql [:sql :trim]
   [driver [_ arg]]
