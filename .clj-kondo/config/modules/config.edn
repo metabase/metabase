@@ -1431,7 +1431,6 @@
            config
            events
            internal-stats
-           metabot
            settings
            startup
            task
@@ -1828,7 +1827,6 @@
            request
            session
            settings
-           slackbot
            sso
            system
            tracing
@@ -3177,6 +3175,7 @@
               premium-features
               query-processor
               request
+              server
               settings
               sso
               system

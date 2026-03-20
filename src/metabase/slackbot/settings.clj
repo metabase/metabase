@@ -1,24 +1,20 @@
 (ns metabase.slackbot.settings
   (:require
-   [metabase.settings.core :as setting :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru]]
-   [metabase.util.string :as u.str]))
+   [metabase.server.settings :as server.settings]
+   [metabase.settings.core :refer [defsetting]]
+   [metabase.util.i18n :refer [deferred-tru]]))
 
-(defsetting metabot-slack-signing-secret
-  (deferred-tru "Signing secret for verifying requests from the Metabot Slack app")
-  :type       :string
-  :visibility :admin
-  :encryption :when-encryption-key-set
-  :export?    false
-  :audit      :no-value
-  :getter     (fn []
-                (-> (setting/get-value-of-type :string :metabot-slack-signing-secret)
-                    (u.str/mask 4))))
+(defn metabot-slack-signing-secret
+  "Signing secret for verifying requests from the Metabot Slack app.
+   Delegates to [[metabase.server.settings/metabot-slack-signing-secret]]."
+  []
+  (server.settings/metabot-slack-signing-secret))
 
 (defn unobfuscated-metabot-slack-signing-secret
-  "Get the unobfuscated value of [[metabot-slack-signing-secret]]."
+  "Get the unobfuscated value of [[metabot-slack-signing-secret]].
+   Delegates to [[metabase.server.settings/unobfuscated-metabot-slack-signing-secret]]."
   []
-  (setting/get-value-of-type :string :metabot-slack-signing-secret))
+  (server.settings/unobfuscated-metabot-slack-signing-secret))
 
 (defsetting slackbot-event-handler-pool-size
   (deferred-tru "Maximum number of concurrent Slack event handler threads.")
