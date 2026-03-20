@@ -4,19 +4,28 @@ const { H } = cy;
 
 describe("Cross-version questions - joins", () => {
   it("setup: creates a joined question", { tags: ["@source"] }, () => {
-    H.restore("setup");
     cy.signIn("admin", { skipCache: true });
 
     cy.visit("/");
 
     cy.log("Create a joined question");
     H.newButton("Question").click();
-    H.popover().contains("Sample Database").click();
-    H.popover().contains("Orders").click();
+    H.modal().within(() => {
+      cy.findAllByRole("tab")
+        .should("be.visible")
+        .filter(":contains(Tables)")
+        .click();
+      cy.findAllByTestId("picker-item").filter(":contains(Orders)").click();
+    });
 
     H.join();
-    H.popover().contains("Sample Database").click();
-    H.popover().contains("Products").click();
+    H.modal().within(() => {
+      cy.findAllByRole("tab")
+        .should("be.visible")
+        .filter(":contains(Tables)")
+        .click();
+      cy.findAllByTestId("picker-item").filter(":contains(Products)").click();
+    });
 
     cy.log("Filter on the joined table");
     H.getNotebookStep("filter")
