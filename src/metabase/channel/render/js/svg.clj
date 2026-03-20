@@ -11,7 +11,8 @@
    [metabase.config.core :as config]
    [metabase.lib-be.core :as lib-be]
    [metabase.premium-features.core :as premium-features]
-   [metabase.util.json :as json])
+   [metabase.util.json :as json]
+   [metabase.util.log :as log])
   (:import
    (io.aleph.dirigiste IPool$Controller IPool$Generator Pool Pools Stats)
    (java.io ByteArrayInputStream ByteArrayOutputStream)
@@ -79,6 +80,18 @@
            10000 ;; Recheck every 10 seconds
            TimeUnit/MILLISECONDS)))
 
+(def ^:dynamic ^:private *taint-context*
+  "Bound to an atom; set to true when custom viz JS has been loaded into a pooled context,
+   so that it gets disposed instead of released back to the pool."
+  nil)
+
+(defn taint-context!
+  "Mark the current static-viz context as tainted so it won't be reused."
+  []
+  (when *taint-context*
+    (log/debug "Tainting static-viz context; will be disposed instead of returned to pool")
+    (reset! *taint-context* true)))
+
 (defn do-with-static-viz-context
   "Impl for [[with-static-viz-context]]."
   [f]
@@ -89,14 +102,18 @@
         (if (>= (System/nanoTime) expiry-ts)
           (do (.dispose static-viz-context-pool :engines tuple)
               (recur))
-          (try (f context)
-               (finally (.release static-viz-context-pool :engines tuple))))))))
+          (binding [*taint-context* (atom false)]
+            (try (f context)
+                 (finally
+                   (if @*taint-context*
+                     (.dispose static-viz-context-pool :engines tuple)
+                     (.release static-viz-context-pool :engines tuple))))))))))
 
 (defmacro with-static-viz-context
   "Execute `body` where `binding-name` is bound to a static viz context. In dev mode, this will be a new context each
   time. In prod or test modes, it will return an instance from `static-viz-context-pool`."
   [binding-name & body]
-  `(do-with-static-viz-context (fn [~binding-name] ~@body)))
+  `(do-with-static-viz-context (^:once fn* [~binding-name] ~@body)))
 
 (defn- post-process
   "Mutate in place the elements of the svg document. Remove the fill=transparent attribute in favor of
@@ -215,10 +232,11 @@
    `custom-viz-bundles` is an optional seq of `{:identifier str :source str}` maps for custom visualization plugins."
   [cards-with-data dashcard-viz-settings custom-viz-bundles]
   (let [response (with-static-viz-context context
-                   ;; TODO: we'll have to force release of the context if we've loaded any custom viz
-                   (doseq [{:keys [identifier source]} custom-viz-bundles]
-                     (js.engine/load-js-string context source (str "custom-viz-" identifier ".js"))
-                     (js.engine/execute-fn-name context "register_custom_viz_plugin" identifier))
+                   (when (seq custom-viz-bundles)
+                     (taint-context!)
+                     (doseq [{:keys [identifier source]} custom-viz-bundles]
+                       (js.engine/load-js-string context source (str "custom-viz-" identifier ".js"))
+                       (js.engine/execute-fn-name context "register_custom_viz_plugin" identifier)))
                    (.asString (js.engine/execute-fn-name context "javascript_visualization"
                                                          (json/encode cards-with-data)
                                                          (json/encode dashcard-viz-settings)
