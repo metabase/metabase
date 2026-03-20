@@ -1,7 +1,0 @@
-#!/usr/bin/env bash
-# Wrapper that loads mise env vars before running claude-dangerous.
-# Used by workmux so the agent has access to mise-managed tools and env vars,
-# while keeping the agent command simple enough for workmux prompt injection.
-set -euo pipefail
-eval "$(mise env)"
-exec "$(dirname "$0")/claude-dangerous" "$@"

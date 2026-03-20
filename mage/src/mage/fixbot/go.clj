@@ -10,54 +10,47 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Workmux config
 
-(defn- extract-claude-oauth-token
-  "Extract the Claude OAuth token from the macOS keychain.
-   Returns the token string, or nil if not available."
-  []
-  (when (str/starts-with? (System/getProperty "os.name" "") "Mac")
-    (let [{:keys [exit out]} (shell/sh* {:quiet? true}
-                                        "security" "find-generic-password"
-                                        "-s" "Claude Code-credentials"
-                                        "-a" (System/getProperty "user.name")
-                                        "-w")]
-      (when (zero? exit)
-        (let [raw (str/trim (str/join "" out))
-              ;; Parse {"claudeAiOauth":{"accessToken":"sk-ant-...",...}}
-              m (re-find #"\"accessToken\"\s*:\s*\"([^\"]+)\"" raw)]
-          (second m))))))
-
 (defn- generate-workmux-config
   "Generate the .workmux.yaml content."
   [issue-id issue-url app-db]
-  (str "agent: ./bin/claude-mise\n"
+  (str "agent: claude\n"
+       "\n"
+       "sandbox:\n"
+       "  enabled: true\n"
+       "  target: all\n"
+       "  image: metabase-fixbot\n"
+       "  env_passthrough:\n"
+       "    - ANTHROPIC_API_KEY\n"
+       "    - CLAUDE_CODE_OAUTH_TOKEN\n"
+       "    - MB_PREMIUM_EMBEDDING_TOKEN\n"
+       "    - LINEAR_API_KEY\n"
+       "\n"
+       "files:\n"
+       "  symlink:\n"
+       "    - node_modules\n"
        "\n"
        "post_create:\n"
        "  - mkdir -p .fixbot\n"
        "  - echo '" issue-id " | " issue-url "' > .fixbot/issue.txt\n"
        "  - rm -f .claude/commands/fixbot*.md\n"
        "  - cp .claude/fixbot/commands/*.md .claude/commands/\n"
+       "  - mkdir -p .github/hooks/workmux-status\n"
+       "  - echo '{\"version\":1,\"hooks\":{\"userPromptSubmitted\":[{\"type\":\"command\",\"bash\":\"workmux set-window-status working\"}],\"postToolUse\":[{\"type\":\"command\",\"bash\":\"workmux set-window-status working\"}],\"agentStop\":[{\"type\":\"command\",\"bash\":\"workmux set-window-status done\"}]}}' > .github/hooks/workmux-status/hooks.json\n"
        "  - ./bin/mage -fixbot-dev-env --app-db " app-db "\n"
-       "  - mise trust\n"
-       "  - mise install\n"
-       "  - .claude/fixbot/bd-init-worktree.sh\n"
+       "  - bun install\n"
        "\n"
        "pre_remove:\n"
        "  - ./bin/mage -fixbot-dev-env --down\n"
-       "\n"
-       "files:\n"
-       "  symlink:\n"
-       "    - node_modules\n"
-       "    - bin/bb\n"
        "\n"
        "panes:\n"
        "  - command: <agent>\n"
        "    focus: true\n"
        "\n"
-       "  - command: mise exec -- clj -M:dev:dev-start:drivers:drivers-dev:ee:ee-dev\n"
+       "  - command: clj -M:dev:dev-start:drivers:drivers-dev:ee:ee-dev\n"
        "    split: horizontal\n"
        "    percentage: 30\n"
        "\n"
-       "  - command: mise exec -- bun run build-hot\n"
+       "  - command: bun run build-hot\n"
        "    split: vertical\n"
        "\n"
        "  - command: ./bin/mage -fixbot-status-watch\n"
@@ -100,9 +93,7 @@
             had-backup? (.exists (java.io.File. workmux-path))
             ;; Use the issue URL from Linear (construct from issue-id)
             issue-url (str "https://linear.app/metabase/issue/" issue-id)
-            in-tmux? (not (str/blank? (u/env "TMUX" (constantly nil))))
-            ;; Extract OAuth token while we have keychain access (tmux can't)
-            oauth-token (extract-claude-oauth-token)]
+            in-tmux? (not (str/blank? (u/env "TMUX" (constantly nil))))]
 
         ;; Back up existing .workmux.yaml if it exists
         (when had-backup?
@@ -138,10 +129,6 @@
               (do
                 (println (c/yellow "Not inside tmux. Creating detached tmux session..."))
                 (shell/sh "tmux" "new-session" "-d" "-s" session-name)
-                ;; Inject OAuth token into tmux session so keychain isn't needed
-                (when oauth-token
-                  (shell/sh "tmux" "set-environment" "-t" session-name
-                            "CLAUDE_CODE_OAUTH_TOKEN" oauth-token))
                 (shell/sh "tmux" "send-keys" "-t" session-name workmux-cmd "Enter")
                 (println)
                 (println (c/bold (c/green "Tmux session created: ") (c/cyan session-name)))

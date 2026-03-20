@@ -3,7 +3,7 @@
    [clojure.string :as str])
   (:import
    (java.io File)
-   (java.net HttpURLConnection URL Socket)))
+   (java.net HttpURLConnection InetAddress URL Socket)))
 
 (set! *warn-on-reflection* true)
 
@@ -24,8 +24,15 @@
   [^String s]
   (when s
     (or (try (Integer/parseInt s) (catch Exception _ nil))
-        (when-let [[_ port-str] (re-find #"localhost:(\d+)" s)]
+        (when-let [[_ port-str] (re-find #"(?:localhost|host\.docker\.internal):(\d+)" s)]
           (Integer/parseInt port-str)))))
+
+(defn- extract-db-host
+  "Extract the DB host from a JDBC URL."
+  [^String s]
+  (when s
+    (when-let [[_ host] (re-find #"//([^:/]+)" s)]
+      host)))
 
 (defn- check-http
   "Try an HTTP GET. Returns :ready, :unhealthy, or :waiting."
@@ -60,6 +67,13 @@
 (defn- colorize [color text]
   (str color text reset))
 
+(defn- container-ip
+  "Discover this container's IP address (for OrbStack, this is routable from the host)."
+  []
+  (try
+    (.getHostAddress (InetAddress/getLocalHost))
+    (catch Exception _ nil)))
+
 (defn- load-ports
   "Read mise.local.toml and extract ports. Returns a map or nil if file not ready."
   [^String mise-path]
@@ -69,12 +83,15 @@
           db-uri        (get env "MB_DB_CONNECTION_URI")
           db-type-str   (get env "MB_DB_TYPE")
           db-type       (when db-type-str (keyword db-type-str))
-          db-port       (extract-port db-uri)]
+          db-port       (extract-port db-uri)
+          db-host       (extract-db-host db-uri)]
       (when jetty-port
         {:jetty-port    jetty-port
          :frontend-port frontend-port
          :db-type       db-type
-         :db-port       db-port}))))
+         :db-port       db-port
+         :db-host       (or db-host "host.docker.internal")
+         :display-host  (or (container-ip) "localhost")}))))
 
 (defn- load-issue-info
   "Read issue.txt and prompt file to get issue ID, URL, and title."
@@ -113,7 +130,7 @@
     (when ports
       (let [mb-healthy? (and (= be-status :ready) (= fe-status :ready))
             mb-color    (if mb-healthy? green red)
-            mb-text     (str "Metabase | http://localhost:" (:jetty-port ports))
+            mb-text     (str "Metabase | http://" (:display-host ports) ":" (:jetty-port ports))
             db-name     (when (:db-type ports)
                           (str/upper-case (name (:db-type ports))))
             db-color    (if (= db-status :ready) green red)
@@ -155,7 +172,7 @@
                         (check-http (str "http://localhost:" (:frontend-port ports)) 2000)
                         last-fe-status)
             db-status (if (and check? ports (:db-port ports))
-                        (check-tcp "localhost" (:db-port ports) 2000)
+                        (check-tcp (:db-host ports) (:db-port ports) 2000)
                         last-db-status)
             ;; Read LLM status from file
             llm-status (when (.exists f)
