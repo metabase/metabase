@@ -123,7 +123,9 @@
                                              (fn [args]
                                                (binding [shared/*memory-atom* memory-atom]
                                                  (tool-var args)))
-                                             tool-var)}]
+                                             #_:clj-kondo/ignore
+                                             (fn [args] ; fn wrapper because `tool-var` fails `fn?` schema
+                                               (tool-var args)))}]
        (assoc acc tool-name tool-def)))
    {}
    tools))
