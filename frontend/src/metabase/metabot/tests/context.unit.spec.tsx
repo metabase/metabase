@@ -6,7 +6,7 @@ import _ from "underscore";
 import { setupDatabaseListEndpoint } from "__support__/server-mocks";
 import { screen } from "__support__/ui";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
-import { PLUGIN_AI_SQL_FIXER } from "metabase/plugins";
+import { FixSqlQueryButton } from "metabase/metabot/components/FixSqlQueryButton";
 import { setIsNativeEditorOpen } from "metabase/query_builder/actions";
 import {
   createMockDatabase,
@@ -171,7 +171,7 @@ describe("metabot > context", () => {
       ui: (
         <>
           <SqlFixContextRegistration />
-          <PLUGIN_AI_SQL_FIXER.FixSqlQueryButton />
+          <FixSqlQueryButton />
         </>
       ),
     });

@@ -3,11 +3,11 @@ import type {
   AIQuestionAnalysisParams,
 } from "metabase-types/api";
 
-import { EnterpriseApi } from "./api";
+import { Api } from "./api";
 
 const DEFAULT_TIMEOUT = 30000;
 
-export const aiEntityAnalysisApi = EnterpriseApi.injectEndpoints({
+export const aiEntityAnalysisApi = Api.injectEndpoints({
   endpoints: (builder) => ({
     analyzeChart: builder.mutation<
       AIEntityAnalysisResponse,
@@ -15,7 +15,7 @@ export const aiEntityAnalysisApi = EnterpriseApi.injectEndpoints({
     >({
       query: ({ imageBase64, name, description, timelineEvents }) => {
         return {
-          url: "/api/ee/ai-entity-analysis/analyze-chart",
+          url: "/api/ai-entity-analysis/analyze-chart",
           method: "POST",
           body: {
             image_base64: imageBase64,

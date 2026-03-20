@@ -1,4 +1,3 @@
-import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCollectionsEndpoints,
   setupNativeQuerySnippetEndpoints,
@@ -24,10 +23,6 @@ const mockQuestion = {
 } as any;
 
 describe("NativeQueryEditor", () => {
-  beforeAll(() => {
-    setupEnterpriseOnlyPlugin("metabot");
-  });
-
   const createEditor = (
     screenSize: Exclude<UseNotebookScreenSize, undefined>,
     isMetabotSidebarOpen: boolean,

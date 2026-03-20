@@ -2,24 +2,33 @@ import { useEffect, useRef } from "react";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 
+import { useAnalyzeChartMutation } from "metabase/api";
 import { CopyButton } from "metabase/common/components/CopyButton";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { useSelector } from "metabase/lib/redux";
-import type { AIQuestionAnalysisSidebarProps } from "metabase/plugins";
 import { getIsLoadingComplete } from "metabase/query_builder/selectors";
 import { Box } from "metabase/ui";
 import {
   getChartImagePngDataUri,
   getChartSelector,
 } from "metabase/visualizations/lib/image-exports";
+import type Question from "metabase-lib/v1/Question";
+import type { Timeline, TimelineEvent } from "metabase-types/api";
 
-import { useAnalyzeChartMutation } from "../../../api/ai-entity-analysis";
 import { AIAnalysisContent } from "../AIAnalysisContent/AIAnalysisContent";
 
 import { getTimelineEventsForAnalysis } from "./utils";
 
 // This is a hack to ensure visualizations have rendered after data loading, as they can render asynchronously.
 const RENDER_DELAY_MS = 100;
+
+export interface AIQuestionAnalysisSidebarProps {
+  question: Question;
+  className?: string;
+  onClose?: () => void;
+  timelines?: Timeline[];
+  visibleTimelineEvents?: TimelineEvent[];
+}
 
 export function AIQuestionAnalysisSidebar({
   question,

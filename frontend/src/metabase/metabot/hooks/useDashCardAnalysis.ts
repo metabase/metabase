@@ -1,13 +1,12 @@
 import { useEffect, useRef } from "react";
 import { usePrevious } from "react-use";
 
+import { useAnalyzeChartMutation } from "metabase/api";
 import {
   getChartImagePngDataUri,
   getChartSelector,
 } from "metabase/visualizations/lib/image-exports";
 import type { DashCardId } from "metabase-types/api";
-
-import { useAnalyzeChartMutation } from "../../api/ai-entity-analysis";
 
 // Delay time to ensure visualizations have rendered after data loading
 const RENDER_DELAY_MS = 100;
