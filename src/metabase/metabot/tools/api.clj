@@ -1,17 +1,11 @@
 (ns metabase.metabot.tools.api
-  "Code for handling tool requests from the AI service."
+  "Tool definitions for the Metabot agent."
   (:require
-   [buddy.core.hash :as buddy-hash]
-   [buddy.sign.jwt :as jwt]
    [clojure.set :as set]
-   [metabase.api.macros :as api.macros]
-   [metabase.api.response :as api.response]
-   [metabase.api.routes.common :as api.routes.common]
    ;; TODO (Cam 10/10/25) -- update MetaBot to use Lib + MBQL 5
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.metabot.reactions]
-   [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.table-utils :as table-utils]
    [metabase.metabot.tools.create-alert :as metabot.tools.create-alert]
    [metabase.metabot.tools.create-dashboard-subscription :as metabot.tools.create-dashboard-subscription]
@@ -23,20 +17,9 @@
    [metabase.metabot.tools.search :as metabot.tools.search]
    [metabase.metabot.tools.snippets :as metabot.tools.snippets]
    [metabase.metabot.util :as metabot.u]
-   [metabase.request.core :as request]
    [metabase.util :as u]
-   [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
-
-(defn- decode-ai-service-token
-  [token]
-  (try
-    (when (string? token)
-      (jwt/decrypt token (buddy-hash/sha256 (metabot.settings/site-uuid-for-metabot-tools))))
-    (catch Exception e
-      (log/error e "Bad AI service token")
-      nil)))
 
 ;;; ------------------------------------------------ Shared Schemas -------------------------------------------------
 ;; NOTE: Some of these schemas are duplicated with small differences in the Agent API
@@ -883,26 +866,3 @@
    :result-schema ::get-snippet-details-result
    :handler       metabot.tools.snippets/get-snippet-details})
 
-;;; --------------------------------------------------- Middleware ----------------------------------------------------
-
-(defn- enforce-authentication
-  "Middleware that returns a 401 response if no `ai-session` can be found for  `request`."
-  [handler]
-  (fn [{:keys [headers] :as request} respond raise]
-    (if-let [{:keys [user metabot-id]} (-> headers
-                                           (get "x-metabase-session")
-                                           decode-ai-service-token)]
-      (request/with-current-user user
-        (handler (assoc request :metabot/metabot-id metabot-id) respond raise))
-      (if (:metabase-user-id request)
-        ;; request relying on metabot-id are going to fail
-        (handler request respond raise)
-        (respond api.response/response-unauthentic)))))
-
-(def ^{:arglists '([handler])} +tool-session
-  "Wrap `routes` so they may only be accessed with proper authentication credentials."
-  (api.routes.common/wrap-middleware-for-open-api-spec-generation enforce-authentication))
-
-(def ^{:arglists '([request respond raise])} routes
-  "`/api/ee/metabot-tools` routes."
-  (api.macros/ns-handler *ns* +tool-session))

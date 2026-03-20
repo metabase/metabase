@@ -19,7 +19,6 @@
    [metabase.metabot.feedback :as metabot.feedback]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.settings :as metabot.settings]
-   [metabase.metabot.tools.api]
    [metabase.metabot.util :as metabot.u]
    [metabase.server.streaming-response :as sr]
    [metabase.slackbot.api]
@@ -278,7 +277,5 @@
     {"/metabot"  metabase.metabot.api.metabot/routes
      "/document" metabase.metabot.api.document/routes
      ;; premium check happens in the route so we still ack events to prevent slack retrying
-     "/slack"    metabase.slackbot.api/routes
-     ;; tools has its own auth via +tool-session (AI service JWT tokens, not regular session auth)
-     "/tools"    metabase.metabot.tools.api/routes})
+     "/slack"    metabase.slackbot.api/routes})
    (api.macros/ns-handler *ns* +auth)))

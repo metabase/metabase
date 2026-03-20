@@ -48,20 +48,6 @@
 (mr/def ::context
   [:map-of :keyword :any])
 
-(mr/def ::capabilities
-  [:set :string])
-
-(defn backend-metabot-capabilities
-  "Set of backend capabilities available to the AI service. Those are determined by the endpoints available to
-  ai-service. When an endpoint would change in a non-backward compatible way, we should create a new version of this
-  capability."
-  []
-  ;; 20 ns per call, safe to keep unmemoized
-  (for [[[_method url _params] _spec] (-> (the-ns 'metabase.metabot.tools.api)
-                                          meta
-                                          :api/endpoints)]
-    (str "backend:/api/ee/metabot-tools" url)))
-
 (defn- query-for-sql-parsing
   "Given an item in context, return the query if it is a native query or SQL transform that can have table usage parsed
   from it, otherwise nil."
@@ -202,11 +188,6 @@
       (assoc context :user_is_viewing annotated-viewing))
     context))
 
-(defn- add-backend-capabilities
-  "Add backend capabilities to context, merging with any existing capabilities."
-  [context]
-  (update context :capabilities (fnil into #{}) (backend-metabot-capabilities)))
-
 (defn- add-recent-views
   "Add user's recent views to the context since these have a higher likelihood of being relevant to a user's query.
   Includes the 5 most recent items across cards, datasets, metrics, dashboards, and tables.
@@ -248,6 +229,5 @@
    (-> context
        enhance-context-with-schema
        annotate-transform-source-types
-       add-backend-capabilities
        add-recent-views
        (set-user-time opts))))
