@@ -20,9 +20,8 @@ const getDefaultPluginMetabot = (): PluginMetabotType => ({
     // module init time. without this the jest unit tests will break.
     const {
       useMetabotSQLSuggestion,
-      // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
-    } =
-      require("metabase/metabot/hooks/use-metabot-sql-suggestion-oss") as typeof import("metabase/metabot/hooks/use-metabot-sql-suggestion-oss");
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+    } = require("metabase/metabot/hooks/use-metabot-sql-suggestion-oss");
     return useMetabotSQLSuggestion(options);
   },
   getAdminRoutes: null,

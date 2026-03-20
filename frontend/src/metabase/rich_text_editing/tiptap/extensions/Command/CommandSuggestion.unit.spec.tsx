@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import type { Editor } from "@tiptap/core";
 import { useState } from "react";
 
+import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
@@ -19,6 +20,7 @@ import {
   createMockRecentCollectionItem,
   createMockRecentTableItem,
   createMockSearchResult,
+  createMockTokenFeatures,
   createMockUser,
   createMockUserPermissions,
 } from "metabase-types/api/mocks";
@@ -446,6 +448,13 @@ describe("CommandSuggestion", () => {
     });
 
     describe("when metabot is enabled", () => {
+      beforeEach(() => {
+        mockSettings({
+          "token-features": createMockTokenFeatures({ metabot_v3: true }),
+        });
+        setupEnterprisePlugins();
+      });
+
       it("should show all available commands including Metabot", async () => {
         setup({ settings: mockSettings({ "metabot-enabled?": true }) });
 
