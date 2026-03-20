@@ -11,7 +11,6 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.util :as lib.util]
-   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [mapv get-in]]))
@@ -105,6 +104,11 @@
         [(sql.qp/->honeysql driver aggregation) direction]))
     [(sql.qp/->honeysql driver expr) direction]))
 
+(defmethod sql.qp/->honeysql [:sql-mbql5 :value]
+  [driver [op {:keys [base-type effective-type]} value]]
+  ;; We need to rename just these keys for `sql.qp/->honeysql [:sql :value]`
+  ((get-method sql.qp/->honeysql [:sql op]) driver [op value {:base_type base-type :effective_type effective-type}]))
+
 ;; For clauses that DO NOT have their opts propogated
 (doseq [op [;; unary
             :not :asc :desc :aggregation-options :date
@@ -131,13 +135,12 @@
 
 ;; For clauses that DO have their opts propogated
 (doseq [op [;; unary
-            :field :expression :datetime :value
+            :field :expression :datetime
             ;; binary
             :contains :starts-with :ends-with :case]]
   (defmethod sql.qp/->honeysql [:sql-mbql5 op]
     [driver [op opts & args]]
-    ((get-method sql.qp/->honeysql [:sql op]) driver (cond-> (into [op] args)
-                                                       opts (conj (u/kebab->snake-keys opts))))))
+    ((get-method sql.qp/->honeysql [:sql op]) driver (cond-> (into [op] args) opts (conj opts)))))
 
 (defmethod sql.qp/mbql-clause-with-opts :sql-mbql5
   [_driver tag opts & args]
