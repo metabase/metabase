@@ -333,4 +333,4 @@
   "Returns the workspace routes for the agent API, keyed by version prefix.
   Currently only v1; new versions can be added here without changing api.clj."
   [+auth]
-  (api.macros/ns-handler *ns* +authorize +auth))
+  (api.macros/ns-handler 'metabase-enterprise.agent-api.workspace +authorize +auth))
