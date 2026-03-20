@@ -123,7 +123,7 @@
                                   :content [{:type "horizontalRule"}]})))))
 
 (deftest content->html-smart-link-test
-  (testing "smartLink with relative href renders as clickable link"
+  (testing "smartLink for card renders URL from model + entityId"
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (is (= "<a href=\"http://localhost:3000/question/42\">My Question</a>"
              (render/content->html {:type    "doc"
@@ -133,21 +133,22 @@
                                                        :label    "My Question"
                                                        :href     "/question/42"}}]})))))
 
-  (testing "smartLink user mention without href renders as plain text"
+  (testing "smartLink user mention renders as plain text (no link)"
     (is (= "@42"
            (render/content->html {:type    "doc"
                                   :content [{:type  "smartLink"
                                              :attrs {:entityId 42
                                                      :model    "user"}}]}))))
 
-  (testing "smartLink with absolute href renders as plain text (no external links)"
-    (is (= "Phishing"
-           (render/content->html {:type    "doc"
-                                  :content [{:type  "smartLink"
-                                             :attrs {:entityId 1
-                                                     :model    "card"
-                                                     :label    "Phishing"
-                                                     :href     "https://evil.example"}}]})))))
+  (testing "smartLink ignores href — phishing URL cannot be injected"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (is (= "<a href=\"http://localhost:3000/question/1\">Phishing</a>"
+             (render/content->html {:type    "doc"
+                                    :content [{:type  "smartLink"
+                                               :attrs {:entityId 1
+                                                       :model    "card"
+                                                       :label    "Phishing"
+                                                       :href     "https://evil.example"}}]}))))))
 
 (deftest content->html-xss-test
   (testing "HTML in text content is escaped"
@@ -175,19 +176,20 @@
                                                         :marks [{:type "evilMark"}]}]}]}))))
 
   (testing "HTML in smartLink label is escaped"
-    (is (= "&lt;img src=x&gt;"
-           (render/content->html {:type    "doc"
-                                  :content [{:type  "smartLink"
-                                             :attrs {:entityId 1
-                                                     :model    "card"
-                                                     :label    "<img src=x>"}}]}))))
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (is (= "<a href=\"http://localhost:3000/question/1\">&lt;img src=x&gt;</a>"
+             (render/content->html {:type    "doc"
+                                    :content [{:type  "smartLink"
+                                               :attrs {:entityId 1
+                                                       :model    "card"
+                                                       :label    "<img src=x>"}}]})))))
 
-  (testing "smartLink without href renders as plain text"
+  (testing "smartLink with unknown model renders as plain text"
     (is (= "My Thing"
            (render/content->html {:type    "doc"
                                   :content [{:type  "smartLink"
                                              :attrs {:entityId 1
-                                                     :model    "card"
+                                                     :model    "unknown"
                                                      :label    "My Thing"}}]})))))
 
 (deftest content->html-unknown-nodes-test

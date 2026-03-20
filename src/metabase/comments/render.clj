@@ -6,15 +6,10 @@
   as plain text. Nodes are first converted to Hiccup data structures, then compiled to
   HTML via `hiccup2.core/html`."
   (:require
-   [clojure.string :as str]
    [hiccup.util :as hiccup.util]
    [hiccup2.core :as h2]
-   [metabase.system.core :as system]
-   [metabase.util.log :as log])
-  (:import
-   (java.net URI URISyntaxException)))
-
-(set! *warn-on-reflection* true)
+   [metabase.channel.urls :as channel.urls]
+   [metabase.util.log :as log]))
 
 ;;; ------------------------------------------------- Sanitization -------------------------------------------------
 
@@ -61,29 +56,27 @@
   [children]
   (keep node->hiccup children))
 
-(defn- relative-path?
-  "Check if a string is a relative path using java.net.URI. Returns true only for paths
-  with no scheme and no authority (host), e.g. '/question/42'. Returns false for absolute
-  URLs like 'https://evil.example' or protocol-relative '//evil.example'."
-  [s]
-  (try
-    (let [uri (URI. (str s))]
-      (and (nil? (.getScheme uri))
-           (nil? (.getAuthority uri))
-           (str/starts-with? (str (.getPath uri)) "/")))
-    (catch URISyntaxException _ false)))
+(def ^:private model->url-fn
+  "Map of smart link model types to their URL-building functions.
+  User mentions don't get links — they render as plain text."
+  {"card"       channel.urls/card-url
+   "dataset"    channel.urls/card-url
+   "dashboard"  channel.urls/dashboard-url
+   "collection" channel.urls/collection-url
+   "document"   #(format "%s/document/%d" (channel.urls/site-url) %)})
 
 (defn- smart-link->hiccup
-  "Convert a smartLink node to hiccup. Renders as a clickable link when the href is a safe
-  relative path, or as escaped plain text otherwise."
+  "Convert a smartLink node to hiccup. Builds URLs from model + entityId rather than
+  trusting the href attribute, which could be crafted to inject phishing links."
   [{:keys [attrs]}]
-  (let [{:keys [label href model entityId]} attrs
+  (let [{:keys [label model entityId]} attrs
         display-text (or label
                          (when (= model "user") (str "@" entityId))
-                         (str model " " entityId))]
-    (if (and href (relative-path? href))
-      [:a {:href (str (system/site-url) href)} display-text]
-      ;; Return escaped text as a raw string so hiccup won't double-escape it
+                         (str model " " entityId))
+        url-fn       (model->url-fn model)]
+    (if url-fn
+      [:a {:href (url-fn entityId)} display-text]
+      ;; Unknown model or user mention — render as escaped plain text
       (hiccup.util/raw-string (hiccup.util/escape-html display-text)))))
 
 (defn node->hiccup
