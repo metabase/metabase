@@ -1,4 +1,4 @@
-(ns metabase.llm.client
+(ns metabase.metabot.openai-client
   "A wrapper around the OpenAI client API.
 
   The `create-chat-completion` function combines several useful middlewares to create a client that can be used for AI
