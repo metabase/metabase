@@ -14,29 +14,23 @@ interface SetupOpts {
   initialValues?: FormValues;
 }
 
-const CONFIRMATION = {
-  header: "Regenerate signing key?",
-  dialog: "Existing tokens will stop working.",
-};
-
-const OBFUSCATED_VALUE = "**********ab";
-const PLAINTEXT_VALUE = "my-super-secret-token-abc123";
+const GENERATED_TOKEN = "newly-generated-token-xyz";
+const EXISTING_VALUE = "my-super-secret-token-abc123";
+// obfuscateValue shows "**********" + last 2 chars
+const OBFUSCATED_EXISTING = "**********23";
+const OBFUSCATED_GENERATED = "**********yz";
 
 const setup = ({ initialValues = { secret: undefined } }: SetupOpts = {}) => {
   const onSubmit = jest.fn();
 
   fetchMock.get("path:/api/util/random_token", {
-    token: "newly-generated-token",
+    token: GENERATED_TOKEN,
   });
 
   renderWithProviders(
     <FormProvider initialValues={initialValues} onSubmit={onSubmit}>
       <Form>
-        <FormSecretKey
-          name="secret"
-          label="Signing Key"
-          confirmation={CONFIRMATION}
-        />
+        <FormSecretKey name="secret" label="Signing Key" />
         <FormSubmitButton />
       </Form>
     </FormProvider>,
@@ -50,123 +44,173 @@ describe("FormSecretKey", () => {
     fetchMock.hardReset();
   });
 
-  describe("when there is no value (UXW-3300)", () => {
-    it("shows a 'Generate key' button and an empty password input", () => {
+  describe("when there is no value", () => {
+    it("shows a 'Set up key' button", () => {
       setup({ initialValues: { secret: undefined } });
 
       expect(
-        screen.getByRole("button", { name: "Generate key" }),
+        screen.getByRole("button", { name: "Set up key" }),
       ).toBeInTheDocument();
       expect(
         screen.queryByRole("button", { name: "Regenerate key" }),
       ).not.toBeInTheDocument();
-      const input = screen.getByLabelText("Signing Key");
-      expect(input).toHaveValue("");
-      expect(input).toHaveAttribute("type", "password");
     });
 
-    it("generates a token and shows 'Regenerate key' after clicking 'Generate key' (UXW-3300)", async () => {
+    it("opens the setup modal when 'Set up key' is clicked", async () => {
       setup({ initialValues: { secret: undefined } });
 
-      await userEvent.click(
-        screen.getByRole("button", { name: "Generate key" }),
-      );
+      await userEvent.click(screen.getByRole("button", { name: "Set up key" }));
+
+      expect(
+        await screen.findByRole("dialog", { name: "Set up secret key" }),
+      ).toBeInTheDocument();
+    });
+
+    it("auto-generates a token when the modal opens", async () => {
+      setup({ initialValues: { secret: undefined } });
+
+      await userEvent.click(screen.getByRole("button", { name: "Set up key" }));
 
       await waitFor(() => {
         expect(
-          screen.getByRole("button", { name: "Regenerate key" }),
-        ).toBeInTheDocument();
+          fetchMock.callHistory.called("path:/api/util/random_token"),
+        ).toBe(true);
       });
-      expect(
-        screen.queryByRole("button", { name: "Generate key" }),
-      ).not.toBeInTheDocument();
+
+      // The modal's text input should contain the generated token
+      await waitFor(() => {
+        const modalInput = screen.getByRole("textbox");
+        expect(modalInput).toHaveValue(GENERATED_TOKEN);
+      });
     });
-  });
 
-  describe("when the value is a plaintext token (UXW-3300)", () => {
-    it("shows 'Regenerate key' button and a password input (with eye toggle)", () => {
-      setup({ initialValues: { secret: PLAINTEXT_VALUE } });
+    it("closes the modal and updates the form value after clicking 'Done'", async () => {
+      setup({ initialValues: { secret: undefined } });
 
+      await userEvent.click(screen.getByRole("button", { name: "Set up key" }));
+      await screen.findByRole("dialog", { name: "Set up secret key" });
+
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: "Done" })).toBeEnabled();
+      });
+
+      await userEvent.click(screen.getByRole("button", { name: "Done" }));
+
+      await waitFor(() => {
+        expect(
+          screen.queryByRole("dialog", { name: "Set up secret key" }),
+        ).not.toBeInTheDocument();
+      });
+
+      // The input shows the obfuscated generated value
+      await waitFor(() => {
+        expect(screen.getByLabelText("Signing Key")).toHaveValue(
+          OBFUSCATED_GENERATED,
+        );
+      });
+
+      // Button switches to "Regenerate key"
       expect(
         screen.getByRole("button", { name: "Regenerate key" }),
       ).toBeInTheDocument();
       expect(
-        screen.queryByRole("button", { name: "Generate key" }),
+        screen.queryByRole("button", { name: "Set up key" }),
       ).not.toBeInTheDocument();
-      expect(screen.getByLabelText("Signing Key")).toHaveAttribute(
-        "type",
-        "password",
-      );
     });
 
-    it("opens a confirmation modal when 'Regenerate key' is clicked (UXW-3300)", async () => {
-      setup({ initialValues: { secret: PLAINTEXT_VALUE } });
+    it("closes the modal without updating the value after clicking 'Cancel'", async () => {
+      setup({ initialValues: { secret: undefined } });
 
-      await userEvent.click(
-        screen.getByRole("button", { name: "Regenerate key" }),
-      );
+      await userEvent.click(screen.getByRole("button", { name: "Set up key" }));
+      await screen.findByRole("dialog", { name: "Set up secret key" });
+      await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
-      expect(await screen.findByText(CONFIRMATION.header)).toBeInTheDocument();
-      expect(screen.getByText(CONFIRMATION.dialog)).toBeInTheDocument();
+      await waitFor(() => {
+        expect(
+          screen.queryByRole("dialog", { name: "Set up secret key" }),
+        ).not.toBeInTheDocument();
+      });
+
+      // Still shows "Set up key" — value was not changed
+      expect(
+        screen.getByRole("button", { name: "Set up key" }),
+      ).toBeInTheDocument();
     });
   });
 
-  describe("when the value is an obfuscated backend secret (UXW-3300)", () => {
-    it("renders a disabled plain-text input showing the obfuscated value (no eye toggle)", () => {
-      setup({ initialValues: { secret: OBFUSCATED_VALUE } });
+  describe("when there is an existing value", () => {
+    it("shows a read-only text input with the obfuscated value", () => {
+      setup({ initialValues: { secret: EXISTING_VALUE } });
 
       const input = screen.getByLabelText("Signing Key");
-      expect(input).toHaveValue(OBFUSCATED_VALUE);
+      expect(input).toHaveValue(OBFUSCATED_EXISTING);
       expect(input).toHaveAttribute("readonly");
-      // TextInput (not PasswordInput) — no type="password", no eye-toggle button
-      expect(input).not.toHaveAttribute("type", "password");
     });
 
-    it("shows 'Regenerate key' button, not 'Generate key'", () => {
-      setup({ initialValues: { secret: OBFUSCATED_VALUE } });
+    it("shows 'Regenerate key' button, not 'Set up key'", () => {
+      setup({ initialValues: { secret: EXISTING_VALUE } });
 
       expect(
         screen.getByRole("button", { name: "Regenerate key" }),
       ).toBeInTheDocument();
       expect(
-        screen.queryByRole("button", { name: "Generate key" }),
+        screen.queryByRole("button", { name: "Set up key" }),
       ).not.toBeInTheDocument();
     });
 
-    it("opens a confirmation modal when 'Regenerate key' is clicked (UXW-3300)", async () => {
-      setup({ initialValues: { secret: OBFUSCATED_VALUE } });
+    it("opens the setup modal when 'Regenerate key' is clicked", async () => {
+      setup({ initialValues: { secret: EXISTING_VALUE } });
 
       await userEvent.click(
         screen.getByRole("button", { name: "Regenerate key" }),
       );
 
-      expect(await screen.findByText(CONFIRMATION.header)).toBeInTheDocument();
-      expect(screen.getByText(CONFIRMATION.dialog)).toBeInTheDocument();
+      expect(
+        await screen.findByRole("dialog", { name: "Set up secret key" }),
+      ).toBeInTheDocument();
     });
 
-    it("switches to an enabled password input with the new token after confirming (UXW-3300)", async () => {
-      setup({ initialValues: { secret: OBFUSCATED_VALUE } });
+    it("shows a warning about existing tokens being invalidated when regenerating", async () => {
+      setup({ initialValues: { secret: EXISTING_VALUE } });
 
       await userEvent.click(
         screen.getByRole("button", { name: "Regenerate key" }),
       );
-      await screen.findByText(CONFIRMATION.header);
-      await userEvent.click(screen.getByRole("button", { name: "Yes" }));
 
-      // Modal should close
-      await waitFor(() => {
-        expect(screen.queryByText(CONFIRMATION.header)).not.toBeInTheDocument();
-      });
-
-      // Input is now an enabled password field with the freshly generated token
-      await waitFor(() => {
-        const input = screen.getByLabelText("Signing Key");
-        expect(input).not.toHaveAttribute("readonly");
-        expect(input).toHaveAttribute("type", "password");
-      });
       expect(
-        screen.getByRole("button", { name: "Regenerate key" }),
+        await screen.findByText(
+          /This will cause existing tokens to stop working/,
+        ),
       ).toBeInTheDocument();
+    });
+  });
+
+  describe("modal interactions", () => {
+    it("disables 'Done' button when the token is too short", async () => {
+      fetchMock.hardReset();
+      // Return a very short token to trigger the disabled state
+      fetchMock.get("path:/api/util/random_token", { token: "short" });
+
+      setup({ initialValues: { secret: undefined } });
+
+      await userEvent.click(screen.getByRole("button", { name: "Set up key" }));
+      await screen.findByRole("dialog", { name: "Set up secret key" });
+
+      const input = screen.getByRole("textbox", { name: "New secret key" });
+
+      await userEvent.clear(input);
+      await userEvent.type(input, "12345678");
+
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: "Done" })).toBeEnabled();
+      });
+
+      await userEvent.clear(input);
+      await userEvent.type(input, "1234");
+
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: "Done" })).toBeDisabled();
+      });
     });
   });
 });
