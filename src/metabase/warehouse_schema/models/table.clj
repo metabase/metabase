@@ -444,8 +444,7 @@
                           :from   [:transform]
                           :where  [:and
                                    [:= :target_table_id (:id table)]
-                                   [:not= :id exclude-transform-id]]
-                          :limit  1}
+                                   [:not= :id exclude-transform-id]]}
                          (for [[table-name column-name]
                                [["workspace_input" "table_id"]
                                 ["workspace_output" "global_table_id"]
@@ -455,8 +454,7 @@
                                 ["workspace_input_external" "table_id"]]]
                            {:select [[[:inline 1] :ref]]
                             :from   [(keyword table-name)]
-                            :where  [:= (keyword column-name) (:id table)]
-                            :limit  1}))}))]
+                            :where  [:= (keyword column-name) (:id table)]}))}))]
         (when-not referenced?
           (t2/delete! :model/Table :id (:id table)))))))
 
