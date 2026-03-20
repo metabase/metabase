@@ -163,10 +163,12 @@ export const DataGrid = function DataGrid<TData>({
   const renderGridPanels = ({
     pinnedContent,
     centerContent,
+    rowsSection,
     minHeight,
   }: {
     pinnedContent: React.ReactNode;
     centerContent: React.ReactNode;
+    rowsSection: "pinned" | "center" | "header";
     minHeight?: string;
   }) => (
     <>
@@ -175,6 +177,7 @@ export const DataGrid = function DataGrid<TData>({
           className={cx(S.pinnedColumnsSection, {
             [S.withSeparator]: hasSeparator,
           })}
+          data-testid={`${rowsSection}-pinned-quadrant`}
           style={{
             width: pinnedPanelWidth,
             minHeight,
@@ -186,6 +189,7 @@ export const DataGrid = function DataGrid<TData>({
       )}
       <div
         className={S.centerColumnsSection}
+        data-testid={`${rowsSection}-center-quadrant`}
         style={{
           minHeight,
           width: `${columnVirtualizer.getTotalSize()}px`,
@@ -199,6 +203,7 @@ export const DataGrid = function DataGrid<TData>({
 
   const renderBodyGridPanels = (
     rows: DataGridRowType<TData>[],
+    rowsSection: "pinned" | "center" | "header",
     measureRef?: (element: Element | null) => void,
     minHeight?: string,
   ) =>
@@ -210,6 +215,7 @@ export const DataGrid = function DataGrid<TData>({
         renderRow(row, centerColumns, index, measureRef),
       ),
       minHeight,
+      rowsSection,
     });
 
   return (
@@ -259,6 +265,7 @@ export const DataGrid = function DataGrid<TData>({
                   {renderGridPanels({
                     pinnedContent: renderHeader(headerGroup, pinnedColumns),
                     centerContent: renderHeader(headerGroup, centerColumns),
+                    rowsSection: "header",
                   })}
                 </SortableContext>
               ))}
@@ -289,15 +296,13 @@ export const DataGrid = function DataGrid<TData>({
                       top: `${HEADER_HEIGHT}px`,
                     }}
                   >
-                    {renderBodyGridPanels(pinnedRows)}
+                    {renderBodyGridPanels(pinnedRows, "pinned")}
                   </div>
                 )}
-                <div
-                  className={S.centerRowsSection}
-                  data-testid="center-rows-section"
-                >
+                <div className={S.centerRowsSection}>
                   {renderBodyGridPanels(
                     centerRows,
+                    "center",
                     rowMeasureRef,
                     `${totalHeight}px`,
                   )}

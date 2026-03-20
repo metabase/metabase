@@ -274,8 +274,8 @@ describe("DataGrid", () => {
       jest.runAllTimers();
     });
 
-    const centerSection = screen.getByTestId("center-rows-section");
-    const centerRows = centerSection.querySelectorAll('[role="row"]');
+    const centerCenterQuadrant = screen.getByTestId("center-center-quadrant");
+    const centerRows = centerCenterQuadrant.querySelectorAll('[role="row"]');
 
     expect(centerRows.length).toBeGreaterThan(0);
 
