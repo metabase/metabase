@@ -865,4 +865,3 @@
   {:args-schema   ::get-snippet-details-arguments
    :result-schema ::get-snippet-details-result
    :handler       metabot.tools.snippets/get-snippet-details})
-
