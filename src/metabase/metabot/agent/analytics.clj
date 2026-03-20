@@ -4,8 +4,8 @@
    [clojure.string :as str]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
-   [metabase.llm.settings :as llm]
    [metabase.metabot.self :as self]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.util.json :as json]
    [metabase.util.log :as log]))
 
@@ -90,7 +90,7 @@
   (let [context (json/encode (take-last 3 messages))
         text    (transduce (keep (fn [{:keys [type text]}] (when (= type :text) text)))
                            str
-                           (self/call-llm (llm/llm-metabot-provider-lite)
+                           (self/call-llm (metabot.settings/llm-metabot-provider-lite)
                                           nil
                                           [{:role "user" :content (build-intent-prompt context)}]
                                           []
