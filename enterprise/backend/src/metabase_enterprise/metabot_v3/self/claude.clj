@@ -5,6 +5,7 @@
    [malli.json-schema :as mjs]
    [metabase-enterprise.llm.settings :as llm]
    [metabase-enterprise.metabot-v3.self.core :as core]
+   [metabase-enterprise.metabot-v3.self.schema :as schema]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
@@ -174,6 +175,7 @@
   [[tool-name tool]]
   (let [{:keys [doc schema] :as tool} (if (map? tool) tool (meta tool))
         [_:=> [_:cat params] _out]    schema
+        params                        (schema/filter-schema-by-features params)
         doc                           (if (str/starts-with? (or doc "") "Inputs: ")
                                         ;; strip that stuff we're appending in mu/defn
                                         (second (str/split doc #"\n\n  " 2))
