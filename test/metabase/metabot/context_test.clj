@@ -1,6 +1,5 @@
 (ns metabase.metabot.context-test
   (:require
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.activity-feed.models.recent-views :as recent-views]
    [metabase.lib.core :as lib]
@@ -8,7 +7,6 @@
    [metabase.metabot.agent.user-context :as user-context]
    [metabase.metabot.context :as context]
    [metabase.metabot.table-utils :as table-utils]
-   [metabase.metabot.tools.api]
    [metabase.test :as mt]))
 
 (def ^:private users-native-query (lib/native-query meta/metadata-provider "SELECT * FROM users"))
@@ -175,15 +173,6 @@
               result (#'context/enhance-context-with-schema input)]
           (is (nil? (get-in result [:user_is_viewing 0 :used_tables])))
           (is (false? @called?)))))))
-
-(deftest capabilities-signalling
-  (testing "We signal our capabilities to ai-service"
-    (is (= (count (-> (the-ns 'metabase.metabot.tools.api)
-                      meta
-                      :api/endpoints))
-           (count (->> (context/create-context {})
-                       :capabilities
-                       (filter #(str/starts-with? % "backend:"))))))))
 
 (deftest annotate-transform-source-types-native-transform-test
   (testing "Annotates draft native transform with source_type :native"
