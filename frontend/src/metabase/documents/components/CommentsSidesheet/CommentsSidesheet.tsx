@@ -156,7 +156,7 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
     }
   });
 
-  const handleSubmit = async (doc: DocumentContent, html: string) => {
+  const handleSubmit = async (doc: DocumentContent) => {
     if (!childTargetId || !document) {
       return;
     }
@@ -167,7 +167,6 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
       target_type: "document",
       content: doc,
       parent_comment_id: null,
-      html,
     });
 
     if (error) {

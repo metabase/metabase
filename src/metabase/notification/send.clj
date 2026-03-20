@@ -448,9 +448,7 @@
                               {:run_type    :alert
                                :entity_type :card
                                :entity_id   card-id})
-    :notification/dashboard (when-let [dashboard-id (or (:dashboard_id payload)
-                                                        (some->> payload_id
-                                                                 (t2/select-one-fn :dashboard_id :model/NotificationDashboard :id)))]
+    :notification/dashboard (when-let [dashboard-id (:dashboard_id payload)]
                               {:run_type    :subscription
                                :entity_type :dashboard
                                :entity_id   dashboard-id})
