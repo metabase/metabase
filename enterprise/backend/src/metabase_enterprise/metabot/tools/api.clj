@@ -124,4 +124,3 @@
   {:args-schema   ::check-transform-dependencies-arguments
    :result-schema ::check-transform-dependencies-result
    :handler       metabot.tools.dependencies/check-transform-dependencies})
-

@@ -27,7 +27,7 @@
   "Get information about a Python library by path."
   :feature :none
   [{:keys [path]} :- [:map {:closed true} [:path :string]]]
-  (agent-transforms/add-output (transform-tools/get-transform-python-library-details {:path path})
+  (agent-transforms/add-output (transforms-write-tools/get-transform-python-library-details {:path path})
                                format-python-library-output))
 
 (defenterprise-schema write-transform-python-tool

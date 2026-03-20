@@ -5,7 +5,6 @@
    [clojure.string :as str]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.config.core :as config]
-   [metabase.llm.settings :as llm.settings]
    [metabase.metabot.agent.analytics :as agent-analytics]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.messages :as messages]
@@ -13,6 +12,7 @@
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.agent.tools :as agent-tools]
    [metabase.metabot.self :as self]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -493,7 +493,7 @@
   (let [profile-id         (:profile-id opts)
         debug?             (:debug? opts)
         labels             {:profile-id (name profile-id)}
-        track-user-intent? (and (llm.settings/llm-metabot-internal-tasks-enabled?)
+        track-user-intent? (and (metabot.settings/llm-metabot-internal-tasks-enabled?)
                                 (some-> opts :tracking-opts :track-user-intent?))]
     (reify clojure.lang.IReduceInit
       (reduce [_ rf init]
