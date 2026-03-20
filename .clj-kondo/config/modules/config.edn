@@ -1271,6 +1271,7 @@
            metabase.models.interface
            metabase.models.resolution
            metabase.models.serialization
+           metabase.models.serialization.resolve
            metabase.models.transforms.transform
            metabase.models.util.spec-update
            metabase.models.visualization-settings}

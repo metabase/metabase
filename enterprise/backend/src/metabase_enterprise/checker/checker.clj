@@ -21,7 +21,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.models.serialization :as serdes]))
+   [metabase.models.serialization.resolve :as resolve]))
 
 (set! *warn-on-reflection* true)
 
@@ -195,6 +195,7 @@
 (defn- import-table-fk [path] (resolve-table-path path))
 (defn- import-fk [entity-id model]
   (case model
+    ;; these are intentionally symbol lookups, not vars. case does not use runtime values
     (Card Segment Measure) (resolve-card-entity-id entity-id)
     (do (when *unresolved-refs*
           (swap! *unresolved-refs* conj {:type :unknown :model model :entity-id entity-id}))
@@ -205,6 +206,18 @@
     (do (when *unresolved-refs*
           (swap! *unresolved-refs* conj {:type :keyed-lookup :model model :field field :value portable}))
         nil)))
+
+;; TODO: Make this stateful — hold the session atom directly instead of closing
+;; over `*session*` and `*unresolved-refs*` dynamic vars. That would let callers
+;; bind just `resolve/*import-resolver*` instead of three separate dynamic vars.
+;; Blocked on `*session*` being used throughout the rest of this file.
+(def ^:private checker-import-resolver
+  (reify resolve/SerdesImportResolver
+    (import-fk        [_ eid model]            (import-fk eid model))
+    (import-fk-keyed  [_ portable model field] (import-fk-keyed portable model field))
+    (import-user      [_ _email]               nil) ; checker doesn't resolve users
+    (import-table-fk  [_ path]                 (import-table-fk path))
+    (import-field-fk  [_ path]                 (import-field-fk path))))
 
 ;;; ===========================================================================
 ;;; Data Conversion (serdes YAML -> lib metadata)
@@ -259,20 +272,14 @@
     (let [db-name (:database query)
           db-id (when (string? db-name) (resolve-db-name db-name))
           query (if db-id (assoc query :database db-id) query)]
-      (binding [serdes/*import-field-fk* import-field-fk
-                serdes/*import-table-fk* import-table-fk
-                serdes/*import-fk* import-fk
-                serdes/*import-fk-keyed* import-fk-keyed]
-        (serdes/import-mbql query)))))
+      (binding [resolve/*import-resolver* checker-import-resolver]
+        (resolve/import-mbql query)))))
 
 (defn- field-ref-has-nil? [ref]
   (and (vector? ref) (= :field (first ref)) (nil? (second ref))))
 
 (defn- convert-result-metadata-column [col]
-  (binding [serdes/*import-field-fk* import-field-fk
-            serdes/*import-table-fk* import-table-fk
-            serdes/*import-fk* import-fk
-            serdes/*import-fk-keyed* import-fk-keyed]
+  (binding [resolve/*import-resolver* checker-import-resolver]
     (cond-> col
       (vector? (:id col))
       (as-> c (if-let [id (import-field-fk (:id col))]
@@ -284,7 +291,7 @@
       (as-> c (if-let [id (import-field-fk (:fk_target_field_id col))]
                 (assoc c :fk_target_field_id id) (dissoc c :fk_target_field_id)))
       (:field_ref col)
-      (as-> c (let [ref (serdes/import-mbql (:field_ref col))]
+      (as-> c (let [ref (resolve/import-mbql (:field_ref col))]
                 (if (field-ref-has-nil? ref) (dissoc c :field_ref) (assoc c :field_ref ref)))))))
 
 (defn- normalize-result-metadata [cols]
