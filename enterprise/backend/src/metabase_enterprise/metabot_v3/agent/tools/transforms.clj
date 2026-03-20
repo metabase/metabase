@@ -110,19 +110,23 @@
          :description (str "The ID of the Transform with the SQL query to edit. "
                            "If not provided it's assumed a new Transform is to be created")}
         [:maybe :int]]
-       [:edit_action {:description "You MUST set this param. Use new_content and edits accroding to mode you choose."}
+       [:edit_action
+        {:description "You MUST set this param. Use new_content and edits accroding to mode you choose."}
         [:map
-         [:mode {:description (str "Use 'edit' mode for targeted string replacements. "
-                                   "Use 'replace' mode to replace entire content.")}
+         [:mode
+          {:description (str "Use 'edit' mode for targeted string replacements. "
+                             "Use 'replace' mode to replace entire content.")}
           [:enum "edit" "replace"]]
-         [:edits {:optional true
-                  :description "List of targeted string replacements to apply sequentially"}
+         [:edits
+          {:optional true
+           :description "List of targeted string replacements to apply sequentially"}
           [:maybe [:sequential [:map
                                 [:old_string :string]
                                 [:new_string :string]
                                 [:replace_all {:optional true} [:maybe :boolean]]]]]]
-         [:new_content {:optional true
-                        :description "The complete new content to replace the current content with"}
+         [:new_content
+          {:optional true
+           :description "The complete new content to replace the current content with"}
           [:maybe :string]]]]
        [:thinking
         {:optional true
@@ -160,13 +164,10 @@
         {:output (ex-message e)}
         {:output (str "Failed to write SQL transform: " (or (ex-message e) "Unknown error"))}))))
 
-;; TODO (lbrdnk 2026-03-19): We should "enhance" those inscturctions
 (mu/defn ^{:tool-name "write_transform_python"
            :capabilities #{:feature-transforms :feature-transforms-python :permission-write-transforms}}
   write-transform-python-tool
   "Write new Python code or edit existing code for transforms.
-
-  - *Critical*: Carefully fill in the edit_action parameter key according to schema!
 
   Supports two modes:
   - edit: Targeted string replacements with partial edits
@@ -175,45 +176,76 @@
   For edit mode, provide edits as an array of {old_string, new_string, replace_all} objects.
   For replace mode, provide new_content with the complete Python code.
 
-  - *Critical*: If you do not have integer transform_id, pass the param as nil!
-
-  - *Critical*: Before using this tool you *must* check the context present in your system prompt
-    to find out what is user viewing and do the decision based on that.
-
-  - *Critical*: For a transform to work correctly it must have at least one table present in source_tables
-    - Add tables that are used in the edits into source_tables.
-    - If there are no tables to be queried add arbitrary table available from source_database.
-
   Use `get_transform_python_library_details` before writing any Python code to inspect the shared library.
   Use the shared library in your code by adding `import common` at the top of the file.
   Keep `import common` at the top of the file even if it is currently unused."
   [{:keys [transform_id edit_action thinking transform_name transform_description
-           source_database source_tables]
-    :as inin}
+           source_database source_tables]}
    :- [:map {:closed true}
-       [:transform_id {:optional true} [:maybe :int]]
-       [:edit_action [:map
-                      [:mode [:enum "edit" "replace"]]
-                      [:edits {:optional true}
-                       [:sequential [:map
-                                     [:old_string :string]
-                                     [:new_string :string]
-                                     [:replace_all {:optional true} :boolean]]]]
-                      [:new_content {:optional true}
-                       :string]]]
-       [:thinking {:optional true} [:maybe :string]]
-       [:transform_name {:optional true} [:maybe :string]]
-       [:transform_description {:optional true} [:maybe :string]]
-       [:source_database :int]
-       ;; TODO (lbrdnk 2026-03-19): FE won't work if this is empty. We should handle situation with empty transform
-       ;;                           in follow-ups.
+       [:transform_id
+        {:optional true
+         :description (str "The ID of the Transform with the SQL query to edit. "
+                           "If not provided it's assumed a new Transform is to be created")}
+        [:maybe :int]]
+       [:edit_action
+        {:description "You MUST set this param. Use new_content and edits accroding to mode you choose."}
+        [:map
+         [:mode
+          {:description (str "Use 'edit' mode for targeted string replacements. "
+                             "Use 'replace' mode to replace entire content.")}
+          [:enum "edit" "replace"]]
+         [:edits
+          {:optional true
+           :description "List of targeted string replacements to apply sequentially"}
+          [:maybe [:sequential [:map
+                                [:old_string :string]
+                                [:new_string :string]
+                                [:replace_all {:optional true} [:maybe :boolean]]]]]]
+         [:new_content
+          {:optional true
+           :description "The complete new content to replace the current content with"}
+          [:maybe :string]]]]
+       [:thinking
+        {:optional true
+         :description "Brief explanation of what changes you're making and why"}
+        [:maybe :string]]
+       [:transform_name
+        {:optional true
+         :description (str  "A descriptive name for the transform. Required when creating a new transform. "
+                            "Do not provide when editing an existing transform with a transform_id.")}
+        [:maybe :string]]
+       [:transform_description
+        {:optional true
+         :description (str "A short description of what the transform does. Required when creating a new transform. "
+                           "Do not provide when editing an existing transform with a transform_id.")}
+        [:maybe :string]]
+       [:source_database
+        {:optional true
+         :description (str "When creating a Transform, the database id of the "
+                           "tables being used to create the transform. Not provided when editing "
+                           "an existing transform. You MUST never select something that looks "
+                           "like a sample database with sample tables. ")}
+        [:maybe :int]]
        [:source_tables
-        ;; search for PythonTransformTableEntry
-        [:sequential [:map
-                      [:alias :string]
-                      [:table_id :int]
-                      [:schema :string]
-                      [:database_id :int]]]]]]
+        {:optional true
+         :description (str "A list of source tables, each described as an object with: "
+                           "`alias` (the name used in the transform function, e.g. the parameter name in "
+                           "`def transform(table_a, table_b):`), "
+                           "`table_id` (the database table ID), "
+                           "`schema` (the database schema name, e.g. \"PUBLIC\"), and "
+                           "`database_id` (the database ID). "
+                           "For example: [{\"alias\": \"table_a\", \"table_id\": 1, \"schema\": \"PUBLIC\", \"database_id\": 1}, "
+                           "{\"alias\": \"table_b\", \"table_id\": 2, \"schema\": \"PUBLIC\", \"database_id\": 1}]. "
+                           "The table_id values MUST be IDs of database tables. You CAN NOT use metabase model IDs. "
+                           "You MUST provide this argument when modifying the source tables of an existing transform "
+                           "or when creating a new transform. DO NOT guess or make up table IDs, use the "
+                           "search_tables tool to find the correct table IDs first.")}
+        [:sequential
+         [:map
+          [:alias :string]
+          [:table_id :int]
+          [:schema :string]
+          [:database_id :int]]]]]]
   (try
     (add-output
      (transforms-write-tools/write-transform-python

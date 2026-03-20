@@ -238,12 +238,12 @@ def transform():
 
         ;; Build suggested transform
         suggested-transform (cond-> current-transform
-                              true (assoc-in [:source :body] new-python)
-                              #_#_true (assoc-in [:source :type] "python")
-                              #_#_transform_name (assoc :name transform_name)
-                              #_#_transform_description (assoc :description transform_description)
-                              #_#_source_database (assoc-in [:source :source-database] source_database)
-                              #_#_source_tables (assoc-in [:source :source-tables] source_tables))]
+                              transform_name        (assoc :name transform_name)
+                              transform_description (assoc :description transform_description)
+                              ;; source adjustments
+                              source_database       (assoc-in [:source :source-database] source_database)
+                              source_tables         (assoc-in [:source :source-tables] source_tables)
+                              true                  (assoc-in [:source :body] new-python))]
 
     ;; Store in memory if we have an ID
     (when (and transform_id memory-atom)
