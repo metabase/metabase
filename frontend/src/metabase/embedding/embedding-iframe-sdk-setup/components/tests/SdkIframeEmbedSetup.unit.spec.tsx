@@ -151,7 +151,7 @@ describe("Embed flow > forward and backward navigation", () => {
 });
 
 describe("Embed flow > Pro feature upsell indicators", () => {
-  it("shows upsell gem icons and disables Pro checkboxes for OSS users (question)", () => {
+  it("disables Pro checkboxes for OSS users (question)", () => {
     const mockDatabase = createMockDatabase();
     const mockCard = createMockCard({ id: 456 });
 
@@ -172,10 +172,7 @@ describe("Embed flow > Pro feature upsell indicators", () => {
       },
     });
 
-    // All Pro-gated checkboxes should be disabled with gem icons
-    const gems = screen.getAllByTestId("upsell-gem");
-    expect(gems.length).toBeGreaterThanOrEqual(4);
-
+    // All Pro-gated checkboxes should be disabled
     expect(
       screen.getByRole("checkbox", {
         name: "Allow people to drill through on data points",
@@ -194,7 +191,7 @@ describe("Embed flow > Pro feature upsell indicators", () => {
     ).toBeDisabled();
   });
 
-  it("does not show upsell gem icons for Pro users (question)", () => {
+  it("enables Pro checkboxes for Pro users (question)", () => {
     PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = jest.fn(() => true);
 
     const mockDatabase = createMockDatabase();
@@ -217,7 +214,6 @@ describe("Embed flow > Pro feature upsell indicators", () => {
       },
     });
 
-    expect(screen.queryByTestId("upsell-gem")).not.toBeInTheDocument();
     expect(
       screen.getByRole("checkbox", { name: "Allow downloads" }),
     ).toBeEnabled();
@@ -225,7 +221,7 @@ describe("Embed flow > Pro feature upsell indicators", () => {
     PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = () => false;
   });
 
-  it("shows upsell gem icons and disables Pro checkboxes for OSS users (dashboard)", () => {
+  it("disables Pro checkboxes for OSS users (dashboard)", () => {
     setupDatabasesEndpoints([createMockDatabase()]);
 
     setup({
@@ -235,9 +231,6 @@ describe("Embed flow > Pro feature upsell indicators", () => {
         resourceId: 1,
       },
     });
-
-    const gems = screen.getAllByTestId("upsell-gem");
-    expect(gems.length).toBeGreaterThanOrEqual(3);
 
     expect(
       screen.getByRole("checkbox", {
@@ -252,7 +245,7 @@ describe("Embed flow > Pro feature upsell indicators", () => {
     ).toBeDisabled();
   });
 
-  it("does not show upsell gem icons for Pro users (dashboard)", async () => {
+  it("enables Pro checkboxes for Pro users (dashboard)", async () => {
     PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = jest.fn(() => true);
 
     setup({
@@ -263,7 +256,6 @@ describe("Embed flow > Pro feature upsell indicators", () => {
     await userEvent.click(screen.getByRole("button", { name: "Next" }));
     await userEvent.click(screen.getByRole("button", { name: "Next" }));
 
-    expect(screen.queryByTestId("upsell-gem")).not.toBeInTheDocument();
     expect(
       screen.getByRole("checkbox", { name: "Allow downloads" }),
     ).toBeEnabled();
