@@ -7,7 +7,7 @@ on:
 jobs:
   check-label-and-update-snapshot:
     if: contains(github.event.pull_request.labels.*.name, 'loki-update')
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4

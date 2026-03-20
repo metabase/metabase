@@ -14,7 +14,7 @@ concurrency:
 jobs:
   be-tests-h2:
     if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     env:
       CI: 'true'
@@ -41,7 +41,7 @@ jobs:
 
   be-tests-athena-ee:
     if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     env:
       CI: 'true'
@@ -76,7 +76,7 @@ jobs:
 
   be-tests-bigquery-cloud-sdk-ee:
     if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     env:
       CI: 'true'
@@ -110,7 +110,7 @@ jobs:
 
   be-tests-druid-ee:
     if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     env:
       CI: 'true'
@@ -145,7 +145,7 @@ jobs:
 
   be-tests-databricks-ee:
     if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     env:
       CI: 'true'
@@ -179,7 +179,7 @@ jobs:
 
   be-tests-druid-jdbc-ee:
     if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     env:
       CI: 'true'
@@ -214,7 +214,7 @@ jobs:
 
   be-tests-mysql-mariadb:
     if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     strategy:
       fail-fast: false
@@ -340,7 +340,7 @@ jobs:
 
   be-tests-mongo:
     if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     strategy:
       fail-fast: false
@@ -392,7 +392,7 @@ jobs:
 
   be-tests-mongo-ssl:
     if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     strategy:
       fail-fast: false
@@ -459,7 +459,7 @@ jobs:
 
   be-tests-mongo-sharded-cluster-ee:
     if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     env:
       CI: 'true'
@@ -492,7 +492,7 @@ jobs:
 
   be-tests-oracle:
     if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     strategy:
       fail-fast: false
@@ -563,7 +563,7 @@ jobs:
 
   be-tests-postgres:
     if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     strategy:
       fail-fast: false
@@ -667,7 +667,7 @@ jobs:
 
   be-tests-presto-jdbc-ee:
     if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     env:
       CI: 'true'
@@ -735,7 +735,7 @@ jobs:
 
   be-tests-redshift-ee:
     if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     strategy:
       fail-fast: false
@@ -786,7 +786,7 @@ jobs:
   # issues. https://linear.app/metabase/issue/DEV-997/reenable-snowflake-in-ci.
   # be-tests-snowflake-ee:
   #   if: ${{ !inputs.skip }}
-  #   runs-on: ubuntu-22.04
+  #   runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
   #   timeout-minutes: 60
   #   env:
   #     CI: 'true'
@@ -825,7 +825,7 @@ jobs:
 
   be-tests-sparksql-ee:
     if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     env:
       CI: 'true'
@@ -858,7 +858,7 @@ jobs:
 
   be-tests-sqlite-ee:
     if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     env:
       CI: 'true'
@@ -886,7 +886,7 @@ jobs:
 
   be-tests-sqlserver:
     if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     strategy:
       fail-fast: false
@@ -936,7 +936,7 @@ jobs:
 
   be-tests-starburst-ee:
     if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     env:
       CI: 'true'
@@ -973,7 +973,7 @@ jobs:
 
   # be-tests-vertica-ee:
   #   if: ${{ !inputs.skip }}
-  #   runs-on: ubuntu-22.04
+  #   runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
   #   timeout-minutes: 60
   #   env:
   #     CI: 'true'
@@ -1008,7 +1008,7 @@ jobs:
 
   be-tests-clickhouse-ee:
     if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     env:
       CI: 'true'
@@ -1079,7 +1079,7 @@ jobs:
       # TODO(rileythomp, 2025-08-20): Re-enable vertica tests once the docker image is updated
       # - be-tests-vertica-ee
       - be-tests-clickhouse-ee
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     name: drivers-tests-result
     if: always() && !cancelled()

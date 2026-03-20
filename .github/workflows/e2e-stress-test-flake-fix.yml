@@ -34,7 +34,7 @@ on:
 jobs:
   workflow-summary:
     name: Stress test inputs
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
       - name: Generate workflow summary
@@ -50,7 +50,7 @@ jobs:
           echo 'triggered by: @${{ github.event.sender.login }}' >> $GITHUB_STEP_SUMMARY
 
   stress-test-flake-fix:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     name: Stress test E2E flake fix
     env:

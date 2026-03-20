@@ -30,7 +30,7 @@ on:
 
 jobs:
   containerize:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     outputs:
       platforms: ${{ steps.platforms.outputs.result }}
@@ -96,7 +96,7 @@ jobs:
           bin/docker/.
 
   verify-docker-pull:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     needs: containerize
     timeout-minutes: 15
     steps:
