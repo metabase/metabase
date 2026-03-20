@@ -116,6 +116,15 @@ export const userApi = Api.injectEndpoints({
           dispatch(userUpdated(user));
         }),
     }),
+    getPasswordResetUrl: builder.mutation<
+      { password_reset_url: string },
+      UserId
+    >({
+      query: (id) => ({
+        method: "POST",
+        url: `/api/user/${id}/password-reset-url`,
+      }),
+    }),
     listUserAttributes: builder.query<string[], void>({
       query: () => "/api/mt/user/attributes",
       providesTags: (response) => (response ? [listTag("user")] : []),
@@ -136,5 +145,6 @@ export const {
   useDeactivateUserMutation,
   useReactivateUserMutation,
   useUpdateUserMutation,
+  useGetPasswordResetUrlMutation,
   useListUserAttributesQuery,
 } = userApi;
