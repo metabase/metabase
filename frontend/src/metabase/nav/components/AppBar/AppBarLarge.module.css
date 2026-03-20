@@ -1,0 +1,23 @@
+.root {
+  border-bottom: 1px solid transparent;
+  background-color: var(--mb-color-background-primary);
+  transition: border-bottom-color 200ms ease;
+}
+
+.sidebarOpen {
+  border-bottom-color: var(--mb-color-border);
+}
+
+.infoContainerHidden {
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.5s,
+    visibility 0s;
+}
+
+.infoContainerVisible {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.5s;
+}

@@ -1,9 +1,11 @@
 import type { MouseEvent } from "react";
 
+import { Link } from "metabase/common/components/Link";
 import { LogoIcon } from "metabase/common/components/LogoIcon";
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
+import { Flex, rem } from "metabase/ui";
 
-import { LogoLink } from "./AppBarLogo.styled";
+import S from "./AppBarLogo.module.css";
 
 export interface AppBarLogoProps {
   isSmallAppBar?: boolean;
@@ -36,15 +38,24 @@ export function AppBarLogo({
   };
 
   return (
-    <LogoLink
+    <Link
       to="/"
-      isSmallAppBar={Boolean(isSmallAppBar)}
-      isGitSyncVisible={Boolean(isGitSyncVisible)}
+      className={S.logoLink}
       onClick={handleClick}
       disabled={!isNavBarEnabled}
       data-testid="main-logo-link"
     >
-      <LogoIcon height={32} />
-    </LogoLink>
+      <Flex
+        align="center"
+        justify="center"
+        h={rem(52)}
+        miw={rem(36)}
+        maw="14rem"
+        lh={0}
+        mr={!isSmallAppBar ? (isGitSyncVisible ? "md" : "xl") : undefined}
+      >
+        <LogoIcon height={32} />
+      </Flex>
+    </Link>
   );
 }

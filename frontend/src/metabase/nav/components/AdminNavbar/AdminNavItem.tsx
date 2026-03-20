@@ -1,4 +1,8 @@
-import { AdminNavLink, AdminNavListItem } from "./AdminNavItem.styled";
+import cx from "classnames";
+
+import { Link } from "metabase/common/components/Link";
+
+import S from "./AdminNavItem.module.css";
 
 interface AdminNavItemProps {
   name: string;
@@ -11,9 +15,18 @@ export const AdminNavItem = ({
   path,
   currentPath,
 }: AdminNavItemProps) => (
-  <AdminNavListItem path={path} currentPath={currentPath}>
-    <AdminNavLink to={path} isSelected={currentPath.startsWith(path)}>
+  <li
+    className={cx(S.navListItem, {
+      [S.navListItemActive]: currentPath.startsWith(path),
+    })}
+  >
+    <Link
+      to={path}
+      className={cx(S.navLink, S.navLinkOverflowHidden, {
+        [S.selected]: currentPath.startsWith(path),
+      })}
+    >
       {name}
-    </AdminNavLink>
-  </AdminNavListItem>
+    </Link>
+  </li>
 );

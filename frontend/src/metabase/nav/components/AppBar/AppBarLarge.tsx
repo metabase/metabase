@@ -1,10 +1,12 @@
+import cx from "classnames";
 import { t } from "ttag";
 
 import { Nav as DetailViewNav } from "metabase/detail-view/components";
 import { DETAIL_VIEW_PADDING_LEFT } from "metabase/detail-view/constants";
 import { useMetabotEnabledEmbeddingAware } from "metabase/metabot/hooks";
+import { APP_BAR_HEIGHT } from "metabase/nav/constants";
 import { PLUGIN_METABOT, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
-import { Box, Flex } from "metabase/ui";
+import { Box, Flex, rem } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
 import type { DetailViewState } from "metabase-types/store";
 
@@ -15,7 +17,7 @@ import NewItemButton from "../NewItemButton";
 import { SearchBar } from "../search/SearchBar";
 import { SearchButton } from "../search/SearchButton/SearchButton";
 
-import { AppBarInfoContainer, AppBarRoot } from "./AppBarLarge.styled";
+import S from "./AppBarLarge.module.css";
 import { AppBarLogo } from "./AppBarLogo";
 import { AppBarToggle } from "./AppBarToggle";
 
@@ -60,14 +62,22 @@ const AppBarLarge = ({
 
   const isMetabotEnabled = useMetabotEnabledEmbeddingAware();
 
+  const hasSidebarOpen =
+    isNavBarVisible ||
+    isMetabotVisible ||
+    isDocumentSidebarOpen ||
+    isCommentSidebarOpen;
+
+  const isInfoVisible = !isNavBarVisible || isQuestionLineageVisible;
+
   return (
-    <AppBarRoot
-      hasSidebarOpen={
-        isNavBarVisible ||
-        isMetabotVisible ||
-        isDocumentSidebarOpen ||
-        isCommentSidebarOpen
-      }
+    <Flex
+      className={cx(S.root, { [S.sidebarOpen]: hasSidebarOpen })}
+      align="center"
+      gap="md"
+      h={APP_BAR_HEIGHT}
+      pl={rem(21)}
+      pr="md"
     >
       <Flex align="center" miw="5rem" flex="1 1 auto">
         <AppBarToggle
@@ -81,8 +91,11 @@ const AppBarLarge = ({
           isGitSyncVisible={isGitSyncVisible}
         />
         <PLUGIN_REMOTE_SYNC.GitSyncAppBarControls />
-        <AppBarInfoContainer
-          isVisible={!isNavBarVisible || isQuestionLineageVisible}
+        <Flex
+          className={
+            isInfoVisible ? S.infoContainerVisible : S.infoContainerHidden
+          }
+          miw={0}
         >
           {detailView ? (
             <DetailViewNav
@@ -95,7 +108,7 @@ const AppBarLarge = ({
           ) : isCollectionPathVisible ? (
             <CollectionBreadcrumbs />
           ) : null}
-        </AppBarInfoContainer>
+        </Flex>
       </Flex>
       {(isSearchVisible ||
         isNewButtonVisible ||
@@ -119,7 +132,7 @@ const AppBarLarge = ({
           )}
         </Flex>
       )}
-    </AppBarRoot>
+    </Flex>
   );
 };
 
