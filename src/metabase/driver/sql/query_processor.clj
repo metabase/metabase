@@ -1222,28 +1222,26 @@
 (defn- interval? [expr]
   (driver-api/is-clause? :interval expr))
 
-(defn- add-interval
-  [driver hsql-form op interval]
-  (let [[amount unit] (driver-api/match-lite interval
-                        [_ (_opts :guard :lib/uuid) amount unit] [amount unit] ;; mbql5
-                        [_ amount unit] [amount unit])]
-    (add-interval-honeysql-form driver hsql-form (cond-> amount (= op :-) -) unit)))
+(defn- get-interval [interval]
+  (driver-api/match-lite interval
+    [tag (_opts :guard :lib/uuid) amount unit] [tag amount unit] ;; mbql5
+    _ interval))
 
 (defmethod ->honeysql [:sql :+]
-  [driver [op & args]]
+  [driver [_ & args]]
   (if (some interval? args)
     (if-let [[field intervals] (u/pick-first (complement interval?) args)]
-      (reduce (fn [hsql-form interval]
-                (add-interval driver hsql-form op interval))
+      (reduce (fn [hsql-form [_ amount unit]]
+                (add-interval-honeysql-form driver hsql-form amount unit))
               (->honeysql driver field)
-              intervals)
+              (map get-interval intervals))
       (throw (ex-info "Summing intervals is not supported" {:args args})))
     (into [:+]
           (map (partial ->honeysql driver))
           args)))
 
 (defmethod ->honeysql [:sql :-]
-  [driver [op & [first-arg & other-args :as args]]]
+  [driver [_ & [first-arg & other-args :as args]]]
   (cond (interval? first-arg)
         (throw (ex-info (tru "Interval as first argrument to subtraction is not allowed.")
                         {:type driver-api/qp.error-type.invalid-query
@@ -1254,10 +1252,11 @@
                         {:type driver-api/qp.error-type.invalid-query
                          :args args})))
   (if (interval? (first other-args))
-    (reduce (fn [hsql-form interval]
-              (add-interval driver hsql-form op interval))
+    (reduce (fn [hsql-form [_ amount unit]]
+              ;; We are adding negative amount. Inspired by `->honeysql [:sql :datetime-subtract]`.
+              (add-interval-honeysql-form driver hsql-form (- amount) unit))
             (->honeysql driver first-arg)
-            other-args)
+            (map get-interval other-args))
     (into [:-]
           (map (partial ->honeysql driver))
           args)))
