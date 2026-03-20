@@ -292,7 +292,10 @@ export const DataGrid = function DataGrid<TData>({
                     {renderBodyGridPanels(pinnedRows)}
                   </div>
                 )}
-                <div className={S.centerRowsSection}>
+                <div
+                  className={S.centerRowsSection}
+                  data-testid="center-rows-section"
+                >
                   {renderBodyGridPanels(
                     centerRows,
                     rowMeasureRef,

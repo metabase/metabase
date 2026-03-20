@@ -268,6 +268,22 @@ describe("DataGrid", () => {
     expect(nameSortIcon).toBeDefined();
   });
 
+  it("renders center section rows when all columns are pinned", () => {
+    renderWithProviders(<TestDataGrid pinnedLeftColumnsCount={4} />);
+    act(() => {
+      jest.runAllTimers();
+    });
+
+    const centerSection = screen.getByTestId("center-rows-section");
+    const centerRows = centerSection.querySelectorAll('[role="row"]');
+
+    expect(centerRows.length).toBeGreaterThan(0);
+
+    centerRows.forEach((row) => {
+      expect(row).toHaveAttribute("data-index");
+    });
+  });
+
   it("can copy selected cells with headers included", async () => {
     const writeTextMock = jest.fn().mockResolvedValue(undefined);
     Object.assign(navigator, {

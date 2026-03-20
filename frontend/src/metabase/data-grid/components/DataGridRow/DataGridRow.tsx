@@ -55,7 +55,7 @@ export const DataGridRow = <TData,>({
    * An alternative solution would be to create a custom ResizeObserver to track both parts of the row,
    * but the current solution is sufficient for now.
    *
-   * This is covered by test
+   * This is covered by test "renders center section rows when all columns are pinned"
    */
   return (
     <div
