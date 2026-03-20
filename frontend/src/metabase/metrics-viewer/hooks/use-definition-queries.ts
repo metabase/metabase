@@ -14,14 +14,14 @@ import type {
 import type { State } from "metabase-types/store";
 
 import type { MathOperator } from "../types/operators";
-import type {
-  ExpressionDefinitionEntry,
+import {
+  type ExpressionDefinitionEntry,
   type ExpressionItemResult,
-  ExpressionSubToken,
-  MetricSourceId,
-  MetricsViewerDefinitionEntry,
-  MetricsViewerFormulaEntity,
-  MetricsViewerTabState,
+  type ExpressionSubToken,
+  type MetricSourceId,
+  type MetricsViewerDefinitionEntry,
+  type MetricsViewerFormulaEntity,
+  type MetricsViewerTabState,
   isExpressionEntry,
   isMetricEntry,
 } from "../types/viewer-state";
