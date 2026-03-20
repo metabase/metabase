@@ -12,7 +12,7 @@ export function CheckpointValue({
   value,
   checkpointField,
 }: CheckpointValueProps) {
-  if (checkpointField && isDate(checkpointField)) {
+  if (isDate(checkpointField)) {
     return (
       <Tooltip label={value}>
         <DateTime value={value} unit="minute" />

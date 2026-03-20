@@ -73,14 +73,15 @@ export const RuleEditor = ({
   const handleColumnChange = (columns: ColumnFormattingSetting["columns"]) => {
     const isFirstColumnAdd = rule.columns.length === 0 && columns.length === 1;
 
-    const firstCol = _.findWhere(cols, { name: columns[0] });
     const operatorUpdate: {
       operator?:
         | ConditionalFormattingBooleanOperator
         | ConditionalFormattingComparisonOperator;
     } = isFirstColumnAdd
       ? {
-          operator: firstCol && isBoolean(firstCol) ? "is-true" : "=",
+          operator: isBoolean(_.findWhere(cols, { name: columns[0] }))
+            ? "is-true"
+            : "=",
         }
       : {};
 
