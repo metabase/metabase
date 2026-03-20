@@ -101,7 +101,7 @@
            database_id source_tables]}
    :- [:map {:closed true}
        [:database_id
-        {:optiontal true
+        {:optional true
          :description (str "The database id of the database that contains the tables referenced in the query. "
                            "You MUST never select something that looks like a sample database with sample tables. ")}
         [:maybe :int]]
