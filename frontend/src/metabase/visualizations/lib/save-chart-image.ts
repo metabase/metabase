@@ -39,6 +39,10 @@ export const saveChartImage = async ({
   // Appending any element to the node does not automatically increase the canvas height.
   const canvasHeight = contentHeight + verticalOffset;
 
+  // Ensure fonts are fully loaded before capturing, otherwise
+  // html2canvas may render text with fallback fonts.
+  await document.fonts.ready;
+
   const { default: html2canvas } = await import("html2canvas-pro");
   const canvas = await html2canvas(node, {
     scale: 2,
