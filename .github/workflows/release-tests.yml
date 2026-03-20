@@ -14,7 +14,7 @@ concurrency:
 jobs:
   files-changed:
     name: Check which files changed
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 3
     outputs:
       release_source: ${{ steps.changes.outputs.release_source }}
@@ -30,7 +30,7 @@ jobs:
   release-type-check:
     needs: files-changed
     if: needs.files-changed.outputs.release_source == 'true'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
@@ -49,7 +49,7 @@ jobs:
   release-tests-unit:
     needs: files-changed
     if: needs.files-changed.outputs.release_source == 'true'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
@@ -68,7 +68,7 @@ jobs:
   release-test-build:
     needs: files-changed
     if: needs.files-changed.outputs.release_source == 'true'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4

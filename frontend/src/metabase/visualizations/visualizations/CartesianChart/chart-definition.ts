@@ -9,6 +9,7 @@ import {
   GRAPH_TREND_SETTINGS,
   LEGEND_SETTINGS,
   LINE_SETTINGS,
+  SPLIT_PANELS_SETTINGS,
   STACKABLE_SETTINGS,
   TOOLTIP_SETTINGS,
 } from "metabase/visualizations/lib/settings/graph";
@@ -106,6 +107,7 @@ export const getCartesianChartDefinition = (
 
 export const COMBO_CHARTS_SETTINGS_DEFINITIONS = {
   ...STACKABLE_SETTINGS,
+  ...SPLIT_PANELS_SETTINGS,
   ...LINE_SETTINGS,
   ...GRAPH_GOAL_SETTINGS,
   ...GRAPH_TREND_SETTINGS,
