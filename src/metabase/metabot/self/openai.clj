@@ -145,7 +145,7 @@
 (defn- tool->openai
   "Convert a tool to OpenAI Responses API format."
   [[tool-name tool]]
-  (let [{:keys [doc schema] :as tool} (if (map? tool) tool (meta tool))
+  (let [{:keys [doc schema]} (if (map? tool) tool (meta tool))
         [_:=> [_:cat params] _out]    schema
         params                        (schema/filter-schema-by-features params)
         doc                           (if (str/starts-with? (or doc "") "Inputs: ")

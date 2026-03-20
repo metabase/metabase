@@ -88,10 +88,7 @@
         params     (schema/filter-schema-by-features params)
         doc        (if (str/starts-with? (or doc "") "Inputs: ")
                      (second (str/split doc #"\n\n  " 2))
-                     doc)
-        final-name (or tool-name
-                       (when (var? tool) (name (:name (meta tool))))
-                       "unknown")]
+                     doc)]
     {:type     "function"
      :function {:name        tool-name
                 :description doc
