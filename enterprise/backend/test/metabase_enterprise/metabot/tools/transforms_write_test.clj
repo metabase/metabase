@@ -4,8 +4,6 @@
    [metabase-enterprise.metabot.tools.transforms-write :as transforms-write]
    [metabase.metabot.tools.transforms-write :as oss-transforms-write]))
 
-;; SQL edit/write tests have been moved to metabase.metabot.tools.transforms-write-test (OSS).
-
 (deftest create-fresh-python-template-test
   (testing "fresh Python transforms include common import"
     (let [result (oss-transforms-write/create-fresh-transform

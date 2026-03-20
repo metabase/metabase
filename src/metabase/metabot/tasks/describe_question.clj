@@ -1,8 +1,8 @@
-(ns metabase.llm.tasks.describe-question
+(ns metabase.metabot.tasks.describe-question
   "LLM task(s) for generating question descriptions"
   (:require
    [clojure.set :refer [rename-keys]]
-   [metabase.llm.client :as llm-client]
+   [metabase.metabot.openai-client :as openai-client]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.util :as u]
    [metabase.util.json :as json]))
@@ -31,8 +31,8 @@
                                     {:friendly_title   "%%FILL_THIS_TITLE_IN%%"
                                      :friendly_summary "%%FILL_THIS_SUMMARY_IN%%"})
         json-str             (json/encode summary-with-prompts)
-        client               (-> (llm-client/create-chat-completion)
-                                 (llm-client/wrap-parse-json
+        client               (-> (openai-client/create-chat-completion)
+                                 (openai-client/wrap-parse-json
                                   (fn [rsp] (rename-keys rsp {:friendly_title   :title
                                                               :friendly_summary :description}))))]
     (client
