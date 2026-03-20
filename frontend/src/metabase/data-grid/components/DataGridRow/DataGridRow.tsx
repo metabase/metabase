@@ -48,6 +48,15 @@ export const DataGridRow = <TData,>({
   const rowPositionStyles = getRowPositionStyles(row);
   const paddingLeft = columns[0]?.virtualItem?.start ?? 0;
 
+  /**
+   * we must render this div with a ref even if there are no columns.
+   * Otherwise, Tanstack's virtualizer won't be able to measure the row.
+   * As a result, row heights in the pinned and center column sections become unsynced.
+   * An alternative solution would be to create a custom ResizeObserver to track both parts of the row,
+   * but the current solution is sufficient for now.
+   *
+   * This is covered by test
+   */
   return (
     <div
       role="row"
