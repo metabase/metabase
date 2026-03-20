@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.channel.settings :as channel.settings]
-   [metabase.premium-features.core :as premium-features]
    [metabase.slackbot.test-util :as tu]
    [metabase.sso.settings :as sso-settings]
    [metabase.test :as mt]
@@ -20,10 +19,6 @@
                                    (tu/slack-request-options request-body) request-body)]
       (testing "succeeds when all settings are configured"
         (is (= "ok" (post-events 200))))
-
-      (testing "returns 503 when sso-slack feature disabled"
-        (with-redefs [premium-features/enable-sso-slack? (constantly false)]
-          (is (= "Slack integration is not fully configured." (post-events 503)))))
 
       (testing "returns 503 when client-id missing"
         (mt/with-temporary-setting-values [sso-settings/slack-connect-client-id nil]

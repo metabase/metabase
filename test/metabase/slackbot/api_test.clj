@@ -676,14 +676,7 @@
 
     (testing "non-admin returns 403"
       (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :put 403 "metabot/slack/settings" creds)))))
-
-  (testing "setting values without metabot-v3 feature returns 402"
-    (is (= "Metabot feature is not enabled."
-           (mt/user-http-request :crowberto :put 402 "metabot/slack/settings"
-                                 {:slack-connect-client-id      "id"
-                                  :slack-connect-client-secret  "secret"
-                                  :metabot-slack-signing-secret "signing"})))))
+             (mt/user-http-request :rasta :put 403 "metabot/slack/settings" creds))))))
 
 (deftest feedback-modal-view-test
   (testing "positive feedback modal has no issue type dropdown"

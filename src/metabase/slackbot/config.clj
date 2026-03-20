@@ -4,6 +4,7 @@
    [metabase.channel.settings :as channel.settings]
    [metabase.slackbot.client :as slackbot.client]
    [metabase.slackbot.settings :as slackbot.settings]
+   [metabase.sso.settings :as sso-settings]
    [metabase.system.core :as system]
    [metabase.util.encryption :as encryption]))
 
@@ -64,8 +65,8 @@
   []
   (boolean
    (and (some? (system/site-url))
-        #_#_(sso-settings/slack-connect-client-id)
-          (sso-settings/slack-connect-client-secret)
+        (sso-settings/slack-connect-client-id)
+        (sso-settings/slack-connect-client-secret)
         (slackbot.settings/metabot-slack-signing-secret)
         (channel.settings/unobfuscated-slack-app-token)
         (encryption/default-encryption-enabled?))))

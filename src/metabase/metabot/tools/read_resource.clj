@@ -23,7 +23,7 @@
    [metabase.metabot.tools.field-stats :as field-stats]
    [metabase.metabot.tools.instructions :as instructions]
    [metabase.metabot.tools.llm-representations :as llm-rep]
-   #_[metabase.metabot.tools.transforms :as transforms]
+   [metabase.metabot.tools.transforms :as transforms]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -150,7 +150,6 @@
       (throw (ex-info (str "Unsupported sub-resource '" sub-resource "' for metric. Supported: dimensions")
                       {:resource-id resource-id :sub-resource sub-resource})))))
 
-#_
 (defn- fetch-transform-resource
   "Fetch transform resource."
   [{:keys [resource-id sub-resource]}]
@@ -178,7 +177,7 @@
   {"table"     fetch-table-resource
    "model"     fetch-model-resource
    "metric"    fetch-metric-resource
-   ;;"transform" fetch-transform-resource
+   "transform" fetch-transform-resource
    "dashboard" fetch-dashboard-resource})
 
 (defn- fetch-single-uri
