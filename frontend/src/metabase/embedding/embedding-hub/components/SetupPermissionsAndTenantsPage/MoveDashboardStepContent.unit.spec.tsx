@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
@@ -5,7 +6,7 @@ import {
   setupCollectionTreeEndpoint,
   setupRootCollectionItemsEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
   createMockCollection,
   createMockCollectionItem,
@@ -117,5 +118,73 @@ describe("MoveDashboardStepContent", () => {
       await screen.findByText("Move to shared collection"),
     ).toBeInTheDocument();
     expect(screen.getByText("Create a sample dashboard")).toBeInTheDocument();
+  });
+
+  it("moves dashboard to shared collection when Move button is clicked", async () => {
+    fetchMock.put("path:/api/dashboard/200", 200);
+
+    const { onCompleted } = setup({ hasXrayDashboard: true });
+
+    const moveButton = await screen.findByText("Move to shared collection");
+    await userEvent.click(moveButton);
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls("path:/api/dashboard/200", {
+          method: "PUT",
+        }),
+      ).toHaveLength(1);
+    });
+
+    const lastCall = fetchMock.callHistory.lastCall("path:/api/dashboard/200", {
+      method: "PUT",
+    });
+    expect(await lastCall?.request?.json()).toEqual(
+      expect.objectContaining({ collection_id: 42 }),
+    );
+
+    await waitFor(() => {
+      expect(onCompleted).toHaveBeenCalled();
+    });
+  });
+
+  it("creates a sample dashboard when Create button is clicked", async () => {
+    fetchMock.post("path:/api/dashboard", {
+      id: 999,
+      name: "Sample dashboard",
+      collection_id: 42,
+      dashcards: [],
+    });
+    fetchMock.put("path:/api/dashboard/999", 200);
+
+    const { onCompleted } = setup({ hasXrayDashboard: false });
+
+    const createButton = await screen.findByText("Create a sample dashboard");
+    await userEvent.click(createButton);
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls("path:/api/dashboard", { method: "POST" }),
+      ).toHaveLength(1);
+    });
+
+    const postCall = fetchMock.callHistory.lastCall("path:/api/dashboard", {
+      method: "POST",
+    });
+    expect(await postCall?.request?.json()).toEqual(
+      expect.objectContaining({ name: "Sample dashboard", collection_id: 42 }),
+    );
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls("path:/api/dashboard/999", {
+          method: "PUT",
+        }),
+      ).toHaveLength(1);
+    });
+
+    await waitFor(() => {
+      expect(onCompleted).toHaveBeenCalled();
+    });
   });
 });
