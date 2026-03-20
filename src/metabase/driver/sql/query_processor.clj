@@ -301,13 +301,20 @@
 
 (sql/register-fn! ::compiled #'format-compiled)
 
-(defmulti mbql-clause
+(defmulti mbql-clause-with-opts
   "Returns an MBQL clause in the desired MBQL format of the driver."
-  {:added "0.60.0" :arglists '([driver clause])}
+  {:added "0.60.0" :arglists '([driver tag opts & args])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defmethod mbql-clause :sql [_driver clause] clause)
+(defmethod mbql-clause-with-opts :sql
+  [_driver tag opts & args]
+  (cond-> (into [tag] args) opts (conj opts)))
+
+(defn mbql-clause
+  "Wrapper around `mbql-clause-with-opts` for clauses that don't have or need options."
+  [driver tag & args]
+  (mbql-clause-with-opts driver tag nil args))
 
 (defmulti current-datetime-honeysql-form
   "HoneySQL form that should be used to get the current `datetime` (or equivalent). Defaults to `:%now`. Should ideally
@@ -341,7 +348,7 @@
 (defmethod date [:sql :week-of-year]
   [driver _ expr]
   ;; Some DBs truncate when doing integer division, therefore force float arithmetic
-  (->honeysql driver (mbql-clause driver [:ceil (compiled (h2x// (date driver :day-of-year (date driver :week expr)) 7.0))])))
+  (->honeysql driver (mbql-clause driver :ceil (compiled (h2x// (date driver :day-of-year (date driver :week expr)) 7.0)))))
 
 (defmethod date [:sql :month-of-year]    [_driver _ expr] (h2x/month expr))
 (defmethod date [:sql :quarter-of-year]  [_driver _ expr] (h2x/quarter expr))
@@ -403,7 +410,7 @@
                                              (days-till-start-of-first-full-week driver honeysql-expr))
         total-full-week-days               (h2x/- (date driver :day-of-year honeysql-expr)
                                                   days-till-start-of-first-full-week)
-        total-full-weeks                   (->honeysql driver (mbql-clause driver [:ceil (compiled (h2x// total-full-week-days 7.0))]))]
+        total-full-weeks                   (->honeysql driver (mbql-clause driver :ceil (compiled (h2x// total-full-week-days 7.0))))]
     (->integer driver (h2x/+ 1 total-full-weeks))))
 
 ;; ISO8501 consider the first week of the year is the week that contains the 1st Thursday and week starts on Monday.
@@ -745,7 +752,7 @@
                              (apply h2x/identifier :field source-query-alias source-alias)
 
                              (literal-text-value? expression-definition)
-                             (mbql-clause driver [::expression-literal-text-value expression-definition])
+                             (mbql-clause driver ::expression-literal-text-value expression-definition)
 
                              ;; Handle raw string literals (not wrapped in :value) - needed for
                              ;; expression definitions that are just string literals, e.g. from
@@ -753,8 +760,8 @@
                              ;; the string becomes a parameter placeholder without type info,
                              ;; which some databases (like H2) can't handle.
                              (string? expression-definition)
-                             (mbql-clause driver [::expression-literal-text-value
-                                                  [:value expression-definition {:base_type :type/Text}]])
+                             (mbql-clause driver ::expression-literal-text-value
+                                          (mbql-clause-with-opts driver :value {:base_type :type/Text} expression-definition))
 
                              :else
                              expression-definition))))
@@ -1173,7 +1180,7 @@
   [driver [_cum-count expr-or-nil]]
   ;; a cumulative count with no breakouts doesn't really mean anything, just compile it as a normal count.
   (if (empty? (:breakout *inner-query*))
-    (->honeysql driver (mbql-clause driver [:count expr-or-nil]))
+    (->honeysql driver (mbql-clause driver :count expr-or-nil))
     (cumulative-aggregation-over-rows
      driver
      ;; Don't call `mbql-clause` on this because this is honeysql, not MBQL
@@ -1196,7 +1203,7 @@
   [driver [_cum-sum expr]]
   ;; a cumulative sum with no breakouts doesn't really mean anything, just compile it as a normal sum.
   (if (empty? (:breakout *inner-query*))
-    (->honeysql driver (mbql-clause driver [:sum expr]))
+    (->honeysql driver (mbql-clause driver :sum expr))
     (cumulative-aggregation-over-rows
      driver
      ;; Don't call `mbql-clause` on this because this is honeysql, not MBQL
@@ -1305,20 +1312,20 @@
 
 (defmethod ->honeysql [:sql :sum-where]
   [driver [_ arg pred]]
-  (->honeysql driver (mbql-clause driver [:sum [:case [[pred arg]] {:default 0.0}]])))
+  (->honeysql driver (mbql-clause driver :sum (mbql-clause-with-opts driver :case {:default 0.0} [[pred arg]]))))
 
 (defmethod ->honeysql [:sql :count-where]
   [driver [_ pred]]
-  (->honeysql driver (mbql-clause driver [:sum-where 1 pred])))
+  (->honeysql driver (mbql-clause driver :sum-where 1 pred)))
 
 (defmethod ->honeysql [:sql :share]
   [driver [_ pred]]
-  [:/ (->honeysql driver (mbql-clause driver [:count-where pred])) :%count.*])
+  [:/ (->honeysql driver (mbql-clause driver :count-where pred)) :%count.*])
 
 (defmethod ->honeysql [:sql :distinct-where]
   [driver [_ arg pred]]
   [::h2x/distinct-count
-   (->honeysql driver (mbql-clause driver [:case [[pred arg]]]))])
+   (->honeysql driver (mbql-clause driver :case [[pred arg]]))])
 
 (defmethod ->honeysql [:sql :trim]
   [driver [_ arg]]
@@ -1424,11 +1431,11 @@
 
 (defmethod ->honeysql [:sql :text]
   [driver [_ value]]
-  (->honeysql driver (mbql-clause driver [::cast-to-text value])))
+  (->honeysql driver (mbql-clause driver ::cast-to-text value)))
 
 (defmethod ->honeysql [:sql :today]
   [driver [_]]
-  (->honeysql driver (mbql-clause driver [:date [:now]])))
+  (->honeysql driver (mbql-clause driver :date (mbql-clause driver :now))))
 
 (mu/defmethod ->honeysql [:sql :relative-datetime] :- some?
   [driver [_ amount unit]]
@@ -1715,7 +1722,7 @@
                                                   (not case-sensitive) u/lower-case-en))
          (->honeysql driver)
          (transform-literal-like-pattern-honeysql driver))
-    (let [expr (->honeysql driver (mbql-clause driver (into [:concat] (remove nil?) [pre arg post])))]
+    (let [expr (->honeysql driver (apply mbql-clause driver (into [:concat] (remove nil?) [pre arg post])))]
       (if case-sensitive
         expr
         [:lower expr]))))
@@ -1745,7 +1752,7 @@
            (not (uuid? (->honeysql driver arg)))
            ;; Check for inlined values
            (not (= (:database-type (h2x/type-info (->honeysql driver arg))) "uuid")))
-    (mbql-clause driver [::cast-to-text field])
+    (mbql-clause driver ::cast-to-text field)
     field))
 
 (mu/defn maybe-cast-uuid-for-text-compare
@@ -1753,7 +1760,7 @@
    Comparing UUID fields against with these operations requires casting as the right side will have `%` for `LIKE` operations."
   [driver field]
   (if (uuid-field? field)
-    (mbql-clause driver [::cast-to-text field])
+    (mbql-clause driver ::cast-to-text field)
     field))
 
 (defmethod ->honeysql [:sql ::cast]

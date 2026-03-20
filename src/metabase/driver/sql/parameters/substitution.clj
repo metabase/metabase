@@ -270,12 +270,12 @@
   "Returns an MBQL `:field` clause with the relevant options for a field filter."
   [driver field other-opts]
   (sql.qp/mbql-clause driver
-                      [:field
-                       (:id field)
-                       (merge {:base-type                     (:base-type field)
-                               driver-api/qp.add.source-table (:table-id field)
-                               ::compiling-field-filter?      true}
-                              other-opts)]))
+                      :field
+                      (merge {:base-type                     (:base-type field)
+                              driver-api/qp.add.source-table (:table-id field)
+                              ::compiling-field-filter?      true}
+                             other-opts)
+                      (:id field)))
 
 (defmulti field->clause
   "Wrapper around `field->clause*`"
