@@ -7,7 +7,7 @@ on:
 
 jobs:
   on-team-label-added:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     if: |
       contains(github.event.label.name, '.Team/') &&

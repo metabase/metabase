@@ -29,7 +29,7 @@ jobs:
   be-tests-bigquery-transforms:
     # inputs.driver is empty on push triggers, so treat '' as 'all'
     if: ${{ inputs.driver == 'all' || inputs.driver == '' || inputs.driver == 'bigquery' }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     env:
       CI: 'true'
@@ -77,7 +77,7 @@ jobs:
 
   be-tests-clickhouse-transforms:
     if: ${{ inputs.driver == 'all' || inputs.driver == '' || inputs.driver == 'clickhouse' }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     env:
       CI: 'true'
@@ -137,7 +137,7 @@ jobs:
 
   be-tests-mongo-transforms:
     if: ${{ inputs.driver == 'all' || inputs.driver == '' || inputs.driver == 'mongo' }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     env:
       CI: 'true'
@@ -188,7 +188,7 @@ jobs:
 
   be-tests-mysql-transforms:
     if: ${{ inputs.driver == 'all' || inputs.driver == '' || inputs.driver == 'mysql' }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     services:
       mysql:
@@ -243,7 +243,7 @@ jobs:
 
   be-tests-postgres-transforms:
     if: ${{ inputs.driver == 'all' || inputs.driver == '' || inputs.driver == 'postgres' }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     env:
       CI: 'true'
@@ -299,7 +299,7 @@ jobs:
 
   be-tests-redshift-transforms:
     if: ${{ inputs.driver == 'all' || inputs.driver == '' || inputs.driver == 'redshift' }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     env:
       CI: 'true'
@@ -345,7 +345,7 @@ jobs:
 
   be-tests-snowflake-transforms:
     if: ${{ inputs.driver == 'all' || inputs.driver == '' || inputs.driver == 'snowflake' }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     env:
       CI: 'true'
@@ -400,7 +400,7 @@ jobs:
 
   be-tests-sqlserver-transforms:
     if: ${{ inputs.driver == 'all' || inputs.driver == '' || inputs.driver == 'sqlserver' }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     env:
       CI: 'true'
@@ -461,7 +461,7 @@ jobs:
       - be-tests-redshift-transforms
       - be-tests-snowflake-transforms
       - be-tests-sqlserver-transforms
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     name: transforms-stress-test-result
     if: always() && !cancelled()
