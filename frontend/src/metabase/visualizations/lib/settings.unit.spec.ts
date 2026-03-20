@@ -25,13 +25,6 @@ describe("settings framework", () => {
       expect(getComputedSettings(defs, mockObject, stored)).toEqual(expected);
     });
 
-    it("should use `default` if no stored setting", () => {
-      const defs = { foo: { default: "foo" } };
-      const stored = {};
-      const expected = { foo: "foo" };
-      expect(getComputedSettings(defs, mockObject, stored)).toEqual(expected);
-    });
-
     it("should use `getDefault` if no stored setting", () => {
       const defs = { foo: { getDefault: () => "foo" } };
       const stored = {};
@@ -46,8 +39,8 @@ describe("settings framework", () => {
       expect(getComputedSettings(defs, mockObject, stored)).toEqual(expected);
     });
 
-    it("should use default if `isValid` returns false", () => {
-      const defs = { foo: { default: "bar", isValid: () => false } };
+    it("should use `getDefault` if `isValid` returns false", () => {
+      const defs = { foo: { getDefault: () => "bar", isValid: () => false } };
       const stored = { foo: "foo" };
       const expected = { foo: "bar" };
       expect(getComputedSettings(defs, mockObject, stored)).toEqual(expected);
@@ -64,7 +57,7 @@ describe("settings framework", () => {
       const getDefault = jest.fn().mockReturnValue("foo");
       const defs = {
         foo: { getDefault, readDependencies: ["bar"] },
-        bar: { default: "bar" },
+        bar: { getDefault: () => "bar" },
       };
       const stored = {};
       const expected = { foo: "foo", bar: "bar" };

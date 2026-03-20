@@ -61,7 +61,7 @@ function setup({ dataset = DATASET }: SetupOpts = {}) {
     <Relationship fk={FK} rowId={ROW_ID} onClick={onClick} />
   );
 
-  setupCardDataset(dataset);
+  setupCardDataset({ dataset });
 
   renderWithProviders(<Route path="/" component={TestComponent} />, {
     withRouter: true,
