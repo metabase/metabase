@@ -171,16 +171,16 @@
 ;;; ──────────────────────────────────────────────────────────────────
 
 (defn- tool->claude
-  "Convert a [name, var-or-map] tool entry to Claude API format."
-  [[tool-name tool]]
-  (let [{:keys [doc schema] :as tool} (if (map? tool) tool (meta tool))
-        [_:=> [_:cat params] _out]    schema
-        params                        (schema/filter-schema-by-features params)
-        doc                           (if (str/starts-with? (or doc "") "Inputs: ")
-                                        ;; strip that stuff we're appending in mu/defn
-                                        (second (str/split doc #"\n\n  " 2))
-                                        doc)]
-    {:name         (or tool-name (name (:name tool)) "unknown")
+  "Convert a tool definition map to Claude API format.
+  Accepts a ToolEntry map with :tool-name, :doc, :schema, :fn."
+  [{:keys [tool-name doc schema]}]
+  (let [[_:=> [_:cat params] _out] schema
+        params                     (schema/filter-schema-by-features params)
+        doc                        (if (str/starts-with? (or doc "") "Inputs: ")
+                                    ;; strip that stuff we're appending in mu/defn
+                                    (second (str/split doc #"\n\n  " 2))
+                                    doc)]
+    {:name         (or tool-name "unknown")
      :description  doc
      :input_schema (mjs/transform params {:additionalProperties false})}))
 

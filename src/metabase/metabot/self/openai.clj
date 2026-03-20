@@ -143,15 +143,15 @@
 ;;; Tool definition format
 
 (defn- tool->openai
-  "Convert a tool to OpenAI Responses API format."
-  [[tool-name tool]]
-  (let [{:keys [doc schema]} (if (map? tool) tool (meta tool))
-        [_:=> [_:cat params] _out]    schema
-        params                        (schema/filter-schema-by-features params)
-        doc                           (if (str/starts-with? (or doc "") "Inputs: ")
-                                        ;; strip that stuff we're appending in mu/defn
-                                        (second (str/split doc #"\n\n  " 2))
-                                        doc)]
+  "Convert a tool definition map to OpenAI Responses API format.
+  Accepts a ToolEntry map with :tool-name, :doc, :schema, :fn."
+  [{:keys [tool-name doc schema]}]
+  (let [[_:=> [_:cat params] _out] schema
+        params                     (schema/filter-schema-by-features params)
+        doc                        (if (str/starts-with? (or doc "") "Inputs: ")
+                                    ;; strip that stuff we're appending in mu/defn
+                                    (second (str/split doc #"\n\n  " 2))
+                                    doc)]
     {:type        "function"
      :name        tool-name
      :description doc
