@@ -1,5 +1,5 @@
 (ns metabase-enterprise.metabot.tools.api-test
-  "Tests for EE-only metabot tool endpoints (transforms, python libraries)."
+  "Tests for metabot tool endpoints that require EE features (i.e. python transforms)."
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
