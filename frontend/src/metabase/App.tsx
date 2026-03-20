@@ -20,7 +20,6 @@ import { initializeIframeResizer } from "metabase/lib/dom";
 import { connect, useSelector } from "metabase/lib/redux";
 import AppBar from "metabase/nav/containers/AppBar";
 import Navbar from "metabase/nav/containers/Navbar";
-import { zoomInRow } from "metabase/query_builder/actions";
 import { setErrorPage } from "metabase/redux/app";
 import {
   getErrorPage,
@@ -67,7 +66,6 @@ interface AppStateProps {
 
 interface AppDispatchProps {
   onError: (error: unknown) => void;
-  onZoomInRow: (opts: { objectId: number | string }) => void;
 }
 
 interface AppRouterOwnProps {
@@ -90,7 +88,6 @@ const mapStateToProps = (
 
 const mapDispatchToProps: AppDispatchProps = {
   onError: setErrorPage,
-  onZoomInRow: zoomInRow,
 };
 
 function App({
@@ -101,7 +98,6 @@ function App({
   isNavBarEnabled,
   children,
   onError,
-  onZoomInRow,
 }: AppProps) {
   const [viewportElement, setViewportElement] = useState<HTMLElement | null>();
   const applicationName = useSelector(getApplicationName);
@@ -120,7 +116,7 @@ function App({
           <KeyboardTriggeredErrorModal />
           <AppContainer className={CS.spread}>
             <AppBanner />
-            {isAppBarVisible && <AppBar onZoomInRow={onZoomInRow} />}
+            {isAppBarVisible && <AppBar />}
             <AppContentContainer isAdminApp={isAdminApp}>
               {isNavBarEnabled && <Navbar />}
               <AppContent ref={setViewportElement}>

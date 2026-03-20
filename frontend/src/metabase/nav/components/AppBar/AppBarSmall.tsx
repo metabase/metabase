@@ -31,7 +31,6 @@ export interface AppBarSmallProps {
   isAppSwitcherVisible?: boolean;
   isCollectionPathVisible?: boolean;
   isQuestionLineageVisible?: boolean;
-  onZoomInRow?: (opts: { objectId: number | string }) => void;
   onToggleNavbar: () => void;
   onCloseNavbar: () => void;
 }
@@ -46,7 +45,6 @@ const AppBarSmall = ({
   isAppSwitcherVisible,
   isCollectionPathVisible,
   isQuestionLineageVisible,
-  onZoomInRow,
   onToggleNavbar,
   onCloseNavbar,
 }: AppBarSmallProps): JSX.Element => {
@@ -86,7 +84,6 @@ const AppBarSmall = ({
                   <SearchBar
                     onSearchActive={handleSearchActive}
                     onSearchInactive={handleSearchInactive}
-                    onZoomInRow={onZoomInRow}
                   />
                 ) : (
                   <Flex justify="end">
