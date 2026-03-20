@@ -98,21 +98,46 @@
   For edit mode, provide edits as an array of {old_string, new_string, replace_all} objects.
   For replace mode, provide new_content with the complete SQL."
   [{:keys [transform_id edit_action thinking transform_name transform_description
-           source_database source_tables]}
+           database_id source_tables]}
    :- [:map {:closed true}
-       [:transform_id {:optional true} [:maybe :int]]
-       [:edit_action [:map
-                      [:mode [:enum "edit" "replace"]]
-                      [:edits {:optional true} [:maybe [:sequential [:map
-                                                                     [:old_string :string]
-                                                                     [:new_string :string]
-                                                                     [:replace_all {:optional true} [:maybe :boolean]]]]]]
-                      [:new_content {:optional true} [:maybe :string]]]]
-       [:thinking {:optional true} [:maybe :string]]
-       [:transform_name {:optional true} [:maybe :string]]
-       [:transform_description {:optional true} [:maybe :string]]
-       [:source_database {:optional true} [:maybe :int]]
-       [:source_tables {:optional true} [:maybe :map]]]]
+       [:database_id
+        {:optiontal true
+         :description (str "The database id of the database that contains the tables referenced in the query. "
+                           "You MUST never select something that looks like a sample database with sample tables. ")}
+        [:maybe :int]]
+       [:transform_id
+        {:optional true
+         :description (str "The ID of the Transform with the SQL query to edit. "
+                           "If not provided it's assumed a new Transform is to be created")}
+        [:maybe :int]]
+       [:edit_action {:description "You MUST set this param. Use new_content and edits accroding to mode you choose."}
+        [:map
+         [:mode {:description (str "Use 'edit' mode for targeted string replacements. "
+                                   "Use 'replace' mode to replace entire content.")}
+          [:enum "edit" "replace"]]
+         [:edits {:optional true
+                  :description "List of targeted string replacements to apply sequentially"}
+          [:maybe [:sequential [:map
+                                [:old_string :string]
+                                [:new_string :string]
+                                [:replace_all {:optional true} [:maybe :boolean]]]]]]
+         [:new_content {:optional true
+                        :description "The complete new content to replace the current content with"}
+          [:maybe :string]]]]
+       [:thinking
+        {:optional true
+         :description "Brief explanation of what changes you're making and why"}
+        [:maybe :string]]
+       [:transform_name
+        {:optional true
+         :description (str "A descriptive name for the transform. Required when creating a new transform. "
+                           "Do not provide when editing an existing transform with a transform_id.")}
+        [:maybe :string]]
+       [:transform_description
+        {:optional true
+         :description (str "The ID of the Transform with the SQL query to edit. "
+                           "If not provided it's assumed a new Transform is to be created")}
+        [:maybe :string]]]]
   (try
     (let [result (add-output
                   (transforms-write-tools/write-transform-sql
@@ -121,7 +146,7 @@
                     :thinking thinking
                     :transform_name transform_name
                     :transform_description transform_description
-                    :source_database source_database
+                    :source_database database_id
                     :source_tables source_tables
                     :memory-atom shared/*memory-atom*
                     :context (shared/current-context)})
