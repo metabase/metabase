@@ -25,16 +25,15 @@ export const useColumnPinningByCount = ({
     gridRef.current?.getBoundingClientRect().width ?? window.innerWidth;
 
   const columnPinning = useMemo<ColumnPinningState>(() => {
+    const candidateColumns = columnOrder.slice(0, pinnedColumnsCount);
     if (isLimitBypassed) {
-      return { left: columnOrder.slice(0, pinnedColumnsCount) };
+      return { left: candidateColumns };
     }
 
     const maxWidth = containerWidth * 0.9;
 
     const effectiveCount = countWithinLimit(
-      columnOrder
-        .slice(0, pinnedColumnsCount)
-        .map((id) => columnSizingMap[id] ?? 0),
+      candidateColumns.map((id) => columnSizingMap[id] ?? 0),
       maxWidth,
     );
 
