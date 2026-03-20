@@ -395,14 +395,16 @@ function removeDimensionFromMultiSeriesChart(
   // For multi-series charts, we need a dimension from each data source
   // to plot the data correctly. When a dimension is removed, we need to remove
   // all dimensions of the same type to avoid invalid states.
-  if (isDate(column)) {
-    state.settings["graph.dimensions"] = originalDimensions.filter(
-      (name) => !isDate(dimensionColumnMap[name]),
-    );
-  } else if (isString(column)) {
-    state.settings["graph.dimensions"] = originalDimensions.filter(
-      (name) => !isString(dimensionColumnMap[name]),
-    );
+  if (column && isDate(column)) {
+    state.settings["graph.dimensions"] = originalDimensions.filter((name) => {
+      const col = dimensionColumnMap[name];
+      return !col || !isDate(col);
+    });
+  } else if (column && isString(column)) {
+    state.settings["graph.dimensions"] = originalDimensions.filter((name) => {
+      const col = dimensionColumnMap[name];
+      return !col || !isString(col);
+    });
   }
 
   const removedColumns = originalDimensions.filter(

@@ -339,7 +339,7 @@ export const getAvailableXAxisScales = (
     options.push({ name: t`Linear`, value: "linear" });
 
     // For relative date units such as day of week we do not want to show log, pow, histogram scales
-    if (!isDate(dimensionColumn)) {
+    if (!dimensionColumn || !isDate(dimensionColumn)) {
       if (!settings["graph.x_axis._is_histogram"]) {
         options.push({ name: t`Power`, value: "pow" });
         options.push({ name: t`Log`, value: "log" });

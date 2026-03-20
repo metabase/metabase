@@ -135,7 +135,7 @@ function gerRangeAndAverages(node: FieldTreeNode) {
 
   const { avg, min, max, earliest, latest } = node.stats;
 
-  if (isNumeric(node.original)) {
+  if (node.original && isNumeric(node.original)) {
     if (min === undefined || max === undefined) {
       return "";
     }
@@ -147,7 +147,7 @@ function gerRangeAndAverages(node: FieldTreeNode) {
     return range;
   }
 
-  if (isDate(node.original)) {
+  if (node.original && isDate(node.original)) {
     if (earliest === undefined || latest === undefined) {
       return null;
     }
@@ -156,7 +156,7 @@ function gerRangeAndAverages(node: FieldTreeNode) {
     return `${getFormattedTime(earliest, unit)} – ${getFormattedTime(latest, unit)}`;
   }
 
-  if (isString(node.original)) {
+  if (node.original && isString(node.original)) {
     if (avg === undefined) {
       return "";
     }

@@ -94,12 +94,16 @@ export function getOperatorsForColumns(
     isFieldDisabled,
   };
 
-  if (columns.length === 0) {
+  const definedColumns = columns.filter(
+    (col): col is DatasetColumn => col != null,
+  );
+
+  if (definedColumns.length === 0) {
     return defaultResult;
   }
 
   // all booleans
-  if (columns.every(isBoolean)) {
+  if (definedColumns.every(isBoolean)) {
     return {
       ...defaultResult,
       isBooleanRule: true,
@@ -109,7 +113,7 @@ export function getOperatorsForColumns(
   }
 
   // primary or foreign keys
-  if (columns.every(isPK) || columns.every(isFK)) {
+  if (definedColumns.every(isPK) || definedColumns.every(isFK)) {
     return {
       ...defaultResult,
       isKeyRule: true,
@@ -120,7 +124,7 @@ export function getOperatorsForColumns(
   }
 
   // all strings
-  if (columns.every((column) => isString(column) || isBoolean(column))) {
+  if (definedColumns.every((column) => isString(column) || isBoolean(column))) {
     return {
       ...defaultResult,
       isStringRule: true,
@@ -130,7 +134,7 @@ export function getOperatorsForColumns(
   }
 
   // all numbers
-  if (columns.every(isNumeric)) {
+  if (definedColumns.every(isNumeric)) {
     return {
       ...defaultResult,
       isNumericRule: true,

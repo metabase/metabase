@@ -137,8 +137,11 @@ export function getTableHeaderClickedObject(
 export function isColumnRightAligned(
   column: DatasetColumn | undefined,
 ): boolean | undefined {
+  if (!column) {
+    return undefined;
+  }
   // handle remapped columns
-  if (column && column.remapped_to_column) {
+  if (column.remapped_to_column) {
     column = column.remapped_to_column;
   }
   return isNumber(column) || isCoordinate(column);
