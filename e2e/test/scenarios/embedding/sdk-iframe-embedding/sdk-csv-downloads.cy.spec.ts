@@ -92,7 +92,7 @@ describe("scenarios > embedding > sdk iframe embedding > csv downloads", () => {
 
     H.getSimpleEmbedIframeContent().within(() => {
       // Click the download button on the toolbar
-      cy.get("[aria-label='download icon']").should("be.visible").click();
+      cy.findByLabelText("download icon").should("be.visible").click();
 
       // Select CSV format
       cy.findByText(".csv").click();
