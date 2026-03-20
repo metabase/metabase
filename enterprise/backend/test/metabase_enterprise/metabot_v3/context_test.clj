@@ -185,6 +185,14 @@
                        :capabilities
                        (filter #(str/starts-with? % "backend:"))))))))
 
+(deftest feature-capabilities-test
+  (testing "Feature capabilities are added to context"
+    (let [capabilities (:capabilities (context/create-context {}))]
+      (testing "snippets capability is always present"
+        (is (contains? capabilities "feature:snippets")))
+      (testing "transforms capability is present when transforms are enabled"
+        (is (contains? capabilities "feature:transforms"))))))
+
 (deftest annotate-transform-source-types-native-transform-test
   (testing "Annotates draft native transform with source_type :native"
     (let [input {:user_is_viewing [{:type "transform"

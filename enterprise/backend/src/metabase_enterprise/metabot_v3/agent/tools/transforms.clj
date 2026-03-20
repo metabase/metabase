@@ -87,6 +87,7 @@
               format-python-library-output))
 
 (mu/defn ^{:tool-name "write_transform_sql"
+           :prompt "write_transform_sql.md"
            :capabilities #{:feature-transforms :permission-write-transforms}}
   write-transform-sql-tool
   "Write new SQL queries or edit existing queries for transforms.
@@ -97,17 +98,16 @@
 
   For edit mode, provide edits as an array of {old_string, new_string, replace_all} objects.
   For replace mode, provide new_content with the complete SQL."
-  [{:keys [transform_id edit_action thinking transform_name transform_description
+  [{:keys [transform_id mode edits new_content thinking transform_name transform_description
            source_database source_tables]}
    :- [:map {:closed true}
-       [:transform_id {:optional true} [:maybe :int]]
-       [:edit_action [:map
-                      [:mode [:enum "edit" "replace"]]
-                      [:edits {:optional true} [:maybe [:sequential [:map
-                                                                     [:old_string :string]
-                                                                     [:new_string :string]
-                                                                     [:replace_all {:optional true} [:maybe :boolean]]]]]]
-                      [:new_content {:optional true} [:maybe :string]]]]
+       [:transform_id {:optional true} [:maybe [:or :int :string]]]
+       [:mode [:enum "edit" "replace"]]
+       [:edits {:optional true} [:maybe [:sequential [:map
+                                                      [:old_string :string]
+                                                      [:new_string :string]
+                                                      [:replace_all {:optional true} [:maybe :boolean]]]]]]
+       [:new_content {:optional true} [:maybe :string]]
        [:thinking {:optional true} [:maybe :string]]
        [:transform_name {:optional true} [:maybe :string]]
        [:transform_description {:optional true} [:maybe :string]]
@@ -117,7 +117,9 @@
     (let [result (add-output
                   (transforms-write-tools/write-transform-sql
                    {:transform_id transform_id
-                    :edit_action edit_action
+                    :mode mode
+                    :edits edits
+                    :new_content new_content
                     :thinking thinking
                     :transform_name transform_name
                     :transform_description transform_description
@@ -136,6 +138,7 @@
         {:output (str "Failed to write SQL transform: " (or (ex-message e) "Unknown error"))}))))
 
 (mu/defn ^{:tool-name "write_transform_python"
+           :prompt "write_transform_python.md"
            :capabilities #{:feature-transforms :feature-transforms-python :permission-write-transforms}}
   write-transform-python-tool
   "Write new Python code or edit existing code for transforms.
@@ -150,17 +153,16 @@
   Use `get_transform_python_library_details` before writing any Python code to inspect the shared library.
   Use the shared library in your code by adding `import common` at the top of the file.
   Keep `import common` at the top of the file even if it is currently unused."
-  [{:keys [transform_id edit_action thinking transform_name transform_description
+  [{:keys [transform_id mode edits new_content thinking transform_name transform_description
            source_database source_tables]}
    :- [:map {:closed true}
-       [:transform_id {:optional true} [:maybe :int]]
-       [:edit_action [:map
-                      [:mode [:enum "edit" "replace"]]
-                      [:edits {:optional true} [:maybe [:sequential [:map
-                                                                     [:old_string :string]
-                                                                     [:new_string :string]
-                                                                     [:replace_all {:optional true} [:maybe :boolean]]]]]]
-                      [:new_content {:optional true} [:maybe :string]]]]
+       [:transform_id {:optional true} [:maybe [:or :int :string]]]
+       [:mode [:enum "edit" "replace"]]
+       [:edits {:optional true} [:maybe [:sequential [:map
+                                                      [:old_string :string]
+                                                      [:new_string :string]
+                                                      [:replace_all {:optional true} [:maybe :boolean]]]]]]
+       [:new_content {:optional true} [:maybe :string]]
        [:thinking {:optional true} [:maybe :string]]
        [:transform_name {:optional true} [:maybe :string]]
        [:transform_description {:optional true} [:maybe :string]]
@@ -170,7 +172,9 @@
     (add-output
      (transforms-write-tools/write-transform-python
       {:transform_id transform_id
-       :edit_action edit_action
+       :mode mode
+       :edits edits
+       :new_content new_content
        :thinking thinking
        :transform_name transform_name
        :transform_description transform_description

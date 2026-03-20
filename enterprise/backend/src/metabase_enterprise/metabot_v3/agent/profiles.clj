@@ -204,6 +204,7 @@
 (defn get-tools-for-profile
   "Get tool registry filtered by profile configuration and user capabilities."
   [profile-id capabilities]
+  (def tsp-caps capabilities)
   (some-> (get-profile profile-id)
           :tools
           (filter-by-capabilities capabilities)
