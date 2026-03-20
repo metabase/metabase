@@ -20,8 +20,16 @@ export const openImageBlobOnStorybook = ({
   // otherwise Loki may capture the screenshot before the image renders.
   // In the storybook you'll need to `await canvas.findByTestId("image-downloaded");`
   // and then call `asyncCallback()` to continue the story.
-  imgElement.addEventListener("load", () => {
+  const onImageReady = () => {
     root.appendChild(imageDownloaded);
     window.document.body.style.height = "initial";
-  });
+  };
+
+  // The image may already be loaded if the blob URL resolved synchronously,
+  // so check `complete` to avoid a missed `load` event.
+  if (imgElement.complete) {
+    onImageReady();
+  } else {
+    imgElement.addEventListener("load", onImageReady);
+  }
 };
