@@ -13,10 +13,7 @@
 
 ;;; ---------------------------------------- In-memory dev bundle URLs -----------------------------------------
 
-;; dev_bundle_url is transient (only useful while a dev server is running),
-;; so we store it in memory rather than the database. Cleared on restart.
-(defonce ^:private dev-bundle-urls
-  (atom {})) ;; {plugin-id -> url-string}
+(def ^:private dev-bundle-urls cache/dev-bundle-urls)
 
 ;;; ------------------------------------------------ Schemas ------------------------------------------------
 
@@ -151,17 +148,6 @@
         (cache/fetch-and-cache! updated-plugin {:force? true}))))
   (plugin->response (t2/select-one :model/CustomVizPlugin :id id)))
 
-(defn- fetch-dev-bundle
-  "Fetch a JS bundle from a dev URL. Returns {:content str :hash str} or nil."
-  [^String url]
-  (try
-    (let [content (slurp (java.net.URI. url))]
-      {:content content
-       :hash    (str (hash content))})
-    (catch Exception e
-      (throw (ex-info (str "Failed to fetch dev bundle from " url ": " (.getMessage e))
-                      {:status-code 502})))))
-
 (api.macros/defendpoint :get "/:id/bundle"
   "Serve the cached JS bundle for a plugin.
    Returns application/javascript with ETag and Cache-Control headers.
@@ -173,12 +159,9 @@
    respond
    raise]
   (try
-    (let [plugin (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))
+    (let [plugin  (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))
           dev-url (get @dev-bundle-urls id)
-          entry  (if dev-url
-                   (fetch-dev-bundle dev-url)
-                   (or (cache/get-bundle id)
-                       (cache/fetch-and-cache! plugin)))]
+          entry   (cache/resolve-bundle plugin)]
       (if entry
         (respond {:status  200
                   :headers (cond-> {"Content-Type" "application/javascript"

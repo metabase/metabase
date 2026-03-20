@@ -391,15 +391,16 @@
        (m/distinct-by #(get-in % [:card :id]))))
 
 (defn- custom-viz-bundles
-  "If the card has a custom:* display type, resolve the plugin's bundle for static rendering."
+  "If the card has a custom:* display type, resolve the plugin's bundle for static rendering.
+   Respects dev bundle URL if set, so static viz previews work during development."
   [card]
   (let [display-type (some-> card :display name)]
     (when (and display-type (str/starts-with? display-type "custom:"))
       (let [identifier (subs display-type (count "custom:"))
             plugin     (t2/select-one :model/CustomVizPlugin :identifier identifier :enabled true)]
-        (when-let [content (some-> plugin :id
-                                       (metabase.custom-viz-plugin.cache/get-bundle)
-                                       :content)]
+        (when-let [content (some-> plugin
+                                   metabase.custom-viz-plugin.cache/resolve-bundle
+                                   :content)]
           [{:identifier identifier :source content}])))))
 
 ;; the `:javascript_visualization` render method
