@@ -4,6 +4,7 @@
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [metabase.agent-api.api :as agent-api]
    [metabase.api.common :as api]
    [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
@@ -36,14 +37,48 @@
     (generate-manifest)
     @manifest-delay))
 
+(defn- collect-refs
+  "Walk a JSON Schema and return a set of def names referenced via $ref."
+  [schema]
+  (let [refs (volatile! #{})]
+    (walk/postwalk
+     (fn [x]
+       (when-let [ref (and (map? x) (:$ref x))]
+         (when-let [[_ def-name] (re-matches #"#/\$defs/(.+)" ref)]
+           (vswap! refs conj def-name)))
+       x)
+     schema)
+    @refs))
+
+(defn- referenced-defs
+  "Return the subset of `all-defs` transitively referenced from `schema`."
+  [schema all-defs]
+  (loop [to-visit (collect-refs schema)
+         visited  #{}
+         result   {}]
+    (if-let [def-name (first to-visit)]
+      (if (visited def-name)
+        (recur (disj to-visit def-name) visited result)
+        (let [def-schema (get all-defs def-name)]
+          (recur (into (disj to-visit def-name) (when def-schema (collect-refs def-schema)))
+                 (conj visited def-name)
+                 (cond-> result def-schema (assoc def-name def-schema)))))
+      result)))
+
 (defn list-tools
-  "Return the tool definitions suitable for MCP `tools/list` responses."
+  "Return the tool definitions suitable for MCP `tools/list` responses.
+   Inlines referenced `$defs` into each tool's `inputSchema` so that `$ref` pointers resolve."
   []
-  (mapv (fn [tool]
-          {:name        (:name tool)
-           :description (:description tool)
-           :inputSchema (:inputSchema tool)})
-        (:tools (manifest))))
+  (let [{:keys [tools $defs]} (manifest)]
+    (mapv (fn [tool]
+            (let [input (:inputSchema tool)
+                  used  (when (and (seq $defs) input)
+                          (referenced-defs input $defs))]
+              (cond-> {:name        (:name tool)
+                       :description (:description tool)
+                       :inputSchema input}
+                (seq used) (update :inputSchema assoc :$defs used))))
+          tools)))
 
 (defn- build-tool-index []
   (into {} (map (juxt :name identity)) (:tools (manifest))))
