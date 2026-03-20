@@ -1,6 +1,5 @@
 (ns metabase-enterprise.analytics.stats
   (:require
-   [java-time.api :as t]
    [metabase-enterprise.advanced-config.settings :as advanced-config.settings]
    [metabase-enterprise.scim.core :as scim]
    [metabase-enterprise.semantic-search.core :as semantic-search]
@@ -36,12 +35,3 @@
    {:name      :semantic-search
     :available (premium-features/enable-semantic-search?)
     :enabled   (semantic-search/supported?)}])
-
-(defenterprise ee-transform-metrics
-  "Returns transform usage metrics for the Snowplow stats ping."
-  :feature :none
-  []
-  (let [one-day-ago (t/minus (t/offset-date-time) (t/days 1))]
-    {:transforms               (t2/count :model/Transform)
-     :transform_runs_last_24h  (t2/count :model/TransformRun
-                                         :start_time [:>= one-day-ago])}))

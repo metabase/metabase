@@ -4,7 +4,6 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
-import * as DataGrid from "metabase/lib/data_grid";
 import { displayNameForColumn } from "metabase/lib/formatting";
 import type { OptionsType } from "metabase/lib/formatting/types";
 import { getSubpathSafeUrl } from "metabase/lib/urls";
@@ -14,6 +13,7 @@ import {
   ChartSettingsTableFormatting,
   isFormattable,
 } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
+import * as DataGrid from "metabase/visualizations/lib/data_grid";
 import {
   isPivoted as _isPivoted,
   columnSettings,
@@ -103,7 +103,7 @@ export class Table extends Component<TableProps, TableState> {
       inline: true,
       widget: "toggle",
       dashboard: true,
-      default: false,
+      getDefault: () => false,
     },
     "table.row_index": {
       get section() {
@@ -114,7 +114,7 @@ export class Table extends Component<TableProps, TableState> {
       },
       inline: true,
       widget: "toggle",
-      default: false,
+      getDefault: () => false,
     },
     "table.freeze_columns": {
       get section() {
@@ -266,7 +266,7 @@ export class Table extends Component<TableProps, TableState> {
         return t`Conditional Formatting`;
       },
       widget: ChartSettingsTableFormatting,
-      default: [],
+      getDefault: () => [],
       getProps: (series: Series, settings: VisualizationSettings) => ({
         cols: series[0].data.cols.filter(isFormattable),
         isPivoted: settings["table.pivot"],
@@ -319,13 +319,13 @@ export class Table extends Component<TableProps, TableState> {
             ? "right"
             : "left";
         },
-        props: {
+        getProps: () => ({
           options: [
             { name: t`Left`, value: "left" },
             { name: t`Right`, value: "right" },
             { name: t`Middle`, value: "middle" },
           ],
-        },
+        }),
       },
     };
 
@@ -343,7 +343,7 @@ export class Table extends Component<TableProps, TableState> {
 
       settings["text_wrapping"] = {
         title: t`Wrap text`,
-        default: false,
+        getDefault: () => false,
         widget: "toggle",
         inline: true,
         isValid: (_column, columnSettings) => {
@@ -379,10 +379,10 @@ export class Table extends Component<TableProps, TableState> {
       settings["view_as"] = {
         title: t`Display as`,
         widget: options.length === 2 ? "radio" : "select",
-        default: defaultValue,
-        props: {
+        getDefault: () => defaultValue,
+        getProps: () => ({
           options,
-        },
+        }),
       };
     }
 
@@ -392,7 +392,7 @@ export class Table extends Component<TableProps, TableState> {
       title: t`Link text`,
       widget: ChartSettingLinkUrlInput,
       hint: linkFieldsHint,
-      default: null,
+      getDefault: () => null,
       getHidden: (_, settings) =>
         settings["view_as"] !== "link" && settings["view_as"] !== "email_link",
       readDependencies: ["view_as"],
@@ -419,7 +419,7 @@ export class Table extends Component<TableProps, TableState> {
       title: t`Link URL`,
       widget: ChartSettingLinkUrlInput,
       hint: linkFieldsHint,
-      default: null,
+      getDefault: () => null,
       getHidden: (_, settings) => settings["view_as"] !== "link",
       readDependencies: ["view_as"],
       getProps: (

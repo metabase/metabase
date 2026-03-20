@@ -1,6 +1,5 @@
 import type { StoryFn } from "@storybook/react";
 
-import { color } from "metabase/lib/colors";
 import GaugeContainer, {
   type GaugeContainerProps,
 } from "metabase/static-viz/components/Gauge/GaugeContainer";
@@ -9,6 +8,7 @@ import {
   TRUNCATED_LABELS,
   WITH_FORMATTING,
 } from "metabase/static-viz/components/Gauge/stories-data";
+import { color } from "metabase/ui/colors";
 
 export default {
   title: "Viz/Static Viz/Gauge",

@@ -1,12 +1,15 @@
 import { useCallback, useMemo } from "react";
 
-import { Api, useListPermissionsGroupsQuery } from "metabase/api";
+import { Api, databaseApi, useListPermissionsGroupsQuery } from "metabase/api";
+import { tableApi } from "metabase/api/table";
 import { listTag } from "metabase/api/tags";
 import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { PermissionsApi } from "metabase/services";
+import type { DatabaseId, TableId } from "metabase-types/api";
 
 import {
+  type AllSchemaTables,
   type UpdateTenantDataAccessOptions,
   buildPermissionsGraph,
   buildSandboxPolicies,
@@ -62,12 +65,50 @@ export function useUpdateAllTenantUsersGroupPermissions(): UseUpdateAllTenantUse
         return;
       }
 
+      // Fetch all tables for each database with sandboxed tables so we can
+      // block non-selected tables and schemas
+      const uniqueDbIds = [
+        ...new Set(sandboxedTables.map((t) => t.databaseId)),
+      ];
+      const allSchemaTables: AllSchemaTables = {};
+      await Promise.all(
+        uniqueDbIds.map(async (dbId) => {
+          const { data: tables } = await dispatch(
+            tableApi.endpoints.listTables.initiate({ dbId }),
+          );
+          if (tables) {
+            const bySchema: Record<string, TableId[]> = {};
+            for (const table of tables) {
+              const schema = table.schema ?? "";
+              if (!bySchema[schema]) {
+                bySchema[schema] = [];
+              }
+              bySchema[schema].push(table.id);
+            }
+            allSchemaTables[dbId] = bySchema;
+          }
+        }),
+      );
+
+      // Fetch all database IDs so we can block databases without sandboxed tables
+      const allDatabaseIds = await dispatch(
+        databaseApi.endpoints.listDatabases.initiate(),
+      )
+        .unwrap()
+        .then((res) => res.data.map((db) => db.id))
+        .catch(() => [] as DatabaseId[]);
+
       // get the revision number of the graph
       const graph = await PermissionsApi.graphForGroup({
         groupId: allTenantUsersGroupId,
       });
 
-      const groups = buildPermissionsGraph(allTenantUsersGroupId, options);
+      const groups = buildPermissionsGraph(
+        allTenantUsersGroupId,
+        options,
+        allSchemaTables,
+        allDatabaseIds,
+      );
       const sandboxes = buildSandboxPolicies(
         allTenantUsersGroupId,
         sandboxedTables,

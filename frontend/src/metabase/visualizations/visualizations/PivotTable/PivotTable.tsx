@@ -20,15 +20,15 @@ import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { sumArray } from "metabase/lib/arrays";
-import {
-  COLUMN_SHOW_TOTALS,
-  isPivotGroupColumn,
-  multiLevelPivot,
-} from "metabase/lib/data_grid";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { connect } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { useMantineTheme } from "metabase/ui";
+import {
+  COLUMN_SHOW_TOTALS,
+  isPivotGroupColumn,
+  multiLevelPivot,
+} from "metabase/visualizations/lib/data_grid";
 import {
   getDefaultSize,
   getMinSize,

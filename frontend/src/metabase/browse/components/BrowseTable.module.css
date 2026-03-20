@@ -1,0 +1,91 @@
+.tableRow {
+  cursor: pointer;
+
+  &:focus {
+    outline: 2px solid var(--mb-color-focus);
+  }
+}
+
+.tableRowSkeleton {
+  &:focus {
+    outline: 2px solid var(--mb-color-focus);
+  }
+
+  &:hover {
+    background-color: unset !important;
+  }
+
+  td {
+    cursor: unset !important;
+  }
+}
+
+.cell {
+  &:is(td) {
+    padding: 0.25em 0.5rem 0.25em 0.5rem;
+  }
+
+  &:focus {
+    outline: 2px solid var(--mb-color-focus);
+
+    button,
+    a {
+      outline: none;
+    }
+  }
+}
+
+.collectionCell {
+  &:is(td) {
+    padding: 0;
+  }
+
+  &:focus {
+    outline: 2px solid var(--mb-color-focus);
+
+    button,
+    a {
+      outline: none;
+    }
+  }
+}
+
+.hideAtXs {
+  @container ItemsTableContainer (max-width: 23em) {
+    display: none;
+  }
+}
+
+.hideAtSm {
+  @container ItemsTableContainer (max-width: 40em) {
+    display: none;
+  }
+}
+
+.hideAtMd {
+  @container ItemsTableContainer (max-width: 60em) {
+    display: none;
+  }
+}
+
+.nameColumn {
+  width: 220px;
+
+  @container ItemsTableContainer (max-width: 60em) {
+    width: 220px;
+  }
+
+  @container ItemsTableContainer (max-width: 40em) {
+    width: 160px;
+  }
+}
+
+.collectionLink {
+  display: block;
+  padding: 1em 0.5em;
+  box-sizing: border-box;
+
+  &:hover {
+    color: var(--mb-color-icon-brand) !important;
+  }
+}
