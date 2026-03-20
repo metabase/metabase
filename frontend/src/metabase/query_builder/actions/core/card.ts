@@ -14,7 +14,7 @@ export async function loadCard(
   { dispatch, getState }: { dispatch: Dispatch; getState: GetState },
 ) {
   try {
-    await dispatch(
+    const actionResult = await dispatch(
       Questions.actions.fetch(
         { id: token ?? cardId },
         {
@@ -28,8 +28,9 @@ export async function loadCard(
       ),
     );
 
+    const card = Questions.HACK_getObjectFromAction(actionResult);
     const question = Questions.selectors.getObject(getState(), {
-      entityId: cardId,
+      entityId: card.id ?? cardId,
     });
 
     return question?.card();
