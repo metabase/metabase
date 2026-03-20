@@ -446,20 +446,21 @@
     (when (seq candidate-ids)
       (let [referenced-ids
             (into #{}
-                  (mapcat (fn [[table-name column-name]]
-                            (map (keyword column-name)
-                                 (t2/query {:select [(keyword column-name)]
-                                            :from   [(keyword table-name)]
-                                            :where  [:and
-                                                     [:not= (keyword column-name) nil]
-                                                     [:in (keyword column-name) candidate-ids]]}))))
-                  [["transform" "target_table_id"]
-                   ["workspace_input" "table_id"]
-                   ["workspace_output" "global_table_id"]
-                   ["workspace_output" "isolated_table_id"]
-                   ["workspace_output_external" "global_table_id"]
-                   ["workspace_output_external" "isolated_table_id"]
-                   ["workspace_input_external" "table_id"]])
+                  (map :id)
+                  (t2/query {:union
+                             (for [[table-name column-name]
+                                   [["transform" "target_table_id"]
+                                    ["workspace_input" "table_id"]
+                                    ["workspace_output" "global_table_id"]
+                                    ["workspace_output" "isolated_table_id"]
+                                    ["workspace_output_external" "global_table_id"]
+                                    ["workspace_output_external" "isolated_table_id"]
+                                    ["workspace_input_external" "table_id"]]]
+                               {:select [[(keyword column-name) :id]]
+                                :from   [(keyword table-name)]
+                                :where  [:and
+                                         [:not= (keyword column-name) nil]
+                                         [:in (keyword column-name) candidate-ids]]})}))
             dead-ids (into [] (remove referenced-ids) candidate-ids)]
         (when (seq dead-ids)
           (log/infof "Deleting %d orphaned transform target table(s)" (count dead-ids))
