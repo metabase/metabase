@@ -25,7 +25,7 @@
   "DB columns to select/project for OAuthClient rows."
   [:client_id :client_type :redirect_uris :grant_types :response_types :scopes :registration_type
    :client_secret_hash :token_endpoint_auth_method :client_name :client_uri :logo_uri
-   :contacts :registration_access_token_hash])
+   :contacts :registration_access_token_hash :application_type])
 
 (defn- select-and-kebab-keys
   "Select `ks` from `row`, convert keys to kebab-case, and remove nil values."

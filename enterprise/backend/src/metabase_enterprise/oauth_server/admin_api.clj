@@ -20,6 +20,7 @@
    [:response_types  [:sequential ms/NonBlankString]]
    [:scopes          [:sequential :string]]
    [:client_name     {:optional true} [:maybe :string]]
+   [:application_type {:optional true} [:maybe ms/NonBlankString]]
    [:registration_type ms/NonBlankString]
    [:created_at      {:optional true} :any]
    [:updated_at      {:optional true} :any]])
@@ -34,7 +35,7 @@
 (def ^:private client-public-keys
   "Keys safe to return in API responses (no secret hashes)."
   [:id :client_id :redirect_uris :grant_types :response_types :scopes
-   :client_name :registration_type :created_at :updated_at])
+   :client_name :application_type :registration_type :created_at :updated_at])
 
 (defn- sanitize-client
   "Remove secret-related fields from a client row for API responses."
@@ -45,13 +46,14 @@
   "Register a new static OAuth client. Returns the client with the plaintext secret (shown only once)."
   [_route-params
    _query-params
-   {:keys [redirect_uris client_name grant_types response_types scopes]}
+   {:keys [redirect_uris client_name grant_types response_types scopes application_type]}
    :- [:map
        [:redirect_uris [:sequential ms/NonBlankString]]
        [:client_name {:optional true} [:maybe ms/NonBlankString]]
        [:grant_types {:optional true} [:maybe [:sequential ms/NonBlankString]]]
        [:response_types {:optional true} [:maybe [:sequential ms/NonBlankString]]]
-       [:scopes {:optional true} [:maybe [:sequential ms/NonBlankString]]]]]
+       [:scopes {:optional true} [:maybe [:sequential ms/NonBlankString]]]
+       [:application_type {:optional true} [:maybe ms/NonBlankString]]]]
   (let [client-id     (str (java.util.UUID/randomUUID))
         client-secret (oidc-util/generate-client-secret)
         secret-hash   (oidc-util/hash-client-secret client-secret)
@@ -66,6 +68,7 @@
                        :response_types     response-types
                        :scopes             scopes
                        :client_name        client_name
+                       :application_type   (or application_type "web")
                        :registration_type  "static"}
         [inserted]    (t2/insert-returning-instances! :model/OAuthClient row)]
     (-> (sanitize-client inserted)
@@ -97,8 +100,9 @@
             [:redirect_uris {:optional true} [:maybe [:sequential ms/NonBlankString]]]
             [:grant_types {:optional true} [:maybe [:sequential ms/NonBlankString]]]
             [:response_types {:optional true} [:maybe [:sequential ms/NonBlankString]]]
-            [:scopes {:optional true} [:maybe [:sequential ms/NonBlankString]]]]]
-  (let [updates (into {} (filter (comp some? val)) (select-keys body [:client_name :redirect_uris :grant_types :response_types :scopes]))]
+            [:scopes {:optional true} [:maybe [:sequential ms/NonBlankString]]]
+            [:application_type {:optional true} [:maybe ms/NonBlankString]]]]
+  (let [updates (into {} (filter (comp some? val)) (select-keys body [:client_name :redirect_uris :grant_types :response_types :scopes :application_type]))]
     (api/check-404 (t2/select-one :model/OAuthClient :id id))
     (when (seq updates)
       (t2/update! :model/OAuthClient id updates))

@@ -93,12 +93,13 @@
                                        :expected-status 400)]
         (is (=? {:error "invalid_client_metadata"} response))))))
 
-(deftest dynamic-register-http-localhost-allowed-test
-  (testing "POST /oauth/register with HTTP localhost redirect URI is allowed"
+(deftest dynamic-register-native-http-localhost-allowed-test
+  (testing "POST /oauth/register with application_type=native allows HTTP localhost redirect URI"
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"
                                        oauth-server-dynamic-registration-enabled true]
       (t2/with-transaction [_conn nil {:rollback-only true}]
-        (let [response (register-client! {"redirect_uris" ["http://localhost:8080/callback"]})]
+        (let [response (register-client! {"redirect_uris"    ["http://localhost:8080/callback"]
+                                          "application_type" "native"})]
           (is (=? {:client_id     string?
                    :redirect_uris ["http://localhost:8080/callback"]}
                   response)))))))
@@ -471,9 +472,8 @@
                   (token-request!
                    {:grant_type    "authorization_code"
                     :code          code
-                    :redirect_uri  "https://example.com/callback"
-                    :client_id     client-id
-                    :client_secret client-secret}))
+                    :redirect_uri  "https://example.com/callback"}
+                   :authorization (basic-auth-header client-id client-secret)))
               "Should return full token response with id_token for openid scope"))))))
 
 (deftest token-auth-code-invalid-code-test
@@ -486,10 +486,9 @@
               response      (token-request!
                              {:grant_type    "authorization_code"
                               :code          "bogus-code"
-                              :redirect_uri  "https://example.com/callback"
-                              :client_id     client-id
-                              :client_secret client-secret}
-                             :expected-status 400)]
+                              :redirect_uri  "https://example.com/callback"}
+                             :expected-status 400
+                             :authorization (basic-auth-header client-id client-secret))]
           (is (=? {:error string?} response)))))))
 
 (deftest token-auth-code-wrong-client-test
@@ -510,10 +509,9 @@
               response      (token-request!
                              {:grant_type    "authorization_code"
                               :code          code
-                              :redirect_uri  "https://example.com/callback"
-                              :client_id     (:client_id client-b)
-                              :client_secret (:client_secret client-b)}
-                             :expected-status 400)]
+                              :redirect_uri  "https://example.com/callback"}
+                             :expected-status 400
+                             :authorization (basic-auth-header (:client_id client-b) (:client_secret client-b)))]
           (is (=? {:error string?} response)))))))
 
 (deftest token-refresh-grant-test
@@ -527,14 +525,12 @@
               token-response (token-request!
                               {:grant_type    "authorization_code"
                                :code          code
-                               :redirect_uri  "https://example.com/callback"
-                               :client_id     client-id
-                               :client_secret client-secret})
+                               :redirect_uri  "https://example.com/callback"}
+                              :authorization (basic-auth-header client-id client-secret))
               refresh-response (token-request!
                                 {:grant_type    "refresh_token"
-                                 :refresh_token (:refresh_token token-response)
-                                 :client_id     client-id
-                                 :client_secret client-secret})]
+                                 :refresh_token (:refresh_token token-response)}
+                                :authorization (basic-auth-header client-id client-secret))]
           (is (=? {:access_token string?
                    :token_type   "Bearer"
                    :expires_in   pos-int?}
@@ -556,9 +552,8 @@
               client-id     (:client_id test-client)
               client-secret (:client_secret test-client)
               response      (token-request!
-                             {:grant_type    "client_credentials"
-                              :client_id     client-id
-                              :client_secret client-secret})]
+                             {:grant_type    "client_credentials"}
+                             :authorization (basic-auth-header client-id client-secret))]
           (is (=? {:access_token string?
                    :token_type   "Bearer"
                    :expires_in   pos-int?}
@@ -573,10 +568,9 @@
               response    (token-request!
                            {:grant_type    "authorization_code"
                             :code          "some-code"
-                            :redirect_uri  "https://example.com/callback"
-                            :client_id     client-id
-                            :client_secret "wrong-secret"}
-                           :expected-status 400)]
+                            :redirect_uri  "https://example.com/callback"}
+                           :expected-status 400
+                           :authorization (basic-auth-header client-id "wrong-secret"))]
           (is (=? {:error string?} response)))))))
 
 (deftest token-missing-grant-type-test
@@ -585,9 +579,9 @@
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (let [test-client (create-test-client!)
               response    (token-request!
-                           {:client_id     (:client_id test-client)
-                            :client_secret (:client_secret test-client)}
-                           :expected-status 400)]
+                           {}
+                           :expected-status 400
+                           :authorization (basic-auth-header (:client_id test-client) (:client_secret test-client)))]
           (is (=? {:error string?} response)))))))
 
 (deftest token-basic-auth-test
@@ -659,9 +653,8 @@
                    {:grant_type    "authorization_code"
                     :code          code
                     :redirect_uri  "https://example.com/callback"
-                    :client_id     client-id
-                    :client_secret client-secret
-                    :code_verifier code-verifier}))))))))
+                    :code_verifier code-verifier}
+                   :authorization (basic-auth-header client-id client-secret)))))))))
 
 (deftest token-auth-code-pkce-missing-verifier-test
   (testing "Authorization code grant with PKCE but missing code_verifier returns error"
@@ -679,10 +672,9 @@
               response       (token-request!
                               {:grant_type    "authorization_code"
                                :code          code
-                               :redirect_uri  "https://example.com/callback"
-                               :client_id     client-id
-                               :client_secret client-secret}
-                              :expected-status 400)]
+                               :redirect_uri  "https://example.com/callback"}
+                              :expected-status 400
+                              :authorization (basic-auth-header client-id client-secret))]
           (is (=? {:error string?} response)))))))
 
 ;;; ----------------------------------------- Expired / Revoked Token Tests ------------------------------------
@@ -703,10 +695,9 @@
                   (token-request!
                    {:grant_type    "authorization_code"
                     :code          code
-                    :redirect_uri  "https://example.com/callback"
-                    :client_id     client-id
-                    :client_secret client-secret}
-                   :expected-status 400))))))))
+                    :redirect_uri  "https://example.com/callback"}
+                   :expected-status 400
+                   :authorization (basic-auth-header client-id client-secret)))))))))
 
 (deftest token-refresh-revoked-token-test
   (testing "Refresh token grant with revoked refresh token returns error"
@@ -719,19 +710,17 @@
               token-response (token-request!
                               {:grant_type    "authorization_code"
                                :code          code
-                               :redirect_uri  "https://example.com/callback"
-                               :client_id     client-id
-                               :client_secret client-secret})
+                               :redirect_uri  "https://example.com/callback"}
+                              :authorization (basic-auth-header client-id client-secret))
               refresh-token  (:refresh_token token-response)]
           ;; Revoke the refresh token
           (t2/update! :model/OAuthRefreshToken {:token refresh-token}
                       {:revoked_at [:raw "now()"]})
           (let [response (token-request!
                           {:grant_type    "refresh_token"
-                           :refresh_token refresh-token
-                           :client_id     client-id
-                           :client_secret client-secret}
-                          :expected-status 400)]
+                           :refresh_token refresh-token}
+                          :expected-status 400
+                          :authorization (basic-auth-header client-id client-secret))]
             (is (=? {:error string?} response))))))))
 
 ;;; ------------------------------------------ Revocation Endpoint -----------------------------------------------
@@ -757,15 +746,13 @@
               token-resp    (token-request!
                              {:grant_type    "authorization_code"
                               :code          code
-                              :redirect_uri  "https://example.com/callback"
-                              :client_id     client-id
-                              :client_secret client-secret})
+                              :redirect_uri  "https://example.com/callback"}
+                             :authorization (basic-auth-header client-id client-secret))
               access-token  (:access_token token-resp)]
           (is (some? access-token))
           (revoke-request!
-           {:token         access-token
-            :client_id     client-id
-            :client_secret client-secret}))))))
+           {:token access-token}
+           :authorization (basic-auth-header client-id client-secret)))))))
 
 (deftest revocation-unknown-token-test
   (testing "Revocation returns 200 for an unknown token (RFC 7009 S2.2)"
@@ -775,9 +762,8 @@
               client-id     (:client_id test-client)
               client-secret (:client_secret test-client)]
           (revoke-request!
-           {:token         "nonexistent-token"
-            :client_id     client-id
-            :client_secret client-secret}))))))
+           {:token "nonexistent-token"}
+           :authorization (basic-auth-header client-id client-secret)))))))
 
 (deftest discovery-includes-revocation-endpoint-test
   (testing "Discovery document includes revocation_endpoint"
