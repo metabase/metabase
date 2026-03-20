@@ -314,7 +314,7 @@
 (defn mbql-clause
   "Wrapper around `mbql-clause-with-opts` for clauses that don't have or need options."
   [driver tag & args]
-  (mbql-clause-with-opts driver tag nil args))
+  (apply mbql-clause-with-opts driver tag nil args))
 
 (defmulti current-datetime-honeysql-form
   "HoneySQL form that should be used to get the current `datetime` (or equivalent). Defaults to `:%now`. Should ideally
