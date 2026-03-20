@@ -360,38 +360,38 @@
   "Respond to an event_callback request"
   [payload :- slackbot.events/SlackEventCallbackEvent]
   (assert-setup-complete)
-  (when nil #_(sso-settings/slack-connect-enabled)
-        (let [client {:token (channel.settings/unobfuscated-slack-app-token)}
-              event (:event payload)]
-          (log/debugf "[slackbot] Event callback: event_type=%s user=%s channel=%s"
-                      (:type event) (:user event) (:channel event))
-          (cond
-            ((some-fn
-              slackbot.events/bot-message? ;; ignore the bot's own messages
-              slackbot.events/edited-message? ;; ignore message edits
-              slackbot.events/message-deleted? ;; ignore message deletion notifications
-              slackbot.events/app-mention-with-files?) ;; processed via the separate file_share event
-             event)
-            (ignore-event event)
+  (when (sso-settings/slack-connect-enabled)
+    (let [client {:token (channel.settings/unobfuscated-slack-app-token)}
+          event (:event payload)]
+      (log/debugf "[slackbot] Event callback: event_type=%s user=%s channel=%s"
+                  (:type event) (:user event) (:channel event))
+      (cond
+        ((some-fn
+          slackbot.events/bot-message? ;; ignore the bot's own messages
+          slackbot.events/edited-message? ;; ignore message edits
+          slackbot.events/message-deleted? ;; ignore message deletion notifications
+          slackbot.events/app-mention-with-files?) ;; processed via the separate file_share event
+         event)
+        (ignore-event event)
 
-            (and
-             (slackbot.events/file-share? event)
-             (slackbot.events/dm-or-channel-mention? event (slackbot.client/get-bot-user-id client)))
-            (process-async handle-message-file-share client event)
+        (and
+         (slackbot.events/file-share? event)
+         (slackbot.events/dm-or-channel-mention? event (slackbot.client/get-bot-user-id client)))
+        (process-async handle-message-file-share client event)
 
-            (delete-reaction-event? event)
-            (submit-async (fn [] (handle-delete-reaction client event)))
+        (delete-reaction-event? event)
+        (submit-async (fn [] (handle-delete-reaction client event)))
 
-            (slackbot.events/reaction-added? event)
-            (log/debugf "[slackbot] Ignoring reaction_added for non-delete emoji reaction=%s item_type=%s channel=%s ts=%s"
-                        (:reaction event) (get-in event [:item :type]) (get-in event [:item :channel]) (get-in event [:item :ts]))
+        (slackbot.events/reaction-added? event)
+        (log/debugf "[slackbot] Ignoring reaction_added for non-delete emoji reaction=%s item_type=%s channel=%s ts=%s"
+                    (:reaction event) (get-in event [:item :type]) (get-in event [:item :channel]) (get-in event [:item :ts]))
 
-            (or (slackbot.events/app-mention? event)
-                (slackbot.events/dm? event))
-            (process-async slackbot.streaming/send-response client event)
+        (or (slackbot.events/app-mention? event)
+            (slackbot.events/dm? event))
+        (process-async slackbot.streaming/send-response client event)
 
-            :else
-            (ignore-event event))))
+        :else
+        (ignore-event event))))
   ack-msg)
 
 ;; ----------------------- ROUTES --------------------------
