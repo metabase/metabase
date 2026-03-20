@@ -608,6 +608,40 @@ describe("scenarios > visualizations > table > dashboards context", () => {
     cy.get(idCellSelector).should("contain", secondPageId);
   });
 
+  it("should display pinned rows correctly with pagination", () => {
+    H.createQuestionAndDashboard({
+      questionDetails: {
+        display: "table",
+        query: { "source-table": SAMPLE_DATABASE.ORDERS_ID },
+        visualization_settings: {
+          "table.freeze_rows": true,
+          "table.freeze_rows_count": 1,
+          "table.pagination": true,
+        },
+      },
+      cardDetails: {
+        size_x: 24,
+        size_y: 12,
+      },
+    }).then(({ body: { dashboard_id } }) => {
+      H.visitDashboard(dashboard_id);
+    });
+
+    cy.findByTestId("pinned-center-quadrant")
+      .findByRole("row")
+      .find("[data-column-id=ID]")
+      .findByTestId("cell-data")
+      .should("have.text", "1");
+
+    cy.findByLabelText("Next page").click();
+
+    cy.findByTestId("pinned-center-quadrant")
+      .findByRole("row")
+      .find("[data-column-id=ID]")
+      .findByTestId("cell-data")
+      .should("have.text", "1");
+  });
+
   it("should support text wrapping setting", () => {
     H.createQuestionAndDashboard({
       questionDetails: {
