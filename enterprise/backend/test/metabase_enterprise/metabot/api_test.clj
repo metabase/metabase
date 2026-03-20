@@ -10,8 +10,8 @@
 
 (deftest feedback-endpoint-test
   (mt/with-premium-features #{:metabot-v3}
-    (let [store-url "http://hm.example"
-          token     (premium-features/premium-embedding-token)]
+    (let [store-url  "http://hm.example"
+          fake-token "test-fake-token-for-feedback"]
       (testing "Submits feedback to Harbormaster with token and base URL"
         (mt/with-temporary-setting-values [store-api-url store-url]
           (let [captured     (atom nil)
@@ -23,9 +23,10 @@
                               :version           "v0.0.0"
                               :submission_time   "2025-01-01T00:00:00Z"
                               :is_admin          false}
-                expected-url (str store-url "/api/v2/metabot/feedback/" token)]
+                expected-url (str store-url "/api/v2/metabot/feedback/" fake-token)]
             (mt/with-dynamic-fn-redefs
-              [http/post (fn [url opts]
+              [premium-features/premium-embedding-token (constantly fake-token)
+               http/post (fn [url opts]
                            (reset! captured {:url  url
                                              :body (json/decode+kw (:body opts))}))]
               (let [_resp (mt/user-http-request :rasta :post 204 "metabot/feedback" feedback)]
@@ -35,7 +36,8 @@
       (testing "Returns 500 when http post fails"
         (mt/with-temporary-setting-values [store-api-url store-url]
           (mt/with-dynamic-fn-redefs
-            [http/post (fn [_url _opts]
+            [premium-features/premium-embedding-token (constantly fake-token)
+             http/post (fn [_url _opts]
                          (throw (ex-info "boom" {:status 404})))]
             (mt/user-http-request :rasta :post 500 "metabot/feedback" {:any "payload"}))))
 
