@@ -125,22 +125,15 @@
   [driver [op _opts cases default]]
   ((get-method sql.qp/->honeysql [:sql op]) driver [op cases {:default default}]))
 
-(defmethod sql.qp/->honeysql [:sql-mbql5 :text]
-  [driver [_ opts value]]
-  (sql.qp/->honeysql driver [::sql.qp/cast-to-text opts value]))
-
-(defmethod sql.qp/->honeysql [:sql-mbql5 :today]
-  [driver [_op opts]]
-  (sql.qp/->honeysql driver [:date opts [:now]]))
-
 (defmethod sql.qp/date [:sql-mbql5 :week-of-year]
   [driver _ expr]
-  ;; Some DBs truncate when doing integer division, therefore force float arithmetic
-  ;; Use h2x/ceil directly since expr is already compiled HoneySQL - going through ->honeysql
-  ;; with an MBQL :ceil clause would cause issues with mbql5 drivers that expect different arg structure
-  (sql.qp/->honeysql driver [:ceil {} (-> (sql.qp/date driver :day-of-year (sql.qp/date driver :week expr))
-                                          (h2x// 7.0)
-                                          (sql.qp/compiled))]))
+  ;; We can't wrap the `[:ceil ...]` in `mbql-clause` and just use the `:sql` implementation
+  ;; because it's already marked as compiled to HoneySQL by the call to `sql.qp/compiled`.
+  ;; We need to add the options so that we `->honeysql` the `:ceil` correctly.
+  (sql.qp/->honeysql driver (lib.options/ensure-uuid
+                             [:ceil (-> (sql.qp/date driver :day-of-year (sql.qp/date driver :week expr))
+                                        (h2x// 7.0)
+                                        (sql.qp/compiled))])))
 
 (defmethod sql.qp/->honeysql [:sql-mbql5 :value]
   [driver [op {:keys [base-type effective-type]} value]]
@@ -152,6 +145,7 @@
             :length :trim :ltrim :rtrim :upper :lower ::sql.qp/cast-to-text
             :integer :float  :floor :ceil :round :abs :log :exp :sqrt
             :avg :median :stddev :var :sum :min :max :count :distinct
+            :text
             ;; binary
             := :!= :> :>= :< :<=
             :power :percentile
