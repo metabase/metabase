@@ -7,13 +7,10 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private schema
-  [:map {:closed true}
-   [:entity_id :int]])
-
 (mu/defn ^{:tool-name "static_viz"} static-viz-tool
   "Generate a static visualization (PNG image) of a saved question or metric. The visualization will be posted as a separate follow-up message in the thread."
-  [{:keys [entity_id]} :- schema]
+  [{:keys [entity_id]} :- [:map {:closed true}
+                           [:entity_id :int]]]
   {:instructions (str "Visualization queued for entity " entity_id ". "
                       "The visualization will be posted as a separate follow-up message "
                       "with the question or metric's name as its title and a link to open "

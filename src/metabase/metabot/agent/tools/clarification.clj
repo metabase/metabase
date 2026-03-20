@@ -13,17 +13,14 @@
        (when (seq options)
          (str "\n\nOptions:\n" (str/join "\n" (map #(str "- " %) options))))))
 
-(def ^:private schema
-  [:map {:closed true}
-   [:question :string]
-   [:options {:optional true} [:maybe [:sequential :string]]]])
-
 (mu/defn ^{:tool-name "ask_for_sql_clarification"} ask-for-sql-clarification-tool
   "Ask the user for clarification about their SQL query request.
 
   Use this tool when you need more information from the user to properly
   complete their SQL request. The agent will stop and wait for the user's response."
-  [{:keys [question options]} :- schema]
+  [{:keys [question options]} :- [:map {:closed true}
+                                  [:question :string]
+                                  [:options {:optional true} [:maybe [:sequential :string]]]]]
   (try
     (let [result (ask-clarification-tools/ask-for-sql-clarification {:question question
                                                                      :options options})]

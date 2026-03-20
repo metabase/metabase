@@ -49,11 +49,6 @@ Do not use headers (##). Do not list statistics. Do not analyze series separatel
   (some-> (get (shared/current-chart-configs-state) chart-config-id)
           stringify-series-keys))
 
-(def ^:private schema
-  [:map {:closed true}
-   [:chart_config_id :string]
-   [:deep {:optional true :default true} [:maybe :boolean]]])
-
 (mu/defn ^{:tool-name "analyze_chart"
            :prompt    "analyze_chart"} analyze-chart-tool
   "Compute statistics and generate analysis context for a chart.
@@ -61,7 +56,9 @@ Do not use headers (##). Do not list statistics. Do not analyze series separatel
 
   The chart_config_id references a chart from the user's current viewing context.
   Available chart IDs are provided in the system context."
-  [{:keys [chart_config_id deep]} :- schema]
+  [{:keys [chart_config_id deep]} :- [:map {:closed true}
+                                      [:chart_config_id :string]
+                                      [:deep {:optional true :default true} [:maybe :boolean]]]]
   (try
     (if-let [chart-config (resolve-chart-config-from-memory chart_config_id)]
       ;; Wrap TMD operations in resource context to ensure off-heap memory is released

@@ -7,10 +7,6 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private schema
-  [:map {:closed true}
-   [:uris [:sequential [:string {:description "Metabase resource URIs to fetch"}]]]])
-
 (mu/defn ^{:tool-name "read_resource"} read-resource-tool
   "Read detailed information about Metabase resources via URI patterns.
 
@@ -20,7 +16,8 @@
   - metabase://metric/{id}/dimensions - Get metric dimensions
   - metabase://transform/{id} - Get transform details
   - metabase://dashboard/{id} - Get dashboard details"
-  [{:keys [uris]} :- schema]
+  [{:keys [uris]} :- [:map {:closed true}
+                      [:uris [:sequential [:string {:description "Metabase resource URIs to fetch"}]]]]]
   (try
     (read-resource-tools/read-resource {:uris uris})
     (catch Exception e

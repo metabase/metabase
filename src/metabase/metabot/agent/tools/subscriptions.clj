@@ -7,7 +7,7 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private schema
+(def ^:private subscription-schema
   [:map {:closed true}
    [:dashboard_id :int]
    [:email {:optional true} [:maybe :string]]
@@ -27,7 +27,7 @@
   Do NOT infer email addresses from usernames or other information.
   If the email address is incomplete or missing a part like the TLD,
   ask the user for clarification before proceeding."
-  [{:keys [dashboard_id email slack_channel schedule]} :- schema]
+  [{:keys [dashboard_id email slack_channel schedule]} :- subscription-schema]
   (try
     (subscription-tools/create-dashboard-subscription
      {:dashboard-id  dashboard_id
