@@ -6,6 +6,7 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.system.core :as system]
    [metabase.util :as u]
+   [integrant.core :as ig]
    [oidc-provider.core :as oidc]
    [oidc-provider.token :as oidc-token])
   (:import
@@ -13,7 +14,7 @@
 
 (set! *warn-on-reflection* true)
 
-(defonce ^:private provider (atom nil))
+(def ^:dynamic ^:private *provider* (atom nil))
 
 (defn- serialize-key
   "Serialize an RSAKey to a JSON string for storage."
@@ -29,11 +30,7 @@
   "Returns the RSA signing key. Reads from settings if persisted, otherwise generates
    a new key and persists it."
   []
-  (if-let [stored (oauth-settings/oauth-server-signing-key)]
-    (deserialize-key stored)
-    (let [k (oidc-token/generate-rsa-key)]
-      (oauth-settings/oauth-server-signing-key! (serialize-key k))
-      k)))
+  )
 
 (defenterprise all-agent-scopes
   "All supported OAuth scopes for the MCP/agent API, derived from endpoint metadata.
@@ -45,22 +42,39 @@
 (defn- build-provider-config
   "Build the configuration map for the OIDC provider from Metabase settings."
   [signing-key]
-  (let [base-url (system/site-url)]
+  )
+
+(defmethod ig/init-key ::signing-key [_ _]
+(if-let [stored (oauth-settings/oauth-server-signing-key)]
+    (deserialize-key stored)
+    (let [k (oidc-token/generate-rsa-key)]
+      (oauth-settings/oauth-server-signing-key! (serialize-key k))
+      k)))
+
+(defmethod ig/init-key ::urls [_ _]
+(let [base-url (system/site-url)]
+  {:authorization-endpoint (str base-url "/oauth/authorize")
+   :token-endpoint         (str base-url "/oauth/token")
+   :jwks-uri               (str base-url "/oauth/jwks")
+   :registration-endpoint  (str base-url "/oauth/register")
+   :revocation-endpoint    (str base-url "/oauth/revoke")}))
+
+(defmethod ig/init-key ::settings [_ _]
+  {:access-token-ttl-seconds       (oauth-settings/oauth-server-access-token-ttl)
+   :id-token-ttl-seconds           (oauth-settings/oauth-server-id-token-ttl)
+   :authorization-code-ttl-seconds (oauth-settings/oauth-server-authorization-code-ttl)})
+
+(defmethod ig/init-key ::provider [_ system]
+  (reset! *provider* (merge (::settings system)
     {:issuer                         base-url
-     :authorization-endpoint         (str base-url "/oauth/authorize")
-     :token-endpoint                 (str base-url "/oauth/token")
-     :jwks-uri                       (str base-url "/oauth/jwks")
-     :registration-endpoint          (str base-url "/oauth/register")
-     :revocation-endpoint            (str base-url "/oauth/revoke")
-     :signing-key                    signing-key
-     :access-token-ttl-seconds       (oauth-settings/oauth-server-access-token-ttl)
-     :id-token-ttl-seconds           (oauth-settings/oauth-server-id-token-ttl)
-     :authorization-code-ttl-seconds (oauth-settings/oauth-server-authorization-code-ttl)
+      :signing-key                    signing-key
      :client-store                   (store/create-client-store)
      :code-store                     (store/create-authorization-code-store)
      :token-store                    (store/create-token-store)
      :scopes-supported               (all-agent-scopes)
-     :claims-provider                (store/create-claims-provider)}))
+     :claims-provider                (store/create-claims-provider)})
+  )
+
 
 (defn create-provider!
   "Create and store the OIDC provider instance."
