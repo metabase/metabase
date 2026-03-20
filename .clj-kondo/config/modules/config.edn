@@ -1710,15 +1710,8 @@
 
   transforms-inspector
   {:team "Gadget"
-   :api  #{metabase.transforms-inspector.core
-           metabase.transforms-inspector.schema}
-   :uses #{driver
-           lib
-           lib-be
-           query-processor
-           sql-tools
-           transforms-base
-           util}}
+   :api  #{}
+   :uses #{}}
 
   transforms-rest
   {:team "Gadget"
@@ -1726,14 +1719,10 @@
            metabase.transforms-rest.api.transform-job
            metabase.transforms-rest.api.transform-tag}
    :uses #{api
-           events
            models
-           query-processor
            request
-           server
            transforms
            transforms-base
-           transforms-inspector
            util}}
 
   types
@@ -2617,8 +2606,24 @@
 
   enterprise/transforms
   {:team "Querying"
-   :api  #{}
-   :uses #{premium-features}}
+   :api  #{metabase-enterprise.transforms.api}
+   :uses #{premium-features
+           enterprise/transforms-inspector}}
+
+  enterprise/transforms-inspector
+  {:team "Gadget"
+   :api  #{metabase-enterprise.transforms-inspector.api}
+   :uses #{api
+           driver
+           events
+           lib
+           lib-be
+           query-processor
+           server
+           sql-tools
+           transforms
+           transforms-base
+           util}}
 
   enterprise/transforms-python
   {:team "Querying"
