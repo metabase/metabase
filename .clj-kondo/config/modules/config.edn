@@ -224,7 +224,6 @@
            metabase.api.macros
            metabase.api.macros.scope
            metabase.api.open-api
-           metabase.api.response
            metabase.api.routes.common
            metabase.api.settings
            metabase.api.util
@@ -1129,21 +1128,18 @@
            metabase.llm.init
            metabase.llm.settings}
    :uses #{analytics
-           analyze
            api
            driver
            lib
            lib-be
            models
-           parameters
-           query-processor
            request
            settings
            sql-tools
            sync
            util
            warehouse-schema}
-   :model-imports #{:model/Dashboard :model/Database :model/Field :model/Table}}
+   :model-imports #{:model/Database :model/Field :model/Table}}
 
   logger
   {:team "DevEx"
@@ -1195,8 +1191,8 @@
               enterprise/metabot
               slackbot}
    :uses    #{activity-feed
-              analyze
               analytics
+              analyze
               api
               app-db
               audit-app
@@ -2957,7 +2953,7 @@
 
   enterprise/metabot
   {:team    "Metabot"
-   :api     #{metabase-enterprise.metabot.tools.api}
+   :api     #{}
    :friends #{enterprise/agent-api
               slackbot
               metabot}
