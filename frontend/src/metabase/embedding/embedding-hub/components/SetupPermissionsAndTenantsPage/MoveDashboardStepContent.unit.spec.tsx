@@ -1,11 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import {
-  setupCollectionItemsEndpoint,
-  setupCollectionTreeEndpoint,
-  setupRootCollectionItemsEndpoint,
-} from "__support__/server-mocks";
+import { setupCollectionTreeEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
   createMockCollection,
@@ -19,12 +15,6 @@ const SHARED_COLLECTION = createMockCollection({
   name: "Shared collection",
 });
 
-const AUTO_GEN_COLLECTION = createMockCollectionItem({
-  id: 99,
-  name: "Automatically Generated Dashboards",
-  model: "collection",
-});
-
 const XRAY_DASHBOARD = createMockCollectionItem({
   id: 200,
   name: "A look at Invoices",
@@ -32,64 +22,43 @@ const XRAY_DASHBOARD = createMockCollectionItem({
 });
 
 function setup({
-  hasSharedCollection = true,
-  sharedCollectionDashboards = [] as any[],
+  isMoveDashboardDone = false,
   hasXrayDashboard = false,
 }: {
-  hasSharedCollection?: boolean;
-  sharedCollectionDashboards?: any[];
+  isMoveDashboardDone?: boolean;
   hasXrayDashboard?: boolean;
 } = {}) {
   const onCompleted = jest.fn();
+  const lastDashboard = hasXrayDashboard ? XRAY_DASHBOARD : null;
 
-  // Shared tenant collections tree
-  setupCollectionTreeEndpoint(hasSharedCollection ? [SHARED_COLLECTION] : []);
+  // Shared tenant collections tree (still needed for sharedCollectionId)
+  setupCollectionTreeEndpoint([SHARED_COLLECTION]);
 
-  // Shared collection items (dashboards already in shared collection)
-  if (hasSharedCollection) {
-    setupCollectionItemsEndpoint({
-      collection: SHARED_COLLECTION,
-      collectionItems: sharedCollectionDashboards,
-    });
-  }
-
-  // Root collection items (to find "Automatically Generated Dashboards")
-  setupRootCollectionItemsEndpoint({
-    rootCollectionItems: hasXrayDashboard ? [AUTO_GEN_COLLECTION] : [],
-  });
-
-  // Auto-generated dashboards collection items
   if (hasXrayDashboard) {
-    setupCollectionItemsEndpoint({
-      collection: { id: AUTO_GEN_COLLECTION.id },
-      collectionItems: [XRAY_DASHBOARD],
-    });
-
     // DashboardSelector fetches the dashboard details
     fetchMock.get("path:/api/dashboard/200", {
       id: 200,
       name: "A look at Invoices",
-      collection_id: AUTO_GEN_COLLECTION.id,
+      collection_id: 99,
       dashcards: [],
     });
   }
 
-  renderWithProviders(<MoveDashboardStepContent onCompleted={onCompleted} />);
+  renderWithProviders(
+    <MoveDashboardStepContent
+      isMoveDashboardDone={isMoveDashboardDone}
+      hasXrayDashboard={hasXrayDashboard}
+      lastDashboard={lastDashboard}
+      onCompleted={onCompleted}
+    />,
+  );
 
   return { onCompleted };
 }
 
 describe("MoveDashboardStepContent", () => {
   it('shows "Continue" when shared collection already has dashboards', async () => {
-    setup({
-      sharedCollectionDashboards: [
-        createMockCollectionItem({
-          id: 300,
-          name: "Existing dashboard",
-          model: "dashboard",
-        }),
-      ],
-    });
+    setup({ isMoveDashboardDone: true });
 
     expect(await screen.findByText("Continue")).toBeInTheDocument();
     expect(

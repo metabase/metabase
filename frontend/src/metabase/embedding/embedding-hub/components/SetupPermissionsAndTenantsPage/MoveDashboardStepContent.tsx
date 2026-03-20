@@ -1,28 +1,29 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import {
-  skipToken,
-  useListCollectionItemsQuery,
-  useListCollectionsTreeQuery,
-} from "metabase/api";
+import { useListCollectionsTreeQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { DashboardSelector } from "metabase/common/components/DashboardSelector";
 import { useToast } from "metabase/common/hooks";
 import { Box, Button, Divider, Group, Stack, Text } from "metabase/ui";
-import type { DashboardId } from "metabase-types/api";
+import type { CollectionItem, DashboardId } from "metabase-types/api";
 
 import {
   useCreateSampleDashboardInSharedCollection,
-  useLastXrayDashboard,
   useMoveXrayDashboardToSharedCollection,
 } from "./hooks/use-xray-dashboards";
 
 interface MoveDashboardStepContentProps {
+  isMoveDashboardDone: boolean;
+  hasXrayDashboard: boolean;
+  lastDashboard: CollectionItem | null;
   onCompleted: () => void;
 }
 
 export const MoveDashboardStepContent = ({
+  isMoveDashboardDone,
+  hasXrayDashboard,
+  lastDashboard,
   onCompleted,
 }: MoveDashboardStepContentProps) => {
   const [sendToast] = useToast();
@@ -36,17 +37,6 @@ export const MoveDashboardStepContent = ({
       ? sharedTenantCollections[0].id
       : null;
 
-  // Check if shared collection already has dashboards
-  const { data: sharedCollectionItems } = useListCollectionItemsQuery(
-    sharedCollectionId
-      ? { id: sharedCollectionId, models: ["dashboard"] }
-      : skipToken,
-  );
-
-  const sharedCollectionHasDashboards =
-    (sharedCollectionItems?.data?.length ?? 0) > 0;
-
-  const { lastDashboard, isLoading: isLoadingXray } = useLastXrayDashboard();
   const { moveDashboard, isMoving } = useMoveXrayDashboardToSharedCollection();
   const { createSampleDashboard, isCreating } =
     useCreateSampleDashboardInSharedCollection();
@@ -57,8 +47,6 @@ export const MoveDashboardStepContent = ({
   // Use the manually picked dashboard, or fall back to the last x-ray dashboard
   const effectiveDashboardId =
     selectedDashboardId ?? (lastDashboard ? lastDashboard.id : null);
-
-  const hasXrayDashboard = !isLoadingXray && lastDashboard != null;
 
   const handleMoveDashboard = useCallback(async () => {
     if (!effectiveDashboardId || !sharedCollectionId) {
@@ -103,7 +91,7 @@ export const MoveDashboardStepContent = ({
     }
   }, [sharedCollectionId, createSampleDashboard, sendToast, onCompleted]);
 
-  if (sharedCollectionHasDashboards) {
+  if (isMoveDashboardDone) {
     return (
       <Stack gap="md">
         <Text size="md" c="text-secondary" lh="lg">
@@ -118,54 +106,38 @@ export const MoveDashboardStepContent = ({
     );
   }
 
-  if (!hasXrayDashboard) {
-    return (
-      <Stack gap="md">
-        <Text size="md" c="text-secondary" lh="lg">
-          {t`This will allow tenant users to see it.`}
-        </Text>
-
-        <Group justify="flex-end">
-          <Button
-            variant="filled"
-            onClick={handleCreateSampleDashboard}
-            loading={isCreating}
-          >
-            {t`Create a sample dashboard`}
-          </Button>
-        </Group>
-      </Stack>
-    );
-  }
-
   return (
     <Stack gap="md">
       <Text size="md" c="text-secondary" lh="lg">
         {t`This will allow tenant users to see it.`}
       </Text>
 
-      <Group gap="sm" align="center">
-        <Box flex="1">
-          <DashboardSelector
-            value={effectiveDashboardId ?? undefined}
-            onChange={(id) => setSelectedDashboardId(id ?? null)}
-          />
-        </Box>
-        <Button
-          variant="filled"
-          onClick={handleMoveDashboard}
-          loading={isMoving}
-          disabled={!effectiveDashboardId}
-        >
-          {t`Move to shared collection`}
-        </Button>
-      </Group>
+      {hasXrayDashboard && (
+        <>
+          <Group gap="sm" align="center">
+            <Box flex="1">
+              <DashboardSelector
+                value={effectiveDashboardId ?? undefined}
+                onChange={(id) => setSelectedDashboardId(id ?? null)}
+              />
+            </Box>
+            <Button
+              variant="filled"
+              onClick={handleMoveDashboard}
+              loading={isMoving}
+              disabled={!effectiveDashboardId}
+            >
+              {t`Move to shared collection`}
+            </Button>
+          </Group>
 
-      <Divider label={t`or`} />
+          <Divider label={t`or`} />
+        </>
+      )}
 
-      <Group justify="center">
+      <Group justify={hasXrayDashboard ? "center" : "flex-end"}>
         <Button
-          variant="default"
+          variant={hasXrayDashboard ? "default" : "filled"}
           onClick={handleCreateSampleDashboard}
           loading={isCreating}
         >

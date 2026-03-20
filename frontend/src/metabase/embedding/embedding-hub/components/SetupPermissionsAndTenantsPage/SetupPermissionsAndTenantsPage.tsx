@@ -145,6 +145,9 @@ export const SetupPermissionsAndTenantsPage = () => {
           }
         >
           <MoveDashboardStepContent
+            isMoveDashboardDone={isMoveDashboardDone}
+            hasXrayDashboard={hasXrayDashboard}
+            lastDashboard={lastDashboard}
             onCompleted={() => stepperRef.current?.goToNextStep()}
           />
         </OnboardingStepper.Step>
