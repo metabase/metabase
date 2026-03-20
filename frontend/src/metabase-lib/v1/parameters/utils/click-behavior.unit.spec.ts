@@ -211,17 +211,19 @@ describe("metabase/lib/click-behavior", () => {
 
     describe("filtering sources", () => {
       const sources = {
-        column: [
-          "type/Integer",
-          "type/Float",
-          "type/Time",
-          "type/Date",
-          "type/DateTime",
-          "type/Boolean",
-          "type/Enum",
-          "type/Text",
-          "type/TextLike",
-        ].map((effective_type) => createMockColumn({ effective_type })),
+        column: (
+          [
+            "type/Integer",
+            "type/Float",
+            "type/Time",
+            "type/Date",
+            "type/DateTime",
+            "type/Boolean",
+            "type/Enum",
+            "type/Text",
+            "type/TextLike",
+          ] as const
+        ).map((effective_type) => createMockColumn({ effective_type })),
         parameter: [
           "id",
           "category",

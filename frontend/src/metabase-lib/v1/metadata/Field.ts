@@ -32,6 +32,7 @@ import type {
   FieldReference,
   FieldValuesType,
   FieldVisibilityType,
+  MetabaseTypeName,
 } from "metabase-types/api";
 
 import Base from "./Base";
@@ -56,10 +57,10 @@ export default class Field extends Base {
   name: string;
   display_name: string;
   description: string | null;
-  semantic_type: string | null;
+  semantic_type: MetabaseTypeName | null;
   fingerprint?: FieldFingerprint;
-  base_type: string;
-  effective_type?: string | null;
+  base_type: MetabaseTypeName;
+  effective_type?: MetabaseTypeName | null;
   table?: Table;
   table_id?: Table["id"];
   target?: Field;

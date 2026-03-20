@@ -23,21 +23,21 @@ const EMAIL = createMockField({
   name: "EMAIL",
   display_name: "Email",
   semantic_type: "type/Email",
-  base_type: "type/String",
+  base_type: "type/Text",
 });
 const URL = createMockField({
   id: 2,
   name: "URL",
   display_name: "Url",
   semantic_type: "type/URL",
-  base_type: "type/String",
+  base_type: "type/Text",
 });
 
 const STRING = createMockField({
   id: 3,
   name: "STRING",
   display_name: "String",
-  base_type: "type/String",
+  base_type: "type/Text",
 });
 
 const INT = createMockField({

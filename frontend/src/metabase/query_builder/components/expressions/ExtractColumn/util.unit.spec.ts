@@ -14,7 +14,7 @@ const DATE = createMockField({
   name: "Date",
   display_name: "Date",
   semantic_type: "type/Date",
-  base_type: "type/String",
+  base_type: "type/Text",
 });
 
 const TABLE = createMockTable({

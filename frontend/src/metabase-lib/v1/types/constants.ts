@@ -2,10 +2,17 @@ import {
   LEVEL_ONE_TYPES as cljs_LEVEL_ONE_TYPES,
   TYPE as cljs_TYPE,
 } from "cljs/metabase.types.core";
+import type { MetabaseTypeName } from "metabase-types/api";
 
-export const LEVEL_ONE_TYPES: string[] = cljs_LEVEL_ONE_TYPES;
+export type {
+  BaseTypeName,
+  MetabaseTypeName,
+  SemanticTypeName,
+} from "metabase-types/api";
 
-export const TYPE: Record<string, string> = cljs_TYPE;
+export const LEVEL_ONE_TYPES: MetabaseTypeName[] = cljs_LEVEL_ONE_TYPES;
+
+export const TYPE: Record<string, MetabaseTypeName> = cljs_TYPE;
 
 // primary field types used for picking operators, etc
 export const NUMBER = "NUMBER";
@@ -46,9 +53,9 @@ export type FieldTypeKey =
   | typeof DIMENSION;
 
 export type Hierarchy = {
-  base_type?: string[];
-  effective_type?: string[];
-  semantic_type?: string[];
+  base_type?: MetabaseTypeName[];
+  effective_type?: MetabaseTypeName[];
+  semantic_type?: MetabaseTypeName[];
   include?: FieldTypeKey[];
   exclude?: FieldTypeKey[];
 };

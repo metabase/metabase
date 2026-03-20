@@ -13,7 +13,7 @@ import { CoercionStrategyPicker } from "./CoercionStrategyPicker";
 
 interface TestComponentProps {
   initialValue: string | undefined;
-  baseType: string;
+  baseType: Field["base_type"];
 }
 
 function TestComponent({ baseType, initialValue }: TestComponentProps) {

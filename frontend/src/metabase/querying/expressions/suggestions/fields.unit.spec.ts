@@ -24,7 +24,7 @@ describe("suggestFields", () => {
       id: 1,
       name: "NAME",
       display_name: "Name",
-      base_type: "type/String",
+      base_type: "type/Text",
     });
 
     const EMAIL = createMockField({
@@ -32,7 +32,7 @@ describe("suggestFields", () => {
       name: "EMAIL",
       display_name: "Email",
       semantic_type: "type/Email",
-      base_type: "type/String",
+      base_type: "type/Text",
     });
 
     const SEATS = createMockField({

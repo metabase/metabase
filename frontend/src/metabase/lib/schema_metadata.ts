@@ -1,6 +1,7 @@
 import { FIELD_SEMANTIC_TYPES_MAP } from "metabase/lib/core";
 import type { IconName } from "metabase/ui";
 import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
+import type { MetabaseTypeName } from "metabase-types/api";
 
 export function foreignKeyCountsByOriginTable(fks: ForeignKey[]) {
   return fks
@@ -27,7 +28,8 @@ export function getSemanticTypeIcon(
   if (!semanticType) {
     return fallback;
   }
-  const semanticTypeMetadata = FIELD_SEMANTIC_TYPES_MAP[semanticType];
+  const semanticTypeMetadata =
+    FIELD_SEMANTIC_TYPES_MAP[semanticType as MetabaseTypeName];
   return semanticTypeMetadata?.icon ?? fallback;
 }
 
@@ -35,6 +37,7 @@ export function getSemanticTypeName(semanticType: string | null | undefined) {
   if (!semanticType) {
     return undefined;
   }
-  const semanticTypeMetadata = FIELD_SEMANTIC_TYPES_MAP[semanticType];
+  const semanticTypeMetadata =
+    FIELD_SEMANTIC_TYPES_MAP[semanticType as MetabaseTypeName];
   return semanticTypeMetadata?.name;
 }

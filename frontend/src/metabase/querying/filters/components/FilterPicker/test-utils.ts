@@ -11,6 +11,7 @@ import {
   createMetadataProvider,
 } from "metabase-lib/test-helpers";
 import { TYPE } from "metabase-lib/v1/types/constants";
+import type { MetabaseTypeName } from "metabase-types/api";
 import { createMockField, createMockSegment } from "metabase-types/api/mocks";
 import {
   ORDERS,
@@ -94,8 +95,8 @@ const UNKNOWN_FIELD = createMockField({
   table_id: ORDERS_ID,
   name: "UNKNOWN",
   display_name: "Unknown",
-  base_type: "type/*",
-  effective_type: "type/*",
+  base_type: "type/*" as MetabaseTypeName,
+  effective_type: "type/*" as MetabaseTypeName,
   semantic_type: null,
 });
 

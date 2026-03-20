@@ -39,14 +39,15 @@ export const SemanticTypeAndTargetPicker = ({
 
   const handleChangeSemanticType = (semanticType: string | null) => {
     // If we are changing the field from a FK to something else, we should delete any FKs present
+    const typedSemanticType = semanticType as Field["semantic_type"];
     if (field.fk_target_field_id != null && isFK(field)) {
       onChange({
-        semantic_type: semanticType,
+        semantic_type: typedSemanticType,
         fk_target_field_id: null,
       });
     } else {
       onChange({
-        semantic_type: semanticType,
+        semantic_type: typedSemanticType,
       });
     }
   };

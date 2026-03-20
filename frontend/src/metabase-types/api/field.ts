@@ -1,6 +1,7 @@
 import type { RowValue } from "./dataset";
 import type { DimensionReference, FieldReference } from "./query";
 import type { Table, TableId } from "./table";
+import type { MetabaseTypeName } from "./types";
 
 export type FieldId = number;
 
@@ -77,9 +78,9 @@ export interface Field {
   description: string | null;
 
   database_type: string;
-  base_type: string;
-  effective_type?: string;
-  semantic_type: string | null;
+  base_type: MetabaseTypeName;
+  effective_type?: MetabaseTypeName;
+  semantic_type: MetabaseTypeName | null;
 
   active: boolean;
   visibility_type: FieldVisibilityType;

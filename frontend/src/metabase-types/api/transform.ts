@@ -6,6 +6,7 @@ import type { DatasetQuery, JoinStrategy } from "./query";
 import type { ScheduleDisplayType } from "./settings";
 import type { SortDirection } from "./sorting";
 import type { ConcreteTableId, SchemaName, Table } from "./table";
+import type { MetabaseTypeName } from "./types";
 import type { UserId, UserInfo } from "./user";
 import type { CardDisplayType } from "./visualization";
 
@@ -316,8 +317,8 @@ export type InspectorField = {
   id?: number;
   name: string;
   display_name?: string;
-  base_type?: string;
-  semantic_type?: string;
+  base_type?: MetabaseTypeName;
+  semantic_type?: MetabaseTypeName;
   stats?: InspectorFieldStats;
 };
 
