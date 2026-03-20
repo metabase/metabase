@@ -16,6 +16,7 @@ import {
   Box,
   Button,
   Flex,
+  FocusTrap,
   Icon,
   Stack,
   type StackProps,
@@ -156,78 +157,80 @@ export const QuestionDownloadWidget = ({
     showMetabaseLinks;
 
   return (
-    <Stack {...stackProps} w={336} p="0.75rem" gap="lg">
-      <Title order={5}>{t`Download data`}</Title>
-      <ExportSettingsWidget
-        selectedFormat={format}
-        formats={formats}
-        isFormattingEnabled={isFormatted}
-        isPivotingEnabled={isPivoted}
-        canConfigureFormatting={canConfigureFormatting(format)}
-        canConfigurePivoting={canConfigurePivoting}
-        onChangeFormat={handleFormatChange}
-        onToggleFormatting={() => setIsFormatted((prev) => !prev)}
-        onTogglePivoting={() => setIsPivoted((prev) => !prev)}
-      />
-      {showPivotXlsxExportHint && (
-        <Flex
-          p="md"
-          bg="background-secondary"
-          align="center"
-          justify="space-between"
-          className={CS.rounded}
-        >
-          <Text fz="12px" lh="16px" c="text-secondary">
-            {t`Trying to pivot this data in Excel? You should download the raw data instead.`}{" "}
-            <Link
-              target="_new"
-              to={pivotExcelExportsDocsLink}
-              style={{ color: "var(--mb-color-brand)" }}
-            >
-              {t`Read the docs`}
-            </Link>
-          </Text>
-          <Button
-            aria-label={t`Close hint`}
-            pl={8}
-            pr={0}
-            variant="subtle"
-            size="compact-md"
-            style={{ flexShrink: 0 }}
+    <FocusTrap>
+      <Stack {...stackProps} w={336} p="0.75rem" gap="lg">
+        <Title order={5}>{t`Download data`}</Title>
+        <ExportSettingsWidget
+          selectedFormat={format}
+          formats={formats}
+          isFormattingEnabled={isFormatted}
+          isPivotingEnabled={isPivoted}
+          canConfigureFormatting={canConfigureFormatting(format)}
+          canConfigurePivoting={canConfigurePivoting}
+          onChangeFormat={handleFormatChange}
+          onToggleFormatting={() => setIsFormatted((prev) => !prev)}
+          onTogglePivoting={() => setIsPivoted((prev) => !prev)}
+        />
+        {showPivotXlsxExportHint && (
+          <Flex
+            p="md"
+            bg="background-secondary"
+            align="center"
+            justify="space-between"
+            className={CS.rounded}
           >
-            <Icon
-              name="close"
-              c="text-secondary"
-              tooltip={t`Don't show me this again.`}
-              onClick={() => setDismissedExcelPivotExportsBanner(true)}
-            />
-          </Button>
-        </Flex>
-      )}
-      {hasTruncatedResults && (
-        <Box>
-          <Text
-            size="sm"
-            c="text-secondary"
-            mb="1rem"
-          >{t`Your answer has a large number of rows so it could take a while to download.`}</Text>
-
-          {format === "xlsx" && (
-            <Text size="sm" c="text-secondary">
-              {limitedDownloadSizeText}
+            <Text fz="12px" lh="16px" c="text-secondary">
+              {t`Trying to pivot this data in Excel? You should download the raw data instead.`}{" "}
+              <Link
+                target="_new"
+                to={pivotExcelExportsDocsLink}
+                style={{ color: "var(--mb-color-brand)" }}
+              >
+                {t`Read the docs`}
+              </Link>
             </Text>
-          )}
-        </Box>
-      )}
-      <Button
-        data-testid="download-results-button"
-        mt="auto"
-        ml="auto"
-        variant="filled"
-        loading={loading}
-        onClick={handleDownload}
-        disabled={disabled}
-      >{t`Download`}</Button>
-    </Stack>
+            <Button
+              aria-label={t`Close hint`}
+              pl={8}
+              pr={0}
+              variant="subtle"
+              size="compact-md"
+              style={{ flexShrink: 0 }}
+            >
+              <Icon
+                name="close"
+                c="text-secondary"
+                tooltip={t`Don't show me this again.`}
+                onClick={() => setDismissedExcelPivotExportsBanner(true)}
+              />
+            </Button>
+          </Flex>
+        )}
+        {hasTruncatedResults && (
+          <Box>
+            <Text
+              size="sm"
+              c="text-secondary"
+              mb="1rem"
+            >{t`Your answer has a large number of rows so it could take a while to download.`}</Text>
+
+            {format === "xlsx" && (
+              <Text size="sm" c="text-secondary">
+                {limitedDownloadSizeText}
+              </Text>
+            )}
+          </Box>
+        )}
+        <Button
+          data-testid="download-results-button"
+          mt="auto"
+          ml="auto"
+          variant="filled"
+          loading={loading}
+          onClick={handleDownload}
+          disabled={disabled}
+        >{t`Download`}</Button>
+      </Stack>
+    </FocusTrap>
   );
 };
