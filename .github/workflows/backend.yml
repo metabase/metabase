@@ -40,13 +40,13 @@ jobs:
     if: ${{ !inputs.skip && github.ref == 'refs/heads/master' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
-    name: Eastwood (test)
+    name: Eastwood (tests only)
     steps:
       - uses: actions/checkout@v4
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
       - run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood/test
-        name: Run Eastwood linter on tests
+        name: Run Eastwood linter on our backend tests
 
   be-tests:
     if: ${{ !inputs.skip }}
