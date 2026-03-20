@@ -15979,8 +15979,8 @@
       "ApiKeyAuth" : {
         "type" : "apiKey",
         "in" : "header",
-        "name" : "X-Metabase-Session",
-        "description" : "Session token obtained from /api/session endpoint"
+        "name" : "X-API-Key",
+        "description" : "API key for authentication"
       }
     }
   },
@@ -35823,6 +35823,13 @@
                           "type" : "null"
                         } ]
                       },
+                      "table_id" : {
+                        "oneOf" : [ {
+                          "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
                       "type" : {
                         "type" : "string",
                         "enum" : [ "table" ]
@@ -36277,6 +36284,13 @@
                         "oneOf" : [ {
                           "type" : "string",
                           "minLength" : 1
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "table_id" : {
+                        "oneOf" : [ {
+                          "$ref" : "#/components/schemas/metabase-enterprise.workspaces.types.appdb-id"
                         }, {
                           "type" : "null"
                         } ]
@@ -45595,6 +45609,17 @@
               "type" : "null"
             } ]
           }
+        }, {
+          "in" : "query",
+          "name" : "include-transform-targets",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
         } ],
         "responses" : {
           "2XX" : {
@@ -52036,6 +52061,48 @@
                 "required" : [ "password" ]
               }
             }
+          }
+        },
+        "tags" : [ "/api/user" ]
+      }
+    },
+    "/api/user/{id}/password-reset-url" : {
+      "post" : {
+        "operationId" : "post-api-user-id-password-reset-url",
+        "summary" : "POST /api/user/{id}/password-reset-url",
+        "description" : "Generate a password reset URL for a user. Admins can share this URL directly with the user.\n  The link expires in 48 hours.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "password_reset_url" : {
+                      "type" : "string"
+                    }
+                  },
+                  "required" : [ "password_reset_url" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
           }
         },
         "tags" : [ "/api/user" ]
