@@ -339,7 +339,7 @@
               (let [query  (assoc (lib.tu/venues-query) :lib/metadata metadata-provider)
                     groups (lib/group-columns (rhs-columns query card))]
                 (is (=? [{:name         "Mock categories card"
-                          :display-name "Mock Categories Card"
+                          :display-name "Mock categories card"
                           :is-from-join true}]
                         (for [group groups]
                           (lib/display-info query group))))))))))))
@@ -408,10 +408,9 @@
                      (lib.field.util/add-source-and-desired-aliases-xform query)
                      (lib/visible-columns query))
           [_ _ _ product-1 _ product-2 :as groups] (lib/group-columns cols)]
-      (is (=? [{:display-name "Mock Orders Card"
+      (is (=? [{:display-name "Mock orders card"
                 :is-from-join false,
                 :is-implicitly-joinable false}
-               ;; Not sure why this is inconsistent
                {:display-name "Mock orders card"
                 :is-from-join true,
                 :is-implicitly-joinable false}
