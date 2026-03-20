@@ -10,6 +10,11 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private ^String target-project-directory
+  "The project directory to target. Uses MAGE_ORIGINAL_CWD if set (for cross-worktree invocation),
+   otherwise falls back to the mage source project root."
+  (or (System/getenv "MAGE_ORIGINAL_CWD") u/project-root-directory))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Port bases
 
@@ -83,7 +88,7 @@
 (defn- worktree-name
   "Last path component of the project root directory."
   []
-  (let [path u/project-root-directory]
+  (let [path target-project-directory]
     (last (str/split path #"/"))))
 
 (defn- compute-slot
@@ -108,6 +113,11 @@
   [container-name]
   (shell/sh* {:quiet? true} "docker" "kill" container-name)
   (shell/sh* {:quiet? true} "docker" "rm" container-name))
+
+(defn- stop-container!
+  "Stop a docker container without removing it."
+  [container-name]
+  (shell/sh* {:quiet? true} "docker" "stop" container-name))
 
 (defn- check-docker!
   "Verify docker is available and the daemon is running."
@@ -187,21 +197,65 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Core infra
 
-(defn- start-service!
-  "Kill existing container and start a new one."
-  [service-key suffix slot]
-  (let [spec           (get service-specs service-key)
-        container-name (str (container-prefix) (name service-key) (when suffix (str "-" suffix)))
-        port-key-src   (if (= suffix "app")
-                         (:internal-ports spec)
-                         (or (:wh-ports spec) (:internal-ports spec)))
-        port-mappings  (mapv (fn [[pk ip]] [(port-for pk slot) ip]) port-key-src)
-        cmd            (build-docker-cmd container-name (:image spec) port-mappings (:env spec))]
-    (println (c/yellow "Starting " container-name "..."))
-    (kill-container! container-name)
+(defn- container-state
+  "Return the state of a docker container: :running, :stopped, or :not-found."
+  [container-name]
+  (let [{:keys [exit out]} (shell/sh* {:quiet? true}
+                                      "docker" "inspect"
+                                      "--format" "{{.State.Running}}"
+                                      container-name)]
+    (cond
+      (not (zero? exit))     :not-found
+      (= (first out) "true") :running
+      :else                  :stopped)))
+
+(defn- run-container!
+  "Execute `docker run -d` for a service."
+  [suffix slot container-name spec]
+  (let [port-key-src  (if (= suffix "app")
+                        (:internal-ports spec)
+                        (or (:wh-ports spec) (:internal-ports spec)))
+        port-mappings (mapv (fn [[pk ip]] [(port-for pk slot) ip]) port-key-src)
+        cmd           (build-docker-cmd container-name (:image spec) port-mappings (:env spec))]
     (u/debug "Running: " (str/join " " cmd))
     (apply shell/sh cmd)
     (println (c/green "  Started ") container-name)))
+
+(defn- ensure-container!
+  "Ensure a container is running. Idempotent unless fresh? is true."
+  [service-key suffix slot {:keys [fresh?]}]
+  (let [spec           (get service-specs service-key)
+        container-name (str (container-prefix) (name service-key) (when suffix (str "-" suffix)))
+        current        (container-state container-name)]
+    (cond
+      ;; Running + no fresh: skip
+      (and (= current :running) (not fresh?))
+      (println (c/green "  Already running: ") container-name)
+
+      ;; Running + fresh: nuke and recreate
+      (and (= current :running) fresh?)
+      (do (println (c/yellow "Recreating " container-name " (--fresh)..."))
+          (kill-container! container-name)
+          (run-container! suffix slot container-name spec))
+
+      ;; Stopped + no fresh: docker start (preserves data)
+      (and (= current :stopped) (not fresh?))
+      (do (println (c/yellow "Restarting " container-name "..."))
+          (let [{:keys [exit]} (shell/sh* {:quiet? true} "docker" "start" container-name)]
+            (if (zero? exit)
+              (println (c/green "  Started ") container-name)
+              (do (println (c/red "  Failed to restart, recreating..."))
+                  (kill-container! container-name)
+                  (run-container! suffix slot container-name spec)))))
+
+      ;; Stopped + fresh, or not-found: create new
+      :else
+      (do (when (= current :stopped)
+            (println (c/yellow "Removing old " container-name " (--fresh)..."))
+            (kill-container! container-name))
+          (println (c/yellow "Creating " container-name "..."))
+          (run-container! suffix slot container-name spec)))
+    container-name))
 
 (defn- validate-services!
   "Validate the app-db and --with values. Returns normalized config map."
@@ -270,7 +324,7 @@
                              (port-for :mariadb slot)
                              "/metabase?user=root&password=\"")))
         content (str (str/join "\n" lines) "\n")
-        path    (str u/project-root-directory "/mise.local.toml")]
+        path    (str target-project-directory "/mise.local.toml")]
     (spit path content)
     (println (c/green "Wrote " path))))
 
@@ -284,59 +338,110 @@
     true
     (into (map #(str (container-prefix) (name %) "-wh") with))))
 
-(defn- print-summary!
-  "Print a summary table of ports, containers, and connection info."
-  [slot {:keys [app-db with]}]
-  (let [wt-name (worktree-name)
-        rows    (cond-> [{:service "Jetty backend"  :port (port-for :jetty slot)        :env-var "MB_JETTY_PORT"}
-                         {:service "Frontend dev"   :port (port-for :frontend-dev slot)  :env-var "MB_FRONTEND_DEV_PORT"}
-                         {:service "nREPL"          :port (port-for :nrepl slot)         :env-var "NREPL_PORT"}
-                         {:service "Socket REPL"    :port (port-for :socket-repl slot)   :env-var "SOCKET_REPL_PORT"}]
+(defn- docker-container-status
+  "Query docker for container statuses. Returns {container-name status-string}."
+  []
+  (let [{:keys [out]} (shell/sh* {:quiet? true}
+                                 "docker" "ps" "-a"
+                                 "--filter" (str "name=^" (container-prefix))
+                                 "--format" "{{.Names}}\t{{.Status}}")]
+    (when (seq out)
+      (into {}
+            (comp (remove str/blank?)
+                  (map (fn [line]
+                         (let [[cname status] (str/split line #"\t" 2)]
+                           [cname (or status "")]))))
+            out))))
 
-                  (= app-db :postgres)
-                  (conj {:service "Postgres (app-db)" :port (port-for :postgres-app slot) :env-var "MB_DB_CONNECTION_URI"})
+(defn- service-port-str
+  "Format port(s) for a service. Single port: just the number. Multiple: '1234 (http), 5678 (native)'."
+  [port-pairs slot]
+  (let [label {:clickhouse-http "http"
+               :clickhouse-nat  "native"
+               :maildev-smtp    "smtp"
+               :maildev-ui      "web ui"}]
+    (if (= 1 (count port-pairs))
+      (str (port-for (ffirst port-pairs) slot))
+      (str/join ", " (map (fn [[pk _]]
+                            (let [p (port-for pk slot)]
+                              (if-let [l (get label pk)]
+                                (str p " (" l ")")
+                                (str p))))
+                          port-pairs)))))
 
-                  (= app-db :mysql)
-                  (conj {:service "MySQL (app-db)" :port (port-for :mysql slot) :env-var "MB_DB_CONNECTION_URI"})
+(defn- service-display-name
+  "Human-readable name for a docker service."
+  [service-key suffix]
+  (let [base (case service-key
+               :postgres   "Postgres"
+               :mysql      "MySQL"
+               :mariadb    "MariaDB"
+               :mongo      "MongoDB"
+               :clickhouse "ClickHouse"
+               :ldap       "OpenLDAP"
+               :maildev    "Maildev"
+               (name service-key))]
+    (case suffix
+      "app" (str base " (app-db)")
+      "wh"  (str base " (warehouse)")
+      base)))
 
-                  (= app-db :mariadb)
-                  (conj {:service "MariaDB (app-db)" :port (port-for :mariadb slot) :env-var "MB_DB_CONNECTION_URI"})
+(defn- pid-alive?
+  "Check if a process with the given PID is still running."
+  [pid]
+  (let [{:keys [exit]} (shell/sh* {:quiet? true} "kill" "-0" (str pid))]
+    (zero? exit)))
 
-                  (some #{:postgres} with)
-                  (conj {:service "Postgres (warehouse)" :port (port-for :postgres-wh slot) :env-var ""})
+(defn- build-status-rows
+  "Build unified status table rows from config, state, and live docker status."
+  [slot {:keys [app-db with]} container-statuses state]
+  (let [backend-pid  (get-in state [:backend :pid])
+        frontend-pid (get-in state [:frontend :pid])]
+    (cond-> [{:service "Backend"     :port (str (port-for :jetty slot))
+              :pid (or backend-pid "")
+              :status (cond (nil? backend-pid)          ""
+                            (pid-alive? backend-pid)    "running"
+                            :else                       "stopped")
+              :log (if backend-pid (str "tail -f " (get-in state [:backend :log-file])) "")}
+             {:service "Frontend"    :port (str (port-for :frontend-dev slot))
+              :pid (or frontend-pid "")
+              :status (cond (nil? frontend-pid)         ""
+                            (pid-alive? frontend-pid)   "running"
+                            :else                       "stopped")
+              :log (if frontend-pid (str "tail -f " (get-in state [:frontend :log-file])) "")}
+             {:service "nREPL"       :port (str (port-for :nrepl slot))
+              :pid "" :status "" :log ""}
+             {:service "Socket REPL" :port (str (port-for :socket-repl slot))
+              :pid "" :status "" :log ""}]
 
-                  (some #{:mysql} with)
-                  (conj {:service "MySQL (warehouse)" :port (port-for :mysql slot) :env-var ""})
+      ;; App DB container
+      (not= app-db :h2)
+      (conj (let [spec   (get service-specs app-db)
+                  cname  (str (container-prefix) (name app-db) "-app")
+                  ports  (:internal-ports spec)]
+              {:service (service-display-name app-db "app")
+               :port    (service-port-str ports slot)
+               :status  (get container-statuses cname "")
+               :pid "" :log ""}))
 
-                  (some #{:mariadb} with)
-                  (conj {:service "MariaDB (warehouse)" :port (port-for :mariadb slot) :env-var ""})
-
-                  (some #{:mongo} with)
-                  (conj {:service "MongoDB" :port (port-for :mongo slot) :env-var ""})
-
-                  (some #{:clickhouse} with)
-                  (conj {:service "ClickHouse HTTP" :port (port-for :clickhouse-http slot) :env-var ""}
-                        {:service "ClickHouse native" :port (port-for :clickhouse-nat slot) :env-var ""})
-
-                  (some #{:ldap} with)
-                  (conj {:service "OpenLDAP" :port (port-for :ldap slot) :env-var ""})
-
-                  (some #{:maildev} with)
-                  (conj {:service "Maildev SMTP" :port (port-for :maildev-smtp slot) :env-var ""}
-                        {:service "Maildev UI" :port (port-for :maildev-ui slot) :env-var ""}))]
-    (println)
-    (println (c/bold (c/green "Dev environment for ") (c/cyan wt-name) (c/green " (slot " slot ")")))
-    (println)
-    (t/table rows :style :unicode)
-    (println)
-    (println (c/cyan "Open a new shell in this worktree for mise to pick up the env vars."))
-    (println (c/cyan "Tear down with: ") (c/yellow "./bin/mage -johnswanson-dev-env --down"))))
+      ;; Warehouse services
+      true
+      (into (mapcat
+             (fn [svc]
+               (let [spec   (get service-specs svc)
+                     cname  (str (container-prefix) (name svc) "-wh")
+                     ports  (or (:wh-ports spec) (:internal-ports spec))]
+                 [{:service (service-display-name svc "wh")
+                   :port    (service-port-str ports slot)
+                   :status  (get container-statuses cname "")
+                   :pid "" :log ""}]))
+             with)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Session layer — background process management
 
 (defn- state-file-path []
-  (str u/project-root-directory "/local/.dev-env-state.edn"))
+  (str target-project-directory "/local/.dev-env-state.edn"))
 
 (defn- read-state-file
   "Read state file, return nil if missing or unreadable."
@@ -350,18 +455,14 @@
 (defn- write-state-file!
   "Write state to the state file."
   [state]
-  (spit (state-file-path) (pr-str state)))
+  (let [f (java.io.File. (state-file-path))]
+    (.mkdirs (.getParentFile f))
+    (spit f (pr-str state))))
 
 (defn- delete-state-file! []
   (let [f (java.io.File. (state-file-path))]
     (when (.exists f)
       (.delete f))))
-
-(defn- pid-alive?
-  "Check if a process with the given PID is still running."
-  [pid]
-  (let [{:keys [exit]} (shell/sh* {:quiet? true} "kill" "-0" (str pid))]
-    (zero? exit)))
 
 (defn- kill-pid!
   "Kill a process by PID (SIGTERM, then SIGKILL after 5s)."
@@ -417,15 +518,11 @@
         log-file   (str "/tmp/mb-" (worktree-name) "-backend.log")
         cmd        ["clojure" (str "-M" aliases) "-p" nrepl-port]
         log        (java.io.File. log-file)
-        proc       (apply p/process {:dir       u/project-root-directory
+        proc       (apply p/process {:dir       target-project-directory
                                      :out       log
                                      :err       log
                                      :extra-env env-map}
                           cmd)]
-    (println (c/green "Started backend") (c/cyan "(PID " (.pid (:proc proc)) ")"))
-    (println (c/cyan "  Aliases: ") aliases)
-    (println (c/cyan "  nREPL:   ") nrepl-port)
-    (println (c/cyan "  Log:     ") (c/yellow (str "tail -f " log-file)))
     {:pid      (.pid (:proc proc))
      :log-file log-file}))
 
@@ -434,13 +531,11 @@
   [env-map]
   (let [log-file (str "/tmp/mb-" (worktree-name) "-frontend.log")
         log      (java.io.File. log-file)
-        proc     (p/process {:dir       u/project-root-directory
+        proc     (p/process {:dir       target-project-directory
                              :out       log
                              :err       log
                              :extra-env env-map}
-                            "yarn" "build-hot")]
-    (println (c/green "Started frontend") (c/cyan "(PID " (.pid (:proc proc)) ")"))
-    (println (c/cyan "  Log:     ") (c/yellow (str "tail -f " log-file)))
+                            "bun" "run" "build-hot")]
     {:pid      (.pid (:proc proc))
      :log-file log-file}))
 
@@ -462,36 +557,142 @@
                           (str fzf-opts " --prompt='Reuse saved config (" summary ")? '")))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Status display
+
+(def ^:private command-prefix "./bin/mage -johnswanson-dev-env")
+
+(defn- print-commands!
+  "Print available subcommands."
+  []
+  (println)
+  (println (c/bold "Commands:"))
+  (println (c/cyan "  up     ") "Start everything (idempotent)")
+  (println (c/cyan "  add    ") "Add warehouse services to running env")
+  (println (c/cyan "  stop   ") "Stop processes + containers (preserves data)")
+  (println (c/cyan "  down   ") "Tear down everything (removes containers and config)")
+  (println (c/cyan "  status ") "Show current status")
+  (println)
+  (println "Run" (c/yellow (str command-prefix " <command> -h")) "for command-specific help."))
+
+(defn- print-help!
+  "Print help for a specific subcommand, or the command list if none given."
+  [subcommand]
+  (case subcommand
+    "up"
+    (do (println (c/bold "up") "- Start everything (idempotent)")
+        (println)
+        (println "Configures the dev environment (interactively or from saved config),")
+        (println "ensures containers are running, and starts backend + frontend processes.")
+        (println "Safe to run repeatedly — skips anything already running.")
+        (println)
+        (println (c/bold "Options:"))
+        (println "  --fresh          Force-recreate containers + restart processes")
+        (println "  --no-frontend    Skip frontend dev server")
+        (println "  --no-backend     Skip backend process (containers + config only)")
+        (println "  --edition EE     ee or oss (default: prompt)")
+        (println "  --token TOKEN    Token type: all-features, starter-cloud, pro-cloud, pro-self-hosted, none")
+        (println "  --app-db DB      App database: h2, postgres, mysql, mariadb (default: prompt)")
+        (println "  --with SERVICE   Warehouse service (repeatable)")
+        (println "  --slot SLOT      Override port slot (0-99)"))
+
+    "add"
+    (do (println (c/bold "add") "- Add warehouse services to running env")
+        (println)
+        (println "Adds one or more warehouse services to an already-configured environment.")
+        (println "If no services are specified, prompts interactively with fzf.")
+        (println)
+        (println (c/bold "Usage:"))
+        (println (str "  " command-prefix " add [SERVICE ...]"))
+        (println)
+        (println (c/bold "Services:") " postgres, mysql, mariadb, mongo, clickhouse, ldap, maildev"))
+
+    "stop"
+    (do (println (c/bold "stop") "- Stop processes and containers (preserves data)")
+        (println)
+        (println "Kills backend and frontend processes, stops docker containers")
+        (println "without removing them. Container data is preserved, so the next")
+        (println (str (c/yellow (str command-prefix " up")) " will reuse existing containers.")))
+
+    "down"
+    (do (println (c/bold "down") "- Tear down everything")
+        (println)
+        (println "Kills processes, removes docker containers and their data,")
+        (println "deletes mise.local.toml, and clears saved configuration."))
+
+    "status"
+    (do (println (c/bold "status") "- Show current status")
+        (println)
+        (println "Displays running processes, container statuses, and port assignments."))
+
+    ;; No subcommand
+    (print-commands!)))
+
+(defn- print-status!
+  "Unified status display. Reads state file for config + process info, queries docker for container status."
+  []
+  (let [state (read-state-file)]
+    (if-not (and state (:config state))
+      (do (println (c/yellow "No dev environment configured yet."))
+          (print-commands!))
+      (let [{:keys [slot config]} state
+            wt-name             (worktree-name)
+            container-statuses  (docker-container-status)
+            rows                (build-status-rows slot config container-statuses state)]
+        ;; Header
+        (println)
+        (println (c/bold (c/green "Dev environment: ") (c/cyan wt-name) (c/green " (slot " slot ")")))
+        ;; Unified table
+        (println)
+        (t/table rows :style :unicode)
+        ;; Commands
+        (print-commands!)))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Entry points
 
 (defn- start-processes!
-  "Launch backend + frontend. Updates state file with PIDs."
+  "Launch backend + frontend. Idempotent: skips if already running (unless --fresh)."
   [opts slot full-config]
-  ;; Kill any already-running processes first
-  (when-let [state (read-state-file)]
-    (when-let [pid (get-in state [:backend :pid])]
-      (when (pid-alive? pid)
-        (kill-pid! pid "backend")))
-    (when-let [pid (get-in state [:frontend :pid])]
-      (when (pid-alive? pid)
-        (kill-pid! pid "frontend"))))
-  (println)
-  (println (c/bold (c/green "Launching dev processes...")))
-  (println)
-  (let [env-map   (build-env slot full-config)
-        backend   (start-backend! slot (:edition full-config) env-map)
-        frontend  (when-not (:no-frontend opts)
-                    (start-frontend! env-map))
-        state     (cond-> (merge (read-state-file)
-                                 {:backend backend})
+  (let [state     (read-state-file)
+        fresh?    (:fresh opts)
+        env-map   (build-env slot full-config)
+        be-pid    (get-in state [:backend :pid])
+        fe-pid    (get-in state [:frontend :pid])
+        be-alive? (and be-pid (pid-alive? be-pid))
+        fe-alive? (and fe-pid (pid-alive? fe-pid))
+        ;; Backend
+        backend   (cond
+                    (:no-backend opts)
+                    (:backend state)
+
+                    (and be-alive? (not fresh?))
+                    (do (println (c/green "  Backend already running (PID " be-pid ")"))
+                        (:backend state))
+
+                    :else
+                    (do (when be-alive? (kill-pid! be-pid "backend"))
+                        (println (c/yellow "Starting backend..."))
+                        (start-backend! slot (:edition full-config) env-map)))
+        ;; Frontend
+        frontend  (cond
+                    (:no-frontend opts)
+                    (:frontend state)
+
+                    (and fe-alive? (not fresh?))
+                    (do (println (c/green "  Frontend already running (PID " fe-pid ")"))
+                        (:frontend state))
+
+                    :else
+                    (do (when fe-alive? (kill-pid! fe-pid "frontend"))
+                        (println (c/yellow "Starting frontend..."))
+                        (start-frontend! env-map)))
+        new-state (cond-> (merge (read-state-file) {})
+                    backend  (assoc :backend backend)
                     frontend (assoc :frontend frontend))]
-    (write-state-file! state)
-    (println)
-    (println (c/bold (c/green "Dev environment is running in the background.")))
-    (println (c/cyan "Stop with: ") (c/yellow "./bin/mage -johnswanson-dev-env --down"))))
+    (write-state-file! new-state)))
 
 (defn- stand-up!
-  "Orchestrate: prompt -> validate -> check docker -> start containers -> write toml -> optionally run."
+  "Orchestrate: prompt -> validate -> check docker -> ensure containers -> start processes."
   [opts]
   (let [reuse?      (prompt-reuse-config? opts)
         saved       (when reuse? (:config (read-state-file)))
@@ -506,25 +707,56 @@
         with        (or (:with saved) (select-with opts))
         slot        (compute-slot (:slot opts))
         config      (validate-services! {:app-db app-db :with with})
-        full-config (assoc config :edition edition :token token)]
-    ;; Start docker containers (if needed)
+        full-config (assoc config :edition edition :token token)
+        fresh?      (:fresh opts)]
+    ;; Ensure docker containers are running
     (when (or (not= (:app-db config) :h2) (seq (:with config)))
       (check-docker!))
     (when (not= (:app-db config) :h2)
-      (start-service! (:app-db config) "app" slot))
+      (ensure-container! (:app-db config) "app" slot {:fresh? fresh?}))
     (doseq [svc (:with config)]
-      (start-service! svc "wh" slot))
+      (ensure-container! svc "wh" slot {:fresh? fresh?}))
     ;; Write mise.local.toml
     (generate-mise-local! slot full-config)
     ;; Save config to state file
     (write-state-file! {:slot       slot
                         :config     full-config
                         :containers (collect-container-names config)})
-    ;; Print summary
-    (print-summary! slot config)
-    ;; Optionally launch processes
-    (when (:run opts)
-      (start-processes! opts slot full-config))))
+    ;; Start processes
+    (start-processes! opts slot full-config)
+    (print-status!)))
+
+(defn- stop!
+  "Stop processes and containers without removing them. Preserves config and state."
+  []
+  ;; Kill processes from state file
+  (when-let [state (read-state-file)]
+    (when-let [pid (get-in state [:backend :pid])]
+      (kill-pid! pid "backend"))
+    (when-let [pid (get-in state [:frontend :pid])]
+      (kill-pid! pid "frontend")))
+  ;; Stop containers (don't remove)
+  (check-docker!)
+  (let [prefix     (container-prefix)
+        {:keys [out]} (shell/sh* {:quiet? true}
+                                 "docker" "ps" "-a"
+                                 "--filter" (str "name=^" prefix)
+                                 "--format" "{{.Names}}")
+        containers (when (seq out)
+                     (->> out
+                          (remove str/blank?)
+                          vec))]
+    (if (seq containers)
+      (do
+        (println (c/yellow "Stopping containers:"))
+        (doseq [cname containers]
+          (println (c/yellow "  Stopping " cname))
+          (stop-container! cname))
+        (println (c/green "All containers stopped.")))
+      (println (c/yellow "No containers found for prefix: " prefix))))
+  ;; Clear process PIDs from state but keep config
+  (when-let [state (read-state-file)]
+    (write-state-file! (dissoc state :backend :frontend))))
 
 (defn- tear-down!
   "Find all containers for this worktree, kill/rm them, kill processes, clean up."
@@ -555,61 +787,74 @@
         (println (c/green "All containers stopped.")))
       (println (c/yellow "No containers found for prefix: " prefix))))
   ;; Remove mise.local.toml
-  (let [toml-path (str u/project-root-directory "/mise.local.toml")]
+  (let [toml-path (str target-project-directory "/mise.local.toml")]
     (when (.exists (java.io.File. toml-path))
       (.delete (java.io.File. toml-path))
       (println (c/green "Removed " toml-path))))
   ;; Remove state file
   (delete-state-file!))
 
-(defn- print-status!
-  "Show running containers and processes for this worktree."
-  []
-  ;; Process status
-  (when-let [state (read-state-file)]
-    (println (c/bold (c/green "Processes:")))
-    (println)
-    (let [rows (cond-> []
-                 (:backend state)
-                 (conj {:process "Backend"
-                        :pid     (get-in state [:backend :pid])
-                        :status  (if (pid-alive? (get-in state [:backend :pid])) "running" "stopped")
-                        :log     (get-in state [:backend :log-file])})
-
-                 (:frontend state)
-                 (conj {:process "Frontend"
-                        :pid     (get-in state [:frontend :pid])
-                        :status  (if (pid-alive? (get-in state [:frontend :pid])) "running" "stopped")
-                        :log     (get-in state [:frontend :log-file])}))]
-      (when (seq rows)
-        (t/table rows :style :unicode)
-        (println))))
-  ;; Container status
-  (check-docker!)
-  (let [prefix     (container-prefix)
-        {:keys [out]} (shell/sh* {:quiet? true}
-                                 "docker" "ps" "-a"
-                                 "--filter" (str "name=^" prefix)
-                                 "--format" "{{.Names}}\t{{.Status}}\t{{.Ports}}")
-        lines      (when (seq out)
-                     (->> out (remove str/blank?) vec))]
-    (if (seq lines)
-      (let [rows (mapv (fn [line]
-                         (let [[cname status ports] (str/split line #"\t" 3)]
-                           {:container cname
-                            :status    (or status "")
-                            :ports     (or ports "")}))
-                       lines)]
-        (println (c/bold (c/green "Containers for " (worktree-name) ":")))
-        (println)
-        (t/table rows :style :unicode))
-      (println (c/yellow "No containers found for " (worktree-name))))))
+(defn- add-services!
+  "Add warehouse services to an existing dev environment."
+  [arguments]
+  (let [state (read-state-file)]
+    (when-not (and state (:config state))
+      (println (c/red "No dev environment configured yet. Run `up` first."))
+      (u/exit 1))
+    (let [{:keys [slot config]}   state
+          existing-with           (set (:with config))
+          app-db                  (:app-db config)
+          valid-withs             #{:postgres :mysql :mariadb :mongo :clickhouse :ldap :maildev}
+          requested               (if (seq arguments)
+                                    (mapv keyword arguments)
+                                    (let [available (remove #(or (existing-with (keyword %))
+                                                                 (= (keyword %) app-db))
+                                                            ["postgres" "mysql" "mariadb" "mongo"
+                                                             "clickhouse" "ldap" "maildev"])
+                                          result    (u/fzf-select! (vec available)
+                                                                   (str fzf-opts " --multi --prompt='Services to add (TAB to select): '"))]
+                                      (if (str/blank? result)
+                                        []
+                                        (->> (str/split-lines result)
+                                             (mapv keyword)))))]
+      (when (empty? requested)
+        (println (c/yellow "No services selected."))
+        (u/exit 0))
+      ;; Validate
+      (doseq [svc requested]
+        (when-not (valid-withs svc)
+          (println (c/red "Invalid service: " (name svc) ". Must be one of: " (str/join ", " (map name valid-withs))))
+          (u/exit 1)))
+      ;; Filter out already-present and app-db overlaps
+      (let [new-svcs (vec (remove #(or (existing-with %)
+                                       (= % app-db))
+                                  requested))]
+        (doseq [svc requested]
+          (when (existing-with svc)
+            (println (c/yellow "  Already active: " (name svc))))
+          (when (= svc app-db)
+            (println (c/yellow "  Redundant with app-db: " (name svc)))))
+        (when (seq new-svcs)
+          (check-docker!)
+          (doseq [svc new-svcs]
+            (ensure-container! svc "wh" slot {:fresh? false}))
+          (let [merged-with   (vec (distinct (concat (:with config) new-svcs)))
+                new-config    (assoc config :with merged-with)
+                new-state     (assoc state
+                                     :config     new-config
+                                     :containers (collect-container-names new-config))]
+            (write-state-file! new-state)))
+        (print-status!)))))
 
 (defn dev-env!
   "Top-level dispatcher for dev-env command."
-  [{:keys [options]}]
-  (let [{:keys [down status]} options]
-    (cond
-      down   (tear-down!)
-      status (print-status!)
-      :else  (stand-up! options))))
+  [{:keys [options arguments]}]
+  (if (:help options)
+    (print-help! (first arguments))
+    (case (first arguments)
+      "up"     (stand-up! options)
+      "add"    (add-services! (rest arguments))
+      "stop"   (stop!)
+      "down"   (tear-down!)
+      "status" (print-status!)
+      (print-status!))))
