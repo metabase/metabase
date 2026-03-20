@@ -50,6 +50,29 @@
 ;;    {...
 ;;     :friends #{enterprise/search search-rest}}
 ;;
+;; ## `model-exports`:
+;;
+;; Set of `:model/X` keywords that this module allows others to reference. Currently defaults to `:any` when
+;; omitted, meaning all models defined in this module are freely usable by other modules. In the future we may
+;; change to pure opt-in semantics where modules must explicitly list their exports. A set restricts external
+;; access to only the listed models; an empty set `#{}` means no models are exported.
+;;
+;;    enterprise/workspaces
+;;    {...
+;;     :model-exports #{:model/Workspace :model/WorkspaceMergeTransform}}
+;;
+;; ## `model-imports`:
+;;
+;; Set of `:model/X` keywords that this module is allowed to reference from other modules. Currently defaults to
+;; `:any` when omitted, meaning this module can freely reference any model. In the future we may change to pure
+;; opt-in semantics where modules must explicitly list their imports. A set restricts the module to only the listed
+;; models; any other `:model/X` keyword in the module's source files will be flagged as a violation. If a model is
+;; used but its definition cannot be found, that is also a violation.
+;;
+;;    transforms-base
+;;    {...
+;;     :model-imports #{:model/Database :model/Field :model/Table :model/Transform}}
+;;
 ;; ## Tips
 ;;
 ;; PRO TIP: Check out the [[dev.deps-graph]] namespace for helpful tools to see where a module is used externally, and
@@ -941,7 +964,9 @@
            util}}
 
   notification
-  {:team "Gadget"
+  {;; TODO: re-enable when :model/NotificationDashboard is no longer a problem
+   :model-imports :skip-test
+   :team "Gadget"
    :api  #{metabase.notification.api
            metabase.notification.core
            metabase.notification.init
@@ -1670,6 +1695,15 @@
    :api  #{metabase.transforms-base.init
            metabase.transforms-base.interface
            metabase.transforms-base.util}
+   :model-imports #{:model/Database
+                    :model/DatabaseRouter
+                    :model/Field
+                    :model/Table
+                    ;; TODO regressions — transforms-base should not depend on
+                    ;; these directly. Remove once the module is agnostic to
+                    ;; global versus workspace transforms.
+                    :model/Transform
+                    :model/TransformRun}
    :uses #{driver
            events
            lib
@@ -2629,6 +2663,7 @@
   {:team "Metabot"
    :api  #{metabase-enterprise.workspaces.api
            metabase-enterprise.workspaces.init}
+   :model-exports #{:model/Workspace :model/WorkspaceMergeTransform}
    :friends #{enterprise/agent-api}
    :uses #{api
            app-db
