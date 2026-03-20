@@ -27,10 +27,23 @@ import type { MetabotProvider, SettingDefinition } from "metabase-types/api";
 import { MetabotProviderApiKey } from "./MetabotProviderApiKey";
 import { API_KEY_SETTING_BY_PROVIDER, PROVIDER_OPTIONS } from "./utils";
 
+type MetabotModelOption = ComboboxItem & {
+  group?: string | null;
+};
+
+type SelectModelOption = ComboboxItem;
+
+type MetabotModelGroup = {
+  group: string;
+  items: SelectModelOption[];
+};
+
+type MetabotModelSelectData = MetabotModelOption[] | MetabotModelGroup[];
+
 export function MetabotProviderSection() {
-  const isConfigured = useSetting("ee-ai-metabot-configured?");
+  const isConfigured = useSetting("llm-metabot-configured?");
   const { value: savedProviderValue, settingDetails } = useAdminSetting(
-    "ee-ai-metabot-provider",
+    "llm-metabot-provider",
   );
   const isEnvSetting =
     settingDetails &&
@@ -38,16 +51,17 @@ export function MetabotProviderSection() {
     !!settingDetails.env_name;
 
   const { details: providerApiKeyDetails } = useAdminSettings([
-    "ee-anthropic-api-key",
-    "ee-openai-api-key",
-    "ee-openrouter-api-key",
+    "llm-anthropic-api-key",
+    "llm-openai-api-key",
+    "llm-openrouter-api-key",
   ] as const);
 
   const [updateMetabotSettings, updateMetabotSettingsResult] =
     useUpdateMetabotSettingsMutation();
 
   const { provider: savedProvider, model: savedModel } = useMemo(
-    () => parseProviderAndModel(savedProviderValue),
+    () =>
+      parseProviderAndModel(savedProviderValue as string | null | undefined),
     [savedProviderValue],
   );
 
@@ -74,15 +88,20 @@ export function MetabotProviderSection() {
     provider ? { provider } : skipToken,
   );
 
-  const modelOptions = useMemo<ComboboxItem[]>(
+  const modelOptions = useMemo<MetabotModelOption[]>(
     () =>
       metabotSettingsQuery.isFetching
         ? []
         : (metabotSettingsQuery.data?.models ?? []).map((model) => ({
             value: model.id,
             label: model.display_name,
+            group: model.group,
           })),
     [metabotSettingsQuery.isFetching, metabotSettingsQuery.data?.models],
+  );
+  const groupedModelOptions = useMemo<MetabotModelSelectData>(
+    () => getGroupedModelOptions(modelOptions),
+    [modelOptions],
   );
 
   const apiKeyError = metabotSettingsQuery.data?.["api-key-error"] ?? null;
@@ -120,8 +139,6 @@ export function MetabotProviderSection() {
 
   return (
     <Stack gap="md">
-      <Text>{t`Works best with Anthropic models, specifically Opus.`}</Text>
-
       <Select
         label={t`Provider`}
         placeholder={t`Select a provider`}
@@ -135,6 +152,16 @@ export function MetabotProviderSection() {
         value={provider}
         onChange={handleProviderChange}
         disabled={isEnvSetting}
+        renderOption={({ option }) => (
+          <Group gap="xs" p="sm">
+            <Text lh="1rem">{option.label}</Text>
+            {option.value === "anthropic" ? (
+              <Text c="text-secondary" lh="1rem">
+                - {t`Recommended`}
+              </Text>
+            ) : null}
+          </Group>
+        )}
       />
 
       {provider ? (
@@ -153,7 +180,7 @@ export function MetabotProviderSection() {
           }
           description={t`Available models are fetched from the selected provider using its configured API key.`}
           error={modelError}
-          data={modelOptions}
+          data={groupedModelOptions}
           value={modelInputValue}
           onChange={handleModelChange}
           disabled={
@@ -244,10 +271,43 @@ function hasConfiguredSettingValue(setting: SettingDefinition | undefined) {
 }
 
 function getModelDisplayName(
-  modelOptions: ComboboxItem[],
+  modelOptions: MetabotModelOption[],
   model: string | null | undefined,
 ) {
   return modelOptions.find((option) => option.value === model)?.label ?? model;
+}
+
+function getGroupedModelOptions(
+  modelOptions: MetabotModelOption[],
+): MetabotModelSelectData {
+  const groups = new Map<string, SelectModelOption[]>();
+  const ungrouped: SelectModelOption[] = [];
+
+  for (const option of modelOptions) {
+    const selectOption = { value: option.value, label: option.label };
+
+    if (!option.group) {
+      ungrouped.push(selectOption);
+      continue;
+    }
+
+    const group = groups.get(option.group) ?? [];
+    group.push(selectOption);
+    groups.set(option.group, group);
+  }
+
+  if (groups.size === 0) {
+    return ungrouped;
+  }
+
+  if (ungrouped.length > 0) {
+    groups.set(t`Other`, ungrouped);
+  }
+
+  return Array.from(groups.entries()).map(([group, items]) => ({
+    group,
+    items,
+  }));
 }
 
 function getModelError({

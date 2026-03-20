@@ -1,4 +1,5 @@
 import { fireEvent } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupPropertiesEndpoints } from "__support__/server-mocks";
@@ -80,6 +81,7 @@ describe("MetabotProviderApiKey", () => {
     const { input } = await setup();
 
     fireEvent.change(input, { target: { value: "sk-ant-invalid" } });
+    await userEvent.click(screen.getByRole("button", { name: "Connect" }));
 
     expect(
       await screen.findByText("Anthropic API key expired or invalid"),
@@ -110,15 +112,18 @@ describe("MetabotProviderApiKey", () => {
     });
 
     fireEvent.change(input, { target: { value: "sk-ant-valid" } });
+    const connectButton = screen.getByRole("button", { name: "Connect" });
 
-    expect(await screen.findByText("Verifying API key...")).toBeInTheDocument();
+    await userEvent.click(connectButton);
+
+    await waitFor(() => {
+      expect(connectButton).toHaveAttribute("data-loading", "true");
+    });
 
     resolveRequest();
 
     await waitFor(() => {
-      expect(
-        screen.queryByText("Verifying API key..."),
-      ).not.toBeInTheDocument();
+      expect(connectButton).not.toHaveAttribute("data-loading", "true");
     });
   });
 
@@ -126,6 +131,7 @@ describe("MetabotProviderApiKey", () => {
     const { input, setShouldFail } = await setup();
 
     fireEvent.change(input, { target: { value: "sk-ant-invalid" } });
+    await userEvent.click(screen.getByRole("button", { name: "Connect" }));
 
     expect(
       await screen.findByText("Anthropic API key expired or invalid"),
@@ -134,6 +140,7 @@ describe("MetabotProviderApiKey", () => {
 
     setShouldFail(false);
     fireEvent.change(input, { target: { value: "sk-ant-valid" } });
+    await userEvent.click(screen.getByRole("button", { name: "Connect" }));
 
     await waitFor(() => {
       expect(
@@ -155,5 +162,23 @@ describe("MetabotProviderApiKey", () => {
       "This has been set by the LLM_ANTHROPIC_API_KEY environment variable.",
     );
     expect(input).toBeDisabled();
+  });
+
+  it("does not verify the API key until Connect is clicked", async () => {
+    const { input } = await setup({ shouldFail: false });
+
+    fireEvent.change(input, { target: { value: "sk-ant-valid" } });
+
+    expect(fetchMock.callHistory.called("path:/api/metabot/settings")).toBe(
+      false,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+    await waitFor(() => {
+      expect(fetchMock.callHistory.called("path:/api/metabot/settings")).toBe(
+        true,
+      );
+    });
   });
 });

@@ -9,7 +9,6 @@
    [metabase.api.util.handlers :as handlers]
    [metabase.app-db.core :as app-db]
    [metabase.config.core :as config]
-   [metabase.llm.settings :as llm.settings]
    [metabase.metabot.agent.core :as agent]
    [metabase.metabot.api.describe]
    [metabase.metabot.api.document]
@@ -20,6 +19,7 @@
    [metabase.metabot.context :as metabot.context]
    [metabase.metabot.envelope :as metabot.envelope]
    [metabase.metabot.feedback :as metabot.feedback]
+   [metabase.metabot.self :as metabot.self]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.tools.api]
@@ -288,7 +288,8 @@
 (def ^:private llm-model-response-schema
   [:map
    [:id :string]
-   [:display_name :string]])
+   [:display_name :string]
+   [:group {:optional true} [:maybe :string]]])
 
 (def ^:private metabot-settings-response-schema
   [:map
@@ -326,17 +327,67 @@
     (and (:api-error (ex-data error))
          (contains? invalid-api-key-statuses status))))
 
+(defn- title-case-token
+  [token]
+  (case token
+    "openai" "OpenAI"
+    "claude" "Claude"
+    (str/capitalize token)))
+
+(defn- anthropic-model-group
+  [{:keys [id]}]
+  (let [tokens (str/split id #"-")]
+    (or (some->> tokens
+                 (filter #{"haiku" "sonnet" "opus"})
+                 first
+                 title-case-token)
+        (some->> tokens
+                 (take 2)
+                 seq
+                 (map title-case-token)
+                 (str/join " ")))))
+
+(defn- openrouter-model-group
+  [{:keys [display_name id]}]
+  (or (some-> display_name
+              (str/split #": " 2)
+              first)
+      (some-> id
+              (str/split #"/" 2)
+              first
+              title-case-token)))
+
+(defn- decorate-provider-model
+  [provider model]
+  (case provider
+    "anthropic"  (assoc model :group (anthropic-model-group model))
+    "openrouter" (assoc model :group (openrouter-model-group model))
+    model))
+
+(defn- decorate-provider-models
+  [provider models]
+  (let [decorated-models (map #(decorate-provider-model provider %) models)]
+    (if (contains? #{"anthropic" "openrouter"} provider)
+      (let [grouped-models (group-by :group decorated-models)]
+        (->> grouped-models
+             keys
+             sort
+             (mapcat #(get grouped-models %))
+             vec))
+      (vec decorated-models))))
+
 (defn- provider-models-response
   ([provider]
    (provider-models-response provider nil))
   ([provider api-key-override]
    (let [effective-api-key (or (non-blank-string api-key-override)
                                (non-blank-string
-                                (llm.settings/configured-provider-api-key provider)))]
+                                (metabot.settings/configured-provider-api-key provider)))]
      (if (and provider effective-api-key)
        (try
-         {:models (-> (metabot-v3.self/list-models provider {:api-key effective-api-key})
-                      :models)}
+         {:models (decorate-provider-models
+                   provider
+                   (:models (metabot.self/list-models provider {:api-key effective-api-key})))}
          (catch clojure.lang.ExceptionInfo e
            (if (invalid-api-key-error? e)
              {:models []
@@ -349,12 +400,12 @@
    (settings-response provider nil))
   ([provider api-key-override]
    (merge
-    {:value (llm.settings/llm-metabot-provider)}
+    {:value (metabot.settings/llm-metabot-provider)}
     (provider-models-response provider api-key-override))))
 
 (defn- current-provider
   []
-  (some-> (llm.settings/llm-metabot-provider)
+  (some-> (metabot.settings/llm-metabot-provider)
           (str/split #"/" 2)
           first))
 

@@ -196,6 +196,7 @@ export interface MetabotSettingsResponse {
   models: {
     id: string;
     display_name: string;
+    group?: string | null;
   }[];
 }
 

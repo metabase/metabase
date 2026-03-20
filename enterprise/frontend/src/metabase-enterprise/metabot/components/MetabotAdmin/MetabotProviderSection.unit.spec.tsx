@@ -51,8 +51,16 @@ const DEFAULT_RESPONSES: Record<MetabotProvider, MetabotSettingsResponse> = {
   anthropic: {
     value: "anthropic/claude-haiku-4-5",
     models: [
-      { id: "claude-haiku-4-5", display_name: "Claude Haiku 4.5" },
-      { id: "claude-sonnet-4-5", display_name: "Claude Sonnet 4.5" },
+      {
+        id: "claude-haiku-4-5",
+        display_name: "Claude Haiku 4.5",
+        group: "Haiku",
+      },
+      {
+        id: "claude-sonnet-4-5",
+        display_name: "Claude Sonnet 4.5",
+        group: "Sonnet",
+      },
     ],
   },
   openai: {
@@ -65,7 +73,11 @@ const DEFAULT_RESPONSES: Record<MetabotProvider, MetabotSettingsResponse> = {
   openrouter: {
     value: "openrouter/openai/gpt-4.1-mini",
     models: [
-      { id: "openai/gpt-4.1-mini", display_name: "OpenAI GPT-4.1 mini" },
+      {
+        id: "openai/gpt-4.1-mini",
+        display_name: "OpenAI GPT-4.1 mini",
+        group: "OpenAI",
+      },
     ],
   },
 };
@@ -108,15 +120,15 @@ async function setup({
     }),
     createMockSettingDefinition({
       key: "llm-anthropic-api-key",
-      value: mergedApiKeyValues.anthropic,
+      value: mergedApiKeyValues.anthropic ?? undefined,
     }),
     createMockSettingDefinition({
       key: "llm-openai-api-key",
-      value: mergedApiKeyValues.openai,
+      value: mergedApiKeyValues.openai ?? undefined,
     }),
     createMockSettingDefinition({
       key: "llm-openrouter-api-key",
-      value: mergedApiKeyValues.openrouter,
+      value: mergedApiKeyValues.openrouter ?? undefined,
     }),
   ]);
 
@@ -164,6 +176,15 @@ describe("MetabotProviderSection", () => {
     );
     expect(screen.getByLabelText("Provider")).toBeDisabled();
     expect(await screen.findByLabelText("Model")).toBeDisabled();
+  });
+
+  it("shows Anthropic as the recommended provider in the dropdown", async () => {
+    await setup();
+
+    await userEvent.click(screen.getByLabelText("Provider"));
+
+    expect(await screen.findByText("Anthropic")).toBeInTheDocument();
+    expect(await screen.findByText("- Recommended")).toBeInTheDocument();
   });
 
   it("shows the connected badge with the saved provider and model", async () => {
@@ -240,6 +261,15 @@ describe("MetabotProviderSection", () => {
     );
   });
 
+  it("shows model groups from the backend in the model picker", async () => {
+    await setup();
+    await screen.findByLabelText("Model");
+
+    await openModelSelector();
+
+    expect(await screen.findByText("Sonnet")).toBeInTheDocument();
+  });
+
   it("does not show the API key input when no provider is selected", async () => {
     await setup({ savedProviderValue: null, isConfigured: false });
 
@@ -280,9 +310,7 @@ describe("MetabotProviderSection", () => {
     await screen.findByLabelText("Model");
 
     await openModelSelector();
-    await userEvent.click(
-      await screen.findByRole("option", { name: "Claude Sonnet 4.5" }),
-    );
+    await userEvent.click(await screen.findByText("Claude Sonnet 4.5"));
 
     await waitFor(() => {
       expect(fetchMock.callHistory.called("path:/api/metabot/settings")).toBe(

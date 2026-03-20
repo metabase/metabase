@@ -6,17 +6,6 @@
    [clojure.test :refer :all]
    [compojure.response]
    [medley.core :as m]
-   [metabase-enterprise.llm.settings :as llm.settings]
-   [metabase-enterprise.metabot-v3.api :as api]
-   [metabase-enterprise.metabot-v3.client :as client]
-   [metabase-enterprise.metabot-v3.client-test :as client-test]
-   [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
-   [metabase-enterprise.metabot-v3.context :as metabot.context]
-   [metabase-enterprise.metabot-v3.self :as metabot-v3.self]
-   [metabase-enterprise.metabot-v3.self.openrouter :as openrouter]
-   [metabase-enterprise.metabot-v3.settings :as metabot.settings]
-   [metabase-enterprise.metabot-v3.test-util :as mut]
-   [metabase-enterprise.metabot-v3.util :as metabot.u]
    [metabase.config.core :as config]
    [metabase.llm.settings :as llm.settings]
    [metabase.metabot.api :as api]
@@ -24,6 +13,7 @@
    [metabase.metabot.client-test :as client-test]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.context :as metabot.context]
+   [metabase.metabot.self :as metabot.self]
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.test-util :as mut]
@@ -320,27 +310,79 @@
 
 (deftest settings-endpoint-test
     (testing "GET /api/metabot/settings returns live models"
-      (mt/with-temporary-setting-values [llm.settings/llm-metabot-provider "anthropic/claude-haiku-4-5"
+      (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "anthropic/claude-haiku-4-5"
                                          llm.settings/llm-anthropic-api-key    "sk-ant-valid"]
-        (with-redefs [metabot-v3.self/list-models (fn
+        (with-redefs [metabot.self/list-models (fn
                                                     ([provider]
                                                      (is (= "anthropic" provider))
                                                      {:models [{:id "claude-haiku-4-5"
                                                                 :display_name "Claude Haiku 4.5"}]})
-                                                    ([provider {:keys [api-key]}]
-                                                     (is (= "anthropic" provider))
-                                                     (is (= "sk-ant-valid" api-key))
-                                                     {:models [{:id "claude-haiku-4-5"
-                                                                :display_name "Claude Haiku 4.5"}]}))]
+                                                     ([provider {:keys [api-key]}]
+                                                       (is (= "anthropic" provider))
+                                                       (is (= "sk-ant-valid" api-key))
+                                                       {:models [{:id "claude-sonnet-4-5"
+                                                                  :display_name "Claude Sonnet 4.5"}
+                                                                 {:id "claude-haiku-4-5"
+                                                                  :display_name "Claude Haiku 4.5"}
+                                                                 {:id "claude-opus-4-5"
+                                                                  :display_name "Claude Opus 4.5"}
+                                                                 {:id "claude-opus-4-1"
+                                                                  :display_name "Claude Opus 4.1"}]}))]
           (is (= {:value  "anthropic/claude-haiku-4-5"
                   :models [{:id "claude-haiku-4-5"
-                            :display_name "Claude Haiku 4.5"}]}
-                 (mt/user-http-request :crowberto :get 200 "metabot/settings" {:provider "anthropic"}))))))
+                            :display_name "Claude Haiku 4.5"
+                            :group "Haiku"}
+                           {:id "claude-opus-4-5"
+                            :display_name "Claude Opus 4.5"
+                            :group "Opus"}
+                           {:id "claude-opus-4-1"
+                            :display_name "Claude Opus 4.1"
+                            :group "Opus"}
+                           {:id "claude-sonnet-4-5"
+                            :display_name "Claude Sonnet 4.5"
+                            :group "Sonnet"}]}
+                  (mt/user-http-request :crowberto :get 200 "metabot/settings" {:provider "anthropic"}))))))
+
+    (testing "GET /api/metabot/settings normalizes legacy Anthropic ids into the same family group"
+      (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-valid"]
+        (with-redefs [metabot.self/list-models (fn [_provider {:keys [api-key]}]
+                                                    (is (= "sk-ant-valid" api-key))
+                                                    {:models [{:id "claude-3-haiku-20240307"
+                                                               :display_name "Claude 3 Haiku"}
+                                                              {:id "claude-haiku-4-5"
+                                                               :display_name "Claude Haiku 4.5"}]})]
+          (is (= {:value  (metabot.settings/llm-metabot-provider)
+                  :models [{:id "claude-3-haiku-20240307"
+                            :display_name "Claude 3 Haiku"
+                            :group "Haiku"}
+                           {:id "claude-haiku-4-5"
+                            :display_name "Claude Haiku 4.5"
+                            :group "Haiku"}]}
+                 (mt/user-http-request :crowberto :get 200 "metabot/settings"
+                                       {:provider "anthropic"}))))))
+
+    (testing "GET /api/metabot/settings groups OpenRouter models by provider prefix"
+      (mt/with-temporary-setting-values [llm.settings/llm-openrouter-api-key "sk-or-v1-valid"]
+        (with-redefs [metabot.self/list-models (fn [_provider {:keys [api-key]}]
+                                                    (is (= "sk-or-v1-valid" api-key))
+                                                    {:models [{:id "openai/gpt-4.1-mini"
+                                                               :display_name "GPT-4.1 mini"}
+                                                              {:id "anthropic/claude-sonnet-4.5"
+                                                               :display_name "Claude Sonnet 4.5"}]})]
+          (is (= {:value  (metabot.settings/llm-metabot-provider)
+                  :models [{:id "anthropic/claude-sonnet-4.5"
+                            :display_name "Claude Sonnet 4.5"
+                            :group "Anthropic"}
+                           {:id "openai/gpt-4.1-mini"
+                            :display_name "GPT-4.1 mini"
+                            :group "OpenAI"}]}
+                 (mt/user-http-request :crowberto :get 200 "metabot/settings"
+                                       {:provider "openrouter"}))))))
 
     (testing "PUT /api/metabot/settings updates the provider setting"
-      (mt/with-temporary-setting-values [llm.settings/llm-metabot-provider "anthropic/claude-haiku-4-5"
+      (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "anthropic/claude-haiku-4-5"
                                          llm.settings/llm-openai-api-key      "sk-valid"]
-        (with-redefs [metabot-v3.self/list-models (fn
+        (with-redefs [metabot.self/list-models (fn
                                                     ([provider]
                                                      (is (= "openai" provider))
                                                      {:models [{:id "gpt-4.1-mini"
@@ -357,12 +399,12 @@
                                        {:provider "openai"
                                         :model    "gpt-4.1-mini"})))
           (is (= "openai/gpt-4.1-mini"
-                 (llm.settings/llm-metabot-provider))))))
+                 (metabot.settings/llm-metabot-provider))))))
 
     (testing "PUT /api/metabot/settings verifies and saves provider API keys"
       (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key nil]
         (let [calls (atom 0)]
-          (with-redefs [metabot-v3.self/list-models (fn [provider {:keys [api-key]}]
+          (with-redefs [metabot.self/list-models (fn [provider {:keys [api-key]}]
                                                       (swap! calls inc)
                                                       (is (= "anthropic" provider))
                                                       (is (= "sk-ant-valid" api-key))
@@ -374,9 +416,10 @@
                                                         (is false (str "unexpected list-models call: " @calls)))
                                                       {:models [{:id "claude-haiku-4-5"
                                                                  :display_name "Claude Haiku 4.5"}]})]
-            (is (= {:value  (llm.settings/llm-metabot-provider)
+            (is (= {:value  (metabot.settings/llm-metabot-provider)
                     :models [{:id "claude-haiku-4-5"
-                              :display_name "Claude Haiku 4.5"}]}
+                              :display_name "Claude Haiku 4.5"
+                              :group "Haiku"}]}
                    (mt/user-http-request :crowberto :put 200 "metabot/settings"
                                          {:provider "anthropic"
                                           :api-key  "sk-ant-valid"})))
@@ -388,7 +431,7 @@
     (testing "PUT /api/metabot/settings returns a field error when API key verification fails"
       (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key nil]
         (let [calls (atom 0)]
-          (with-redefs [metabot-v3.self/list-models (fn [provider {:keys [api-key]}]
+          (with-redefs [metabot.self/list-models (fn [provider {:keys [api-key]}]
                                                       (swap! calls inc)
                                                       (is (= "openai" provider))
                                                       (is (= "sk-invalid" api-key))
@@ -406,8 +449,8 @@
               (is (nil? (llm.settings/llm-openai-api-key))))))))
 
     (testing "PUT /api/metabot/settings does not treat provider outages as invalid API keys"
-      (mt/with-temporary-setting-values [llm.settings/ee-openai-api-key nil]
-        (with-redefs [metabot-v3.self/list-models (fn [provider {:keys [api-key]}]
+      (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key nil]
+        (with-redefs [metabot.self/list-models (fn [provider {:keys [api-key]}]
                                                     (is (= "openai" provider))
                                                     (is (= "sk-valid" api-key))
                                                     (throw (ex-info "OpenAI API is not working but not saying why"
@@ -417,15 +460,15 @@
                                                {:provider "openai"
                                                 :api-key  "sk-valid"})]
             (is (= "OpenAI API is not working but not saying why" (:message response)))
-            (is (nil? (llm.settings/ee-openai-api-key)))))))
+            (is (nil? (llm.settings/llm-openai-api-key)))))))
 
     (testing "GET /api/metabot/settings surfaces invalid saved API keys without failing the models field"
       (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key "sk-invalid"]
-        (with-redefs [metabot-v3.self/list-models (fn [_provider _opts]
+        (with-redefs [metabot.self/list-models (fn [_provider _opts]
                                                     (throw (ex-info "OpenAI API key expired or invalid"
                                                                     {:api-error true
                                                                      :status-code 401})))]
-          (is (= {:value         (llm.settings/llm-metabot-provider)
+          (is (= {:value         (metabot.settings/llm-metabot-provider)
                   :api-key-error "OpenAI API key expired or invalid"
                   :models        []}
                  (mt/user-http-request :crowberto :get 200 "metabot/settings"

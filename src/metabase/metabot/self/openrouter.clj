@@ -108,7 +108,7 @@
        {:models (mapv (fn [model]
                         {:id           (:id model)
                          :display_name (or (:name model) (:id model))})
-                      (sort-by :id (get-in res [:body :data])))})
+                      (reverse (sort-by :created (get-in res [:body :data]))))})
      (catch Exception e
        (if-let [res (some-> (ex-data e) json/decode-body)]
          (let [status (:status res)

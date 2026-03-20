@@ -1,10 +1,10 @@
-import { type ChangeEvent, useEffect, useState } from "react";
+import { type ChangeEvent, useEffect, useMemo, useState } from "react";
 import { c, jt, t } from "ttag";
 
 import { SetByEnvVar } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { getErrorMessage, useAdminSetting } from "metabase/api/utils";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
-import { Box, Text, TextInput } from "metabase/ui";
+import { Box, Button, Stack, TextInput } from "metabase/ui";
 import { useUpdateMetabotSettingsMutation } from "metabase-enterprise/api";
 import type { MetabotProvider } from "metabase-types/api";
 
@@ -27,32 +27,35 @@ export function MetabotProviderApiKey({
 
   const displayValue =
     localValue ?? String(settingDetails?.value ?? value ?? "");
+  const savedValue = String(settingDetails?.value ?? value ?? "");
   const isEnvSetting = Boolean(
     settingDetails?.is_env_setting && settingDetails?.env_name,
   );
   const displayError = localError ?? (localValue == null ? error : null);
+  const canConnect = useMemo(
+    () => !isEnvSetting && localValue != null && localValue !== savedValue,
+    [isEnvSetting, localValue, savedValue],
+  );
 
   useEffect(() => {
     setLocalValue(null);
     setLocalError(null);
   }, [provider, settingDetails?.value]);
 
-  const handleChange = async (event: ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     setLocalValue(event.target.value);
     setLocalError(null);
+  };
 
-    const nextValue = event.target.value;
-    const savedValue = String(settingDetails?.value ?? value ?? "");
-
-    if (nextValue === savedValue || isEnvSetting) {
-      setLocalValue(null);
+  const handleConnect = async () => {
+    if (!canConnect) {
       return;
     }
 
     try {
       await updateMetabotSettings({
         provider,
-        "api-key": nextValue || null,
+        "api-key": localValue || null,
       }).unwrap();
       setLocalError(null);
       setLocalValue(null);
@@ -63,34 +66,40 @@ export function MetabotProviderApiKey({
 
   return (
     <Box>
-      <TextInput
-        key={selectedApiKeySetting}
-        label={t`API key`}
-        type="password"
-        description={jt`Need a key? ${(
-          <ExternalLink
-            key={selectedProvider.value}
-            href={selectedProvider.addKeyUrl}
+      <Stack gap="md">
+        <TextInput
+          key={selectedApiKeySetting}
+          label={t`API key`}
+          type="password"
+          description={jt`Need a key? ${(
+            <ExternalLink
+              key={selectedProvider.value}
+              href={selectedProvider.addKeyUrl}
+            >
+              {c("{0} is the name of an AI provider")
+                .t`Create one in ${selectedProvider.label}`}
+            </ExternalLink>
+          )}`}
+          placeholder={
+            selectedProvider.apiKeyPlaceholder ?? t`Enter your API key`
+          }
+          value={displayValue}
+          onChange={handleChange}
+          error={displayError}
+          disabled={isEnvSetting}
+        />
+        {!isEnvSetting ? (
+          <Button
+            onClick={handleConnect}
+            disabled={!canConnect}
+            loading={updateMetabotSettingsResult.isLoading}
           >
-            {c("{0} is the name of an AI provider")
-              .t`Create one in ${selectedProvider.label}`}
-          </ExternalLink>
-        )}`}
-        placeholder={
-          selectedProvider.apiKeyPlaceholder ?? t`Enter your API key`
-        }
-        value={displayValue}
-        onChange={handleChange}
-        error={displayError}
-        disabled={isEnvSetting}
-      />
+            {t`Connect`}
+          </Button>
+        ) : null}
+      </Stack>
       {isEnvSetting && settingDetails?.env_name ? (
         <SetByEnvVar varName={settingDetails.env_name} />
-      ) : null}
-      {updateMetabotSettingsResult.isLoading ? (
-        <Text size="sm" c="text-secondary" mt="xs">
-          {t`Verifying API key...`}
-        </Text>
       ) : null}
     </Box>
   );

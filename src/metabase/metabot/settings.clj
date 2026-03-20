@@ -1,6 +1,7 @@
 (ns metabase.metabot.settings
   (:require
    [clojure.string :as str]
+   [metabase.llm.settings :as llm.settings]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]))
 
@@ -145,9 +146,9 @@
 (defn configured-provider-api-key
   [provider]
   (case provider
-    "anthropic"  (llm-anthropic-api-key)
-    "openai"     (llm-openai-api-key)
-    "openrouter" (llm-openrouter-api-key)
+    "anthropic"  (llm.settings/llm-anthropic-api-key)
+    "openai"     (llm.settings/llm-openai-api-key)
+    "openrouter" (llm.settings/llm-openrouter-api-key)
     nil))
 
 (defn- metabot-provider-prefix []
