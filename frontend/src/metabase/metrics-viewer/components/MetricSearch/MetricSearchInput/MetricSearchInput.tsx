@@ -86,6 +86,7 @@ export function MetricSearchInput({
     top: 0,
   });
 
+  const containerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<ReactCodeMirrorRef>(null);
   const pendingFocusRef = useRef(false);
   // Refs for reading latest values in callbacks without stale closures
@@ -412,7 +413,17 @@ export function MetricSearchInput({
     [formulaEntities, selectedMetrics, onRemoveMetric, onFormulaEntitiesChange],
   );
 
-  const handleContainerClick = useCallback(() => {
+  const handleContainerClick = useCallback((e: React.MouseEvent) => {
+    // Ignore clicks originating from portal-rendered content (e.g. context
+    // menus, breakout pickers).  These fire "click outside" on the container
+    // but should not switch the input into text-editing mode.
+    if (
+      containerRef.current &&
+      e.target instanceof Node &&
+      !containerRef.current.contains(e.target)
+    ) {
+      return;
+    }
     const view = editorRef.current?.view;
     if (view) {
       view.focus();
@@ -524,6 +535,7 @@ export function MetricSearchInput({
 
   return (
     <Flex
+      ref={containerRef}
       className={S.inputWrapper}
       bg="background-primary"
       align="center"
@@ -552,7 +564,7 @@ export function MetricSearchInput({
                 }
                 const defEntry = definitions[entry.id];
                 return (
-                  <span key={entry.id}>
+                  <span key={`${entry.id}-${entryIndex}`}>
                     <MetricPill
                       metric={metric}
                       colors={metricColors[entry.id]}
@@ -597,7 +609,7 @@ export function MetricSearchInput({
                 })();
 
                 return (
-                  <span key={entry.id}>
+                  <span key={`${entry.id}-${entryIndex}`}>
                     <MetricExpressionPill
                       expressionText={buildExpressionText(
                         entry.tokens,

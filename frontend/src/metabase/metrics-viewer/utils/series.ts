@@ -355,7 +355,7 @@ export function buildRawSeriesFromDefinitions(
       return [];
     }
 
-    const cardId = getDefinitionCardId(definition);
+    const cardId = nextSyntheticCardId();
     if (cardId == null) {
       return [];
     }
