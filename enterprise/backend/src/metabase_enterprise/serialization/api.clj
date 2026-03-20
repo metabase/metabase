@@ -1,6 +1,6 @@
 (ns metabase-enterprise.serialization.api
   (:require
-   [clojure.core.async :as async]
+   [clojure.core.async :as a]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [java-time.api :as t]
@@ -161,7 +161,7 @@
 
 (defn- serialization-api-handler
   [collection result-atom opts]
-  (let [done-chan (async/chan)]
+  (let [done-chan (a/chan)]
     [(u.jvm/in-virtual-thread*
       (let [start (System/nanoTime)
             {:keys [archive report error-message] :as pack-result} (serialize&pack opts)]
@@ -182,7 +182,7 @@
                                  :success         (boolean archive)
                                  :error_message   error-message})
         (reset! result-atom pack-result)
-        (async/<!! done-chan nil)))
+        (a/>!! done-chan :done)))
      done-chan]))
 
 ;;; HTTP API
@@ -244,25 +244,28 @@
                             :full-stacktrace          full-stacktrace?}
         result (atom nil)
         [archive-thread finished-chan] (serialization-api-handler collection result opts)]
-    #_(if archive
-        {:status  200
-         :headers {"Content-Type"        "application/gzip"
-                   "Content-Disposition" (format "attachment; filename=\"%s\"" (.getName ^File archive))}
-         :body    (on-response! archive callback)}
-        {:status  (or status 500)
-         :headers {"Content-Type" "text/plain"}
-         :body    (on-response! log-file callback)})
-    (sr/streaming-response {:content-type "application/gzip"} [os cancel-chan]
-      (async/<!!
-       (async/go (case (async/alt! cancel-chan :cancel finished-chan :done)
-                   :cancel (do
-                             (future-cancel archive-thread)
-                             (.close os))
-                   :done (let [{:keys [archive _status log-file callback]} @result]
-                           (if archive
-                             (.write os archive)
-                             (.write os log-file))
-                           (future (callback)))))))))
+    (sr/streaming-response {:content-type "application/gzip" :status 200} [os cancel-chan]
+      (a/<!!
+       (a/go
+         (case (a/alt! cancel-chan :cancel finished-chan :done)
+           :cancel (do
+                     (future-cancel archive-thread)
+                     (when-let [cb (:callback @result)]
+                       (cb))
+                     (.close os))
+           :done (let [{:keys [archive status log-file callback]} @result]
+                   (try
+                     (if archive
+                       (do
+                         (sr/set-header! "Content-Disposition"
+                                         (format "attachment; filename=\"%s\"" (.getName ^File archive)))
+                         (io/copy archive os))
+                       (do
+                         (sr/set-status! (or status 500))
+                         (sr/set-content-type! "text/plain")
+                         (io/copy log-file os)))
+                     (finally
+                       (callback))))))))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
