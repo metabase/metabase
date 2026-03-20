@@ -7,7 +7,7 @@ on:
 
 jobs:
   update_pr:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
 
     steps:
       - uses: tibdex/github-app-token@v2.1.0

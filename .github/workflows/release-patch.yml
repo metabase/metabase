@@ -15,7 +15,7 @@ jobs:
   auto-patch-trigger:
     # don't run this workflow on a cron for forks
     if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4

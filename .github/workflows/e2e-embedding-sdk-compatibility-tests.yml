@@ -18,7 +18,7 @@ concurrency:
 jobs:
   files-changed:
     name: Check which files changed
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 3
     outputs:
       e2e_embedding_sdk_compatibility: ${{ steps.changes.outputs.e2e_embedding_sdk_compatibility }}
@@ -36,7 +36,7 @@ jobs:
     if: |
       !cancelled() &&
       contains(github.base_ref || github.ref, 'release-x')
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     outputs:
       java_version: ${{ fromJson(steps.dependencies.outputs.result).java_version }}
@@ -69,7 +69,7 @@ jobs:
   get-sample-apps-data:
     if: |
       !cancelled()
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     env:
       # we must support last two stable releases
@@ -151,7 +151,7 @@ jobs:
       !cancelled() &&
       needs.files-changed.outputs.e2e_embedding_sdk_compatibility == 'true' &&
       fromJSON(needs.get-sample-apps-data.outputs.matrix)[0] != null
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 25
     env:
       MB_EDITION: ee
@@ -204,7 +204,7 @@ jobs:
         environment: ["production", "development"]
     if: |
       !cancelled() && needs.build.result == 'success'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 45
     name: e2e-sample-app-${{ matrix.test_suite }}-tests-${{ matrix.environment }}-bundle
     env:
@@ -341,7 +341,7 @@ jobs:
         environment: ["production", "development"]
     if: |
       !cancelled() && needs.build.result == 'success'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 45
     name: e2e-host-app-${{ matrix.test_suite }}-tests-${{ matrix.environment }}-bundle
     env:

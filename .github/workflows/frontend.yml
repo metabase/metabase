@@ -27,7 +27,7 @@ concurrency:
 jobs:
   fe-lint:
     if: ${{ !inputs.skip-lint }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -56,7 +56,7 @@ jobs:
 
   fe-type-check:
     if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
@@ -71,7 +71,7 @@ jobs:
 
   fe-tests-unit:
     if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     strategy:
       fail-fast: false
@@ -107,7 +107,7 @@ jobs:
 
   fe-tests-timezones:
     if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -125,7 +125,7 @@ jobs:
       - fe-tests-unit
       - fe-tests-timezones
     if: always() && !cancelled()
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     env:
       needs: ${{ toJson(needs) }}

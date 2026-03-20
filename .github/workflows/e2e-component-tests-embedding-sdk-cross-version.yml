@@ -6,7 +6,7 @@ on:
 jobs:
   files-changed:
     name: "SDK cross-version E2E > Check which files changed"
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 3
     outputs:
       e2e_all: ${{ steps.changes.outputs.e2e_all }}
@@ -24,7 +24,7 @@ jobs:
     name: "SDK cross-version E2E > [Backport only] Get build requirements"
     if: |
       !cancelled()
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     outputs:
       java_version: ${{ fromJson(steps.dependencies.outputs.result).java_version }}
@@ -59,7 +59,7 @@ jobs:
     needs: [files-changed, get-build-requirements]
     if: |
       !cancelled()
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 25
     env:
       MB_EDITION: ee
@@ -89,7 +89,7 @@ jobs:
     name: "SDK cross-version E2E > Resolve SDK version"
     if: |
       !cancelled()
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     outputs:
       sdk_version: ${{ fromJson(steps.dependencies.outputs.result).sdk_version }}
@@ -123,7 +123,7 @@ jobs:
     needs: [get-build-requirements, build, resolve-sdk-version]
     if: |
       !cancelled() && needs.build.result == 'success'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 45
     env:
       MB_EDITION: ee

@@ -24,7 +24,7 @@ on:
 # TODO: Consider renaming the job in next milestones
 jobs:
   generative-query-test:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 90
     name: Generative Query Test
     env:
