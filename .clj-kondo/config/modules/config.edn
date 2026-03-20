@@ -121,18 +121,6 @@
            util}
    :model-imports #{:model/Action :model/Card :model/Database}}
 
-  agent-api
-  {:team    "Metabot"
-   :api     #{metabase.agent-api.api}
-   :friends #{enterprise/agent-api}
-   :uses    #{api
-              auth-identity
-              metabot
-              query-processor
-              request
-              server
-              util}}
-
   activity-feed
   {:team "UX West"
    :api  #{metabase.activity-feed.api
@@ -152,6 +140,18 @@
                     :model/Document
                     :model/QueryExecution
                     :model/Table}}
+
+  agent-api
+  {:team    "Metabot"
+   :api     #{metabase.agent-api.api}
+   :friends #{enterprise/agent-api}
+   :uses    #{api
+              auth-identity
+              metabot
+              query-processor
+              request
+              server
+              util}}
 
   analytics
   {:team "UX West"
@@ -414,7 +414,6 @@
   channel
   {:team "Gadget"
    :api  #{metabase.channel.api
-           metabase.channel.api.slack
            metabase.channel.core
            metabase.channel.email
            metabase.channel.email.messages
@@ -1033,7 +1032,8 @@
 
   internal-stats
   {:team "UX West"
-   :api  #{metabase.internal-stats.core}
+   :api  #{metabase.internal-stats.core
+           metabase.internal-stats.metabot}
    :uses #{app-db
            models}
    :model-imports #{:model/Card :model/Dashboard :model/QueryExecution :model/User}}
@@ -1184,6 +1184,52 @@
            util}
    :model-exports #{:model/Measure}
    :model-imports #{:model/Collection :model/Table :model/User}}
+
+  metabot
+  {:team    "Metabot"
+   :api     #{metabase.metabot.api
+              metabase.metabot.core
+              metabase.metabot.init}
+   :friends #{agent-api
+              enterprise/metabot
+              slackbot}
+   :uses    #{activity-feed
+              analytics
+              api
+              app-db
+              audit-app
+              channel
+              collections
+              config
+              documents
+              driver
+              internal-stats
+              legacy-mbql
+              lib
+              lib-be
+              llm
+              models
+              native-query-snippets
+              notification
+              parameters
+              permissions
+              premium-features
+              pulse
+              query-processor
+              request
+              search
+              server
+              settings
+              slackbot
+              sql-tools
+              store-api
+              sync
+              system
+              task
+              transforms
+              transforms-base
+              util
+              warehouses}}
 
   metrics
   {:team "UX West"
@@ -1903,6 +1949,29 @@
            util}
    :model-imports #{:model/AuthIdentity :model/User}}
 
+  slackbot
+  {:team    "Metabot"
+   :api     #{metabase.slackbot.api
+              metabase.slackbot.config
+              metabase.slackbot.init}
+   :friends #{metabot}
+   :uses    #{analytics
+              api
+              channel
+              config
+              formatter
+              lib
+              metabot
+              permissions
+              query-processor
+              request
+              server
+              settings
+              sso
+              system
+              upload
+              util}}
+
   source-swap
   {:team "Graphy"
    :api  #{metabase.source-swap.core
@@ -2511,16 +2580,9 @@
 
   enterprise/agent-api
   {:team "Metabot"
-   :api  #{metabase-enterprise.agent-api.api
-            metabase-enterprise.agent-api.workspace}
+   :api  #{metabase-enterprise.agent-api.workspace}
    :uses #{api
-           auth-identity
-           query-processor
-           request
-           server
            util
-           enterprise/api
-           enterprise/metabot
            enterprise/workspaces}
    :model-imports #{:model/User}}
 
@@ -2529,8 +2591,7 @@
    :api  #{metabase-enterprise.ai-entity-analysis.api}
    :uses #{api
            metabot
-           premium-features
-           enterprise/metabot}}
+           premium-features}}
 
   enterprise/ai-sql-fixer
   {:team "Metabot"
@@ -2541,8 +2602,7 @@
            lib-be
            metabot
            query-processor
-           util
-           enterprise/metabot}}
+           util}}
 
   enterprise/ai-sql-generation
   {:team "Metabot"
@@ -2550,8 +2610,7 @@
    :uses #{api
            driver
            metabot
-           util
-           enterprise/metabot}}
+           util}}
 
   enterprise/analytics
   {:team "UX West"
@@ -2567,8 +2626,7 @@
 
   enterprise/api
   {:team "UX West"
-   :api  #{metabase-enterprise.api.core
-           metabase-enterprise.api.routes.common}
+   :api  #{metabase-enterprise.api.core}
    :uses #{api
            premium-features
            util}}
@@ -2868,103 +2926,19 @@
            premium-features}
    :model-imports #{:model/Card :model/Collection :model/Table}}
 
-  metabot
-  {:team    "Metabot"
-   :api     #{metabase.metabot.api
-              metabase.metabot.core
-              metabase.metabot.init
-              metabase.metabot.tools.api
-              metabase.metabot.tools.util
-              metabase.metabot.usage}
-   :friends #{agent-api
-              enterprise/metabot
-              slackbot}
-   :uses    #{activity-feed
-              analytics
-              api
-              app-db
-              audit-app
-              channel
-              collections
-              config
-              documents
-              driver
-              internal-stats
-              legacy-mbql
-              lib
-              lib-be
-              llm
-              models
-              native-query-snippets
-              notification
-              parameters
-              permissions
-              premium-features
-              pulse
-              query-processor
-              request
-              search
-              server
-              settings
-              sql-tools
-              store-api
-              sync
-              system
-              task
-              transforms
-              transforms-base
-              util
-              warehouses
-              slackbot}}
-
   enterprise/metabot
   {:team    "Metabot"
-   :api     #{metabase-enterprise.metabot.api
-              metabase-enterprise.metabot.core
-              metabase-enterprise.metabot.init
-              metabase-enterprise.metabot.tools.api}
+   :api     #{metabase-enterprise.metabot.tools.api}
    :friends #{enterprise/agent-api
               slackbot
               metabot}
-   :uses    #{activity-feed
-              analytics
-              api
-              app-db
-              audit-app
-              channel
-              collections
-              config
-              documents
-              driver
-              legacy-mbql
-              lib
+   :uses    #{api
               lib-be
-              llm
               metabot
               models
-              native-query-snippets
-              notification
-              parameters
-              permissions
               premium-features
-              pulse
-              query-processor
-              request
-              search
-              server
-              settings
-              sql-tools
-              store-api
-              sync
-              system
-              task
-              transforms
-              transforms-base
               util
-              warehouses
-              enterprise/api
               enterprise/dependencies
-              slackbot
               enterprise/transforms-python}
    :model-exports #{:model/Metabot
                     :model/MetabotConversation
@@ -3157,31 +3131,6 @@
            setup
            util}
    :model-imports #{:model/Card :model/Collection :model/Dashboard :model/User}}
-
-  slackbot
-  {:team    "Metabot"
-   :api     #{metabase.slackbot.api
-              metabase.slackbot.config
-              metabase.slackbot.init
-              metabase.slackbot.settings}
-   :friends #{metabot}
-   :uses    #{analytics
-              api
-              channel
-              config
-              formatter
-              lib
-              metabot
-              permissions
-              premium-features
-              query-processor
-              request
-              server
-              settings
-              sso
-              system
-              upload
-              util}}
 
   enterprise/snippet-collections
   {:team "Querying"
