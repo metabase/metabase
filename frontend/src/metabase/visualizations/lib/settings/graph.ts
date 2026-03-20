@@ -1035,12 +1035,10 @@ export const BOXPLOT_SETTINGS: VisualizationSettingsDefinitions<
     widget: "radio",
     getDefault: () => "tukey",
     getProps: () => ({
-      get options() {
-        return [
-          { name: t`1.5 × interquartile range`, value: "tukey" },
-          { name: t`Min/Max`, value: "min-max" },
-        ];
-      },
+      options: [
+        { name: t`1.5 × interquartile range`, value: "tukey" },
+        { name: t`Min/Max`, value: "min-max" },
+      ],
     }),
   },
   "boxplot.points_mode": {

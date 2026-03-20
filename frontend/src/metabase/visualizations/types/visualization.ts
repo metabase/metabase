@@ -426,7 +426,9 @@ export type VisualizationSettingsDefinitions<
   _numberFormatter?: DatasetColumnSettingDefinition<Value, Props>;
   axis?: SingleSeriesSettingDefinition<Value, Props>;
   "boxplot.points_mode"?: SeriesSettingDefinition<Value, Props>;
+  "boxplot.show_mean"?: SeriesSettingDefinition<Value, Props>;
   "boxplot.show_values_mode"?: SeriesSettingDefinition<Value, Props>;
+  "boxplot.whisker_type"?: SeriesSettingDefinition<Value, Props>;
   "card.description"?: SeriesSettingDefinition<Value, Props>;
   "card.hide_empty"?: SeriesSettingDefinition<Value, Props>;
   "card.title"?: SeriesSettingDefinition<Value, Props>;
@@ -552,6 +554,10 @@ export type VisualizationSettingsDefinitions<
   time_enabled?: DatasetColumnSettingDefinition<Value, Props>;
   time_style?: DatasetColumnSettingDefinition<Value, Props>;
   title?: SingleSeriesSettingDefinition<Value, Props>;
+  "waterfall.decrease_color"?: SeriesSettingDefinition<Value, Props>;
+  "waterfall.increase_color"?: SeriesSettingDefinition<Value, Props>;
+  "waterfall.show_total"?: SeriesSettingDefinition<Value, Props>;
+  "waterfall.total_color"?: SeriesSettingDefinition<Value, Props>;
   /**
    * TODO: next line should be removed when VisualizationSettingsDefinitions and VisualizationSettings are complete.
    * Once that happens, it should be possible to safely use VisualizationSettingKey for

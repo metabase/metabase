@@ -22,6 +22,47 @@ import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import { CartesianChart } from "../CartesianChart";
 import { getCartesianChartDefinition } from "../CartesianChart/chart-definition";
 
+const settings: VisualizationSettingsDefinitions = {
+  ...GRAPH_AXIS_SETTINGS,
+  "waterfall.increase_color": {
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+    section: t`Display`,
+    getProps: () => ({ title: t`Increase color` }),
+    widget: "color",
+    getDefault: () => color("accent1"),
+  },
+  "waterfall.decrease_color": {
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+    section: t`Display`,
+    getProps: () => ({ title: t`Decrease color` }),
+    widget: "color",
+    getDefault: () => color("accent3"),
+  },
+  "waterfall.show_total": {
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+    section: t`Display`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+    title: t`Show total`,
+    widget: "toggle",
+    getDefault: () => true,
+    inline: true,
+  },
+  "waterfall.total_color": {
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+    section: t`Display`,
+    getProps: () => ({ title: t`Total color` }),
+    widget: "color",
+    // Unfortunately, to get static viz to look right, we need to avoid using alpha colors here
+    getDefault: () => Color(color("text-primary", staticVizOverrides)).hex(),
+    getHidden: (_series: any, vizSettings: ComputedVisualizationSettings) =>
+      vizSettings["waterfall.show_total"] !== true,
+    readDependencies: ["waterfall.show_total"],
+  },
+  ...GRAPH_DISPLAY_VALUES_SETTINGS,
+  ...GRAPH_DATA_SETTINGS,
+  ...TOOLTIP_SETTINGS,
+};
+
 Object.assign(
   WaterfallChart,
   getCartesianChartDefinition({
@@ -47,47 +88,7 @@ Object.assign(
     maxMetricsSupported: 1,
     maxDimensionsSupported: 1,
     supportsVisualizer: false,
-    settings: {
-      ...GRAPH_AXIS_SETTINGS,
-      "waterfall.increase_color": {
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        section: t`Display`,
-        getProps: () => ({ title: t`Increase color` }),
-        widget: "color",
-        getDefault: () => color("accent1"),
-      },
-      "waterfall.decrease_color": {
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        section: t`Display`,
-        getProps: () => ({ title: t`Decrease color` }),
-        widget: "color",
-        getDefault: () => color("accent3"),
-      },
-      "waterfall.show_total": {
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        section: t`Display`,
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        title: t`Show total`,
-        widget: "toggle",
-        getDefault: () => true,
-        inline: true,
-      },
-      "waterfall.total_color": {
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        section: t`Display`,
-        getProps: () => ({ title: t`Total color` }),
-        widget: "color",
-        // Unfortunately, to get static viz to look right, we need to avoid using alpha colors here
-        getDefault: () =>
-          Color(color("text-primary", staticVizOverrides)).hex(),
-        getHidden: (_series: any, vizSettings: ComputedVisualizationSettings) =>
-          vizSettings["waterfall.show_total"] !== true,
-        readDependencies: ["waterfall.show_total"],
-      },
-      ...GRAPH_DISPLAY_VALUES_SETTINGS,
-      ...GRAPH_DATA_SETTINGS,
-      ...TOOLTIP_SETTINGS,
-    } as any as VisualizationSettingsDefinitions,
+    settings,
   }),
 );
 
