@@ -5,7 +5,7 @@ summary: Analyze how your transforms process data by inspecting input and output
 
 # Transform inspector
 
-> Transform inspector requires the **Transforms add-on**.
+> Transform inspector requires the **Advanced transforms** add-on.
 
 _Data Studio > Transforms > [transform name] > Inspect_
 
@@ -17,7 +17,7 @@ To inspect a transform, you need to run the transform at least once, since the i
 
 ## Lenses
 
-The inspector organizes its analysis into different lenses (displayed as tabs). Each lens focuses on specific aspects of your transform. Lenses only appear when relevant: for example, join analysis only shows up for transforms that include joins.
+The inspector organizes its analysis into different lenses (displayed as tabs). Each lens focuses on specific aspects of your transform. Lenses other than the Data Summary only appear when relevant.
 
 - [Data summary](#data-summary)
 - [Column distributions](#column-distributions)
@@ -33,7 +33,7 @@ Data summary gives you a quick snapshot of the transform's input and output tabl
 
 ### Column distributions
 
-The Column distributions lens visualizes how data distributions change through the transform. This lens can help you spot unexpected filtering, aggregation effects, or type changes. This lens is only available when columns match between input and output tables (so you may not see it for transforms that aggregate data).
+The Column distributions lens visualizes how data distributions change through the transform. This lens can help you spot unexpected filtering or aggregation effects. This lens is only available when columns match between input and output tables (so you may not see it for transforms that aggregate data).
 
 The Column distributions lens can be slow on large datasets because it computes distribution stats for every matched column.
 
@@ -44,20 +44,13 @@ The Column distributions lens can be slow on large datasets because it computes 
 Available when the transform includes joins. Shows how well your joins match across tables:
 
 - **Join name**, **output rows**, **matched rows**, and **table rows** for each join.
-- Shows a warning when more than 20% of rows are unmatched. The warning appears inline in the join analysis results.
-- Can trigger [drill lenses](#drill-lenses) for deeper investigation into unmatched rows.
+- Shows a warning when more than 20% of rows are unmatched. The warning appears inline in the join analysis results. You can click to open a [drill lens](#drill-lenses) to see the unmatched rows.
 
 ### Drill lenses
 
-Drill lenses are dynamic tabs that appear based on analysis results. For example, if a join analysis finds unmatched rows, a tab like "Unmatched Rows - Join 2" will appear.
+![Drill lenses tab showing unmatched rows](../images/drill-lens.png)
 
-Drill lenses show sample rows broken down by category:
-
-- Rows with a key but no match.
-- Rows with a NULL source key.
-- Orphan rows on either side of the join.
-
-Each card is clickable, so you can drill into a detailed question view.
+Drill lenses are dynamic tabs that appear based on analysis results. For example, if a join analysis finds unmatched rows, a tab like "Unmatched Rows - Join 1" will appear.
 
 ## Some lenses can take a while to load
 
