@@ -8,6 +8,7 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.schema :as qp.schema]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.query-processor.streaming.csv :as qp.csv]
    [metabase.query-processor.streaming.interface :as qp.si]
    [metabase.query-processor.streaming.json :as qp.json]
@@ -257,6 +258,7 @@
              (assert (not (instance? ManyToManyChannel result)) "QP should not return a core.async channel.")
              (when (or (instance? Throwable result)
                        (= (:status result) :failed))
+               (prometheus/inc! :metabase-export/errors {:format (name export-format)})
                (streaming-response/write-error! os result export-format (status-code result))))))))))
 
 (defn transforming-query-response
