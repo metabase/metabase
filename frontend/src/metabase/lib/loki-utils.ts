@@ -16,10 +16,12 @@ export const openImageBlobOnStorybook = ({
   imageDownloaded.setAttribute("data-testid", "image-downloaded");
   root.replaceChildren(imgElement);
 
-  // the presence of this element is used to detect when the image is ready
-  // in the storybook you'll need to `await canvas.findByTestId("image-downloaded");`
-  // and then call `asyncCallback()` to continue the story
-  root.appendChild(imageDownloaded);
-
-  window.document.body.style.height = "initial";
+  // Wait for the image to fully load before signaling readiness,
+  // otherwise Loki may capture the screenshot before the image renders.
+  // In the storybook you'll need to `await canvas.findByTestId("image-downloaded");`
+  // and then call `asyncCallback()` to continue the story.
+  imgElement.addEventListener("load", () => {
+    root.appendChild(imageDownloaded);
+    window.document.body.style.height = "initial";
+  });
 };
