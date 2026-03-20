@@ -5,7 +5,7 @@
    [buddy.core.bytes :as bytes]
    [buddy.core.codecs :as codecs]
    [buddy.core.mac :as mac]
-   [metabase.slackbot.settings :as slackbot.settings]))
+   [metabase.server.settings :as server.settings]))
 
 (set! *warn-on-reflection* true)
 
@@ -58,7 +58,7 @@
    Returns nil if no signing secret is configured, false if timestamp is too old
    (replay attack prevention) or signature is invalid, true if valid."
   [request-body timestamp slack-signature]
-  (when-let [signing-secret (slackbot.settings/unobfuscated-metabot-slack-signing-secret)]
+  (when-let [signing-secret (server.settings/unobfuscated-metabot-slack-signing-secret)]
     (and (slack-timestamp-valid? timestamp)
          (some? slack-signature)
          (let [message (str "v0:" timestamp ":" request-body)

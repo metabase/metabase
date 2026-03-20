@@ -20,7 +20,6 @@
    [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.internal-stats.core :as internal-stats]
-   [metabase.metabot.usage :as metabot.usage]
    [metabase.premium-features.defenterprise :refer [defenterprise]]
    [metabase.premium-features.settings :as premium-features.settings]
    [metabase.settings.core :as setting]
@@ -141,7 +140,7 @@
         embedding-question-count  (internal-stats/embedding-question-count)
         stats                     (merge (internal-stats/query-execution-last-utc-day)
                                          (embedding-settings embedding-dashboard-count embedding-question-count)
-                                         (metabot.usage/metabot-stats)
+                                         (internal-stats/metabot-stats)
                                          (transform-stats)
                                          {:users                     users
                                           :embedding-dashboard-count embedding-dashboard-count
