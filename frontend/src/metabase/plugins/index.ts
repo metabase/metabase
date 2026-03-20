@@ -3,7 +3,6 @@ export { PLUGIN_API } from "./oss/api";
 export {
   PLUGIN_AI_SQL_FIXER,
   PLUGIN_AI_ENTITY_ANALYSIS,
-  PLUGIN_METABOT,
   type PluginAiSqlFixer,
   type AIDashboardAnalysisSidebarProps,
   type AIQuestionAnalysisSidebarProps,

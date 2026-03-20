@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
+import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   findRequests,
   setupCollectionByIdEndpoint,
@@ -16,6 +17,7 @@ import {
   setupMetabotPromptSuggestionsEndpoint,
   setupMetabotsEndpoints,
 } from "__support__/server-mocks/metabot";
+import { mockSettings } from "__support__/settings";
 import {
   mockGetBoundingClientRect,
   renderWithProviders,
@@ -28,21 +30,17 @@ import {
   FIXED_METABOT_ENTITY_IDS,
   FIXED_METABOT_IDS,
 } from "metabase/metabot/constants";
-import { hasPremiumFeature } from "metabase-enterprise/settings";
+import { reinitialize } from "metabase/plugins";
 import type { MetabotId, RecentItem } from "metabase-types/api";
 import {
   createMockCollection,
   createMockMetabotInfo,
   createMockSettings,
+  createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 
 import { MetabotAdminPage } from "./MetabotAdminPage";
 import * as hooks from "./utils";
-
-jest.mock("metabase-enterprise/settings");
-const mockHasPremiumFeature = hasPremiumFeature as jest.MockedFunction<
-  typeof hasPremiumFeature
->;
 
 const mockPathParam = (id: MetabotId) => {
   jest.spyOn(hooks, "useMetabotIdPath").mockReturnValue(id);
@@ -148,7 +146,20 @@ const getLastSettingUpdateCall = (settingKey: string) =>
     `path:/api/setting/${encodeURIComponent(settingKey)}`,
   );
 
+const setupContentVerificationPlugin = () => {
+  mockSettings({
+    "token-features": createMockTokenFeatures({
+      content_verification: true,
+    }),
+  });
+  setupEnterprisePlugins();
+};
+
 describe("MetabotAdminPage", () => {
+  afterEach(() => {
+    reinitialize();
+  });
+
   it("should render the page", async () => {
     await setup();
     expect(screen.getByText(/Configure Metabot/)).toBeInTheDocument();
@@ -281,18 +292,7 @@ describe("MetabotAdminPage", () => {
     ).toBeInTheDocument();
   });
 
-  const mockContentVerificationEnabled = (enabled: boolean) => {
-    mockHasPremiumFeature.mockImplementation((feature) => {
-      if (feature === "content_verification") {
-        return enabled;
-      }
-      return true; // Mock other features as enabled by default
-    });
-  };
-
   it("should not show verification switch without content_verification feature", async () => {
-    mockContentVerificationEnabled(false);
-
     await setup();
 
     // First ensure the page has loaded
@@ -305,7 +305,7 @@ describe("MetabotAdminPage", () => {
   });
 
   it("should show verification switch with content_verification feature", async () => {
-    mockContentVerificationEnabled(true);
+    setupContentVerificationPlugin();
 
     await setup();
 
@@ -321,7 +321,7 @@ describe("MetabotAdminPage", () => {
   });
 
   it("should allow enabling/disabling verified switch affecting use_verified_content", async () => {
-    mockContentVerificationEnabled(true);
+    setupContentVerificationPlugin();
 
     await setup();
 
