@@ -29,14 +29,11 @@ export const useColumnPinningByCount = ({
     if (isLimitBypassed) {
       return { left: candidateColumns };
     }
-
     const maxWidth = containerWidth * 0.9;
-
     const effectiveCount = countWithinLimit(
       candidateColumns.map((id) => columnSizingMap[id] ?? 0),
       maxWidth,
     );
-
     return { left: columnOrder.slice(0, effectiveCount) };
   }, [
     isLimitBypassed,
