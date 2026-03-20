@@ -5,7 +5,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.analytics.prometheus :as prometheus]
    [metabase.driver :as driver]
    [metabase.models.interface :as mi]
    [metabase.sync.core :as sync]

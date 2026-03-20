@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
@@ -22,7 +23,6 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.memory :as u.mem]
-   [metabase.analytics.prometheus :as prometheus]
    [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize])
@@ -283,7 +283,7 @@
               result (sync-fn)]
           (when (instance? Throwable result)
             (prometheus/inc! :metabase-sync/failures {:driver (name (:engine database))}))
-          result))))))
+          result)))))
 
 (defmacro sync-operation
   "Perform the operations in `body` as a sync operation, which wraps the code in several special macros that do things

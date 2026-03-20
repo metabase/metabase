@@ -1,7 +1,6 @@
 (ns metabase.frontend-errors.api-test
   (:require
    [clojure.test :refer :all]
-   [metabase.analytics.prometheus :as prometheus]
    [metabase.test :as mt]))
 
 (deftest post-frontend-errors-test

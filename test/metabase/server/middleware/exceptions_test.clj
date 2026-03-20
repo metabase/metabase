@@ -2,7 +2,6 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.analytics.prometheus :as prometheus]
    [metabase.server.middleware.exceptions :as mw.exceptions]
    [metabase.server.settings :as server.settings]
    [metabase.test :as mt]))

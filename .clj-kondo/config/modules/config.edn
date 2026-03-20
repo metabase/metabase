@@ -970,6 +970,12 @@
            types
            util}}
 
+  frontend-errors
+  {:team "UX West"
+   :api  #{metabase.frontend-errors.api}
+   :uses #{analytics
+           api}}
+
   geojson
   {:team "UX West"
    :api  #{metabase.geojson.api
@@ -1955,7 +1961,8 @@
            metabase.sync.schedules
            metabase.sync.task.sync-databases
            metabase.sync.util}
-   :uses #{analyze
+   :uses #{analytics
+           analyze
            api
            app-db
            audit-app

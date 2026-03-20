@@ -2,13 +2,13 @@
   (:refer-clojure :exclude [every? some mapv not-empty])
   (:require
    [clojure.string :as str]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.schema :as qp.schema]
-   [metabase.analytics.prometheus :as prometheus]
    [metabase.query-processor.streaming.csv :as qp.csv]
    [metabase.query-processor.streaming.interface :as qp.si]
    [metabase.query-processor.streaming.json :as qp.json]
