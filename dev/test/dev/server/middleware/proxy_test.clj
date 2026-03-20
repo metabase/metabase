@@ -1,10 +1,10 @@
-(ns metabase.server.middleware.proxy-test
+(ns dev.server.middleware.proxy-test
   (:require
    [clj-http.client :as http]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [dev.server.middleware.proxy :as mw.proxy]
    [metabase.config.core :as config]
-   [metabase.server.middleware.proxy :as mw.proxy]
    [metabase.test :as mt]))
 
 (def ^:private remote-url "https://remote.example.com")

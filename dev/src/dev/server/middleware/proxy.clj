@@ -1,5 +1,5 @@
-(ns metabase.server.middleware.proxy
-  "Middleware to proxy API requests to a remote backend for development."
+(ns dev.server.middleware.proxy
+  "Development-only middleware to proxy API requests to a remote backend."
   (:require
    [clj-http.client :as http]
    [clojure.string :as str]
@@ -29,12 +29,12 @@
   "Convert Ring request method keyword to clj-http function."
   [method]
   (case method
-    :get    http/get
-    :post   http/post
-    :put    http/put
-    :delete http/delete
-    :patch  http/patch
-    :head   http/head
+    :get     http/get
+    :post    http/post
+    :put     http/put
+    :delete  http/delete
+    :patch   http/patch
+    :head    http/head
     :options http/options
     http/get))
 
@@ -98,7 +98,7 @@
   "Rewrite Set-Cookie headers to work with localhost."
   [headers]
   (if-let [cookie-key (find-set-cookie-key headers)]
-    (let [cookies (get headers cookie-key)
+    (let [cookies   (get headers cookie-key)
           rewritten (if (sequential? cookies)
                       (mapv rewrite-set-cookie cookies)
                       (rewrite-set-cookie cookies))]
@@ -115,7 +115,6 @@
        (when expires (str "; Expires=" expires))
        (when max-age (str "; Max-Age=" max-age))
        (when http-only "; HttpOnly")
-       ;; Remove Secure for localhost and set SameSite=Lax
        "; SameSite=Lax"))
 
 (def ^:private localhost-hosts
@@ -162,16 +161,16 @@
   [{:keys [request-method uri query-string headers body], :as request}]
   (let [target-url (build-target-url uri query-string)
         http-fn    (request-method->clj-http-fn request-method)
-        opts       (cond-> {:headers          (proxy-headers headers)
-                            :throw-exceptions false
-                            :as               :stream
+        opts       (cond-> {:headers           (proxy-headers headers)
+                            :throw-exceptions  false
+                            :as                :stream
                             :redirect-strategy :none}
                      body (assoc :body body))]
     (log/debugf "Proxying %s %s to %s" (name request-method) uri target-url)
     (try
-      (let [response (http-fn target-url opts)
-            raw-headers (:headers response)
-            cookies (:cookies response)
+      (let [response          (http-fn target-url opts)
+            raw-headers       (:headers response)
+            cookies           (:cookies response)
             rewritten-headers (rewrite-response-headers request raw-headers cookies)]
         (log/infof "Proxy %s %s -> %s (cookies-returned=%d)"
                    (name request-method) uri (:status response) (count cookies))
