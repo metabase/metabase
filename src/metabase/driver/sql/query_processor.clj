@@ -341,11 +341,7 @@
 (defmethod date [:sql :week-of-year]
   [driver _ expr]
   ;; Some DBs truncate when doing integer division, therefore force float arithmetic
-  (->> [:ceil (-> (date driver :day-of-year (date driver :week expr))
-                  (h2x// 7.0)
-                  (compiled))]
-       (mbql-clause driver)
-       (->honeysql driver)))
+  (->honeysql driver (mbql-clause driver [:ceil (compiled (h2x// (date driver :day-of-year (date driver :week expr)) 7.0))])))
 
 (defmethod date [:sql :month-of-year]    [_driver _ expr] (h2x/month expr))
 (defmethod date [:sql :quarter-of-year]  [_driver _ expr] (h2x/quarter expr))
@@ -405,14 +401,10 @@
                                                        :us :sunday
                                                        :instance nil)]
                                              (days-till-start-of-first-full-week driver honeysql-expr))
-        total-full-weeks              (-> (date driver :day-of-year honeysql-expr)
-                                          (h2x/- days-till-start-of-first-full-week)
-                                          (h2x// 7.0)
-                                          (compiled))]
-    (->> (mbql-clause driver [:ceil total-full-weeks])
-         (->honeysql driver)
-         (h2x/+ 1)
-         (->integer driver))))
+        total-full-week-days               (h2x/- (date driver :day-of-year honeysql-expr)
+                                                  days-till-start-of-first-full-week)
+        total-full-weeks                   (->honeysql driver (mbql-clause driver [:ceil (compiled (h2x// total-full-week-days 7.0))]))]
+    (->integer driver (h2x/+ 1 total-full-weeks))))
 
 ;; ISO8501 consider the first week of the year is the week that contains the 1st Thursday and week starts on Monday.
 ;; - If 1st Jan is Friday, then 1st Jan is the last week of previous year.
@@ -714,20 +706,25 @@
                        (h2x/with-type-info value {:database-type "varchar"}))))
       (->honeysql driver value))))
 
+(defn- literal-text-value?*
+  [[value base-type effective-type :as clause]]
+  (and (driver-api/is-clause? :value clause)
+       (string? value)
+       ;; If no type info is provided (nil opts), assume it's text since it's a string.
+       ;; This handles cases like [:value "some string" nil] from expression definitions.
+       (or (nil? base-type)
+           (isa? (or effective-type base-type)
+                 :type/Text))))
+
 (defn- literal-text-value?
   [clause]
-  (let [[value base-type effective-type] (driver-api/match-lite clause
-                                           [_ (opts :guard :lib/uuid) value] ;; mbql5
-                                           [value (:base-type opts) (:effective-type opts)]
-                                           [_ value opts] ;; mbql4
-                                           [value (:base_type opts) (:effective_type opts)])]
-    (and (driver-api/is-clause? :value clause)
-         (string? value)
-         ;; If no type info is provided (nil opts), assume it's text since it's a string.
-         ;; This handles cases like [:value "some string" nil] from expression definitions.
-         (or (nil? base-type)
-             (isa? (or effective-type base-type)
-                   :type/Text)))))
+  (let [clause' (driver-api/match-lite clause
+                  [_ (opts :guard :lib/uuid) value] ;; mbql5
+                  [value (:base-type opts) (:effective-type opts)]
+
+                  [_ value opts] ;; mbql4
+                  [value (:base_type opts) (:effective_type opts)])]
+    (literal-text-value?* clause')))
 
 (defmulti expression-by-name
   "Gets an expression from a query or stage (`*inner-query`) by name."
