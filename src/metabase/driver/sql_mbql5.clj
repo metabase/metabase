@@ -149,21 +149,24 @@
     ((get-method sql.qp/->honeysql [:sql op]) driver (into [op] (cond-> (vec args) opts (conj opts))))))
 
 (defmethod sql.qp/mbql-clause :sql-mbql5
-  [driver [tag & args :as clause]]
-  (cond
-    ;; Return the clause as is if it's already MBQL5 or if it's already compiled to HoneySQL
-    (or (lib.options/uuid clause)
-        (= ::sql.qp/compiled tag))
+  [driver clause]
+  (if (not (sequential? clause))
     clause
+    (let [[tag & args] clause]
+      (cond
+        ;; Return the clause as is if it's already MBQL5 or if it's already compiled to HoneySQL
+        (or (lib.options/uuid clause)
+            (= ::sql.qp/compiled tag))
+        clause
 
-    ;; Convert the clause to MBQL5 if it's a regular MBQL4 clause
-    (and (simple-keyword? tag)
-         (not (driver-api/match-lite clause ::sql.qp/compiled true)))
-    (lib.convert/->pMBQL clause)
+        ;; Convert the clause to MBQL5 if it's a regular MBQL4 clause
+        (and (simple-keyword? tag)
+             (not (driver-api/match-lite clause ::sql.qp/compiled true)))
+        (lib.convert/->pMBQL clause)
 
-    :else ;; Handle namespaced or partially compiled clauses manually
-    (into [tag {:lib/uuid (str (random-uuid))}]
-          (map (fn [x] (sql.qp/mbql-clause driver x))) args)))
+        :else ;; Handle namespaced or partially compiled clauses manually
+        (into [tag {:lib/uuid (str (random-uuid))}]
+              (map (fn [x] (sql.qp/mbql-clause driver x))) args)))))
 
 (defmethod sql.params.substitution/field->clause :sql-mbql5
   [driver field other-opts]
