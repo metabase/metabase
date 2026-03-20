@@ -15001,8 +15001,8 @@
       "ApiKeyAuth" : {
         "type" : "apiKey",
         "in" : "header",
-        "name" : "X-Metabase-Session",
-        "description" : "Session token obtained from /api/session endpoint"
+        "name" : "X-API-Key",
+        "description" : "API key for authentication"
       }
     }
   },
