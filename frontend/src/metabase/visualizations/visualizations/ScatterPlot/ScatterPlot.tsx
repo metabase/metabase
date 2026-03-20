@@ -22,6 +22,17 @@ import type {
   VisualizationSettingsDefinitions,
 } from "../../types";
 
+const settings: VisualizationSettingsDefinitions = {
+  ...GRAPH_BUBBLE_SETTINGS,
+  ...GRAPH_GOAL_SETTINGS,
+  ...GRAPH_TREND_SETTINGS,
+  ...GRAPH_COLORS_SETTINGS,
+  ...GRAPH_AXIS_SETTINGS,
+  ...GRAPH_DATA_SETTINGS,
+  ...SPLIT_PANELS_SETTINGS,
+  ...TOOLTIP_SETTINGS,
+};
+
 Object.assign(
   ScatterPlot,
   getCartesianChartDefinition({
@@ -32,16 +43,7 @@ Object.assign(
     noun: t`scatter plot`,
     minSize: getMinSize("scatter"),
     defaultSize: getDefaultSize("scatter"),
-    settings: {
-      ...GRAPH_BUBBLE_SETTINGS,
-      ...GRAPH_GOAL_SETTINGS,
-      ...GRAPH_TREND_SETTINGS,
-      ...GRAPH_COLORS_SETTINGS,
-      ...GRAPH_AXIS_SETTINGS,
-      ...GRAPH_DATA_SETTINGS,
-      ...SPLIT_PANELS_SETTINGS,
-      ...TOOLTIP_SETTINGS,
-    } as any as VisualizationSettingsDefinitions,
+    settings,
   }),
 );
 
