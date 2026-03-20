@@ -5,11 +5,10 @@ import { NativeVariablesButton } from "metabase/query_builder/components/view/Na
 import { PreviewQueryButton } from "metabase/query_builder/components/view/PreviewQueryButton";
 import { SnippetSidebarButton } from "metabase/query_builder/components/view/SnippetSidebarButton";
 import type { QueryModalType } from "metabase/querying/constants";
+import type { SidebarFeatures } from "metabase/querying/editor/types";
 import { Button, Flex, Icon, Tooltip } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { Collection, NativeQuerySnippet } from "metabase-types/api";
-
-import type { SidebarFeatures } from "../types";
 
 import S from "./NativeQueryEditorActionButtons.module.css";
 
