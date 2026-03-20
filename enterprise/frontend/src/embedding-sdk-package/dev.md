@@ -9,18 +9,10 @@ Code in this directory should carefully reference external code, including code 
 ## Build
 
 You can build the SDK NPM package with `bun run build-embedding-sdk-package`.
-You can build the SDK bundle with `bun run build-release:embedding-sdk-bundle`
 
-#### embedding-sdk:dev
+The SDK bundle is built with the core app frontend and served by the core app, so you'll probably want to have `build-hot` (with `MB_EDITION=ee`) running.
 
-The `embedding-sdk:dev` command builds both SDK NPM package and SDK bundle in the `watch` mode.
-
-It runs a local dev server that serves compiled files; the server is used by `Cypress`.
-
-It uses `tsc --incremental` to generate the dts files and fixes them automatically by running the fixup script on watch.
-
-The `tsc` command will output a lot of errors, to keep the terminal output under control you may want to run the three different `embedding-sdk:dev:*` commands on different terminals.
-There is a VS code task named `Run embedding sdk dev commands` that does that
+If you have `SKIP_EMBEDDING_SDK`, you'll have to unset it for the sdk bundle to be built.
 
 ## Storybook
 
@@ -57,15 +49,13 @@ MB_PRO_SELF_HOSTED_TOKEN=${usual token from password manager}
 ```
 
 Cypress will use the built package, so you'll have to build the sdk first (see above).
-We recommend running either the dev or the watch command to have shorter a feedback loop.
+Make sure `build-hot` is running (with `MB_EDITION=ee`) — it builds the SDK bundle that the package loads at runtime.
 
-To start the cypress for the e2e tests:
+To start cypress for the e2e tests:
 
 ```bash
 CYPRESS_TESTING_TYPE="component" bun run test-cypress
 ```
-
-Then in a separate terminal run `bun run embedding-sdk:dev` to build SDK NPM package and SDK bundle in the `watch` mode.
 
 ### Sample Apps compatibility with Embedding SDK tests
 
