@@ -156,7 +156,19 @@
                       {:name "tunnel-pass"}
                       {:name "tunnel-private-key"}
                       {:name "tunnel-private-key-passphrase"}
-                      {:name "tunnel-known-hosts"}
+                      {:name       "tunnel-known-hosts-options"
+                       :type       "select"
+                       :options    [{:name  "Local file path"
+                                     :value "local"}
+                                    {:name  "Uploaded file path"
+                                     :value "uploaded"}]
+                       :visible-if {:tunnel-enabled true}}
+                      {:name       "tunnel-known-hosts-value"
+                       :type       "textFile"
+                       :visible-if {:tunnel-known-hosts-options "uploaded"}}
+                      {:name       "tunnel-known-hosts-path"
+                       :type       "string"
+                       :visible-if {:tunnel-known-hosts-options "local"}}
                       {:name "advanced-options"}
                       {:name "destination-database"}
                       {:name "write-data-connection"}
@@ -167,6 +179,8 @@
                       {:name "refingerprint"}]
             actual   (->> (driver/connection-properties :oracle)
                           (driver.u/connection-props-server->client :oracle))]
+        (is (= (count expected) (count actual))
+            (str "actual names: " (pr-str (mapv :name actual))))
         (is (= expected (mt/select-keys-sequentially expected actual)))))))
 
 (deftest ^:parallel test-ssh-connection
