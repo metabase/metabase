@@ -2,7 +2,7 @@ import { Q1_PIVOT_NAME } from "../constants";
 
 const { H } = cy;
 
-describe("Cross-version: questions", () => {
+describe("Cross-version questions - pivot", () => {
   it("setup: creates a pivot table", { tags: ["@source"] }, () => {
     cy.signIn("admin", { skipCache: true });
 
