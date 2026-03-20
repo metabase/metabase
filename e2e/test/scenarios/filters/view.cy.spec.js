@@ -110,13 +110,18 @@ describe("scenarios > question > view", () => {
       cy.findAllByText("VENDOR").first().click();
       H.popover().within(() => {
         cy.findByPlaceholderText("Search the list").type("Balistreri-Muller");
+        cy.findByText("Balistreri-Muller").click();
         cy.findByText("Add filter").click();
       });
       cy.findAllByText("CATEGORY").first().click();
       H.popover().within(() => {
         cy.findByPlaceholderText("Search the list").type("Widget");
+        cy.findByText("Widget").click();
         cy.findByText("Add filter").click();
       });
+
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
+      cy.findAllByTestId("run-button").last().click();
 
       cy.get(".test-TableInteractive-cellWrapper--firstColumn").should(
         "have.length",
