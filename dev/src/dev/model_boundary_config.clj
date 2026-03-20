@@ -11,14 +11,6 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- models-owned-by
-  "Set of `:model/X` keywords owned by `mod` according to `ownership`."
-  [ownership mod]
-  (into #{}
-        (comp (filter (fn [[_ owner]] (= owner mod)))
-              (map key))
-        ownership))
-
 (defn compute-model-boundaries
   "Compute the required `:model-exports` and `:model-imports` for every module.
 
@@ -31,26 +23,32 @@
   (let [ownership   (deps-graph/model-ownership)
         module-refs (deps-graph/model-references-by-module)
         all-modules (set (keys (deps-graph/kondo-config)))
-        owned-by    (into {} (map (fn [mod] [mod (models-owned-by ownership mod)])) all-modules)]
+        ;; {:model/X => #{modules that reference it}} — inverted index for fast export lookups
+        model->referencing-modules
+        (reduce-kv (fn [acc mod models]
+                     (reduce (fn [acc model]
+                               (update acc model (fnil conj #{}) mod))
+                             acc
+                             models))
+                   {}
+                   module-refs)]
     {:model-exports
      (into (sorted-map)
-           (for [mod all-modules, :let [owned (get owned-by mod)], :when (seq owned)]
+           (for [mod all-modules
+                 :let [owned (into #{} (comp (filter (fn [[_ owner]] (= owner mod))) (map key)) ownership)]
+                 :when (seq owned)]
              [mod (into (sorted-set)
-                        (for [[other-mod refs] module-refs
-                              :when            (not= other-mod mod)
-                              model            refs
-                              :when            (contains? owned model)]
+                        (for [model owned
+                              :let [refs (get model->referencing-modules model)]
+                              :when (some #(not= % mod) refs)]
                           model))]))
      :model-imports
      (into (sorted-map)
            (for [mod all-modules
-                 :let [owned    (get owned-by mod)
-                       imported (into (sorted-set)
+                 :let [imported (into (sorted-set)
                                       (for [model (get module-refs mod)
-                                            :let  [defining-mod (get ownership model)]
-                                            :when (and defining-mod
-                                                       (not= defining-mod mod)
-                                                       (not (contains? owned model)))]
+                                            :let [defining-mod (get ownership model)]
+                                            :when (and defining-mod (not= defining-mod mod))]
                                         model))]
                  :when (seq imported)]
              [mod imported]))}))
