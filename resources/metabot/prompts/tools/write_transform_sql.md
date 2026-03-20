@@ -30,7 +30,7 @@ When creating a new transform, you must provide:
 - All edits must succeed or none are applied (atomic operations)
 
 **Usage Examples:**
-- Complete replacement: {"mode": "replace", "new_string": "SELECT * FROM users WHERE active = true"}
+- Complete replacement: {"mode": "replace", "new_content": "SELECT * FROM users WHERE active = true"}
 - Targeted edit: {"mode": "edit", "edits": [{"old_string": "SELECT *", "new_string": "SELECT id, name"}]}
 - Global rename: {"mode": "edit", "edits": [{"old_string": "users", "new_string": "customers", "replace_all": true}]}
 

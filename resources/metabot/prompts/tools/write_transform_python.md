@@ -10,7 +10,7 @@ When creating a new transform, you must provide:
 - transform_name: A descriptive name for the transform
 - transform_description: A detailed description of what the transform does
 - source_database: The database ID containing the source tables
-- source_tables: Mapping of table aliases to table IDs
+- source_tables: A list of source table objects, each with `alias` (parameter name in the transform function), `table_id` (database table ID), `schema` (e.g. "PUBLIC"), and `database_id`
 
 **Edit Modes:**
 
@@ -30,7 +30,7 @@ When creating a new transform, you must provide:
 - All edits must succeed or none are applied (atomic operations)
 
 **Usage Examples:**
-- Complete replacement: {"mode": "replace", "new_string": "import pandas as pd\n\ndef transform(my_table_df):\n    # New transformation logic here\n    return my_table_df\n"}
+- Complete replacement: {"mode": "replace", "new_content": "import pandas as pd\n\ndef transform(my_table_df):\n    # New transformation logic here\n    return my_table_df\n"}
 - Targeted edit: {"mode": "edit", "edits": [{"old_string": "price - discount", "new_string": "price * (1 - discount)"}]}
 - Global rename: {"mode": "edit", "edits": [{"old_string": "users", "new_string": "customers", "replace_all": true}]}
 
