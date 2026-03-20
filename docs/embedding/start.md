@@ -51,3 +51,7 @@ Admins can also create unsecured public links or embeds of questions and dashboa
 ## [Securing embeds](./securing-embeds.md)
 
 How to make sure the right people can see the right data in your embedded Metabase.
+
+## [AI agent resources](./ai-agent-resources.md)
+
+Machine-readable docs and agent skills to help AI coding agents with embedding setup, upgrades, and migrations.
