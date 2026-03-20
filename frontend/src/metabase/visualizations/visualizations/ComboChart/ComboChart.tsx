@@ -15,6 +15,10 @@ import type {
   VisualizationSettingsDefinitions,
 } from "../../types";
 
+const settings: VisualizationSettingsDefinitions = {
+  ...COMBO_CHARTS_SETTINGS_DEFINITIONS,
+};
+
 Object.assign(
   ComboChart,
   getCartesianChartDefinition({
@@ -25,9 +29,7 @@ Object.assign(
     noun: t`line and bar chart`,
     minSize: getMinSize("combo"),
     defaultSize: getDefaultSize("combo"),
-    settings: {
-      ...COMBO_CHARTS_SETTINGS_DEFINITIONS,
-    } as any as VisualizationSettingsDefinitions,
+    settings,
   }),
 );
 
