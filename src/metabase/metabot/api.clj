@@ -278,6 +278,7 @@
     {"/metabot"  metabase.metabot.api.metabot/routes
      "/document" metabase.metabot.api.document/routes
      ;; premium check happens in the route so we still ack events to prevent slack retrying
-     "/slack"    metabase.slackbot.api/routes})
+     "/slack"    metabase.slackbot.api/routes
+     "/tools"    (api.macros/ns-handler 'metabase.metabot.tools.api +auth)})
    (api.macros/ns-handler 'metabase.metabot.api.describe +auth)
    (api.macros/ns-handler *ns* +auth)))
