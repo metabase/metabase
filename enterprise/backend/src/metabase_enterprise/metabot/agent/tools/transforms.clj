@@ -1,12 +1,11 @@
 (ns metabase-enterprise.metabot.agent.tools.transforms
   "Enterprise implementations of Python transform tools."
   (:require
-   [metabase-enterprise.metabot.tools.transforms :as transform-tools]
    [metabase-enterprise.metabot.tools.transforms-write :as transforms-write-tools]
    [metabase.metabot.agent.tools.shared :as shared]
    [metabase.metabot.agent.tools.transforms :as agent-transforms]
    [metabase.metabot.util :as metabot.u]
-   [metabase.premium-features.core :refer [defenterprise]]))
+   [metabase.premium-features.core :refer [defenterprise-schema]]))
 
 (set! *warn-on-reflection* true)
 
@@ -24,14 +23,14 @@
 ;;; Tool definitions
 ;;; ──────────────────────────────────────────────────────────────────
 
-(defenterprise get-transform-python-library-details-tool
+(defenterprise-schema get-transform-python-library-details-tool
   "Get information about a Python library by path."
   :feature :none
-  [{:keys [path]}]
+  [{:keys [path]} :- [:map {:closed true} [:path :string]]]
   (agent-transforms/add-output (transform-tools/get-transform-python-library-details {:path path})
                                format-python-library-output))
 
-(defenterprise write-transform-python-tool
+(defenterprise-schema write-transform-python-tool
   "Write new Python code or edit existing code for transforms.
 
   Supports two modes:
@@ -46,7 +45,21 @@
   Keep `import common` at the top of the file even if it is currently unused."
   :feature :none
   [{:keys [transform_id edit_action thinking transform_name transform_description
-           source_database source_tables]}]
+           source_database source_tables]}
+   :- [:map {:closed true}
+       [:transform_id {:optional true} [:maybe :int]]
+       [:edit_action [:map
+                      [:mode [:enum "edit" "replace"]]
+                      [:edits {:optional true} [:maybe [:sequential [:map
+                                                                     [:old_string :string]
+                                                                     [:new_string :string]
+                                                                     [:replace_all {:optional true} [:maybe :boolean]]]]]]
+                      [:new_content {:optional true} [:maybe :string]]]]
+       [:thinking {:optional true} [:maybe :string]]
+       [:transform_name {:optional true} [:maybe :string]]
+       [:transform_description {:optional true} [:maybe :string]]
+       [:source_database {:optional true} [:maybe :int]]
+       [:source_tables {:optional true} [:maybe :map]]]]
   (try
     (agent-transforms/add-output
      (transforms-write-tools/write-transform-python

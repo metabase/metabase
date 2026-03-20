@@ -1,8 +1,10 @@
 (ns metabase-enterprise.metabot.tools.transforms-write
   "Tools for writing/editing Python transform source code."
   (:require
+   [metabase-enterprise.transforms-python.api :as transforms-python.api]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.tools.transforms-write :as transforms-write]
+   [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -87,3 +89,12 @@
                          :message "Transform Python code updated successfully."}
      :data-parts [(streaming/transform-suggestion-part suggested-transform)]
      :instructions "The transform suggestion has been created and displayed to the user. Do not repeat the Python content."}))
+
+(defn get-transform-python-library-details
+  "Get information about a Python library by path."
+  [{:keys [path]}]
+  (try
+    {:structured_output
+     (transforms-python.api/get-python-library-by-path path)}
+    (catch Exception e
+      (metabot.tools.u/handle-agent-error e))))
