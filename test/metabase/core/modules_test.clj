@@ -228,9 +228,9 @@
                                                 configured (get module-config config-key)
                                                 stale      (set/difference configured needed)]
               :when                            (seq stale)]
-        (testing (format "\n'%s' %s models that aren't used: %s\nRemove them from %s."
-                         module direction (pr-str (sort stale)) config-key)
-          (is (empty? stale)))))))
+        (testing (format "\n'%s' %s models that aren't used — remove them from %s."
+                         module direction config-key)
+          (is (empty? (sort stale))))))))
 
 (deftest ^:parallel model-exports-sorted-test
   (testing "Module :model-exports should be sorted"
