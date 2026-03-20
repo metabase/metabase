@@ -714,7 +714,7 @@
       (->honeysql driver value))))
 
 (defn- literal-text-value?*
-  [[value base-type effective-type :as clause]]
+  [[_ value {base-type :base_type effective-type :effective_type} :as clause]]
   (and (driver-api/is-clause? :value clause)
        (string? value)
        ;; If no type info is provided (nil opts), assume it's text since it's a string.
@@ -727,11 +727,9 @@
   [clause]
   (literal-text-value?*
    (driver-api/match-lite clause
-     [_ (opts :guard :lib/uuid) value] ;; mbql5
-     [value (:base-type opts) (:effective-type opts)]
-
-     [_ value opts] ;; mbql4
-     [value (:base_type opts) (:effective_type opts)])))
+     [tag  (opts :guard :lib/uuid) value] ;; mbql5
+     [tag value {:base_type (:base-type opts) :effective_type (:effective-type opts)}]
+     _ clause)))
 
 (defmulti expression-by-name
   "Gets an expression from a query or stage (`*inner-query`) by name."
