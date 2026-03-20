@@ -842,6 +842,29 @@
          (not (contains? model-imports model)))
     (conj :not-imported)))
 
+(defn model-references-by-module
+  "Scan all source files and build a map of `{module => #{:model/X ...}}` — the set of model keywords
+  referenced in each module's source files. Exempt namespaces (e.g. `metabase.models.resolution`) are excluded."
+  []
+  (reduce
+   (fn [acc file]
+     (try
+       (let [ns-symb (-> (ns.file/read-file-ns-decl file)
+                         ns.parse/name-from-ns-decl)
+             mod     (module ns-symb)]
+         (if (and mod (not (contains? model-boundary-exempt-namespaces ns-symb)))
+           (let [models (find-model-keywords file)]
+             (if (seq models)
+               (update acc mod (fnil into (sorted-set)) models)
+               acc))
+           acc))
+       (catch Throwable e
+         (throw (ex-info (format "Error scanning model references in %s" (str file))
+                         {:file file}
+                         e)))))
+   (sorted-map)
+   (find-source-files)))
+
 (defn model-boundary-violations
   "Find all model boundary violations across the codebase.
   For each source file, checks that:
@@ -863,16 +886,15 @@
                                    ns.parse/name-from-ns-decl)
                        mod     (module ns-symb)]
                    (when (and mod
-                              (not (contains? model-boundary-exempt-namespaces ns-symb))
-                              (not= :skip-test (get-in kondo-config [mod :model-imports])))
-                     (let [model-imports (get-in kondo-config [mod :model-imports] :any)
+                              (not (contains? model-boundary-exempt-namespaces ns-symb)))
+                     (let [model-imports (get-in kondo-config [mod :model-imports] #{})
                            models       (find-model-keywords file)
                            rel-path     (file->path-relative-to-project-root file)]
                        (for [model          models
                              :let           [defining-mod  (get ownership model)]
                              :when          (not= defining-mod mod)
                              :let           [model-exports (when defining-mod
-                                                             (get-in kondo-config [defining-mod :model-exports] :any))]
+                                                             (get-in kondo-config [defining-mod :model-exports] #{}))]
                              violation-type (model-reference-violations
                                              model defining-mod model-exports model-imports)]
                          {:file            rel-path

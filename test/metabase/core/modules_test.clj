@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [dev.deps-graph]
+   [dev.model-boundary-config]
    [metabase.util.json :as json]
    [rewrite-clj.node :as n]
    [rewrite-clj.parser :as r.parser]
@@ -213,6 +214,23 @@
                 model                  (:model-exports module-config)]
           (testing (format "\n'%s' exports %s (owned by %s)" module model (get ownership model))
             (is (= module (get ownership model)))))))))
+
+(deftest ^:parallel model-config-not-stale-test
+  (testing "Model exports and imports should not list models that are unused.\n"
+    (let [{computed-exports :model-exports
+           computed-imports :model-imports} (dev.model-boundary-config/compute-model-boundaries)
+          config (modules-config)]
+      (doseq [[config-key computed direction] [[:model-exports computed-exports "exports"]
+                                               [:model-imports computed-imports "imports"]]
+              [module module-config]           config
+              :when                            (set? (get module-config config-key))
+              :let                             [needed     (get computed module #{})
+                                                configured (get module-config config-key)
+                                                stale      (set/difference configured needed)]
+              :when                            (seq stale)]
+        (testing (format "\n'%s' %s models that aren't used — remove them from %s."
+                         module direction config-key)
+          (is (empty? (sort stale))))))))
 
 (deftest ^:parallel model-exports-sorted-test
   (testing "Module :model-exports should be sorted"
