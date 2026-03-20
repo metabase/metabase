@@ -124,7 +124,7 @@ jobs:
       MB_MYSQL_TEST_USER: root
     services:
       mariadb:
-        image: circleci/mariadb:10.2.23
+        image: metabase/mariadb:10.2.23
         ports:
           - "3306:3306"
     steps:
@@ -150,7 +150,7 @@ jobs:
       MB_MYSQL_TEST_USER: root
     services:
       mariadb:
-        image: circleci/mariadb:latest
+        image: mariadb:latest
         ports:
           - "3306:3306"
     steps:
@@ -284,7 +284,7 @@ jobs:
       MB_MONGO_TEST_PASSWORD: metasample123
     services:
       mongodb:
-        image: circleci/mongo:latest
+        image: mongo:latest
         ports:
           - "27017:27017"
         env:
@@ -313,7 +313,7 @@ jobs:
       MB_MYSQL_TEST_USER: root
     services:
       mysql:
-        image: cimg/mysql:8.0
+        image: mysql:8.0
         ports:
           - "3306:3306"
     steps:
@@ -471,7 +471,7 @@ jobs:
       MB_POSTGRES_SSL_TEST_SSL_ROOT_CERT_PATH: 'test-resources/certificates/us-east-2-bundle.pem'
     services:
       postgres:
-        image: circleci/postgres:latest
+        image: postgres:latest
         ports:
           - "5432:5432"
         env:
