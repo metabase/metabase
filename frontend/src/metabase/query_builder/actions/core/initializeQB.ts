@@ -17,7 +17,6 @@ import { setErrorPage } from "metabase/redux/app";
 import { addFields } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import { canUserCreateQueries, getUser } from "metabase/selectors/user";
-import { CardApi } from "metabase/services";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
@@ -356,18 +355,6 @@ async function handleQBInit(
   // Populate the metadata store with param_fields from the card response.
   // This ensures field filter widgets have has_field_values even when the user
   // lacks create-queries permission on the underlying table (GHY-1605).
-  // When navigating from a dashboard, the card may be loaded from the entity cache
-  // without param_fields, so we fetch directly from the API to get the full data.
-  if (isSavedCard(card) && !card.param_fields) {
-    try {
-      const freshCard = await CardApi.get({ cardId: card.id });
-      if (freshCard.param_fields) {
-        card = { ...card, param_fields: freshCard.param_fields };
-      }
-    } catch {
-      // ignore — param_fields is a nice-to-have for dropdown rendering
-    }
-  }
   if (card.param_fields) {
     await dispatch(addFields(Object.values(card.param_fields).flat()));
   }

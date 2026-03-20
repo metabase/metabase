@@ -105,19 +105,26 @@ describe("scenarios > question > view", () => {
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Question").click();
 
-      // The nodata user has view-data permission (via All Users group) but no create-queries permission.
-      // With param_fields hydration, field filter widgets now show as dropdowns with values.
+      // When navigating from dashboard, the card entity is cached without param_fields,
+      // so field filter widgets fall back to text inputs.
+      // TODO: this should show values and allow searching
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("This question is written in SQL.");
       cy.findAllByText("VENDOR").first().click();
       H.popover().within(() => {
-        cy.findByPlaceholderText("Search the list").type("Balistreri-Muller");
+        cy.findByPlaceholderText("Enter some text")
+          .focus()
+          .clear()
+          .type("Balistreri-Muller");
         cy.findByText("Add filter").click();
       });
       cy.findAllByTestId("run-button").first().click();
       cy.findAllByText("CATEGORY").first().click();
       H.popover().within(() => {
-        cy.findByText("Widget").click();
+        cy.findByPlaceholderText("Enter some text")
+          .click()
+          .clear()
+          .type("Widget");
         cy.findByText("Add filter").click();
       });
       // eslint-disable-next-line metabase/no-unsafe-element-filtering
