@@ -129,7 +129,7 @@
 
   Prometheus + Snowplow:
     - `:profile-id` — the profile id (e.g. `:internal`)
-    - `:model`      — the model (e.g. `anthropic/claude-haiku-4-5`)
+    - `:model`      — the model (e.g. `openrouter/anthropic/claude-haiku-4-5`)
     - `:tag`        — the specific purpose for which the tokens were used (e.g. 'agent', 'sql-fixing')
 
    Snowplow only:
@@ -142,7 +142,7 @@
     (map (fn [part]
            (when (= (:type part) :usage)
              (let [usage      (:usage part)
-                   model      (or (:model part) model "unknown")
+                   model      (or model (:model part) "unknown")
                    prompt     (:promptTokens usage 0)
                    completion (:completionTokens usage 0)]
                (analytics/track-token-usage!
@@ -245,7 +245,7 @@
    (let [{:keys [provider stream-fn model]} (parse-provider-model provider-and-model)]
      (log/info "Calling LLM" {:provider    provider :model model :parts (count parts) :tools (count tools)
                               :tool-choice tool-choice})
-     (let [tracking-opts  (assoc tracking-opts :model model)
+     (let [tracking-opts  (assoc tracking-opts :model provider-and-model)
            streaming-opts (cond-> {:model model :input parts :tools (vals tools)}
                             system-msg        (assoc :system system-msg)
                             (and (seq tools)
@@ -282,13 +282,13 @@
     json-schema   - JSON Schema map for the expected response shape
     temperature   - Sampling temperature
     max-tokens    - Maximum tokens in the response
-    tracking-opts - See [[call-llm]] for fields; `:model` is added automatically
+    tracking-opts - See [[report-token-usage-xf]] for fields
 
   Returns the parsed JSON map from the forced tool call."
   [provider-and-model messages json-schema temperature max-tokens tracking-opts]
   (let [{:keys [provider stream-fn model]} (parse-provider-model provider-and-model)
         _ (log/info "Calling LLM (structured)" {:provider provider :model model :msg-count (count messages)})
-        tracking-opts  (assoc tracking-opts :model model)
+        tracking-opts  (assoc tracking-opts :model provider-and-model)
         streaming-opts {:model       model
                         :input       messages
                         :schema      json-schema
