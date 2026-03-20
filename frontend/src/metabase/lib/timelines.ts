@@ -11,15 +11,21 @@ export const getTimelineName = (timeline: Timeline) => {
     : timeline.name;
 };
 
-export const getTimelineIcons = (): { label: string; value: IconName }[] => {
-  return [
-    { label: t`Star`, value: "star" },
-    { label: t`Cake`, value: "cake" },
-    { label: t`Mail`, value: "mail" },
-    { label: t`Warning`, value: "warning" },
-    { label: t`Bell`, value: "bell" },
-    { label: t`Cloud`, value: "cloud" },
-  ];
+export const getTimelineIcons = (): {
+  label: string;
+  value: IconName;
+  icon: IconName;
+}[] => {
+  return (
+    [
+      { label: t`Star`, value: "star" },
+      { label: t`Cake`, value: "cake" },
+      { label: t`Mail`, value: "mail" },
+      { label: t`Warning`, value: "warning" },
+      { label: t`Bell`, value: "bell" },
+      { label: t`Cloud`, value: "cloud" },
+    ] as const
+  ).map((item) => ({ ...item, icon: item.value }));
 };
 
 export const getDefaultTimeline = (
