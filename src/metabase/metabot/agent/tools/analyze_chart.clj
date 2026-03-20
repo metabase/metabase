@@ -50,7 +50,8 @@ Do not use headers (##). Do not list statistics. Do not analyze series separatel
           stringify-series-keys))
 
 (mu/defn ^{:tool-name "analyze_chart"
-           :prompt    "analyze_chart"} analyze-chart-tool
+           :prompt    "analyze_chart"}
+  analyze-chart-tool
   "Compute statistics and generate analysis context for a chart.
   Use this to analyze trends, outliers, volatility, and patterns in chart data.
 

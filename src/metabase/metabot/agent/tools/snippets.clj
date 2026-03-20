@@ -34,7 +34,8 @@
     result))
 
 (mu/defn ^{:tool-name    "list_snippets"
-           :capabilities #{:feature-snippets}} list-snippets-tool
+           :capabilities #{:feature-snippets}}
+  list-snippets-tool
   "List all SQL snippets available in the Metabase instance.
 
   Use this tool before editing or creating SQL transforms to understand what
@@ -44,7 +45,8 @@
   (add-output (snippet-tools/get-snippets {}) format-snippet-list-output))
 
 (mu/defn ^{:tool-name    "get_snippet_details"
-           :capabilities #{:feature-snippets}} get-snippet-details-tool
+           :capabilities #{:feature-snippets}}
+  get-snippet-details-tool
   "Get the full details of a SQL snippet including its content.
 
   Use this tool to retrieve the actual SQL content of a snippet after identifying

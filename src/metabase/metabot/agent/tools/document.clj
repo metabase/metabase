@@ -45,7 +45,8 @@
               (remove nil?))
         references))
 
-(mu/defn ^{:tool-name "document_schema_collect"} document-schema-collect-tool
+(mu/defn ^{:tool-name "document_schema_collect"}
+  document-schema-collect-tool
   "Collects the schema of a database in order to construct a SQL query.
 
   **Usage:**
@@ -97,7 +98,8 @@
    [:viz_settings [:map {:closed true}
                    [:chart_type chart-type-enum]]]])
 
-(mu/defn ^{:tool-name "document_construct_sql_chart"} document-construct-sql-chart-tool
+(mu/defn ^{:tool-name "document_construct_sql_chart"}
+  document-construct-sql-chart-tool
   "Construct SQL-backed chart draft payload for document insertion."
   [{:keys [database_id name description analysis approach sql viz_settings]} :- sql-chart-schema]
   (try
@@ -134,7 +136,8 @@
    [:viz_settings [:map {:closed true}
                    [:chart_type chart-type-enum]]]])
 
-(mu/defn ^{:tool-name "document_construct_model_chart"} document-construct-model-chart-tool
+(mu/defn ^{:tool-name "document_construct_model_chart"}
+  document-construct-model-chart-tool
   "Construct notebook/model-backed chart draft payload for document insertion."
   [{:keys [name description query viz_settings]} :- model-chart-schema]
   (try
