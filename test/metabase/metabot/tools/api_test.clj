@@ -7,7 +7,6 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.metabot.client :as metabot.client]
    [metabase.metabot.tools.api :as metabot.tools.api]
    [metabase.metabot.tools.create-alert :as metabot.tools.create-alert]
    [metabase.metabot.tools.create-dashboard-subscription :as metabot.tools.create-dashboard-subscription]
@@ -35,24 +34,16 @@
               decoded (mc/decode ::metabot.tools.api/column col (mtx/transformer {:name :tool-api-response}))]
           (is (mr/validate ::metabot.tools.api/column decoded)))))))
 
-(defn- ai-session-token
-  ([] (ai-session-token :rasta (str (random-uuid))))
-  ([metabot-id] (ai-session-token :rasta metabot-id))
-  ([user metabot-id]
-   (-> user mt/user->id (#'metabot.client/get-ai-service-token metabot-id))))
-
 (deftest create-alert-test
   (mt/with-premium-features #{:metabot-v3}
     (let [tool-requests (atom [])
           conversation-id (str (random-uuid))
-          output (str (random-uuid))
-          ai-token (ai-session-token)]
+          output (str (random-uuid))]
       (with-redefs [metabot.tools.create-alert/create-alert
                     (fn [arguments]
                       (swap! tool-requests conj arguments)
                       {:output output})]
         (let [response (mt/user-http-request :rasta :post 200 "metabot/tools/create-alert"
-                                             {:request-options {:headers {"x-metabase-session" ai-token}}}
                                              {:arguments       {:card_id        42
                                                                 :send_condition "has_result"
                                                                 :slack_channel  "data-team"
@@ -73,14 +64,12 @@
   (mt/with-premium-features #{:metabot-v3}
     (let [tool-requests (atom [])
           conversation-id (str (random-uuid))
-          output (str (random-uuid))
-          ai-token (ai-session-token)]
+          output (str (random-uuid))]
       (with-redefs [metabot.tools.create-dashboard-subscription/create-dashboard-subscription
                     (fn [arguments]
                       (swap! tool-requests conj arguments)
                       {:output output})]
         (let [response (mt/user-http-request :rasta :post 200 "metabot/tools/create-dashboard-subscription"
-                                             {:request-options {:headers {"x-metabase-session" ai-token}}}
                                              {:arguments       {:dashboard_id    1
                                                                 :slack_channel   "data-team"
                                                                 :schedule        {:frequency "monthly"
@@ -100,13 +89,11 @@
 (deftest field-values-test
   (mt/with-premium-features #{:metabot-v3}
     (let [conversation-id (str (random-uuid))
-          ai-token (ai-session-token)
           table-id (mt/id :people)
           field-id (-> table-id
                        metabot.tools.u/table-field-id-prefix
                        (str 4))
           response (mt/user-http-request :rasta :post 200 "metabot/tools/field-values"
-                                         {:request-options {:headers {"x-metabase-session" ai-token}}}
                                          {:arguments       {:entity_type "table"
                                                             :entity_id   table-id
                                                             :field_id    field-id ; name
@@ -133,8 +120,7 @@
                          {:table_id "1"}]]
       (let [tool-requests (atom [])
             conversation-id (str (random-uuid))
-            query-id (str (random-uuid))
-            ai-token (ai-session-token)]
+            query-id (str (random-uuid))]
         (with-redefs [metabot.tools.filters/filter-records
                       (fn [arguments]
                         (swap! tool-requests conj arguments)
@@ -150,7 +136,6 @@
                          {:field_id "c2a-6", :bucket "week-of-year" :operation "not-equals", :values [14 15 19]}
                          {:field_id "q2a-6", :operation "year-equals", :value 2008}]
                 response (mt/user-http-request :rasta :post 200 "metabot/tools/filter-records"
-                                               {:request-options {:headers {"x-metabase-session" ai-token}}}
                                                {:arguments       {:data_source data-source
                                                                   :filters     filters}
                                                 :conversation_id conversation-id})]
@@ -167,8 +152,7 @@
   (mt/with-premium-features #{:metabot-v3}
     (let [tool-requests (atom [])
           conversation-id (str (random-uuid))
-          output (str (random-uuid))
-          ai-token (ai-session-token)]
+          output (str (random-uuid))]
       (with-redefs [metabot.tools.filters/query-metric
                     (fn [arguments]
                       (swap! tool-requests conj arguments)
@@ -186,7 +170,6 @@
               breakouts [{:field_id "c2-4", :field_granularity "week"}
                          {:field_id "c2-6", :field_granularity "day"}]
               response (mt/user-http-request :rasta :post 200 "metabot/tools/query-metric"
-                                             {:request-options {:headers {"x-metabase-session" ai-token}}}
                                              {:arguments       {:metric_id 1
                                                                 :filters   filters
                                                                 :group_by  breakouts}
@@ -201,7 +184,6 @@
 (deftest query-metric-e2e-test
   (mt/with-premium-features #{:metabot-v3}
     (let [conversation-id (str (random-uuid))
-          ai-token (ai-session-token)
           mp (mt/metadata-provider)
           source-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
                            (lib/aggregate (lib/avg (lib.metadata/field mp (mt/id :products :rating))))
@@ -223,7 +205,6 @@
               breakouts [{:field_id (fid 7), :field_granularity "week"}
                          {:field_id (fid 7), :field_granularity "day"}]
               response (mt/user-http-request :rasta :post 200 "metabot/tools/query-metric"
-                                             {:request-options {:headers {"x-metabase-session" ai-token}}}
                                              {:arguments       {:metric_id metric-id
                                                                 :filters   filters
                                                                 :group_by  breakouts}
@@ -275,8 +256,7 @@
   (mt/with-premium-features #{:metabot-v3}
     (let [tool-requests (atom [])
           conversation-id (str (random-uuid))
-          output (str (random-uuid))
-          ai-token (ai-session-token)]
+          output (str (random-uuid))]
       (with-redefs [metabot.tools.filters/query-model
                     (fn [arguments]
                       (swap! tool-requests conj arguments)
@@ -298,7 +278,6 @@
               breakouts [{:field_id "c2-4", :field_granularity "week"}
                          {:field_id "c2-6", :field_granularity "day"}]
               response (mt/user-http-request :rasta :post 200 "metabot/tools/query-model"
-                                             {:request-options {:headers {"x-metabase-session" ai-token}}}
                                              {:arguments       {:model_id     1
                                                                 :fields       fields
                                                                 :filters      filters
@@ -321,8 +300,7 @@
                   :query {:database 1
                           :type :query
                           :query {:source-table 1}}
-                  :result-columns []}
-          ai-token (ai-session-token)]
+                  :result-columns []}]
       (with-redefs [metabot.tools.filters/query-model
                     (fn [arguments]
                       (swap! tool-requests conj arguments)
@@ -330,7 +308,6 @@
         (let [fields []
               filters [{:field_id "c2-7", :operation "greater-than", :value 50}]
               response (mt/user-http-request :rasta :post 200 "metabot/tools/query-model"
-                                             {:request-options {:headers {"x-metabase-session" ai-token}}}
                                              {:arguments       {:model_id     1
                                                                 :fields       fields
                                                                 :filters      filters}
@@ -390,16 +367,12 @@
                                    :type :metric}]
             (mt/with-temp [:model/Card {model-metric-id :id} (assoc model-metric-data :collection_id collection-id)]
               (testing "Calling with wrong metabot-id"
-                (let [conversation-id (str (random-uuid))
-                      ai-token (ai-session-token (str metabot-eid "-"))]
+                (let [conversation-id (str (random-uuid))]
                   (mt/user-http-request :rasta :post 400 "metabot/tools/answer-sources"
-                                        {:request-options {:headers {"x-metabase-session" ai-token}}}
                                         {:conversation_id conversation-id})))
               (testing "Normal call"
                 (let [conversation-id (str (random-uuid))
-                      ai-token (ai-session-token metabot-eid)
                       response (mt/user-http-request :rasta :post 200 "metabot/tools/answer-sources"
-                                                     {:request-options {:headers {"x-metabase-session" ai-token}}}
                                                      {:metabot_id metabot-eid
                                                       :conversation_id conversation-id})
                       expected-fields
@@ -447,9 +420,7 @@
                           response))))
               (testing "Minimal call"
                 (let [conversation-id (str (random-uuid))
-                      ai-token (ai-session-token metabot-eid)
                       response (mt/user-http-request :rasta :post 200 "metabot/tools/answer-sources"
-                                                     {:request-options {:headers {"x-metabase-session" ai-token}}}
                                                      {:metabot_id metabot-eid
                                                       :arguments {:with_model_fields                     false
                                                                   :with_model_metrics                    false
@@ -487,9 +458,7 @@
   (mt/with-premium-features #{:metabot-v3}
     (mt/with-temp [:model/Glossary _ {:term "asdf" :definition "Sales Team Performance"}]
       (let [conversation-id (str (random-uuid))
-            ai-token (ai-session-token)
             response (mt/user-http-request :rasta :post 200 "metabot/tools/get-current-user"
-                                           {:request-options {:headers {"x-metabase-session" ai-token}}}
                                            {:conversation_id conversation-id})]
         (is (=? {:structured_output {:id (mt/user->id :rasta)
                                      :type "user"
@@ -505,9 +474,7 @@
       (mt/with-temp [:model/Dashboard {dash-id :id} dash-data]
         (with-redefs [metabot.tools.entity-details/verified-review? (constantly true)]
           (let [conversation-id (str (random-uuid))
-                ai-token (ai-session-token)
                 response (mt/user-http-request :rasta :post 200 "metabot/tools/get-dashboard-details"
-                                               {:request-options {:headers {"x-metabase-session" ai-token}}}
                                                {:arguments {:dashboard_id dash-id}
                                                 :conversation_id conversation-id})]
             (is (=? {:structured_output (assoc dash-data :id dash-id, :type "dashboard" :verified true)
@@ -566,11 +533,9 @@
            {:name "PRICE" :display_name "Price" :type "number" :table_reference "Product"}
            {:name "RATING" :display_name "Rating" :type "number" :semantic_type "score" :table_reference "Product"}
            {:name "CREATED_AT" :display_name "Created At" :type "datetime" :semantic_type "creation_timestamp" :table_reference "Product"}]
-          ai-token (ai-session-token)
           conversation-id (str (random-uuid))
           request (fn [arguments]
                     (mt/user-http-request :rasta :post 200 "metabot/tools/get-metric-details"
-                                          {:request-options {:headers {"x-metabase-session" ai-token}}}
                                           {:arguments arguments
                                            :conversation_id conversation-id}))]
       (mt/with-temp [:model/Card {metric-id :id} metric-data]
@@ -635,9 +600,7 @@
                                            (lib.metadata/field mp (mt/id :products :created_at)) :week)))
           query (lib/->legacy-MBQL source-query)
           conversation-id (str (random-uuid))
-          ai-token (ai-session-token)
           response (mt/user-http-request :rasta :post 200 "metabot/tools/get-query-details"
-                                         {:request-options {:headers {"x-metabase-session" ai-token}}}
                                          {:arguments {:query query}
                                           :conversation_id conversation-id})
           generated-id (-> response :structured_output :query_id)]
@@ -675,11 +638,9 @@
       (mt/with-temp [:model/Card {question-id :id} question-data]
         (with-redefs [metabot.tools.entity-details/verified-review? (constantly true)]
           (let [conversation-id (str (random-uuid))
-                ai-token (ai-session-token)
                 arguments {:report_id question-id}
                 request (fn [arguments]
                           (mt/user-http-request :rasta :post 200 "metabot/tools/get-report-details"
-                                                {:request-options {:headers {"x-metabase-session" ai-token}}}
                                                 {:arguments arguments
                                                  :conversation_id conversation-id}))
                 expected-fields [{:name "VENDOR"
@@ -808,8 +769,7 @@
 (deftest get-model-details-basic-test
   (mt/with-premium-features #{:metabot-v3}
     (let [{:keys [model-data metric-data expected-core-fields expected-related-tables]} (model-test-fixtures)
-          conversation-id (str (random-uuid))
-          ai-token (ai-session-token)]
+          conversation-id (str (random-uuid))]
       (mt/with-temp [:model/Card {model-id :id}  model-data
                      :model/Card {metric-id :id} (assoc metric-data :dataset_query
                                                         (mt/mbql-query orders
@@ -819,7 +779,6 @@
         (with-redefs [metabot.tools.entity-details/verified-review? (constantly true)]
           (let [request (fn [arguments]
                           (mt/user-http-request :rasta :post 200 "metabot/tools/get-table-details"
-                                                {:request-options {:headers {"x-metabase-session" ai-token}}}
                                                 {:arguments arguments
                                                  :conversation_id conversation-id}))]
             (doseq [arguments [{:model_id model-id}
@@ -852,8 +811,7 @@
 (deftest get-model-details-without-field-values-test
   (mt/with-premium-features #{:metabot-v3}
     (let [{:keys [model-data metric-data expected-core-fields expected-related-tables]} (model-test-fixtures)
-          conversation-id (str (random-uuid))
-          ai-token (ai-session-token)]
+          conversation-id (str (random-uuid))]
       (mt/with-temp [:model/Card {model-id :id}  model-data
                      :model/Card {metric-id :id} (assoc metric-data :dataset_query
                                                         (mt/mbql-query orders
@@ -863,7 +821,6 @@
         (with-redefs [metabot.tools.entity-details/verified-review? (constantly true)]
           (let [request (fn [arguments]
                           (mt/user-http-request :rasta :post 200 "metabot/tools/get-table-details"
-                                                {:request-options {:headers {"x-metabase-session" ai-token}}}
                                                 {:arguments arguments
                                                  :conversation_id conversation-id}))
                 arguments {:model_id model-id}]
@@ -901,8 +858,7 @@
 (deftest get-model-details-without-fields-test
   (mt/with-premium-features #{:metabot-v3}
     (let [{:keys [model-data metric-data expected-related-tables]} (model-test-fixtures)
-          conversation-id (str (random-uuid))
-          ai-token (ai-session-token)]
+          conversation-id (str (random-uuid))]
       (mt/with-temp [:model/Card {model-id :id}  model-data
                      :model/Card {metric-id :id} (assoc metric-data :dataset_query
                                                         (mt/mbql-query orders
@@ -912,7 +868,6 @@
         (with-redefs [metabot.tools.entity-details/verified-review? (constantly true)]
           (let [request (fn [arguments]
                           (mt/user-http-request :rasta :post 200 "metabot/tools/get-table-details"
-                                                {:request-options {:headers {"x-metabase-session" ai-token}}}
                                                 {:arguments arguments
                                                  :conversation_id conversation-id}))
                 arguments {:model_id model-id}]
@@ -937,8 +892,7 @@
 (deftest get-model-details-without-metric-temporal-breakout-test
   (mt/with-premium-features #{:metabot-v3}
     (let [{:keys [model-data metric-data expected-related-tables]} (model-test-fixtures)
-          conversation-id (str (random-uuid))
-          ai-token (ai-session-token)]
+          conversation-id (str (random-uuid))]
       (mt/with-temp [:model/Card {model-id :id}  model-data
                      :model/Card {metric-id :id} (assoc metric-data :dataset_query
                                                         (mt/mbql-query orders
@@ -948,7 +902,6 @@
         (with-redefs [metabot.tools.entity-details/verified-review? (constantly true)]
           (let [request (fn [arguments]
                           (mt/user-http-request :rasta :post 200 "metabot/tools/get-table-details"
-                                                {:request-options {:headers {"x-metabase-session" ai-token}}}
                                                 {:arguments arguments
                                                  :conversation_id conversation-id}))
                 arguments {:model_id model-id}]
@@ -975,8 +928,7 @@
 (deftest get-model-details-without-metrics-test
   (mt/with-premium-features #{:metabot-v3}
     (let [{:keys [model-data expected-related-tables]} (model-test-fixtures)
-          conversation-id (str (random-uuid))
-          ai-token (ai-session-token)]
+          conversation-id (str (random-uuid))]
       (mt/with-temp [:model/Card {model-id :id}  model-data
                      :model/Card {_metric-id :id} (assoc (:metric-data (model-test-fixtures)) :dataset_query
                                                          (mt/mbql-query orders
@@ -986,7 +938,6 @@
         (with-redefs [metabot.tools.entity-details/verified-review? (constantly true)]
           (let [request (fn [arguments]
                           (mt/user-http-request :rasta :post 200 "metabot/tools/get-table-details"
-                                                {:request-options {:headers {"x-metabase-session" ai-token}}}
                                                 {:arguments arguments
                                                  :conversation_id conversation-id}))
                 arguments {:model_id model-id}]
@@ -1010,8 +961,7 @@
 (deftest get-model-details-without-related-tables-test
   (mt/with-premium-features #{:metabot-v3}
     (let [{:keys [model-data]} (model-test-fixtures)
-          conversation-id (str (random-uuid))
-          ai-token (ai-session-token)]
+          conversation-id (str (random-uuid))]
       (mt/with-temp [:model/Card {model-id :id}  model-data
                      :model/Card {_metric-id :id} (assoc (:metric-data (model-test-fixtures)) :dataset_query
                                                          (mt/mbql-query orders
@@ -1021,7 +971,6 @@
         (with-redefs [metabot.tools.entity-details/verified-review? (constantly true)]
           (let [request (fn [arguments]
                           (mt/user-http-request :rasta :post 200 "metabot/tools/get-table-details"
-                                                {:request-options {:headers {"x-metabase-session" ai-token}}}
                                                 {:arguments arguments
                                                  :conversation_id conversation-id}))]
             (testing "Without related tables"
@@ -1046,9 +995,7 @@
     (t2/delete! :model/FieldValues :field_id [:in (t2/select-fn-vec :id :model/Field :table_id (mt/id :orders))])
     (let [table-id (mt/id :orders)
           conversation-id (str (random-uuid))
-          ai-token (ai-session-token)
           response (mt/user-http-request :rasta :post 200 "metabot/tools/field-values"
-                                         {:request-options {:headers {"x-metabase-session" ai-token}}}
                                          {:arguments
                                           {:entity_type "table"
                                            :entity_id   table-id
@@ -1068,7 +1015,6 @@
                        :description "Model based metric"
                        :type :metric}
           conversation-id (str (random-uuid))
-          ai-token (ai-session-token)
           expected-fields
           [{:name "ID", :display_name "ID", :type "number", :semantic_type "pk"}
            {:name "USER_ID", :display_name "User ID", :type "number", :semantic_type "fk"}
@@ -1081,7 +1027,6 @@
            {:name "QUANTITY", :display_name "Quantity", :type "number", :semantic_type "quantity", :field_values int-sequence?}]
           request (fn [arguments]
                     (mt/user-http-request :rasta :post 200 "metabot/tools/get-table-details"
-                                          {:request-options {:headers {"x-metabase-session" ai-token}}}
                                           {:arguments arguments
                                            :conversation_id conversation-id}))]
       (mt/with-temp [:model/Card {metric-id :id} (assoc metric-data :dataset_query
@@ -1177,7 +1122,6 @@
   (mt/with-premium-features #{:metabot-v3}
     (let [table-id (mt/id :orders)
           conversation-id (str (random-uuid))
-          ai-token (ai-session-token)
           expected-fields-with-h2-db-types
           [{:name "ID",         :type "number",   :database_type "bigint"}
            {:name "USER_ID",    :type "number",   :database_type "integer"}
@@ -1190,7 +1134,6 @@
            {:name "QUANTITY",   :type "number",   :database_type "integer"}]
           request (fn [arguments]
                     (mt/user-http-request :rasta :post 200 "metabot/tools/get-table-details"
-                                          {:request-options {:headers {"x-metabase-session" ai-token}}}
                                           {:arguments arguments
                                            :conversation_id conversation-id}))
           expected-fields (cond->> expected-fields-with-h2-db-types
@@ -1212,10 +1155,8 @@
 (deftest get-table-details-related-tables-test
   (mt/with-premium-features #{:metabot-v3}
     (let [conversation-id (str (random-uuid))
-          ai-token (ai-session-token)
           request (fn [arguments]
                     (mt/user-http-request :rasta :post 200 "metabot/tools/get-table-details"
-                                          {:request-options {:headers {"x-metabase-session" ai-token}}}
                                           {:arguments arguments
                                            :conversation_id conversation-id}))]
       (testing "Normal call includes related_tables by default"
@@ -1235,9 +1176,7 @@
   (mt/with-premium-features #{:metabot-v3}
     (testing "Related tables include related_by field indicating the FK field name"
       (let [conversation-id (str (random-uuid))
-            ai-token (ai-session-token)
             response (mt/user-http-request :rasta :post 200 "metabot/tools/get-table-details"
-                                           {:request-options {:headers {"x-metabase-session" ai-token}}}
                                            {:arguments {:table_id (mt/id :orders)}
                                             :conversation_id conversation-id})
             related-tables (get-in response [:structured_output :related_tables])
@@ -1250,8 +1189,7 @@
 
 (deftest get-snippets-test
   (mt/with-premium-features #{:metabot-v3}
-    (let [conversation-id (str (random-uuid))
-          rasta-ai-token (ai-session-token)]
+    (let [conversation-id (str (random-uuid))]
       (mt/with-temp [:model/NativeQuerySnippet snippet-1 {:content     "1"
                                                           :name        "snippet_1"
                                                           :description "great snippet 1"}
@@ -1262,7 +1200,6 @@
                    :conversation_id conversation-id}
                   (-> (mt/with-no-data-perms-for-all-users!
                         (mt/user-http-request :rasta :post 200 "metabot/tools/get-snippets"
-                                              {:request-options {:headers {"x-metabase-session" rasta-ai-token}}}
                                               {:conversation_id conversation-id}))
                       (update :structured_output (fn [output]
                                                    (filter #(#{(:id snippet-1) (:id snippet-2)} (:id %))
@@ -1273,7 +1210,6 @@
                    :conversation_id conversation-id}
                   (-> (mt/with-full-data-perms-for-all-users!
                         (mt/user-http-request :rasta :post 200 "metabot/tools/get-snippets"
-                                              {:request-options {:headers {"x-metabase-session" rasta-ai-token}}}
                                               {:conversation_id conversation-id}))
                       (update :structured_output (fn [output]
                                                    (filter #(#{(:id snippet-1) (:id snippet-2)} (:id %))
@@ -1281,8 +1217,7 @@
 
 (deftest get-snippet-details-test
   (mt/with-premium-features #{:metabot-v3}
-    (let [conversation-id (str (random-uuid))
-          rasta-ai-token (ai-session-token)]
+    (let [conversation-id (str (random-uuid))]
       (mt/with-temp [:model/NativeQuerySnippet snippet-1 {:content     "1"
                                                           :name        "snippet_1"
                                                           :description "great snippet 1"}
@@ -1293,21 +1228,18 @@
                    {:arguments {:snippet_id string?}},
                    :specific-errors {:arguments {:snippet_id ["should be an integer, received: nil"]}}}
                   (mt/user-http-request :rasta :post 400 "metabot/tools/get-snippet-details"
-                                        {:request-options {:headers {"x-metabase-session" rasta-ai-token}}}
                                         {:arguments {:snippet_id nil}
                                          :conversation_id conversation-id}))))
         (testing "404 returned for non-existent snippet"
           (is (= "Not found."
                  (let [max-snippet-id (t2/select-one-fn :max-id [:model/NativeQuerySnippet [:%max.id :max-id]])]
                    (mt/user-http-request :rasta :post 404 "metabot/tools/get-snippet-details"
-                                         {:request-options {:headers {"x-metabase-session" rasta-ai-token}}}
                                          {:arguments {:snippet_id (inc max-snippet-id)}
                                           :conversation_id conversation-id})))))
         (testing "403 returned for missing data perms"
           (is (= "You don't have permissions to do that."
                  (mt/with-no-data-perms-for-all-users!
                    (mt/user-http-request :rasta :post 403 "metabot/tools/get-snippet-details"
-                                         {:request-options {:headers {"x-metabase-session" rasta-ai-token}}}
                                          {:arguments {:snippet_id (:id snippet-1)}
                                           :conversation_id conversation-id})))))
         (testing "Snippet details returned with sufficient data perms"
@@ -1315,6 +1247,5 @@
                    :conversation_id conversation-id}
                   (mt/with-full-data-perms-for-all-users!
                     (mt/user-http-request :rasta :post 200 "metabot/tools/get-snippet-details"
-                                          {:request-options {:headers {"x-metabase-session" rasta-ai-token}}}
                                           {:arguments {:snippet_id (:id snippet-1)}
                                            :conversation_id conversation-id})))))))))
