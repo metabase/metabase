@@ -75,7 +75,7 @@ describe("scenarios > question > view", () => {
       cy.signIn("nodata");
       H.visitQuestion("@questionId");
 
-      // Filter by category and vendor — users with card read access can see dropdown values (#70767)
+      // Filter by category and vendor
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("This question is written in SQL.");
       cy.findAllByText("VENDOR").first().click();
@@ -104,7 +104,7 @@ describe("scenarios > question > view", () => {
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Question").click();
 
-      // Filter by category and vendor — users with card read access can see dropdown values (#70767)
+      // Filter by category and vendor
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("This question is written in SQL.");
       cy.findAllByText("VENDOR").first().click();

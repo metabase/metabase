@@ -89,7 +89,7 @@
    query-string :- [:maybe :string]]
   (let [field        (if qp.perms/*param-values-query*
                        ;; When fetching param values for a card/dashboard the user can read, skip the Field
-                       ;; read-check which requires create-queries permission on the table (see #70767).
+                       ;; read-check which requires create-queries permission on the table.
                        (api/check-404 (t2/select-one :model/Field :id field-id))
                        (api/read-check (t2/select-one :model/Field :id field-id)))
         search-field (or (some->> (chain-filter/remapped-field-id field-id)

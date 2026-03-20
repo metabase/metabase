@@ -1013,7 +1013,6 @@
   [{:keys [card-id param-key]} :- [:map
                                    [:card-id   ms/PositiveInt]
                                    [:param-key ::lib.schema.parameter/id]]]
-  ;; If a user can read the card, then they can lookup filter values.
   (binding [qp.perms/*param-values-query* true]
     (queries/card-param-values (api/read-check :model/Card card-id) param-key)))
 
