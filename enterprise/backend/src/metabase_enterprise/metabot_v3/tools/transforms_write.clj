@@ -65,9 +65,7 @@ def transform():
 
 (defn- source-for-transform-type
   [source-type source-database source-tables]
-  (assert (pos-int? source-database))
   (case source-type
-      ;; Direct mbql manipulation -- wrong
     :sql {:type "query"
           ;; TODO (lbrdnk 2026-03-20): Figure out if this is ready to work with mbql5 and use that.
           :query {:type :native

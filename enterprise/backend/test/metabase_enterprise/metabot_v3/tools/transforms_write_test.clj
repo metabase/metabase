@@ -14,12 +14,12 @@
                    :transform_name "Test Transform"
                    :memory-atom memory-atom})]
       (is (= "SELECT * FROM users"
-             (get-in result [:structured-output :transform :source :query])))))
+             (get-in result [:structured-output :transform :source :query :native :query])))))
 
   (testing "edit mode with single edit"
     (let [existing-transform {:id 1
                               :name "Existing"
-                              :source {:query "SELECT id FROM orders"}}
+                              :source {:query {:native {:query "SELECT id FROM orders"}}}}
           memory-atom (atom {:state {:transforms {"1" existing-transform}}})
           result (transforms-write/write-transform-sql
                   {:transform_id 1
@@ -28,12 +28,12 @@
                                           :new_string "customers"}]}
                    :memory-atom memory-atom})]
       (is (= "SELECT id FROM customers"
-             (get-in result [:structured-output :transform :source :query])))))
+             (get-in result [:structured-output :transform :source :query :native :query])))))
 
   (testing "edit mode with multiple edits"
     (let [existing-transform {:id 1
                               :name "Existing"
-                              :source {:query "SELECT col_a, col_b FROM table1"}}
+                              :source {:query {:native {:query "SELECT col_a, col_b FROM table1"}}}}
           memory-atom (atom {:state {:transforms {"1" existing-transform}}})
           result (transforms-write/write-transform-sql
                   {:transform_id 1
@@ -43,7 +43,7 @@
                                          {:old_string "table1" :new_string "table2"}]}
                    :memory-atom memory-atom})]
       (is (= "SELECT col_x, col_y FROM table2"
-             (get-in result [:structured-output :transform :source :query])))))
+             (get-in result [:structured-output :transform :source :query :native :query])))))
 
   (testing "edit mode fails when text not found"
     (let [existing-transform {:id 1
@@ -63,7 +63,7 @@
   (testing "edit mode fails for ambiguous matches without replace_all"
     (let [existing-transform {:id 1
                               :name "Existing"
-                              :source {:query "SELECT foo, foo FROM mytable"}}
+                              :source {:query {:native {:query "SELECT foo, foo FROM mytable"}}}}
           memory-atom (atom {:state {:transforms {"1" existing-transform}}})]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
@@ -78,7 +78,7 @@
   (testing "edit mode with replace_all replaces all occurrences"
     (let [existing-transform {:id 1
                               :name "Existing"
-                              :source {:query "SELECT xyz, xyz, xyz FROM mytable"}}
+                              :source {:query {:native {:query "SELECT xyz, xyz, xyz FROM mytable"}}}}
           memory-atom (atom {:state {:transforms {"1" existing-transform}}})
           result (transforms-write/write-transform-sql
                   {:transform_id 1
@@ -88,7 +88,7 @@
                                           :replace_all true}]}
                    :memory-atom memory-atom})]
       (is (= "SELECT abc, abc, abc FROM mytable"
-             (get-in result [:structured-output :transform :source :query]))))))
+             (get-in result [:structured-output :transform :source :query :native :query]))))))
 
 ;;; Transform Creation Tests
 
@@ -100,10 +100,11 @@
                                  :new_content "SELECT 1"}
                    :transform_name "New Transform"
                    :transform_description "A test transform"
+                   :source_database 1
                    :memory-atom memory-atom})]
       (is (= "New Transform" (get-in result [:structured-output :transform :name])))
       (is (= "A test transform" (get-in result [:structured-output :transform :description])))
-      (is (= "SELECT 1" (get-in result [:structured-output :transform :source :query])))))
+      (is (= "SELECT 1" (get-in result [:structured-output :transform :source :query :native :query])))))
 
   (testing "creates fresh Python transform"
     (let [memory-atom (atom {:state {}})
@@ -111,6 +112,8 @@
                   {:edit_action {:mode "replace"
                                  :new_content "def transform():\n    return pd.DataFrame()"}
                    :transform_name "Python Transform"
+                   :source_database 1
+                   :source_tables [{:alias "t" :table_id 1 :schema "PUBLIC" :database_id 1}]
                    :memory-atom memory-atom})]
       (is (= "Python Transform" (get-in result [:structured-output :transform :name])))
       (is (= "python" (get-in result [:structured-output :transform :source :type]))))))
@@ -118,9 +121,9 @@
 (deftest create-fresh-python-template-test
   (testing "fresh Python transforms include common import"
     (let [result (#'transforms-write/create-fresh-transform
-                  :python "Python Transform" nil nil nil)]
+                  :python "Python Transform" nil 1 nil)]
       (is (= "import common\nimport pandas as pd\n\ndef transform():\n    # Your transformation logic here\n    return pd.DataFrame([{\"message\": \"Hello from Python transform!\"}])\n"
-             (get-in result [:source :query]))))))
+             (get-in result [:source :body]))))))
 
 ;;; Data Parts Tests
 
@@ -142,13 +145,13 @@
 
 (deftest memory-storage-test
   (testing "stores updated transform in memory when transform_id provided"
-    (let [existing-transform {:id 1 :name "Existing" :source {:query "SELECT 1"}}
+    (let [existing-transform {:id 1 :name "Existing" :source {:query {:native {:query "SELECT 1"}}}}
           memory-atom (atom {:state {:transforms {"1" existing-transform}}})
           _ (transforms-write/write-transform-sql
              {:transform_id 1
               :edit_action {:mode "replace" :new_content "SELECT 2"}
               :memory-atom memory-atom})]
-      (is (= "SELECT 2" (get-in @memory-atom [:state :transforms "1" :source :query])))))
+      (is (= "SELECT 2" (get-in @memory-atom [:state :transforms "1" :source :query :native :query])))))
 
   (testing "does not store in memory when no transform_id"
     (let [memory-atom (atom {:state {:transforms {}}})
@@ -172,10 +175,12 @@
              :memory-atom memory-atom})))))
 
   (testing "fails when edit_action invalid"
-    (let [memory-atom (atom {:state {}})]
+    (let [existing-transform {:id 1 :name "Existing" :source {:query {:native {:query "SELECT 1"}}}}
+          memory-atom (atom {:state {:transforms {"1" existing-transform}}})]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Invalid edit_action"
            (transforms-write/write-transform-sql
-            {:edit_action {:mode "invalid"}
+            {:transform_id 1
+             :edit_action {:mode "invalid"}
              :memory-atom memory-atom}))))))
