@@ -1,14 +1,10 @@
 import type { AnyAction, ThunkDispatch } from "@reduxjs/toolkit";
 
-import { mockSettings } from "__support__/settings";
 import { act, renderHookWithProviders } from "__support__/ui";
-import { createMockTokenFeatures } from "metabase-types/api/mocks";
 import type { State } from "metabase-types/store";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { useMetabotAgentsManager } from "../hooks";
 import { type MetabotAgentId, getMessages, submitInput } from "../state";
-import { getMetabotInitialState } from "../state/reducer-utils";
 
 import { mockAgentEndpoint } from "./utils";
 
@@ -20,20 +16,9 @@ function setup(
 ) {
   const { agentIds = ["omnibot", "sql"] } = options || {};
 
-  const settings = mockSettings({
-    "token-features": createMockTokenFeatures({
-      metabot_v3: true,
-    }),
-  });
-
   const { store: _store, result: hook } = renderHookWithProviders(
     () => useMetabotAgentsManager(agentIds),
-    {
-      storeInitialState: createMockState({
-        settings,
-        metabot: getMetabotInitialState(),
-      }),
-    },
+    {},
   );
 
   const store = _store as Omit<typeof _store, "getState" | "dispatch"> & {

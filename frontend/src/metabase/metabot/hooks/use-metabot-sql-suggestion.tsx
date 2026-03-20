@@ -4,7 +4,6 @@ import { t } from "ttag";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { METABOT_PROFILE_OVERRIDES } from "metabase/metabot/constants";
-import { useMetabotAgent } from "metabase/metabot/hooks";
 import {
   addDeveloperMessage,
   getMetabotSuggestedCodeEdit,
@@ -13,6 +12,8 @@ import {
 } from "metabase/metabot/state";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import type { DatabaseId, GenerateSqlResponse } from "metabase-types/api";
+
+import { useMetabotAgent } from "./use-metabot-agent";
 
 export interface UseMetabotSQLSuggestionOptions {
   databaseId: DatabaseId | null;

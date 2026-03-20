@@ -3,10 +3,8 @@ import {
   setupCollectionsEndpoints,
   setupNativeQuerySnippetEndpoints,
 } from "__support__/server-mocks";
-import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import { useNotebookScreenSize } from "metabase/query_builder/hooks/use-notebook-screen-size";
-import { createMockTokenFeatures } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
 import { NativeQueryEditor } from "./NativeQueryEditor";
@@ -27,12 +25,6 @@ const mockQuestion = {
 
 describe("NativeQueryEditor", () => {
   beforeAll(() => {
-    mockSettings({
-      "token-features": createMockTokenFeatures({
-        metabot_v3: true,
-      }),
-    });
-
     setupEnterpriseOnlyPlugin("metabot");
   });
 

@@ -98,7 +98,6 @@ describe("registerQueryBuilderMetabotContextFn", () => {
       createMockSettings({
         "token-features": createMockTokenFeatures({
           ai_entity_analysis: true,
-          metabot_v3: true,
         }),
       }),
     );

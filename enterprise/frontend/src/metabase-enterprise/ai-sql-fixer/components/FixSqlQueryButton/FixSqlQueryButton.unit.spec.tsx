@@ -1,83 +1,61 @@
 import userEvent from "@testing-library/user-event";
+import { assocIn } from "icepick";
 
+import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
-import { useDispatch } from "metabase/lib/redux";
-import { useMetabotAgent } from "metabase/metabot/hooks";
-import { setIsNativeEditorOpen } from "metabase/query_builder/actions";
-import { createMockTokenFeatures } from "metabase-types/api/mocks";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { mockStreamedEndpoint } from "metabase/api/ai-streaming/test-utils";
+import { MetabotProvider } from "metabase/metabot/context";
+import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
 import { createMockState } from "metabase-types/store/mocks";
-
-import { trackQueryFixClicked } from "../../analytics";
 
 import { FixSqlQueryButton } from "./FixSqlQueryButton";
 
-const mockSubmitInput = jest.fn();
-const mockDispatch = jest.fn();
-const mockSetIsNativeEditorOpen = jest.fn();
+function setup({
+  isMetabotEnabled = true,
+  isProcessing = false,
+}: { isMetabotEnabled?: boolean; isProcessing?: boolean } = {}) {
+  setupEnterprisePlugins();
 
-jest.mock("../../analytics", () => ({
-  trackQueryFixClicked: jest.fn(),
-}));
+  const settings = mockSettings({ "metabot-enabled?": isMetabotEnabled });
 
-jest.mock("metabase/lib/redux", () => ({
-  ...jest.requireActual("metabase/lib/redux"),
-  useDispatch: jest.fn(),
-}));
+  let metabotState = getMetabotInitialState();
+  if (isProcessing) {
+    metabotState = assocIn(
+      metabotState,
+      ["conversations", "sql", "isProcessing"],
+      true,
+    );
+  }
 
-jest.mock("metabase/metabot/hooks", () => ({
-  ...jest.requireActual("metabase/metabot/hooks"),
-  useMetabotAgent: jest.fn(),
-}));
-
-jest.mock("metabase/query_builder/actions", () => ({
-  ...jest.requireActual("metabase/query_builder/actions"),
-  setIsNativeEditorOpen: jest.fn(),
-}));
-
-function setup(options?: {
-  isMetabotEnabled?: boolean;
-  isDoingScience?: boolean;
-}) {
-  const { isMetabotEnabled = true, isDoingScience = false } = options ?? {};
-  const settings = mockSettings({
-    "metabot-enabled?": isMetabotEnabled,
-    "token-features": createMockTokenFeatures({
-      metabot_v3: true,
-    }),
+  const agentSpy = mockStreamedEndpoint("/api/metabot/agent-streaming", {
+    textChunks: [
+      `0:"Fixed query."`,
+      `d:{"finishReason":"stop","usage":{"promptTokens":10,"completionTokens":5}}`,
+    ],
   });
 
-  jest.mocked(useMetabotAgent).mockReturnValue({
-    submitInput: mockSubmitInput,
-    isDoingScience,
-  } as any);
-  jest.mocked(useDispatch).mockReturnValue(mockDispatch as any);
-  jest
-    .mocked(setIsNativeEditorOpen)
-    .mockImplementation(mockSetIsNativeEditorOpen as any);
+  renderWithProviders(
+    <MetabotProvider>
+      <FixSqlQueryButton />
+    </MetabotProvider>,
+    {
+      storeInitialState: createMockState({
+        settings,
+        metabot: metabotState,
+      }),
+    },
+  );
 
-  renderWithProviders(<FixSqlQueryButton />, {
-    storeInitialState: createMockState({ settings }),
-  });
+  return { agentSpy };
 }
 
 describe("FixSqlQueryButton", () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-    mockSubmitInput.mockResolvedValue(undefined);
-    mockDispatch.mockResolvedValue(undefined);
-    mockSetIsNativeEditorOpen.mockReturnValue({
-      type: "metabase/qb/SET_IS_NATIVE_EDITOR_OPEN",
-      isNativeEditorOpen: true,
-    });
-  });
-
   it("should render the button with correct text when metabot is enabled", () => {
     setup({ isMetabotEnabled: true });
     expect(
       screen.getByRole("button", { name: /Have Metabot fix it/ }),
     ).toBeInTheDocument();
-    expect(useMetabotAgent).toHaveBeenCalledWith("sql");
   });
 
   it("should not render the button when metabot is disabled", () => {
@@ -88,23 +66,20 @@ describe("FixSqlQueryButton", () => {
   });
 
   it("should submit an SQL fix prompt when clicked", async () => {
-    setup();
+    const { agentSpy } = setup();
 
     await userEvent.click(
       screen.getByRole("button", { name: /Have Metabot fix it/ }),
     );
 
-    expect(trackQueryFixClicked).toHaveBeenCalled();
-    expect(mockSetIsNativeEditorOpen).toHaveBeenCalledWith(true);
-    expect(mockDispatch).toHaveBeenCalledWith({
-      type: "metabase/qb/SET_IS_NATIVE_EDITOR_OPEN",
-      isNativeEditorOpen: true,
-    });
-    expect(mockSubmitInput).toHaveBeenCalledWith("Fix this SQL query");
+    await waitFor(() => expect(agentSpy).toHaveBeenCalled());
+
+    const body = JSON.parse(agentSpy.mock.lastCall?.[1]?.body as string);
+    expect(body.message).toBe("Fix this SQL query");
   });
 
   it("should show a loading state while the SQL agent is processing", () => {
-    setup({ isDoingScience: true });
+    setup({ isProcessing: true });
 
     expect(
       screen.getByRole("button", {

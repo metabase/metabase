@@ -5,7 +5,6 @@ import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { mockStreamedEndpoint } from "metabase/api/ai-streaming/test-utils";
 import { MetabotProvider } from "metabase/metabot/context";
-import { createMockTokenFeatures } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
 import { AIQuestionAnalysisButton } from "./AIQuestionAnalysisButton";
@@ -23,19 +22,16 @@ function setup({
 }: { isMetabotEnabled?: boolean } = {}) {
   setupEnterprisePlugins();
 
-  const settings = mockSettings({
-    "metabot-enabled?": isMetabotEnabled,
-    "token-features": createMockTokenFeatures({
-      metabot_v3: true,
-    }),
-  });
-
   renderWithProviders(
     <MetabotProvider>
       <AIQuestionAnalysisButton />
     </MetabotProvider>,
     {
-      storeInitialState: createMockState({ settings }),
+      storeInitialState: createMockState({
+        settings: mockSettings({
+          "metabot-enabled?": isMetabotEnabled,
+        }),
+      }),
     },
   );
 }

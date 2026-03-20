@@ -2,7 +2,6 @@ import userEvent from "@testing-library/user-event";
 
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { createMockTokenFeatures } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
 import { MetabotComponent } from "./MetabotEmbed";
@@ -31,16 +30,11 @@ describe("MetabotEmbed", () => {
 
   describe("when metabot is disabled", () => {
     it("should show disabled button with tooltip", async () => {
-      const settings = mockSettings({
-        "metabot-enabled?": false,
-        "token-features": createMockTokenFeatures({
-          metabot_v3: false,
-        }),
-      });
-
       renderWithProviders(<MetabotComponent {...defaultProps} />, {
         storeInitialState: createMockState({
-          settings,
+          settings: mockSettings({
+            "metabot-enabled?": false,
+          }),
         }),
       });
 
@@ -57,16 +51,11 @@ describe("MetabotEmbed", () => {
 
   describe("when metabot is enabled", () => {
     it("should show enabled button without tooltip", async () => {
-      const settings = mockSettings({
-        "metabot-enabled?": true,
-        "token-features": createMockTokenFeatures({
-          metabot_v3: true,
-        }),
-      });
-
       renderWithProviders(<MetabotComponent {...defaultProps} />, {
         storeInitialState: createMockState({
-          settings,
+          settings: mockSettings({
+            "metabot-enabled?": true,
+          }),
         }),
       });
 

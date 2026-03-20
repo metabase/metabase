@@ -1,8 +1,6 @@
 import { EditorState } from "@codemirror/state";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import { mockSettings } from "__support__/settings";
-import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 import { getPlaceholderText, matchTagAtCursor } from "./util";
 
@@ -177,11 +175,6 @@ describe("getPlaceholderText", () => {
 
   describe("metabot is enabled", () => {
     beforeAll(() => {
-      const tokenFeatures = createMockTokenFeatures({
-        metabot_v3: true,
-      });
-
-      mockSettings({ "token-features": tokenFeatures });
       setupEnterpriseOnlyPlugin("metabot");
     });
 

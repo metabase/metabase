@@ -3,7 +3,6 @@ import userEvent from "@testing-library/user-event";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockTokenFeatures } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
 import { MetabotProvider } from "../context";
@@ -15,19 +14,14 @@ function setup({
 }: { isMetabotEnabled?: boolean } = {}) {
   setupEnterprisePlugins();
 
-  const settings = mockSettings({
-    "metabot-enabled?": isMetabotEnabled,
-    "token-features": createMockTokenFeatures({
-      metabot_v3: true,
-    }),
-  });
-
   const { store } = renderWithProviders(
     <MetabotProvider>
       <MetabotAppBarButton />
     </MetabotProvider>,
     {
-      storeInitialState: createMockState({ settings }),
+      storeInitialState: createMockState({
+        settings: mockSettings({ "metabot-enabled?": isMetabotEnabled }),
+      }),
     },
   );
 

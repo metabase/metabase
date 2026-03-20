@@ -4,7 +4,6 @@ import { assocIn } from "icepick";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { setupDatabaseListEndpoint } from "__support__/server-mocks";
-import { mockSettings } from "__support__/settings";
 import {
   act,
   fireEvent,
@@ -20,10 +19,7 @@ import {
   mockStreamedEndpoint,
 } from "metabase/api/ai-streaming/test-utils";
 import type { User } from "metabase-types/api";
-import {
-  createMockTokenFeatures,
-  createMockUser,
-} from "metabase-types/api/mocks";
+import { createMockUser } from "metabase-types/api/mocks";
 import type { State } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";
 
@@ -147,12 +143,6 @@ export function setup(
     promptSuggestions?: { prompt: string }[];
   } | void,
 ) {
-  const settings = mockSettings({
-    "token-features": createMockTokenFeatures({
-      metabot_v3: true,
-    }),
-  });
-
   setupEnterprisePlugins();
 
   const _metabotState = getMetabotInitialState();
@@ -179,7 +169,6 @@ export function setup(
     <MetabotProvider>{ui}</MetabotProvider>,
     {
       storeInitialState: createMockState({
-        settings,
         currentUser: currentUser ? currentUser : undefined,
         metabot: metabotInitialState,
       }),

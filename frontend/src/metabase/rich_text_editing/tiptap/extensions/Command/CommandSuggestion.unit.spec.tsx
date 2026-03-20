@@ -19,7 +19,6 @@ import {
   createMockRecentCollectionItem,
   createMockRecentTableItem,
   createMockSearchResult,
-  createMockTokenFeatures,
   createMockUser,
   createMockUserPermissions,
 } from "metabase-types/api/mocks";
@@ -439,14 +438,7 @@ describe("CommandSuggestion", () => {
 
     describe("when metabot is disabled", () => {
       it("should show all available commands except Metabot", async () => {
-        const settings = mockSettings({
-          "metabot-enabled?": false,
-          "token-features": createMockTokenFeatures({
-            metabot_v3: false,
-          }),
-        });
-
-        setup({ settings });
+        setup({ settings: mockSettings({ "metabot-enabled?": false }) });
 
         expect(screen.queryByText("Ask Metabot")).not.toBeInTheDocument();
         await expectStandardCommandsToBePresent();
@@ -455,14 +447,7 @@ describe("CommandSuggestion", () => {
 
     describe("when metabot is enabled", () => {
       it("should show all available commands including Metabot", async () => {
-        const settings = mockSettings({
-          "metabot-enabled?": true,
-          "token-features": createMockTokenFeatures({
-            metabot_v3: true,
-          }),
-        });
-
-        setup({ settings });
+        setup({ settings: mockSettings({ "metabot-enabled?": true }) });
 
         expect(screen.getByText("Ask Metabot")).toBeInTheDocument();
         await expectStandardCommandsToBePresent();
