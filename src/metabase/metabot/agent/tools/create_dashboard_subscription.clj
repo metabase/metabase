@@ -31,15 +31,12 @@ Before calling the tool, ensure you have ALL of the following:
 
 If any required information is missing, ask the user for it rather than assuming or fabricating values.")
 
-(def ^:private schema
-  [:map {:closed true}
-   [:dashboard_id :int]
-   [:schedule tools.create-alert/schedule-schema]])
-
 (mu/defn ^{:tool-name           "create_dashboard_subscription"
            :system-instructions create-dashboard-subscription-system-instructions} slackbot-create-dashboard-subscription-tool
   "Create a recurring subscription that delivers a dashboard's contents to a Slack channel."
-  [{:keys [dashboard_id schedule]} :- schema]
+  [{:keys [dashboard_id schedule]} :- [:map {:closed true}
+                                       [:dashboard_id :int]
+                                       [:schedule tools.create-alert/schedule-schema]]]
   (let [slack-channel-id (:slack_channel_id (shared/current-context))]
     (when-not slack-channel-id
       (throw (ex-info "This tool can only be used from a Slack channel"

@@ -8,7 +8,7 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private schema
+(def ^:private navigation-schema
   [:map {:closed true}
    [:destination [:or
                   [:map {:closed true}
@@ -32,7 +32,7 @@
   - Pages: notebook_editor, metrics_browser, model_browser, database_browser, sql_editor
   - Entities: table, model, question, metric, dashboard
   - Query results or charts from the current conversation"
-  [{:keys [destination]} :- schema]
+  [{:keys [destination]} :- navigation-schema]
   (try
     (let [result (navigate-tools/navigate {:destination destination
                                            :memory-atom shared/*memory-atom*})
