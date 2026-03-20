@@ -1,4 +1,4 @@
-## Add target_table_id FK to transform and FKs on workspace_output table columns
+## Add target_table_id FK to transform and table FKs on workspace input/output columns
 
 databaseChangeLog:
   - logicalFilePath: migrations/060_update_migrations.yaml
@@ -116,6 +116,114 @@ databaseChangeLog:
             baseTableName: workspace_output
             baseColumnNames: isolated_table_id
             constraintName: fk_workspace_output_isolated_table_id
+            referencedTableName: metabase_table
+            referencedColumnNames: id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v60.2026-03-10T00:00:09
+      author: christruter
+      comment: Add FK from workspace_input.table_id to metabase_table with SET NULL
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_workspace_input_table_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_input
+            baseColumnNames: table_id
+            constraintName: fk_workspace_input_table_id
+            referencedTableName: metabase_table
+            referencedColumnNames: id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v60.2026-03-10T00:00:10
+      author: christruter
+      comment: Add index on workspace_input_external.table_id
+      changes:
+        - createIndex:
+            tableName: workspace_input_external
+            indexName: idx_workspace_input_external_table_id
+            columns:
+              - column:
+                  name: table_id
+
+  - changeSet:
+      id: v60.2026-03-10T00:00:11
+      author: christruter
+      comment: Add FK from workspace_input_external.table_id to metabase_table with SET NULL
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_workspace_input_external_table_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_input_external
+            baseColumnNames: table_id
+            constraintName: fk_workspace_input_external_table_id
+            referencedTableName: metabase_table
+            referencedColumnNames: id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v60.2026-03-10T00:00:12
+      author: christruter
+      comment: Add index on workspace_output_external.global_table_id
+      changes:
+        - createIndex:
+            tableName: workspace_output_external
+            indexName: idx_workspace_output_external_global_table_id
+            columns:
+              - column:
+                  name: global_table_id
+
+  - changeSet:
+      id: v60.2026-03-10T00:00:13
+      author: christruter
+      comment: Add FK from workspace_output_external.global_table_id to metabase_table with SET NULL
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_workspace_output_external_global_table_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_output_external
+            baseColumnNames: global_table_id
+            constraintName: fk_workspace_output_external_global_table_id
+            referencedTableName: metabase_table
+            referencedColumnNames: id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v60.2026-03-10T00:00:14
+      author: christruter
+      comment: Add index on workspace_output_external.isolated_table_id
+      changes:
+        - createIndex:
+            tableName: workspace_output_external
+            indexName: idx_workspace_output_external_isolated_table_id
+            columns:
+              - column:
+                  name: isolated_table_id
+
+  - changeSet:
+      id: v60.2026-03-10T00:00:15
+      author: christruter
+      comment: Add FK from workspace_output_external.isolated_table_id to metabase_table with SET NULL
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_workspace_output_external_isolated_table_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_output_external
+            baseColumnNames: isolated_table_id
+            constraintName: fk_workspace_output_external_isolated_table_id
             referencedTableName: metabase_table
             referencedColumnNames: id
             onDelete: SET NULL
