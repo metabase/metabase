@@ -738,7 +738,7 @@
                           (or (nil? pred) (pred col))))
                    columns))))
 
-(defn json-field?
+(mu/defn json-field? :- :boolean
   "Return true if field is a JSON field, false if not."
   [field :- [:maybe ::lib.schema.metadata/column]]
   (some? (:nfc-path field)))

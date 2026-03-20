@@ -263,12 +263,9 @@
     clause       :- [:maybe ::lib.join.util/partial-join]]
    (-> col
        (assoc
-         ;; TODO (Cam 6/19/25) -- we need to get rid of `:source-alias` it's just causing confusion; don't need two
-         ;; keys for join aliases.
-        :source-alias              join-alias
         :lib/original-join-alias   join-alias
         :lib/source                :source/joins
-        ::join-alias               join-alias
+        :lib/join-alias            join-alias
         :lib/column-key            (if-let [join (or clause
                                                      (maybe-resolve-join query stage-number join-alias))]
                                       ;; HACK: Convoluted code at the stage boundary can result in this getting called
