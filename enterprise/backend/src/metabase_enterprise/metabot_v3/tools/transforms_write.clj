@@ -2,8 +2,6 @@
   "Tools for writing/editing SQL and Python transform source code.
   Supports both partial edits (targeted string replacements) and full replacement modes."
   (:require
-   ^{:clj-kondo/ignore true} #_[metabase.driver.sql :as driver.sql]
-   ^{:clj-kondo/ignore true} #_[metabase.driver.util :as driver.u]
    [clojure.string :as str]
    [metabase-enterprise.metabot-v3.agent.streaming :as streaming]
    [metabase.util.log :as log]))
@@ -85,7 +83,6 @@ def transform():
 (defn- create-fresh-transform
   "Create a fresh transform structure with the given source type."
   [source-type transform-name transform-description source-database source-tables]
-  ^{:clj-kondo/ignore [:redundant-let]}
   {:id nil
    :name (or transform-name (str "New " (name source-type) " Transform"))
    :description (or transform-description "")
