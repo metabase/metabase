@@ -9,8 +9,13 @@ import {
   useUpdateDashboardMutation,
 } from "metabase/api";
 import { listTag } from "metabase/api/tags";
+import { createDashCard, createVirtualCard } from "metabase/dashboard/utils";
 import { useDispatch } from "metabase/lib/redux";
-import type { CollectionId, CollectionItem } from "metabase-types/api";
+import type {
+  CollectionId,
+  CollectionItem,
+  DashboardCard,
+} from "metabase-types/api";
 
 // This name is hardcoded in the backend (see xrays/automagic_dashboards/populate.clj).
 // There is no special collection type — the name is the canonical identifier.
@@ -93,29 +98,23 @@ export const useCreateSampleDashboardInSharedCollection = () => {
           collection_id: targetCollectionId,
         }).unwrap();
 
+        const virtualCard = createVirtualCard("text");
+        const dashcard = createDashCard({
+          dashboard_id: dashboard.id,
+          card: virtualCard,
+          row: 0,
+          col: 0,
+          size_x: 18,
+          size_y: 2,
+          visualization_settings: {
+            virtual_card: virtualCard,
+            text: t`Hello, world!`,
+          },
+        });
+
         await updateDashboard({
           id: dashboard.id,
-          dashcards: [
-            // @ts-expect-error — the API accepts partial dashcards for creation (id < 0),
-            // but DashboardCard requires fields the server fills in (entity_id, created_at, etc.)
-            {
-              id: -1,
-              card_id: null,
-              row: 0,
-              col: 0,
-              size_x: 18,
-              size_y: 2,
-              visualization_settings: {
-                virtual_card: {
-                  name: null,
-                  display: "text",
-                  visualization_settings: {},
-                  archived: false,
-                },
-                text: t`Hello, world!`,
-              },
-            },
-          ],
+          dashcards: [dashcard as DashboardCard],
         }).unwrap();
 
         dispatch(Api.util.invalidateTags([listTag("embedding-hub-checklist")]));
