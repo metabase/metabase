@@ -22,6 +22,7 @@ import {
 import { SERIES_SETTING_KEY } from "metabase/visualizations/shared/settings/series";
 import type {
   Visualization,
+  VisualizationDefinition,
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
@@ -43,7 +44,7 @@ const transformCartesianSeries = (series: Series): TransformedSeries => {
 };
 
 export const getCartesianChartDefinition = (
-  props: Partial<Visualization>,
+  props: Omit<VisualizationDefinition, "isSensible" | "checkRenderable">,
 ): Partial<Visualization> => {
   return {
     noHeader: true,

@@ -10,18 +10,10 @@ import {
   getCartesianChartDefinition,
 } from "metabase/visualizations/visualizations/CartesianChart/chart-definition";
 
-import type {
-  VisualizationProps,
-  VisualizationSettingsDefinitions,
-} from "../../types";
+import type { VisualizationDefinition, VisualizationProps } from "../../types";
 
-const settings: VisualizationSettingsDefinitions = {
-  ...COMBO_CHARTS_SETTINGS_DEFINITIONS,
-};
-
-Object.assign(
-  BarChart,
-  getCartesianChartDefinition({
+const BarViz: Omit<VisualizationDefinition, "isSensible" | "checkRenderable"> =
+  {
     getUiName: () => t`Bar`,
     identifier: "bar",
     iconName: "bar",
@@ -29,9 +21,12 @@ Object.assign(
     noun: t`bar chart`,
     minSize: getMinSize("bar"),
     defaultSize: getDefaultSize("bar"),
-    settings,
-  }),
-);
+    settings: {
+      ...COMBO_CHARTS_SETTINGS_DEFINITIONS,
+    },
+  };
+
+Object.assign(BarChart, getCartesianChartDefinition(BarViz));
 
 export function BarChart(props: VisualizationProps) {
   return <CartesianChart {...props} />;

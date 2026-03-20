@@ -13,6 +13,7 @@ import {
 } from "metabase/visualizations/shared/utils/sizes";
 import type {
   ComputedVisualizationSettings,
+  Visualization,
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
 import { transformSeries } from "metabase/visualizations/visualizations/CartesianChart/chart-definition-legacy";
@@ -26,7 +27,7 @@ const settings: VisualizationSettingsDefinitions = {
   ...BOXPLOT_DATA_SETTINGS,
 };
 
-export const BOXPLOT_CHART_DEFINITION = {
+export const BOXPLOT_CHART_DEFINITION: Visualization = {
   getUiName: () => t`Box Plot`,
   identifier: "boxplot",
   iconName: "boxplot",
