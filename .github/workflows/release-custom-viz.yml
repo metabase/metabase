@@ -48,6 +48,9 @@ jobs:
       - name: Set package version
         run: npm version ${{ inputs.version }} --no-git-tag-version
 
+      - name: Install custom-viz dependencies
+        run: bun install --frozen-lockfile
+
       - name: Build package
         run: bun run build
 
