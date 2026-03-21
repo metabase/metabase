@@ -975,6 +975,7 @@
    :api  #{metabase.geojson.api
            metabase.geojson.init}
    :uses #{api
+           config
            permissions
            settings
            util}}
