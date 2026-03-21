@@ -710,7 +710,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       return undefined;
     }
     return Math.min(
-      settings["table.freeze_columns_count"] ?? 1,
+      settings["table.freeze_columns_count"],
       columnsOptions.length,
     );
   }, [settings, columnsOptions]);
@@ -719,7 +719,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     if (!settings["table.freeze_rows"]) {
       return undefined;
     }
-    return Math.min(settings["table.freeze_rows_count"] ?? 1, rows.length);
+    return Math.min(settings["table.freeze_rows_count"], rows.length);
   }, [settings, rows]);
 
   const tableProps = useDataGridInstance({

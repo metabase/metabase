@@ -15,8 +15,8 @@ export const ChartSettingNumberInput = ({
   onChange,
   id,
   placeholder,
-  min,
-  max,
+  min = -Infinity,
+  max = Infinity,
 }: ChartSettingNumberInputProps) => {
   const handleChange = (newValue: number | string) => {
     onChange(Number(newValue));
@@ -31,6 +31,7 @@ export const ChartSettingNumberInput = ({
       min={min}
       max={max}
       allowDecimal={false}
+      allowNegative={min < 0}
       hideControls={false}
     />
   );

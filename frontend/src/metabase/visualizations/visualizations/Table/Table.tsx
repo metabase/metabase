@@ -136,10 +136,12 @@ export class Table extends Component<TableProps, TableState> {
       },
       widget: ChartSettingNumberInput,
       default: 1,
+      isValid: (_series: Series, settings: VisualizationSettings) =>
+        settings["table.freeze_columns_count"] >= 1,
       getHidden: (series: Series, settings: VisualizationSettings) =>
         !settings["table.freeze_columns"],
       readDependencies: ["table.freeze_columns"],
-      props: { min: 1 },
+      getProps: () => ({ min: 1 }),
     },
     "table.freeze_rows": {
       get section() {
@@ -161,10 +163,12 @@ export class Table extends Component<TableProps, TableState> {
       },
       widget: ChartSettingNumberInput,
       default: 1,
+      isValid: (_series: Series, settings: VisualizationSettings) =>
+        settings["table.freeze_rows_count"] >= 1,
       getHidden: (series: Series, settings: VisualizationSettings) =>
         !settings["table.freeze_rows"],
       readDependencies: ["table.freeze_rows"],
-      props: { min: 1 },
+      getProps: () => ({ min: 1 }),
     },
     "table.pivot": {
       get section() {
