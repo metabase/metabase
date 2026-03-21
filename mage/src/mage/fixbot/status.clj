@@ -87,16 +87,21 @@
           db-host       (extract-db-host db-uri)]
       (when jetty-port
         (let [be-host-file (File. ".fixbot/be-hostname.txt")
+              fe-host-file (File. ".fixbot/fe-hostname.txt")
               be-hostname  (when (.exists be-host-file)
                              (let [h (str/trim (slurp be-host-file))]
+                               (when (seq h) h)))
+              fe-hostname  (when (.exists fe-host-file)
+                             (let [h (str/trim (slurp fe-host-file))]
                                (when (seq h) h)))]
           {:jetty-port     jetty-port
            :frontend-port  frontend-port
            :db-type        db-type
            :db-port        db-port
            :db-host        (or db-host "host.docker.internal")
-           ;; For health checks: use BE container hostname (container-to-container)
-           :health-host    (or be-hostname "localhost")
+           ;; For health checks: use container hostnames (container-to-container)
+           :be-health-host (or be-hostname "localhost")
+           :fe-health-host (or fe-hostname "localhost")
            ;; For display: use OrbStack domain if available, else container IP, else localhost
            :display-host   (if be-hostname
                              (str be-hostname ".orb.local")
@@ -137,9 +142,11 @@
       (.append sb (str (:id issue) " | " (:url issue) "\n")))
     ;; Line 3: Metabase | URL | DB
     (when ports
-      (let [mb-healthy? (and (= be-status :ready) (= fe-status :ready))
-            mb-color    (if mb-healthy? green red)
-            mb-text     (str "Metabase | http://" (:display-host ports) ":" (:jetty-port ports))
+      (let [mb-color    (cond
+                          (not= be-status :ready) red
+                          (not= fe-status :ready) yellow
+                          :else                   green)
+            mb-text     (str "http://" (:display-host ports) ":" (:jetty-port ports))
             db-name     (when (:db-type ports)
                           (str/upper-case (name (:db-type ports))))
             db-color    (if (= db-status :ready) green red)
@@ -175,10 +182,10 @@
             ports     (or ports (when check? (load-ports mise-path)))
             issue     (or issue (when check? (load-issue-info)))
             be-status (if (and check? ports)
-                        (check-http (str "http://" (:health-host ports) ":" (:jetty-port ports) "/api/health") 2000)
+                        (check-http (str "http://" (:be-health-host ports) ":" (:jetty-port ports) "/api/health") 2000)
                         last-be-status)
             fe-status (if (and check? ports)
-                        (check-http (str "http://" (:health-host ports) ":" (:frontend-port ports)) 2000)
+                        (check-http (str "http://" (:fe-health-host ports) ":" (:frontend-port ports)) 2000)
                         last-fe-status)
             db-status (if (and check? ports (:db-port ports))
                         (check-tcp (:db-host ports) (:db-port ports) 2000)

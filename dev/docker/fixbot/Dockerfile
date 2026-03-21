@@ -53,7 +53,7 @@ ENV BBIN_DIR="/opt/bbin"
 ENV PATH="/opt/bbin/bin:$PATH"
 
 # Install clojure-mcp-light for Clojure development
-RUN bbin install https://github.com/bhauman/clojure-mcp-light.git --tag v0.2.2
+RUN bbin install https://github.com/bhauman/clojure-mcp-light.git --tag v0.2.2 --as clj-paren-repair-claude-hook
 RUN bbin install https://github.com/bhauman/clojure-mcp-light.git --tag v0.2.2 --as clj-nrepl-eval --main-opts '["-m" "clojure-mcp-light.nrepl-eval"]'
 RUN bbin install https://github.com/bhauman/clojure-mcp-light.git --tag v0.2.2 --as clj-paren-repair --main-opts '["-m" "clojure-mcp-light.paren-repair"]'
 
@@ -74,9 +74,9 @@ RUN for shim in /opt/mise/shims/*; do \
       name=$(basename "$shim"); \
       [ ! -e "/usr/local/bin/$name" ] && ln -s "$shim" "/usr/local/bin/$name" || true; \
     done && \
-    for bin in /opt/bbin/bin/*; do \
+    for bin in /root/.local/bin/*; do \
       name=$(basename "$bin"); \
-      [ ! -e "/usr/local/bin/$name" ] && ln -s "$bin" "/usr/local/bin/$name" || true; \
+      [ ! -e "/usr/local/bin/$name" ] && cp "$bin" "/usr/local/bin/$name" || true; \
     done
 
 WORKDIR /app
