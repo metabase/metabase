@@ -108,26 +108,28 @@ Write to `.fixbot/llm-status.txt` (overwrite the whole file each time) when some
 - Beads is in stealth mode — it will not modify git state
 - Don't overthink it — simple issues may not need task tracking at all
 
-### Tmux Pane Layout
+### nREPL
 
-Your session has multiple tmux panes running side by side:
-
-- **Pane 0**: You (the agent)
-- **Pane 1**: Backend server (Clojure dev server logs)
-- **Pane 2**: Frontend dev server (rspack/build-hot logs)
-- **Pane 3**: Status watch (health checks)
-
-To read logs from the backend or frontend panes, use the capture script:
+The backend runs an nREPL server. To connect from the agent container, use the BE container's hostname (from `.fixbot/be-hostname.txt`) and the nREPL port (from `NREPL_PORT` in `mise.local.toml`, default 50605):
 
 ```bash
-# Capture last 200 lines from backend logs
-fixbot-capture-pane 1 200
-
-# Capture last 200 lines from frontend logs
-fixbot-capture-pane 2 200
+clj-nrepl-eval -H $(cat .fixbot/be-hostname.txt) -p $NREPL_PORT "(+ 1 2)"
 ```
 
-Use this when:
+Use nREPL for:
+- Evaluating Clojure expressions against the running backend
+- Requiring namespaces with `:reload` to pick up code changes
+- Testing functions interactively
+- Checking compilation
+
+### Server Logs
+
+Backend and frontend server output is captured to log files:
+
+- **Backend logs**: `.fixbot/be.log`
+- **Frontend logs**: `.fixbot/fe.log`
+
+Read these files (or `tail` them) when:
 - Debugging startup failures (check if backend/frontend started successfully)
 - Looking for error messages or stack traces
 - Verifying that your code changes were picked up by hot reload
