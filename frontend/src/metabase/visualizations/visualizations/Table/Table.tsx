@@ -126,6 +126,9 @@ export class Table extends Component<TableProps, TableState> {
       inline: true,
       widget: "toggle",
       default: false,
+      getHidden: (series: Series, settings: ComputedVisualizationSettings) =>
+        _isPivoted(series, settings),
+      readDependencies: ["table.pivot"],
     },
     "table.freeze_columns_count": {
       get section() {
@@ -138,9 +141,9 @@ export class Table extends Component<TableProps, TableState> {
       default: 1,
       isValid: (_series: Series, settings: VisualizationSettings) =>
         settings["table.freeze_columns_count"] >= 1,
-      getHidden: (series: Series, settings: VisualizationSettings) =>
-        !settings["table.freeze_columns"],
-      readDependencies: ["table.freeze_columns"],
+      getHidden: (series: Series, settings: ComputedVisualizationSettings) =>
+        !settings["table.freeze_columns"] || _isPivoted(series, settings),
+      readDependencies: ["table.freeze_columns", "table.pivot"],
       getProps: () => ({ min: 1 }),
     },
     "table.freeze_rows": {
@@ -153,6 +156,9 @@ export class Table extends Component<TableProps, TableState> {
       inline: true,
       widget: "toggle",
       default: false,
+      getHidden: (series: Series, settings: ComputedVisualizationSettings) =>
+        _isPivoted(series, settings),
+      readDependencies: ["table.pivot"],
     },
     "table.freeze_rows_count": {
       get section() {
@@ -165,9 +171,9 @@ export class Table extends Component<TableProps, TableState> {
       default: 1,
       isValid: (_series: Series, settings: VisualizationSettings) =>
         settings["table.freeze_rows_count"] >= 1,
-      getHidden: (series: Series, settings: VisualizationSettings) =>
-        !settings["table.freeze_rows"],
-      readDependencies: ["table.freeze_rows"],
+      getHidden: (series: Series, settings: ComputedVisualizationSettings) =>
+        !settings["table.freeze_rows"] || _isPivoted(series, settings),
+      readDependencies: ["table.freeze_rows", "table.pivot"],
       getProps: () => ({ min: 1 }),
     },
     "table.pivot": {

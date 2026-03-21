@@ -706,21 +706,21 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   }, [isDashcardViewTable, isEmbeddingSdk, width]);
 
   const pinnedLeftColumnsCount = useMemo<number | undefined>(() => {
-    if (!settings["table.freeze_columns"]) {
+    if (isPivoted || !settings["table.freeze_columns"]) {
       return undefined;
     }
     return Math.min(
       settings["table.freeze_columns_count"],
       columnsOptions.length,
     );
-  }, [settings, columnsOptions]);
+  }, [isPivoted, settings, columnsOptions]);
 
   const pinnedTopRowsCount = useMemo<number | undefined>(() => {
-    if (!settings["table.freeze_rows"]) {
+    if (isPivoted || !settings["table.freeze_rows"]) {
       return undefined;
     }
     return Math.min(settings["table.freeze_rows_count"], rows.length);
-  }, [settings, rows]);
+  }, [isPivoted, settings, rows]);
 
   const tableProps = useDataGridInstance({
     data: rows,
