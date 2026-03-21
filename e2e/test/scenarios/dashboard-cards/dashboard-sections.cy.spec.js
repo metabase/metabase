@@ -58,12 +58,12 @@ describe("scenarios > dashboard cards > sections", () => {
     selectQuestion("Orders, Count, Grouped by Created At (year)");
 
     overwriteDashCardTitle(
-      2,
+      1,
       "Orders, Count, Grouped by Created At (year)",
       "Line chart",
     );
     // TODO: if the mapping is done before the title is changed, the mapping is lost
-    mapDashCardToFilter(H.getDashboardCard(2), "Category");
+    mapDashCardToFilter(H.getDashboardCard(1), "Category");
 
     H.goToTab("Tab 1");
     H.saveDashboard();
@@ -101,7 +101,7 @@ describe("scenarios > dashboard cards > sections", () => {
     // Ensure parameter mapping is persisted
     H.editDashboard();
     filterPanel().findByText("Category").click();
-    H.getDashboardCard(2).findByText("Product.Category").should("exist");
+    H.getDashboardCard(1).findByText("Product.Category").should("exist");
   });
 });
 
