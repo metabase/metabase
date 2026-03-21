@@ -62,6 +62,7 @@ export const DataGrid = function DataGrid<TData>({
   getCenterRows,
   getPinnedColumns,
   getCenterColumns,
+  getTotalHeight,
   datasetIndexAttributeName,
   rowMeasureRef,
   emptyState,
@@ -74,8 +75,7 @@ export const DataGrid = function DataGrid<TData>({
   onHeaderCellClick,
   isColumnReorderingDisabled,
 }: DataGridProps<TData>) {
-  const { rowVirtualizer, columnVirtualizer, virtualIndexAttributeName } =
-    virtualGrid;
+  const { columnVirtualizer, virtualIndexAttributeName } = virtualGrid;
 
   const [headerHeight, setHeaderHeight] = useState(HEADER_HEIGHT);
   const headerRef = useCallback((node: HTMLDivElement | null) => {
@@ -123,7 +123,7 @@ export const DataGrid = function DataGrid<TData>({
     ? pinnedColumnsWidth + PINNED_BORDER_SEPARATOR_WIDTH
     : pinnedColumnsWidth;
 
-  const totalHeight = rowVirtualizer.getTotalSize();
+  const totalHeight = getTotalHeight();
 
   const addColumnMarginRight =
     totalHeight >= (gridRef.current?.offsetHeight ?? Infinity)
