@@ -295,8 +295,9 @@ if (shouldEnableHotRefresh) {
   config.output.filename = "[name].hot.bundle.js";
 
   // point the publicPath (inlined in index.html by HtmlWebpackPlugin) to the hot-reloading server
+  const devHost = process.env.WEBPACK_DEV_HOST || "localhost";
   config.output.publicPath =
-    `http://localhost:${PORT}/` + config.output.publicPath;
+    `http://${devHost}:${PORT}/` + config.output.publicPath;
 
   config.devServer = {
     port: PORT, // make the port explicit so it errors if it's already in use
@@ -308,7 +309,7 @@ if (shouldEnableHotRefresh) {
     headers: {
       "Access-Control-Allow-Origin": "*",
     },
-    allowedHosts: ["localhost", ...TEST_CUSTOM_DOMAINS],
+    allowedHosts: ["localhost", devHost, ...TEST_CUSTOM_DOMAINS],
     // tweak stats to make the output in the console more legible
     devMiddleware: {
       stats: { preset: "errors-warnings", timings: true },
