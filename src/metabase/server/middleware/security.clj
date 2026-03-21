@@ -120,9 +120,8 @@
   parse-allowed-iframe-hosts
   (memoize parse-allowed-iframe-hosts*))
 
-(def ^:private frontend-dev-host (or (env/env :mb-frontend-dev-host) "localhost"))
 (def ^:private frontend-dev-port (or (env/env :mb-frontend-dev-port) "8080"))
-(def ^:private frontend-address (str "http://" frontend-dev-host ":" frontend-dev-port))
+(def ^:private frontend-address (str "http://localhost:" frontend-dev-port))
 
 (defn- content-security-policy-header
   "`Content-Security-Policy` header. See https://content-security-policy.com for more details."

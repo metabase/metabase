@@ -41,7 +41,7 @@ panes:
   - command: <agent>
     focus: true
 
-  - command: hostname > .fixbot/be-hostname.txt; while [ ! -f .fixbot/fe-hostname.txt ]; do sleep 1; done; export MB_FRONTEND_DEV_HOST=$(cat .fixbot/fe-hostname.txt); clj -M:dev:dev-start:drivers:drivers-dev:ee:ee-dev
+  - command: hostname > .fixbot/be-hostname.txt; while [ ! -f .fixbot/fe-hostname.txt ]; do sleep 1; done; socat TCP-LISTEN:8080,fork,reuseaddr TCP:$(cat .fixbot/fe-hostname.txt):8080 & clj -M:dev:dev-start:drivers:drivers-dev:ee:ee-dev
     split: horizontal
     percentage: 30
 
