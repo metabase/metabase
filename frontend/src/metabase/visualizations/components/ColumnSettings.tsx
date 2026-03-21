@@ -1,4 +1,4 @@
-/* eslint-disable react/prop-types */
+import type React from "react";
 import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
@@ -9,6 +9,27 @@ import {
   getSettingsWidgets,
 } from "metabase/visualizations/lib/settings";
 import { getSettingDefinitionsForColumn } from "metabase/visualizations/lib/settings/column";
+import type { DatasetColumn } from "metabase-types/api/dataset";
+import type { Field, FieldFormattingSettings } from "metabase-types/api/field";
+
+type Column = DatasetColumn | (Field & { unit?: string });
+
+interface GetWidgetsParams {
+  column: Column;
+  inheritedSettings: FieldFormattingSettings;
+  storedSettings: FieldFormattingSettings;
+  onChange?: (settings: FieldFormattingSettings) => void;
+  onChangeSetting?: (changedSettings: FieldFormattingSettings) => void;
+  allowlist?: Set<string>;
+  denylist?: Set<string>;
+  extraData?: Record<string, unknown>;
+}
+
+interface ColumnSettingsProps extends Omit<GetWidgetsParams, "storedSettings"> {
+  value?: FieldFormattingSettings;
+  style?: React.CSSProperties;
+  variant?: "default" | "form-field";
+}
 
 function getWidgets({
   column,
@@ -19,7 +40,7 @@ function getWidgets({
   allowlist,
   denylist,
   extraData,
-}) {
+}: GetWidgetsParams) {
   // fake series
   const series = [{ card: {}, data: { rows: [], cols: [] } }];
 
@@ -42,7 +63,7 @@ function getWidgets({
     storedSettings,
     computedSettings,
     column,
-    (changedSettings) => {
+    (changedSettings: FieldFormattingSettings) => {
       if (onChange) {
         onChange({ ...storedSettings, ...changedSettings });
       }
@@ -60,8 +81,13 @@ function getWidgets({
   );
 }
 
-export function hasColumnSettingsWidgets({ value, ...props }) {
-  const storedSettings = value || {};
+export function hasColumnSettingsWidgets({
+  value,
+  ...props
+}: Omit<GetWidgetsParams, "storedSettings"> & {
+  value?: FieldFormattingSettings;
+}): boolean {
+  const storedSettings: FieldFormattingSettings = value || {};
   return getWidgets({ storedSettings, ...props }).length > 0;
 }
 
@@ -70,8 +96,8 @@ export const ColumnSettings = ({
   value,
   variant = "default",
   ...props
-}) => {
-  const storedSettings = value || {};
+}: ColumnSettingsProps) => {
+  const storedSettings: FieldFormattingSettings = value || {};
   const widgets = getWidgets({ storedSettings, ...props });
 
   return (
@@ -81,7 +107,10 @@ export const ColumnSettings = ({
           <ChartSettingsWidget
             key={widget.id}
             {...widget}
-            unset={storedSettings[widget.id] === undefined}
+            unset={
+              storedSettings[widget.id as keyof FieldFormattingSettings] ===
+              undefined
+            }
             noPadding
             variant={variant}
           />
