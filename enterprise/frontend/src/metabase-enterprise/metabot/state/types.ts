@@ -59,11 +59,19 @@ export type MetabotDebugToolCallMessage = {
   is_error?: boolean;
 };
 
+export type MetabotAgentChartMessage = {
+  id: string;
+  role: "agent";
+  type: "chart";
+  questionPath: string;
+};
+
 export type MetabotAgentChatMessage =
   | MetabotAgentTextChatMessage
   | MetabotAgentTodoListChatMessage
   | MetabotAgentEditSuggestionChatMessage
-  | MetabotDebugToolCallMessage;
+  | MetabotDebugToolCallMessage
+  | MetabotAgentChartMessage;
 
 export type MetabotUserChatMessage =
   | MetabotUserTextChatMessage

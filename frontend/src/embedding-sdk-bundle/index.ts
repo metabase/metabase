@@ -19,11 +19,13 @@ import "sdk-specific-imports";
 
 import type { MetabaseEmbeddingSdkBundleExports } from "./types/sdk-bundle";
 
+import { AdHocQuestion } from "./components/public/AdHocQuestion";
 import { CollectionBrowser } from "./components/public/CollectionBrowser";
 import { CreateDashboardModal } from "./components/public/CreateDashboardModal";
 import { CreateQuestion } from "./components/public/CreateQuestion";
 import { InteractiveQuestion } from "./components/public/InteractiveQuestion";
 import { ComponentProvider } from "./components/public/ComponentProvider";
+import { MetabotChat } from "./components/public/MetabotChat";
 import { MetabotQuestion } from "./components/public/MetabotQuestion";
 import { StaticQuestion } from "./components/public/StaticQuestion";
 import {
@@ -44,6 +46,7 @@ import { useLogVersionInfo } from "embedding-sdk-bundle/hooks/private/use-log-ve
 import { createDashboard } from "embedding-sdk-bundle/lib/create-dashboard";
 import { defineBuildInfo } from "metabase/embedding-sdk/lib/define-build-info";
 import { validateFunctionSchema } from "embedding-sdk-bundle/lib/validate-function-schema";
+import { useMetabot } from "embedding-sdk-bundle/hooks/public/use-metabot";
 
 defineBuildInfo("METABASE_EMBEDDING_SDK_BUNDLE_BUILD_INFO");
 
@@ -53,6 +56,7 @@ defineBuildInfo("METABASE_EMBEDDING_SDK_BUNDLE_BUILD_INFO");
  * and should be done via the deprecation of the field first.
  */
 const sdkBundleExports: MetabaseEmbeddingSdkBundleExports = {
+  AdHocQuestion,
   CollectionBrowser,
   CreateDashboardModal,
   CreateQuestion,
@@ -60,6 +64,7 @@ const sdkBundleExports: MetabaseEmbeddingSdkBundleExports = {
   InteractiveDashboard,
   InteractiveQuestion,
   ComponentProvider,
+  MetabotChat,
   MetabotQuestion,
   SdkDebugInfo,
   StaticDashboard,
@@ -72,6 +77,7 @@ const sdkBundleExports: MetabaseEmbeddingSdkBundleExports = {
   getUser,
   useInitData,
   useLogVersionInfo,
+  useMetabot,
   validateFunctionSchema,
 };
 

@@ -11,6 +11,7 @@ EMBEDDING_SDK_CONFIG.isEmbeddingSdk = true;
 defineBuildInfo("METABASE_EMBEDDING_SDK_PACKAGE_BUILD_INFO");
 defineGlobalDependencies();
 
+export { AdHocQuestion } from "./components/public/AdHocQuestion";
 export { CollectionBrowser } from "./components/public/CollectionBrowser";
 export { CreateQuestion } from "./components/public/CreateQuestion";
 export { CreateDashboardModal } from "./components/public/CreateDashboardModal";
@@ -20,6 +21,7 @@ export { StaticDashboard } from "./components/public/dashboard/StaticDashboard";
 export { InteractiveQuestion } from "./components/public/InteractiveQuestion";
 export { StaticQuestion } from "./components/public/StaticQuestion";
 export { MetabaseProvider } from "./components/public/MetabaseProvider";
+export { MetabotChat } from "./components/public/MetabotChat";
 export { MetabotQuestion } from "./components/public/MetabotQuestion";
 export * from "./components/public/debug/SdkDebugInfo";
 
@@ -28,6 +30,7 @@ export { useAvailableFonts } from "./hooks/public/use-available-fonts";
 export { useCurrentUser } from "./hooks/public/use-current-user";
 export { useCreateDashboardApi } from "./hooks/public/use-create-dashboard-api";
 export { useMetabaseAuthStatus } from "./hooks/public/use-metabase-auth-status";
+export { useMetabot } from "./hooks/public/use-metabot";
 
 export { defineMetabaseAuthConfig } from "./lib/public/define-metabase-auth-config";
 export { defineMetabaseTheme } from "./lib/public/define-metabase-theme";
@@ -36,6 +39,7 @@ export {
   type CollectionBrowserProps,
   type CollectionBrowserListColumns,
 } from "embedding-sdk-bundle/components/public/CollectionBrowser";
+export { type AdHocQuestionProps } from "embedding-sdk-bundle/components/public/AdHocQuestion";
 export { type CreateDashboardModalProps } from "embedding-sdk-bundle/components/public/CreateDashboardModal";
 export { type CreateQuestionProps } from "embedding-sdk-bundle/components/public/CreateQuestion";
 export type {
@@ -69,6 +73,11 @@ export {
   type InteractiveQuestionComponents,
   type InteractiveQuestionProps,
 } from "embedding-sdk-bundle/components/public/InteractiveQuestion";
+export {
+  type MetabotChatProps,
+  type MetabotCommandBarProps,
+  type MetabotFloatingActionButtonProps,
+} from "embedding-sdk-bundle/components/public/MetabotChat";
 export { type MetabotQuestionProps } from "embedding-sdk-bundle/components/public/MetabotQuestion";
 export {
   type StaticQuestionProps,

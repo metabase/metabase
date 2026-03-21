@@ -41,6 +41,7 @@ import {
   getUserPromptForMessageId,
 } from "./selectors";
 import type {
+  MetabotAgentChartMessage,
   MetabotAgentEditSuggestionChatMessage,
   MetabotAgentId,
   MetabotAgentTodoListChatMessage,
@@ -347,9 +348,18 @@ export const sendAgentRequest = createAsyncThunk<
                 dispatch(addSuggestedCodeEdit({ ...part.value, active: true }));
               })
               .with({ type: "navigate_to" }, (part) => {
+                // Keep for MetabotQuestion backward compat (single global chart)
                 dispatch(setNavigateToPath(part.value));
 
-                if (!isEmbeddingSdk() && !isWorkspace) {
+                if (isEmbeddingSdk()) {
+                  // In SDK mode, also push an inline chart message into the
+                  // conversation so MetabotChat can render it independently.
+                  const chartMessage: Omit<MetabotAgentChartMessage, "id" | "role"> = {
+                    type: "chart",
+                    questionPath: part.value,
+                  };
+                  dispatch(addAgentMessage({ ...chartMessage, agentId }));
+                } else if (!isWorkspace) {
                   dispatch(push(part.value) as UnknownAction);
                 }
               })

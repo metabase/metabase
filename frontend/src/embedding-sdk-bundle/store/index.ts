@@ -17,19 +17,26 @@ import { reducer as visualizer } from "metabase/visualizer/visualizer.slice";
 import { sdk } from "./reducer";
 import type { SdkDispatch, SdkStore } from "./types";
 
-export const sdkReducers = {
-  ...commonReducers,
-  pulse: combineReducers(pulse),
-  qb: combineReducers(qb),
-  visualizer,
-  sdk,
-  plugins: combineReducers({
-    metabotPlugin: PLUGIN_REDUCERS.metabotPlugin,
-  }),
-} as unknown as Record<string, Reducer>;
+export const buildSdkReducers = () =>
+  ({
+    ...commonReducers,
+    pulse: combineReducers(pulse),
+    qb: combineReducers(qb),
+    visualizer,
+    sdk,
+    plugins: combineReducers({
+      metabotPlugin: PLUGIN_REDUCERS.metabotPlugin,
+    }),
+  }) as unknown as Record<string, Reducer>;
+
+/**
+ * @deprecated Use `buildSdkReducers()` instead — it reads PLUGIN_REDUCERS at
+ * call-time so the EE metabot reducer is picked up correctly.
+ */
+export const sdkReducers = buildSdkReducers();
 
 export const getSdkStore = () =>
-  getStore(sdkReducers, null, {
+  getStore(buildSdkReducers(), null, {
     embed: {
       options: {
         entity_types: DEFAULT_EMBEDDING_ENTITY_TYPES,

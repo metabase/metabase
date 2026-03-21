@@ -1,10 +1,12 @@
 import type { JSXElementConstructor } from "react";
 
+import type { AdHocQuestion } from "embedding-sdk-bundle/components/public/AdHocQuestion/AdHocQuestion";
 import type { CollectionBrowser } from "embedding-sdk-bundle/components/public/CollectionBrowser";
 import type { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import type { CreateDashboardModal } from "embedding-sdk-bundle/components/public/CreateDashboardModal";
 import type { CreateQuestion } from "embedding-sdk-bundle/components/public/CreateQuestion";
 import type { InteractiveQuestion } from "embedding-sdk-bundle/components/public/InteractiveQuestion/InteractiveQuestion";
+import type { MetabotChat } from "embedding-sdk-bundle/components/public/MetabotChat";
 import type { MetabotQuestion } from "embedding-sdk-bundle/components/public/MetabotQuestion";
 import type { SdkDebugInfo } from "embedding-sdk-bundle/components/public/SdkDebugInfo/SdkDebugInfo";
 import type { StaticQuestion } from "embedding-sdk-bundle/components/public/StaticQuestion/StaticQuestion";
@@ -17,6 +19,7 @@ import type {
   MetabaseDashboard,
 } from "embedding-sdk-bundle/types";
 import type { LoginStatus } from "embedding-sdk-bundle/types/user";
+import type { useMetabot } from "embedding-sdk-bundle/hooks/public/use-metabot";
 import type { FunctionSchemaValidationResult } from "embedding-sdk-shared/types/validation";
 import type { User } from "metabase-types/api";
 
@@ -39,9 +42,11 @@ export type MetabaseEmbeddingSdkBundleExports = PublicExports &
   ReduxStoreUtilityFunctionExports &
   ReduxStoreSelectorsExports &
   InternalHooksExports &
+  PublicHooksExports &
   SchemaValidationUtils;
 
 export type PublicExports = {
+  AdHocQuestion: InternalComponent<typeof AdHocQuestion>;
   CollectionBrowser: InternalComponent<typeof CollectionBrowser>;
   CreateDashboardModal: InternalComponent<typeof CreateDashboardModal>;
   CreateQuestion: InternalComponent<typeof CreateQuestion>;
@@ -49,6 +54,7 @@ export type PublicExports = {
   InteractiveDashboard: InternalComponent<typeof InteractiveDashboard>;
   InteractiveQuestion: InternalComponent<typeof InteractiveQuestion>;
   ComponentProvider: InternalComponent<typeof ComponentProvider>;
+  MetabotChat: InternalComponent<typeof MetabotChat>;
   MetabotQuestion: InternalComponent<typeof MetabotQuestion>;
   SdkDebugInfo: InternalComponent<typeof SdkDebugInfo>;
   StaticDashboard: InternalComponent<typeof StaticDashboard>;
@@ -75,6 +81,10 @@ export type ReduxStoreSelectorsExports = {
 export type InternalHooksExports = {
   useInitData: InternalHook;
   useLogVersionInfo: InternalHook;
+};
+
+export type PublicHooksExports = {
+  useMetabot: typeof useMetabot;
 };
 
 export type SchemaValidationUtils = {

@@ -2,8 +2,8 @@ import type { StoryFn } from "@storybook/react";
 import { HttpResponse, http } from "msw";
 import type { ComponentProps } from "react";
 
+import { MetabotQuestion } from "embedding-sdk-bundle/components/public/MetabotQuestion";
 import { CommonSdkStoryWrapper } from "embedding-sdk-bundle/test/CommonSdkStoryWrapper";
-import { MetabotQuestion } from "embedding-sdk-package";
 import {
   MOCK_AD_HOC_QUESTION_ID,
   mockStreamResponse,
