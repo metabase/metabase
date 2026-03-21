@@ -2,9 +2,9 @@
 import styled from "@emotion/styled";
 
 import { MetabotLogo } from "metabase/common/components/MetabotLogo";
-import { alpha } from "metabase/lib/colors";
 import { breakpointMinSmall } from "metabase/styled-components/theme";
 import { Icon } from "metabase/ui";
+import { alpha } from "metabase/ui/colors";
 
 export const StyledMetabotLogo = styled(MetabotLogo)`
   height: 4rem;

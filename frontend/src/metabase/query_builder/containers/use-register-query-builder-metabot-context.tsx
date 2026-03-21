@@ -233,7 +233,10 @@ export const registerQueryBuilderMetabotContextFn = async ({
   const queryCtx = {
     query: question.datasetQuery(),
     sql_engine: isNative ? Lib.engine(query) : undefined,
-    error: queryResult?.error,
+    // Coerce to string to avoid passing objects with circular references
+    // (e.g. Metadata ↔ Database) that would break JSON.stringify in the
+    // streaming request body.
+    error: queryResult?.error?.toString(),
   };
 
   const chart_configs = await getChartConfigs({

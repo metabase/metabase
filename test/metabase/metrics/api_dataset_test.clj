@@ -1132,3 +1132,65 @@
             (is (= "completed" (:status response)))
             (is (= 49 (:row_count response))
                 "should have 49 months of order data")))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                               Category 11: Source-Card (Model) Metrics                                          |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest dataset-source-card-count-test
+  (testing "POST /api/metric/dataset with metric based on a model (source-card)"
+    (mt/with-temp [:model/Card model  {:name          "Orders Model"
+                                       :type          :model
+                                       :dataset_query (mt/mbql-query orders)}
+                   :model/Card metric {:name          "Model Count Metric"
+                                       :type          :metric
+                                       :dataset_query {:database (mt/id)
+                                                       :type     :query
+                                                       :query    {:source-table (str "card__" (:id model))
+                                                                  :aggregation  [[:count]]}}}]
+      (let [response (dataset-request {:expression [:metric {:lib/uuid "a"} (:id metric)]})]
+        (is (= "completed" (:status response)))
+        (is (= 1 (:row_count response)))
+        (is (= 18760 (first-result response))
+            "should count all 18760 orders via model")))))
+
+(deftest dataset-source-card-with-filter-test
+  (testing "POST /api/metric/dataset with source-card metric and dimension filter"
+    (mt/with-temp [:model/Card model  {:name          "Orders Model"
+                                       :type          :model
+                                       :dataset_query (mt/mbql-query orders)}
+                   :model/Card metric {:name          "Model Count Metric"
+                                       :type          :metric
+                                       :dataset_query {:database (mt/id)
+                                                       :type     :query
+                                                       :query    {:source-table (str "card__" (:id model))
+                                                                  :aggregation  [[:count]]}}}]
+      (let [hydrated  (hydrate-metric (:id metric))
+            total-dim (find-dimension-by-name hydrated "TOTAL")]
+        (is (some? total-dim) "TOTAL dimension should exist for model-based metric")
+        (let [response (dataset-request {:expression [:metric {:lib/uuid "a"} (:id metric)]
+                                         :filters    [{:lib/uuid "a" :filter [:> {} [:dimension {} (:id total-dim)] 100]}]})]
+          (is (= "completed" (:status response)))
+          (is (< (first-result response) 18760)
+              "filtered count should be less than total orders"))))))
+
+(deftest dataset-source-card-with-projection-test
+  (testing "POST /api/metric/dataset with source-card metric and dimension breakout"
+    (mt/with-temp [:model/Card model  {:name          "Orders Model"
+                                       :type          :model
+                                       :dataset_query (mt/mbql-query orders)}
+                   :model/Card metric {:name          "Model Count Metric"
+                                       :type          :metric
+                                       :dataset_query {:database (mt/id)
+                                                       :type     :query
+                                                       :query    {:source-table (str "card__" (:id model))
+                                                                  :aggregation  [[:count]]}}}]
+      (let [hydrated    (hydrate-metric (:id metric))
+            created-dim (find-dimension-by-name hydrated "CREATED_AT")]
+        (is (some? created-dim) "CREATED_AT dimension should exist for model-based metric")
+        (let [response (dataset-request {:expression  [:metric {:lib/uuid "a"} (:id metric)]
+                                         :projections [{:type :metric :id (:id metric)
+                                                        :projection [[:dimension {:temporal-unit :month} (:id created-dim)]]}]})]
+          (is (= "completed" (:status response)))
+          (is (= 49 (:row_count response))
+              "should have 49 months of order data, same as table-based metric"))))))

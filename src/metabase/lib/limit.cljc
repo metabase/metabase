@@ -5,7 +5,6 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.page :as lib.page]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
@@ -27,7 +26,7 @@
     n            :- [:maybe pos-int?]]
    (lib.util/update-query-stage query stage-number u/assoc-dissoc :limit n)))
 
-(mu/defn ^:export current-limit :- [:maybe ::lib.schema.common/int-greater-than-or-equal-to-zero]
+(mu/defn ^:export current-limit :- [:maybe nat-int?]
   "Get the maximum number of rows to be returned by a stage of a query. `nil` indicates there is no limit"
   ([query :- ::lib.schema/query]
    (current-limit query -1))
@@ -41,7 +40,7 @@
   [query]
   (assoc-in query [:middleware :disable-max-results?] true))
 
-(mu/defn max-rows-limit :- [:maybe ::lib.schema.common/int-greater-than-or-equal-to-zero]
+(mu/defn max-rows-limit :- [:maybe nat-int?]
   "Calculate the absolute maximum number of results that should be returned by this query (MBQL or native), useful for
   doing the equivalent of
 

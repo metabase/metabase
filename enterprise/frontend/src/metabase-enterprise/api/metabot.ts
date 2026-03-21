@@ -5,6 +5,7 @@ import type {
   MetabotGenerateContentResponse,
   MetabotId,
   MetabotInfo,
+  MetabotSlackSettings,
   SuggestedMetabotPromptsRequest,
   SuggestedMetabotPromptsResponse,
 } from "metabase-types/api";
@@ -84,7 +85,7 @@ export const metabotApi = EnterpriseApi.injectEndpoints({
     >({
       query: (params) => ({
         method: "POST",
-        url: "/api/ee/metabot-v3/document/generate-content",
+        url: "/api/ee/metabot-v3/document/native-generate-content",
         body: params,
       }),
     }),
@@ -94,6 +95,17 @@ export const metabotApi = EnterpriseApi.injectEndpoints({
         url: "/api/ee/metabot-v3/feedback",
         body: params,
       }),
+    }),
+    updateMetabotSlackSettings: builder.mutation<
+      { ok: boolean },
+      MetabotSlackSettings
+    >({
+      query: (settings) => ({
+        method: "PUT",
+        url: "/api/ee/metabot-v3/slack/settings",
+        body: settings,
+      }),
+      invalidatesTags: ["session-properties"],
     }),
   }),
 });
@@ -106,4 +118,5 @@ export const {
   useRegenerateSuggestedMetabotPromptsMutation,
   useLazyMetabotGenerateContentQuery,
   useSubmitMetabotFeedbackMutation,
+  useUpdateMetabotSlackSettingsMutation,
 } = metabotApi;

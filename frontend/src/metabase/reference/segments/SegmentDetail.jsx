@@ -16,12 +16,14 @@ import EditableReferenceHeader from "metabase/reference/components/EditableRefer
 import { Formula } from "metabase/reference/components/Formula";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 import * as actions from "metabase/reference/reference";
-import { getMetadata } from "metabase/selectors/metadata";
+import {
+  getShallowFields as getFields,
+  getMetadata,
+} from "metabase/selectors/metadata";
 
 import S from "../components/Detail.module.css";
 import {
   getError,
-  getFields,
   getIsEditing,
   getIsFormulaExpanded,
   getLoading,
