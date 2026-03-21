@@ -85,7 +85,7 @@
       (is (= :error (:status result)))
       (is (re-find #"Failed to reload from git repository" (:message result))))))
 
-(deftest source-error-message-entity-not-found-test
+(deftest ^:parallel source-error-message-entity-not-found-test
   (testing "source-error-message produces helpful message for missing entity errors"
     (let [e (ex-info "Database 'clickhouse' was not found"
                      {:path  "Database clickhouse"
@@ -93,8 +93,9 @@
                       :id    "clickhouse"
                       :error :metabase-enterprise.serialization.v2.load/not-found})]
       (is (= "Import failed: Database 'clickhouse' does not exist on this instance. Make sure all referenced databases and other dependencies are set up before importing."
-             (impl/source-error-message e)))))
+             (impl/source-error-message e))))))
 
+(deftest ^:parallel source-error-message-entity-not-found-test-2
   (testing "source-error-message produces helpful message for FK database-not-found errors"
     (let [cause (ex-info "table id present, but database not found: [clickhouse nil some_table]"
                          {:table-id ["clickhouse" nil "some_table"]})

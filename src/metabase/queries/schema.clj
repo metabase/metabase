@@ -10,7 +10,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [potemkin :as p]))
+   [potemkin :as p]
+   [metabase.lib.schema.serdes-interface :as lib.schema.serdes-interface]))
 
 (p/import-vars
  [lib.schema.metadata
@@ -23,6 +24,14 @@
   "An empty map, allowed for Card.dataset_query for historic purposes."
   [:= {} {}])
 
+(defn- serdes-decode-query [query]
+  (println "(pr-str query):" (pr-str query)) ; NOCOMMIT
+  (some (fn [k]
+          (when (string? (get query k))
+            (update query k lib.schema.serdes-interface/decode-database-id)))
+        [:database "database"])
+  )
+
 (mr/def ::query
   "Schema for Card.dataset_query. Cards are for some wacko reason allowed to be saved with empty queries (`{}`), but not
   `NULL` ones, because the column is non-null. This sorta seems like an oversight but fixing all the tests that save
@@ -30,13 +39,19 @@
   query."
   [:multi {:dispatch (comp boolean empty?)}
    [true  ::empty-map]
-   [false [:schema
-           {:decode/normalize lib-be/normalize-query}
-           [:merge
-            [:ref ::lib.schema/query]
-            ;; Card query is guaranteed to have a metadata provider
-            [:map
-             [:lib/metadata ::lib.schema.metadata/metadata-provider]]]]]])
+   [false [:and
+           ;; we need to decode Database ID first for SerDes because [[lib-be/normalize-query]] can't normalize a
+           ;; query without a valid int Database ID... SerDes encodes it as a string. By doing this partial schema
+           ;; first the SerDes decoder will run before the full schema
+           [:map
+            [:database [:ref ::lib.schema/query.database-id]]]
+           [:schema
+            {:decode/normalize lib-be/normalize-query}
+            [:merge
+             [:ref ::lib.schema/query]
+             ;; Card query is guaranteed to have a metadata provider
+             [:map
+              [:lib/metadata ::lib.schema.metadata/metadata-provider]]]]]]])
 
 (mr/def ::card.result-metadata
   [:and

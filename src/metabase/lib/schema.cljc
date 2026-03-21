@@ -30,6 +30,7 @@
    [metabase.lib.schema.order-by :as order-by]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.ref :as ref]
+   [metabase.lib.schema.serdes-interface :as lib.schema.serdes-interface]
    [metabase.lib.schema.settings :as lib.schema.settings]
    [metabase.lib.schema.template-tag :as template-tag]
    [metabase.lib.schema.util :as lib.schema.util]
@@ -492,13 +493,24 @@
                (common/unfussy-sorted-map)
                query)))
 
+#?(:clj
+   (defn- encode-query-for-serdes [query]
+     (dissoc query :lib/metadata)))
+
+(mr/def ::query.database-id
+  [:multi {:dispatch (partial = id/saved-questions-virtual-database-id)}
+   [true  ::id/saved-questions-virtual-database]
+   [false ::id/database]])
+
 (mr/def ::query
   [:and
    [:map
     {:description        "Valid MBQL 5 query."
      :decode/normalize   #'normalize-query
      :encode/serialize   #'serialize-query
-     :encode/for-hashing #'encode-query-for-hashing}
+     :encode/for-hashing #'encode-query-for-hashing
+     #?@(:clj
+         (:encode/serdes #'encode-query-for-serdes))}
     [:lib/type [:=
                 {:decode/normalize common/normalize-keyword, :default :mbql/query}
                 :mbql/query]]
@@ -506,9 +518,7 @@
     ;; anything to work correctly outside of the low-level conversion code. We should make it required and then fix
     ;; whatever breaks.
     [:lib/metadata {:optional true} ::lib.schema.metadata/metadata-provider]
-    [:database {:optional true} [:multi {:dispatch (partial = id/saved-questions-virtual-database-id)}
-                                 [true  ::id/saved-questions-virtual-database]
-                                 [false ::id/database]]]
+    [:database {:optional true} ::query.database-id]
     [:stages   [:ref ::stages]]
     [:parameters {:optional true} [:ref ::lib.schema.parameter/parameters]]
     ;;

@@ -21,10 +21,8 @@
 (defn- has-any-of-these-normalized-keys? [m ks]
   (some (partial has-normalized-key? m) ks))
 
-(mu/defn normalize-query :- [:maybe
-                             [:multi {:dispatch (comp boolean empty?)}
-                              [true  [:= {:description "empty map"} {}]]
-                              [false ::lib.schema/query]]]
+;; don't validate the result because the query might not be 100% valid until we do SerDes decoding as well
+(mu/defn normalize-query :- :map
   "Normalize an MBQL `query` to MBQL 5 and attach a metadata provider."
   ([query]
    (normalize-query nil query))
@@ -66,11 +64,14 @@
          (lib/cached-metadata-provider-with-cache? (:lib/metadata query))
          (lib/normalize ::lib.schema/query query)
 
+         ;; don't enforce schema validation at this point because we might be in the process of deserializing from
+         ;; SerDes which means the query won't be completely well-formed until we do SerDes decoding
          :else
-         (->> query
-              (lib-be.bootstrap/resolve-database (when (lib/metadata-provider? metadata-providerable)
-                                                   metadata-providerable))
-              (lib/query metadata-providerable))))
+         (mu/disable-enforcement
+           (->> query
+                (lib-be.bootstrap/resolve-database (when (lib/metadata-provider? metadata-providerable)
+                                                     metadata-providerable))
+                (lib/query metadata-providerable)))))
      ;; return an empty map if we are unable to normalize the query correctly to prevent breaking things downstream,
      ;; unless strict mode is on (when we are saving a query)
      (catch Throwable e

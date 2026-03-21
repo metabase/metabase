@@ -390,9 +390,13 @@
                             [_tag source-field-id _opts]   (normalize-field source-field)
                             [_tag dest-field-id _opts]     (normalize-field dest-field)]
                         [:field dest-field-id {:source-field source-field-id}])
-    :field            (let [[_tag id-or-name opts] x]
+    :field            (let [[_tag id-or-name opts] x
+                            opts                   (when (map? opts)
+                                                     opts)]
                         ;; if someone accidentally nests `:field` clauses fix it for them
-                        (if (sequential? id-or-name)
+                        (if (and (sequential? id-or-name)
+                                 (#{:field-id :field-literal :datetime-field :binning-strategy :joined-field :fk-> :field}
+                                  (keyword (first id-or-name))))
                           (let [[_tag id-or-name recursive-opts] (normalize-field id-or-name)]
                             [:field id-or-name (not-empty (merge recursive-opts opts))])
                           [:field id-or-name (not-empty opts)]))
@@ -1851,6 +1855,8 @@
      ;; Fingerprint is required in order to use BINNING
      [:fingerprint        {:optional true} [:maybe [:ref ::lib.schema.metadata.fingerprint/fingerprint]]]
      [:id                 {:optional true} [:maybe ::lib.schema.id/field]]
+     [:table_id           {:optional true} [:maybe ::lib.schema.id/table]]
+     [:fk_target_field_id {:optional true} [:maybe ::lib.schema.id/field]]
      ;; name is allowed to be empty in some databases like SQL Server.
      [:semantic_type      {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
      [:source             {:optional true} [:maybe [:ref ::lib.schema.metadata/column.legacy-source]]]

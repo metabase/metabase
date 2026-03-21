@@ -253,7 +253,7 @@
   [:map
    [:table [:set ::lib.schema.id/table]]
    [:card [:set ::lib.schema.id/card]]
-   [:metric [:set ::lib.schema.id/metric]]
+   [:metric [:set ::lib.schema.id/card]]
    [:measure [:set ::lib.schema.id/measure]]
    [:segment [:set ::lib.schema.id/segment]]
    [:snippet [:set ::lib.schema.id/snippet]]])

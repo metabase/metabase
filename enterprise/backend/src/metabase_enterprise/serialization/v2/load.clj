@@ -182,7 +182,7 @@
             ctx
             (catch Exception e
               ;; ugly mapv here to convert #ordered/map into normal map so it's readable in the logs
-              (throw (ex-info (format "Failed to load into database for %s" (serdes/log-path-str path))
+              (throw (ex-info (format "Failed to load into database for %s: %s" (serdes/log-path-str path) (ex-message e))
                               (path-error-data ::load-failure expanding path)
                               e)))))))))
 

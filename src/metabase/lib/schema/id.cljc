@@ -1,5 +1,7 @@
 (ns metabase.lib.schema.id
   (:require
+   #?@(:clj
+       ([metabase.lib.schema.serdes-interface :as lib.schema.serdes-interface]))
    [metabase.util.malli.registry :as mr]))
 
 ;;; these aren't anything special right now, but maybe in the future we can do something special/intelligent with
@@ -7,7 +9,11 @@
 
 (mr/def ::database
   "Valid Database ID"
-  pos-int?)
+  [:schema
+   #?(:clj
+      {:encode/serdes #'lib.schema.serdes-interface/encode-database-id
+       :decode/serdes #'lib.schema.serdes-interface/decode-database-id})
+   pos-int?])
 
 (def saved-questions-virtual-database-id
   "The ID used to signify that a database is 'virtual' rather than physical.
@@ -33,30 +39,44 @@
 
 (mr/def ::table
   "Valid Table ID"
-  pos-int?)
+  [:schema
+   #?(:clj {:encode/serdes #'lib.schema.serdes-interface/encode-table-id
+            :decode/serdes #'lib.schema.serdes-interface/decode-table-id})
+   pos-int?])
 
 (mr/def ::field
   "Valid Field ID"
   [:schema
    {:decode/api (fn [id]
-                  (cond-> id (string? id) parse-long))}
+                  (cond-> id (string? id) parse-long))
+    #?@(:clj
+        (:encode/serdes
+         #'lib.schema.serdes-interface/encode-field-id
+
+         :decode/serdes
+         #'lib.schema.serdes-interface/decode-field-id))}
    pos-int?])
 
 (mr/def ::card
   "Valid Card ID"
-  pos-int?)
+  [:schema
+   #?(:clj {:encode/serdes #'lib.schema.serdes-interface/encode-card-id
+            :decode/serdes #'lib.schema.serdes-interface/decode-card-id})
+   pos-int?])
 
 (mr/def ::segment
-  "Valid legacy Segment ID"
-  pos-int?)
+  "Valid Segment ID"
+  [:schema
+   #?(:clj {:encode/serdes #'lib.schema.serdes-interface/encode-segment-id
+            :decode/serdes #'lib.schema.serdes-interface/decode-segment-id})
+   pos-int?])
 
 (mr/def ::measure
   "Valid Measure ID"
-  pos-int?)
-
-(mr/def ::metric
-  "Valid Metric ID (metrics are Cards with type :metric)"
-  pos-int?)
+  [:schema
+   #?(:clj {:encode/serdes #'lib.schema.serdes-interface/encode-measure-id
+            :decode/serdes #'lib.schema.serdes-interface/decode-measure-id})
+   pos-int?])
 
 (mr/def ::snippet
   "Valid Snippet ID"

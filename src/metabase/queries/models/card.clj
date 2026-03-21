@@ -1255,23 +1255,17 @@
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
 (defn- export-result-metadata [metadata]
-  (when metadata
-    (for [m metadata]
-      (-> (dissoc m :fingerprint)
-          (m/update-existing :table_id  serdes/*export-table-fk*)
-          (m/update-existing :id        serdes/*export-field-fk*)
-          (m/update-existing :field_ref serdes/export-mbql)
-          (m/update-existing :fk_target_field_id serdes/*export-field-fk*)))))
+  (serdes/encode-with-schema [:maybe ::queries.schema/card.result-metadata] metadata))
+
+(defn- export-query [query]
+  (serdes/encode-with-schema ::queries.schema/query query))
 
 (defn- import-result-metadata [metadata]
-  (when metadata
-    (for [m metadata]
-      (-> m
-          (m/update-existing :table_id  serdes/*import-table-fk*)
-          (m/update-existing :id        serdes/*import-field-fk*)
-          (m/update-existing :field_ref serdes/import-mbql)
-          ;; FIXME: remove that `if` after v52
-          (m/update-existing :fk_target_field_id #(if (number? %) % (serdes/*import-field-fk* %)))))))
+  (serdes/decode-with-schema [:maybe ::queries.schema/card.result-metadata] metadata))
+
+(defn- import-query [query]
+  (println "(u/cprint-to-str query):" (u/cprint-to-str query)) ; NOCOMMIT
+  (serdes/decode-with-schema ::queries.schema/query query))
 
 (defn- result-metadata-deps [metadata]
   (when (seq metadata)
@@ -1316,7 +1310,7 @@
     :document_id            (serdes/fk :model/Document)
     :creator_id             (serdes/fk :model/User)
     :made_public_by_id      (serdes/fk :model/User)
-    :dataset_query          {:export serdes/export-mbql :import serdes/import-mbql}
+    :dataset_query          {:export export-query :import import-query}
     :parameters             {:export serdes/export-parameters :import serdes/import-parameters}
     :parameter_mappings     {:export serdes/export-parameter-mappings :import serdes/import-parameter-mappings}
     :visualization_settings {:export serdes/export-visualization-settings :import serdes/import-visualization-settings}
@@ -1326,9 +1320,10 @@
   [{:keys [collection_id database_id dataset_query parameters parameter_mappings
            result_metadata table_id source_card_id visualization_settings
            dashboard_id document_id]}]
-  (set
-   (concat
-    (mapcat serdes/mbql-deps parameter_mappings)
+  (into
+   #{}
+   cat
+   [(mapcat serdes/mbql-deps parameter_mappings)
     (serdes/parameters-deps parameters)
     [[{:model "Database" :id database_id}]]
     (when table_id #{(serdes/table->path table_id)})
@@ -1338,7 +1333,7 @@
     (when document_id #{[{:model "Document" :id document_id}]})
     (result-metadata-deps result_metadata)
     (serdes/mbql-deps dataset_query)
-    (serdes/visualization-settings-deps visualization_settings))))
+    (serdes/visualization-settings-deps visualization_settings)]))
 
 (defmethod serdes/descendants "Card" [_model-name id _opts]
   (let [card               (t2/select-one :model/Card :id id)

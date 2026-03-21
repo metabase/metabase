@@ -76,7 +76,10 @@
    [metabase.util.string :as u.str]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
-   [toucan2.realize :as t2.realize]))
+   [metabase.util.malli :as mu]
+   [toucan2.realize :as t2.realize]
+   [metabase.util.malli.registry :as mr]
+   [metabase.lib.schema.serdes-interface :as lib.schema.serdes-interface]))
 
 (set! *warn-on-reflection* true)
 
@@ -500,7 +503,7 @@
 
                     [export-k res])))))
     (catch Exception e
-      (throw (ex-info (format "Error extracting %s %s" model-name (:id instance))
+      (throw (ex-info (format "Error extracting %s %s: %s" model-name (:id instance) (ex-message e))
                       (assoc (ex-data e) :model model-name :id (:id instance))
                       e)))))
 
@@ -513,13 +516,16 @@
     (catch Exception e
       (when-not (or (:skip (ex-data e))
                     (:continue-on-error opts))
-        (throw (ex-info (format "Error extracting %s %s" model (:id instance))
-                        {:model     model
-                         :table     (->> model (keyword "model") t2/table-name)
-                         :id        (:id instance)
-                         :entity_id (:entity_id instance)
-                         :cause     (.getMessage e)}
-                        e)))
+        (do
+          (println "(pr-str model):" (pr-str model)) ; NOCOMMIT
+          (println "(u/cprint-to-str instance):" (u/cprint-to-str instance)) ; NOCOMMIT
+          (throw (ex-info (format "Error extracting %s %s: %s" model (:id instance) (ex-message e))
+                          {:model     model
+                           :table     (->> model (keyword "model") t2/table-name)
+                           :id        (:id instance)
+                           :entity_id (:entity_id instance)
+                           :cause     (ex-message e)}
+                          e))))
       (log/warnf "Skipping %s %s because of an error extracting it: %s %s"
                  model (:id instance) (.getMessage e) (dissoc (ex-data e) :skip))
       ;; return error as an entity so it can be used in the report
@@ -997,12 +1003,12 @@
 
 ;;; ## Tables
 
-(defn ^:dynamic ^::cache *export-table-fk*
+(mu/defn ^:dynamic ^::cache *export-table-fk*
   "Given a numeric `table_id`, return a portable table reference.
   If the `table_id` is `nil`, return `nil`. This is legal for a native question.
   That has the form `[db-name schema table-name]`, where the `schema` might be nil.
   [[import-table-fk]] is the inverse."
-  [table-id]
+  [table-id :- [:maybe pos-int?]]
   (when table-id
     (let [{:keys [db_id name schema]} (t2/select-one :model/Table :id table-id)
           db-name                     (t2/select-one-fn :name :model/Database :id db_id)]
@@ -1051,7 +1057,7 @@
 
 ;;; ## Fields
 
-(defn- field-hierarchy [id]
+(mu/defn- field-hierarchy [id :- pos-int?]
   (reverse
    (t2/select :model/Field
               {:with-recursive [[[:parents {:columns [:id :name :parent_id :table_id]}]
@@ -1077,19 +1083,19 @@
               [:= :name field]
               [:= :parent_id (recursively-find-field-q table-id rest)]]}))
 
-(defn ^:dynamic ^::cache *export-field-fk*
+(mu/defn ^:dynamic ^::cache *export-field-fk*
   "Given a numeric `field_id`, return a portable field reference.
   That has the form `[db-name schema table-name field-name]`, where the `schema` might be nil.
   [[*import-field-fk*]] is the inverse."
-  [field-id]
+  [field-id :- [:maybe pos-int?]]
   (when field-id
     (let [fields                      (field-hierarchy field-id)
           [db-name schema field-name] (*export-table-fk* (:table_id (first fields)))]
       (into [db-name schema field-name] (map :name fields)))))
 
-(defn ^:dynamic ^::cache *import-field-fk*
+(mu/defn ^:dynamic ^::cache *import-field-fk*
   "Given a `field_id` as exported by [[*export-field-fk*]], resolve it back into a numeric `field_id`."
-  [[db-name schema table-name & fields :as field-id]]
+  [[db-name schema table-name & fields :as field-id] :- [:maybe vector?]]
   (when field-id
     (let [table-id (*import-table-fk* [db-name schema table-name])
           field-q  (recursively-find-field-q table-id (reverse fields))]
@@ -1106,17 +1112,17 @@
 
 ;;; ## MBQL Fields
 
-(defn- mbql-entity-reference?
+(defn- ^:deprecated mbql-entity-reference?
   "Is given form an MBQL entity reference?"
   [form]
   (mbql.normalize/is-clause? #{:field :field-id :fk-> :dimension :metric :segment :measure} form))
 
-(defn- normalize [mbql]
+(defn- ^:deprecated normalize [mbql]
   (if-not (mbql-entity-reference? mbql)
     mbql
     (into [(keyword (first mbql))] (map normalize) (rest mbql))))
 
-(defn- mbql-id->fully-qualified-name
+(defn- ^:deprecated mbql-id->fully-qualified-name
   [mbql]
   (-> mbql
       normalize
@@ -1148,7 +1154,7 @@
                                :segment 'Segment
                                :measure 'Measure))])))
 
-(defn- export-source-table
+(defn- ^:deprecated export-source-table
   [source-table]
   (if (and (string? source-table)
            (str/starts-with? source-table "card__"))
@@ -1159,7 +1165,12 @@
                  'Card)
     (*export-table-fk* source-table)))
 
-(defn- ids->fully-qualified-names
+(defn- export-database-id [db-id]
+  (if (= db-id lib.schema.id/saved-questions-virtual-database-id)
+    "database/__virtual"
+    (t2/select-one-fn :name :model/Database :id db-id)))
+
+(defn- ^:deprecated ids->fully-qualified-names
   [entity]
   (lib.util.match/replace-lite entity
     (_ :guard mbql-entity-reference?)
@@ -1172,10 +1183,7 @@
     (reduce-kv
      (fn [entity k _v]
        (let [f (case k
-                 :database                     (fn [db-id]
-                                                 (if (= db-id lib.schema.id/saved-questions-virtual-database-id)
-                                                   "database/__virtual"
-                                                   (t2/select-one-fn :name :model/Database :id db-id)))
+                 :database                     export-database-id
                  (:card_id :card-id)           #(*export-fk* % :model/Card) ; attributes that refer to db fields use `_`; template-tags use `-`
                  (:source_table :source-table) export-source-table
                  ::mb.viz/param-mapping-source *export-field-fk*
@@ -1186,7 +1194,7 @@
      &match
      &match)))
 
-(defn export-mbql
+(defn ^:deprecated export-mbql
   "Given an MBQL expression, convert it to an EDN structure and turn the non-portable Database, Table and Field IDs
   inside it into portable references."
   [encoded]
@@ -1202,7 +1210,12 @@
        (or (entity-id? s)
            (identity-hash? s))))
 
-(defn- mbql-fully-qualified-names->ids*
+(defn- import-database-id [fully-qualified-name]
+  (if (= fully-qualified-name "database/__virtual")
+    lib.schema.id/saved-questions-virtual-database-id
+    (t2/select-one-pk :model/Database :name fully-qualified-name)))
+
+(defn- ^:deprecated mbql-fully-qualified-names->ids*
   [entity]
   (lib.util.match/replace-lite entity
     ;; handle legacy `:field-id` forms encoded prior to 0.39.0
@@ -1223,9 +1236,7 @@
 
     {:database (fully-qualified-name :guard string?)}
     (-> &match
-        (assoc :database (if (= fully-qualified-name "database/__virtual")
-                           lib.schema.id/saved-questions-virtual-database-id
-                           (t2/select-one-pk :model/Database :name fully-qualified-name)))
+        (assoc :database (import-database-id fully-qualified-name))
         mbql-fully-qualified-names->ids*) ; Process other keys
 
     {:card-id (entity-id :guard portable-id?)}
@@ -1267,67 +1278,63 @@
         (assoc :snippet-id (*import-fk* id 'NativeQuerySnippet))
         mbql-fully-qualified-names->ids*)))
 
-(defn- mbql-fully-qualified-names->ids
+(defn- ^:deprecated mbql-fully-qualified-names->ids
   [entity]
   (mbql-fully-qualified-names->ids* entity))
 
-(defn import-mbql
+(defn ^:deprecated import-mbql
   "Given an MBQL expression as an EDN structure with portable IDs embedded, convert the IDs back to raw numeric IDs."
   [exported]
   (mbql-fully-qualified-names->ids exported))
 
-(declare ^:private mbql-deps-map)
+(declare ^:private mbql-deps-map!)
 
-(defn- mbql-deps-vector [entity]
-  (match entity
-    [:field     (field :guard vector?)]      #{(field->path field)}
-    ["field"    (field :guard vector?)]      #{(field->path field)}
-    [:field-id  (field :guard vector?)]      #{(field->path field)}
-    ["field-id" (field :guard vector?)]      #{(field->path field)}
-    [:field     (field :guard vector?) tail] (into #{(field->path field)} (mbql-deps-map tail))
-    ["field"    (field :guard vector?) tail] (into #{(field->path field)} (mbql-deps-map tail))
-    [:field-id  (field :guard vector?) tail] (into #{(field->path field)} (mbql-deps-map tail))
-    ["field-id" (field :guard vector?) tail] (into #{(field->path field)} (mbql-deps-map tail))
-    [:metric    (field :guard portable-id?)] #{[{:model "Card" :id field}]}
-    ["metric"   (field :guard portable-id?)] #{[{:model "Card" :id field}]}
-    [:segment   (field :guard portable-id?)] #{[{:model "Segment" :id field}]}
-    ["segment"  (field :guard portable-id?)] #{[{:model "Segment" :id field}]}
-    [:measure   (field :guard portable-id?)] #{[{:model "Measure" :id field}]}
-    ["measure"  (field :guard portable-id?)] #{[{:model "Measure" :id field}]}
-    :else (reduce #(cond
-                     (map? %2)    (into %1 (mbql-deps-map %2))
-                     (vector? %2) (into %1 (mbql-deps-vector %2))
-                     :else %1)
-                  #{}
-                  entity)))
-
-(defn- mbql-deps-map [entity]
-  (assert (not (:lib/type entity))
-          "SerDes v2 does not currently work on MBQL 5, please convert to legacy first")
-  (->> (for [[k v] entity]
-         (cond
-           (and (= k :database)
-                (string? v)
-                (not= v "database/__virtual"))        #{[{:model "Database" :id v}]}
-           (and (= k :source-table) (vector? v))      #{(table->path v)}
-           (and (= k :source-table) (portable-id? v)) #{[{:model "Card" :id v}]}
-           (and (= k :source-field) (vector? v))      #{(field->path v)}
-           (and (= k :snippet-id)   (portable-id? v)) #{[{:model "NativeQuerySnippet" :id v}]}
-           (and (= k :card_id)      (string? v))      #{[{:model "Card" :id v}]}
-           (and (= k :card-id)      (string? v))      #{[{:model "Card" :id v}]}
-           (map? v)                                   (mbql-deps-map v)
-           (vector? v)                                (mbql-deps-vector v)))
-       (reduce set/union #{})))
-
-(defn mbql-deps
+(defn ^:deprecated mbql-deps
   "Given an MBQL expression as exported, with qualified names like `[\"some-db\" \"schema\" \"table_name\"]` instead of
   raw IDs, return the corresponding set of serdes dependencies. The query can't be imported until all the referenced
   databases, tables and fields are loaded."
   [entity]
-  (cond
-    (map? entity)     (mbql-deps-map entity)
-    (seqable? entity) (mbql-deps-vector entity)
-    :else             (mbql-deps-vector [entity])))
+  (let [deps (volatile! (transient #{}))
+        dep! (fn [dep]
+               (if (map? dep)
+                 (vswap! deps conj! dep)
+                 (doseq [dep dep]
+                   (vswap! deps conj! dep))))]
+    (clojure.walk/postwalk
+     (fn [x]
+       (cond
+         (and (vector? x)
+              (keyword? (first x)))
+         (match x
+           [:field   (field :guard vector?) opts] (do
+                                                    (dep! (field->path field))
+                                                    (mbql-deps-map! dep! opts))
+           [:metric  (field :guard portable-id?)] (dep! {:model "Card" :id field})
+           [:segment (field :guard portable-id?)] (dep! {:model "Segment" :id field})
+           [:measure (field :guard portable-id?)] (dep! {:model "Measure" :id field})
+           :else nil)
+
+         (map? x)
+         (mbql-deps-map! dep! x))
+       x)
+     entity)
+    (persistent! @deps)))
+
+(defn- ^:deprecated mbql-deps-map! [dep! m]
+  (reduce-kv
+   (fn [_acc k v]
+     (cond
+       (and (= k :database)
+            (string? v)
+            (not= v "database/__virtual"))        (dep! {:model "Database" :id v})
+       (and (= k :source-table) (vector? v))      (dep! (table->path v))
+       (and (= k :source-table) (portable-id? v)) (dep! {:model "Card" :id v})
+       (and (= k :source-field) (vector? v))      (dep! (field->path v))
+       (and (= k :snippet-id)   (portable-id? v)) (dep! {:model "NativeQuerySnippet" :id v})
+       (and (= k :card_id)      (string? v))      (dep! {:model "Card" :id v})
+       (and (= k :card-id)      (string? v))      (dep! {:model "Card" :id v})))
+   nil
+   m))
 
 ;;; ## Dashboard/Question Parameters
 
@@ -1384,7 +1391,7 @@
                 :when (= (keyword (:values_source_type parameter)) :card)
                 :let  [config (:values_source_config parameter)]]
             (set/union #{[{:model "Card" :id (:card_id config)}]}
-                       (mbql-deps-vector (:value_field config))))))
+                       (mbql-deps (:value_field config))))))
 
 ;;; ## Viz settings
 
@@ -1853,3 +1860,94 @@
                              :let [fq-sym (symbol (name ns*) (name var-sym))]]
                          [fq-sym `(memoize ~fq-sym)]))
        ~@body)))
+
+;;; Malli-based encoding/decoding
+
+(deftype ^:private IDEncoder []
+  lib.schema.serdes-interface/IDEncoder
+  (-encode-database-id [_this database-id]
+    (export-database-id database-id))
+  (-encode-table-id [_this table-id]
+    (*export-table-fk* table-id))
+  (-encode-field-id [_this field-id]
+    (*export-field-fk* field-id))
+  (-encode-card-id [_this card-id]
+    (*export-fk* card-id 'Card))
+  (-encode-segment-id [_this segment-id]
+    (*export-fk* segment-id 'Segment))
+  (-encode-measure-id [_this measure-id]
+    (*export-fk* measure-id 'Measure)))
+
+(deftype ^:private IDDecoder []
+  lib.schema.serdes-interface/IDDecoder
+  (-decode-database-id [_this database-id]
+    (import-database-id database-id))
+  (-decode-table-id [_this table-id]
+    (*import-table-fk* table-id))
+  (-decode-field-id [_this field-id]
+    (*import-field-fk* field-id))
+  (-decode-card-id [_this card-id]
+    (*import-fk* card-id 'Card))
+  (-decode-segment-id [_this segment-id]
+    (*import-fk* segment-id 'Segment))
+  (-decode-measure-id [_this measure-id]
+    (*import-fk* measure-id 'Measure)))
+
+(defn- malli-transformer []
+  (mtx/transformer {:name :serdes} {:name :normalize} {:name :serdes}))
+
+(defn- encoder [schema]
+  (#_NOCOMMIT #_mr/cached #_::encoder #_schema #(mc/encoder schema (malli-transformer))))
+
+(defn- decoder [schema]
+  (#_NOCOMMIT #_mr/cached #_::decoder #_schema #(mc/decoder schema (malli-transformer))))
+
+(defn encode-with-schema [schema x]
+  (let [encoder (encoder schema)]
+    (binding [lib.schema.serdes-interface/*id-encoder* (->IDEncoder)]
+      (try
+        (encoder x)
+        (catch Throwable e
+          (throw (ex-info (format "Error encoding %s: %s" (pr-str schema) (ex-message e))
+                          {:schema schema
+                           :object x}
+                          e)))))))
+
+(defn decode-with-schema [schema x]
+  (let [decoder (decoder schema)]
+    (binding [lib.schema.serdes-interface/*id-decoder* (->IDDecoder)]
+      (try
+        (decoder x)
+        (catch Throwable e
+          (throw (ex-info (format "Error decoding %s: %s" (pr-str schema) (ex-message e))
+                          {:schema schema
+                           :object x}
+                          e)))))))
+
+;; NOCOMMIT
+
+(deftype ^:private IDCapturer [captured]
+  lib.schema.serdes-interface/IDEncoder
+  (-encode-database-id [_this database-id]
+    (swap! captured conj :database database-id)
+    database-id)
+  (-encode-table-id [_this table-id]
+    (swap! captured conj :table table-id)
+    table-id)
+  (-encode-field-id [_this field-id]
+    (swap! captured conj :field field-id)
+    field-id)
+  (-encode-card-id [_this card-id]
+    (swap! captured conj :card card-id)
+    card-id)
+  (-encode-segment-id [_this segment-id]
+    (swap! captured conj :segment segment-id)
+    segment-id)
+  (-encode-measure-id [_this measure-id]
+    (swap! captured conj :measure measure-id)
+    measure-id))
+
+(defn deps-with-schema [schema x]
+  (let [encoder (encoder schema)]
+    (binding [lib.schema.serdes-interface/*id-encoder* (->IDCapturer)]
+      (encoder x))))
