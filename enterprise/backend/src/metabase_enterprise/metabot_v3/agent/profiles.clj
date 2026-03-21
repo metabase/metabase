@@ -139,6 +139,19 @@
                     #'agent-tools/document-construct-model-chart-tool
                     #'agent-tools/document-construct-sql-chart-tool]})
 
+(register-profile!
+ {:name            :slackbot
+  :prompt-template "slackbot.selmer"
+  :max-iterations  10
+  :temperature     0.3
+  :tools           [#'agent-tools/search-tool
+                    #'agent-tools/slackbot-construct-notebook-query-tool
+                    #'agent-tools/list-available-fields-tool
+                    #'agent-tools/get-field-values-tool
+                    #'agent-tools/static-viz-tool
+                    #'agent-tools/create-alert-tool
+                    #'agent-tools/slackbot-create-dashboard-subscription-tool]})
+
 (def ^:private api-string->capability-keyword
   "Map from API capability strings (as sent by the frontend) to the keywords
   used in tool :capabilities metadata. Keywords pass through unchanged."

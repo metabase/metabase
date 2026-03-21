@@ -79,7 +79,7 @@ export const IncrementalTransformSettings = ({
         return t`Incremental transforms are only supported for single data source transforms.`;
       }
       if (isNativeWithoutTableTags) {
-        return t`Incremental transforms for native queries require at least one table variable.`;
+        return t`Incremental transforms for native queries require a table variable.`;
       }
       if (!hasCheckpointOptions) {
         return t`Incremental transforms require at least one numeric or temporal source field.`;
@@ -300,7 +300,7 @@ function SourceStrategyFields({
 function getIsPythonTransformWithMultipleTables(source: TransformSource) {
   const isPythonTransform = source.type === "python";
   const isMultiTablePythonTransform =
-    isPythonTransform && Object.keys(source["source-tables"]).length > 1;
+    isPythonTransform && source["source-tables"].length > 1;
 
   return isMultiTablePythonTransform;
 }

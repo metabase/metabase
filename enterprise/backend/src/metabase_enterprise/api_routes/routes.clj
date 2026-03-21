@@ -41,6 +41,7 @@
    [metabase-enterprise.support-access-grants.api]
    [metabase-enterprise.tenants.api]
    [metabase-enterprise.transforms-python.api]
+   [metabase-enterprise.transforms.api]
    [metabase-enterprise.upload-management.api]
    [metabase-enterprise.workspaces.api]
    [metabase.api.macros :as api.macros]
@@ -130,8 +131,10 @@
    "/library"                      (premium-handler metabase-enterprise.library.api/routes :library)
    "/logs"                         (premium-handler 'metabase-enterprise.advanced-config.api.logs :audit-app)
    "/metabot-tools"                metabase-enterprise.metabot-v3.tools.api/routes
-   "/metabot-v3"                   (premium-handler metabase-enterprise.metabot-v3.api/routes :metabot-v3)
+   "/metabot-v3"                   metabase-enterprise.metabot-v3.api/routes
    "/permission_debug"             (premium-handler metabase-enterprise.permission-debug.api/routes :advanced-permissions)
+   ;; TODO (Ngoc 2026-03-25) -- use :transforms-advanced feature flag once it exists
+   "/transforms"                   (premium-handler metabase-enterprise.transforms.api/routes :transforms-python)
    "/transforms-python"            (premium-handler metabase-enterprise.transforms-python.api/routes :transforms-python)
    "/scim"                         (premium-handler metabase-enterprise.scim.routes/routes :scim)
    "/semantic-search"              (premium-handler metabase-enterprise.semantic-search.api/routes :semantic-search)
