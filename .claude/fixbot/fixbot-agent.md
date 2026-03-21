@@ -30,8 +30,8 @@ The dev environment is pre-configured with users and API keys via `MB_CONFIG_FIL
 
 - **Admin user**: `admin@example.com` / `S0v^S$BIteM9NL` (superuser)
 - **Regular user**: `regular@example.com` / `q5bdJ5A3%Dh@&u75`
-- **Admin API key**: `mb_admin_apikey` (admin permissions)
-- **Regular API key**: `mb_regular_apikey` (regular permissions)
+- **Admin API key**: `mb_AdminApiKey` (admin permissions)
+- **Regular API key**: `mb_RegularApiKey` (regular permissions)
 
 Use these credentials to log in via the UI or make API calls. Do NOT call `/api/setup` — it is already handled.
 

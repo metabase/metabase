@@ -127,12 +127,12 @@ config:
       group: admin
       description: \"API key with admin permissions.\"
       creator: admin@example.com
-      key: mb_admin_apikey
+      key: mb_AdminApiKey
     - name: \"Regular API key\"
       group: all-users
       description: \"API key with regular permissions.\"
       creator: admin@example.com
-      key: mb_regular_apikey
+      key: mb_RegularApiKey
 ")
 
 (defn- write-config-file!

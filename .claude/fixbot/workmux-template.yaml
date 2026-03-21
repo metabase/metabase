@@ -6,6 +6,7 @@ sandbox:
   host_commands:
     - workmux
     - .claude/fixbot/capture-pane.sh
+    - .claude/fixbot/xdg-open
   env_passthrough:
     - ANTHROPIC_API_KEY
     - CLAUDE_CODE_OAUTH_TOKEN
@@ -34,7 +35,7 @@ post_create:
   - cp .claude/fixbot/commands/*.md .claude/commands/
   - mkdir -p .github/hooks/workmux-status
   - echo '{"version":1,"hooks":{"userPromptSubmitted":[{"type":"command","bash":"workmux set-window-status working"}],"postToolUse":[{"type":"command","bash":"workmux set-window-status working"}],"agentStop":[{"type":"command","bash":"workmux set-window-status done"}]}}' > .github/hooks/workmux-status/hooks.json
-  - ./bin/mage -fixbot-dev-env --app-db {{APP_DB}}
+  - MB_PREMIUM_EMBEDDING_TOKEN={{MB_PREMIUM_EMBEDDING_TOKEN}} LINEAR_API_KEY={{LINEAR_API_KEY}} ./bin/mage -fixbot-dev-env --app-db {{APP_DB}}
   - bun install
 
 pre_remove:

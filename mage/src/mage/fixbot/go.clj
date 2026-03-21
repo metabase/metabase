@@ -16,7 +16,9 @@
   (-> (slurp (str u/project-root-directory "/.claude/fixbot/workmux-template.yaml"))
       (str/replace "{{ISSUE_ID}}" issue-id)
       (str/replace "{{ISSUE_URL}}" issue-url)
-      (str/replace "{{APP_DB}}" app-db)))
+      (str/replace "{{APP_DB}}" app-db)
+      (str/replace "{{MB_PREMIUM_EMBEDDING_TOKEN}}" (u/env "MB_PREMIUM_EMBEDDING_TOKEN" (constantly "")))
+      (str/replace "{{LINEAR_API_KEY}}" (u/env "LINEAR_API_KEY" (constantly "")))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Global workmux config
@@ -130,15 +132,13 @@
                      "--name" session-name
                      "-P" prompt-file
                      base-args)
-              ;; Not inside tmux — create a detached session and run workmux in it
+              ;; Not inside tmux — create a detached session and run workmux in it.
+              ;; Env vars like MB_PREMIUM_EMBEDDING_TOKEN are baked into the
+              ;; .workmux.yaml post_create commands so they don't need to be
+              ;; in the tmux session's environment.
               (do
                 (println (c/yellow "Not inside tmux. Creating detached tmux session..."))
                 (shell/sh "tmux" "new-session" "-d" "-s" session-name)
-                ;; Pass env vars that may come from mise and not be in the tmux login shell
-                (doseq [var-name ["MB_PREMIUM_EMBEDDING_TOKEN" "LINEAR_API_KEY"]]
-                  (when-let [val (u/env var-name (constantly nil))]
-                    (when-not (str/blank? val)
-                      (shell/sh "tmux" "set-environment" "-t" session-name var-name val))))
                 (shell/sh "tmux" "send-keys" "-t" session-name workmux-cmd "Enter")
                 (println)
                 (println (c/bold (c/green "Tmux session created: ") (c/cyan session-name)))
