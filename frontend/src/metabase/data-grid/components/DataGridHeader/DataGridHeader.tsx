@@ -2,6 +2,7 @@ import { type HeaderGroup, flexRender } from "@tanstack/react-table";
 import cx from "classnames";
 import type React from "react";
 
+import { HEADER_BASE_HEIGHT } from "metabase/data-grid/constants";
 import { getColumnPositionStyles } from "metabase/data-grid/utils/stylings";
 
 import type { DataGridColumnType } from "../../types";
@@ -37,6 +38,7 @@ export const DataGridHeader = <TData,>({
       style={{
         backgroundColor,
         paddingLeft,
+        height: `${HEADER_BASE_HEIGHT}px`,
         ...styles?.row,
       }}
     >
