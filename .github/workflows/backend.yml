@@ -37,7 +37,7 @@ jobs:
         name: Run Eastwood linter
 
   be-linter-eastwood-test:
-    if: ${{ !inputs.skip && github.ref == 'refs/heads/master' }}
+    if: ${{ !inputs.skip && github.ref_name == 'master' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     name: Eastwood (tests only)
