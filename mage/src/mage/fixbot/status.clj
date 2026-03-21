@@ -1,4 +1,4 @@
-(ns mage.fixbot.status-watch
+(ns mage.fixbot.status
   (:require
    [clojure.string :as str])
   (:import
@@ -68,7 +68,7 @@
   (str color text reset))
 
 (defn- container-ip
-  "Discover this container's IP address (for OrbStack, this is routable from the host)."
+  "Discover this container's IP address."
   []
   (try
     (.getHostAddress (InetAddress/getLocalHost))
@@ -86,12 +86,21 @@
           db-port       (extract-port db-uri)
           db-host       (extract-db-host db-uri)]
       (when jetty-port
-        {:jetty-port    jetty-port
-         :frontend-port frontend-port
-         :db-type       db-type
-         :db-port       db-port
-         :db-host       (or db-host "host.docker.internal")
-         :display-host  (or (container-ip) "localhost")}))))
+        (let [be-host-file (File. ".fixbot/be-hostname.txt")
+              be-hostname  (when (.exists be-host-file)
+                             (let [h (str/trim (slurp be-host-file))]
+                               (when (seq h) h)))]
+          {:jetty-port     jetty-port
+           :frontend-port  frontend-port
+           :db-type        db-type
+           :db-port        db-port
+           :db-host        (or db-host "host.docker.internal")
+           ;; For health checks: use BE container hostname (container-to-container)
+           :health-host    (or be-hostname "localhost")
+           ;; For display: use OrbStack domain if available, else container IP, else localhost
+           :display-host   (if be-hostname
+                             (str be-hostname ".orb.local")
+                             (or (container-ip) "localhost"))})))))
 
 (defn- load-issue-info
   "Read issue.txt and prompt file to get issue ID, URL, and title."
@@ -166,10 +175,10 @@
             ports     (or ports (when check? (load-ports mise-path)))
             issue     (or issue (when check? (load-issue-info)))
             be-status (if (and check? ports)
-                        (check-http (str "http://localhost:" (:jetty-port ports) "/api/health") 2000)
+                        (check-http (str "http://" (:health-host ports) ":" (:jetty-port ports) "/api/health") 2000)
                         last-be-status)
             fe-status (if (and check? ports)
-                        (check-http (str "http://localhost:" (:frontend-port ports)) 2000)
+                        (check-http (str "http://" (:health-host ports) ":" (:frontend-port ports)) 2000)
                         last-fe-status)
             db-status (if (and check? ports (:db-port ports))
                         (check-tcp (:db-host ports) (:db-port ports) 2000)

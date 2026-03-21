@@ -612,11 +612,11 @@
    :requires [[mage.fixbot.preflight :as preflight]]
    :task (task! (preflight/preflight!))}
 
-  -fixbot-status-watch
-  {:doc "Watch and display .fixbot/status.txt"
-   :requires [[mage.fixbot.status-watch :as status-watch]]
+  -fixbot-status
+  {:doc "Watch and display fixbot status"
+   :requires [[mage.fixbot.status :as status]]
    :arg-schema [:? [:string {:name "file-path"}]]
-   :task (task! (status-watch/run! parsed))}
+   :task (task! (status/run! parsed))}
 
   fixbot-go
   {:doc "Launch auto-fix workflow for a Linear issue"

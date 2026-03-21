@@ -121,10 +121,10 @@ To read logs from the backend or frontend panes, use the capture script:
 
 ```bash
 # Capture last 200 lines from backend logs
-.claude/fixbot/capture-pane.sh 1 200
+fixbot-capture-pane 1 200
 
 # Capture last 200 lines from frontend logs
-.claude/fixbot/capture-pane.sh 2 200
+fixbot-capture-pane 2 200
 ```
 
 Use this when:
