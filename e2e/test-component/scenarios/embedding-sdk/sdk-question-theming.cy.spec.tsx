@@ -175,7 +175,7 @@ describe(
 
         cy.findByTestId("table-body")
           .findAllByRole("gridcell")
-          .first()
+          .eq(1)
           .should(($el) => {
             assertBackgroundColorEqual($el, CELL_COLOR);
           });

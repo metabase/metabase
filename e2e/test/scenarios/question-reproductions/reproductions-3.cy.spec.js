@@ -564,7 +564,7 @@ describe(
     it("should be possible to filter by Mongo _id column (metabase#40770, metabase#42010)", () => {
       H.tableInteractiveBody()
         .findAllByRole("gridcell")
-        .first()
+        .eq(1)
         .then(($cell) => {
           // Ids are non-deterministic so we have to obtain the id from the cell, and store its value.
           const id = $cell.text();
