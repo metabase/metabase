@@ -941,7 +941,7 @@
                                     (not (:qp/ignore-coercion options)))
           ;; preserve metadata attached to the original field clause, for example BigQuery temporal type information.
           identifier           (-> (apply h2x/identifier :field
-                                          (concat source-table-aliases (->honeysql driver [::nfc-path source-nfc-path]) [source-alias]))
+                                          (concat source-table-aliases (->honeysql driver (mbql-clause driver ::nfc-path source-nfc-path)) [source-alias]))
                                    (with-meta (meta field-clause)))
           identifier           (->honeysql driver identifier)
           casted-field         (cast-field-if-needed driver field-metadata identifier)

@@ -121,8 +121,8 @@
             ::sql.qp/cast ::sql.qp/cast-to-text :ceil :coalesce :concat :count :count-where :cum-count :cum-sum :date
             :datetime-add :datetime-diff :datetime-subtract :desc :distinct :distinct-where :exp
             ::sql.qp/expression-literal-text-value :float :floor :integer :length :log :lower :ltrim :max :median :min
-            :not :now :or :percentile :power :relative-datetime :replace :round :rtrim :share :sqrt :stddev :substring
-            :sum :sum-where :temporal-extract :text :time :today :trim :upper :var]]
+            ::sql.qp/nfc-path :not :now :or :percentile :power :relative-datetime :replace :round :rtrim :share :sqrt
+            :stddev :substring :sum :sum-where :temporal-extract :text :time :today :trim :upper :var]]
   (defmethod sql.qp/->honeysql [:sql-mbql5 op]
     [driver [op _opts & args]]
     ((get-method sql.qp/->honeysql [:sql op]) driver (into [op] args))))
