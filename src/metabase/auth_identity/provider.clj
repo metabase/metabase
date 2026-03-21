@@ -298,7 +298,7 @@
     (next-method provider $)
     (cond-> $
       (:user $) (create-session! provider))
-    (select-keys $ [:success? :user :redirect-url :error :message :user-data :session :jwt-data])))
+    (select-keys $ [:success? :user :redirect-url :error :message :user-data :session :jwt-data :claims :oidc-provider-key])))
 
 (defenterprise sso-user-fields
   "Return the list of User model fields that should be populated from SSO user data.
