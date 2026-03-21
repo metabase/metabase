@@ -32,6 +32,9 @@ const setup = async (
   setupUpdateSettingsEndpoint();
 
   fetchMock.get("path:/api/permissions/group", GROUPS);
+  fetchMock.get("path:/api/util/random_token", {
+    token: "1234abcd",
+  });
 
   renderWithProviders(<SettingsJWTForm />);
 
@@ -60,6 +63,15 @@ describe("SettingsJWTForm", () => {
       await screen.findByRole("textbox", { name: /JWT Identity Provider URI/ }),
       ATTRS["jwt-identity-provider-uri"],
     );
+    await userEvent.click(
+      await screen.findByRole("button", { name: /Set up key/ }),
+    );
+    await userEvent.clear(await screen.findByLabelText(/New secret key/));
+    await userEvent.type(
+      await screen.findByLabelText(/New secret key/),
+      ATTRS["jwt-shared-secret"],
+    );
+    await userEvent.click(await screen.findByRole("button", { name: /Done/ }));
     await userEvent.type(
       await screen.findByLabelText(/String used by the JWT signing key/),
       ATTRS["jwt-shared-secret"],
