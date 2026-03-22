@@ -90,7 +90,6 @@ exec docker run -it --rm \
   -v /dev/null:/app/mise.local.toml:ro \
   "${AUTH_MOUNT_ARGS[@]}" \
   -e ANTHROPIC_API_KEY \
-  -e CLAUDE_CODE_OAUTH_TOKEN \
   "${ENV_ARGS[@]}" \
   --add-host=host.docker.internal:host-gateway \
   "$IMAGE_NAME" \
