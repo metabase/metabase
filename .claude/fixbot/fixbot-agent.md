@@ -124,12 +124,12 @@ Use nREPL for:
 
 ### Server Logs
 
-Backend and frontend server output is captured to log files:
+Backend and frontend output is visible in their tmux panes. Use `workmux capture` to read their output:
 
-- **Backend logs**: `.fixbot/be.log`
-- **Frontend logs**: `.fixbot/fe.log`
+- **Backend logs**: `workmux capture --pane 1` (the BE pane)
+- **Frontend logs**: `workmux capture --pane 2` (the FE pane)
 
-Read these files (or `tail` them) when:
+Check these when:
 - Debugging startup failures (check if backend/frontend started successfully)
 - Looking for error messages or stack traces
 - Verifying that your code changes were picked up by hot reload

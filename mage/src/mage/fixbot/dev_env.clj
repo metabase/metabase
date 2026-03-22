@@ -163,17 +163,17 @@ config:
                          (str "SOCKET_REPL_PORT = \"" (get port-bases :socket-repl) "\"")]
                   (= app-db-kw :postgres)
                   (conj (str "MB_DB_TYPE = \"postgres\"")
-                        (str "MB_DB_CONNECTION_URI = \"jdbc:postgresql://host.docker.internal:"
+                        (str "MB_DB_CONNECTION_URI = \"jdbc:postgresql://localhost:"
                              (port-for :postgres-app slot)
                              "/metabase?user=metabase&password=password\""))
                   (= app-db-kw :mysql)
                   (conj (str "MB_DB_TYPE = \"mysql\"")
-                        (str "MB_DB_CONNECTION_URI = \"jdbc:mysql://host.docker.internal:"
+                        (str "MB_DB_CONNECTION_URI = \"jdbc:mysql://localhost:"
                              (port-for :mysql slot)
                              "/metabase?user=root&password=\""))
                   (= app-db-kw :mariadb)
                   (conj (str "MB_DB_TYPE = \"mysql\"")
-                        (str "MB_DB_CONNECTION_URI = \"jdbc:mysql://host.docker.internal:"
+                        (str "MB_DB_CONNECTION_URI = \"jdbc:mysql://localhost:"
                              (port-for :mariadb slot)
                              "/metabase?user=root&password=\"")))
         content (str (str/join "\n" lines) "\n")
