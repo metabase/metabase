@@ -140,8 +140,8 @@
               fe-down (not= fe-status :ready)
               db-down (and (:db-port ports) (not= db-status :ready))
               problems (cond-> []
-                         be-down (conj "Backend")
-                         fe-down (conj "Frontend")
+                         be-down (conj "BE")
+                         fe-down (conj "FE")
                          db-down (conj (or db-name "DB")))
               health-text (if (empty? problems)
                             "Healthy"
@@ -177,7 +177,7 @@
                         (check-http (str "http://localhost:" (:jetty-port ports) "/api/health") 2000)
                         last-be-status)
             fe-status (if (and check? ports)
-                        (check-http (str "http://localhost:" (:frontend-port ports)) 2000)
+                        (check-http (str "http://localhost:" (:frontend-port ports) "/webpack-dev-server") 2000)
                         last-fe-status)
             db-status (if (and check? ports (:db-port ports))
                         (check-tcp (:db-host ports) (:db-port ports) 2000)

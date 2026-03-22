@@ -1,0 +1,12 @@
+{
+  "sandbox": {
+    "enabled": true,
+    "autoAllow": true,
+    "allowUnsandboxedCommands": false,
+    "filesystem": {
+      "allowWrite": [".", "~/.m2", "~/.gitlibs", "~/.deps.clj", "/tmp"]
+    },
+    "excludedCommands": ["docker"]
+  },
+  "skipDangerousModePermissionPrompt": true
+}
