@@ -43,8 +43,10 @@ RUN echo 'eval "$(mise activate bash)"' >> /etc/bash.bashrc
 # Install Playwright CLI with Chromium for UI verification
 RUN npm install -g playwright && npx playwright install chromium
 
-# Point BB_B to mise-installed bb so bin/mage skips downloading babashka
-ENV BB_PATH="/opt/mise/shims/bb"
+# Copy bb to /usr/local/bin so it's always available regardless of PATH/symlink issues
+RUN cp /opt/mise/shims/bb /usr/local/bin/bb
+# Point bin/mage to the copied bb
+ENV BB_PATH="/usr/local/bin/bb"
 
 # Install bbin
 RUN curl -o- -L https://raw.githubusercontent.com/babashka/bbin/v0.2.5/bbin > /usr/local/bin/bbin \

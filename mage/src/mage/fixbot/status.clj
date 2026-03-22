@@ -156,7 +156,21 @@
         (when db-text
           (.append sb " | ")
           (.append sb (colorize db-color db-text)))
-        (.append sb "\n")))
+        (.append sb "\n")
+        ;; Line 4: Health summary
+        (let [be-down (not= be-status :ready)
+              fe-down (not= fe-status :ready)
+              db-down (and (:db-port ports) (not= db-status :ready))
+              problems (cond-> []
+                         be-down (conj "Backend")
+                         fe-down (conj "Frontend")
+                         db-down (conj (or db-name "DB")))
+              health-text (if (empty? problems)
+                            "Healthy"
+                            (str (str/join " and " problems) " down"))
+              health-color (if (empty? problems) green red)]
+          (.append sb (colorize health-color health-text))
+          (.append sb "\n"))))
     ;; Blank line + LLM status
     (when (seq llm-status)
       (.append sb "\n")
