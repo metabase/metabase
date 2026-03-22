@@ -157,10 +157,10 @@ config:
                          "DISABLE_BUILD_NOTIFICATIONS = \"1\""
                          (str "MB_PREMIUM_EMBEDDING_TOKEN = \"" (u/env "MB_PREMIUM_EMBEDDING_TOKEN" (constantly "")) "\"")
                          (str "LINEAR_API_KEY = \"" (u/env "LINEAR_API_KEY" (constantly "")) "\"")
-                         (str "MB_JETTY_PORT = \"" (get port-bases :jetty) "\"")
-                         (str "MB_FRONTEND_DEV_PORT = \"" (get port-bases :frontend-dev) "\"")
-                         (str "NREPL_PORT = \"" (get port-bases :nrepl) "\"")
-                         (str "SOCKET_REPL_PORT = \"" (get port-bases :socket-repl) "\"")]
+                         (str "MB_JETTY_PORT = \"" (port-for :jetty slot) "\"")
+                         (str "MB_FRONTEND_DEV_PORT = \"" (port-for :frontend-dev slot) "\"")
+                         (str "NREPL_PORT = \"" (port-for :nrepl slot) "\"")
+                         (str "SOCKET_REPL_PORT = \"" (port-for :socket-repl slot) "\"")]
                   (= app-db-kw :postgres)
                   (conj (str "MB_DB_TYPE = \"postgres\"")
                         (str "MB_DB_CONNECTION_URI = \"jdbc:postgresql://localhost:"
@@ -194,10 +194,10 @@ config:
 
 (defn- print-summary! [slot app-db-kw]
   (let [wt-name (worktree-name)
-        rows    (cond-> [{:service "Jetty backend"  :port (get port-bases :jetty)        :env-var "MB_JETTY_PORT"}
-                         {:service "Frontend dev"   :port (get port-bases :frontend-dev)  :env-var "MB_FRONTEND_DEV_PORT"}
-                         {:service "nREPL"          :port (get port-bases :nrepl)         :env-var "NREPL_PORT"}
-                         {:service "Socket REPL"    :port (get port-bases :socket-repl)   :env-var "SOCKET_REPL_PORT"}]
+        rows    (cond-> [{:service "Jetty backend"  :port (port-for :jetty slot)        :env-var "MB_JETTY_PORT"}
+                         {:service "Frontend dev"   :port (port-for :frontend-dev slot)  :env-var "MB_FRONTEND_DEV_PORT"}
+                         {:service "nREPL"          :port (port-for :nrepl slot)         :env-var "NREPL_PORT"}
+                         {:service "Socket REPL"    :port (port-for :socket-repl slot)   :env-var "SOCKET_REPL_PORT"}]
                   (= app-db-kw :postgres)
                   (conj {:service "Postgres (app-db)" :port (port-for :postgres-app slot) :env-var "MB_DB_CONNECTION_URI"})
                   (= app-db-kw :mysql)

@@ -1,9 +1,10 @@
 (ns mage.fixbot.status
   (:require
+   [babashka.http-client :as http]
    [clojure.string :as str])
   (:import
    (java.io File)
-   (java.net HttpURLConnection URL Socket)))
+   (java.net Socket)))
 
 (set! *warn-on-reflection* true)
 
@@ -38,15 +39,11 @@
   "Try an HTTP GET. Returns :ready, :unhealthy, or :waiting."
   [^String url timeout-ms]
   (try
-    (let [conn (doto ^HttpURLConnection (.openConnection (URL. url))
-                 (.setRequestMethod "GET")
-                 (.setConnectTimeout (int timeout-ms))
-                 (.setReadTimeout (int timeout-ms)))
-          code (.getResponseCode conn)]
-      (.disconnect conn)
+    (let [resp (http/get url {:timeout (int timeout-ms)
+                              :throw false})
+          code (:status resp)]
       (if (<= 200 code 399) :ready :unhealthy))
     (catch java.net.ConnectException _ :waiting)
-    (catch java.net.SocketTimeoutException _ :unhealthy)
     (catch Exception _ :unhealthy)))
 
 (defn- check-tcp

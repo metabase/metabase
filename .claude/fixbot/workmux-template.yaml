@@ -7,7 +7,6 @@ files:
 
 post_create:
   - cp .claude/fixbot/settings.local-template.json .claude/settings.local.json
-  - ln -sf $(which bb) bin/bb
   - mkdir -p .fixbot
   - echo '{{ISSUE_ID}} | {{ISSUE_URL}}' > .fixbot/issue.txt
   - rm -f .claude/commands/fixbot*.md

@@ -8,5 +8,19 @@
     },
     "excludedCommands": ["docker"]
   },
+  "permissions": {
+    "allow": [
+      "Edit",
+      "Write",
+      "Bash(grep:*)",
+      "WebFetch(domain:linear.app)",
+      "WebFetch(domain:metabase.com)",
+      "Bash(clj-nrepl-eval:*)",
+      "Bash(bb:*)",
+      "Bash(tmux list-sessions:*)",
+      "Bash(tmux capture-pane:*)",
+      "Bash(gh search:*)"
+    ]
+  },
   "skipDangerousModePermissionPrompt": true
 }

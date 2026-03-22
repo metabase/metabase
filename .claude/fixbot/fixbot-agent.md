@@ -12,9 +12,13 @@ Include the full issue description and all comments (with author and timestamp).
 
 ### Environment
 Tell the agent about its dev environment:
-- Backend URL (http://localhost:<jetty-port>)
-- Frontend dev server URL (http://localhost:<frontend-port>)
-- App database type and port
+- Ports are dynamically assigned per worktree. Read `mise.local.toml` to discover them:
+  - `MB_JETTY_PORT` — backend URL is `http://localhost:$MB_JETTY_PORT`
+  - `MB_FRONTEND_DEV_PORT` — frontend dev server is `http://localhost:$MB_FRONTEND_DEV_PORT`
+  - `NREPL_PORT` — nREPL server port
+  - The app database port is in the JDBC URL (`MB_DB_CONNECTION_URI`)
+- The agent MUST read `mise.local.toml` at startup to discover its ports — do not hardcode or assume any port numbers
+- App database type
 - **IMPORTANT**: The dev environment always runs the **Enterprise Edition (EE)**. Even if the issue mentions the OSS version, develop and test against EE. If the fix specifically requires running the OSS edition (e.g., testing OSS-only behavior that differs from EE), STOP and tell the user — do not attempt an OSS-only fix.
 
 ### About the User
@@ -56,8 +60,8 @@ The agent should follow this workflow:
 
 #### Phase 3: Verify
 Playwright is available for ad-hoc verification — use it to visually confirm your fix before asking the user to test:
-   - `npx playwright screenshot http://localhost:<jetty-port>/path page.png` — take screenshots to verify visual state
-   - `npx playwright pdf http://localhost:<jetty-port>/path page.pdf` — capture page as PDF
+   - `npx playwright screenshot http://localhost:$MB_JETTY_PORT/path page.png` — take screenshots to verify visual state
+   - `npx playwright pdf http://localhost:$MB_JETTY_PORT/path page.pdf` — capture page as PDF
    - Write short Playwright scripts for interaction testing when needed (click, fill, navigate)
    - Playwright has Chromium available — use it to confirm the fix works in-browser
    - **Important**: Playwright is for ad-hoc spot-checks and troubleshooting only. Always prefer writing actual unit tests (Jest) or E2E tests (Cypress) to prevent regressions — Playwright scripts are throwaway and don't run in CI.
@@ -110,7 +114,7 @@ Write to `.fixbot/llm-status.txt` (overwrite the whole file each time) when some
 
 ### nREPL
 
-The backend runs an nREPL server. Connect using `localhost` and the nREPL port (from `NREPL_PORT` in `mise.local.toml`, default 50605):
+The backend runs an nREPL server. Connect using `localhost` and the nREPL port (read `NREPL_PORT` from `mise.local.toml`):
 
 ```bash
 clj-nrepl-eval -H localhost -p $NREPL_PORT "(+ 1 2)"
@@ -138,6 +142,6 @@ Check these when:
 - Focus ONLY on the reported issue — no unrelated changes
 - Always run tests before telling the user to verify
 - Be patient — the backend takes several minutes to start on first launch
-- Check backend readiness: `curl -s http://localhost:<jetty-port>/api/health`
+- Check backend readiness: `curl -s http://localhost:$MB_JETTY_PORT/api/health`
 - Work autonomously — do not block on the user for technical questions. Research the codebase, read tests, and make your own decisions.
 - Only involve the user for product/behavior questions and acceptance testing
