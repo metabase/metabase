@@ -1,4 +1,4 @@
-import { isDate } from "metabase-lib/v1/types/utils/isa";
+import { isDate } from "metabase/lib/types/isa";
 import {
   type DatasetData,
   type DatetimeUnit,

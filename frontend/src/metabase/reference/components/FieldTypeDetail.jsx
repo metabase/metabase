@@ -5,6 +5,7 @@ import { memo } from "react";
 import { t } from "ttag";
 
 import { FIELD_SEMANTIC_TYPES_MAP } from "metabase/lib/core";
+import { isTypeCurrency, isTypeFK } from "metabase/lib/types/isa";
 import {
   CurrencyPicker,
   SemanticTypePicker,
@@ -12,7 +13,6 @@ import {
 import { getFieldCurrency } from "metabase/metadata/utils/field";
 import D from "metabase/reference/components/Detail.module.css";
 import { Box } from "metabase/ui";
-import { isTypeCurrency, isTypeFK } from "metabase-lib/v1/types/utils/isa";
 
 import { FieldFkTargetPicker } from "./FieldFkTargetPicker";
 

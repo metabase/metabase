@@ -1,11 +1,14 @@
 import {
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
-  convertSavedQuestionToVirtualTable,
-  getCollectionVirtualSchemaId,
-  getCollectionVirtualSchemaName,
   getQuestionIdFromVirtualTableId,
   getQuestionVirtualTableId,
   isVirtualCardId,
+} from "metabase/lib/saved-questions";
+
+import {
+  convertSavedQuestionToVirtualTable,
+  getCollectionVirtualSchemaId,
+  getCollectionVirtualSchemaName,
 } from "./saved-questions";
 
 describe("saved question helpers", () => {

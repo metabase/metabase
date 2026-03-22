@@ -2,11 +2,11 @@ import * as d3 from "d3";
 import L from "leaflet";
 import { t } from "ttag";
 
+import { isMetric, isNumeric } from "metabase/lib/types/isa";
 import { color } from "metabase/ui/colors";
 import type { ClickObject, HoveredObject } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import { isMetric, isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetColumn } from "metabase-types/api";
 
 import { computeNumericDataInterval } from "../lib/numeric";

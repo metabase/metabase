@@ -9,6 +9,7 @@ import {
   parseTimestamp,
 } from "metabase/lib/time-dayjs";
 import { checkNumber, isNotNull } from "metabase/lib/types";
+import { isDate } from "metabase/lib/types/isa";
 import { formatPercent } from "metabase/static-viz/lib/numbers";
 import type {
   EChartsTooltipModel,
@@ -66,7 +67,6 @@ import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { isNative } from "metabase-lib/v1/queries/utils/card";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
-import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type {
   CardDisplayType,
   CardId,

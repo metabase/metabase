@@ -2,7 +2,7 @@ import fetchMock from "fetch-mock";
 import _ from "underscore";
 
 import { SAVED_QUESTIONS_DATABASE } from "metabase/databases/constants";
-import { isTypePK } from "metabase-lib/v1/types/utils/isa";
+import { isTypePK } from "metabase/lib/types/isa";
 import type { Database, DatabaseUsageInfo } from "metabase-types/api";
 
 import { PERMISSION_ERROR } from "./constants";

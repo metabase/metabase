@@ -6,9 +6,9 @@ import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SelectList } from "metabase/common/components/SelectList";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
+import { getQuestionVirtualTableId } from "metabase/lib/saved-questions";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Box } from "metabase/ui";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { CardType, Collection, DatabaseId } from "metabase-types/api";
 
 import SavedEntityListS from "./SavedEntityList.module.css";

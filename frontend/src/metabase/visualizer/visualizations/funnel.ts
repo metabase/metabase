@@ -2,6 +2,7 @@ import type { DragEndEvent } from "@dnd-kit/core";
 import type { Draft } from "immer";
 import _ from "underscore";
 
+import { isDimension, isMetric, isNumeric } from "metabase/lib/types/isa";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import {
@@ -12,11 +13,6 @@ import {
   extractReferencedColumns,
   isDraggedColumnItem,
 } from "metabase/visualizer/utils";
-import {
-  isDimension,
-  isMetric,
-  isNumeric,
-} from "metabase-lib/v1/types/utils/isa";
 import type {
   Dataset,
   DatasetColumn,

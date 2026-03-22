@@ -5,6 +5,15 @@ import { t } from "ttag";
 import { displayNameForColumn } from "metabase/lib/formatting";
 import type { OptionsType } from "metabase/lib/formatting/types";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import {
+  isAvatarURL,
+  isCoordinate,
+  isEmail,
+  isImageURL,
+  isNumber,
+  isString,
+  isURL,
+} from "metabase/lib/types/isa";
 import { updateQuestion } from "metabase/query_builder/actions";
 import {
   getIsListViewConfigurationShown,
@@ -23,15 +32,6 @@ import type {
   VisualizationProps,
 } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
-import {
-  isAvatarURL,
-  isCoordinate,
-  isEmail,
-  isImageURL,
-  isNumber,
-  isString,
-  isURL,
-} from "metabase-lib/v1/types/utils/isa";
 import type { DatasetColumn, Series } from "metabase-types/api";
 
 import { ListView } from "../ListView/ListView";

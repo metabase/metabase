@@ -3,8 +3,8 @@ import { t } from "ttag";
 import { skipToken, useGetDatabaseQuery } from "metabase/api";
 import { Databases } from "metabase/entities/databases";
 import { useSelector } from "metabase/lib/redux";
+import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/saved-questions";
 import * as Urls from "metabase/lib/urls";
-import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { DatabaseId } from "metabase-types/api";
 
 export const useDatabaseCrumb = (id: DatabaseId) => {

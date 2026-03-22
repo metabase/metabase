@@ -9,8 +9,8 @@ import _ from "underscore";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
+import { hasLatitudeAndLongitudeColumns } from "metabase/lib/types/isa";
 import { LatitudeLongitudeError } from "metabase/visualizations/lib/errors";
-import { hasLatitudeAndLongitudeColumns } from "metabase-lib/v1/types/utils/isa";
 
 import { LeafletGridHeatMap } from "./LeafletGridHeatMap";
 import { LeafletMarkerPinMap } from "./LeafletMarkerPinMap";

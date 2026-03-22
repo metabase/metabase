@@ -5,6 +5,8 @@ import {
 import type { ValueAndColumnForColumnNameDate } from "metabase/lib/formatting/link";
 import { parseTimestamp } from "metabase/lib/time-dayjs";
 import { checkNotNull } from "metabase/lib/types";
+import { TYPE } from "metabase/lib/types/constants";
+import { isDate, isa } from "metabase/lib/types/isa";
 import * as Lib from "metabase-lib";
 import type { TemplateTagDimension } from "metabase-lib/v1/Dimension";
 import type Question from "metabase-lib/v1/Question";
@@ -15,8 +17,6 @@ import {
 } from "metabase-lib/v1/parameters/utils/filters";
 import { getParameterColumns } from "metabase-lib/v1/parameters/utils/targets";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import { TYPE } from "metabase-lib/v1/types/constants";
-import { isDate, isa } from "metabase-lib/v1/types/utils/isa";
 import type {
   ClickBehavior,
   ClickBehaviorDimensionTarget,
@@ -31,15 +31,6 @@ import type {
 } from "metabase-types/api";
 
 import { parseParameterValue } from "./parameter-parsing";
-
-// Re-export from canonical location in metabase/lib
-// TODO: update all consumers to import from "metabase/lib/click-behavior-utils" directly
-// eslint-disable-next-line no-restricted-imports -- re-export stub during migration
-export {
-  getDataFromClicked,
-  clickBehaviorIsValid,
-  canSaveClickBehavior,
-} from "metabase/lib/click-behavior-utils";
 
 interface Target {
   id: Parameter["id"];

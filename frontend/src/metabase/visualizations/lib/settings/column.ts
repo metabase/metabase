@@ -16,6 +16,13 @@ import {
 } from "metabase/lib/formatting";
 import { hasHour } from "metabase/lib/formatting/datetime-utils";
 import MetabaseSettings from "metabase/lib/settings";
+import {
+  isCoordinate,
+  isCurrency,
+  isDate,
+  isDateWithoutTime,
+  isNumber,
+} from "metabase/lib/types/isa";
 import { getVisualizationRaw } from "metabase/visualizations";
 import { ChartNestedSettingColumns } from "metabase/visualizations/components/settings/ChartNestedSettingColumns";
 import { ChartSettingTableColumns } from "metabase/visualizations/components/settings/ChartSettingTableColumns";
@@ -39,13 +46,6 @@ import {
   findColumnIndexesForColumnSettings,
   findColumnSettingIndexesForColumns,
 } from "metabase-lib/v1/queries/utils/dataset";
-import {
-  isCoordinate,
-  isCurrency,
-  isDate,
-  isDateWithoutTime,
-  isNumber,
-} from "metabase-lib/v1/types/utils/isa";
 import type {
   ColumnSettings,
   DatasetColumn,

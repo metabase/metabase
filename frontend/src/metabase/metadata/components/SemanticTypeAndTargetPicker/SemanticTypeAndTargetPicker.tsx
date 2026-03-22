@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 
+import { isCurrency, isFK } from "metabase/lib/types/isa";
 import { getFieldCurrency } from "metabase/metadata/utils/field";
 import { Flex, type SelectProps, Stack, rem } from "metabase/ui";
-import { isCurrency, isFK } from "metabase-lib/v1/types/utils/isa";
 import type { Field, FieldId } from "metabase-types/api";
 
 import { CurrencyPicker } from "../CurrencyPicker";

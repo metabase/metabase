@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from "react";
 
 import { useSetting } from "metabase/common/hooks";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
+import { getQuestionVirtualTableId } from "metabase/lib/saved-questions";
 import type { DatabaseId, RecentContexts, TableId } from "metabase-types/api";
 
 import type {

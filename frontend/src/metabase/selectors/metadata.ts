@@ -1,6 +1,7 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { normalize } from "normalizr";
 
+import { isVirtualCardId } from "metabase/lib/saved-questions";
 import { FieldSchema } from "metabase/schema";
 import Question from "metabase-lib/v1/Question";
 import Database from "metabase-lib/v1/metadata/Database";
@@ -12,7 +13,6 @@ import Metric from "metabase-lib/v1/metadata/Metric";
 import Schema from "metabase-lib/v1/metadata/Schema";
 import Segment from "metabase-lib/v1/metadata/Segment";
 import Table from "metabase-lib/v1/metadata/Table";
-import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import {
   getFieldValues,
   getRemappings,

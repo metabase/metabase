@@ -1,8 +1,8 @@
+import { isMetric } from "metabase/lib/types/isa";
 import { sumMetric } from "metabase/visualizations/lib/dataset";
 import { getColumnDescriptors } from "metabase/visualizations/lib/graph/columns";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
-import { isMetric } from "metabase-lib/v1/types/utils/isa";
 import {
   type DatasetColumn,
   type RawSeries,

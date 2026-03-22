@@ -26,6 +26,7 @@ import {
 } from "metabase/detail-view/utils";
 import type { OptionsType } from "metabase/lib/formatting/types";
 import { useDispatch } from "metabase/lib/redux";
+import { isPK } from "metabase/lib/types/isa";
 import { runQuestionQuery } from "metabase/query_builder/actions";
 import { ActionsApi } from "metabase/services";
 import {
@@ -40,7 +41,6 @@ import {
 } from "metabase/ui";
 import { DeleteObjectModal } from "metabase/visualizations/components/ObjectDetail/DeleteObjectModal";
 import * as Lib from "metabase-lib";
-import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
   ForeignKey,

@@ -6,6 +6,7 @@ import { formatValue } from "metabase/lib/formatting";
 import { formatDateTimeRangeWithUnit } from "metabase/lib/formatting/date";
 import type { OptionsType } from "metabase/lib/formatting/types";
 import { isNumber } from "metabase/lib/types";
+import { isDate } from "metabase/lib/types/isa";
 import { isEmpty } from "metabase/lib/validate";
 import type { ColorGetter } from "metabase/ui/colors/types";
 import { computeChange } from "metabase/visualizations/lib/numeric";
@@ -17,7 +18,6 @@ import {
 } from "metabase/visualizations/visualizations/SmartScalar/utils";
 import type { ClickObject } from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
   DateTimeAbsoluteUnit,

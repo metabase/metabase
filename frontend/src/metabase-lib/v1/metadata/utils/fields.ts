@@ -1,4 +1,4 @@
-import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
+import { isVirtualCardId } from "metabase/lib/saved-questions";
 import {
   BOOLEAN,
   COORDINATE,
@@ -9,8 +9,8 @@ import {
   STRING,
   STRING_LIKE,
   TEMPORAL,
-} from "metabase-lib/v1/types/constants";
-import { getFieldType } from "metabase-lib/v1/types/utils/isa";
+} from "metabase/lib/types/constants";
+import { getFieldType } from "metabase/lib/types/isa";
 import type { FieldId, FieldReference, TableId } from "metabase-types/api";
 
 const ICON_MAPPING: Record<string, string> = {

@@ -3,6 +3,13 @@ import type { Draft } from "immer";
 import _ from "underscore";
 
 import { isNotNull } from "metabase/lib/types";
+import {
+  isDate,
+  isDimension,
+  isMetric,
+  isNumeric,
+  isString,
+} from "metabase/lib/types/isa";
 import { isCartesianChart } from "metabase/visualizations";
 import {
   getDefaultDimensionFilter,
@@ -18,13 +25,6 @@ import {
   shouldSplitVisualizerSeries,
   updateVizSettingsWithRefs,
 } from "metabase/visualizer/utils";
-import {
-  isDate,
-  isDimension,
-  isMetric,
-  isNumeric,
-  isString,
-} from "metabase-lib/v1/types/utils/isa";
 import type {
   Dataset,
   DatasetColumn,

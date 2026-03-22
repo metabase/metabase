@@ -15,7 +15,7 @@ import {
   getCurrencySymbol,
   slugify,
 } from "metabase/lib/formatting";
-import { TYPE } from "metabase-lib/v1/types/constants";
+import { TYPE } from "metabase/lib/types/constants";
 import { createMockColumn } from "metabase-types/api/mocks";
 
 const SITE_URL = "http://localhost:3000";

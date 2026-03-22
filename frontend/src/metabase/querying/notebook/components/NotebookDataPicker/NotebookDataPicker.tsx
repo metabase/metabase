@@ -15,6 +15,7 @@ import type {
 } from "metabase/common/components/Pickers/MiniPicker/types";
 import { isEmbedding } from "metabase/embedding/config";
 import { useDispatch, useSelector, useStore } from "metabase/lib/redux";
+import { getQuestionVirtualTableId } from "metabase/lib/saved-questions";
 import { checkNotNull } from "metabase/lib/types";
 import type { QueryEditorDatabasePickerItem } from "metabase/querying/editor/types";
 import { loadMetadataForTable } from "metabase/questions/actions";
@@ -22,7 +23,6 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { getIsTenantUser } from "metabase/selectors/user";
 import { Icon, TextInput } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { TableId } from "metabase-types/api";
 
 import {

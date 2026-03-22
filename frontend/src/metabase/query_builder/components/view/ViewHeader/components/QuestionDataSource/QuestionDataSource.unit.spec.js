@@ -8,11 +8,11 @@ import {
 } from "__support__/server-mocks";
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import { deserializeCardFromUrl } from "metabase/lib/card";
+import { getQuestionVirtualTableId } from "metabase/lib/saved-questions";
 import * as Urls from "metabase/lib/urls";
 import * as Lib from "metabase-lib";
 import { SAMPLE_METADATA } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import * as ML_Urls from "metabase-lib/v1/urls";
 import {
   createMockCard,

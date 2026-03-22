@@ -1,9 +1,9 @@
+import { TYPE } from "metabase/lib/types/constants";
 import {
   getTableCellClickedObject,
   getTableClickedObjectRowData,
   isColumnRightAligned,
 } from "metabase/visualizations/lib/table";
-import { TYPE } from "metabase-lib/v1/types/constants";
 import type { Series } from "metabase-types/api";
 import {
   createMockCard,

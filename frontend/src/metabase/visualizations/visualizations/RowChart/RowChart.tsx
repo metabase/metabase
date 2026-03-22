@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
 import { measureTextWidth } from "metabase/lib/measure-text";
+import { isDimension, isMetric } from "metabase/lib/types/isa";
 import { extractRemappedColumns } from "metabase/visualizations";
 import {
   getCartesianChartColumns,
@@ -52,7 +53,6 @@ import {
   getLegendClickData,
 } from "metabase/visualizations/visualizations/RowChart/utils/events";
 import { useRowChartTheme } from "metabase/visualizations/visualizations/RowChart/utils/theme";
-import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetData, VisualizationSettings } from "metabase-types/api";
 
 import {

@@ -5,6 +5,7 @@ import { t } from "ttag";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { isDimension, isMetric } from "metabase/lib/types/isa";
 import { Box, Stack, Text } from "metabase/ui";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import { useCanHandleActiveItem } from "metabase/visualizer/hooks/use-can-handle-active-item";
@@ -13,7 +14,6 @@ import {
   getVisualizerDatasetColumns,
 } from "metabase/visualizer/selectors";
 import { removeColumn } from "metabase/visualizer/visualizer.slice";
-import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetColumn } from "metabase-types/api";
 
 import { WellItem } from "../WellItem";

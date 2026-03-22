@@ -1,4 +1,4 @@
-import { isNumeric } from "metabase-lib/v1/types/utils/isa";
+import { isNumeric } from "metabase/lib/types/isa";
 import type { DatasetData, RowValue, RowValues } from "metabase-types/api";
 
 export function dimensionIsNumeric(

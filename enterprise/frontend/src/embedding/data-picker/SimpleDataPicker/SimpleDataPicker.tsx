@@ -3,9 +3,9 @@ import { useMemo } from "react";
 
 import { useSearchQuery } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import { getQuestionVirtualTableId } from "metabase/lib/saved-questions";
 import type { SimpleDataPickerProps } from "metabase/plugins";
 import { Box, Popover } from "metabase/ui";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { SearchModel, SearchResult, TableId } from "metabase-types/api";
 import type { SortingOptions } from "metabase-types/api/sorting";
 import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";

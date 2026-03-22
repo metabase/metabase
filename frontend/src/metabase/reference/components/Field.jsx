@@ -10,13 +10,13 @@ import { t } from "ttag";
 import S from "metabase/common/components/List/List.module.css";
 import CS from "metabase/css/core/index.css";
 import { FIELD_SEMANTIC_TYPES_MAP } from "metabase/lib/core";
+import { isTypeCurrency, isTypeFK } from "metabase/lib/types/isa";
 import {
   CurrencyPicker,
   SemanticTypePicker,
 } from "metabase/metadata/components";
 import { getFieldCurrency } from "metabase/metadata/utils/field";
 import { Box, Icon } from "metabase/ui";
-import { isTypeCurrency, isTypeFK } from "metabase-lib/v1/types/utils/isa";
 
 import F from "./Field.module.css";
 import { FieldFkTargetPicker } from "./FieldFkTargetPicker";

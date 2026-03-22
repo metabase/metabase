@@ -11,6 +11,7 @@ import { Timelines } from "metabase/entities/timelines";
 import { parseTimestamp } from "metabase/lib/time-dayjs";
 import { getSortedTimelines } from "metabase/lib/timelines";
 import { isNotNull } from "metabase/lib/types";
+import { getIsPKFromTablePredicate } from "metabase/lib/types/isa";
 import {
   getEmbedOptions,
   getIsEmbeddingIframe,
@@ -37,7 +38,6 @@ import {
   normalizeParameterValue,
   normalizeParameters,
 } from "metabase-lib/v1/parameters/utils/parameter-values";
-import { getIsPKFromTablePredicate } from "metabase-lib/v1/types/utils/isa";
 import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 
 import { getQuestionWithDefaultVisualizationSettings } from "./actions/core/utils";

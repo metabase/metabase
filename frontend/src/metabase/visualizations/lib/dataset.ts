@@ -1,5 +1,5 @@
 import { isNotNull } from "metabase/lib/types";
-import { isMetric } from "metabase-lib/v1/types/utils/isa";
+import { isMetric } from "metabase/lib/types/isa";
 import type {
   DatasetData,
   RawSeries,

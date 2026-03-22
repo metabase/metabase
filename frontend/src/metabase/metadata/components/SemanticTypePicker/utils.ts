@@ -1,6 +1,6 @@
 import { FIELD_SEMANTIC_TYPES } from "metabase/lib/core";
-import { LEVEL_ONE_TYPES, TYPE } from "metabase-lib/v1/types/constants";
-import { isTypeFK, isTypePK, isa } from "metabase-lib/v1/types/utils/isa";
+import { LEVEL_ONE_TYPES, TYPE } from "metabase/lib/types/constants";
+import { isTypeFK, isTypePK, isa } from "metabase/lib/types/isa";
 import type { Field } from "metabase-types/api";
 
 export function getCompatibleSemanticTypes(

@@ -12,7 +12,7 @@ import {
 import {
   canSaveClickBehavior,
   clickBehaviorIsValid,
-} from "metabase-lib/v1/parameters/utils/click-behavior";
+} from "metabase/lib/click-behavior-utils";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type {
   ClickBehavior,

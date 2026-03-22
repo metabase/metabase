@@ -1,6 +1,5 @@
 import _ from "underscore";
 
-import visualizations from "metabase/visualizations";
 import {
   hasLatitudeAndLongitudeColumns,
   isCountry,
@@ -10,7 +9,8 @@ import {
   isLongitude,
   isMetric,
   isState,
-} from "metabase-lib/v1/types/utils/isa";
+} from "metabase/lib/types/isa";
+import visualizations from "metabase/visualizations";
 import type { CardDisplayType, DatasetData } from "metabase-types/api";
 
 const MAX_RECOMMENDED = 12;

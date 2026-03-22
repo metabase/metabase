@@ -1,6 +1,6 @@
 import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/lib/types";
-import { TYPE } from "metabase-lib/v1/types/constants";
+import { TYPE } from "metabase/lib/types/constants";
 import type { Database, Field, Table } from "metabase-types/api";
 import {
   createMockField,

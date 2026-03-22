@@ -13,13 +13,13 @@ import {
   getTableQuery,
 } from "metabase/detail-view/utils";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { getQuestionVirtualTableId } from "metabase/lib/saved-questions";
 import * as Urls from "metabase/lib/urls";
 import { closeNavbar, setDetailView } from "metabase/redux/app";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import { getMetadata } from "metabase/selectors/metadata";
 import { extractRemappedColumns } from "metabase/visualizations";
 import * as Lib from "metabase-lib";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 
 interface Props {
   params: {

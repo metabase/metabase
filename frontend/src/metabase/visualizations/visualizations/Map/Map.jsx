@@ -5,6 +5,16 @@ import _ from "underscore";
 
 import { ColorRangeSelector } from "metabase/common/components/ColorRangeSelector";
 import MetabaseSettings from "metabase/lib/settings";
+import {
+  hasLatitudeAndLongitudeColumns,
+  isCountry,
+  isDimension,
+  isLatitude,
+  isLongitude,
+  isMetric,
+  isNumeric,
+  isState,
+} from "metabase/lib/types/isa";
 import { getAccentColors } from "metabase/ui/colors/groups";
 import { ChartSettingsError } from "metabase/visualizations/lib/errors";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
@@ -18,16 +28,6 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-import {
-  hasLatitudeAndLongitudeColumns,
-  isCountry,
-  isDimension,
-  isLatitude,
-  isLongitude,
-  isMetric,
-  isNumeric,
-  isState,
-} from "metabase-lib/v1/types/utils/isa";
 
 import {
   ChoroplethMap,

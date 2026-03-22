@@ -3,6 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { displayNameForColumn } from "metabase/lib/formatting";
+import { isDimension } from "metabase/lib/types/isa";
 import { ChartSettingIconRadio } from "metabase/visualizations/components/settings/ChartSettingIconRadio";
 import { ChartSettingsTableFormatting } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
 import {
@@ -22,7 +23,6 @@ import {
   getDimensionReferenceWithoutBaseType,
   isDimensionReferenceWithOptions,
 } from "metabase-lib/v1/references";
-import { isDimension } from "metabase-lib/v1/types/utils/isa";
 import type {
   Card,
   DatasetColumn,

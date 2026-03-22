@@ -4,6 +4,7 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { isNumber } from "metabase/lib/types/isa";
 import { Box, Text } from "metabase/ui";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import { useCanHandleActiveItem } from "metabase/visualizer/hooks/use-can-handle-active-item";
@@ -12,7 +13,6 @@ import {
   getVisualizerDatasetColumns,
 } from "metabase/visualizer/selectors";
 import { removeColumn } from "metabase/visualizer/visualizer.slice";
-import { isNumber } from "metabase-lib/v1/types/utils/isa";
 
 import { WellItem } from "../WellItem";
 import S from "../well.module.css";

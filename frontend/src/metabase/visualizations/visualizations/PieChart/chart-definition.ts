@@ -2,6 +2,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { formatValue } from "metabase/lib/formatting";
+import { isDimension, isMetric } from "metabase/lib/types/isa";
 import {
   ChartSettingsError,
   MinRowsError,
@@ -30,7 +31,6 @@ import {
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
 import type { VisualizationDefinition } from "metabase/visualizations/types";
-import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type { SingleSeries } from "metabase-types/api";
 
 import { DimensionsWidget } from "./DimensionsWidget";

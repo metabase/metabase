@@ -10,13 +10,15 @@ import {
 } from "metabase/api";
 import { Questions } from "metabase/entities/questions";
 import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
+import {
+  SAVED_QUESTIONS_VIRTUAL_DB_ID,
+  getQuestionVirtualTableId,
+} from "metabase/lib/saved-questions";
 import { SchemaSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
-  SAVED_QUESTIONS_VIRTUAL_DB_ID,
   getCollectionVirtualSchemaId,
   getCollectionVirtualSchemaName,
-  getQuestionVirtualTableId,
 } from "metabase-lib/v1/metadata/utils/saved-questions";
 import {
   generateSchemaId,

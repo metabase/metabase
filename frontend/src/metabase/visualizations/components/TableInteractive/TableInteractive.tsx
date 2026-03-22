@@ -46,6 +46,7 @@ import { useTranslateContent } from "metabase/i18n/hooks";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
 import { useDispatch } from "metabase/lib/redux";
+import { isFK, isID, isPK } from "metabase/lib/types/isa";
 import { setUIControls } from "metabase/query_builder/actions";
 import { Flex, type MantineTheme } from "metabase/ui";
 import {
@@ -60,7 +61,6 @@ import type {
 } from "metabase/visualizations/types";
 import type { ClickObject, OrderByDirection } from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import { isFK, isID, isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
   ColumnSettings,
   DatasetColumn,

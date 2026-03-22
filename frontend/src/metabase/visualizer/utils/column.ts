@@ -1,7 +1,7 @@
 import _ from "underscore";
 
+import { isDate, isDimension, isMetric } from "metabase/lib/types/isa";
 import { isPivotGroupColumn } from "metabase/visualizations/lib/data_grid";
-import { isDate, isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
   VisualizerColumnReference,

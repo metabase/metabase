@@ -1,4 +1,4 @@
-import { isCurrency, isPercentage } from "metabase-lib/v1/types/utils/isa";
+import { isCurrency, isPercentage } from "metabase/lib/types/isa";
 import type { ColumnSettings, DatasetColumn } from "metabase-types/api";
 
 export function getDefaultNumberStyle(

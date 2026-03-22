@@ -1,10 +1,10 @@
 import { createMockEntitiesState } from "__support__/store";
+import { getQuestionVirtualTableId } from "metabase/lib/saved-questions";
 import { checkNotNull } from "metabase/lib/types";
 import * as questionActions from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import registerVisualizations from "metabase/visualizations/register";
 import Question from "metabase-lib/v1/Question";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type {
   Card,
   ConcreteFieldReference,

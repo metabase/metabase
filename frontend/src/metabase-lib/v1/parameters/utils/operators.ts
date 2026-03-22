@@ -1,3 +1,4 @@
+import { NUMBER, PRIMARY_KEY, STRING } from "metabase/lib/types/constants";
 import {
   doesOperatorExist,
   getOperatorByTypeAndName,
@@ -7,7 +8,6 @@ import {
   getParameterSubType,
   getParameterType,
 } from "metabase-lib/v1/parameters/utils/parameter-type";
-import { NUMBER, PRIMARY_KEY, STRING } from "metabase-lib/v1/types/constants";
 import type { Parameter, ParameterMappingOptions } from "metabase-types/api";
 
 import { getIsMultiSelect } from "./parameter-values";

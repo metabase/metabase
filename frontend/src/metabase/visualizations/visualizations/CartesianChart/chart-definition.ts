@@ -1,5 +1,6 @@
 import _ from "underscore";
 
+import { isDimension, isMetric } from "metabase/lib/types/isa";
 import { GRAPH_GOAL_SETTINGS } from "metabase/visualizations/lib/settings/goal";
 import {
   GRAPH_AXIS_SETTINGS,
@@ -24,7 +25,6 @@ import type {
   Visualization,
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
-import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type {
   Series,
   TransformedSeries,

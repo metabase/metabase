@@ -1,4 +1,4 @@
-import { isPK } from "metabase-lib/v1/types/utils/isa";
+import { isPK } from "metabase/lib/types/isa";
 import type { DatasetColumn, RowValue, RowValues } from "metabase-types/api";
 
 import type { RowCellsWithPkValue } from "../api/types";

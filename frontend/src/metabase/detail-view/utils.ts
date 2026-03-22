@@ -1,5 +1,12 @@
 import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { type OptionsType, formatValue } from "metabase/lib/formatting";
+import {
+  isAvatarURL,
+  isEntityName,
+  isImageURL,
+  isPK,
+  isTitle,
+} from "metabase/lib/types/isa";
 import { getComputedSettings } from "metabase/visualizations/lib/settings";
 import {
   getGlobalSettingsForColumn,
@@ -9,13 +16,6 @@ import {
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import {
-  isAvatarURL,
-  isEntityName,
-  isImageURL,
-  isPK,
-  isTitle,
-} from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
   Field,

@@ -3,6 +3,13 @@ import _ from "underscore";
 
 import { isNotNull } from "metabase/lib/types";
 import {
+  isAny,
+  isDate,
+  isDimension,
+  isMetric,
+  isNumeric,
+} from "metabase/lib/types/isa";
+import {
   getMaxDimensionsSupported,
   getMaxMetricsSupported,
 } from "metabase/visualizations";
@@ -19,13 +26,6 @@ import {
 } from "metabase/visualizations/lib/utils";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
-import {
-  isAny,
-  isDate,
-  isDimension,
-  isMetric,
-  isNumeric,
-} from "metabase-lib/v1/types/utils/isa";
 import type {
   Card,
   DatasetColumn,

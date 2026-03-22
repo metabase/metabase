@@ -6,7 +6,7 @@ import {
   isNumeric,
   isPK,
   isString,
-} from "metabase-lib/v1/types/utils/isa";
+} from "metabase/lib/types/isa";
 import type {
   ColumnFormattingOperator,
   DatasetColumn,

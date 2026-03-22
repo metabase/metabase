@@ -656,9 +656,11 @@ const configs = [
             {
               group: [
                 "metabase/lib/*",
+                "!metabase/lib/click-behavior-utils",
                 "!metabase/lib/encoding",
                 "!metabase/lib/formatting",
                 "!metabase/lib/number",
+                "!metabase/lib/saved-questions",
                 "!metabase/lib/time",
                 "!metabase/lib/time-dayjs",
                 "!metabase/lib/types",

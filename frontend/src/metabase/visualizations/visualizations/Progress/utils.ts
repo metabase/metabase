@@ -2,7 +2,7 @@ import Color from "color";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { isNumeric } from "metabase-lib/v1/types/utils/isa";
+import { isNumeric } from "metabase/lib/types/isa";
 import type { DatasetColumn, RowValues } from "metabase-types/api";
 
 export const getValue = (rows: RowValues[]) => {

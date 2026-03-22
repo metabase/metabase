@@ -4,6 +4,7 @@ import { useMemo } from "react";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
+import { isDate, isString } from "metabase/lib/types/isa";
 import { Flex, type FlexProps, Text } from "metabase/ui";
 import { getDefaultDimensionFilter } from "metabase/visualizations/shared/settings/cartesian-chart";
 import { DRAGGABLE_ID, DROPPABLE_ID } from "metabase/visualizer/constants";
@@ -16,7 +17,6 @@ import {
   getVisualizerRawSettings,
 } from "metabase/visualizer/selectors";
 import { removeColumn } from "metabase/visualizer/visualizer.slice";
-import { isDate, isString } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetColumn } from "metabase-types/api";
 
 import { WellItem } from "../WellItem";

@@ -2,11 +2,11 @@ import { memo, useMemo } from "react";
 import { t } from "ttag";
 
 import { useUpdateFieldMutation } from "metabase/api";
+import { isCurrency } from "metabase/lib/types/isa";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { ColumnSettings } from "metabase/visualizations/components/ColumnSettings";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
-import { isCurrency } from "metabase-lib/v1/types/utils/isa";
 import type { MetadataEditEventDetail } from "metabase-types/analytics";
 import type {
   Field,

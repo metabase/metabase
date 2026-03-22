@@ -2,10 +2,10 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
+import { isEntityName, isFK } from "metabase/lib/types/isa";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import * as Lib from "metabase-lib";
 import { getRemappings } from "metabase-lib/v1/queries/utils/field";
-import { isEntityName, isFK } from "metabase-lib/v1/types/utils/isa";
 import type { Field, FieldId, FieldValue, Table } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 

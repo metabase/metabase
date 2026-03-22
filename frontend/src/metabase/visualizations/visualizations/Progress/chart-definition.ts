@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { isNumeric } from "metabase/lib/types/isa";
 import { color } from "metabase/ui/colors";
 import { ChartSettingGoalInput } from "metabase/visualizations/components/settings/ChartSettingGoalInput";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
@@ -9,7 +10,6 @@ import {
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
 import type { VisualizationDefinition } from "metabase/visualizations/types";
-import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 
 import { findProgressColumn } from "./utils";
 

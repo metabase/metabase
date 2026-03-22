@@ -1,5 +1,6 @@
 import _ from "underscore";
 
+import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/saved-questions";
 import type {
   CardId,
   DatabaseId,
@@ -25,7 +26,6 @@ import type Schema from "./Schema";
 import type Segment from "./Segment";
 import type Table from "./Table";
 import { getUniqueFieldId } from "./utils/fields";
-import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "./utils/saved-questions";
 
 interface MetadataOpts {
   databases?: Record<string, Database>;

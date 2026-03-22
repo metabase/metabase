@@ -2,6 +2,7 @@ import type { XAXisOption, YAXisOption } from "echarts/types/dist/shared";
 import type { AxisBaseOptionCommon } from "echarts/types/src/coord/axisCommonTypes";
 
 import { parseNumberValue } from "metabase/lib/number";
+import { isNumericBaseType } from "metabase/lib/types/isa";
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 import type {
   AxisFormatter,
@@ -16,7 +17,6 @@ import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
-import { isNumericBaseType } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetColumn } from "metabase-types/api";
 
 import type { ChartLayout } from "../layout/types";

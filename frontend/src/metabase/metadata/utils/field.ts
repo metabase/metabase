@@ -1,8 +1,8 @@
 import { is_coerceable } from "cljs/metabase.types.core";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
+import { TYPE } from "metabase/lib/types/constants";
+import { isTypeFK, isa } from "metabase/lib/types/isa";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
-import { TYPE } from "metabase-lib/v1/types/constants";
-import { isTypeFK, isa } from "metabase-lib/v1/types/utils/isa";
 import type {
   Database,
   Field,

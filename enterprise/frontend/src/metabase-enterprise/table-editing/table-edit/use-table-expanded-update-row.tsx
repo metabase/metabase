@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 
-import { isPK } from "metabase-lib/v1/types/utils/isa";
+import { isPK } from "metabase/lib/types/isa";
 import type { DatasetColumn, DatasetData, RowValues } from "metabase-types/api";
 
 import {

@@ -14,6 +14,8 @@ import { getParameterMappings } from "metabase/dashboard/actions/auto-wire-param
 import { updateDashboard } from "metabase/dashboard/actions/save";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { createAction, createThunkAction } from "metabase/lib/redux";
+import { TYPE } from "metabase/lib/types/constants";
+import { isNumericBaseType, isa } from "metabase/lib/types/isa";
 import {
   type NewParameterOpts,
   createParameter,
@@ -30,8 +32,6 @@ import {
   PULSE_PARAM_EMPTY,
   isParameterValueEmpty,
 } from "metabase-lib/v1/parameters/utils/parameter-values";
-import { TYPE } from "metabase-lib/v1/types/constants";
-import { isNumericBaseType, isa } from "metabase-lib/v1/types/utils/isa";
 import type {
   ActionDashboardCard,
   CardId,

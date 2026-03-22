@@ -13,15 +13,15 @@ import { Schemas } from "metabase/entities/schemas";
 import { Search } from "metabase/entities/search";
 import { Tables } from "metabase/entities/tables";
 import { connect } from "metabase/lib/redux";
-import { getMetadata } from "metabase/selectors/metadata";
-import { getSetting } from "metabase/selectors/settings";
-import { canUserCreateQueries } from "metabase/selectors/user";
-import { Box, Popover } from "metabase/ui";
 import {
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
   getQuestionIdFromVirtualTableId,
   isVirtualCardId,
-} from "metabase-lib/v1/metadata/utils/saved-questions";
+} from "metabase/lib/saved-questions";
+import { getMetadata } from "metabase/selectors/metadata";
+import { getSetting } from "metabase/selectors/settings";
+import { canUserCreateQueries } from "metabase/selectors/user";
+import { Box, Popover } from "metabase/ui";
 
 import DataBucketPicker from "../DataSelectorDataBucketPicker";
 import DatabasePicker from "../DataSelectorDatabasePicker";

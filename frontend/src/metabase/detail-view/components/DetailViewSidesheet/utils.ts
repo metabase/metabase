@@ -5,8 +5,8 @@ import {
   isImplicitUpdateAction,
 } from "metabase/actions/utils";
 import { hasActionsEnabled } from "metabase/admin/databases/utils";
+import { getQuestionIdFromVirtualTableId } from "metabase/lib/saved-questions";
 import { extractRemappedColumns } from "metabase/visualizations";
-import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import { findColumnIndexesForColumnSettings } from "metabase-lib/v1/queries/utils/dataset";
 import type {
   Database,

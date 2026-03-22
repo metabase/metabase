@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { isDate, isDimension, isMetric } from "metabase/lib/types/isa";
 import { getSankeyChartColumns } from "metabase/visualizations/echarts/graph/sankey/model/dataset";
 import { ChartSettingsError } from "metabase/visualizations/lib/errors";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
@@ -17,7 +18,6 @@ import type {
   VisualizationDefinition,
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
-import { isDate, isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetData, RawSeries } from "metabase-types/api";
 
 import { hasCyclicFlow } from "./utils/cycle-detection";

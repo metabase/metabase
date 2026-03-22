@@ -1,11 +1,11 @@
 import _ from "underscore";
 
+import { isDimension, isMetric } from "metabase/lib/types/isa";
 import {
   columnsAreValid,
   getDefaultDimensionAndMetric,
 } from "metabase/visualizations/lib/utils";
 import type { SeriesSettingDefinition } from "metabase/visualizations/types";
-import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
   Series,

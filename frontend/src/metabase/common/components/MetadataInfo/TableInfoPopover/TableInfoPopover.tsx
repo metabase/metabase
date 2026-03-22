@@ -1,4 +1,4 @@
-import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
+import { isVirtualCardId } from "metabase/lib/saved-questions";
 
 import type { PopoverProps } from "../Popover";
 import { Popover } from "../Popover";

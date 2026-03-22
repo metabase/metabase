@@ -1,6 +1,6 @@
 import { DateTime } from "metabase/common/components/DateTime";
+import { isDate } from "metabase/lib/types/isa";
 import { Tooltip } from "metabase/ui";
-import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type { Field } from "metabase-types/api";
 
 type CheckpointValueProps = {

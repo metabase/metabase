@@ -1,13 +1,8 @@
 import _ from "underscore";
 
+import { isBoolean, isInteger, isPK, isString } from "metabase/lib/types/isa";
 import type Question from "metabase-lib/v1/Question";
 import type FieldEntity from "metabase-lib/v1/metadata/Field";
-import {
-  isBoolean,
-  isInteger,
-  isPK,
-  isString,
-} from "metabase-lib/v1/types/utils/isa";
 import type { Field } from "metabase-types/api";
 import type { ModelIndex } from "metabase-types/api/modelIndexes";
 

@@ -3,6 +3,7 @@ import _ from "underscore";
 
 import { formatNullable } from "metabase/lib/formatting/nullable";
 import { isNotNull } from "metabase/lib/types";
+import { isMetric } from "metabase/lib/types/isa";
 import { sumMetric } from "metabase/visualizations/lib/dataset";
 import type {
   CartesianChartColumns,
@@ -29,7 +30,6 @@ import type {
   ClickObject,
   ClickObjectDimension,
 } from "metabase-lib/v1/queries/drills/types";
-import { isMetric } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
   RowValues,

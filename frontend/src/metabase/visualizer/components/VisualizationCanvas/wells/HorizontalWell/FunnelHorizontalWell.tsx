@@ -18,6 +18,7 @@ import cx from "classnames";
 
 import { Sortable } from "metabase/common/components/Sortable";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { isDimension, isMetric } from "metabase/lib/types/isa";
 import { Box, Flex, type FlexProps, Text } from "metabase/ui";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import { useCanHandleActiveItem } from "metabase/visualizer/hooks/use-can-handle-active-item";
@@ -30,7 +31,6 @@ import {
   removeColumn,
   updateSettings,
 } from "metabase/visualizer/visualizer.slice";
-import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 
 import { WellItem, type WellItemProps } from "../WellItem";
 import S from "../well.module.css";

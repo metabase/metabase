@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
+import { TYPE } from "metabase/lib/types/constants";
 import type { TransformSeries } from "metabase/visualizations/components/TransformedVisualization";
-import { TYPE } from "metabase-lib/v1/types/constants";
 import type { RawSeries } from "metabase-types/api";
 
 export const scalarToBarTransform: TransformSeries = (rawSeries) => {

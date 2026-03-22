@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { isDimension, isMetric } from "metabase/lib/types/isa";
 import { GRAPH_GOAL_SETTINGS } from "metabase/visualizations/lib/settings/goal";
 import {
   BOXPLOT_DATA_SETTINGS,
@@ -16,7 +17,6 @@ import type {
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
 import { transformSeries } from "metabase/visualizations/visualizations/CartesianChart/chart-definition-legacy";
-import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetData, RawSeries } from "metabase-types/api";
 
 export const BOXPLOT_CHART_DEFINITION = {

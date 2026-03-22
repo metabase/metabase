@@ -1,18 +1,8 @@
-/* eslint-disable no-restricted-imports -- re-export stub during migration */
 import {
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
   getQuestionVirtualTableId,
 } from "metabase/lib/saved-questions";
 import { generateSchemaId } from "metabase-lib/v1/metadata/utils/schema";
-
-// Re-export from canonical location in metabase/lib
-// TODO: update all consumers to import from "metabase/lib/saved-questions" directly
-export {
-  SAVED_QUESTIONS_VIRTUAL_DB_ID,
-  isVirtualCardId,
-  getQuestionVirtualTableId,
-  getQuestionIdFromVirtualTableId,
-} from "metabase/lib/saved-questions";
 
 const ROOT_COLLECTION_VIRTUAL_SCHEMA_NAME = "Everything else";
 

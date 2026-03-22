@@ -1,15 +1,15 @@
 import {
+  COORDINATE,
+  FOREIGN_KEY,
+  NUMBER,
+  PRIMARY_KEY,
+} from "metabase/lib/types/constants";
+import {
   doesOperatorExist,
   getOperatorByTypeAndName,
   isEqualsOperator,
   isFuzzyOperator,
 } from "metabase-lib/v1/operators/utils/index";
-import {
-  COORDINATE,
-  FOREIGN_KEY,
-  NUMBER,
-  PRIMARY_KEY,
-} from "metabase-lib/v1/types/constants";
 
 describe("metabase-lib/v1/operators/utils", () => {
   describe("doesOperatorExist", () => {

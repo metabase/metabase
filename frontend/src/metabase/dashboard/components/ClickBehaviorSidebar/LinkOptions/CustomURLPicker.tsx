@@ -5,6 +5,7 @@ import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import { isTableDisplay } from "metabase/dashboard/click-behavior";
+import { clickBehaviorIsValid } from "metabase/lib/click-behavior-utils";
 import {
   Button,
   Flex,
@@ -14,7 +15,6 @@ import {
   TextInputBlurChange,
 } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import { clickBehaviorIsValid } from "metabase-lib/v1/parameters/utils/click-behavior";
 import type {
   ArbitraryCustomDestinationClickBehavior,
   ClickBehavior,

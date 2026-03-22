@@ -1,9 +1,9 @@
-import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
 import {
   getQuestionIdFromVirtualTableId,
   isVirtualCardId,
-} from "metabase-lib/v1/metadata/utils/saved-questions";
+} from "metabase/lib/saved-questions";
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
 
 import { DataSourceCrumbs } from "./DataSourceCrumbs";
 import { SourceModelBreadcrumbs } from "./SourceModelBreadcrumbs";

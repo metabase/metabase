@@ -3,16 +3,16 @@ import querystring from "querystring";
 import { getIn } from "icepick";
 import _ from "underscore";
 
+import { getDataFromClicked } from "metabase/lib/click-behavior-utils";
 import { renderLinkURLForClick } from "metabase/lib/formatting/link";
+import { isDate } from "metabase/lib/types/isa";
 import * as Urls from "metabase/lib/urls";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import {
   formatSourceForTarget,
-  getDataFromClicked,
   getTargetForQueryParams,
 } from "metabase-lib/v1/parameters/utils/click-behavior";
-import { isDate } from "metabase-lib/v1/types/utils/isa";
 import * as ML_Urls from "metabase-lib/v1/urls";
 
 export function getDashboardDrillType(clicked) {

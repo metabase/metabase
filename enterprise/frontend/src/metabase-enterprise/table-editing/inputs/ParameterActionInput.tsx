@@ -1,4 +1,4 @@
-import { isFK } from "metabase-lib/v1/types/utils/isa";
+import { isFK } from "metabase/lib/types/isa";
 
 import type { TableActionFormParameter } from "../api/types";
 import { TableActionFormInputType } from "../api/types";

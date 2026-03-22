@@ -2,9 +2,9 @@
 
 import { schema } from "normalizr";
 
+import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/saved-questions";
 import { entityTypeForObject } from "metabase/lib/schema";
 import { getUniqueFieldId } from "metabase-lib/v1/metadata/utils/fields";
-import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
 import { generateSchemaId } from "metabase-lib/v1/metadata/utils/schema";
 
 export const ActionSchema = new schema.Entity("actions");

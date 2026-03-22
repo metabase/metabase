@@ -14,11 +14,11 @@ import {
   EmptyDescription,
 } from "metabase/common/components/MetadataInfo/MetadataInfo";
 import { useSelector } from "metabase/lib/redux";
+import { getQuestionVirtualTableId } from "metabase/lib/saved-questions";
 import { SidebarContent } from "metabase/query_builder/components/SidebarContent";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, type IconName } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import * as ML_Urls from "metabase-lib/v1/urls";
 import type { CardId } from "metabase-types/api";
 

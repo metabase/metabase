@@ -15,12 +15,12 @@ import { SelectButton } from "metabase/common/components/SelectButton";
 import { Questions } from "metabase/entities/questions";
 import { Tables } from "metabase/entities/tables";
 import { connect, useSelector } from "metabase/lib/redux";
+import { getQuestionVirtualTableId } from "metabase/lib/saved-questions";
 import { getLearnUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { Box, Flex, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { hasFields } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import {

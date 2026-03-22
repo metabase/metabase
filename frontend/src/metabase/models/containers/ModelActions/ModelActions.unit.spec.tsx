@@ -22,7 +22,7 @@ import ActionCreator from "metabase/actions/containers/ActionCreatorModal";
 import { Questions as Models } from "metabase/entities/questions";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { checkNotNull } from "metabase/lib/types";
-import { TYPE } from "metabase-lib/v1/types/constants";
+import { TYPE } from "metabase/lib/types/constants";
 import * as ML_Urls from "metabase-lib/v1/urls";
 import type {
   Card,

@@ -15,6 +15,7 @@ import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { formatValue } from "metabase/lib/formatting";
 import { connect, useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
+import { isMetric, isString } from "metabase/lib/types/isa";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Flex, Text } from "metabase/ui";
 import { MinColumnsError } from "metabase/visualizations/lib/errors";
@@ -26,7 +27,6 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-import { isMetric, isString } from "metabase-lib/v1/types/utils/isa";
 
 import { ChartWithLegend } from "./ChartWithLegend";
 import { LeafletChoropleth } from "./LeafletChoropleth";

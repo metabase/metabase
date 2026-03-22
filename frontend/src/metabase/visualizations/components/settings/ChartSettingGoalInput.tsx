@@ -1,8 +1,8 @@
 import { useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
+import { isNumeric } from "metabase/lib/types/isa";
 import { ActionIcon, Icon, Menu, NumberInput, TextInput } from "metabase/ui";
-import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetColumn } from "metabase-types/api";
 
 export type ChartSettingGoalInputProps = {

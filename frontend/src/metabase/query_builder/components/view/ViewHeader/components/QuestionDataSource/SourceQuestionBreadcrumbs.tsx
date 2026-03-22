@@ -2,10 +2,10 @@ import { type ReactElement, useMemo } from "react";
 
 import { skipToken, useGetCardQuery } from "metabase/api";
 import { useSelector } from "metabase/lib/redux";
+import { getQuestionIdFromVirtualTableId } from "metabase/lib/saved-questions";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 
 import { SourceModelBreadcrumbs } from "./SourceModelBreadcrumbs";
 

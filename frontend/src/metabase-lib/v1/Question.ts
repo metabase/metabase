@@ -9,12 +9,12 @@ import {
   type SerializeCardOptions,
   serializeCardForUrl,
 } from "metabase/lib/card";
+import { getQuestionVirtualTableId } from "metabase/lib/saved-questions";
 import { equals } from "metabase/lib/utils";
 import { applyParameter } from "metabase/querying/parameters/utils/query";
 import * as Lib from "metabase-lib";
 import type Database from "metabase-lib/v1/metadata/Database";
 import Metadata from "metabase-lib/v1/metadata/Metadata";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import { getTemplateTagParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
 import { InternalQuery } from "metabase-lib/v1/queries/InternalQuery";

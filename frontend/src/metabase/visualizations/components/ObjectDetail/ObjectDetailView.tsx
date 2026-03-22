@@ -9,12 +9,12 @@ import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
 import { useDatabaseListQuery } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
+import { isVirtualCardId } from "metabase/lib/saved-questions";
+import { isPK } from "metabase/lib/types/isa";
 import { runQuestionQuery } from "metabase/query_builder/actions";
 import { ActionsApi, MetabaseApi } from "metabase/services";
 import { Modal } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
   ConcreteTableId,
   DatasetColumn,

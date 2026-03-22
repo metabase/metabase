@@ -1,6 +1,7 @@
 import { type FocusEvent, useMemo } from "react";
 import { t } from "ttag";
 
+import { isFK } from "metabase/lib/types/isa";
 import {
   areFieldsComparable,
   getFieldDisplayName,
@@ -14,7 +15,6 @@ import {
   type SelectProps,
   Text,
 } from "metabase/ui";
-import { isFK } from "metabase-lib/v1/types/utils/isa";
 import type { Field as ApiField, Field, FieldId } from "metabase-types/api";
 
 import S from "./FkTargetPicker.module.css";

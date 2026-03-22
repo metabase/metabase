@@ -1,5 +1,6 @@
 import _ from "underscore";
 
+import { TYPE } from "metabase/lib/types/constants";
 import {
   COLLAPSED_ROWS_SETTING,
   COLUMN_SHOW_TOTALS,
@@ -8,7 +9,6 @@ import {
   multiLevelPivot,
   pivot,
 } from "metabase/visualizations/lib/data_grid";
-import { TYPE } from "metabase-lib/v1/types/constants";
 
 const dimension = (i) => ({
   name: "D" + i,

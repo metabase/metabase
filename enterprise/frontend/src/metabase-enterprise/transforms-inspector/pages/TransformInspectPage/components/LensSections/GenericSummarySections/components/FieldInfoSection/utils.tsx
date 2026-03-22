@@ -3,6 +3,12 @@ import { c, t } from "ttag";
 
 import { getFormattedTime } from "metabase/common/components/DateTime";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
+import {
+  isDate,
+  isDateWithoutTime,
+  isNumeric,
+  isString,
+} from "metabase/lib/types/isa";
 import { formatNumber, formatPercent } from "metabase/static-viz/lib/numbers";
 import {
   EntityNameCell,
@@ -10,12 +16,6 @@ import {
   Text,
   type TreeTableColumnDef,
 } from "metabase/ui";
-import {
-  isDate,
-  isDateWithoutTime,
-  isNumeric,
-  isString,
-} from "metabase-lib/v1/types/utils/isa";
 import type { InspectorField } from "metabase-types/api";
 
 import type { FieldTreeNode, TableWithFields } from "./types";

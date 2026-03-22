@@ -3,6 +3,7 @@ import { t } from "ttag";
 import { getObjectKeys } from "metabase/lib/objects";
 import { parseTimestamp } from "metabase/lib/time-dayjs";
 import { checkNumber, isNotNull } from "metabase/lib/types";
+import { isMetric } from "metabase/lib/types/isa";
 import { isEmpty } from "metabase/lib/validate";
 import {
   ECHARTS_CATEGORY_AXIS_NULL_VALUE,
@@ -38,7 +39,6 @@ import type {
   ComputedVisualizationSettings,
   Extent,
 } from "metabase/visualizations/types";
-import { isMetric } from "metabase-lib/v1/types/utils/isa";
 import {
   type DatasetColumn,
   type RawSeries,

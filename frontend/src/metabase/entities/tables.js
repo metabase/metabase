@@ -32,6 +32,7 @@ import {
   withCachedDataAndRequestState,
   withNormalize,
 } from "metabase/lib/redux";
+import { getQuestionVirtualTableId } from "metabase/lib/saved-questions";
 import { TableSchema } from "metabase/schema";
 import {
   getMetadata,
@@ -42,7 +43,6 @@ import {
   convertSavedQuestionToVirtualTable,
   getCollectionVirtualSchemaId,
   getCollectionVirtualSchemaName,
-  getQuestionVirtualTableId,
 } from "metabase-lib/v1/metadata/utils/saved-questions";
 
 // OBJECT ACTIONS

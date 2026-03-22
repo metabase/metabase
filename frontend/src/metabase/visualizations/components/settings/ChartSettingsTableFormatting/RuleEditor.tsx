@@ -6,6 +6,7 @@ import _ from "underscore";
 import { ColorRangeSelector } from "metabase/common/components/ColorRangeSelector";
 import { ColorSelector } from "metabase/common/components/ColorSelector";
 import CS from "metabase/css/core/index.css";
+import { isBoolean } from "metabase/lib/types/isa";
 import {
   Box,
   Button,
@@ -16,7 +17,6 @@ import {
   TextInputBlurChange,
 } from "metabase/ui";
 import type { TextInputBlurChangeProps } from "metabase/ui/components/inputs/TextInputBlurChange/TextInputBlurChange";
-import { isBoolean } from "metabase-lib/v1/types/utils/isa";
 import type {
   ColumnFormattingOperator,
   ColumnFormattingSetting,

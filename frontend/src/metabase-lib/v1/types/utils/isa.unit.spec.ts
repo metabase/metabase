@@ -8,7 +8,7 @@ import {
   STRING_LIKE,
   TEMPORAL,
   TYPE,
-} from "metabase-lib/v1/types/constants";
+} from "metabase/lib/types/constants";
 import {
   getFieldType,
   isDimension,
@@ -16,7 +16,7 @@ import {
   isMetric,
   isNumber,
   isString,
-} from "metabase-lib/v1/types/utils/isa";
+} from "metabase/lib/types/isa";
 import { createMockColumn } from "metabase-types/api/mocks";
 
 describe("isa", () => {

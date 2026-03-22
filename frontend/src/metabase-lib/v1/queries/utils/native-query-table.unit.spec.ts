@@ -1,7 +1,7 @@
 import { createMockMetadata } from "__support__/metadata";
+import { getQuestionVirtualTableId } from "metabase/lib/saved-questions";
 import type Question from "metabase-lib/v1/Question";
 import type Table from "metabase-lib/v1/metadata/Table";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import {
   createMockField,

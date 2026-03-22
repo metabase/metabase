@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { t } from "ttag";
 
 import DashboardS from "metabase/css/dashboard.module.css";
+import { isDimension, isMetric } from "metabase/lib/types/isa";
 import { Box } from "metabase/ui";
 import {
   ScalarValue,
@@ -21,7 +22,6 @@ import type {
   VisualizationProps,
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
-import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetData, Series } from "metabase-types/api";
 
 import { ScalarValueContainer } from "../Scalar/ScalarValueContainer";

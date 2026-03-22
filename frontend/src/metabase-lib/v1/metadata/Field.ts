@@ -4,10 +4,6 @@ import _ from "underscore";
 
 import { formatField, stripId } from "metabase/lib/formatting";
 import {
-  getFieldValues,
-  getRemappings,
-} from "metabase-lib/v1/queries/utils/field";
-import {
   isAddress,
   isBoolean,
   isCoordinate,
@@ -24,7 +20,11 @@ import {
   isStringLike,
   isSummable,
   isTime,
-} from "metabase-lib/v1/types/utils/isa";
+} from "metabase/lib/types/isa";
+import {
+  getFieldValues,
+  getRemappings,
+} from "metabase-lib/v1/queries/utils/field";
 import type {
   FieldFingerprint,
   FieldFormattingSettings,

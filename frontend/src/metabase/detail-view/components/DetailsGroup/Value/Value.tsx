@@ -4,9 +4,9 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import { CodeEditor } from "metabase/common/components/CodeEditor";
+import { TYPE } from "metabase/lib/types/constants";
+import { isFK, isa } from "metabase/lib/types/isa";
 import { Box, Image, Stack, Text, rem } from "metabase/ui";
-import { TYPE } from "metabase-lib/v1/types/constants";
-import { isFK, isa } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetColumn, Field, RowValue } from "metabase-types/api";
 
 import S from "./Value.module.css";

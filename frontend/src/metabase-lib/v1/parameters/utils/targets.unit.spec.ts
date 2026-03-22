@@ -1,4 +1,5 @@
 import { createMockMetadata } from "__support__/metadata";
+import { getQuestionVirtualTableId } from "metabase/lib/saved-questions";
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import {
@@ -9,7 +10,6 @@ import {
 import Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Table from "metabase-lib/v1/metadata/Table";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import {
   getParameterColumns,
   getParameterTargetField,

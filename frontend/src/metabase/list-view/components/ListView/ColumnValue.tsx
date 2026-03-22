@@ -6,11 +6,7 @@ import {
   formatValue,
   getCurrencySymbol,
 } from "metabase/lib/formatting";
-import { Badge, Box, Flex, Icon, Image, Stack, Text } from "metabase/ui";
-import { MiniBarCell } from "metabase/visualizations/components/TableInteractive/cells/MiniBarCell";
-import { getColumnExtent } from "metabase/visualizations/lib/utils";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import { TYPE } from "metabase-lib/v1/types/constants";
+import { TYPE } from "metabase/lib/types/constants";
 import {
   isAvatarURL,
   isBoolean,
@@ -30,7 +26,11 @@ import {
   isState,
   isTitle,
   isURL,
-} from "metabase-lib/v1/types/utils/isa";
+} from "metabase/lib/types/isa";
+import { Badge, Box, Flex, Icon, Image, Stack, Text } from "metabase/ui";
+import { MiniBarCell } from "metabase/visualizations/components/TableInteractive/cells/MiniBarCell";
+import { getColumnExtent } from "metabase/visualizations/lib/utils";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type {
   ColumnSettings,
   DatasetColumn,

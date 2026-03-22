@@ -2,17 +2,17 @@ import { type ReactElement, isValidElement } from "react";
 
 import { TableInfoIcon } from "metabase/common/components/MetadataInfo/TableInfoIcon/TableInfoIcon";
 import { getIcon } from "metabase/lib/icon";
+import {
+  getQuestionIdFromVirtualTableId,
+  getQuestionVirtualTableId,
+  isVirtualCardId,
+} from "metabase/lib/saved-questions";
 import { isNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import type { IconName } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Table from "metabase-lib/v1/metadata/Table";
-import {
-  getQuestionIdFromVirtualTableId,
-  getQuestionVirtualTableId,
-  isVirtualCardId,
-} from "metabase-lib/v1/metadata/utils/saved-questions";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import * as ML_Urls from "metabase-lib/v1/urls";
 

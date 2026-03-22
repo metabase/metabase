@@ -8,16 +8,11 @@ import { EmptyState } from "metabase/common/components/EmptyState";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { displayNameForColumn, formatValue } from "metabase/lib/formatting";
+import { TYPE } from "metabase/lib/types/constants";
+import { isAvatarURL, isID, isImageURL, isa } from "metabase/lib/types/isa";
 import { Box } from "metabase/ui";
 import type { ClickObject } from "metabase-lib";
 import { findColumnIndexesForColumnSettings } from "metabase-lib/v1/queries/utils/dataset";
-import { TYPE } from "metabase-lib/v1/types/constants";
-import {
-  isAvatarURL,
-  isID,
-  isImageURL,
-  isa,
-} from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
   RowValue,

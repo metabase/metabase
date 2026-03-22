@@ -3,13 +3,13 @@ import * as d3 from "d3";
 import _ from "underscore";
 
 import { checkNotNull, isNotNull } from "metabase/lib/types";
-import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import {
   isCoordinate,
   isDate,
   isDimension,
   isMetric,
-} from "metabase-lib/v1/types/utils/isa";
+} from "metabase/lib/types/isa";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type {
   Card,
   CardId,

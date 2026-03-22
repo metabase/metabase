@@ -2,8 +2,8 @@ import fetchMock from "fetch-mock";
 import _ from "underscore";
 
 import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
+import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/saved-questions";
 import {
-  SAVED_QUESTIONS_VIRTUAL_DB_ID,
   convertSavedQuestionToVirtualTable,
   getCollectionVirtualSchemaName,
 } from "metabase-lib/v1/metadata/utils/saved-questions";

@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { getCollectionPathAsString } from "metabase/collections/utils";
 import { formatValue } from "metabase/lib/formatting";
-import { isDate } from "metabase-lib/v1/types/utils/isa";
+import { isDate } from "metabase/lib/types/isa";
 import type { Dataset, SortingOptions } from "metabase-types/api";
 
 import type { MetricResult, SortColumn } from "./types";

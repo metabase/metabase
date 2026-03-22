@@ -18,12 +18,12 @@ import { t } from "ttag";
 
 import { Sortable } from "metabase/common/components/Sortable";
 import GrabberS from "metabase/css/components/grabber.module.css";
+import { isDimension } from "metabase/lib/types/isa";
 import { Button, Text } from "metabase/ui";
 import { ChartSettingFieldPicker } from "metabase/visualizations/components/settings/ChartSettingFieldPicker";
 import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
 import { getPieDimensions } from "metabase/visualizations/shared/settings/pie";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import { isDimension } from "metabase-lib/v1/types/utils/isa";
 import type { RawSeries } from "metabase-types/api";
 
 import Styles from "./DimensionsWidget.module.css";

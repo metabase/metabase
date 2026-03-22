@@ -6,6 +6,17 @@ import _ from "underscore";
 import CS from "metabase/css/core/index.css";
 import { displayNameForColumn } from "metabase/lib/formatting";
 import type { OptionsType } from "metabase/lib/formatting/types";
+import {
+  isAvatarURL,
+  isCoordinate,
+  isDimension,
+  isEmail,
+  isImageURL,
+  isMetric,
+  isNumber,
+  isString,
+  isURL,
+} from "metabase/lib/types/isa";
 import { getSubpathSafeUrl } from "metabase/lib/urls";
 import ChartSettingLinkUrlInput from "metabase/visualizations/components/settings/ChartSettingLinkUrlInput";
 import { ChartSettingNumberInput } from "metabase/visualizations/components/settings/ChartSettingNumberInput";
@@ -31,17 +42,6 @@ import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import { isNative } from "metabase-lib/v1/queries/utils/card";
 import { findColumnIndexesForColumnSettings } from "metabase-lib/v1/queries/utils/dataset";
-import {
-  isAvatarURL,
-  isCoordinate,
-  isDimension,
-  isEmail,
-  isImageURL,
-  isMetric,
-  isNumber,
-  isString,
-  isURL,
-} from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
   DatasetData,

@@ -16,6 +16,7 @@ import {
   FormTextarea,
 } from "metabase/forms";
 import { FIELD_VISIBILITY_TYPES } from "metabase/lib/core";
+import { isCurrency, isFK } from "metabase/lib/types/isa";
 import { SidebarContent } from "metabase/query_builder/components/SidebarContent";
 import { Box, Radio, Stack, Tabs } from "metabase/ui";
 import { color } from "metabase/ui/colors";
@@ -25,7 +26,6 @@ import {
 } from "metabase/visualizations/components/ColumnSettings";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
 import * as Lib from "metabase-lib";
-import { isCurrency, isFK } from "metabase-lib/v1/types/utils/isa";
 
 import { EDITOR_TAB_INDEXES } from "../constants";
 

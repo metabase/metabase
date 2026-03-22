@@ -12,13 +12,13 @@ import {
   TEMPORAL,
   TYPE,
   UNKNOWN,
-} from "metabase-lib/v1/types/constants";
+} from "metabase/lib/types/constants";
 import {
   isBoolean,
   isDate,
   isLongitude,
   isNumeric,
-} from "metabase-lib/v1/types/utils/isa";
+} from "metabase/lib/types/isa";
 
 function freeformArgument(field, table) {
   return {

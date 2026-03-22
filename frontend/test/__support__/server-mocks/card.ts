@@ -1,6 +1,6 @@
 import fetchMock from "fetch-mock";
 
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
+import { getQuestionVirtualTableId } from "metabase/lib/saved-questions";
 import type {
   Card,
   CardId,

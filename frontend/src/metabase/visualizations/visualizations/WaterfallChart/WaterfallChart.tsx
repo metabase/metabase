@@ -1,6 +1,7 @@
 import Color from "color";
 import { t } from "ttag";
 
+import { isDimension, isMetric } from "metabase/lib/types/isa";
 import { color, staticVizOverrides } from "metabase/ui/colors";
 import {
   GRAPH_AXIS_SETTINGS,
@@ -17,7 +18,6 @@ import type {
   VisualizationProps,
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
-import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 
 import { CartesianChart } from "../CartesianChart";
 import { getCartesianChartDefinition } from "../CartesianChart/chart-definition";
