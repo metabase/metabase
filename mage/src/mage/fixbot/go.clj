@@ -21,66 +21,6 @@
       (str/replace "{{LINEAR_API_KEY}}" (u/env "LINEAR_API_KEY" (constantly "")))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Global workmux config
-
-(def ^:private workmux-global-config-path
-  (str (System/getProperty "user.home") "/.config/workmux/config.yaml"))
-
-(def ^:private sandbox-config-dir
-  (str (System/getProperty "user.home") "/.claude-sandbox-config/claude"))
-
-(defn- ensure-global-sandbox-config!
-  "Ensure the global workmux config has sandbox.image and agent_config_dir set.
-   Both are global-config-only in workmux, so we set them permanently.
-   Also ensures the sandbox config directory exists with a settings.json."
-  []
-  (let [config-file (java.io.File. ^String workmux-global-config-path)]
-    (.mkdirs (.getParentFile config-file))
-    (let [content (if (.exists config-file) (slurp config-file) "")]
-      (when (or (not (re-find #"(?m)^\s*image:\s*metabase-fixbot" content))
-                (not (re-find #"(?m)^\s*agent_config_dir:" content))
-                (not (re-find #"(?m)^\s*host_commands:" content)))
-        (spit workmux-global-config-path
-              (str content
-                   (when-not (re-find #"(?m)^sandbox:" content)
-                     "\nsandbox:\n")
-                   (when-not (re-find #"(?m)^\s*image:\s*metabase-fixbot" content)
-                     "  image: metabase-fixbot\n")
-                   (when-not (re-find #"(?m)^\s*agent_config_dir:" content)
-                     "  agent_config_dir: ~/.claude-sandbox-config/{agent}\n")
-                   (when-not (re-find #"(?m)^\s*host_commands:" content)
-                     "  host_commands: [workmux, fixbot-capture-pane, fixbot-xdg-open]\n"))))))
-  ;; Symlink host command scripts into ~/.local/bin so they're on PATH for host_commands
-  (let [local-bin (str (System/getProperty "user.home") "/.local/bin")
-        scripts [["fixbot-capture-pane" (str u/project-root-directory "/.claude/fixbot/fixbot-capture-pane")]
-                 ["fixbot-xdg-open" (str u/project-root-directory "/.claude/fixbot/fixbot-xdg-open")]]]
-    (.mkdirs (java.io.File. ^String local-bin))
-    (doseq [[cmd-name source-path] scripts]
-      (let [link-path (str local-bin "/" cmd-name)
-            link-file (java.io.File. ^String link-path)]
-        (when-not (.exists link-file)
-          (shell/sh* {:quiet? true} "ln" "-sf" source-path link-path)))))
-  ;; Ensure sandbox config directory exists with settings.json
-  (let [config-dir (java.io.File. ^String sandbox-config-dir)
-        settings-file (java.io.File. ^String (str sandbox-config-dir "/settings.json"))
-        source-file (java.io.File. ^String (str u/project-root-directory "/.claude/fixbot/sandbox-settings.local.json"))]
-    (.mkdirs config-dir)
-    (when (and (.exists source-file) (not (.exists settings-file)))
-      (spit (.getPath settings-file) (slurp (.getPath source-file)))))
-  ;; Remove installMethod from ~/.claude-sandbox.json so Claude auto-detects.
-  ;; The container installs the native binary to /usr/local/bin, not ~/.local/bin
-  ;; where the native installer would put it, so "native" causes a lookup failure.
-  (let [sandbox-json-path (str (System/getProperty "user.home") "/.claude-sandbox.json")
-        sandbox-json-file (java.io.File. ^String sandbox-json-path)]
-    (when (.exists sandbox-json-file)
-      (let [content (slurp sandbox-json-path)]
-        (when (re-find #"\"installMethod\"" content)
-          (spit sandbox-json-path
-                (str/replace content
-                             #",?\s*\"installMethod\"\s*:\s*\"[^\"]*\""
-                             "")))))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Main orchestrator
 
 (defn run!
@@ -117,9 +57,6 @@
             ;; Use the issue URL from Linear (construct from issue-id)
             issue-url (str "https://linear.app/metabase/issue/" issue-id)
             in-tmux? (not (str/blank? (u/env "TMUX" (constantly nil))))]
-
-        ;; Ensure global workmux config has sandbox image and agent_config_dir
-        (ensure-global-sandbox-config!)
 
         ;; Write Claude Code hooks to main repo so workmux doesn't prompt
         (let [hooks-dir (str u/project-root-directory "/.github/hooks/workmux-status")]

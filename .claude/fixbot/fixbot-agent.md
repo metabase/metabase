@@ -110,10 +110,10 @@ Write to `.fixbot/llm-status.txt` (overwrite the whole file each time) when some
 
 ### nREPL
 
-The backend runs an nREPL server. To connect from the agent container, use the BE container's hostname (from `.fixbot/be-hostname.txt`) and the nREPL port (from `NREPL_PORT` in `mise.local.toml`, default 50605):
+The backend runs an nREPL server. Connect using `localhost` and the nREPL port (from `NREPL_PORT` in `mise.local.toml`, default 50605):
 
 ```bash
-clj-nrepl-eval -H $(cat .fixbot/be-hostname.txt) -p $NREPL_PORT "(+ 1 2)"
+clj-nrepl-eval -H localhost -p $NREPL_PORT "(+ 1 2)"
 ```
 
 Use nREPL for:

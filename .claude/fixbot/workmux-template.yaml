@@ -1,29 +1,5 @@
 agent: claude
 
-sandbox:
-  enabled: true
-  target: all
-  env_passthrough:
-    - ANTHROPIC_API_KEY
-    - CLAUDE_CODE_OAUTH_TOKEN
-    - MB_PREMIUM_EMBEDDING_TOKEN
-    - LINEAR_API_KEY
-  extra_mounts:
-    - host_path: ~/.m2
-      guest_path: /tmp/.m2
-      writable: true
-    - host_path: ~/.gitlibs
-      guest_path: /tmp/.gitlibs
-      writable: true
-    - host_path: ~/.deps.clj
-      guest_path: /tmp/.deps.clj
-      writable: true
-
-files:
-  symlink:
-    - node_modules
-    - bin/bb
-
 post_create:
   - mkdir -p .fixbot
   - echo '{{ISSUE_ID}} | {{ISSUE_URL}}' > .fixbot/issue.txt
@@ -41,13 +17,13 @@ panes:
   - command: <agent>
     focus: true
 
-  - command: hostname > .fixbot/be-hostname.txt; while [ ! -f .fixbot/fe-hostname.txt ]; do sleep 1; done; export MB_FRONTEND_DEV_HOST=$(cat .fixbot/fe-hostname.txt).orb.local; clj -M:dev:dev-start:drivers:drivers-dev:ee:ee-dev 2>&1 | tee .fixbot/be.log
+  - command: mise x -- clj -M:dev:dev-start:drivers:drivers-dev:ee:ee-dev 2>&1 | tee .fixbot/be.log
     split: horizontal
     percentage: 30
 
-  - command: hostname > .fixbot/fe-hostname.txt; export WEBPACK_DEV_HOST=$(hostname).orb.local; bun run build-hot 2>&1 | tee .fixbot/fe.log
+  - command: mise x -- bun run build-hot 2>&1 | tee .fixbot/fe.log
     split: vertical
 
-  - command: ./bin/mage -fixbot-status
+  - command: mise x -- ./bin/mage -fixbot-status
     split: vertical
     size: 5

@@ -3,7 +3,7 @@
    [clojure.string :as str])
   (:import
    (java.io File)
-   (java.net HttpURLConnection InetAddress URL Socket)))
+   (java.net HttpURLConnection URL Socket)))
 
 (set! *warn-on-reflection* true)
 
@@ -67,13 +67,6 @@
 (defn- colorize [color text]
   (str color text reset))
 
-(defn- container-ip
-  "Discover this container's IP address."
-  []
-  (try
-    (.getHostAddress (InetAddress/getLocalHost))
-    (catch Exception _ nil)))
-
 (defn- load-ports
   "Read mise.local.toml and extract ports. Returns a map or nil if file not ready."
   [^String mise-path]
@@ -86,26 +79,11 @@
           db-port       (extract-port db-uri)
           db-host       (extract-db-host db-uri)]
       (when jetty-port
-        (let [be-host-file (File. ".fixbot/be-hostname.txt")
-              fe-host-file (File. ".fixbot/fe-hostname.txt")
-              be-hostname  (when (.exists be-host-file)
-                             (let [h (str/trim (slurp be-host-file))]
-                               (when (seq h) h)))
-              fe-hostname  (when (.exists fe-host-file)
-                             (let [h (str/trim (slurp fe-host-file))]
-                               (when (seq h) h)))]
-          {:jetty-port     jetty-port
-           :frontend-port  frontend-port
-           :db-type        db-type
-           :db-port        db-port
-           :db-host        (or db-host "host.docker.internal")
-           ;; For health checks: use container hostnames (container-to-container)
-           :be-health-host (or be-hostname "localhost")
-           :fe-health-host (or fe-hostname "localhost")
-           ;; For display: use OrbStack domain if available, else container IP, else localhost
-           :display-host   (if be-hostname
-                             (str be-hostname ".orb.local")
-                             (or (container-ip) "localhost"))})))))
+        {:jetty-port    jetty-port
+         :frontend-port frontend-port
+         :db-type       db-type
+         :db-port       db-port
+         :db-host       (or db-host "localhost")}))))
 
 (defn- load-issue-info
   "Read issue.txt and prompt file to get issue ID, URL, and title."
@@ -146,7 +124,7 @@
                           (not= be-status :ready) red
                           (not= fe-status :ready) yellow
                           :else                   green)
-            mb-text     (str "http://" (:display-host ports) ":" (:jetty-port ports))
+            mb-text     (str "http://localhost:" (:jetty-port ports))
             db-name     (when (:db-type ports)
                           (str/upper-case (name (:db-type ports))))
             db-color    (if (= db-status :ready) green red)
@@ -196,10 +174,10 @@
             ports     (or ports (when check? (load-ports mise-path)))
             issue     (or issue (when check? (load-issue-info)))
             be-status (if (and check? ports)
-                        (check-http (str "http://" (:be-health-host ports) ":" (:jetty-port ports) "/api/health") 2000)
+                        (check-http (str "http://localhost:" (:jetty-port ports) "/api/health") 2000)
                         last-be-status)
             fe-status (if (and check? ports)
-                        (check-http (str "http://" (:fe-health-host ports) ":" (:frontend-port ports)) 2000)
+                        (check-http (str "http://localhost:" (:frontend-port ports)) 2000)
                         last-fe-status)
             db-status (if (and check? ports (:db-port ports))
                         (check-tcp (:db-host ports) (:db-port ports) 2000)
