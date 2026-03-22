@@ -5,8 +5,8 @@ import { t } from "ttag";
 import { formatCreatorMessage } from "metabase/account/notifications/components/NotificationCard/utils";
 import type { DashboardSubscriptionListItem } from "metabase/account/notifications/types";
 import { Link } from "metabase/common/components/Link";
+import { canArchiveLegacyAlert, formatChannel } from "metabase/common/pulse";
 import { formatTitle } from "metabase/lib/notifications";
-import { canArchiveLegacyAlert, formatChannel } from "metabase/lib/pulse";
 import * as Urls from "metabase/lib/urls";
 import type { Channel, User } from "metabase-types/api";
 

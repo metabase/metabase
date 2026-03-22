@@ -2,7 +2,7 @@ import {
   getActivePulseParameters,
   getPulseParameters,
   recipientIsValid,
-} from "metabase/lib/pulse";
+} from "metabase/common/pulse";
 import MetabaseSettings from "metabase/lib/settings";
 
 describe("recipientIsValid", () => {

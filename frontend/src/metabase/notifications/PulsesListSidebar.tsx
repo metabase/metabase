@@ -4,6 +4,7 @@ import _ from "underscore";
 
 import { Label } from "metabase/common/components/type/Label";
 import { Subhead } from "metabase/common/components/type/Subhead";
+import { getActivePulseParameters } from "metabase/common/pulse";
 import CS from "metabase/css/core/index.css";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { getParameters } from "metabase/dashboard/selectors";
@@ -12,7 +13,6 @@ import {
   formatDateTimeWithUnit,
   formatTimeWithUnit,
 } from "metabase/lib/formatting";
-import { getActivePulseParameters } from "metabase/lib/pulse";
 import { connect } from "metabase/lib/redux";
 import { formatFrame } from "metabase/lib/time-dayjs";
 import { formatDateValue } from "metabase/parameters/utils/date-formatting";

@@ -1,8 +1,8 @@
 import { getIn } from "icepick";
 import { useMemo } from "react";
 
+import { isTableDisplay } from "metabase/dashboard/click-behavior";
 import { getDashcardData } from "metabase/dashboard/selectors";
-import { isTableDisplay } from "metabase/lib/click-behavior";
 import { useSelector } from "metabase/lib/redux";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {

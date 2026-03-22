@@ -1,13 +1,13 @@
 import { useMemo } from "react";
 import _ from "underscore";
 
+import { getLinkTargets } from "metabase/dashboard/click-behavior";
 import {
   getDashCardById,
   getDashboardComplete,
   getParameterValuesBySlugMap,
   getParameters,
 } from "metabase/dashboard/selectors";
-import { getLinkTargets } from "metabase/lib/click-behavior";
 import { useStore } from "metabase/lib/redux";
 import { getUserAttributes } from "metabase/selectors/user";
 import type { ClickObject } from "metabase/visualizations/types";

@@ -10,6 +10,10 @@ import {
   useUpdateNotificationMutation,
 } from "metabase/api";
 import { ActionButton } from "metabase/common/components/ActionButton";
+import {
+  getHasConfiguredAnyChannel,
+  getHasConfiguredEmailOrSlackChannel,
+} from "metabase/common/pulse";
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { getResponseErrorMessage } from "metabase/lib/errors";
@@ -17,10 +21,6 @@ import {
   alertIsValid,
   getAlertTriggerOptions,
 } from "metabase/lib/notifications";
-import {
-  getHasConfiguredAnyChannel,
-  getHasConfiguredEmailOrSlackChannel,
-} from "metabase/lib/pulse";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getDefaultQuestionAlertRequest } from "metabase/notifications/utils";
 import { updateUrl } from "metabase/query_builder/actions/url";

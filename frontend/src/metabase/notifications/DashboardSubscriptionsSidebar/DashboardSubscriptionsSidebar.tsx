@@ -3,15 +3,15 @@ import _ from "underscore";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type { ScheduleChangeProp } from "metabase/common/components/SchedulePicker";
-import { Sidebar } from "metabase/dashboard/components/Sidebar";
-import { useDashboardContext } from "metabase/dashboard/context";
-import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { Pulses } from "metabase/entities/pulses";
 import {
   NEW_PULSE_TEMPLATE,
   cleanPulse,
   createChannel,
-} from "metabase/lib/pulse";
+} from "metabase/common/pulse";
+import { Sidebar } from "metabase/dashboard/components/Sidebar";
+import { useDashboardContext } from "metabase/dashboard/context";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { Pulses } from "metabase/entities/pulses";
 import { connect } from "metabase/lib/redux";
 import {
   AddEditEmailSidebar,

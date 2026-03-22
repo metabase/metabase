@@ -2,12 +2,12 @@ import { createAction } from "redux-actions";
 import { t } from "ttag";
 
 import { getActionErrorMessage } from "metabase/actions/utils";
-import { Pulses } from "metabase/entities/pulses";
 import {
   NEW_PULSE_TEMPLATE,
   createChannel,
   getDefaultChannel,
-} from "metabase/lib/pulse";
+} from "metabase/common/pulse";
+import { Pulses } from "metabase/entities/pulses";
 import { createThunkAction } from "metabase/lib/redux";
 import { setErrorPage } from "metabase/redux/app";
 import { addUndo } from "metabase/redux/undo";

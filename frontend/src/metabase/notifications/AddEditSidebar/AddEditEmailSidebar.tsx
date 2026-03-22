@@ -10,10 +10,10 @@ import {
 } from "metabase/common/components/SchedulePicker";
 import { SendTestPulse } from "metabase/common/components/SendTestPulse";
 import { Toggle } from "metabase/common/components/Toggle";
+import { dashboardPulseIsValid } from "metabase/common/pulse";
 import CS from "metabase/css/core/index.css";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { dashboardPulseIsValid } from "metabase/lib/pulse";
 import { useSelector } from "metabase/lib/redux";
 import { EmailAttachmentPicker } from "metabase/notifications/EmailAttachmentPicker";
 import { RecipientPicker } from "metabase/notifications/channels/RecipientPicker";

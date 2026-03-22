@@ -3,12 +3,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMount, usePrevious } from "react-use";
 
 import { useDashboardQuery } from "metabase/common/hooks";
+import { isTableDisplay } from "metabase/dashboard/click-behavior";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import {
   type DashboardContextReturned,
   useDashboardContext,
 } from "metabase/dashboard/context";
-import { isTableDisplay } from "metabase/lib/click-behavior";
 import {
   canSaveClickBehavior,
   clickBehaviorIsValid,
