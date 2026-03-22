@@ -1,3 +1,22 @@
 {
-  "hooks": {}
+  "hooks": {
+    "UserPromptSubmit": [
+    ],
+    "PostToolUse": [
+    ],
+    "PreToolUse": [
+    ],
+    "PreCompact": [
+    ],
+    "SessionStart": [
+    ],
+    "SessionEnd": [
+    ],
+    "Stop": [
+    ]
+  },
+  "enabledPlugins": {
+  },
+  "skipDangerousModePermissionPrompt": true
 }
+
