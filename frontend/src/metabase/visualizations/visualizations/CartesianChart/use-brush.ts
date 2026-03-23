@@ -1,0 +1,251 @@
+import type { EChartsType } from "echarts/core";
+import {
+  type MutableRefObject,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+
+const LONG_PRESS_DURATION_MS = 500;
+const TOUCH_MOVE_THRESHOLD_PX = 10;
+
+type Point = { x: number; y: number };
+
+export const isTouchDevice = () =>
+  typeof window !== "undefined" &&
+  ("ontouchstart" in window || navigator.maxTouchPoints > 0);
+
+export const hasMovedBeyondThreshold = (
+  start: Point,
+  current: Point,
+  threshold = TOUCH_MOVE_THRESHOLD_PX,
+) => {
+  const dx = current.x - start.x;
+  const dy = current.y - start.y;
+
+  return dx * dx + dy * dy > threshold * threshold;
+};
+
+export const createZrenderMousedownEvent = (
+  point: Point,
+  containerRect: DOMRect,
+) => ({
+  offsetX: point.x - containerRect.left,
+  offsetY: point.y - containerRect.top,
+  target: null,
+  event: {
+    preventDefault: () => {},
+  },
+});
+
+const addPointerListeners = (
+  el: HTMLElement,
+  listeners: Record<string, (e: PointerEvent) => void>,
+) => {
+  for (const [event, handler] of Object.entries(listeners)) {
+    el.addEventListener(event, handler as EventListener);
+  }
+
+  return () => {
+    for (const [event, handler] of Object.entries(listeners)) {
+      el.removeEventListener(event, handler as EventListener);
+    }
+  };
+};
+
+/**
+ * Manages brush (range selection) for cartesian charts.
+ *
+ * Delegates to `useDesktopBrush` or `useTouchBrush` depending on device.
+ */
+export const useBrush = (
+  chartRef: MutableRefObject<EChartsType | undefined>,
+  containerRef: RefObject<HTMLDivElement>,
+  canBrushChart: boolean,
+  isBrushable: boolean,
+  // ECharts option object — used as a signal dep to re-enable brush after
+  // chart model changes (ECharts resets the cursor state on re-render).
+  option?: unknown,
+) => {
+  const isTouch = useRef(isTouchDevice()).current;
+
+  const enableBrush = useCallback(() => {
+    chartRef.current?.dispatchAction({
+      type: "takeGlobalCursor",
+      key: "brush",
+      brushOption: { brushType: "lineX", brushMode: "single" },
+    });
+  }, [chartRef]);
+
+  const disableBrush = useCallback(() => {
+    chartRef.current?.dispatchAction({ type: "takeGlobalCursor" });
+  }, [chartRef]);
+
+  useDesktopBrush({ isTouch, isBrushable, enableBrush, disableBrush, option });
+  useTouchBrush({
+    chartRef,
+    containerRef,
+    isTouch,
+    canBrushChart,
+    enableBrush,
+    disableBrush,
+  });
+};
+
+/** Desktop: brush is always on while `isBrushable` is true. */
+function useDesktopBrush({
+  isTouch,
+  isBrushable,
+  enableBrush,
+  disableBrush,
+  option,
+}: {
+  isTouch: boolean;
+  isBrushable: boolean;
+  enableBrush: () => void;
+  disableBrush: () => void;
+  option?: unknown;
+}) {
+  useEffect(() => {
+    if (isTouch) {
+      return;
+    }
+
+    const timeout = setTimeout(() => {
+      if (isBrushable) {
+        enableBrush();
+      } else {
+        disableBrush();
+      }
+    }, 0);
+
+    return () => clearTimeout(timeout);
+  }, [isBrushable, isTouch, enableBrush, disableBrush, option]);
+}
+
+/**
+ * Touch: long press activates brush for a single gesture.
+ * The user continues dragging horizontally to select a range, and brush
+ * is deactivated on pointer up.
+ */
+function useTouchBrush({
+  chartRef,
+  containerRef,
+  isTouch,
+  canBrushChart,
+  enableBrush,
+  disableBrush,
+}: {
+  chartRef: MutableRefObject<EChartsType | undefined>;
+  containerRef: RefObject<HTMLDivElement>;
+  isTouch: boolean;
+  canBrushChart: boolean;
+  enableBrush: () => void;
+  disableBrush: () => void;
+}) {
+  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  const startRef = useRef<Point | null>(null);
+  const activeRef = useRef(false);
+
+  // Track container element via state so the effect re-runs once when the
+  // ref becomes available (ExplicitSize hasn't measured on first render).
+  const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally no deps: syncs ref → state on every render
+  useEffect(() => {
+    const container = containerRef.current;
+
+    if (container && container !== containerEl) {
+      setContainerEl(container);
+    }
+  });
+
+  useEffect(() => {
+    if (!containerEl || !canBrushChart || !isTouch) {
+      return;
+    }
+
+    disableBrush();
+
+    const cancel = () => {
+      clearTimeout(timerRef.current);
+
+      timerRef.current = undefined;
+      startRef.current = null;
+    };
+
+    const onPointerDown = (event: PointerEvent) => {
+      if (activeRef.current) {
+        return;
+      }
+
+      startRef.current = { x: event.clientX, y: event.clientY };
+
+      timerRef.current = setTimeout(() => {
+        activeRef.current = true;
+        enableBrush();
+
+        // Trigger mousedown directly on zrender's internal event bus.
+        // BrushController missed the real pointerdown (brush wasn't enabled
+        // yet), so we feed it the start position to anchor the selection.
+        const zrender = chartRef.current?.getZr();
+
+        if (zrender && startRef.current) {
+          zrender.trigger(
+            "mousedown",
+            createZrenderMousedownEvent(
+              startRef.current,
+              containerEl.getBoundingClientRect(),
+            ),
+          );
+        }
+      }, LONG_PRESS_DURATION_MS);
+    };
+
+    const onPointerMove = (event: PointerEvent) => {
+      if (!startRef.current || activeRef.current) {
+        return;
+      }
+
+      if (hasMovedBeyondThreshold(startRef.current, event)) {
+        cancel();
+      }
+    };
+
+    const onPointerEnd = () => {
+      cancel();
+
+      if (activeRef.current) {
+        activeRef.current = false;
+
+        // Defer so pointerup → brushEnd chain completes first.
+        setTimeout(disableBrush, 0);
+      }
+    };
+
+    // Prevent native long-press context menu on touch devices.
+    const onContextMenu = (e: Event) => e.preventDefault();
+    containerEl.addEventListener("contextmenu", onContextMenu);
+
+    const removeListeners = addPointerListeners(containerEl, {
+      pointerdown: onPointerDown,
+      pointermove: onPointerMove,
+      pointerup: onPointerEnd,
+      pointercancel: onPointerEnd,
+    });
+
+    return () => {
+      cancel();
+      removeListeners();
+      containerEl.removeEventListener("contextmenu", onContextMenu);
+    };
+  }, [
+    containerEl,
+    chartRef,
+    canBrushChart,
+    isTouch,
+    enableBrush,
+    disableBrush,
+  ]);
+}
