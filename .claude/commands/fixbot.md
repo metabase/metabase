@@ -11,11 +11,22 @@ Run:
 
 If it fails, show the error to the user and stop. Do not attempt to recover or work around failures.
 
-### 2. Validate the issue ID
+### 2. Resolve the issue ID
 
 The user provided: `$ARGUMENTS`
 
-Validate that this looks like a Linear issue ID (e.g., MB-12345). If not, tell the user the expected format and stop.
+This can be one of three formats:
+- **Linear issue ID** (e.g., `MB-12345`, `UXW-3155`) — use directly
+- **GitHub issue number** (e.g., `12345`) — resolve to Linear first
+- **GitHub issue URL** (e.g., `https://github.com/metabase/metabase/issues/12345`) — extract the number, then resolve to Linear
+
+**If the input is a GitHub issue number or URL:**
+1. Fetch the GitHub issue with `gh issue view <NUMBER> --repo metabase/metabase --json body,comments,title`
+2. Search the issue body and comments for a Linear issue link (pattern: `https://linear.app/metabase/issue/[A-Z]+-[0-9]+`). Extract the Linear issue ID from the URL.
+3. If no Linear link is found in the GitHub issue, search Linear directly: run `./bin/mage -fixbot-fetch-issue` with a search term derived from the GitHub issue title. If that doesn't find a match, tell the user you couldn't find a corresponding Linear issue and stop.
+4. Tell the user which Linear issue you resolved to, so they can verify it's correct.
+
+**Validation:** After resolving, confirm the issue ID looks like a Linear identifier (e.g., `MB-12345`). If not, tell the user the expected format and stop.
 
 Run `./bin/mage -fixbot-list` and check if a session already exists for this issue (look for the issue ID in the branch name or session name). If one exists:
 - Tell the user the session already exists
@@ -52,7 +63,7 @@ Analyze the issue description and comments to determine which database is needed
 
 Read the reference template at `.claude/fixbot/fixbot-agent.md` to understand the required structure.
 
-Then write a completed agent prompt to `.fixbot/metabase-fixbot-<ISSUE_ID>-prompt.md` using the `Read` tool (to satisfy the read-before-write requirement — the file won't exist yet, and that's fine) followed by the `Write` tool. Do NOT use Bash `cat`/`echo` to create this file.
+**Always rewrite** the prompt file at `.fixbot/metabase-fixbot-<ISSUE_ID>-prompt.md` — even if it already exists from a previous session. The template or prompt logic may have changed since it was first written. Use the `Read` tool on the file first (it may not exist, and that's fine), then use the `Write` tool. Do NOT use Bash `cat`/`echo` to create this file.
 
 The prompt should include:
 

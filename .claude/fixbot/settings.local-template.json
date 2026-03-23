@@ -17,6 +17,7 @@
     "allow": [
       "Edit",
       "Write",
+      "Skill",
       "WebFetch(domain:linear.app)",
       "WebFetch(domain:metabase.com)"
     ]
