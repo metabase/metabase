@@ -121,7 +121,6 @@ describe("scenarios > embedding > modular embedding", () => {
             );
             let totalHeaderWidth = 0;
             $headerCells.each((_, el) => {
-              cy.log("" + el.getBoundingClientRect().width);
               totalHeaderWidth += el.getBoundingClientRect().width;
             });
 
