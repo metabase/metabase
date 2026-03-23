@@ -18,6 +18,7 @@ import { LineChart } from "./visualizations/LineChart";
 import { LinkViz } from "./visualizations/LinkViz";
 import { Map } from "./visualizations/Map";
 import { ObjectDetail } from "./visualizations/ObjectDetail";
+import { Page } from "./visualizations/Page";
 import { PieChart } from "./visualizations/PieChart";
 import { PivotTable } from "./visualizations/PivotTable";
 import { Progress } from "./visualizations/Progress";
@@ -49,6 +50,7 @@ export default function () {
   registerVisualization(Map);
   registerVisualization(Funnel);
   registerVisualization(ObjectDetail);
+  registerVisualization(Page);
   registerVisualization(PivotTable);
   registerVisualization(SankeyChart);
 
