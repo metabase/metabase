@@ -9,6 +9,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
+   [metabase.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -342,6 +343,56 @@
   (testing "POST /runs/:id/cancel — returns 404 for non-existent run"
     (mt/with-premium-features #{:dependencies}
       (mt/user-http-request :crowberto :post 404 "ee/replacement/runs/999999/cancel"))))
+
+;;; ---------------------------------------- POST /replace-model-with-transform ----------------------------------------
+
+(deftest ^:mb/driver-tests replace-model-with-transform-test
+  (testing "POST /replace-model-with-transform — creates transform, executes it, swaps child, converts model to question"
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/with-premium-features #{:dependencies}
+        (let [mp     (mt/metadata-provider)
+              schema (t2/select-one-fn :schema :model/Table (mt/id :orders))]
+          (with-transform-cleanup! [target {:type   "table"
+                                            :schema schema
+                                            :name   "model_transform"}]
+            (mt/with-temp [:model/Card {model-id :id :as model-card}
+                           {:database_id   (mt/id)
+                            :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                            :type          :model
+                            :name          "Orders Model"}
+
+                           :model/Card {child-id :id :as child-card}
+                           {:database_id   (mt/id)
+                            :dataset_query (lib/query mp (lib.metadata/card mp model-id))
+                            :type          :question
+                            :name          "Child Question"}]
+              (mt/with-model-cleanup [:model/ReplacementRun]
+                ;; Backfill dependencies
+                (doseq [card [model-card child-card]]
+                  (events/publish-event! :event/card-create {:object card :user-id (mt/user->id :crowberto)}))
+
+                (let [response (mt/user-http-request :crowberto :post 202
+                                                     "ee/replacement/replace-model-with-transform"
+                                                     {:card_id              model-id
+                                                      :transform_name       "Orders Transform"
+                                                      :transform_target     {:type     "table"
+                                                                             :schema   schema
+                                                                             :name     (:name target)
+                                                                             :database (mt/id)}
+                                                      :target_collection_id nil})
+                      run-id   (:run_id response)
+                      final    (poll-run run-id :timeout-ms 30000)]
+
+                  (is (= "succeeded" (:status final)))
+
+                  (testing "model is converted to a saved question"
+                    (is (= :question (t2/select-one-fn :type :model/Card :id model-id))))
+
+                  (testing "child question now references the output table"
+                    (let [child-query  (t2/select-one-fn :dataset_query :model/Card :id child-id)
+                          output-table (transforms.tu/wait-for-table (:name target) 10000)]
+                      (is (= (:id output-table)
+                             (lib/primary-source-table-id child-query))))))))))))))
 
 (deftest all-endpoints-require-superuser-test
   (testing "All /ee/replacement/ endpoints return 403 for non-admin users"
