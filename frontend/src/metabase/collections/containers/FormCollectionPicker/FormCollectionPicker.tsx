@@ -159,6 +159,7 @@ function FormCollectionPicker({
         className={className}
         style={style}
         label={title}
+        labelProps={{ htmlFor: id }}
         error={touched ? error : undefined}
       >
         <Button
