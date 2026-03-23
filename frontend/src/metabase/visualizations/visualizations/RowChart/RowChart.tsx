@@ -53,7 +53,12 @@ import {
 } from "metabase/visualizations/visualizations/RowChart/utils/events";
 import { useRowChartTheme } from "metabase/visualizations/visualizations/RowChart/utils/theme";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetData, VisualizationSettings } from "metabase-types/api";
+import type {
+  Card,
+  DatasetData,
+  TransformedCard,
+  VisualizationSettings,
+} from "metabase-types/api";
 
 import {
   RowChartContainer,
@@ -376,7 +381,7 @@ const RowViz: VisualizationDefinition = {
       getComputedSettingsForSeries(originalMultipleSeries);
     const { card, data } = series;
 
-    if (card._transformed || !hasValidColumnsSelected(settings, data)) {
+    if (isTransformedCard(card) || !hasValidColumnsSelected(settings, data)) {
       return originalMultipleSeries;
     }
 
@@ -405,7 +410,7 @@ const RowViz: VisualizationDefinition = {
         cols: [
           seriesDef.seriesInfo?.dimensionColumn,
           seriesDef.seriesInfo?.metricColumn,
-        ],
+        ].filter((column) => column != null),
       },
     }));
 
@@ -420,6 +425,10 @@ const RowViz: VisualizationDefinition = {
     validateStacking(settings);
   },
 };
+
+function isTransformedCard(card: Card): card is TransformedCard {
+  return "transformed" in card && card.transformed === true;
+}
 
 Object.assign(RowChartVisualization, RowViz);
 
