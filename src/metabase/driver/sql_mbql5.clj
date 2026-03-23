@@ -6,7 +6,6 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
-   [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -136,10 +135,6 @@
 (defmethod sql.qp/mbql-clause-with-opts :sql-mbql5
   [_driver tag opts & args]
   (into [tag (lib.schema.common/normalize-options-map opts)] args))
-
-(defmethod sql.params.substitution/field->clause :sql-mbql5
-  [driver field other-opts]
-  (sql.params.substitution/field->clause* driver field other-opts))
 
 (defmethod sql.qp/clause-value-idx :sql-mbql5 [_driver] 2)
 

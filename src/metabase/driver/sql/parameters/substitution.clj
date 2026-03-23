@@ -266,29 +266,20 @@
     {:replacement-snippet     snippet
      :prepared-statement-args args}))
 
-(defn field->clause*
-  "Returns an MBQL `:field` clause with the relevant options for a field filter."
-  [driver field other-opts]
-  (sql.qp/mbql-clause-with-opts driver
-                                :field
-                                (merge {:base-type                     (:base-type field)
-                                        driver-api/qp.add.source-table (:table-id field)
-                                        ::compiling-field-filter?      true}
-                                       other-opts)
-                                (:id field)))
+(mu/defn- field->clause :- driver-api/mbql.schema.field
+  [field other-opts]
+  (driver-api/normalize
+   driver-api/mbql.schema.field
+   [:field
+    (:id field)
+    (merge {:base-type                     (:base-type field)
+            driver-api/qp.add.source-table (:table-id field)
+            ::compiling-field-filter?      true}
+           other-opts)]))
 
-(defmulti field->clause
-  "Wrapper around `field->clause*`"
-  {:added "0.60.0" :arglists '([driver field opts])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(mu/defmethod field->clause :sql :- driver-api/mbql.schema.field
-  [driver field other-opts]
-  (driver-api/normalize driver-api/mbql.schema.field (field->clause* driver field other-opts)))
-
-;; TODO(rileythomp, 2026-03-16): Update the schema to work with mbql4 and mbql5
-(mu/defn- field->field-filter-clause ; :- driver-api/mbql.schema.field
+(mu/defn- field->field-filter-clause :- [:or
+                                         [:ref :mbql.clause/field]     ;; mbql4
+                                         driver-api/mbql.schema.field] ;; mbql5
   [driver     :- :keyword
    field      :- driver-api/schema.metadata.column
    param-type :- driver-api/schema.parameter.type
@@ -299,13 +290,14 @@
   ;; middleware would work either because we don't know what Field this parameter actually refers to until we resolve
   ;; the parameter. There's probably _some_ way to structure things that would make this "duplicate" call unneeded, but
   ;; I haven't figured out what that is yet
-  (field->clause driver field {:temporal-unit (align-temporal-unit-with-param-type-and-value driver field param-type value)}))
+  (field->clause field {:temporal-unit (align-temporal-unit-with-param-type-and-value driver field param-type value)}))
 
 (mu/defn- field->identifier :- driver-api/schema.common.non-blank-string
   "Return an appropriate snippet to represent this `field` in SQL given its param type.
    For non-date Fields, this is just a quoted identifier; for dates, the SQL includes appropriately bucketing based on
    the `param-type`."
   [driver field param-type value]
+  ;; TODO(rileythomp, 2026-03): Convert to mbql5 based on driver before ->honeysql
   (->> (field->field-filter-clause driver field param-type value)
        (sql.qp/->honeysql driver)
        (honeysql->replacement-snippet-info driver)
@@ -340,6 +332,7 @@
            params.ops/to-clause
            driver-api/desugar-filter-clause
            driver-api/wrap-value-literals-in-mbql
+           ;; TODO(rileythomp, 2026-03): Convert to mbql5 based on driver before ->honeysql
            ->honeysql
            (honeysql->replacement-snippet-info driver))
 
@@ -349,6 +342,7 @@
         (->> (params.dates/date-string->filter value field-clause)
              driver-api/desugar-filter-clause
              driver-api/wrap-value-literals-in-mbql
+             ;; TODO(rileythomp, 2026-03): Convert to mbql5 based on driver before ->honeysql
              ->honeysql
              (honeysql->replacement-snippet-info driver)))
 
@@ -375,7 +369,8 @@
   [driver field alias replacement-snippet-info]
   (if (str/blank? alias)
     replacement-snippet-info
-    (let [[old-name] (->> (field->clause driver field nil)
+    ;; TODO(rileythomp, 2026-03): Convert to mbql5 based on driver before ->honeysql
+    (let [[old-name] (->> (field->clause field nil)
                           (sql.qp/->honeysql driver)
                           (sql.qp/format-honeysql driver))]
       (update replacement-snippet-info :replacement-snippet str/replace old-name alias))))
@@ -420,9 +415,10 @@
   (let [replacement-snippet-info
         (honeysql->replacement-snippet-info
          driver
+         ;; TODO(rileythomp, 2026-03): Convert to mbql5 based on driver before ->honeysql
          (sql.qp/->honeysql driver
-                            (field->clause driver field (when (not= value params/no-value)
-                                                          {:temporal-unit (keyword value)}))))]
+                            (field->clause field (when (not= value params/no-value)
+                                                   {:temporal-unit (keyword value)}))))]
     (replace-alias driver field alias replacement-snippet-info)))
 
 (defmethod ->replacement-snippet-info [:sql ReferencedTableQuery]

@@ -10,7 +10,6 @@ title: Driver interface changelog
   - `compile-mbql` - Compiles an MBQL inner query to HoneySQL.
   - `mbql-clause-with-opts` - Returns an MBQL clause in the desired MBQL format of the driver.
   - `over-order-by->honeysql` - Returns the HoneySQL for an order by clause in the over clause of a window function.
-  - `field->clause` - Returns an MBQL `:field` clause with the relevant options for a field filter.
   - `clause-value-idx` - Returns the index of the value in a clause.
   - `expression-by-name` - Gets an expression from a query or stage (`*inner-query`) by name.
   - `remapped-order-by?` - Looks for the `externally-remapped-field` key in the order by field options.

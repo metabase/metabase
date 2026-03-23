@@ -12,9 +12,11 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.core :as lib]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.parameters.dates :as qp.parameters.dates]
    [metabase.util.i18n :refer [tru]]
@@ -210,12 +212,11 @@
   (concat relative-date-string-decoders absolute-date-string-decoders))
 
 ;; TODO(rileythomp, 2026-03-18): Add back schemas here
-(mu/defn date-string->filter ; :- ::mbql.s/Filter
+(mu/defn date-string->filter :- ::mbql.s/Filter
   "Takes a string description of a *date* (not datetime) range such as 'lastmonth' or '2016-07-15~2016-08-6', or
   an absolute date *or datetime* string, and returns a corresponding MBQL filter clause for a given field reference."
   [date-string :- :string
-   ; field       :- [:or ::lib.schema.id/field ::mbql.s/FieldOrExpressionRef]
-   field]
+   field       :- [:or ::lib.schema.id/field ::mbql.s/FieldOrExpressionRef]]
   #_{:clj-kondo/ignore [:deprecated-var]}
   (or (#'qp.parameters.dates/execute-decoders all-date-string-decoders :filter (mbql.u/wrap-field-id-if-needed field) date-string)
       (throw (ex-info (tru "Don''t know how to parse date string {0}" (pr-str date-string))

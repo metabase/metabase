@@ -1656,11 +1656,14 @@
      [:lower field])
    pattern])
 
-#_(def ^:private StringValueOrFieldOrExpression
-    [:or
-     [:and driver-api/mbql.schema.value
-      [:fn {:error/message "string value"} #(string? (second %))]]
-     driver-api/mbql.schema.FieldOrExpressionDef])
+(def ^:private StringValueOrFieldOrExpression
+  [:or
+   ;; mbql4
+   [:and driver-api/mbql.schema.value
+    [:fn {:error/message "string value"} #(string? (second %))]]
+   driver-api/mbql.schema.FieldOrExpressionDef
+   ;; mbql5
+   [:ref :metabase.lib.schema.expression/string]])
 
 (defmulti escape-like-pattern
   "Handle escaping a literal string into a `LIKE` clause pattern which will match literally.
@@ -1710,8 +1713,7 @@
   "Generate pattern to match against in like clause. Lowercasing for case insensitive matching also happens here."
   [driver
    pre
-   ;; TODO(rileythomp, 2026-03-18): Add back the schema here
-   [type _ :as arg] #_#_:- StringValueOrFieldOrExpression
+   [type _ :as arg] :- StringValueOrFieldOrExpression
    post
    {:keys [case-sensitive] :or {case-sensitive true} :as _options}]
   (if (= :value type)
