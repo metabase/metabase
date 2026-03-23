@@ -19,9 +19,9 @@ Here's a basic user setup to help you test a connection.
 
 1. Go to the Keycloak admin console and sign in as an administrator.
 
-1. Create a new [realm](https://www.keycloak.org/docs/latest/server_admin/index.html#core-concepts-and-terms): click the realm selector in the top-left and select **Create realm**. Set the realm name (like `metabase-realm`) and click **Create**.
+2. Create a new [realm](https://www.keycloak.org/docs/latest/server_admin/index.html#core-concepts-and-terms): click the realm selector in the top-left and select **Create realm**. Set the realm name (like `metabase-realm`) and click **Create**.
 
-1. Create a user in that realm from **Users** > **Add user**.
+3. Create a user in that realm from **Users** > **Add user**.
 
    - Fill in **Email**, **First name**, and **Last name**. The email field must be set. Metabase uses this email as the account identifier.
    - Turn on **Email verified**. Without verification, Keycloak won't allow the person to log in.
@@ -29,27 +29,27 @@ Here's a basic user setup to help you test a connection.
    - Click **Create**, then go to the user's **Credentials** (on the top menu, not the side menu).
    - Click **Set password**, enter a password, and turn off the **Temporary** toggle.
 
-1. Create a new client from **Clients** > **Create client**.
+4. Create a new client from **Clients** > **Create client**.
 
    - **Client type**: Select `OpenID Connect`.
    - **Client ID**: Enter a name for the client (e.g., `metabase-client`).
    - Click **Next**.
 
-1. On the **Capability config** page:
+5. On the **Capability config** page:
 
    - Turn on **Client authentication** (this makes the client confidential and enables the client secret).
    - Turn on **Service accounts roles**. Metabase's **Check connection** test authenticates using the OAuth 2.0 client credentials grant, which requires service accounts. If service accounts aren't allowed, the test returns "the identity provider does not support the grant type used for testing".
    - Click **Next**.
 
-> If you keep getting the "grant type" error even with **Service accounts roles** on, double-check the client secret in Metabase. You can check the Keycloak event log (**Events** in the Keycloak sidebar) for a `CLIENT_LOGIN_ERROR` entry to confirm (you'll need to have turned on [event logging](https://www.keycloak.org/docs/latest/server_admin/index.html#configuring-auditing-to-track-events)).
+   > If you keep getting the "grant type" error even with **Service accounts roles** on, double-check the client secret in Metabase. You can check the Keycloak event log (**Events** in the Keycloak sidebar) for a `CLIENT_LOGIN_ERROR` entry to confirm (you'll need to have turned on [event logging](https://www.keycloak.org/docs/latest/server_admin/index.html#configuring-auditing-to-track-events)).
 
-1. On the **Login settings** page:
+6. On the **Login settings** page:
 
    - **Valid redirect URIs**: `{metabase-url}/auth/sso/{key}/callback`, where `{key}` is the key you'll use when configuring OIDC in Metabase (like `keycloak`).
    - **Web origins**: Your Metabase URL (like `https://metabase.your-company.com`).
    - Click **Save**.
 
-1. Go to the client's **Credentials** tab and copy the client secret.
+7. Go to the client's **Credentials** tab and copy the client secret.
 
 ## Configure OIDC in Metabase
 

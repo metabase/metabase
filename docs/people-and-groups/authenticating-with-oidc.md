@@ -12,7 +12,7 @@ By integrating your OpenID Connect (OIDC) provider with Metabase, you can:
 - [Provision a Metabase account](#user-provisioning) when someone logs in via your identity provider (IdP).
 - Let people access Metabase without re-authenticating.
 - Automatically pass user attributes (name, email) from your IdP to Metabase.
-- [Synchronize group membership with your SSO](#synchronize-group-membership-with-your-sso) so that people are automatically assigned to Metabase groups based on their IdP groups.
+- [Synchronize group membership](#synchronize-group-membership) so that people are automatically assigned to Metabase groups based on their IdP groups.
 
 ## Self-hosted Metabases must set an encryption key
 
@@ -34,7 +34,7 @@ For more, see [Encrypting your database connection](../databases/encrypting-deta
 
 _Admin > Settings > Authentication > OIDC_
 
-To add an OIDC provider to your Metabase, go to **Admin > Settings > Authentication > OIDC**. You'll need to input the following:
+You'll need to enter the following:
 
 | Field             | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -60,7 +60,7 @@ Metabase maps OIDC claims to account fields. The defaults work for most provider
 
 If your IdP uses different claim names, update these fields to match.
 
-## Synchronize group membership with your SSO
+## Synchronize group membership
 
 You can configure Metabase to automatically sync group memberships from your IdP, so that people are added to (or removed from) Metabase groups based on their IdP groups.
 
@@ -97,11 +97,11 @@ By default, Metabase creates accounts for people who authenticate successfully v
 
 You can turn auto-provisioning off under **Admin settings** > **Authentication** > **OIDC** > **User provisioning**. If you've set up [User provisioning with SCIM](./user-provisioning.md), turn off automatic account creation to avoid conflicts.
 
-### Auto-provisioning will link existing accounts or create a new account
+### How auto-provisioning works
 
-If auto-provisioning is on, when someone logs in via OIDC, Metabase will look up the account by email (case-insensitive). If an account with that email already exists, Metabase links the OIDC identity to that existing account. On each OIDC login, Metabase updates the account's name from the IdP's claims. Otherwise, Metabase will create a new account automatically.
+If auto-provisioning is on, when someone logs in via OIDC, Metabase will look up the account by email (case-insensitive). If an account with that email already exists, Metabase links the OIDC identity to that existing account. On each OIDC login, Metabase updates the account's name from the IdP's claims. Otherwise, Metabase will automatically create a new account.
 
-If no matching account exists, and auto-provisioning is off, the person gets an error, and can't log in.
+If auto-provisioning is off, and no matching account exists, the person gets an error, and can't log in.
 
 ## Environment variables
 
