@@ -209,6 +209,24 @@
         (is (= {:table #{products-id orders-id}}
                (calculation/upstream-deps:transform transform)))))))
 
+(deftest ^:synchronized upstream-deps-native-transform-with-table-tag-test
+  (testing "GHY-3258: native transform with a table template tag should include the table in dependencies"
+    (mt/with-premium-features #{:transforms-basic}
+      (let [mp          (mt/metadata-provider)
+            products-id (mt/id :products)
+            query       (-> (lib/native-query mp "invalid query {{products_table}}")
+                            (lib/with-template-tags {"products_table" {:type         :table
+                                                                       :table-id     products-id
+                                                                       :name         "products_table"
+                                                                       :display-name "Products Table"}}))]
+        (mt/with-temp [:model/Transform transform {:name   "Table Tag Transform"
+                                                   :source {:type  :query
+                                                            :query query}
+                                                   :target {:schema "PUBLIC"
+                                                            :name   "test_output"}}]
+          (is (= :fail (:table (calculation/upstream-deps:transform transform))))
+          (is (=? {:table #(contains? % products-id)} (calculation/upstream-deps:transform transform))))))))
+
 (deftest ^:parallel upstream-deps-card-native-with-parameter-source-test
   (let [mp (mt/metadata-provider)
         products-id (mt/id :products)
