@@ -1,10 +1,9 @@
-import { useMemo } from "react";
 import { msgid, ngettext } from "ttag";
 
-import { Schemas } from "metabase/entities/schemas";
+import { useListDatabaseSchemaTablesQuery } from "metabase/api";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SidebarContent } from "metabase/query_builder/components/SidebarContent";
-import type Schema from "metabase-lib/v1/metadata/Schema";
-import type { State } from "metabase-types/store";
+import { isConcreteTableId } from "metabase-types/api";
 
 import {
   NodeListContainer,
@@ -15,27 +14,30 @@ import {
   NodeListTitle,
   NodeListTitleText,
 } from "./NodeList";
+import type { DataReferencePaneProps, DataReferenceSchemaItem } from "./types";
 
-interface SchemaPaneProps {
-  onBack: () => void;
-  onClose: () => void;
-  onItemClick: (type: string, item: unknown) => void;
-  schema: Schema;
-}
+type SchemaPaneProps = DataReferencePaneProps<DataReferenceSchemaItem>;
 
-const SchemaPaneInner = ({
+export const SchemaPane = ({
   onBack,
   onClose,
   onItemClick,
-  schema,
+  schemaName,
+  databaseId,
 }: SchemaPaneProps) => {
-  const tables = useMemo(
-    () => schema.getTables().sort((a, b) => a.name.localeCompare(b.name)),
-    [schema],
-  );
+  const {
+    data: tables = [],
+    isLoading,
+    error,
+  } = useListDatabaseSchemaTablesQuery({ id: databaseId, schema: schemaName });
+
+  if (isLoading || error) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
+
   return (
     <SidebarContent
-      title={schema.name}
+      title={schemaName}
       icon={"folder"}
       onBack={onBack}
       onClose={onClose}
@@ -53,21 +55,22 @@ const SchemaPaneInner = ({
             </NodeListTitleText>
           </NodeListTitle>
           <ul>
-            {tables.map((table) => (
-              <li key={table.id}>
-                <NodeListItemLink onClick={() => onItemClick("table", table)}>
-                  <NodeListItemIcon name="table" />
-                  <NodeListItemName>{table.name}</NodeListItemName>
-                </NodeListItemLink>
-              </li>
-            ))}
+            {tables.map(
+              ({ id, name }) =>
+                isConcreteTableId(id) && (
+                  <li key={id}>
+                    <NodeListItemLink
+                      onClick={() => onItemClick({ type: "table", id })}
+                    >
+                      <NodeListItemIcon name="table" />
+                      <NodeListItemName>{name}</NodeListItemName>
+                    </NodeListItemLink>
+                  </li>
+                ),
+            )}
           </ul>
         </NodeListContainer>
       </SidebarContent.Pane>
     </SidebarContent>
   );
 };
-
-export const SchemaPane = Schemas.load({
-  id: (_state: State, props: SchemaPaneProps) => props.schema.id,
-})(SchemaPaneInner);
