@@ -118,7 +118,8 @@
        [:target_collection_id {:optional true} [:maybe ::replacement.schema/source-entity-id]]
        [:transform_tag_ids    {:optional true} [:maybe [:sequential pos-int?]]]]]
   (api/check-superuser)
-  (let [card      (api/check-404 (t2/select-one :model/Card :id card_id))
+  (let [user-id   api/*current-user-id*
+        card      (api/check-404 (t2/select-one :model/Card :id card_id))
         transform (transforms/create-transform!
                    {:name          transform_name
                     :source        {:type  :query
@@ -129,10 +130,10 @@
         job-row   (replacement-run/create-run!
                    :card card_id
                    :transform (:id transform)
-                   api/*current-user-id*)
+                   user-id)
         progress  (replacement-run/run-row->progress job-row)
         work-fn   (fn [progress]
-                    (replacement.runner/run-swap-model-with-transform! card_id (:id transform) progress))]
+                    (replacement.runner/run-swap-model-with-transform! card_id (:id transform) progress :user-id user-id))]
     (replacement.execute/execute-async! work-fn progress)
     (-> (response/response {:run_id (:id job-row)})
         (assoc :status 202))))

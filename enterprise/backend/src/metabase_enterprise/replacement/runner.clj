@@ -212,11 +212,12 @@
    `progress`     — IRunnerProgress for tracking"
   ([card-id transform-id]
    (run-swap-model-with-transform! card-id transform-id noop-progress))
-  ([card-id transform-id progress]
+  ([card-id transform-id progress & {:keys [user-id]}]
    (let [transform (or (t2/select-one :model/Transform :id transform-id)
                        (throw (ex-info "Transform not found" {:transform-id transform-id})))]
      ;; phase 1: execute the transform
-     (transforms/execute! transform {:run-method :manual})
+     (transforms/execute! transform (cond-> {:run-method :manual}
+                                      user-id (assoc :user-id user-id)))
 
      ;; phase 2: find the output table and swap sources
      (let [table (find-output-table transform)]
