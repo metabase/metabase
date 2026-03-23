@@ -21,7 +21,16 @@ import { slugify } from "metabase/lib/formatting/url";
 import { SchemaFormSelect } from "metabase/transforms/components/SchemaFormSelect";
 import { TagsMultiFormSelect } from "metabase/transforms/components/TagsMultiFormSelect";
 import { TargetNameInput } from "metabase/transforms/components/TargetNameInput";
-import { Box, Button, Group, Input, Modal, Stack, Text } from "metabase/ui";
+import {
+  Box,
+  Button,
+  FocusTrap,
+  Group,
+  Input,
+  Modal,
+  Stack,
+  Text,
+} from "metabase/ui";
 import { useReplaceModelWithTransformMutation } from "metabase-enterprise/api";
 import type { Card, Database } from "metabase-types/api";
 
@@ -53,6 +62,7 @@ export function ReplaceWithTransformModal({
       padding="xl"
       onClose={onClose}
     >
+      <FocusTrap.InitialFocus />
       <ReplaceWithTransformLoader card={card} onClose={onClose} />
     </Modal>
   );

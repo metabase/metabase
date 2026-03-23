@@ -10,7 +10,7 @@ import {
 } from "metabase/forms";
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Box, Button, Group, Modal, Stack, Text } from "metabase/ui";
+import { Box, Button, FocusTrap, Group, Modal, Stack, Text } from "metabase/ui";
 import { useReplaceModelWithTableMutation } from "metabase-enterprise/api";
 import * as Lib from "metabase-lib";
 import type { Card, Table } from "metabase-types/api";
@@ -33,6 +33,7 @@ export function ReplaceWithTableModal({
       padding="xl"
       onClose={onClose}
     >
+      <FocusTrap.InitialFocus />
       <ReplaceWithTableLoader card={card} onClose={onClose} />
     </Modal>
   );
