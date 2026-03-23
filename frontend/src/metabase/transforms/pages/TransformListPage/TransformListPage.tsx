@@ -29,11 +29,7 @@ import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { type NamedUser, getUserName } from "metabase/lib/user";
-import {
-  PLUGIN_REMOTE_SYNC,
-  PLUGIN_REPLACEMENT,
-  PLUGIN_TRANSFORMS_PYTHON,
-} from "metabase/plugins";
+import { PLUGIN_REPLACEMENT, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getMetadata } from "metabase/selectors/metadata";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { getShouldShowPythonTransformsUpsell } from "metabase/transforms/selectors";
@@ -113,9 +109,6 @@ export const TransformListPage = ({
   const { transformsDatabases = [], isLoadingDatabases } =
     useTransformPermissions();
   const canReplaceSources = useSelector(PLUGIN_REPLACEMENT.canReplaceSources);
-  const isRemoteSyncReadOnly = useSelector(
-    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
-  );
   const targetCollectionId =
     Urls.extractEntityId(location.query?.collectionId) ?? null;
   const hasScrolledRef = useRef(false);
@@ -359,7 +352,7 @@ export const TransformListPage = ({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
-          {!isRemoteSyncReadOnly && transformsDatabases.length > 0 && (
+          {transformsDatabases.length > 0 && (
             <>
               <CreateTransformMenu />
               {canReplaceSources && <PLUGIN_REPLACEMENT.TransformToolsMenu />}
