@@ -7,7 +7,7 @@
    [metabase.lib-metric.core :as lib-metric]
    [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.metrics.core :as metrics]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.core :as qp]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
    [metabase.server.core :as server]
