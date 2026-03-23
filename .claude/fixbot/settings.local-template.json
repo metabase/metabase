@@ -2,11 +2,12 @@
   "sandbox": {
     "enabled": true,
     "autoAllow": true,
-    "allowUnsandboxedCommands": false,
+    "allowUnsandboxedCommands": true,
     "filesystem": {
       "allowWrite": [".", "{{pwd}}", "~/.m2", "~/.gitlibs", "~/.deps.clj", "/tmp"]
     },
-    "excludedCommands": ["docker"]
+    "excludedCommands": ["docker"],
+    "allowedDomains": ["localhost"]
   },
   "permissions": {
     "allow": [
@@ -19,7 +20,8 @@
       "Bash(bb:*)",
       "Bash(tmux list-sessions:*)",
       "Bash(tmux capture-pane:*)",
-      "Bash(gh search:*)"
+      "Bash(gh search:*)",
+      "Bash(curl:*)"
     ]
   },
   "skipDangerousModePermissionPrompt": true

@@ -49,13 +49,14 @@ The agent should follow this workflow:
 3. Before writing code, think through: what is the root cause, which files need to change, what tests will verify the fix, and what could go wrong
 4. Only ask the user if the expected *product behavior* is genuinely ambiguous — they know Metabase well but don't want to hear about implementation details
 5. Make all technical/implementation decisions yourself — do not ask the user about code
+6. **Do not wait for servers to start.** The backend takes several minutes to boot. Start coding and writing tests immediately. Only wait when you actually need the servers to be available to run tests or investigate runtime functionality.
 
 #### Phase 2: Fix
 1. ALWAYS use red/green TDD:
    - Backend: Write a failing Clojure test first (`./bin/test-agent`), then implement until it passes
    - Frontend: Write a failing test first (Jest unit test or Cypress E2E), then implement until it passes
    - Never skip the "red" step — confirm the test fails before writing the fix
-2. Run all relevant tests with `./bin/test-agent` (backend) or `yarn jest` / `yarn test-unit` (frontend)
+2. Run all relevant tests with `./bin/test-agent` (backend) or `bun test` / `yarn jest` / `yarn test-unit` (frontend)
 3. Report progress at each milestone with a clear status update
 
 #### Phase 3: Verify
@@ -128,10 +129,15 @@ Use nREPL for:
 
 ### Server Logs
 
-Backend and frontend output is visible in their tmux panes. Use `workmux capture` to read their output:
+Read server output via tmux pane capture (preferred) or log files (fallback):
 
-- **Backend logs**: `workmux capture --pane 1` (the BE pane)
-- **Frontend logs**: `workmux capture --pane 2` (the FE pane)
+**Preferred — tmux pane capture** (live output, most recent):
+- **Backend**: `workmux capture --pane 1`
+- **Frontend**: `workmux capture --pane 2`
+
+**Fallback — log files** (full history, timestamped):
+- **Backend**: `ls -t .fixbot/backend-*.log | head -1` to find the latest
+- **Frontend**: `ls -t .fixbot/frontend-*.log | head -1` to find the latest
 
 Check these when:
 - Debugging startup failures (check if backend/frontend started successfully)
