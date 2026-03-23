@@ -13,17 +13,13 @@ export async function loadCard(
     token?: EntityToken | null;
   },
   { dispatch }: { dispatch: Dispatch; getState: GetState },
-): Promise<Card> {
+) {
   try {
-    const result = await dispatch(
+    const { data } = (await dispatch(
       cardApi.endpoints.getCard.initiate({ id: token ?? cardId }),
-    );
+    )) as { data: Card };
 
-    if (result.data != null) {
-      return result.data;
-    }
-
-    throw new Error("Failed to fetch card");
+    return data;
   } catch (error) {
     console.error("error loading card", error);
     throw error;
