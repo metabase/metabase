@@ -11,7 +11,7 @@ jobs:
     name: Check which files changed
     # don't run this workflow on a cron for forks
     if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 3
     outputs:
       e2e_cross_version: ${{ steps.changes.outputs.e2e_cross_version }}
@@ -27,7 +27,7 @@ jobs:
   cross-version-testing:
     needs: files-changed
     if: ${{ needs.files-changed.outputs.e2e_cross_version == 'true' || github.event_name == 'schedule'}}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     strategy:
       matrix:
@@ -121,7 +121,7 @@ jobs:
     needs: cross-version-testing
     if: ${{ always() && contains(needs.*.result, 'failure') && github.event_name == 'schedule' }}
     name: Cross-version test failure
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
       - uses: actions/setup-node@v4

@@ -59,7 +59,7 @@ on:
 
 jobs:
   green-check-stub:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 2
     steps:
     - name: Stub
@@ -67,7 +67,7 @@ jobs:
   check-version:
     # skips everything if the tag_name is 'none' because all later jobs depend on this job
     if: ${{ inputs.tag_name != 'none' }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     outputs:
       ee: ${{ fromJson(steps.canonical_version.outputs.result).ee }}
@@ -140,7 +140,7 @@ jobs:
           throw new Error("No edition selected to tag");
 
   copy-to-s3:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     needs: check-version
     timeout-minutes: 5
     strategy:
@@ -221,7 +221,7 @@ jobs:
         fi
 
   tag-docker-image:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     needs: check-version
     timeout-minutes: 5
     strategy:
@@ -267,7 +267,7 @@ jobs:
   push-git-tags:
     permissions: write-all
     needs: check-version
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     env:
       GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
@@ -298,7 +298,7 @@ jobs:
 
   update-version-info:
     if: ${{ !inputs.dot-x-tag }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     needs: check-version
     timeout-minutes: 5
     strategy:

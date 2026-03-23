@@ -10,7 +10,7 @@ concurrency:
 jobs:
   files-changed:
     name: Check which files changed
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 3
     outputs:
       documentation: ${{ steps.changes.outputs.documentation }}
@@ -30,7 +30,7 @@ jobs:
       !cancelled() &&
       (needs.files-changed.outputs.frontend_embedding_sdk_sources == 'true' ||
       needs.files-changed.outputs.documentation == 'true')
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
@@ -53,7 +53,7 @@ jobs:
     if: |
       needs.files-changed.outputs.frontend_embedding_sdk_sources == 'true' &&
       needs.build.result == 'success'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -72,7 +72,7 @@ jobs:
     if: |
       needs.files-changed.outputs.documentation == 'true' &&
       needs.build.result == 'success'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -91,7 +91,7 @@ jobs:
     if: |
       needs.files-changed.outputs.frontend_embedding_sdk_sources == 'true' &&
       needs.build.result == 'success'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -156,7 +156,7 @@ jobs:
       - sdk-e2e-tests
       - e2e-component-tests-embedding-sdk-cross-version
     if: always() && !cancelled()
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     env:
       needs: ${{ toJson(needs) }}

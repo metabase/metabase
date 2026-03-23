@@ -25,7 +25,7 @@ on:
 
 jobs:
   update-release-log:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     # don't run this workflow for forks
     if: ${{ github.event_name != 'push' || github.repository == 'metabase/metabase' }}

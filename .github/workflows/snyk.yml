@@ -18,7 +18,7 @@ jobs:
   generate-poms:
     if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
     name: Generate pom.xml files
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     steps:
       - uses: actions/checkout@v4
       - name: Prepare back-end environment
@@ -39,7 +39,7 @@ jobs:
   frontend-projects:
     if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
     name: ${{ matrix.project.name }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     strategy:
       matrix:
         project:
@@ -90,7 +90,7 @@ jobs:
     needs: generate-poms
     if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
     name: ${{ matrix.project.name }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     strategy:
       matrix:
         project:
