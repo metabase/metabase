@@ -1,4 +1,4 @@
-(ns metabase-enterprise.replacement.api-test
+(ns ^:mb/driver-tests metabase-enterprise.replacement.api-test
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.dependencies.events]
@@ -10,7 +10,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [metabase.transforms.core :as transforms]
-   [metabase.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
+   [metabase.transforms.test-util :refer [with-transform-cleanup!]]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -402,7 +402,7 @@
   (testing "POST /replace-model-with-transform — transform execution failure leaves model unchanged"
     (mt/with-premium-features #{:dependencies}
       (let [mp (mt/metadata-provider)]
-        (mt/with-temp [:model/Card {model-id :id :as model-card}
+        (mt/with-temp [:model/Card {model-id :id}
                        {:database_id   (mt/id)
                         :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                         :type          :model
