@@ -10,28 +10,25 @@ import {
   getCartesianChartDefinition,
 } from "metabase/visualizations/visualizations/CartesianChart/chart-definition";
 
-import type {
-  VisualizationProps,
-  VisualizationSettingsDefinitions,
-} from "../../types";
+import type { VisualizationDefinition, VisualizationProps } from "../../types";
 
-const settings: VisualizationSettingsDefinitions = {
-  ...COMBO_CHARTS_SETTINGS_DEFINITIONS,
+const ComboViz: Omit<
+  VisualizationDefinition,
+  "isSensible" | "checkRenderable"
+> = {
+  getUiName: () => t`Combo`,
+  identifier: "combo",
+  iconName: "lineandbar",
+  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+  noun: t`line and bar chart`,
+  minSize: getMinSize("combo"),
+  defaultSize: getDefaultSize("combo"),
+  settings: {
+    ...COMBO_CHARTS_SETTINGS_DEFINITIONS,
+  },
 };
 
-Object.assign(
-  ComboChart,
-  getCartesianChartDefinition({
-    getUiName: () => t`Combo`,
-    identifier: "combo",
-    iconName: "lineandbar",
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    noun: t`line and bar chart`,
-    minSize: getMinSize("combo"),
-    defaultSize: getDefaultSize("combo"),
-    settings,
-  }),
-);
+Object.assign(ComboChart, getCartesianChartDefinition(ComboViz));
 
 export function ComboChart(props: VisualizationProps) {
   return <CartesianChart {...props} />;

@@ -10,15 +10,7 @@ import {
   getCartesianChartDefinition,
 } from "metabase/visualizations/visualizations/CartesianChart/chart-definition";
 
-import type {
-  VisualizationDefinition,
-  VisualizationProps,
-  VisualizationSettingsDefinitions,
-} from "../../types";
-
-const settings: VisualizationSettingsDefinitions = {
-  ...COMBO_CHARTS_SETTINGS_DEFINITIONS,
-};
+import type { VisualizationDefinition, VisualizationProps } from "../../types";
 
 const AreaViz: Omit<VisualizationDefinition, "isSensible" | "checkRenderable"> =
   {
@@ -29,7 +21,9 @@ const AreaViz: Omit<VisualizationDefinition, "isSensible" | "checkRenderable"> =
     noun: t`area chart`,
     minSize: getMinSize("area"),
     defaultSize: getDefaultSize("area"),
-    settings,
+    settings: {
+      ...COMBO_CHARTS_SETTINGS_DEFINITIONS,
+    },
   };
 
 Object.assign(AreaChart, getCartesianChartDefinition(AreaViz));
