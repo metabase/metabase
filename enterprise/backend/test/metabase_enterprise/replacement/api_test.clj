@@ -394,6 +394,55 @@
                       (is (= (:id output-table)
                              (lib/primary-source-table-id question-query))))))))))))))
 
+;;; ---------------------------------------- POST /replace-model-with-table ----------------------------------------
+
+(deftest replace-model-with-table-test
+  (testing "POST /replace-model-with-table — swaps child to source table, converts model to question"
+    (mt/with-premium-features #{:dependencies}
+      (let [mp (mt/metadata-provider)]
+        (mt/with-temp [:model/Card {model-id :id :as model-card}
+                       {:database_id   (mt/id)
+                        :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                        :type          :model
+                        :name          "Model"}
+
+                       :model/Card {child-id :id :as child-card}
+                       {:database_id   (mt/id)
+                        :dataset_query (lib/query mp (lib.metadata/card mp model-id))
+                        :type          :question
+                        :name          "Child"}]
+          (mt/with-model-cleanup [:model/ReplacementRun :model/Dependency]
+            (doseq [card [model-card child-card]]
+              (events/publish-event! :event/card-create {:object card :user-id (mt/user->id :crowberto)}))
+
+            (let [response (mt/user-http-request :crowberto :post 202
+                                                 "ee/replacement/replace-model-with-table"
+                                                 {:card_id model-id})
+                  run-id   (:run_id response)
+                  final    (poll-run run-id)]
+              (is (= "succeeded" (:status final)))
+
+              (testing "model is converted to a saved question"
+                (is (= :question (t2/select-one-fn :type :model/Card :id model-id))))
+
+              (testing "child now references the source table"
+                (let [child-query (t2/select-one-fn :dataset_query :model/Card :id child-id)]
+                  (is (= (mt/id :orders)
+                         (lib/primary-source-table-id child-query))))))))))))
+
+(deftest replace-model-with-table-no-source-table-test
+  (testing "POST /replace-model-with-table — returns 400 when model has no primary source table"
+    (mt/with-premium-features #{:dependencies}
+      (let [mp (mt/metadata-provider)]
+        (mt/with-temp [:model/Card {model-id :id}
+                       {:database_id   (mt/id)
+                        :dataset_query (lib/native-query mp "SELECT 1")
+                        :type          :model
+                        :name          "Native Model"}]
+          (mt/user-http-request :crowberto :post 400
+                                "ee/replacement/replace-model-with-table"
+                                {:card_id model-id}))))))
+
 (deftest all-endpoints-require-superuser-test
   (testing "All /ee/replacement/ endpoints return 403 for non-admin users"
     (mt/with-premium-features #{:dependencies}

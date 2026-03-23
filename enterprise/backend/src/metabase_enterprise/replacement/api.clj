@@ -9,6 +9,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.lib.core :as lib]
    [metabase.transforms.core :as transforms]
    [ring.util.response :as response]
    [toucan2.core :as t2]))
@@ -66,6 +67,32 @@
     (-> (response/response {:run_id (:id job-row)})
         (assoc :status 202))))
 
+(api.macros/defendpoint :post "/replace-model-with-table" :- [:map
+                                                              [:status [:= 202]]
+                                                              [:body [:map {:closed true}
+                                                                      [:run_id ::replacement.schema/run-id]]]]
+  "Replace all usages of a model with its primary source table, then un-persist and
+   convert the model to a saved question. Returns 202 with a run_id for polling."
+  [_route-params
+   _query-params
+   {:keys [card_id]}
+   :- [:map
+       [:card_id ::replacement.schema/source-entity-id]]]
+  (api/check-superuser)
+  (let [card     (api/check-404 (t2/select-one :model/Card :id card_id))
+        table-id (lib/primary-source-table-id (:dataset_query card))
+        _        (api/check (some? table-id) 400 "Model does not have a primary source table")
+        job-row  (replacement-run/create-run!
+                  :card card_id
+                  :table table-id
+                  api/*current-user-id*)
+        progress (replacement-run/run-row->progress job-row)
+        work-fn  (fn [progress]
+                   (replacement.runner/run-swap-model-with-table! card_id table-id progress))]
+    (replacement.execute/execute-async! work-fn progress)
+    (-> (response/response {:run_id (:id job-row)})
+        (assoc :status 202))))
+
 (api.macros/defendpoint :post "/replace-model-with-transform" :- [:map
                                                                   [:status [:= 202]]
                                                                   [:body [:map {:closed true}
@@ -73,13 +100,13 @@
   "Create a transform from a model, execute it, and replace all usages of the model
    with the output table. Un-persists the model and converts it to a saved question.
    Returns 202 with a run_id for polling.
-   
-   If there is an error during the transform execution, no replacement will be 
-   performed and the model will remain unchanged. 
-   
-   If there is an error during the source swap, the transform and the output 
-   table will be retained, and the model will remain unchanged. We cannot delete 
-   the transform or the output table because they can be used by other queries at 
+
+   If there is an error during the transform execution, no replacement will be
+   performed and the model will remain unchanged.
+
+   If there is an error during the source swap, the transform and the output
+   table will be retained, and the model will remain unchanged. We cannot delete
+   the transform or the output table because they can be used by other queries at
    this point."
   [_route-params
    _query-params
