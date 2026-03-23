@@ -18,6 +18,12 @@ To give you an idea of what's possible with the SDK, we've put together example 
 
 Here's the [Shoppy source code](https://github.com/metabase/shoppy).
 
+## Modular embedding SDK playground
+
+![Modular embedding SDK playground](../images/embedding-sdk-playground.png)
+
+Try out the SDK in the [SDK playground](https://sdk-playground.metabase.com/) without any setup required. The playground lets you experiment with components, theming, and interactivity in your browser.
+
 ## Modular embedding SDK prerequisites
 
 - React application using React 18 or React 19.
