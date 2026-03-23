@@ -1173,12 +1173,12 @@ describe("issue 27521", () => {
 
     H.visualize();
     assertTableHeader(0, "ID");
-    assertTableHeader(1, "Orders → ID");
+    assertTableHeader(1, "Orders 2 → ID");
 
     H.saveQuestion("Q1");
 
     assertTableHeader(0, "ID");
-    assertTableHeader(1, "Orders → ID");
+    assertTableHeader(1, "Orders 2 → ID");
 
     cy.log("Create second question (Products + Q1)");
     H.newButton("Question").click();
@@ -1198,7 +1198,7 @@ describe("issue 27521", () => {
     });
 
     H.popover().findByText("ID").click();
-    H.popover().findByText("Orders → ID").should("be.visible").click();
+    H.popover().findByText("Orders 2 → ID").should("be.visible").click();
     H.getNotebookStep("join")
       .findByLabelText("Right column")
       .findByText("Q1 → ID")
