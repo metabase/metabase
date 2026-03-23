@@ -21,7 +21,7 @@ export function TransformToolsMenu() {
     <Menu>
       <Menu.Target>
         <Tooltip
-          label={t`Transforms tools can't be used when Remote Sync is in read-only mode`}
+          label={t`Transform tools can't be used when Remote Sync is in read-only mode`}
           disabled={!isRemoteSyncReadOnly}
         >
           <Button
