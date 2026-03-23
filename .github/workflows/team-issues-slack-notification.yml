@@ -19,7 +19,7 @@ jobs:
         id: vars
         with:
           script: |
-            core.setOutput('issue_title', ${{ toJson(github.event.issue.title) }}.replaceAll(/"/g, '\\"'));
+            core.setOutput('issue_title', ${{ toJson(github.event.issue.title) }}.replaceAll(/\\/g, '\\\\').replaceAll(/"/g, '\\"'));
       - name: Extracting team name
         id: team_name
         run: |
