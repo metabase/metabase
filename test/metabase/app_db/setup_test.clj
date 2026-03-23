@@ -136,6 +136,32 @@
              Exception #"You must run `java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar migrate down` from version 46."
              (#'mdb.setup/error-if-downgrade-required! (mdb.connection/data-source))))))))
 
+(deftest changesets-from-later-version-test
+  (mt/test-drivers #{:h2 :mysql :postgres}
+    (mt/with-temp-empty-app-db [conn driver/*driver*]
+      ;; Run all real migrations first so the changelog table exists
+      (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) true false)
+      (liquibase/with-liquibase [liquibase conn]
+        (let [table    (liquibase/changelog-table-name liquibase)
+              db-conn  {:connection conn}
+              fake-ids ["v998.00-001" "v998.00-002" "v999.00-001"]]
+          ;; Insert fake changelog entries for versions 998 and 999
+          (doseq [[i id] (map-indexed vector fake-ids)]
+            (jdbc/execute! db-conn
+                           [(format "INSERT INTO %s (id, author, filename, dateexecuted, orderexecuted, exectype, md5sum)
+                                     VALUES (?, 'test', 'test.yaml', CURRENT_TIMESTAMP, ?, 'EXECUTED', 'fake')"
+                                    table)
+                            id (+ 99990 i)]))
+          (try
+            (let [later (liquibase/changesets-from-later-version conn (.getDatabase liquibase) 997 999)]
+              (testing "returns exactly the fake changeset IDs in execution order"
+                (is (= fake-ids later))))
+            (finally
+              ;; Clean up fake rows
+              (doseq [id fake-ids]
+                (jdbc/execute! db-conn
+                               [(format "DELETE FROM %s WHERE id = ?" table) id])))))))))
+
 ;; `delete!` below is ok in a parallel test since it's not actually executing anything
 #_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (deftest ^:parallel build-query-dont-add-delete-from-when-query-contains-delete-test

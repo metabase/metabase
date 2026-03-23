@@ -264,6 +264,7 @@
            config
            events
            models
+           permissions
            premium-features
            request
            settings
@@ -1553,6 +1554,7 @@
            request
            settings
            sso
+           system
            tenants
            users
            util

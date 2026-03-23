@@ -27,6 +27,12 @@ const stateWithLegacyValues = assocIn(
 ) as unknown as State;
 
 describe("getGroupsDataPermissionEditor", () => {
+  beforeEach(() => {
+    // clear the selector cache before each test
+    // otherwise we don't pick up plugin changes
+    (getGroupsDataPermissionEditor as any).memoizedResultFunc.clearCache();
+  });
+
   it("returns data for permission editor header", () => {
     const permissionEditorData = getGroupsDataPermissionEditor(
       stateWithLegacyValues,

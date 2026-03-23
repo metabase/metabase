@@ -19,7 +19,7 @@ jobs:
         github.event.pull_request.merged == true
       ) ||
       contains(github.event.pull_request.labels.*.name, 'Claude Code Review')
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     permissions:
       contents: read
       pull-requests: write
