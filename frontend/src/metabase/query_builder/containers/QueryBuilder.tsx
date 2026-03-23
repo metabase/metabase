@@ -25,7 +25,19 @@ import {
   getSampleDatabaseId,
 } from "metabase/querying/selectors";
 import { closeNavbar } from "metabase/redux/app";
-import { closeQB, setUIControls } from "metabase/redux/query-builder";
+import {
+  closeQB,
+  closeQbNewbModal,
+  onCloseAIQuestionAnalysisSidebar,
+  onCloseQuestionInfo,
+  onCloseSummary,
+  onCloseTimelines,
+  onEditSummary,
+  onOpenChartSettings,
+  onOpenTimelines,
+  setParameterValue,
+  setUIControls,
+} from "metabase/redux/query-builder";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
@@ -203,8 +215,17 @@ const mapStateToProps = (state: State, props: EntityListLoaderMergedProps) => {
 
 const mapDispatchToProps = {
   ...actions,
-  setUIControls,
   closeQB,
+  closeQbNewbModal,
+  onCloseAIQuestionAnalysisSidebar,
+  onCloseQuestionInfo,
+  onCloseSummary,
+  onCloseTimelines,
+  onEditSummary,
+  onOpenChartSettings,
+  onOpenTimelines,
+  setParameterValue,
+  setUIControls,
   closeNavbar,
   onChangeLocation: push,
   createBookmark: (id: BookmarkId) =>
