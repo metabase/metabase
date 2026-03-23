@@ -39,7 +39,7 @@ concurrency:
 
 jobs:
   get-cache-keys:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     steps:
       - uses: actions/checkout@v4
       - name: Get cache keys
@@ -52,7 +52,7 @@ jobs:
       cypress-cache-key: ${{ steps.get-cache-keys.outputs.cypress-cache-key }}
 
   generate-m2-cache:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     needs: get-cache-keys
     env:
@@ -76,7 +76,7 @@ jobs:
           key: ${{ env.M2_CACHE_KEY }}
 
   generate-frontend-caches:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     needs: get-cache-keys
     env:
