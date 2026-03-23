@@ -254,13 +254,15 @@ const TableSectionBase = ({
             {table.is_published ? t`Unpublish` : t`Publish`}
           </Button>
         )}
-        <Button
-          flex="1"
-          leftSection={<Icon name="settings" />}
-          onClick={onSyncOptionsClick}
-        >
-          {t`Sync settings`}
-        </Button>
+        {!table.db?.is_attached_dwh && (
+          <Button
+            flex="1"
+            leftSection={<Icon name="settings" />}
+            onClick={onSyncOptionsClick}
+          >
+            {t`Sync settings`}
+          </Button>
+        )}
         {isReplacementEnabled && (
           <Tooltip label={t`Find and replace`}>
             <Button
