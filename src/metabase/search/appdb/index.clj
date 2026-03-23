@@ -119,6 +119,8 @@
                             ;; legacy table names
                             [:in [:lower :table_name]
                              (mapv #(vector :inline %) ["search_index" "search_index_next" "search_index_retired"])]]
+                           ;; Exclude temp tables — they are managed by with-temp-index-table
+                           [:not-like [:lower :table_name] [:inline "%\\_temp"]]
                            [:not-in [:lower :table_name]
                             [:raw
                              (str "("
