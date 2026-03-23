@@ -49,6 +49,7 @@ export const BASIC_ACTION_ORDER = [
   "navigate-user-settings",
   "navigate-trash",
   "navigate-home",
+  "navigate-data-studio",
   "navigate-browse-model",
   "navigate-browse-database",
   "navigate-browse-metric",
@@ -258,6 +259,11 @@ export const useCommandPaletteBasicActions = ({
         perform: () => dispatch(push("/")),
       },
     );
+
+    actions.push({
+      id: "navigate-data-studio",
+      perform: () => dispatch(push("/data-studio")),
+    });
 
     const browseActions: RegisterShortcutProps[] = [
       {
