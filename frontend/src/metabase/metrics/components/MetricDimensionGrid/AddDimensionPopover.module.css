@@ -1,0 +1,7 @@
+.dropdown {
+  overflow: hidden;
+}
+
+.dimensionPicker {
+  color: var(--mb-color-brand);
+}

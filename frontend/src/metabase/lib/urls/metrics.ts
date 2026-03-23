@@ -20,6 +20,10 @@ export function metricOverview(cardId: CardId): string {
   return `/metric/${cardId}`;
 }
 
+export function metricDimensionGrid(cardId: CardId): string {
+  return `/metric/${cardId}/overview`;
+}
+
 export function metricQuery(cardId: CardId): string {
   return `/metric/${cardId}/query`;
 }

@@ -4,6 +4,7 @@ import { PLUGIN_CACHING, PLUGIN_DEPENDENCIES } from "metabase/plugins";
 
 import { DataStudioMetricCachingPage } from "./pages/DataStudioMetricCachingPage";
 import { DataStudioMetricDependenciesPage } from "./pages/DataStudioMetricDependenciesPage";
+import { DataStudioMetricDimensionGridPage } from "./pages/DataStudioMetricDimensionGridPage";
 import { DataStudioMetricHistoryPage } from "./pages/DataStudioMetricHistoryPage";
 import { DataStudioMetricOverviewPage } from "./pages/DataStudioMetricOverviewPage";
 import { DataStudioMetricQueryPage } from "./pages/DataStudioMetricQueryPage";
@@ -14,6 +15,10 @@ export function getDataStudioMetricRoutes() {
     <Route path="metrics">
       <Route path="new" component={DataStudioNewMetricPage} />
       <Route path=":cardId" component={DataStudioMetricOverviewPage} />
+      <Route
+        path=":cardId/overview"
+        component={DataStudioMetricDimensionGridPage}
+      />
       <Route path=":cardId/query" component={DataStudioMetricQueryPage} />
       {PLUGIN_DEPENDENCIES.isEnabled && (
         <Route
