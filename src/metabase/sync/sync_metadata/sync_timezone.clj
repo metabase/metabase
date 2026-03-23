@@ -38,7 +38,7 @@
   "Query `database` for its current time to determine its timezone. The results of this function are used by the sync
   process to update the timezone if it's different."
   ([database :- i/DatabaseInstance]
-   (sync-timezone! database (persist.appdb/sync-writer)))
+   (sync-timezone! database persist.appdb/writer))
   ([database :- i/DatabaseInstance
     writer   :- [:fn #(satisfies? persist/SyncDatabaseWriter %)]]
    (let [driver  (driver.u/database->driver database)

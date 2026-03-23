@@ -25,6 +25,7 @@
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
+   [metabase.sync.persist.appdb :as persist.appdb]
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.test :as mt]
    [metabase.test.data.impl :as data.impl]
@@ -115,7 +116,8 @@
   (let [table-name  (ddl.i/format-name driver/*driver* table-name)
         schema-name (or (some->> schema-name (ddl.i/format-name driver/*driver*))
                         (sql.tx/session-schema driver/*driver*))
-        table       (sync-tables/create-or-reactivate-table! database {:name table-name :schema schema-name})]
+        table       (sync-tables/create-or-reactivate-table! database {:name table-name :schema schema-name}
+                                                             persist.appdb/reader persist.appdb/writer)]
     (t2/update! :model/Table (:id table) {:is_upload true})
     (binding [upload/*auxiliary-sync-steps* :synchronous]
       (#'upload/scan-and-sync-table! database table))

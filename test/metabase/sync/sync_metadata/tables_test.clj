@@ -10,6 +10,7 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata :as sync-metadata]
+   [metabase.sync.persist.appdb :as persist.appdb]
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -66,7 +67,7 @@
     (mt/with-temp [:model/Database db {}
                    :model/Table    table-1 {:name "Table 1" :db_id (u/the-id db)}
                    :model/Table    _       {:name "Table 2" :db_id (u/the-id db)}]
-      (#'sync-tables/retire-tables! db #{{:name "Table 1" :schema (:schema table-1)}})
+      (#'sync-tables/retire-tables! db #{{:name "Table 1" :schema (:schema table-1)}} persist.appdb/writer)
       (is (= {"Table 1" false "Table 2" true}
              (t2/select-fn->fn :name :active :model/Table :db_id (u/the-id db)))))))
 
@@ -195,7 +196,7 @@
                    :model/Table table-3 {:name "active_table"
                                          :db_id (u/the-id db)
                                          :active true}]
-      (#'sync-tables/archive-tables! db)
+      (#'sync-tables/archive-tables! db persist.appdb/reader persist.appdb/writer)
 
       (testing "Old deactivated table is archived with suffix"
         (let [archived-table (t2/select-one :model/Table (:id table-1))]
@@ -226,7 +227,7 @@
                                             :active           false
                                             :transform_target false
                                             :deactivated_at   (t/minus (t/offset-date-time) (t/days 30))}]
-      (#'sync-tables/archive-tables! db)
+      (#'sync-tables/archive-tables! db persist.appdb/reader persist.appdb/writer)
 
       (testing "Transform target table is not archived or renamed"
         (let [table (t2/select-one :model/Table (:id provisional))]
@@ -248,7 +249,7 @@
                                        :archived_at (t/minus (t/offset-date-time) (t/days 5))}]
       (let [original-name (:name table)
             original-archived-at (:archived_at table)]
-        (#'sync-tables/archive-tables! db)
+        (#'sync-tables/archive-tables! db persist.appdb/reader persist.appdb/writer)
 
         (let [updated-table (t2/select-one :model/Table (:id table))]
           (is (= original-name (:name updated-table)))
@@ -285,7 +286,7 @@
                                                 :db_id (u/the-id db)
                                                 :active false
                                                 :deactivated_at (t/minus (t/offset-date-time) (t/days 20))}]
-      (#'sync-tables/archive-tables! db)
+      (#'sync-tables/archive-tables! db persist.appdb/reader persist.appdb/writer)
 
       (testing "the original table was archived and renamed"
         (let [archived-table (t2/select-one :model/Table (:id original-table))]
@@ -313,15 +314,18 @@
                                                 :data_authority :unconfigured
                                                 :is_writable    false}]
       ;; Simulate what happens during sync: the driver reports both tables as writable
-      (let [select-cols (into [:model/Table :id :name :schema :data_authority] @#'sync-tables/keys-to-update)]
+      (let [select-cols (into [:model/Table :id :name :schema :data_authority] @#'sync-tables/keys-to-update)
+            writer persist.appdb/writer]
         (#'sync-tables/update-table-metadata-if-needed!
          {:name "computed_table" :schema nil :is_writable true}
          (t2/select-one select-cols (:id computed-table))
-         db)
+         db
+         writer)
         (#'sync-tables/update-table-metadata-if-needed!
          {:name "normal_table" :schema nil :is_writable true}
          (t2/select-one select-cols (:id normal-table))
-         db))
+         db
+         writer))
       (testing "computed table should remain non-writable"
         (is (false? (t2/select-one-fn :is_writable :model/Table (:id computed-table)))))
       (testing "normal table should be updated to writable"
@@ -335,11 +339,11 @@
             normal-table-metadata {:name "normal_table"}]
 
         (testing "creating a table in a sample database"
-          (let [created-table (sync-tables/create-table! sample-db sample-table-metadata)]
+          (let [created-table (sync-tables/create-table! sample-db sample-table-metadata persist.appdb/writer)]
             (is (= :ingested (:data_authority created-table)))))
 
         (testing "creating a table in a normal database"
-          (let [created-table (sync-tables/create-table! normal-db normal-table-metadata)]
+          (let [created-table (sync-tables/create-table! normal-db normal-table-metadata persist.appdb/writer)]
             (is (= :unconfigured (:data_authority created-table)))))
 
         (testing "reactivating a table in a sample database"
@@ -347,7 +351,7 @@
                                                       :name           "existing_sample_table"
                                                       :active         false
                                                       :data_authority :computed}]
-            (sync-tables/create-or-reactivate-table! sample-db {:name "existing_sample_table"})
+            (sync-tables/create-or-reactivate-table! sample-db {:name "existing_sample_table"} persist.appdb/reader persist.appdb/writer)
             (let [updated-table (t2/select-one :model/Table (:id existing-table))]
               (is (= :ingested (:data_authority updated-table)))
               (is (:active updated-table)))))))))

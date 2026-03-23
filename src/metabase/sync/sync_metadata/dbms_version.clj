@@ -16,7 +16,7 @@
 (mu/defn sync-dbms-version! :- [:maybe DBMSVersion]
   "Get the DBMS version as provided by the driver and save it in the Database."
   ([database :- i/DatabaseInstance]
-   (sync-dbms-version! database (persist.appdb/sync-writer)))
+   (sync-dbms-version! database persist.appdb/writer))
   ([database :- i/DatabaseInstance
     writer   :- [:fn #(satisfies? persist/SyncDatabaseWriter %)]]
    (let [driver  (driver.u/database->driver database)

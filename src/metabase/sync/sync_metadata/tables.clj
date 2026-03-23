@@ -13,14 +13,15 @@
    [metabase.models.interface :as mi]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
+   [metabase.sync.persist :as persist]
+   [metabase.sync.persist.appdb :as persist.appdb]
    [metabase.sync.sync-metadata.crufty :as crufty]
    [metabase.sync.sync-metadata.metabase-metadata :as metabase-metadata]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
@@ -86,11 +87,10 @@
 (mu/defn- update-database-metadata!
   "If there is a version in the db-metadata update the DB to have that in the DB model"
   [database    :- i/DatabaseInstance
-   db-metadata :- i/DatabaseMetadata]
+   db-metadata :- i/DatabaseMetadata
+   writer      :- [:fn #(satisfies? persist/SyncDatabaseWriter %)]]
   (log/infof "Found new version for DB: %s" (:version db-metadata))
-  (t2/update! :model/Database (u/the-id database)
-              {:details
-               (assoc (:details database) :version (:version db-metadata))}))
+  (persist/set-database-details-version! writer (u/the-id database) (:details database) (:version db-metadata)))
 
 (mu/defn- cruft-dependent-cols [{table-name :name :as table}
                                 database
@@ -119,82 +119,80 @@
                             :else                   "incomplete")
      :visibility_type     (when is-crufty? :cruft)}))
 
+(defn- build-table-map
+  "Build the map to insert for a new table."
+  [database table]
+  (merge (cruft-dependent-cols table database ::create)
+         {:active                  true
+          :db_id                   (:id database)
+          :schema                  (:schema table)
+          :description             (:description table)
+          :database_require_filter (:database_require_filter table)
+          :display_name            (or (:display_name table)
+                                       (humanization/name->human-readable-name (:name table)))
+          :name                    (:name table)
+          :is_writable             (:is_writable table)}
+         (when (:data_source table)
+           {:data_source (:data_source table)})
+         (when (:data_authority table)
+           {:data_authority (:data_authority table)})
+         (when (:is_sample database)
+           {:data_authority :ingested
+            :data_source    :ingested})))
+
 (defn create-table!
   "Creates a new table in the database, ready to be synced.
    Throws an exception if there is already a table with the same name, schema and database ID."
-  [database table]
-  (t2/insert-returning-instance!
-   :model/Table
-   (merge (cruft-dependent-cols table database ::create)
-          {:active                  true
-           :db_id                   (:id database)
-           :schema                  (:schema table)
-           :description             (:description table)
-           :database_require_filter (:database_require_filter table)
-           :display_name            (or (:display_name table)
-                                        (humanization/name->human-readable-name (:name table)))
-           :name                    (:name table)
-           :is_writable             (:is_writable table)}
-          (when (:data_source table)
-            {:data_source (:data_source table)})
-          (when (:data_authority table)
-            {:data_authority (:data_authority table)})
-          (when (:is_sample database)
-            {:data_authority :ingested
-             :data_source    :ingested}))))
+  [database table writer]
+  (persist/create-table! writer (build-table-map database table)))
 
 (defn create-or-reactivate-table!
   "Create a single new table in the database, or mark it as active if it already exists."
-  [database {schema :schema table-name :name :as table}]
-  (if-let [existing-id (t2/select-one-pk :model/Table
-                                         :db_id (u/the-id database)
-                                         :schema schema
-                                         :name table-name
-                                         :active false)]
-    (let [table (t2/select-one :model/Table existing-id)]
+  [database {schema :schema table-name :name :as table} reader writer]
+  (if-let [existing-id (persist/find-inactive-table-id reader (u/the-id database) schema table-name)]
+    (let [table (persist/get-table reader existing-id)]
       ;; if the table already exists but is marked *inactive*, mark it as *active*
-      (t2/update! :model/Table existing-id (cond-> (cruft-dependent-cols table database ::reactivate)
+      (persist/reactivate-table! writer existing-id
+                                 (cond-> (cruft-dependent-cols table database ::reactivate)
 
-                                             ;; do not unhide tables w/ cruft settings
-                                             (some? (:visibility_type table))
-                                             (dissoc :visibility_type)
+                                   ;; do not unhide tables w/ cruft settings
+                                   (some? (:visibility_type table))
+                                   (dissoc :visibility_type)
 
-                                             true
-                                             (assoc :active true)
+                                   true
+                                   (assoc :active true)
 
-                                             (:is_sample database)
-                                             (assoc :data_authority :ingested
-                                                    :data_source    :ingested))))
+                                   (:is_sample database)
+                                   (assoc :data_authority :ingested
+                                          :data_source    :ingested))))
     ;; otherwise create a new Table
-    (create-table! database table)))
+    (create-table! database table writer)))
 
 ;; TODO - should we make this logic case-insensitive like it is for fields?
 
 (mu/defn- create-or-reactivate-tables!
   "Create `new-tables` for database, or if they already exist, mark them as active."
   [database :- i/DatabaseInstance
-   new-table-metadatas :- [:set i/DatabaseMetadataTable]]
+   new-table-metadatas :- [:set i/DatabaseMetadataTable]
+   reader writer]
   (doseq [table-metadata new-table-metadatas]
     (log/info "Found new table:"
               (sync-util/name-for-logging (mi/instance :model/Table table-metadata))))
   (doseq [table-metadata new-table-metadatas]
-    (create-or-reactivate-table! database table-metadata)))
+    (create-or-reactivate-table! database table-metadata reader writer)))
 
 (mu/defn- retire-tables!
   "Mark any `old-tables` belonging to `database` as inactive."
   [database   :- i/DatabaseInstance
    old-tables :- [:set [:map
                         [:name ::lib.schema.common/non-blank-string]
-                        [:schema [:maybe ::lib.schema.common/non-blank-string]]]]]
+                        [:schema [:maybe ::lib.schema.common/non-blank-string]]]]
+   writer]
   (log/info "Marking tables as inactive:"
             (for [table old-tables]
               (sync-util/name-for-logging (mi/instance :model/Table table))))
   (doseq [{schema :schema table-name :name :as _table} old-tables]
-    (t2/update! :model/Table {:db_id  (u/the-id database)
-                              :schema schema
-                              :name   table-name
-                              :active true}
-                {:active false})))
+    (persist/retire-table! writer (u/the-id database) schema table-name)))
 
 (def ^:private keys-to-update
   [:description :database_require_filter :estimated_row_count :visibility_type :initial_sync_status :is_writable])
@@ -203,7 +201,8 @@
   "Update the table metadata if it has changed."
   [table-metadata :- i/DatabaseMetadataTable
    metabase-table :- (ms/InstanceOf :model/Table)
-   metabase-database :- (ms/InstanceOf :model/Database)]
+   metabase-database :- (ms/InstanceOf :model/Database)
+   writer]
   (let [old-table               (select-keys metabase-table keys-to-update)
         new-table               (-> (zipmap keys-to-update (repeat nil))
                                     (merge table-metadata
@@ -235,18 +234,20 @@
                  (get metabase-table k)
                  v))
     (when (seq changes)
-      (t2/update! :model/Table (:id metabase-table) changes))))
+      (persist/update-table! writer (:id metabase-table) changes))))
 
 (mu/defn- update-tables-metadata-if-needed!
   [table-metadatas :- [:set i/DatabaseMetadataTable]
    metabase-tables :- [:set (ms/InstanceOf :model/Table)]
-   metabase-database :- (ms/InstanceOf :model/Database)]
+   metabase-database :- (ms/InstanceOf :model/Database)
+   writer]
   (let [name+schema->table-metadata (m/index-by (juxt :name :schema) table-metadatas)
         name+schema->metabase-table (m/index-by (juxt :name :schema) metabase-tables)]
     (doseq [name+schema (set/intersection (set (keys name+schema->table-metadata)) (set (keys name+schema->metabase-table)))]
       (update-table-metadata-if-needed! (name+schema->table-metadata name+schema)
                                         (name+schema->metabase-table name+schema)
-                                        metabase-database))))
+                                        metabase-database
+                                        writer))))
 
 (mu/defn- table-set :- [:set i/DatabaseMetadataTable]
   "So there exist tables for the user and metabase metadata tables for internal usage by metabase.
@@ -258,25 +259,17 @@
                       (sync-util/is-temp-transform-table? table))))
         (:tables db-metadata)))
 
-(mu/defn- select-tables :- [:set (ms/InstanceOf :model/Table)]
-  "Selects the columns we need for `:model/Table`, with some optional filters"
-  [database :- i/DatabaseInstance
-   & filters]
-  (set (apply
-        t2/select
-        (into [:model/Table :id :name :schema :data_authority] keys-to-update)
-        :db_id (u/the-id database)
-        filters)))
-
 (mu/defn- db->our-metadata :- [:set (ms/InstanceOf :model/Table)]
   "Return information about what Tables we have for this DB in the Metabase application DB. Only includes active tables."
-  [database :- i/DatabaseInstance]
-  (select-tables database :active true))
+  [database :- i/DatabaseInstance
+   reader]
+  (persist/active-tables reader (u/the-id database)))
 
 (mu/defn- db->our-tables :- [:set (ms/InstanceOf :model/Table)]
   "Return *all* tables we have for this DB in the Metabase appDB, including inactive ones."
-  [database :- i/DatabaseInstance]
-  (select-tables database))
+  [database :- i/DatabaseInstance
+   reader]
+  (persist/all-tables reader (u/the-id database)))
 
 (mu/defn- adjusted-schemas :- [:maybe [:map-of :string :string]]
   "Returns a map of schemas that should be adjusted to their new names."
@@ -292,14 +285,11 @@
    (into #{} (map :schema our-tables))))
 
 (defn- adjust-table-schemas!
-  [database schemas-to-update]
+  [database schemas-to-update writer]
   (when schemas-to-update
     (log/infof "Renaming schemas: %s" (pr-str schemas-to-update)))
   (doseq [[schema new-schema] schemas-to-update]
-    (t2/update! :model/Table
-                :db_id (:id database)
-                :schema schema
-                {:schema new-schema})))
+    (persist/update-table-schema! writer (:id database) schema new-schema)))
 
 (def ^:private
   ^{:doc "threshold after which deactivated tables will be archived"}
@@ -309,7 +299,7 @@
   "Mark tables that have been deactivated for longer than the configured threshold as archived
   and suffixes their names. Skips tables with `transform_target = true` (provisional transform
   output entries) since transforms still reference them by their original name."
-  [database]
+  [database reader writer]
   (let [;; we use UTC offset time for suffix, may not match db time but
         ;; it doesn't matter much, the source of time truth is `archived_at`,
         ;; we're just using this as a cheap namespace
@@ -317,12 +307,7 @@
         threshold-expr (apply
                         (requiring-resolve 'metabase.util.honey-sql-2/add-interval-honeysql-form)
                         (mdb/db-type) :%now archive-tables-threshold)
-        tables-to-archive (t2/select :model/Table
-                                     :db_id (u/the-id database)
-                                     :active false
-                                     :archived_at nil
-                                     :transform_target false
-                                     :deactivated_at [:< threshold-expr])
+        tables-to-archive (persist/archivable-tables reader (u/the-id database) threshold-expr)
         archived (atom 0)]
     (doseq [table tables-to-archive
             :let [new-name (str (:name table) suffix)]]
@@ -339,11 +324,9 @@
                   ;; in the extremely unlikely case that there already exists a table with our
                   ;; archived name, we let it fail from hitting the unique constraints violation
                   ;; and just report the failure
-                  [(t2/update! :model/Table
-                               {:id (:id table)
-                                :active false}
-                               {:archived_at (mi/now)
-                                :name new-name})]
+                  [(persist/archive-table! writer (:id table)
+                                           {:archived_at (mi/now)
+                                            :name new-name})]
                   (catch Throwable t
                     [0 t]))]
             (when (zero? did-update)
@@ -361,16 +344,19 @@
    (sync-tables-and-database! database (fetch-metadata/db-metadata database)))
 
   ([database :- i/DatabaseInstance db-metadata]
+   (sync-tables-and-database! database db-metadata persist.appdb/reader persist.appdb/writer))
+
+  ([database :- i/DatabaseInstance db-metadata reader writer]
    ;; determine what's changed between what info we have and what's in the DB
    (let [driver                (driver.u/database->driver database)
          db-table-metadatas    (table-set db-metadata)
          name+schema           #(select-keys % [:name :schema])
          name+schema->db-table (m/index-by name+schema db-table-metadatas)
-         our-metadata          (db->our-metadata database)
+         our-metadata          (db->our-metadata database reader)
          multi-level-support?  (driver.u/supports? driver :multi-level-schema database)
          schemas-to-update     (when multi-level-support?
                                  ;; we want to adjust the schemas for all tables (not just active ones from `our-metadata`)
-                                 (adjusted-schemas driver database (db->our-tables database)))
+                                 (adjusted-schemas driver database (db->our-tables database reader)))
          our-metadata          (cond->> our-metadata
                                  multi-level-support?
                                  (into #{} (map (fn [table]
@@ -383,31 +369,31 @@
                                 (keep-name+schema-set (set (map name+schema our-metadata))))]
      (sync-util/with-error-handling (format "Error updating table schemas for %s"
                                             (sync-util/name-for-logging database))
-       (adjust-table-schemas! database schemas-to-update))
+       (adjust-table-schemas! database schemas-to-update writer))
 
      ;; update database metadata from database
      (when (some? (:version db-metadata))
        (sync-util/with-error-handling (format "Error creating/reactivating tables for %s"
                                               (sync-util/name-for-logging database))
-         (update-database-metadata! database db-metadata)))
+         (update-database-metadata! database db-metadata writer)))
      ;; create new tables as needed or mark them as active again
      (when (seq new-table-metadatas)
        (let [new-tables-info (set (map #(get name+schema->db-table (name+schema %)) new-table-metadatas))]
          (sync-util/with-error-handling (format "Error creating/reactivating tables for %s"
                                                 (sync-util/name-for-logging database))
-           (create-or-reactivate-tables! database new-tables-info))))
+           (create-or-reactivate-tables! database new-tables-info reader writer))))
      ;; mark old tables as inactive
      (when (seq old-table-metadatas)
        (sync-util/with-error-handling (format "Error retiring tables for %s" (sync-util/name-for-logging database))
-         (retire-tables! database old-table-metadatas)))
+         (retire-tables! database old-table-metadatas writer)))
 
      (sync-util/with-error-handling (format "Error updating table metadata for %s" (sync-util/name-for-logging database))
        ;; we need to fetch the tables again because we might have retired tables in the previous steps
-       (update-tables-metadata-if-needed! db-table-metadatas (db->our-metadata database) database))
+       (update-tables-metadata-if-needed! db-table-metadatas (db->our-metadata database reader) database writer))
 
      (let [archived-tables (sync-util/with-error-handling (format "Error archiving tables for %s"
                                                                   (sync-util/name-for-logging database))
-                             (archive-tables! database))]
+                             (archive-tables! database reader writer))]
 
        {:updated-tables (+ (count new-table-metadatas) (count old-table-metadatas) (or archived-tables 0))
         :total-tables   (count our-metadata)}))))

@@ -8,6 +8,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata :as sync-metadata]
+   [metabase.sync.persist.appdb :as persist.appdb]
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.sync.util :as sync-util]
    [metabase.util.i18n :refer [trs]]
@@ -57,7 +58,7 @@
         table  {:name   table-name
                 :schema schema-name}]
     (if (driver/table-exists? driver database table)
-      (let [created (sync-tables/create-or-reactivate-table! database table)]
+      (let [created (sync-tables/create-or-reactivate-table! database table persist.appdb/reader persist.appdb/writer)]
         (doto created
           sync/sync-table!
           sync-util/set-initial-table-sync-complete!))
