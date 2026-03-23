@@ -466,7 +466,7 @@
   ([opts]
    (dependency/filtered-graph-dependencies
     (fn [entity-type-field entity-id-field]
-      (visible-entities-filter-clause entity-type-field entity-id-field opts)))))
+      (visible-entities-filter-clause entity-type-field entity-id-field #_opts (merge {:include-archived-items true} opts))))))
 
 (defn- readable-graph-dependents
   ([]

@@ -2,9 +2,11 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.dependencies.events]
+   [metabase-enterprise.dependencies.models.analysis-finding :as deps.analysis-finding]
    [metabase-enterprise.dependencies.task.backfill :as deps.backfill]
    [metabase-enterprise.dependencies.task.entity-check :as deps.entity-check]
    [metabase.lib-be.core :as lib-be]
+   [metabase.sync.sync :as sync]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -42,6 +44,12 @@
                 "Card should depend on the orders table"))
 
           (testing "precondition: card analysis is passing"
+            (is (= :fail (t2/select-one-fn :result :model/AnalysisFinding
+                                           :analyzed_entity_type "card"
+                                           :analyzed_entity_id card-id)))
+            (is (= :fail (t2/select-one-fn :result :model/AnalysisFindingError
+                                           :analyzed_entity_type "card"
+                                           :analyzed_entity_id card-id)))
             (is (true? (t2/select-one-fn :result :model/AnalysisFinding
                                          :analyzed_entity_type "card"
                                          :analyzed_entity_id card-id))
@@ -51,27 +59,34 @@
           (t2/update! :model/Table table-id {:active false})
 
           (try
+            (sync/sync-database! (mt/db))
             ;; 4. Mark the card's analysis as stale so the background job will re-analyze it.
             ;;    In the real flow, this should happen via an event when the table is deactivated
-            ;;    (that's a separate bug — we're deferring it for now).
-            #_(deps.analysis-finding/mark-stale! :card [card-id])
+            (deps.analysis-finding/mark-stale! :card [card-id])
 
             ;; 5. Run the entity check job to re-analyze the card
-            #_(lib-be/with-metadata-provider-cache
-                (#'deps.entity-check/check-entities!))
+            (lib-be/with-metadata-provider-cache
+              (#'deps.entity-check/check-entities!))
 
             ;; 6. Assert that the card is now broken
-            #_(testing "card analysis should fail after table deactivation"
-                (is (false? (t2/select-one-fn :result :model/AnalysisFinding
-                                              :analyzed_entity_type "card"
-                                              :analyzed_entity_id card-id))
-                    "Card analysis should fail when its source table is deactivated"))
+            (testing "card analysis should fail after table deactivation"
+              (is (= :fail (t2/select-one-fn :result :model/AnalysisFinding
+                                             :analyzed_entity_type "card"
+                                             :analyzed_entity_id card-id)))
+              (is (= :fail (t2/select-one-fn :result :model/AnalysisFindingError
+                                             :analyzed_entity_type "card"
+                                             :analyzed_entity_id card-id)))
+              (is (false? (t2/select-one-fn :result :model/AnalysisFinding
+                                            :analyzed_entity_type "card"
+                                            :analyzed_entity_id card-id))
+                  "Card analysis should fail when its source table is deactivated"))
 
             ;; 7. Assert the deactivated table appears in /graph/breaking
             (testing "deactivated table should appear as breaking in /graph/breaking"
               (let [breaking (mt/user-http-request :crowberto :get 200
                                                    "ee/dependencies/graph/breaking"
                                                    :types "table")]
+                (is (= :fail (:data breaking)))
                 (is (some #(= table-id (:id %))
                           (:data breaking))
                     "Deactivated table should appear as a breaking entity")))
