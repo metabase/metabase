@@ -224,7 +224,6 @@
                                                             :query query}
                                                    :target {:schema "PUBLIC"
                                                             :name   "test_output"}}]
-          (is (= :fail (:table (calculation/upstream-deps:transform transform))))
           (is (=? {:table #(contains? % products-id)} (calculation/upstream-deps:transform transform))))))))
 
 (deftest ^:parallel upstream-deps-card-native-with-parameter-source-test
