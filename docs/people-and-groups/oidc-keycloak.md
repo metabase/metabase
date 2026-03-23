@@ -108,4 +108,4 @@ Once Keycloak includes the groups claim in the token, set up the mapping in Meta
 
 1. Open an incognito window and go to your Metabase URL. The sign-in screen should show a button with your login prompt text.
 2. Click the button. You should be redirected to Keycloak's login page.
-3. Log in with the user you created. Metabase should create the account and log you in.
+3. Log in with the user you created. Metabase should create the account and log you in. If you've configured group sync, check that they've been added to the correct group.

@@ -12,7 +12,7 @@ By integrating your OpenID Connect (OIDC) provider with Metabase, you can:
 - [Provision a Metabase account](#user-provisioning) when someone logs in via your identity provider (IdP).
 - Let people access Metabase without re-authenticating.
 - Automatically pass user attributes (name, email) from your IdP to Metabase.
-- [Synchronize group memberships](#synchronize-group-memberships) so that people are automatically assigned to Metabase groups based on their IdP groups.
+- [Synchronize group membership with your SSO](#synchronize-group-membership-with-your-sso) so that people are automatically assigned to Metabase groups based on their IdP groups.
 
 ## Self-hosted Metabases must set an encryption key
 
@@ -60,7 +60,7 @@ Metabase maps OIDC claims to account fields. The defaults work for most provider
 
 If your IdP uses different claim names, update these fields to match.
 
-## Synchronize group memberships
+## Synchronize group membership with your SSO
 
 You can configure Metabase to automatically sync group memberships from your IdP, so that people are added to (or removed from) Metabase groups based on their IdP groups.
 
@@ -71,11 +71,12 @@ Unlike SAML, OIDC doesn't define a standard groups claim. You'll need to configu
 > Group sync settings appear after you've saved the provider. If you're setting up a new provider, save it first, then return to configure group sync.
 
 1. Go to **Admin** > **Settings** > **Authentication** > **OIDC** and select your provider.
-2. Turn on **Synchronize Group Memberships**.
-3. Set the **Group attribute name** to the claim name your IdP uses for groups (defaults to `groups`). This must match the claim name in the ID token exactly.
-4. Click **New mapping** and enter the group name exactly as your IdP sends it (case-sensitive).
-5. Select one or more Metabase groups to map it to.
-6. Repeat for each group you want to map, then click **Save**.
+2. Turn on **Synchronize Group Memberships**. You can click **About mappings** to learn more about how group mappings work.
+3. Click **New mapping** and enter the group name exactly as your IdP sends it (case-sensitive).
+4. Select one or more Metabase groups to map it to.
+5. Repeat for each group you want to map.
+6. Set the **Group attribute name** to the claim name your IdP uses for groups (defaults to `groups`). This must match the claim name in the ID token exactly.
+7. Click **Save**.
 
 ### How group sync works
 
