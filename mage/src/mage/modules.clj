@@ -108,6 +108,8 @@
      enterprise/scim
      enterprise/serialization
      enterprise/sso
+     enterprise/transforms
+     enterprise/transforms-inspector
      events
      formatter
      initialization-status

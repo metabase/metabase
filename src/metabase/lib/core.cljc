@@ -105,6 +105,7 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.schema.util]
    [metabase.lib.segment :as lib.segment]
    [metabase.lib.serialize]
@@ -550,22 +551,96 @@
   aggregation-clause
   aggregations-metadata])
 
+;;; ## Breakouts
+;;; Breakouts (equivalent to SQL `GROUP BY`) divide the rows into 1 or more subsets of rows, where each set has the
+;;; same values for all the breakouts.
+;;;
+;;; Each breakout implicitly adds an Order By (ascending), in the same order as the breakouts. However, if the user
+;;; explicitly adds an Order By for the breakout column(s), then the order and direction (asc/desc) is preserved.
+;;;
+;;; Breakouts must be unique within the stage. That means there can be at most 1 breakout per input column, with one
+;;; exception: a temporal column can have multiple breakouts with different units.
+;;;
+;;; Finally, note that it's legal (though unusual) to create a query with breakouts but no aggregations. The results
+;;; are equivalent to `SELECT DISTINCT breakouts... FROM ... ORDER BY breakouts...`, ie. sorting and de-duplicating
+;;; by the breakouts.
+
+(mu/defn breakout :- ::lib.schema/query
+  "Add a breakout on the provided column to the target stage of `a-query`.
+
+  Silently does nothing if the requested breakout already exists. Multiple breakouts of a temporal column are allowed
+  provided they all set different `:temporal-unit`s.
+
+  **Code Health:** Healthy. This is a core API."
+  ([a-query expr] (breakout a-query -1 expr))
+  ([a-query      :- ::lib.schema/query
+    stage-number :- :int
+    expr         :- some?]
+   (lib.breakout/breakout a-query stage-number expr)))
+
+(mu/defn breakouts :- [:maybe [:sequential ::lib.schema.expression/expression]]
+  "Returns the list of breakouts on the target stage of `a-query`, or nil if there are none.
+
+  **Code Health:** Healthy. This is a core API."
+  ([a-query] (breakouts a-query -1))
+  ([a-query      :- ::lib.schema/query
+    stage-number :- :int]
+   (lib.breakout/breakouts a-query stage-number)))
+
+(mu/defn breakout-column :- ::lib.schema.metadata/column
+  "Given `a-query` and a breakout `clause` as returned by [[breakouts]], returns the column metadata for this
+  breakout column.
+
+  Strictly speaking a breakout column should be distinct from its input column; in practice their metadata is identical
+  except that the breakout column has the `:temporal-unit` or `:binning` specified from the breakout clause.
+
+  **Code Health:** Healthy."
+  ([a-query breakout-clause] (breakout-column a-query -1 breakout-clause))
+  ([a-query         :- ::lib.schema/query
+    stage-number    :- :int
+    breakout-clause :- ::lib.schema.ref/ref]
+   (lib.breakout/breakout-column a-query stage-number breakout-clause)))
+
+(mu/defn breakoutable-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
+  "Returns column metadata for all the columns on the target stage of `a-query` which could be used for a breakout.
+
+  The columns can be used for a breakout are, in this order:
+
+  1. Columns from the *source* - a table, card or previous stage.
+  2. *Expressions* in this stage of the query are allowed.
+  3. Columns from explicit joins on this stage.
+  4. All columns which are *implicitly joinable* via any FKs in the above.
+
+  **Code Health:** Healthy. This is a core API."
+  ([a-query :- ::lib.schema/query] (breakoutable-columns a-query -1))
+  ([a-query      :- ::lib.schema/query
+    stage-number :- :int]
+   (lib.breakout/breakoutable-columns a-query stage-number)))
+
+(mu/defn remove-all-breakouts :- ::lib.schema/query
+  "Removes all breakouts (if any) from the target stage of `a-query`.
+
+  The removal is done properly per [[remove-clause]], so any references to the deleted breakouts will also be deleted.
+
+  **Code Health:** Healthy."
+  ([a-query] (remove-all-breakouts a-query -1))
+  ([a-query      :- ::lib.schema/query
+    stage-number :- :int]
+   (lib.breakout/remove-all-breakouts a-query stage-number)))
+
+;;; **Code Health:** Leak. These functions are only used in friends and tests, and should be avoided. To be unexported.
+(shared.ns/import-fns
+ [lib.breakout
+  breakouts-metadata])
+
 ;;; # IGNORE ME!
 ;;; <img src="https://i.redd.it/1b9z1mv805e61.jpg" />
 ;;; *These are the leftovers which are not properly wrapped in user documentation yet.*
 (shared.ns/import-fns
-
  [lib.binning
   available-binning-strategies
   binning
   with-binning]
- [lib.breakout
-  breakout
-  breakout-column
-  breakoutable-columns
-  breakouts
-  breakouts-metadata
-  remove-all-breakouts]
  [metabase.lib.card
   card->underlying-query
   model-preserved-keys]
