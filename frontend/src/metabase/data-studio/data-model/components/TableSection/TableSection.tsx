@@ -422,7 +422,7 @@ const TableSectionBase = ({
         onClose={handleCloseModal}
       />
       <PLUGIN_REPLACEMENT.SourceReplacementModal
-        isOpened={modalType === "replace"}
+        opened={modalType === "replace"}
         initialSource={{ id: Number(table.id), type: "table" }}
         onClose={handleCloseModal}
       />

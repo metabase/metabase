@@ -29,11 +29,11 @@ import {
 export function SourceReplacementModal({
   initialSource,
   initialTarget,
-  isOpened,
+  opened,
   onClose,
 }: SourceReplacementModalProps) {
   return (
-    <Modal.Root opened={isOpened} fullScreen onClose={onClose}>
+    <Modal.Root opened={opened} fullScreen onClose={onClose}>
       <Modal.Overlay />
       <Modal.Content>
         <ModalContent

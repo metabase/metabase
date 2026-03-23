@@ -8,7 +8,7 @@ import { PluginPlaceholder } from "../components/PluginPlaceholder";
 export type SourceReplacementModalProps = {
   initialSource?: SourceReplacementEntry;
   initialTarget?: SourceReplacementEntry;
-  isOpened: boolean;
+  opened: boolean;
   onClose: () => void;
 };
 

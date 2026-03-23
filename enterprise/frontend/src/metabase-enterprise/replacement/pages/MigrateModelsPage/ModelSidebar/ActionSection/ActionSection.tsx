@@ -9,6 +9,7 @@ import * as Lib from "metabase-lib";
 import type { Card, Database } from "metabase-types/api";
 
 import { SourceReplacementButton } from "../../../../components/SourceReplacementButton";
+import { ReplaceWithTableModal } from "../../ReplaceWithTableModal";
 import { ReplaceWithTransformModal } from "../../ReplaceWithTransformModal";
 
 import { isTableOnlyQuery } from "./utils";
@@ -70,9 +71,14 @@ export function ActionSection({ card, database }: ActionSectionProps) {
           }}
         </SourceReplacementButton>
       )}
+      <ReplaceWithTableModal
+        card={card}
+        opened={modalType === "replace-with-table"}
+        onClose={() => setModalType(undefined)}
+      />
       <ReplaceWithTransformModal
         card={card}
-        isOpened={modalType === "replace-with-transform"}
+        opened={modalType === "replace-with-transform"}
         onClose={() => setModalType(undefined)}
       />
     </>

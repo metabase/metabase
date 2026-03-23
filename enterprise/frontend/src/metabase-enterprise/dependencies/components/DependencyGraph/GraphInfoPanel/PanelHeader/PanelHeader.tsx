@@ -78,7 +78,7 @@ export function PanelHeader({ node, onClose }: PanelHeaderProps) {
       </Group>
       {sourceEntry != null && (
         <PLUGIN_REPLACEMENT.SourceReplacementModal
-          isOpened={isReplaceModalOpened}
+          opened={isReplaceModalOpened}
           initialSource={sourceEntry}
           onClose={closeReplaceModal}
         />

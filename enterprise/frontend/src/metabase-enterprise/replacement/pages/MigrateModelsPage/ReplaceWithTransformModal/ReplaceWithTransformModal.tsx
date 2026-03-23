@@ -9,7 +9,7 @@ import {
   useListSyncableDatabaseSchemasQuery,
 } from "metabase/api";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import {
   Form,
   FormErrorMessage,
@@ -37,19 +37,19 @@ type ReplaceWithTransformValues = Yup.InferType<typeof VALIDATION_SCHEMA>;
 
 type ReplaceWithTransformModalProps = {
   card: Card;
-  isOpened: boolean;
+  opened: boolean;
   onClose: () => void;
 };
 
 export function ReplaceWithTransformModal({
   card,
-  isOpened,
+  opened,
   onClose,
 }: ReplaceWithTransformModalProps) {
   return (
     <Modal
       title={t`Convert this model to a transform?`}
-      opened={isOpened}
+      opened={opened}
       padding="xl"
       onClose={onClose}
     >
@@ -85,7 +85,7 @@ function ReplaceWithTransformLoader({
   const error = databaseError ?? schemasError;
 
   if (isLoading || error != null || database == null) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+    return <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
   return (
