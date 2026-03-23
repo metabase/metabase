@@ -34,9 +34,6 @@ import {
 export const ENTERPRISE_TAG_TYPES = [
   ...TAG_TYPES,
   "scim",
-  "metabot",
-  "metabot-entities-list",
-  "metabot-prompt-suggestions",
   "gsheets-status",
   "sandbox",
   "workspace-transforms",

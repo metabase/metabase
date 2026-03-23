@@ -19,6 +19,11 @@ import { Bookmarks } from "metabase/entities/bookmarks";
 import { Timelines } from "metabase/entities/timelines";
 import { usePageTitleWithLoadingTime } from "metabase/hooks/use-page-title";
 import { connect, useSelector } from "metabase/lib/redux";
+import { VISUALIZATION_SLOW_TIMEOUT } from "metabase/querying/constants";
+import {
+  getDatabasesList,
+  getSampleDatabaseId,
+} from "metabase/querying/selectors";
 import { closeNavbar } from "metabase/redux/app";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -39,11 +44,9 @@ import type { QueryBuilderUIControls, State } from "metabase-types/store";
 import * as actions from "../actions";
 import { trackCardBookmarkAdded } from "../analytics";
 import { View } from "../components/view/View";
-import { VISUALIZATION_SLOW_TIMEOUT } from "../constants";
 import {
   getCard,
   getDataReferenceStack,
-  getDatabasesList,
   getDocumentTitle,
   getEmbeddedParameterVisibility,
   getFilteredTimelines,
@@ -73,7 +76,6 @@ import {
   getQueryStartTime,
   getQuestion,
   getRawSeries,
-  getSampleDatabaseId,
   getSelectedTimelineEventIds,
   getShouldShowUnsavedChangesWarning,
   getSnippetCollectionId,

@@ -3,12 +3,12 @@ import type { ResizableBoxProps } from "react-resizable";
 import { useSelector } from "metabase/lib/redux";
 import { useInlineSQLPrompt } from "metabase/metabot/components/MetabotInlineSQLPrompt";
 import { NativeQueryEditor } from "metabase/query_builder/components/NativeQueryEditor";
+import { getHighlightedNativeQueryLineNumbers } from "metabase/query_builder/selectors";
+import type { QueryModalType } from "metabase/querying/constants";
 import type {
   SelectionRange,
   SidebarFeatures,
-} from "metabase/query_builder/components/NativeQueryEditor/types";
-import type { QueryModalType } from "metabase/query_builder/constants";
-import { getHighlightedNativeQueryLineNumbers } from "metabase/query_builder/selectors";
+} from "metabase/querying/editor/types";
 import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";

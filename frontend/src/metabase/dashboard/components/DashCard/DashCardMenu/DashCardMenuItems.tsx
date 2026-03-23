@@ -2,13 +2,14 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { useSdkDashboardContext } from "embedding-sdk-bundle/components/public/dashboard/context";
-import { editQuestion } from "metabase/dashboard/actions";
+import { editQuestion, setSidebar } from "metabase/dashboard/actions";
+import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { transformSdkQuestion } from "metabase/embedding-sdk/lib/transform-question";
 import type { DashboardCardCustomMenuItem } from "metabase/embedding-sdk/types/plugins";
 import { useDispatch } from "metabase/lib/redux";
-import { isNotNull } from "metabase/lib/types";
-import { PLUGIN_DASHCARD_MENU } from "metabase/plugins";
+import { useMetabotEnabledEmbeddingAware } from "metabase/metabot/hooks";
+import { canAnalyzeQuestion } from "metabase/metabot/utils/chart-analysis";
 import { Icon, Menu } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { DashCardId, Dataset } from "metabase-types/api";
@@ -35,6 +36,7 @@ export const DashCardMenuItems = ({
   canEdit,
 }: DashCardMenuItemsProps) => {
   const dispatch = useDispatch();
+  const isMetabotEnabled = useMetabotEnabledEmbeddingAware();
 
   const {
     onEditQuestion = (
@@ -105,11 +107,25 @@ export const DashCardMenuItems = ({
       });
     }
 
-    items.push(
-      ...PLUGIN_DASHCARD_MENU.dashcardMenuItemGetters
-        .map((itemGetter) => itemGetter(question, dashcardId, dispatch))
-        .filter(isNotNull),
-    );
+    if (
+      isMetabotEnabled &&
+      canAnalyzeQuestion(question.card().display) &&
+      dashcardId != null
+    ) {
+      items.push({
+        key: "MB_ANALYZE_CHART",
+        iconName: "metabot",
+        label: t`Analyze chart`,
+        onClick: () => {
+          dispatch(
+            setSidebar({
+              name: SIDEBAR_NAME.analyze,
+              props: { dashcardId },
+            }),
+          );
+        },
+      });
+    }
 
     if (customItems) {
       items.push(
@@ -131,6 +147,7 @@ export const DashCardMenuItems = ({
   }, [
     customItems,
     isDownloadingData,
+    isMetabotEnabled,
     onDownload,
     onEditQuestion,
     question,

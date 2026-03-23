@@ -5,8 +5,8 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]))
 
