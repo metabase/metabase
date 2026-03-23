@@ -29,7 +29,6 @@ import { getBehaviorDocsUrlParams } from "../utils/get-behavior-docs-url-params"
 import { ColorCustomizationSection } from "./Appearance/ColorCustomizationSection";
 import { SimpleThemeSwitcherSection } from "./Appearance/SimpleThemeSwitcherSection";
 import { EmbeddingUpsell } from "./Common/EmbeddingUpsell";
-import { ProFeatureGate } from "./Common/ProFeatureGate";
 import { WithNotAvailableForOssOrGuestEmbedsGuard } from "./Common/WithNotAvailableForOssOrGuestEmbedsGuard";
 import { LegacyStaticEmbeddingAlert } from "./LegacyStaticEmbeddingAlert";
 import { MetabotLayoutSetting } from "./MetabotLayoutSetting";
@@ -92,18 +91,16 @@ const BehaviorSection = () => {
               )}
             </WithNotAvailableForOssOrGuestEmbedsGuard>
 
-            <ProFeatureGate isGated={!isSimpleEmbedFeatureAvailable}>
-              <Checkbox
-                label={t`Allow downloads`}
-                disabled={!isSimpleEmbedFeatureAvailable}
-                checked={settings.withDownloads}
-                onChange={(e) =>
-                  updateSettings({
-                    withDownloads: e.target.checked,
-                  } satisfies Partial<typeof settings>)
-                }
-              />
-            </ProFeatureGate>
+            <Checkbox
+              label={t`Allow downloads`}
+              disabled={!isSimpleEmbedFeatureAvailable}
+              checked={settings.withDownloads}
+              onChange={(e) =>
+                updateSettings({
+                  withDownloads: e.target.checked,
+                } satisfies Partial<typeof settings>)
+              }
+            />
 
             <WithNotAvailableForOssOrGuestEmbedsGuard>
               {({ disabled }) => (
@@ -185,18 +182,16 @@ const BehaviorSection = () => {
               )}
             </WithNotAvailableForOssOrGuestEmbedsGuard>
 
-            <ProFeatureGate isGated={!isSimpleEmbedFeatureAvailable}>
-              <Checkbox
-                label={t`Allow downloads`}
-                disabled={!isSimpleEmbedFeatureAvailable}
-                checked={settings.withDownloads}
-                onChange={(e) =>
-                  updateSettings({
-                    withDownloads: e.target.checked,
-                  } satisfies Partial<typeof settings>)
-                }
-              />
-            </ProFeatureGate>
+            <Checkbox
+              label={t`Allow downloads`}
+              disabled={!isSimpleEmbedFeatureAvailable}
+              checked={settings.withDownloads}
+              onChange={(e) =>
+                updateSettings({
+                  withDownloads: e.target.checked,
+                } satisfies Partial<typeof settings>)
+              }
+            />
 
             <WithNotAvailableForOssOrGuestEmbedsGuard>
               {({ disabled: disabledInGuestEmbedding }) => {

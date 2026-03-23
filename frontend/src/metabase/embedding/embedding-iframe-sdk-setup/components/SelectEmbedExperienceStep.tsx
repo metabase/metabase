@@ -10,7 +10,6 @@ import { useHandleExperienceChange } from "../hooks/use-handle-experience-change
 import type { SdkIframeEmbedSetupExperience } from "../types";
 
 import { EmbeddingUpsell } from "./Common/EmbeddingUpsell";
-import { ProFeatureGate } from "./Common/ProFeatureGate";
 
 export const SelectEmbedExperienceStep = () => {
   const { isSimpleEmbedFeatureAvailable, experience, settings } =
@@ -51,14 +50,13 @@ export const SelectEmbedExperienceStep = () => {
                 (!experience.supportsGuestEmbed && isGuestEmbed);
 
               return (
-                <ProFeatureGate key={experience.value} isGated={disabledForOss}>
-                  <Radio
-                    value={experience.value}
-                    label={experience.title}
-                    description={experience.description}
-                    disabled={disabled}
-                  />
-                </ProFeatureGate>
+                <Radio
+                  key={experience.value}
+                  value={experience.value}
+                  label={experience.title}
+                  description={experience.description}
+                  disabled={disabled}
+                />
               );
             })}
           </Stack>

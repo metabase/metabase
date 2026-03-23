@@ -3,7 +3,6 @@ import { t } from "ttag";
 
 import { useSdkIframeEmbedSetupContext } from "metabase/embedding/embedding-iframe-sdk-setup/context";
 
-import { ProFeatureGate } from "./ProFeatureGate";
 import { TooltipWarning } from "./TooltipWarning";
 
 export const WithNotAvailableForOssOrGuestEmbedsGuard = ({
@@ -15,11 +14,7 @@ export const WithNotAvailableForOssOrGuestEmbedsGuard = ({
     useSdkIframeEmbedSetupContext();
 
   if (!isSimpleEmbedFeatureAvailable) {
-    return (
-      <ProFeatureGate isGated>
-        {children({ disabled: true, hoverCard: null })}
-      </ProFeatureGate>
-    );
+    return children({ disabled: true, hoverCard: null });
   }
 
   return (
