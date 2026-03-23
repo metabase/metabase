@@ -105,8 +105,8 @@
 
 (defn- drop-table! [table]
   (boolean
-   (when (and table (exists? table))
-     (t2/query (sql.helpers/drop-table (keyword (table-name table)))))))
+   (when table
+     (t2/query (sql.helpers/drop-table :if-exists (keyword (table-name table)))))))
 
 (defn- orphan-indexes []
   (map (comp keyword u/lower-case-en :table_name)
@@ -274,8 +274,9 @@
             (sync-tracking-atoms!)
             (specialization/batch-upsert! table-name entries)
             (catch Exception e2
-              (log/error e2 "Error syncing index tracking atoms after table not found exception")
-              (throw e)))
+              (if (table-not-found-exception? e2)
+                (log/warnf "Search index table %s no longer exists, skipping upsert" table-name)
+                (throw e))))
           (throw e))))))
 
 (defn- batch-update!
