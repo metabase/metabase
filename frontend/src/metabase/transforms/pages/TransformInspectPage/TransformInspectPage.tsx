@@ -53,6 +53,9 @@ export const TransformInspectPage = ({
         hasSucceeded: transform.last_run?.status === "succeeded",
         isMissingSourceDatabase: isMissingSourceDatabase(transform),
       })
+        .with({ isMissingSourceDatabase: true }, () => (
+          <TransformDisconnectedDatabaseBanner transform={transform} />
+        ))
         .with({ hasSucceeded: false }, () => (
           <>
             <Alert color="brand" icon={<Icon name="info" />}>
@@ -64,9 +67,6 @@ export const TransformInspectPage = ({
               readOnly={readOnly}
             />
           </>
-        ))
-        .with({ isMissingSourceDatabase: true }, () => (
-          <TransformDisconnectedDatabaseBanner transform={transform} />
         ))
         .otherwise(() => (
           <InspectorContent
