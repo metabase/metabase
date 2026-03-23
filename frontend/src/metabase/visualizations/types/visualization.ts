@@ -615,10 +615,10 @@ export type VisualizationDefinition = {
   supportsVisualizer?: boolean;
   disableVisualizer?: boolean;
 
-  minSize: VisualizationGridSize;
-  defaultSize: VisualizationGridSize;
+  minSize?: VisualizationGridSize;
+  defaultSize?: VisualizationGridSize;
 
-  settings: VisualizationSettingsDefinitions;
+  settings?: VisualizationSettingsDefinitions;
 
   transformSeries?: (series: Series) => TransformedSeries;
   isSensible?: (data: DatasetData) => boolean;
