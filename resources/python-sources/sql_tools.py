@@ -1599,3 +1599,16 @@ def transpile_sql(sql: str, from_dialect: str = None, to_dialect: str = None):
             result['error_message'] = e.args[0]
 
     return json.dumps(result)
+
+def count_statements(sql: str, dialect: str = None) -> str:
+    """Count the number of SQL statements in a SQL string and return their types.
+
+    Returns JSON: {"count": N, "types": ["Select", "Command", ...]}
+    On parse error: {"count": 0, "types": [], "error": "..."}
+    """
+    try:
+        stmts = sqlglot.parse(sql, read=dialect)
+        return json.dumps({"count": len(stmts),
+                           "types": [type(s).__name__ for s in stmts]})
+    except Exception as e:
+        return json.dumps({"count": 0, "types": [], "error": str(e)})

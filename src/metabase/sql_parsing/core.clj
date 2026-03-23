@@ -390,6 +390,19 @@
           (.execute ^Value (object-array [sql (json/encode replacements) dialect]))
           .asString))))
 
+(defn count-statements
+  "Count the number of SQL statements in a SQL string and return their types.
+
+   Returns a map with :count and :types, e.g.:
+     {:count 3, :types [\"Select\" \"Select\" \"Command\"]}"
+  [sql]
+  (-> (with-open [^Closeable ctx (python.pool/python-context)]
+        (with-python-timeout ctx default-timeout-ms
+          (-> ^Value (common/eval-python ctx "sql_tools.count_statements")
+              (.execute ^Value (object-array [sql]))
+              .asString)))
+      json/decode+kw))
+
 (comment
   (referenced-tables "postgres" "select * from transactions")
 

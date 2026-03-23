@@ -42,13 +42,22 @@
    [metabase.query-processor.middleware.wrap-value-literals :as qp.wrap-value-literals]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.setup :as qp.setup]
+   [metabase.sql-parsing.core :as sql-parsing]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [not-empty]]))
 
-(set! *warn-on-reflection* true)
+(defn- validate-impersonated-native-query [query]
+  (when (:impersonation/role query)
+    (doseq [stage (:stages query)]
+      (when (= (:lib/type stage) :mbql.stage/native)
+        (let [sql (:native stage)
+              {:keys [count types]} (sql-parsing/count-statements sql)]
+          (when (or (> count 1) (contains? (set types) "Command"))
+            (throw (ex-info "Invalid impersonated native query: Cannot have a non-select statement or more than one statement." {})))))))
+  query)
 
 (def ^:private middleware
   "Pre-processing middleware. Has the form
@@ -75,6 +84,7 @@
    #'qp.auto-bucket-datetimes/auto-bucket-datetimes
    #'reconcile-bucketing/reconcile-breakout-and-order-by-bucketing
    #'qp.middleware.enterprise/apply-impersonation
+   validate-impersonated-native-query
    #'qp.middleware.enterprise/attach-destination-db-middleware
    #'qp.middleware.enterprise/apply-sandboxing
    #'qp.persistence/substitute-persisted-query

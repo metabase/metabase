@@ -1665,6 +1665,7 @@
            query-permissions
            server
            settings
+           sql-parsing
            system
            tracing
            users
