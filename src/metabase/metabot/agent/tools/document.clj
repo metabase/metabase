@@ -5,6 +5,8 @@
    [metabase.metabot.agent.tools.shared :as shared]
    [metabase.metabot.table-utils :as table-utils]
    [metabase.metabot.tools.create-sql-query :as create-sql-query-tools]
+   [metabase.metabot.tools.instructions :as instructions]
+   [metabase.query-processor.core :as qp]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.warehouses.core :as warehouses]))
@@ -44,6 +46,41 @@
               (map (comp parse-int :id))
               (remove nil?))
         references))
+
+(defn- sql-chart-error-output
+  [instruction-text]
+  (str "<result>\n"
+       "SQL chart draft generation failed.\n"
+       "</result>\n"
+       "<instructions>\n"
+       instruction-text
+       "</instructions>"))
+
+(defn- sql-validation-error-result
+  [dialect error-message]
+  (let [instruction-text (instructions/sql-validation-error-instructions dialect error-message)]
+    {:output       (sql-chart-error-output instruction-text)
+     :instructions instruction-text}))
+
+(defn- query-processing-error-result
+  [error-message]
+  (let [instruction-text (str "The SQL query could not be processed by Metabase.\n"
+                              "\n"
+                              "Error details:\n"
+                              error-message "\n"
+                              "\n"
+                              "Please fix the query and call `document_construct_sql_chart` again with corrected SQL.\n")]
+    {:output       (sql-chart-error-output instruction-text)
+     :instructions instruction-text}))
+
+(defn- check-query
+  "If the query is valid, return nil. If not, return the error message."
+  [query]
+  (try
+    (qp/process-query query)
+    nil
+    (catch Exception e
+      (ex-message e))))
 
 (mu/defn ^{:tool-name "document_schema_collect"}
   document-schema-collect-tool
@@ -103,25 +140,36 @@
   "Construct SQL-backed chart draft payload for document insertion."
   [{:keys [database_id name description analysis approach sql viz_settings]} :- sql-chart-schema]
   (try
-    (let [result      (create-sql-query-tools/create-sql-query {:database-id database_id
-                                                                :sql sql})
-          chart-type  (get viz_settings :chart_type)
-          query-id    (:query-id result)
-          query       (:query result)
-          structured  {:tool          "document_construct_sql_chart"
-                       :name          name
-                       :description   description
-                       :analysis      analysis
-                       :approach      approach
-                       :dataset_query query
-                       :display       chart-type
-                       :chart_type    chart-type
-                       :query_id      query-id
-                       :query         query
-                       :result-type   :chart-draft}]
-      {:output "Draft chart payload generated from SQL query."
-       :structured-output structured
-       :final-response? true})
+    (let [{:keys [validation-result action-result]}
+          (create-sql-query-tools/create-sql-query {:database-id database_id
+                                                    :sql sql})
+          {:keys [valid? dialect error-message]} validation-result
+          {:keys [query-id query]} action-result
+          chart-type (get viz_settings :chart_type)]
+      (cond
+        (not valid?)
+        (sql-validation-error-result dialect error-message)
+
+        (not (map? query))
+        {:output "Failed to construct SQL chart draft."}
+
+        :else
+        (if-let [query-error (check-query query)]
+          (query-processing-error-result query-error)
+          (let [structured {:tool          "document_construct_sql_chart"
+                            :name          name
+                            :description   description
+                            :analysis      analysis
+                            :approach      approach
+                            :dataset_query query
+                            :display       chart-type
+                            :chart_type    chart-type
+                            :query_id      query-id
+                            :query         query
+                            :result-type   :chart-draft}]
+            {:output "Draft chart payload generated from SQL query."
+             :structured-output structured
+             :final-response? true}))))
     (catch Exception e
       (log/error e "Error constructing SQL chart draft")
       (if (:agent-error? (ex-data e))

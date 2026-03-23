@@ -2,9 +2,7 @@
   (:require
    [medley.core :as m]
    [metabase.lib-be.core :as lib-be]
-   [metabase.metabot.client :as metabot.client]
    [metabase.metabot.example-question-generator :as native-generator]
-   [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.tools.entity-details :as metabot.tools.entity-details]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.util.log :as log]
@@ -37,28 +35,13 @@
   {:limit 20})
 
 (defn- generate-questions-with-fallback
-  "Generate example questions using the configured path.
-
-  When `use-native-agent` is true, calls the native Clojure generator.
-  On native failure, falls back to the Python ai-service and logs the error.
-  When `use-native-agent` is false, calls the Python ai-service directly."
+  "Generate example questions using the configured path."
   [payload]
-  (if (metabot.settings/use-native-agent)
-    (try
-      (log/info "Using native generator for example questions"
-                {:table-count  (count (:tables payload))
-                 :metric-count (count (:metrics payload))})
-      (let [result (native-generator/generate-example-questions payload)]
-        (log/info "Native example question generation succeeded"
-                  {:table-results  (count (:table_questions result))
-                   :metric-results (count (:metric_questions result))})
-        result)
-      (catch Exception e
-        (log/error e "Native example question generation failed, falling back to Python ai-service"
-                   {:error-class (.getName (class e))
-                    :error-msg   (ex-message e)})
-        (metabot.client/generate-example-questions payload)))
-    (metabot.client/generate-example-questions payload)))
+  (let [result (native-generator/generate-example-questions payload)]
+    (log/info "Native example question generation succeeded"
+              {:table-results  (count (:table_questions result))
+               :metric-results (count (:metric_questions result))})
+    result))
 
 (defn generate-sample-prompts
   "Generate suggested prompts for instance of Metabot."

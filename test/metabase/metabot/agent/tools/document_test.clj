@@ -6,6 +6,7 @@
    [metabase.metabot.agent.tools.shared :as shared]
    [metabase.metabot.table-utils :as table-utils]
    [metabase.metabot.tools.create-sql-query :as create-sql-query-tools]
+   [metabase.query-processor :as qp]
    [metabase.warehouses.core :as warehouses]))
 
 (deftest document-schema-collect-tool-test
@@ -40,11 +41,14 @@
   (testing "builds chart draft payload from SQL query"
     (with-redefs [create-sql-query-tools/create-sql-query
                   (fn [_]
-                    {:query-id "q-1"
-                     :query {:database 1
-                             :type "native"
-                             :native {:query "SELECT * FROM test"
-                                      :template-tags {}}}})]
+                    {:validation-result {:valid? true
+                                         :dialect "postgres"}
+                     :action-result     {:query-id "q-1"
+                                         :query {:database 1
+                                                 :type "native"
+                                                 :native {:query "SELECT * FROM test"
+                                                          :template-tags {}}}}})
+                  qp/process-query (fn [_] nil)]
       (let [result (document-tools/document-construct-sql-chart-tool
                     {:database_id 1
                      :name "Test Name"
@@ -65,7 +69,51 @@
                 :type "native"
                 :native {:query "SELECT * FROM test"
                          :template-tags {}}}
-               (:dataset_query structured)))))))
+               (:dataset_query structured))))))
+
+  (testing "returns instructions when SQL validation fails"
+    (with-redefs [create-sql-query-tools/create-sql-query
+                  (fn [_]
+                    {:validation-result {:valid? false
+                                         :dialect "postgres"
+                                         :error-message "syntax error near FROM"}})]
+      (let [result (document-tools/document-construct-sql-chart-tool
+                    {:database_id 1
+                     :name "Test Name"
+                     :description "Test Desc"
+                     :analysis "Test Analysis"
+                     :approach "Test Approach"
+                     :sql "SELECT FROM test"
+                     :viz_settings {:chart_type "bar"}})]
+        (is (nil? (:final-response? result)))
+        (is (nil? (:structured-output result)))
+        (is (re-find #"SQL chart draft generation failed" (:output result)))
+        (is (re-find #"syntax error near FROM" (:output result))))))
+
+  (testing "returns instructions when query processor rejects generated SQL"
+    (with-redefs [create-sql-query-tools/create-sql-query
+                  (fn [_]
+                    {:validation-result {:valid? true
+                                         :dialect "postgres"}
+                     :action-result     {:query-id "q-1"
+                                         :query {:database 1
+                                                 :type "native"
+                                                 :native {:query "SELECT * FROM missing_table"
+                                                          :template-tags {}}}}})
+                  qp/process-query (fn [_]
+                                     (throw (ex-info "Table \"missing_table\" does not exist" {})))]
+      (let [result (document-tools/document-construct-sql-chart-tool
+                    {:database_id 1
+                     :name "Test Name"
+                     :description "Test Desc"
+                     :analysis "Test Analysis"
+                     :approach "Test Approach"
+                     :sql "SELECT * FROM missing_table"
+                     :viz_settings {:chart_type "bar"}})]
+        (is (nil? (:final-response? result)))
+        (is (nil? (:structured-output result)))
+        (is (re-find #"could not be processed by Metabase" (:output result)))
+        (is (re-find #"missing_table" (:output result)))))))
 
 (deftest document-construct-model-chart-tool-test
   (testing "builds chart draft payload from model query"

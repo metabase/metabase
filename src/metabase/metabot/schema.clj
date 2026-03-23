@@ -1,4 +1,4 @@
-(ns metabase.metabot.client.schema
+(ns metabase.metabot.schema
   (:require
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]))
@@ -21,23 +21,3 @@
 
 (mr/def ::messages
   [:sequential ::message])
-
-(mr/def ::metric
-  "A metric as sent to the AI Service"
-  [:map
-   [:id integer?]
-   [:name :string]
-   [:description [:maybe :string]]])
-
-(mr/def ::usage
-  "Usage information with break down by model"
-  [:map-of :string [:map
-                    [:prompt number?]
-                    [:completion number?]]])
-
-(mr/def ::ai-service.response
-  "Schema of the AI agent response."
-  [:map
-   [:messages ::messages]
-   [:state :map]
-   [:usage ::usage]])
