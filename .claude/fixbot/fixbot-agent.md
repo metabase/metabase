@@ -169,6 +169,17 @@ Check these when:
 - Looking for error messages or stack traces
 - Verifying that your code changes were picked up by hot reload
 
+### GitHub API Workaround
+
+If `gh` commands fail with `tls: failed to verify certificate: x509` errors, switch to using `curl` with `gh auth token` for the rest of the session. For example, to create a PR:
+```bash
+curl -s -X POST https://api.github.com/repos/metabase/metabase/pulls \
+  -H "Authorization: token $(gh auth token)" \
+  -H "Accept: application/vnd.github+json" \
+  -d '{ "title": "...", "head": "branch-name", "base": "master", "body": "..." }'
+```
+Use the same pattern for any other `gh` operations (e.g., `gh pr view` → `curl -s https://api.github.com/repos/metabase/metabase/pulls/NUMBER ...`).
+
 ### Important Rules
 - Focus ONLY on the reported issue — no unrelated changes
 - Always run tests before telling the user to verify
