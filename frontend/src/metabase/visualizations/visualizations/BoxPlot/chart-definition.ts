@@ -13,21 +13,13 @@ import {
 } from "metabase/visualizations/shared/utils/sizes";
 import type {
   ComputedVisualizationSettings,
-  Visualization,
-  VisualizationSettingsDefinitions,
+  VisualizationDefinition,
 } from "metabase/visualizations/types";
 import { transformSeries } from "metabase/visualizations/visualizations/CartesianChart/chart-definition-legacy";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetData, RawSeries } from "metabase-types/api";
 
-const settings: VisualizationSettingsDefinitions = {
-  ...BOXPLOT_SETTINGS,
-  ...GRAPH_GOAL_SETTINGS,
-  ...GRAPH_AXIS_SETTINGS,
-  ...BOXPLOT_DATA_SETTINGS,
-};
-
-export const BOXPLOT_CHART_DEFINITION: Visualization = {
+export const BOXPLOT_CHART_DEFINITION: VisualizationDefinition = {
   getUiName: () => t`Box Plot`,
   identifier: "boxplot",
   iconName: "boxplot",
@@ -56,5 +48,10 @@ export const BOXPLOT_CHART_DEFINITION: Visualization = {
     validateChartDataSettings(settings);
   },
 
-  settings,
+  settings: {
+    ...BOXPLOT_SETTINGS,
+    ...GRAPH_GOAL_SETTINGS,
+    ...GRAPH_AXIS_SETTINGS,
+    ...BOXPLOT_DATA_SETTINGS,
+  },
 };
