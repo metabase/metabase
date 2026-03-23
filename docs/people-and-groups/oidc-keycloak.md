@@ -19,7 +19,7 @@ Here's a basic user setup to help you test a connection.
 
 1. Go to the Keycloak admin console and sign in as an administrator.
 
-1. Create a new [realm](https://www.keycloak.org/docs/latest/server_admin/index.html#core-concepts-and-terms): click the realm selector in the top-left and select **Create realm**. Set the realm name (like `metabase`) and click **Create**.
+1. Create a new [realm](https://www.keycloak.org/docs/latest/server_admin/index.html#core-concepts-and-terms): click the realm selector in the top-left and select **Create realm**. Set the realm name (like `metabase-realm`) and click **Create**.
 
 1. Create a user in that realm from **Users** > **Add user**.
 
@@ -91,12 +91,13 @@ You can configure Keycloak to include a groups claim in the OIDC token, then set
 
 1. In the Keycloak admin console, go to **Clients** and select your Metabase client (e.g., `metabase-client`).
 2. Go to the **Client scopes** tab and click the dedicated scope (e.g., `metabase-client-dedicated`).
-3. Click **Configure a new mapper** (or **Add mapper** > **By configuration**).
+3. Click **Add mapper** > **By configuration**.
 4. Select **Group Membership** from the list.
 5. Configure the mapper:
    - **Name**: `groups` (or any descriptive name).
    - **Token Claim Name**: `groups`. This is the claim name Metabase will look for. It must match the **Group attribute name** you set in Metabase.
-   - **Full group path**: When on, group names include the full path (e.g., `/engineering`). When off, only the group name is included (e.g., `engineering`). Full paths avoid name collisions if you have groups with the same name in different parent groups, but the names will include a `/` prefix. The group name in your Metabase mapping must exactly match the value in the token. If **Full group path** is on, include the `/` prefix (e.g., `/engineering`). If it's off, use just the group name (e.g., `engineering`).   - **Add to ID token**: On.
+   - **Full group path**: When on, group names include the full path (e.g., `/engineering`). When off, only the group name is included (e.g., `engineering`). Full paths avoid name collisions if you have groups with the same name in different parent groups, but the names will include a `/` prefix. The group name in your Metabase mapping must exactly match the value in the token. If **Full group path** is on, include the `/` prefix (e.g., `/engineering`). If it's off, use just the group name (e.g., `engineering`).
+   - **Add to ID token**: On.
 6. Click **Save**.
 
 ### Configure group sync in Metabase
