@@ -59,11 +59,7 @@ function DashCardPlaceholderInner({
   };
 
   return (
-    <div
-      onMouseDown={preventDragging}
-      onPointerDown={preventDragging}
-      style={{ display: "contents" }}
-    >
+    <>
       <Flex
         p={2}
         style={{ flex: 1, pointerEvents }}
@@ -80,31 +76,39 @@ function DashCardPlaceholderInner({
             <Button
               onClick={() => setQuestionPickerOpen(true)}
               style={{ pointerEvents }}
+              onMouseDown={preventDragging}
+              onPointerDown={preventDragging}
             >{t`Select question`}</Button>
           </Flex>
         )}
       </Flex>
       {isQuestionPickerOpen && (
-        <QuestionPickerModal
-          title={t`Pick what you want to replace this with`}
-          value={
-            dashboard.collection_id
-              ? {
-                  id: dashboard.collection_id,
-                  model: "collection",
-                }
-              : undefined
-          }
-          options={{ hasConfirmButtons: false }}
-          // TODO: account for restrictions on adding personal
-          // questions to public dashboards
-          models={["card", "dataset", "metric", "dashboard"]}
-          onChange={handleSelectQuestion}
-          onClose={() => setQuestionPickerOpen(false)}
-          isDisabledItem={shouldDisableItem}
-        />
+        <div
+          style={{ display: "contents" }}
+          onMouseDown={preventDragging}
+          onPointerDown={preventDragging}
+        >
+          <QuestionPickerModal
+            title={t`Pick what you want to replace this with`}
+            value={
+              dashboard.collection_id
+                ? {
+                    id: dashboard.collection_id,
+                    model: "collection",
+                  }
+                : undefined
+            }
+            options={{ hasConfirmButtons: false }}
+            // TODO: account for restrictions on adding personal
+            // questions to public dashboards
+            models={["card", "dataset", "metric", "dashboard"]}
+            onChange={handleSelectQuestion}
+            onClose={() => setQuestionPickerOpen(false)}
+            isDisabledItem={shouldDisableItem}
+          />
+        </div>
       )}
-    </div>
+    </>
   );
 }
 
