@@ -2,7 +2,7 @@ import type { CardId } from "./card";
 import type { CollectionId } from "./collection";
 import type { Field } from "./field";
 import type { ConcreteTableId } from "./table";
-import type { TransformId, TransformTarget } from "./transform";
+import type { TransformId, TransformTagId, TransformTarget } from "./transform";
 
 export type SourceReplacementEntityId = ConcreteTableId | CardId | TransformId;
 
@@ -106,6 +106,7 @@ export type ReplaceModelWithTransformRequest = {
   transform_name: string;
   transform_target: TransformTarget;
   target_collection_id: CollectionId | null;
+  transform_tag_ids?: TransformTagId[];
 };
 
 export type ReplaceModelWithTransformResponse = {

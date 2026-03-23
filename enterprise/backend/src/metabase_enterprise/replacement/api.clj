@@ -83,12 +83,13 @@
    this point."
   [_route-params
    _query-params
-   {:keys [card_id transform_name transform_target target_collection_id]}
+   {:keys [card_id transform_name transform_target target_collection_id transform_tag_ids]}
    :- [:map
        [:card_id              ::replacement.schema/source-entity-id]
        [:transform_name       :string]
        [:transform_target     :map]
-       [:target_collection_id {:optional true} [:maybe ::replacement.schema/source-entity-id]]]]
+       [:target_collection_id {:optional true} [:maybe ::replacement.schema/source-entity-id]]
+       [:transform_tag_ids    {:optional true} [:maybe [:sequential pos-int?]]]]]
   (api/check-superuser)
   (let [card      (api/check-404 (t2/select-one :model/Card :id card_id))
         transform (transforms/create-transform!
@@ -96,7 +97,8 @@
                     :source        {:type  :query
                                     :query (:dataset_query card)}
                     :target        transform_target
-                    :collection_id target_collection_id})
+                    :collection_id target_collection_id
+                    :tag_ids       transform_tag_ids})
         job-row   (replacement-run/create-run!
                    :card card_id
                    :transform (:id transform)

@@ -19,6 +19,7 @@ import {
 import * as Errors from "metabase/lib/errors";
 import { slugify } from "metabase/lib/formatting/url";
 import { SchemaFormSelect } from "metabase/transforms/components/SchemaFormSelect";
+import { TagsMultiFormSelect } from "metabase/transforms/components/TagsMultiFormSelect";
 import { TargetNameInput } from "metabase/transforms/components/TargetNameInput";
 import { Box, Button, Group, Input, Modal, Stack, Text } from "metabase/ui";
 import { useReplaceModelWithTransformMutation } from "metabase-enterprise/api";
@@ -29,6 +30,7 @@ const VALIDATION_SCHEMA = Yup.object({
   targetName: Yup.string().required(Errors.required),
   targetSchema: Yup.string().nullable().defined(),
   collectionId: Yup.number().nullable().defined(),
+  tagIds: Yup.array().of(Yup.number().required()).defined(),
 });
 
 type ReplaceModelValues = Yup.InferType<typeof VALIDATION_SCHEMA>;
@@ -114,6 +116,7 @@ function ReplaceModelForm({
       targetSchema: schemas[0] ?? null,
       targetName: slugify(card.name),
       collectionId: null,
+      tagIds: [],
     }),
     [card.name, schemas],
   );
@@ -129,6 +132,7 @@ function ReplaceModelForm({
         database: database.id,
       },
       target_collection_id: values.collectionId,
+      transform_tag_ids: values.tagIds,
     });
     await action.unwrap();
     onClose();
@@ -162,12 +166,20 @@ function ReplaceModelForm({
             />
           )}
           <TargetNameInput />
-          <Group>
+          <TagsMultiFormSelect
+            name="tagIds"
+            label={t`Scheduling tags`}
+            description={t`Transforms are run by jobs. Jobs run every transform with matching tags.`}
+          />
+          <Group gap="xs">
             <Box flex={1}>
               <FormErrorMessage />
             </Box>
-            <Button onClick={onClose}>{t`Cancel`}</Button>
-            <FormSubmitButton label={t`Convert`} variant="filled" />
+            <Button variant="subtle" onClick={onClose}>{t`Cancel`}</Button>
+            <FormSubmitButton
+              label={t`Convert to a transform`}
+              variant="filled"
+            />
           </Group>
         </Stack>
       </Form>
