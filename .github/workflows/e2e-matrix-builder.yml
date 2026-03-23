@@ -21,7 +21,7 @@ on:
 
 jobs:
   build-matrix:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     outputs:
       matrix: ${{ steps.matrix.outputs.config }}
@@ -47,7 +47,7 @@ jobs:
             const inputSpecs = "${{ inputs.specs }}";
             const inputChunks = Number(process.env.chunks);
             const java = 21;
-            const defaultRunner = "ubuntu-22.04";
+            const defaultRunner = "${{ vars.DEFAULT_RUNNER_KEY }}";
             const options = {
               java,
               defaultRunner,

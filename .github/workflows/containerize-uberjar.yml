@@ -6,7 +6,7 @@ on:
 
 jobs:
   get-container-info:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     name: Get container info
     outputs:
@@ -68,7 +68,7 @@ jobs:
     strategy:
       matrix:
         edition: ${{ fromJson(needs.get-container-info.outputs.editions) }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     name: Run Trivy vulnerability scanner
     steps:
       - name: Check out the code
@@ -93,7 +93,7 @@ jobs:
   post-comment:
     needs: [get-container-info, containerize]
     if: github.event_name == 'pull_request'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     name: Post PR comment
     steps:
       - name: Check out the code
