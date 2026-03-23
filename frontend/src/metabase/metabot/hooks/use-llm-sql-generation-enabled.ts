@@ -11,7 +11,7 @@ import { useMetabotEnabledEmbeddingAware } from "./use-metabot-embedding-aware-e
  */
 export const useLlmSqlGenerationEnabled = (): boolean => {
   const isMetabotEnabled = useMetabotEnabledEmbeddingAware({
-    requireMetabotEnabled: false,
+    requireMeteabotFeature: false,
   });
   const isHosted = useSetting("is-hosted?");
   const isAnthropicConfigured = useSetting("llm-anthropic-api-key-configured?");

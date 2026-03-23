@@ -8,14 +8,14 @@ import { PLUGIN_METABOT } from "metabase/plugins";
  * Use `forceEmbedding` to always check the embedding setting (e.g. in the embed wizard). */
 export const useMetabotEnabledEmbeddingAware = ({
   forceEmbedding = false,
-  requireMetabotEnabled = true,
+  requireMeteabotFeature = true,
 }: {
   forceEmbedding?: boolean;
-  requireMetabotEnabled?: boolean;
+  requireMeteabotFeature?: boolean;
 } = {}): boolean => {
   const isEmbedding = forceEmbedding || isWithinIframe() || isEmbeddingSdk();
   const isEnabled = useSetting(
     isEmbedding ? "embedded-metabot-enabled?" : "metabot-enabled?",
   );
-  return (!requireMetabotEnabled || PLUGIN_METABOT.hasFeature) && isEnabled;
+  return (!requireMeteabotFeature || PLUGIN_METABOT.hasFeature) && isEnabled;
 };
