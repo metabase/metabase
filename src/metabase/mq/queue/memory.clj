@@ -3,6 +3,7 @@
   (:require
    [com.climate.claypoole :as cp]
    [metabase.mq.impl :as mq.impl]
+   [metabase.mq.listener :as listener]
    [metabase.mq.queue.backend :as q.backend]
    [metabase.mq.queue.impl :as q.impl]
    [metabase.util :as u]
@@ -166,7 +167,7 @@
 (defn- start-queue-listener! [queue-name]
   (let [queue  (ensure-queue! queue-name)
         {:keys [max-batch-messages max-next-ms]
-         :or   {max-batch-messages 50 max-next-ms 100}} (get @q.impl/*listeners* queue-name)]
+         :or   {max-batch-messages 50 max-next-ms 100}} (listener/get-listener queue-name)]
     (start-listener!
      (name queue-name)
      queue
@@ -179,14 +180,14 @@
                (try
                  (let [bundle-id (str (random-uuid))]
                    (swap! *bundle-registry* assoc bundle-id {:message msg :failures 0})
-                   (q.impl/deliver-bundle! :queue.backend/memory queue-name bundle-id [msg]))
+                   (mq.impl/deliver! queue-name [msg] bundle-id :queue.backend/memory))
                  (finally
                    (release-exclusive! queue-name)))
                (do (Thread/sleep 10)
                    (recur))))
            (let [bundle-id (str (random-uuid))]
              (swap! *bundle-registry* assoc bundle-id {:message msg :failures 0})
-             (q.impl/deliver-bundle! :queue.backend/memory queue-name bundle-id [msg])))))
+             (mq.impl/deliver! queue-name [msg] bundle-id :queue.backend/memory)))))
      {:max-batch-messages max-batch-messages
       :max-next-ms        max-next-ms})))
 
@@ -199,12 +200,17 @@
   listener threads and starts them."
   []
   (when-not @*watcher*
-    (let [f (future
+    ;; Use a promise so the future can wait for *watcher* to be set before
+    ;; entering the loop, avoiding a race where the future checks @*watcher*
+    ;; before the CAS below has run.
+    (let [started (promise)
+          f (future
               (try
+                @started ;; block until CAS is done
                 (loop []
                   (when @*watcher*
                     (try
-                      (doseq [queue-name (keys @q.impl/*listeners*)]
+                      (doseq [queue-name (listener/queue-names)]
                         (when-not (get @listeners (name queue-name))
                           (start-queue-listener! queue-name)))
                       (catch Exception e
@@ -212,8 +218,10 @@
                     (Thread/sleep 50)
                     (recur)))
                 (catch InterruptedException _)))]
-      (when-not (compare-and-set! *watcher* nil f)
-        (future-cancel f)))))
+      (if (compare-and-set! *watcher* nil f)
+        (deliver started true)
+        (do (deliver started false)
+            (future-cancel f))))))
 
 (defmethod q.backend/start! :queue.backend/memory [_]
   (start-watcher!))
@@ -235,14 +243,14 @@
       (if (>= new-failures (queue-max-retries))
         (do
           (log/warnf "Bundle %s has reached max failures (%d), dropping" bundle-id (queue-max-retries))
-          (mq.impl/analytics-inc! :metabase-mq/queue-bundle-permanent-failures {:queue (name queue-name)}))
+          (mq.impl/analytics-inc! :metabase-mq/queue-batch-permanent-failures {:channel (name queue-name)}))
         ;; Retry asynchronously with a new bundle-id carrying the accumulated failure count.
         ;; We call handle! directly rather than re-queuing, so the failure count is preserved.
         ;; Note: this future is untracked — if the JVM shuts down during retry, it will be lost.
         ;; Acceptable for the test-only memory backend.
         (do
-          (mq.impl/analytics-inc! :metabase-mq/queue-bundle-retries {:queue (name queue-name)})
+          (mq.impl/analytics-inc! :metabase-mq/queue-batch-retries {:channel (name queue-name)})
           (future
             (let [new-bundle-id (str (random-uuid))]
               (swap! *bundle-registry* assoc new-bundle-id {:message message :failures new-failures})
-              (q.impl/handle! queue-name {new-bundle-id :queue.backend/memory} [message]))))))))
+              (mq.impl/handle! queue-name {new-bundle-id :queue.backend/memory} [message]))))))))

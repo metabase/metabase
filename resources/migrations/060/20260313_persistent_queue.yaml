@@ -7,7 +7,7 @@ databaseChangeLog:
       comment: Create the table backing the message queue
       changes:
         - createTable:
-            tableName: queue_message_bundle
+            tableName: queue_message_batch
             remarks: Lightweight message queue for cross-cluster communication
             columns:
               - column:
@@ -65,11 +65,11 @@ databaseChangeLog:
   - changeSet:
       id: v60.gdasfg2e
       author: nvoxland
-      comment: Index queue_message_bundle name and status
+      comment: Index queue_message_batch name and status
       changes:
         - createIndex:
-            tableName: queue_message_bundle
-            indexName: idx_queue_message_bundle_queue_status
+            tableName: queue_message_batch
+            indexName: idx_queue_message_batch_queue_status
             columns:
               - column:
                   name: queue_name

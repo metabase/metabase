@@ -596,38 +596,49 @@
                           :buckets [100 500 1000 5000 10000 30000 60000 120000 300000 600000]})
 
    ;; messaging metrics
-   (prometheus/counter :metabase-mq/queue-messages-published
-                       {:description "Total messages published to queues."
-                        :labels [:queue]})
-   (prometheus/counter :metabase-mq/queue-bundles-handled
-                       {:description "Queue bundles handled by status."
-                        :labels [:queue :status]})
-   (prometheus/histogram :metabase-mq/queue-handle-duration-ms
-                         {:description "Duration in milliseconds to process a queue bundle."
-                          :labels [:queue]
+   (prometheus/counter :metabase-mq/appdb-cleanup-deleted
+                       {:description "Messages/batches deleted by cleanup."
+                        :labels [:type :channel]})
+   (prometheus/gauge :metabase-mq/appdb-queue-depth
+                     {:description "Batch count per queue by status."
+                      :labels [:channel :status]})
+   (prometheus/counter :metabase-mq/appdb-queue-poll-results
+                       {:description "Queue poll results by outcome."
+                        :labels [:result]})
+   (prometheus/gauge :metabase-mq/appdb-topic-subscriber-lag
+                     {:description "Undelivered messages between subscriber offset and latest."
+                      :labels [:channel]})
+   (prometheus/counter :metabase-mq/batch-stale-recoveries
+                       {:description "Batches recovered from stale processing state."
+                        :labels [:type :channel]})
+   (prometheus/counter :metabase-mq/batches-handled
+                       {:description "Batches handled by status."
+                        :labels [:type :channel :status]})
+   (prometheus/counter :metabase-mq/dedup-messages-dropped
+                       {:description "Messages dropped by dedup before publishing."
+                        :labels [:channel]})
+   (prometheus/histogram :metabase-mq/handle-duration-ms
+                         {:description "Duration in milliseconds to process a batch."
+                          :labels [:type :channel]
                           :buckets [1 5 10 50 100 500 1000 5000 10000 30000]})
-   (prometheus/counter :metabase-mq/queue-bundle-retries
-                       {:description "Queue bundles retried after transient failure."
-                        :labels [:queue]})
-   (prometheus/counter :metabase-mq/queue-bundle-permanent-failures
-                       {:description "Queue bundles that exhausted retries."
-                        :labels [:queue]})
-   (prometheus/counter :metabase-mq/topic-messages-published
-                       {:description "Total messages published to topics."
-                        :labels [:topic]})
-   (prometheus/counter :metabase-mq/topic-messages-received
-                       {:description "Topic batches delivered to subscriber handlers."
-                        :labels [:topic]})
+   (prometheus/counter :metabase-mq/messages-published
+                       {:description "Total messages published."
+                        :labels [:type :channel]})
+   (prometheus/gauge :metabase-mq/publish-buffer-depth
+                     {:description "Messages sitting in the publish buffer awaiting flush."
+                      :labels [:channel]})
+   (prometheus/counter :metabase-mq/queue-batch-permanent-failures
+                       {:description "Queue batches that exhausted retries."
+                        :labels [:channel]})
+   (prometheus/counter :metabase-mq/queue-batch-retries
+                       {:description "Queue batches retried after transient failure."
+                        :labels [:channel]})
+   (prometheus/counter :metabase-mq/messages-received
+                       {:description "Individual messages delivered to handlers."
+                        :labels [:type :channel]})
    (prometheus/counter :metabase-mq/topic-handler-errors
                        {:description "Errors in topic subscriber handlers."
-                        :labels [:topic]})
-   (prometheus/counter :metabase-mq/topic-bundles-handled
-                       {:description "Topic bundles handled by status."
-                        :labels [:topic :status]})
-   (prometheus/histogram :metabase-mq/topic-handle-duration-ms
-                         {:description "Duration in milliseconds to process a topic batch."
-                          :labels [:topic]
-                          :buckets [1 5 10 50 100 500 1000 5000 10000 30000]})])
+                        :labels [:channel]})])
 
 (defn- quartz-collectors
   []

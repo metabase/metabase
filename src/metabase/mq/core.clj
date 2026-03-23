@@ -20,7 +20,7 @@
 
   For queues, a config map enables batching:
        (mq/def-listener! :queue/my-task
-         {:max-batch-messages 10 :max-next-ms 100}
+         {:max-batch-messages 10}
          [messages]
          (process messages))
 
@@ -34,49 +34,56 @@
         (put t payload))"
   (:require
    [metabase.mq.impl :as mq.impl]
+   [metabase.mq.listener :as mq.listener]
+   [metabase.mq.publish :as mq.publish]
    [metabase.mq.queue.appdb :as q.appdb]
    [metabase.mq.queue.impl :as q.impl]
    [metabase.mq.queue.memory :as q.memory]
    [metabase.mq.queue.sync :as q.sync]
+   [metabase.mq.queue.transport-impl :as q.transport-impl]
    [metabase.mq.topic.appdb :as topic.appdb]
    [metabase.mq.topic.impl :as topic.impl]
    [metabase.mq.topic.memory :as topic.memory]
    [metabase.mq.topic.sync :as topic.sync]
+   [metabase.mq.topic.transport-impl :as topic.transport-impl]
    [potemkin :as p]))
 
 (set! *warn-on-reflection* true)
 
 (comment
+  mq.impl/keep-me
+  mq.listener/keep-me
+  mq.publish/keep-me
   q.appdb/keep-me
+  q.impl/keep-me
   q.memory/keep-me
   q.sync/keep-me
+  q.transport-impl/keep-me
   topic.appdb/keep-me
+  topic.transport-impl/keep-me
+  topic.impl/keep-me
   topic.memory/keep-me
   topic.sync/keep-me)
 
 (p/import-vars
- [mq.impl
-  put
-  dedup-distinct
+ [mq.listener
+  batch-listen!
   def-listener!
   listen!
   register-listeners!
   unlisten!]
 
+ [mq.publish
+  put
+  dedup-distinct]
+
+ [mq.impl
+  shutdown!]
+
  [q.impl
-  batch-listen!
   queue-length
   with-queue]
 
  [topic.impl
   with-topic])
 
-(defn shutdown!
-  "Shuts down all mq resources: clears listener registries, then delegates to
-  all backends for infrastructure cleanup."
-  []
-  (reset! q.impl/*listeners* {})
-  (reset! topic.impl/*listeners* {})
-  (mq.impl/shutdown!)
-  (q.impl/shutdown-all!)
-  (topic.impl/shutdown-all!))

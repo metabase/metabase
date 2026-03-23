@@ -2,8 +2,9 @@
   "Synchronous queue backend that calls the listener inline during `publish!`.
   Useful in tests to avoid needing `*force-sync*` dynamic vars in each namespace."
   (:require
+   [metabase.mq.impl :as mq.impl]
+   [metabase.mq.listener :as listener]
    [metabase.mq.queue.backend :as q.backend]
-   [metabase.mq.queue.impl :as q.impl]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -14,10 +15,10 @@
 
 (defmethod q.backend/publish! :queue.backend/sync [_ queue-name messages]
   (let [bundle-id (str (random-uuid))]
-    (if (get @q.impl/*listeners* queue-name)
+    (if (listener/get-listener queue-name)
       ;; Call handle! directly to bypass accumulation — the sync backend must
       ;; deliver immediately so that tests observe side-effects inline.
-      (q.impl/handle! queue-name {bundle-id :queue.backend/sync} messages)
+      (mq.impl/handle! queue-name {bundle-id :queue.backend/sync} messages)
       ;; No listener registered — track as undelivered bundle
       (do (log/warnf "No listener registered for queue %s, dropping %d message(s)" queue-name (count messages))
           (swap! *undelivered* update queue-name (fnil inc 0))))))

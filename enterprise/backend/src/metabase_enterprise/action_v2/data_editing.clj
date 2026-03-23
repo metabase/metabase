@@ -25,7 +25,7 @@
        (run! field-values/create-or-update-full-field-values!)))
 
 (mq/def-listener! :queue/field-value-invalidation
-  {:max-batch-messages 10 :max-next-ms 10}
+  {:max-batch-messages 10}
   [messages]
   (batch-invalidate-field-values! (into [] cat messages)))
 

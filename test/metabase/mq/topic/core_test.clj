@@ -3,7 +3,9 @@
    [clojure.test :refer :all]
    [metabase.app-db.connection :as app-db.conn]
    [metabase.mq.core :as mq]
-   [metabase.mq.impl :as mq.impl]
+   [metabase.mq.listener :as listener]
+   [metabase.mq.publish :as mq.publish]
+   [metabase.mq.publish-buffer :as publish-buffer]
    [metabase.mq.test-util :as mq.tu])
   (:import (clojure.lang ExceptionInfo)
            (java.util.concurrent CyclicBarrier)))
@@ -99,7 +101,7 @@
                               (let [f (bound-fn []
                                         (.await barrier)
                                         (try
-                                          (mq.impl/listen! topic-name {} (fn [_] nil))
+                                          (listener/listen! topic-name {} (fn [_] nil))
                                           (swap! results conj :ok)
                                           (catch ExceptionInfo _
                                             (swap! results conj :error))))]
@@ -146,11 +148,11 @@
           (testing "Messages are deferred in transaction state"
             (is (= ["msg1" "msg2" "msg3"]
                    (get-in @app-db.conn/*transaction-state*
-                           [::mq.impl/deferred-messages :topic/txn-test]))))
+                           [::mq.publish/deferred-messages :topic/txn-test]))))
           (testing "Listener has not been called yet"
             (is (= [] @received))))
         (testing "After flush (simulating commit), all messages are delivered"
-          (mq.impl/flush-deferred-messages!)
+          (mq.publish/flush-deferred-messages!)
           (is (= ["msg1" "msg2" "msg3"] @received))))
       (mq/unlisten! :topic/txn-test))))
 
@@ -168,7 +170,7 @@
                          (mq/put t "should-be-discarded")
                          (throw (ex-info "boom" {})))))
           (is (nil? (get-in @app-db.conn/*transaction-state*
-                            [::mq.impl/deferred-messages :topic/txn-rollback]))
+                            [::mq.publish/deferred-messages :topic/txn-rollback]))
               "No messages should be in transaction state after exception")))
       (mq/unlisten! :topic/txn-rollback))))
 
@@ -203,12 +205,12 @@
         (testing "Both topics have deferred messages"
           (is (= ["a1" "a2"]
                  (get-in @app-db.conn/*transaction-state*
-                         [::mq.impl/deferred-messages :topic/txn-multi-a])))
+                         [::mq.publish/deferred-messages :topic/txn-multi-a])))
           (is (= ["b1"]
                  (get-in @app-db.conn/*transaction-state*
-                         [::mq.impl/deferred-messages :topic/txn-multi-b]))))
+                         [::mq.publish/deferred-messages :topic/txn-multi-b]))))
         (testing "After flush, both topics receive their messages"
-          (mq.impl/flush-deferred-messages!)
+          (mq.publish/flush-deferred-messages!)
           (is (= ["a1" "a2"] @received-a))
           (is (= ["b1"] @received-b))))
       (mq/unlisten! :topic/txn-multi-a)
@@ -219,8 +221,8 @@
     (let [received (atom [])]
       (mq/listen! :topic/buffer-test {}
                   (fn [message] (swap! received conj message)))
-      (binding [mq.impl/*publish-buffer-ms* 100
-                mq.impl/*publish-buffer*    (atom {})]
+      (binding [publish-buffer/*publish-buffer-ms* 100
+                publish-buffer/*publish-buffer*    (atom {})]
         (testing "buffered-publish! buffers topic messages when *publish-buffer-ms* > 0"
           (mq/with-topic :topic/buffer-test [t]
             (mq/put t "msg1"))
@@ -229,12 +231,12 @@
           (is (empty? @received)
               "Nothing delivered yet because buffer window hasn't elapsed")
           (is (= ["msg1" "msg2"]
-                 (:messages (get @mq.impl/*publish-buffer* :topic/buffer-test)))
+                 (:messages (get @publish-buffer/*publish-buffer* :topic/buffer-test)))
               "Messages are buffered"))
         (testing "After flush, all messages are delivered"
-          (swap! mq.impl/*publish-buffer*
+          (swap! publish-buffer/*publish-buffer*
                  update :topic/buffer-test assoc :deadline-ms 1)
-          (mq.impl/flush-publish-buffer!)
+          (publish-buffer/flush-publish-buffer!)
           (is (= ["msg1" "msg2"] @received)
               "Both messages delivered after flush")))
       (mq/unlisten! :topic/buffer-test))))

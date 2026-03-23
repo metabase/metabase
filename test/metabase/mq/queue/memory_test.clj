@@ -2,8 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.mq.core :as mq]
+   [metabase.mq.listener :as listener]
    [metabase.mq.queue.backend :as q.backend]
-   [metabase.mq.queue.impl :as q.impl]
    [metabase.mq.queue.memory :as q.memory])
   (:import
    (java.util.concurrent CountDownLatch TimeUnit)))
@@ -13,8 +13,7 @@
 (defmacro ^:private with-memory-queue
   [& body]
   `(binding [q.backend/*backend*              :queue.backend/memory
-             q.impl/*listeners*               (atom {})
-             q.impl/*accumulators*            (atom {})
+             listener/*listeners*              (atom {})
              q.memory/*queues*                (atom {})
              q.memory/*bundle-registry*       (atom {})
              q.memory/*exclusive-processing*  (atom #{})

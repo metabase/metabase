@@ -3,9 +3,10 @@
   Messages are stored in the `topic_message` table. Each subscriber on each node polls
   independently, tracking its read offset in memory."
   (:require
+   [metabase.mq.appdb :as mq.appdb]
    [metabase.mq.impl :as mq.impl]
+   [metabase.mq.listener :as listener]
    [metabase.mq.topic.backend :as topic.backend]
-   [metabase.mq.topic.impl :as topic.impl]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
@@ -26,6 +27,8 @@
 (def ^:private background-process
   "Holds the single shared polling future, or nil."
   (atom nil))
+
+(declare ^:private update-lag-gauges!)
 
 (def ^:private poll-interval-ms
   "How often to poll for new messages, in milliseconds."
@@ -63,7 +66,8 @@
                 (try
                   (loop []
                     (when @background-process
-                      (doseq [topic-name (keys @topic.impl/*listeners*)]
+                      (update-lag-gauges!)
+                      (doseq [topic-name (listener/topic-names)]
                         (try
                           (let [offset (if (contains? @offsets topic-name)
                                          (get @offsets topic-name)
@@ -73,8 +77,7 @@
                                            o))
                                 rows (poll-messages! topic-name offset)]
                             (doseq [{:keys [id messages]} rows]
-                              (when-not (topic.impl/locally-published? topic-name id)
-                                (topic.impl/handle! topic-name (json/decode messages)))
+                              (mq.impl/deliver! topic-name (json/decode messages) nil nil)
                               (swap! offsets assoc topic-name id)))
                           (catch Exception e
                             (log/errorf e "Error polling topic %s" (name topic-name)))))
@@ -116,8 +119,35 @@
                                           [:< :created_at threshold]
                                           [:< :id min-offset]]}))]
     (when (pos? deleted)
-      (log/infof "Cleaned up %d old topic messages" deleted))
+      (log/infof "Cleaned up %d old topic messages" deleted)
+      (mq.impl/analytics-inc! :metabase-mq/appdb-cleanup-deleted {:type "topic" :channel "all"} deleted))
     deleted))
+
+;;; ------------------------------------------- Subscriber Lag Gauge -------------------------------------------
+
+(def ^:private lag-gauge-interval-ms
+  "How often to refresh the subscriber lag gauge. Currently 30 seconds."
+  (* 30 1000))
+
+(def ^:private last-lag-gauge-ms
+  "Timestamp of the last subscriber lag gauge update."
+  (atom 0))
+
+(defn- update-lag-gauges!
+  "Computes undelivered message count per topic and updates the gauge.
+   Time-gated to run at most once per [[lag-gauge-interval-ms]]."
+  []
+  (let [now (System/currentTimeMillis)]
+    (when (> (- now @last-lag-gauge-ms) lag-gauge-interval-ms)
+      (reset! last-lag-gauge-ms now)
+      (try
+        (doseq [[topic-name offset] @offsets]
+          (let [max-id (current-max-id topic-name)]
+            (mq.impl/analytics-set! :metabase-mq/appdb-topic-subscriber-lag
+                                    {:channel (name topic-name)}
+                                    (- max-id offset))))
+        (catch Exception e
+          (log/error e "Error updating topic subscriber lag gauges"))))))
 
 ;;; ------------------------------------------- Backend Multimethods -------------------------------------------
 
@@ -128,11 +158,11 @@
       (.cancel ^Future f true))
     (log/info "Topic polling loop stopped"))
   (reset! offsets {})
-  (mq.impl/stop-cleanup-loop! cleanup-future "Topic"))
+  (mq.appdb/stop-cleanup-loop! cleanup-future "Topic"))
 
 (defmethod topic.backend/start! :topic.backend/appdb [_]
   (start-polling!)
-  (mq.impl/start-cleanup-loop-once! cleanup-future cleanup-interval-ms cleanup-old-messages! "Topic"))
+  (mq.appdb/start-cleanup-loop-once! cleanup-future cleanup-interval-ms cleanup-old-messages! "Topic"))
 
 (defmethod topic.backend/publish! :topic.backend/appdb
   [_ topic-name messages]

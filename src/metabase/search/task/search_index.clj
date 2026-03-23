@@ -109,7 +109,7 @@
     (vec (concat deduped-commands deduped-updates))))
 
 (mq/def-listener! :queue/search-reindex
-  {:max-batch-messages 50 :max-next-ms 100 :exclusive true
+  {:max-batch-messages 50 :exclusive true
    :dedup-fn dedup-search-messages}
   [messages]
   (try

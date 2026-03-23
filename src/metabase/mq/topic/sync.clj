@@ -2,12 +2,14 @@
   "Synchronous topic backend that calls listeners inline during `publish!`.
   Useful in tests to avoid Thread/sleep for polling-based backends."
   (:require
+   [metabase.mq.impl :as mq.impl]
    [metabase.mq.topic.backend :as topic.backend]))
 
 (set! *warn-on-reflection* true)
 
 (defmethod topic.backend/publish! :topic.backend/sync
-  [_ _topic-name _messages]
+  [_ topic-name messages]
+  (mq.impl/handle! topic-name {} messages)
   nil)
 
 (defmethod topic.backend/start! :topic.backend/sync [_] nil)

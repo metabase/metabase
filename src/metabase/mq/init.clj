@@ -2,11 +2,11 @@
   "Initializes the mq subsystem at startup."
   (:require
    [metabase.mq.impl :as mq.impl]
+   [metabase.mq.listener :as listener]
+   [metabase.mq.publish-buffer :as publish-buffer]
    [metabase.mq.queue.backend :as q.backend]
-   [metabase.mq.queue.impl :as q.impl]
    [metabase.mq.settings :as mq.settings]
    [metabase.mq.topic.backend :as topic.backend]
-   [metabase.mq.topic.impl :as topic.impl]
    [metabase.startup.core :as startup]
    [metabase.util.log :as log]))
 
@@ -31,8 +31,6 @@
     (alter-var-root #'topic.backend/*backend* (constantly topic-be))
     (log/infof "Queue backend set to %s" queue-be)
     (log/infof "Topic backend set to %s" topic-be)
-    (mq.impl/register-listeners!)
-    (mq.impl/start-publish-buffer-flush!)
-    ;; Start all backends — they share *listeners* and coexist
-    (q.impl/start-all!)
-    (topic.impl/start-all!)))
+    (listener/register-listeners!)
+    (publish-buffer/start-publish-buffer-flush!)
+    (mq.impl/start-all-backends!)))

@@ -4,8 +4,9 @@
   Uses a claypoole threadpool with exponential backoff restart for robustness."
   (:require
    [com.climate.claypoole :as cp]
+   [metabase.mq.impl :as mq.impl]
+   [metabase.mq.listener :as listener]
    [metabase.mq.topic.backend :as topic.backend]
-   [metabase.mq.topic.impl :as topic.impl]
    [metabase.util.log :as log])
   (:import
    (java.util.concurrent ExecutorService TimeUnit)))
@@ -49,7 +50,7 @@
 (defn- poll-all-topics!
   "Polls all subscribed topics for new messages and dispatches to listeners."
   []
-  (doseq [topic-name (keys @topic.impl/*listeners*)]
+  (doseq [topic-name (listener/topic-names)]
     (try
       (let [offset (if (contains? @*offsets* topic-name)
                      (get @*offsets* topic-name)
@@ -65,8 +66,7 @@
             {:keys [rows]} (get-topic topic-name)
             new-rows (sort-by :id (filterv #(> (:id %) offset) @rows))]
         (doseq [{:keys [id messages]} new-rows]
-          (when-not (topic.impl/locally-published? topic-name id)
-            (topic.impl/handle! topic-name messages))
+          (mq.impl/deliver! topic-name messages nil nil)
           (swap! *offsets* assoc topic-name id)))
       (catch Exception e
         (log/errorf e "Error polling memory topic %s" (name topic-name))))))

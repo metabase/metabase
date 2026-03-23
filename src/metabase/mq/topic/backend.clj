@@ -29,7 +29,7 @@
 
 (defmulti start!
   "Starts the backend polling loop. Called once at init time.
-  The backend polls `topic.impl/*listeners*` dynamically to discover registered topics."
+  The backend polls `mq.impl/*listeners*` dynamically to discover registered topics."
   {:arglists '([backend])}
   identity)
 

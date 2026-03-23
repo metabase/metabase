@@ -41,8 +41,7 @@
     backend))
 
 (defmulti start!
-  "Starts the backend polling loop. Called once at init time.
-  The backend polls `q.impl/*listeners*` dynamically to discover registered queues."
+  "Starts the backend polling loop. Called once at init time."
   {:arglists '([backend])}
   identity)
 

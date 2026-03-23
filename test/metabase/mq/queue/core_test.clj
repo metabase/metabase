@@ -3,7 +3,8 @@
    [clojure.test :refer :all]
    [metabase.app-db.connection :as app-db.conn]
    [metabase.mq.core :as mq]
-   [metabase.mq.impl :as mq.impl]
+   [metabase.mq.publish :as mq.publish]
+   [metabase.mq.publish-buffer :as publish-buffer]
    [metabase.mq.queue.impl :as q.impl]
    [metabase.mq.test-util :as mq.tu])
   (:import (clojure.lang ExceptionInfo)
@@ -57,7 +58,7 @@
 (deftest double-listen-throws-test
   (mq.tu/with-sync-mq {:queue/test (fn [_] nil)}
     (testing "Registering a second listener on the same queue throws"
-      (is (thrown-with-msg? ExceptionInfo #"Queue listener already defined"
+      (is (thrown-with-msg? ExceptionInfo #"Listener already registered"
                             (mq/listen! :queue/test {} (fn [_] nil)))))))
 
 (deftest concurrent-listen-throws-test
@@ -88,7 +89,7 @@
     (mq.tu/with-sync-mq {:queue/exclusive-test {:listener           (fn [message]
                                                                       (swap! heard-messages conj message))
                                                 :max-batch-messages 1
-                                                :max-next-ms        0
+
                                                 :exclusive          true}}
       (testing "Exclusive queue processes messages normally via sync backend"
         (mq/with-queue :queue/exclusive-test [q]
@@ -101,7 +102,7 @@
     (mq.tu/with-sync-mq
       (mq/batch-listen! :queue/batch-exclusive
                         (fn [batch] (swap! heard-batches conj batch))
-                        {:max-batch-messages 10 :max-next-ms 0 :exclusive true})
+                        {:max-batch-messages 10 :exclusive true})
       (testing "Exclusive batch-listen! registers and processes"
         (mq/with-queue :queue/batch-exclusive [q]
           (mq/put q "a")
@@ -122,11 +123,11 @@
           (testing "Messages are deferred in transaction state"
             (is (= ["msg1" "msg2" "msg3"]
                    (get-in @app-db.conn/*transaction-state*
-                           [::mq.impl/deferred-messages :queue/test]))))
+                           [::mq.publish/deferred-messages :queue/test]))))
           (testing "Listener has not been called yet"
             (is (= [] @heard))))
         (testing "After flush (simulating commit), all messages are delivered"
-          (mq.impl/flush-deferred-messages!)
+          (mq.publish/flush-deferred-messages!)
           (is (= ["msg1" "msg2" "msg3"] @heard)))))))
 
 (deftest transaction-rollback-discards-messages-test
@@ -139,7 +140,7 @@
                        (mq/put q "should-be-discarded")
                        (throw (ex-info "boom" {})))))
         (is (nil? (get-in @app-db.conn/*transaction-state*
-                          [::mq.impl/deferred-messages :queue/test]))
+                          [::mq.publish/deferred-messages :queue/test]))
             "No messages should be in transaction state after exception")))))
 
 (deftest outside-transaction-publishes-immediately-test
@@ -166,12 +167,12 @@
         (testing "Both queues have deferred messages"
           (is (= ["a1" "a2"]
                  (get-in @app-db.conn/*transaction-state*
-                         [::mq.impl/deferred-messages :queue/test-a])))
+                         [::mq.publish/deferred-messages :queue/test-a])))
           (is (= ["b1"]
                  (get-in @app-db.conn/*transaction-state*
-                         [::mq.impl/deferred-messages :queue/test-b]))))
+                         [::mq.publish/deferred-messages :queue/test-b]))))
         (testing "After flush, both queues receive their messages"
-          (mq.impl/flush-deferred-messages!)
+          (mq.publish/flush-deferred-messages!)
           (is (= ["a1" "a2"] @heard-a))
           (is (= ["b1"] @heard-b)))))))
 
@@ -180,21 +181,21 @@
     (mq.tu/with-sync-mq
       (mq/batch-listen! :queue/test
                         (fn [batch] (swap! heard into batch))
-                        {:max-batch-messages 50 :max-next-ms 0})
-      (binding [mq.impl/*publish-buffer-ms* 100
-                mq.impl/*publish-buffer*    (atom {})]
+                        {:max-batch-messages 50})
+      (binding [publish-buffer/*publish-buffer-ms* 100
+                publish-buffer/*publish-buffer*    (atom {})]
         (testing "buffered-publish! buffers when *publish-buffer-ms* > 0"
-          (mq.impl/channel-publish! :queue/test ["msg1"])
-          (mq.impl/channel-publish! :queue/test ["msg2"])
+          (mq.publish/publish! :queue/test ["msg1"])
+          (mq.publish/publish! :queue/test ["msg2"])
           (is (empty? @heard)
               "Nothing delivered yet because buffer window hasn't elapsed")
           (is (= ["msg1" "msg2"]
-                 (:messages (get @mq.impl/*publish-buffer* :queue/test)))
+                 (:messages (get @publish-buffer/*publish-buffer* :queue/test)))
               "Messages are buffered"))
         (testing "After flush, all messages are delivered"
-          (swap! mq.impl/*publish-buffer*
+          (swap! publish-buffer/*publish-buffer*
                  update :queue/test assoc :deadline-ms 1)
-          (mq.impl/flush-publish-buffer!)
+          (publish-buffer/flush-publish-buffer!)
           (is (= ["msg1" "msg2"] @heard)
               "Both messages delivered after flush"))))))
 
@@ -202,8 +203,8 @@
   (let [heard (atom [])]
     (mq.tu/with-sync-mq {:queue/test (fn [msg] (swap! heard conj msg))}
       ;; *publish-buffer-ms* is already 0 from with-sync-mq, but be explicit
-      (binding [mq.impl/*publish-buffer-ms* 0
-                mq.impl/*publish-buffer*    (atom {})]
+      (binding [publish-buffer/*publish-buffer-ms* 0
+                publish-buffer/*publish-buffer*    (atom {})]
         (testing "When *publish-buffer-ms* is 0, messages publish immediately"
           (mq/with-queue :queue/test [q]
             (mq/put q "msg1"))
@@ -212,20 +213,23 @@
             (mq/put q "msg2"))
           (is (= ["msg1" "msg2"] @heard)))))))
 
-(deftest buffering-size-threshold-test
+(deftest buffering-flush-delivers-test
   (let [heard (atom [])]
     (mq.tu/with-sync-mq
       (mq/batch-listen! :queue/test
                         (fn [batch] (swap! heard into batch))
-                        {:max-batch-messages 3 :max-next-ms 0})
-      (binding [mq.impl/*publish-buffer-ms* 100
-                mq.impl/*publish-buffer*    (atom {})]
-        (testing "When buffered messages reach listener's max-batch-messages, publish immediately"
-          (mq.impl/channel-publish! :queue/test ["a" "b"])
-          (is (empty? @heard) "2 messages < threshold of 3")
-          (mq.impl/channel-publish! :queue/test ["c"])
-          (is (= ["a" "b" "c"] @heard)
-              "3 messages = threshold, published and delivered immediately"))))))
+                        {:max-batch-messages 3})
+      (binding [publish-buffer/*publish-buffer-ms*  1
+                publish-buffer/*publish-buffer-max-ms* 0
+                publish-buffer/*publish-buffer*     (atom {})]
+        (testing "Messages are buffered until flushed"
+          (mq.publish/publish! :queue/test ["a" "b"])
+          (is (empty? @heard) "not yet flushed")
+          (mq.publish/publish! :queue/test ["c"])
+          (is (empty? @heard) "still buffered, no proactive flush")
+          (Thread/sleep 5)
+          (publish-buffer/flush-publish-buffer!)
+          (is (= ["a" "b" "c"] @heard) "all delivered after flush"))))))
 
 (deftest fifo-ordering-test
   (let [received (atom [])]

@@ -1,0 +1,139 @@
+(ns metabase.mq.listener
+  "Listener registry: registration, lookup, instrumentation, and the `def-listener!` macro."
+  (:require
+   [metabase.mq.transport :as transport]
+   [metabase.util.malli.registry :as mr]))
+
+(set! *warn-on-reflection* true)
+
+(def ^:dynamic *listeners*
+  "channel → {:listener fn :max-batch-messages int ...} for all channels."
+  (atom {}))
+
+(defn queue-names
+  "Returns the seq of queue channel names currently registered in `*listeners*`."
+  []
+  (filter #(= "queue" (namespace %)) (keys @*listeners*)))
+
+(defn topic-names
+  "Returns the seq of topic channel names currently registered in `*listeners*`."
+  []
+  (filter #(= "topic" (namespace %)) (keys @*listeners*)))
+
+(defn get-listener
+  "Returns the listener config map for `channel`, or nil if not registered."
+  [channel]
+  (get @*listeners* channel))
+
+(defn register-listener!
+  "Atomically registers a listener for the given channel, throwing if one already exists."
+  [channel listener-map]
+  (let [already-registered? (atom false)]
+    (swap! *listeners*
+           (fn [m]
+             (if (contains? m channel)
+               (do (reset! already-registered? true) m)
+               (assoc m channel listener-map))))
+    (when @already-registered?
+      (throw (ex-info (str "Listener already registered for " (namespace channel) " " (name channel))
+                      {:channel channel})))))
+
+(defn- analytics-inc! [& args]
+  (apply (requiring-resolve 'metabase.analytics.prometheus/inc!) args))
+
+(defn make-instrumented-listener
+  "Wraps a listener with Prometheus metrics instrumentation."
+  [channel listener]
+  (let [labels    {:type (namespace channel) :channel (name channel)}
+        received  :metabase-mq/topic-messages-received
+        errors    :metabase-mq/topic-handler-errors]
+    (fn [msg]
+      (try
+        (listener msg)
+        (analytics-inc! received labels)
+        (catch Exception e
+          (analytics-inc! errors labels)
+          (throw e))))))
+
+(defn listen!
+  "Registers a listener for a queue or topic.
+   `opts` is an optional map; pass nil or {} for defaults. Queues support `{:exclusive true}`."
+  [channel opts listener]
+  (let [defaults  (transport/on-listen! channel opts)
+        listener' (transport/wrap-listener channel listener)]
+    (register-listener! channel
+                        (merge defaults opts {:listener listener' :max-batch-messages 1}))))
+
+(defn batch-listen!
+  "Registers a batch listener for a queue or topic.
+   The listener will be called with a vec of messages, sized up to :max-batch-messages."
+  [channel listener config]
+  (let [defaults  (transport/on-listen! channel config)
+        listener' (transport/wrap-listener channel listener)]
+    (register-listener! channel
+                        (merge defaults config {:listener listener'}))))
+
+(defn unlisten!
+  "Removes the listener for a channel."
+  [channel]
+  (swap! *listeners* dissoc channel))
+
+(mr/def ::channel
+  [:and :keyword [:fn {:error/message "Channel must be namespaced to 'queue' or 'topic'"}
+                  #(#{"queue" "topic"} (namespace %))]])
+
+(mr/def ::listen-opts
+  [:map [:exclusive {:optional true} :boolean]])
+
+(defmulti def-listener*
+  "Multimethod backing [[def-listener!]]. Each implementation registers its listener
+   by calling [[listen!]] or [[batch-listen!]].
+   Do not call or implement directly — use [[def-listener!]] instead."
+  {:arglists '([channel])}
+  identity)
+
+(defmacro def-listener!
+  "Defines a listener for a queue or topic, detected from the keyword namespace.
+
+   **Topic listener** — receives a single message:
+
+       (mq/def-listener! :topic/settings-cache-invalidated [msg]
+         (restore-cache!))
+
+   **Queue listener** — receives a single message, with optional config:
+
+       (mq/def-listener! :queue/simple-task {:exclusive true} [msg]
+         (process msg))
+
+   **Queue batch listener** — receives a vec of messages (config must include :max-batch-messages):
+
+       (mq/def-listener! :queue/search-reindex
+         {:max-batch-messages 50 :exclusive true}
+         [messages]
+         (process-batch messages))"
+  {:arglists '([channel bindings & body]
+               [channel config bindings & body])}
+  [channel & args]
+  (let [[config & args] (if (map? (first args))
+                          args
+                          (cons nil args))
+        [bindings & body] args
+        batch?          (and config (:max-batch-messages config))]
+    (if batch?
+      `(defmethod def-listener* ~channel [~'_]
+         (batch-listen!
+          ~channel
+          (fn [~@bindings] ~@body)
+          ~(select-keys config [:max-batch-messages :exclusive :dedup-fn])))
+      `(defmethod def-listener* ~channel [~'_]
+         (listen! ~channel ~(or config {}) (fn [~@bindings] ~@body))))))
+
+(defn register-listeners!
+  "Call all [[def-listener!]] implementations to register their listeners.
+   Called at startup and in test setup (from `with-sync-mq`)."
+  []
+  (doseq [[k f] (methods def-listener*)]
+    (try
+      (f k)
+      (catch Throwable e
+        (.println System/err (str "Error registering listener " k ": " e))))))

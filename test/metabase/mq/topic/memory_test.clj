@@ -2,8 +2,9 @@
   (:require
    [clojure.test :refer :all]
    [metabase.mq.core :as mq]
+   [metabase.mq.listener :as listener]
+   [metabase.mq.publish-buffer :as publish-buffer]
    [metabase.mq.topic.backend :as topic.backend]
-   [metabase.mq.topic.impl :as topic.impl]
    [metabase.mq.topic.memory :as topic.memory])
   (:import (clojure.lang ExceptionInfo)
            (java.util.concurrent CyclicBarrier)))
@@ -12,11 +13,13 @@
 
 (defmacro ^:private with-memory-topics
   [& body]
-  `(binding [topic.backend/*backend*  :topic.backend/memory
-             topic.impl/*listeners*  (atom {})
-             topic.memory/*topics*  (atom {})
-             topic.memory/*offsets* (atom {})
-             topic.memory/*executor* (atom nil)]
+  `(binding [topic.backend/*backend*       :topic.backend/memory
+             listener/*listeners*          (atom {})
+             publish-buffer/*publish-buffer-ms*  0
+             publish-buffer/*publish-buffer*     (atom {})
+             topic.memory/*topics*        (atom {})
+             topic.memory/*offsets*       (atom {})
+             topic.memory/*executor*      (atom nil)]
      (try
        (topic.backend/start! :topic.backend/memory)
        ~@body
