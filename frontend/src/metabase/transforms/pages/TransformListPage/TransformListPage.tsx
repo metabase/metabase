@@ -108,7 +108,6 @@ export const TransformListPage = ({
 }: TransformListPageProps) => {
   const { transformsDatabases = [], isLoadingDatabases } =
     useTransformPermissions();
-  const canReplaceSources = useSelector(PLUGIN_REPLACEMENT.canReplaceSources);
   const targetCollectionId =
     Urls.extractEntityId(location.query?.collectionId) ?? null;
   const hasScrolledRef = useRef(false);
@@ -355,7 +354,7 @@ export const TransformListPage = ({
           {transformsDatabases.length > 0 && (
             <>
               <CreateTransformMenu />
-              {canReplaceSources && <PLUGIN_REPLACEMENT.TransformToolsMenu />}
+              <PLUGIN_REPLACEMENT.TransformToolsMenu />
             </>
           )}
         </Flex>

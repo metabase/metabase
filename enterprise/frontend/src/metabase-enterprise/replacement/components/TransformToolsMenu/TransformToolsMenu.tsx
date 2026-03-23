@@ -3,11 +3,16 @@ import { t } from "ttag";
 
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { Button, Icon, Menu } from "metabase/ui";
+import { Button, Icon, Menu, Tooltip } from "metabase/ui";
 
 export function TransformToolsMenu() {
   const isAdmin = useSelector(getUserIsAdmin);
+  const isRemoteSyncReadOnly = useSelector(
+    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
+  );
+
   if (!isAdmin) {
     return null;
   }
@@ -15,7 +20,17 @@ export function TransformToolsMenu() {
   return (
     <Menu>
       <Menu.Target>
-        <Button leftSection={<Icon name="gear" />}>{t`Tools`}</Button>
+        <Tooltip
+          label={t`Transforms tools can't be used when Remote Sync is in read-only mode`}
+          disabled={!isRemoteSyncReadOnly}
+        >
+          <Button
+            leftSection={<Icon name="gear" />}
+            disabled={isRemoteSyncReadOnly}
+          >
+            {t`Tools`}
+          </Button>
+        </Tooltip>
       </Menu.Target>
       <Menu.Dropdown>
         <Menu.Item
