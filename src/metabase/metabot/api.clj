@@ -173,7 +173,7 @@
 
   When `:debug?` is true, enables debug logging which emits a `debug_log` data
   part at the end of the stream with full LLM request/response data per iteration."
-  [{:keys [profile-id message context history conversation-id state debug?]}]
+  [{:keys [metabot-id profile-id message context history conversation-id state debug?]}]
   (let [enriched-context (metabot.context/create-context context)
         messages         (concat history [message])]
     (sr/streaming-response {:content-type "text/event-stream"} [^OutputStream os canceled-chan]
@@ -188,6 +188,7 @@
                      (agent/run-agent-loop
                       (cond-> {:messages      messages
                                :state         state
+                               :metabot-id    metabot-id
                                :profile-id    (keyword profile-id)
                                :context       enriched-context
                                :tracking-opts {:session-id          conversation-id
@@ -214,7 +215,8 @@
       (do
         (log/info "Using native Clojure agent" {:profile-id profile-id :debug? debug?})
         (native-agent-streaming-request
-         {:profile-id      profile-id
+         {:metabot-id      metabot-id
+          :profile-id      profile-id
           :message         message
           :context         context
           :history         history

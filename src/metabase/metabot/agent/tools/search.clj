@@ -2,6 +2,7 @@
   "Search tool wrappers for Metabot v3."
   (:require
    [clojure.string :as str]
+   [metabase.metabot.agent.tools.shared :as shared]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.instructions :as instructions]
    [metabase.metabot.tools.llm-representations :as llm-rep]
@@ -36,9 +37,10 @@
                   ". Allowed types: " (str/join ", " (sort allowed-types)) ".")}
     (try
       (let [results (search-tools/search (merge {:semantic-queries semantic_queries
-                                                 :term-queries keyword_queries
-                                                 :entity-types entity_types
-                                                 :limit 10}
+                                                 :term-queries    keyword_queries
+                                                 :entity-types    entity_types
+                                                 :metabot-id      shared/*metabot-id*
+                                                 :limit           10}
                                                 search-opts))]
         {:output (format-search-output results)
          :structured-output {:result-type :search

@@ -335,7 +335,7 @@
 
 (defn- init-agent
   "Initialize agent state."
-  [{:keys [messages state profile-id context tracking-opts]}]
+  [{:keys [messages state metabot-id profile-id context tracking-opts]}]
   (let [context      (assign-context-ids context)
         profile      (or (profiles/get-profile profile-id)
                          (throw (ex-info "Unknown profile" {:profile-id profile-id})))
@@ -350,7 +350,7 @@
                          (memory/load-transforms-from-state seeded)
                          (memory/load-todos-from-state seeded))
         memory-atom  (atom memory)
-        tools        (agent-tools/wrap-tools-with-state base-tools memory-atom)]
+        tools        (agent-tools/wrap-tools-with-state base-tools memory-atom metabot-id)]
     (log/info "Starting agent" {:profile  profile-id
                                 :tools    (count tools)
                                 :max-iter (:max-iterations profile)
@@ -486,6 +486,7 @@
   [opts :- [:map
             [:messages ::messages]
             [:profile-id ::profile-id]
+            [:metabot-id {:optional true} [:maybe :string]]
             [:state {:optional true} [:maybe ::state]]
             [:context {:optional true} [:maybe ::context]]
             [:tracking-opts {:optional true} [:maybe ::tracking-opts]]
