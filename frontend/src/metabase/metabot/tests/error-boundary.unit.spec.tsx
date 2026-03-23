@@ -3,8 +3,12 @@ import fetchMock from "fetch-mock";
 import { assocIn } from "icepick";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
+import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockUser } from "metabase-types/api/mocks";
+import {
+  createMockTokenFeatures,
+  createMockUser,
+} from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
 import { Metabot } from "../components/Metabot";
@@ -28,6 +32,10 @@ jest.mock("../components/MetabotChat", () => {
 });
 
 function setup() {
+  mockSettings({
+    "token-features": createMockTokenFeatures({ metabot_v3: true }),
+  });
+
   setupEnterprisePlugins();
 
   const metabotState = assocIn(
