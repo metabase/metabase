@@ -5,6 +5,8 @@
   (:require
    [clojure.string :as str]
    [metabase.sync.interface :as i]
+   [metabase.sync.persist :as persist]
+   [metabase.sync.persist.appdb :as persist.appdb]
    [metabase.sync.sync-metadata.crufty :as crufty]
    [metabase.sync.sync-metadata.fields.common :as common]
    [metabase.sync.util :as sync-util]
@@ -12,8 +14,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.models.field-user-settings :as schema.field-user-settings]
-   [toucan2.core :as t2]))
+   [metabase.warehouse-schema.models.field-user-settings :as schema.field-user-settings]))
 
 (defn- crufty-field? [db field-metadata]
   (crufty/name? (:name field-metadata)
@@ -33,7 +34,8 @@
   [database       :- i/DatabaseInstance
    table          :- i/TableInstance
    field-metadata :- i/TableMetadataField
-   metabase-field :- common/TableMetadataFieldWithID]
+   metabase-field :- common/TableMetadataFieldWithID
+   writer]
   (let [{old-database-type              :database-type
          old-base-type                  :base-type
          old-field-comment              :field-comment
@@ -209,7 +211,7 @@
            {:preview_display false}))]
     ;; if any updates need to be done, do them and return 1 (because 1 Field was updated), otherwise return 0
     (if (and (seq updates)
-             (pos? (t2/update! :model/Field (u/the-id metabase-field) updates)))
+             (pos? (persist/update-field! writer (u/the-id metabase-field) updates)))
       1
       0)))
 
@@ -220,23 +222,30 @@
   [database       :- i/DatabaseInstance
    table          :- i/TableInstance
    field-metadata :- i/TableMetadataField
-   metabase-field :- common/TableMetadataFieldWithID]
+   metabase-field :- common/TableMetadataFieldWithID
+   writer]
   (let [nested-fields-metadata (:nested-fields field-metadata)
         metabase-nested-fields (:nested-fields metabase-field)]
     (if (seq metabase-nested-fields)
-      (update-metadata! database table (set nested-fields-metadata) (set metabase-nested-fields))
+      (update-metadata! database table (set nested-fields-metadata) (set metabase-nested-fields) writer)
       0)))
 
 (mu/defn update-metadata! :- ms/IntGreaterThanOrEqualToZero
   "Make sure things like PK status and base-type are in sync with what has come back from the DB. Recursively updates
   nested Fields. Returns total number of Fields updated."
-  [database     :- i/DatabaseInstance
-   table        :- i/TableInstance
-   db-metadata  :- [:set i/TableMetadataField]
-   our-metadata :- [:set common/TableMetadataFieldWithID]]
-  (sync-util/sum-for [metabase-field our-metadata]
-    ;; only update metadata for 'existing' Fields that are present in our Metadata (i.e., present in the application
-    ;; database) and that are still considered active (i.e., present in DB metadata)
-    (when-let [field-metadata (common/matching-field-metadata metabase-field db-metadata)]
-      (+ (update-field-metadata-if-needed! database table field-metadata metabase-field)
-         (update-nested-fields-metadata! database table field-metadata metabase-field)))))
+  ([database     :- i/DatabaseInstance
+    table        :- i/TableInstance
+    db-metadata  :- [:set i/TableMetadataField]
+    our-metadata :- [:set common/TableMetadataFieldWithID]]
+   (update-metadata! database table db-metadata our-metadata persist.appdb/writer))
+  ([database     :- i/DatabaseInstance
+    table        :- i/TableInstance
+    db-metadata  :- [:set i/TableMetadataField]
+    our-metadata :- [:set common/TableMetadataFieldWithID]
+    writer]
+   (sync-util/sum-for [metabase-field our-metadata]
+     ;; only update metadata for 'existing' Fields that are present in our Metadata (i.e., present in the application
+     ;; database) and that are still considered active (i.e., present in DB metadata)
+     (when-let [field-metadata (common/matching-field-metadata metabase-field db-metadata)]
+       (+ (update-field-metadata-if-needed! database table field-metadata metabase-field writer)
+          (update-nested-fields-metadata! database table field-metadata metabase-field writer))))))

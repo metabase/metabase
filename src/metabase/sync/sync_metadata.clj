@@ -53,13 +53,13 @@
    ;; Make sure the relevant table models are up-to-date
    (sync-util/create-sync-step "sync-tables" #(sync-tables/sync-tables-and-database! % db-metadata reader writer) sync-tables-summary)
    ;; Now for each table, sync the fields
-   (sync-util/create-sync-step "sync-fields" sync-fields/sync-fields! sync-fields-summary)
+   (sync-util/create-sync-step "sync-fields" #(sync-fields/sync-fields! % reader writer) sync-fields-summary)
    ;; Now for each table, sync the FKS. This has to be done after syncing all the fields to make sure target fields exist
-   (sync-util/create-sync-step "sync-fks" sync-fks/sync-fks! sync-fks-summary)
+   (sync-util/create-sync-step "sync-fks" #(sync-fks/sync-fks! % writer) sync-fks-summary)
    ;; Sync index info if the database supports it
-   (sync-util/create-sync-step "sync-indexes" sync-indexes/maybe-sync-indexes! sync-indexes-summary)
+   (sync-util/create-sync-step "sync-indexes" #(sync-indexes/maybe-sync-indexes! % reader writer) sync-indexes-summary)
    ;; Sync the metabase metadata table if it exists.
-   (sync-util/create-sync-step "sync-metabase-metadata" #(metabase-metadata/sync-metabase-metadata! % db-metadata))])
+   (sync-util/create-sync-step "sync-metabase-metadata" #(metabase-metadata/sync-metabase-metadata! % db-metadata reader writer))])
 
 (mu/defn sync-db-metadata!
   "Sync the metadata for a Metabase `database`. This makes sure child Table & Field objects are synchronized."

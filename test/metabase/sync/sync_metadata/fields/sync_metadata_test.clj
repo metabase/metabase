@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.sync.core :as sync]
+   [metabase.sync.persist.appdb :as persist.appdb]
    [metabase.sync.sync-metadata.fields.sync-metadata :as sync-metadata]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -27,7 +28,8 @@
           db
           table
           new-metadata-from-sync
-          metadata-in-application-db)
+          metadata-in-application-db
+          persist.appdb/writer)
          @update-operations)))))
 
 (deftest database-type-changed-test

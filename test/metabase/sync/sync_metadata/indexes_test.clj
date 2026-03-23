@@ -6,6 +6,8 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.util :as sql.u]
    [metabase.sync.core :as sync]
+   [metabase.sync.persist :as persist]
+   [metabase.sync.persist.appdb :as persist.appdb]
    [metabase.sync.sync-metadata.indexes :as sync.indexes]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -60,7 +62,7 @@
             many-indexes (into indexes (repeat 100000 {:table-schema "public",
                                                        :table-name "fake_table",
                                                        :field-name "id"}))
-            field-ids (#'sync.indexes/all-indexes->field-ids (mt/id) many-indexes)]
+            field-ids (persist/field-ids-for-indexes persist.appdb/reader (mt/id) many-indexes)]
         (is (seq field-ids))))))
 
 (deftest sync-all-indexes!-test
@@ -93,7 +95,7 @@
                   :let [sql (sql.tx/create-index-sql driver/*driver* "first_table" [field])]]
             (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db)) sql))
           (binding [sync.indexes/*update-partition-size* 2]
-            (#'sync.indexes/sync-all-indexes! (mt/db)))
+            (#'sync.indexes/sync-all-indexes! (mt/db) persist.appdb/reader persist.appdb/writer))
           (is (every? :database_indexed
                       (t2/select :model/Field
                                  {:where [:in :table_id (t2/select-fn-vec :id :model/Table :db_id (mt/id))]}))))
@@ -103,7 +105,7 @@
                                                       driver/*driver* :index (str "idx_first_table_" field)))]]
             (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db)) sql))
           (binding [sync.indexes/*update-partition-size* 2]
-            (#'sync.indexes/sync-all-indexes! (mt/db)))
+            (#'sync.indexes/sync-all-indexes! (mt/db) persist.appdb/reader persist.appdb/writer))
           (is (every? (complement :database_indexed)
                       (t2/select :model/Field
                                  {:where [:and

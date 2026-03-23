@@ -11,14 +11,15 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.humanization :as humanization]
    [metabase.sync.interface :as i]
+   [metabase.sync.persist :as persist]
+   [metabase.sync.persist.appdb :as persist.appdb]
    [metabase.sync.sync-metadata.fields.common :as common]
    [metabase.sync.sync-metadata.fields.our-metadata :as fields.our-metadata]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         CREATING / REACTIVATING FIELDS                                         |
@@ -29,26 +30,27 @@
   exist."
   [table               :- i/TableInstance
    new-field-metadatas :- [:maybe [:sequential i/TableMetadataField]]
-   parent-id           :- common/ParentID]
+   parent-id           :- common/ParentID
+   reader]
   (when (seq new-field-metadatas)
-    (t2/select     :model/Field
-                   :table_id    (u/the-id table)
-                   :%lower.name [:in (map common/canonical-name new-field-metadatas)]
-                   :parent_id   parent-id
-                   :active      false)))
+    (persist/matching-inactive-fields reader
+                                     (u/the-id table)
+                                     (map common/canonical-name new-field-metadatas)
+                                     parent-id)))
 
 (mu/defn- insert-new-fields! :- [:maybe [:sequential ::lib.schema.id/field]]
   "Insert new Field rows for for all the Fields described by `new-field-metadatas`. Returns IDs of newly inserted
   Fields."
   [table               :- i/TableInstance
    new-field-metadatas :- [:maybe [:sequential i/TableMetadataField]]
-   parent-id           :- common/ParentID]
+   parent-id           :- common/ParentID
+   writer]
   (when (seq new-field-metadatas)
-    (t2/insert-returning-pks! :model/Field
-                              (for [{:keys [base-type coercion-strategy database-is-auto-increment database-partitioned database-position
-                                            database-is-generated database-is-nullable database-default pk?
-                                            database-required database-type effective-type field-comment json-unfolding nfc-path visibility-type]
-                                     field-name :name :as field} (sort-by :database-position new-field-metadatas)
+    (persist/insert-fields! writer
+                            (for [{:keys [base-type coercion-strategy database-is-auto-increment database-partitioned database-position
+                                          database-is-generated database-is-nullable database-default pk?
+                                          database-required database-type effective-type field-comment json-unfolding nfc-path visibility-type]
+                                   field-name :name :as field} (sort-by :database-position new-field-metadatas)
                                     :let [semantic-type (common/semantic-type field)
                                           has-field-values (when (sync-util/can-be-list? base-type semantic-type)
                                                              :auto-list)]]
@@ -94,19 +96,19 @@
   handle nested Fields."
   [table               :- i/TableInstance
    new-field-metadatas :- [:maybe [:sequential i/TableMetadataField]]
-   parent-id           :- common/ParentID]
-  (let [fields-to-reactivate (matching-inactive-fields table new-field-metadatas parent-id)]
+   parent-id           :- common/ParentID
+   reader writer]
+  (let [fields-to-reactivate (matching-inactive-fields table new-field-metadatas parent-id reader)]
     ;; if the fields already exist but were just marked inactive then reäctivate them
     (when (seq fields-to-reactivate)
-      (t2/update! :model/Field {:id [:in (map u/the-id fields-to-reactivate)]}
-                  {:active true}))
+      (persist/reactivate-fields! writer (map u/the-id fields-to-reactivate)))
     (let [reactivated?  (comp (set (map common/canonical-name fields-to-reactivate))
                               common/canonical-name)
           ;; If we reactivated the fields, no need to insert them; insert new rows for any that weren't reactivated
-          new-field-ids (insert-new-fields! table (remove reactivated? new-field-metadatas) parent-id)]
+          new-field-ids (insert-new-fields! table (remove reactivated? new-field-metadatas) parent-id writer)]
       ;; now return the newly created or reactivated Fields
       (when-let [new-and-updated-fields (seq (map u/the-id (concat fields-to-reactivate new-field-ids)))]
-        (t2/select :model/Field :id [:in new-and-updated-fields])))))
+        (persist/select-fields-by-ids reader new-and-updated-fields)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                          SYNCING INSTANCES OF 'ACTIVE' FIELDS (FIELDS IN DB METADATA)                          |
@@ -127,7 +129,8 @@
   [table        :- i/TableInstance
    db-metadata  :- [:set i/TableMetadataField]
    our-metadata :- [:set common/TableMetadataFieldWithID]
-   parent-id    :- common/ParentID]
+   parent-id    :- common/ParentID
+   reader writer]
   (let [known-fields (m/index-by common/canonical-name our-metadata)
         our-metadata (atom our-metadata)]
     {:num-updates
@@ -138,7 +141,7 @@
                                               (pr-str (map :name db-field-chunk)))
          (let [known-field?        (comp known-fields common/canonical-name)
                new-fields          (remove known-field? db-field-chunk)
-               new-field-instances (create-or-reactivate-fields! table new-fields parent-id)]
+               new-field-instances (create-or-reactivate-fields! table new-fields parent-id reader writer)]
            ;; save any updates to `our-metadata`
            (swap! our-metadata into (fields.our-metadata/fields->our-metadata new-field-instances parent-id))
            ;; now return count of rows updated
@@ -155,9 +158,10 @@
   "Mark an `old-field` belonging to `table` as inactive if corresponding Field object exists. Does *NOT* recurse over
   nested Fields. Returns `1` if a Field was marked inactive, `nil` otherwise."
   [table          :- i/TableInstance
-   metabase-field :- common/TableMetadataFieldWithID]
+   metabase-field :- common/TableMetadataFieldWithID
+   writer]
   (log/infof "Marking Field ''%s'' as inactive." (common/field-metadata-name-for-logging table metabase-field))
-  (when (pos? (t2/update! :model/Field (u/the-id metabase-field) {:active false}))
+  (when (pos? (persist/retire-field! writer (u/the-id metabase-field)))
     1))
 
 (mu/defn- retire-fields! :- ms/IntGreaterThanOrEqualToZero
@@ -166,13 +170,14 @@
   Returns `1` if a Field was marked inactive."
   [table        :- i/TableInstance
    db-metadata  :- [:set i/TableMetadataField]
-   our-metadata :- [:set common/TableMetadataFieldWithID]]
+   our-metadata :- [:set common/TableMetadataFieldWithID]
+   writer]
   ;; retire all the Fields not present in `db-metadata`, and count how many rows were actually affected
   (sync-util/sum-for [metabase-field our-metadata
                       :when          (not (common/matching-field-metadata metabase-field db-metadata))]
     (sync-util/with-error-handling (format "Error retiring %s"
                                            (common/field-metadata-name-for-logging table metabase-field))
-      (retire-field! table metabase-field))))
+      (retire-field! table metabase-field writer))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                  HIGH-LEVEL INSTANCE SYNCING LOGIC (CREATING/REACTIVATING/RETIRING/UPDATING)                   |
@@ -185,7 +190,8 @@
   `field-metadata` (from synced DB) and `metabase-field` (from application DB)."
   [table          :- i/TableInstance
    field-metadata :- [:maybe i/TableMetadataField]
-   metabase-field :- [:maybe common/TableMetadataFieldWithID]]
+   metabase-field :- [:maybe common/TableMetadataFieldWithID]
+   reader writer]
   (let [nested-fields-metadata (:nested-fields field-metadata)
         metabase-nested-fields (:nested-fields metabase-field)]
     (when (or (seq nested-fields-metadata)
@@ -194,7 +200,8 @@
        table
        (set nested-fields-metadata)
        (set metabase-nested-fields)
-       (some-> metabase-field u/the-id)))))
+       (some-> metabase-field u/the-id)
+       reader writer))))
 
 (mu/defn- sync-nested-field-instances! :- [:maybe ms/IntGreaterThanOrEqualToZero]
   "Recursively sync Field instances (i.e., rows in application DB) for *all* the nested Fields of all Fields in
@@ -202,7 +209,8 @@
   Not for the flattened nested fields for JSON columns in normal RDBMSes (nested field columns)"
   [table        :- i/TableInstance
    db-metadata  :- [:set i/TableMetadataField]
-   our-metadata :- [:set common/TableMetadataFieldWithID]]
+   our-metadata :- [:set common/TableMetadataFieldWithID]
+   reader writer]
   (let [name->field-metadata (m/index-by common/canonical-name db-metadata)
         name->metabase-field (m/index-by common/canonical-name our-metadata)
         all-field-names      (set (concat (keys name->field-metadata)
@@ -210,7 +218,7 @@
     (sync-util/sum-for [field-name all-field-names
                         :let [field-metadata (get name->field-metadata field-name)
                               metabase-field (get name->metabase-field field-name)]]
-      (sync-nested-fields-of-one-field! table field-metadata metabase-field))))
+      (sync-nested-fields-of-one-field! table field-metadata metabase-field reader writer))))
 
 (mu/defn sync-instances! :- ms/IntGreaterThanOrEqualToZero
   "Sync rows in the Field table with `db-metadata` describing the current schema of the Table currently being synced,
@@ -218,12 +226,13 @@
   ([table        :- i/TableInstance
     db-metadata  :- [:set i/TableMetadataField]
     our-metadata :- [:set common/TableMetadataFieldWithID]]
-   (sync-instances! table db-metadata our-metadata nil))
+   (sync-instances! table db-metadata our-metadata nil persist.appdb/reader persist.appdb/writer))
 
   ([table        :- i/TableInstance
     db-metadata  :- [:set i/TableMetadataField]
     our-metadata :- [:set common/TableMetadataFieldWithID]
-    parent-id    :- common/ParentID]
+    parent-id    :- common/ParentID
+    reader writer]
    ;; syncing the active instances makes important changes to `our-metadata` that need to be passed to recursive
    ;; calls, such as adding new Fields or making inactive ones active again. Keep updated version returned by
    ;; `sync-active-instances!`
@@ -231,7 +240,7 @@
                (sync-util/name-for-logging table)
                (pr-str (sort (map common/canonical-name db-metadata)))
                (pr-str (sort (map common/canonical-name our-metadata))))
-   (let [{:keys [num-updates our-metadata]} (sync-active-instances! table db-metadata our-metadata parent-id)]
+   (let [{:keys [num-updates our-metadata]} (sync-active-instances! table db-metadata our-metadata parent-id reader writer)]
      (+ num-updates
-        (retire-fields! table db-metadata our-metadata)
-        (sync-nested-field-instances! table db-metadata our-metadata)))))
+        (retire-fields! table db-metadata our-metadata writer)
+        (sync-nested-field-instances! table db-metadata our-metadata reader writer)))))

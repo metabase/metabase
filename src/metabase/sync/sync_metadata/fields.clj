@@ -42,6 +42,8 @@
    [metabase.driver.util :as driver.u]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
+   [metabase.sync.persist :as persist]
+   [metabase.sync.persist.appdb :as persist.appdb]
    [metabase.sync.sync-metadata.fields.our-metadata :as fields.our-metadata]
    [metabase.sync.sync-metadata.fields.sync-instances :as sync-instances]
    [metabase.sync.sync-metadata.fields.sync-metadata :as sync-metadata]
@@ -49,9 +51,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.models.table :as table]
-   [toucan2.core :as t2]
-   [toucan2.util :as t2.util]))
+   [metabase.warehouse-schema.models.table :as table]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            PUTTING IT ALL TOGETHER                                             |
@@ -62,12 +62,14 @@
   properties (e.g. base type and comment/remark) as needed. Returns number of Fields synced."
   [database    :- i/DatabaseInstance
    table       :- i/TableInstance
-   db-metadata :- [:set i/TableMetadataField]]
-  (+ (sync-instances/sync-instances! table db-metadata (fields.our-metadata/our-metadata table))
+   db-metadata :- [:set i/TableMetadataField]
+   reader writer]
+  (+ (sync-instances/sync-instances! table db-metadata (fields.our-metadata/our-metadata table reader)
+                                     nil reader writer)
      ;; Now that tables are synced and fields created as needed make sure field properties are in sync.
      ;; Re-fetch our metadata because there might be some things that have changed after calling
      ;; `sync-instances`
-     (sync-metadata/update-metadata! database table db-metadata (fields.our-metadata/our-metadata table))))
+     (sync-metadata/update-metadata! database table db-metadata (fields.our-metadata/our-metadata table reader) writer)))
 
 (defn- select-best-matching-name
   "Returns a key function for use with [[sort-by]] that ranks items based on how closely their `:schema` and `:name` match the given target values.
@@ -81,7 +83,9 @@
                           [:updated-fields ms/IntGreaterThanOrEqualToZero]
                           [:total-fields   ms/IntGreaterThanOrEqualToZero]]
   "Sync the Fields in the Metabase application database for all the Tables in a `database`."
-  [database :- i/DatabaseInstance]
+  ([database :- i/DatabaseInstance]
+   (sync-fields! database persist.appdb/reader persist.appdb/writer))
+  ([database :- i/DatabaseInstance reader writer]
   (sync-util/with-error-handling (format "Error syncing Fields for Database ''%s''" (sync-util/name-for-logging database))
     (let [driver          (driver.u/database->driver database)
           schemas?        (driver.u/supports? driver :schemas database)]
@@ -90,13 +94,7 @@
                             (partition-by (juxt :table-name :table-schema))
                             (map (fn [table-metadata]
                                    (let [{:keys [table-name table-schema]} (first table-metadata)
-                                         table   (->> (t2/select :model/Table
-                                                                 :db_id (:id database)
-                                                                 :%lower.name (t2.util/lower-case-en table-name)
-                                                                 :%lower.schema (some-> table-schema t2.util/lower-case-en)
-                                                                 {:where sync-util/sync-tables-clause})
-                                                      (sort-by (select-best-matching-name table-schema table-name))
-                                                      first)
+                                         table   (persist/find-syncable-table reader (:id database) table-name table-schema)
                                          updated (if table
                                                    (try
                                                      ;; TODO: decouple nested field columns sync from field sync. This will allow
@@ -106,7 +104,7 @@
                                                                          (set table-metadata)
                                                                          database
                                                                          table)]
-                                                       (sync-and-update! database table all-metadata))
+                                                       (sync-and-update! database table all-metadata reader writer))
                                                      (catch Exception e
                                                        (log/error e)
                                                        0))
@@ -128,7 +126,7 @@
                      {:total-fields   0
                       :updated-fields 0}
                      (sync-util/sync-schemas database))
-          (sync! (fetch-metadata/fields-metadata database)))))))
+          (sync! (fetch-metadata/fields-metadata database))))))))
 
 (mu/defn sync-fields-for-table!
   "Sync the Fields in the Metabase application database for a specific `table`."
@@ -137,6 +135,11 @@
 
   ([database :- i/DatabaseInstance
     table    :- i/TableInstance]
+   (sync-fields-for-table! database table persist.appdb/reader persist.appdb/writer))
+
+  ([database :- i/DatabaseInstance
+    table    :- i/TableInstance
+    reader writer]
    (sync-util/with-error-handling (format "Error syncing Fields for Table ''%s''" (sync-util/name-for-logging table))
      (let [db-metadata (fetch-metadata/table-fields-metadata database table)
            ;; TODO: decouple nested field columns sync from field sync. This will allow
@@ -144,4 +147,4 @@
            ;; Also this should be a driver method, not a sql-jdbc.sync method
            db-metadata (fetch-metadata/include-nested-fields-for-table db-metadata database table)]
        {:total-fields   (count db-metadata)
-        :updated-fields (sync-and-update! database table db-metadata)}))))
+        :updated-fields (sync-and-update! database table db-metadata reader writer)}))))

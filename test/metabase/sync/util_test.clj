@@ -319,7 +319,7 @@
     (testing "If a non-recoverable error occurs during sync, `initial-sync-status` on the database is set to `aborted`"
       (let [_  (t2/update! :model/Database (mt/id) {:initial_sync_status "incomplete"})
             db (t2/select-one :model/Database :id (mt/id))]
-        (with-redefs [sync-metadata/make-sync-steps (fn [_]
+        (with-redefs [sync-metadata/make-sync-steps (fn [& _]
                                                       [(sync-util/create-sync-step
                                                         "fake-step"
                                                         (fn [_] (throw (java.net.ConnectException.))))])]
@@ -346,9 +346,9 @@
         (let [syncing-chan   (a/chan)
               completed-chan (a/chan)]
           (let [sync-fields! sync-fields/sync-fields!]
-            (with-redefs [sync-fields/sync-fields! (fn [database]
+            (with-redefs [sync-fields/sync-fields! (fn [database & args]
                                                      (a/>!! syncing-chan ::syncing)
-                                                     (sync-fields! database))]
+                                                     (apply sync-fields! database args))]
               (future
                 (sync/sync-database! (mt/db))
                 (a/>!! completed-chan ::sync-completed))

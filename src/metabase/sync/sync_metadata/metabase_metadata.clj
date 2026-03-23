@@ -11,12 +11,13 @@
    [metabase.driver.util :as driver.u]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
+   [metabase.sync.persist :as persist]
+   [metabase.sync.persist.appdb :as persist.appdb]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (def ^:private KeypathComponents
   [:map
@@ -41,21 +42,18 @@
   "Set a property for a Field or Table in `database`. Returns `true` if a property was successfully set."
   [database                          :- i/DatabaseInstance
    {:keys [table-name field-name k]} :- KeypathComponents
-   value]
+   value
+   reader writer]
   (boolean
    ;; ignore legacy entries that try to set field_type since it's no longer part of Field
    (when-not (= k :field_type)
      ;; fetch the corresponding Table, then set the Table or Field property
      (if table-name
-       (when-let [table-id (t2/select-one-pk :model/Table
-                                             ;; TODO: this needs to support schemas
-                                             :db_id  (u/the-id database)
-                                             :name   table-name
-                                             :active true)]
+       (when-let [table-id (persist/find-active-table-id reader (u/the-id database) table-name)]
          (if field-name
-           (t2/update! :model/Field {:name field-name, :table_id table-id} {k value})
-           (t2/update! :model/Table table-id {k value})))
-       (t2/update! :model/Database (u/the-id database) {k value})))))
+           (persist/update-field-by-name! writer table-id field-name {k value})
+           (persist/update-table! writer table-id {k value})))
+       (persist/update-database! writer (u/the-id database) {k value})))))
 
 (mu/defn- sync-metabase-metadata-table!
   "Databases may include a table named `_metabase_metadata` (case-insensitive) which includes descriptions or other
@@ -77,10 +75,11 @@
   implement optional fn `:table-rows-seq`."
   [driver
    database                :- i/DatabaseInstance
-   metabase-metadata-table :- i/DatabaseMetadataTable]
+   metabase-metadata-table :- i/DatabaseMetadataTable
+   reader writer]
   (doseq [{:keys [keypath value]} (driver/table-rows-seq driver database metabase-metadata-table)]
     (sync-util/with-error-handling (format "Error handling metabase metadata entry: set %s -> %s" keypath value)
-      (or (set-property! database (parse-keypath keypath) value)
+      (or (set-property! database (parse-keypath keypath) value reader writer)
           (log/error (u/format-color 'red "Error syncing _metabase_metadata: no matching keypath: %s" keypath))))))
 
 (mu/defn is-metabase-metadata-table?
@@ -96,6 +95,9 @@
    (sync-metabase-metadata! database (fetch-metadata/db-metadata database)))
 
   ([database :- i/DatabaseInstance db-metadata]
+   (sync-metabase-metadata! database db-metadata persist.appdb/reader persist.appdb/writer))
+
+  ([database :- i/DatabaseInstance db-metadata reader writer]
    (sync-util/with-error-handling (format "Error syncing _metabase_metadata table for %s"
                                           (sync-util/name-for-logging database))
      (let [driver (driver.u/database->driver database)]
@@ -105,5 +107,5 @@
          ;; Hopefully this is never the case.
          (doseq [table (:tables db-metadata)]
            (when (is-metabase-metadata-table? table)
-             (sync-metabase-metadata-table! driver database table))))
+             (sync-metabase-metadata-table! driver database table reader writer))))
        {}))))
