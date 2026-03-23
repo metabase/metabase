@@ -192,4 +192,46 @@ describe("Table editing", () => {
       });
     },
   );
+
+  describe("with remote sync enabled", () => {
+    it(
+      "should update the tree after publishing, unpublishing, and renaming a table (metabase#69554)",
+      { tags: ["@external"] },
+      () => {
+        H.restore("mysql-8");
+        H.activateToken("bleeding-edge");
+        H.setupGitSync();
+        H.configureGit("read-write");
+
+        H.DataModel.visitDataStudio();
+        TablePicker.getDatabase("QA MySQL8").click();
+        TablePicker.getTable("Orders").click();
+
+        cy.log("publish the table and verify the tree updates");
+        cy.findByRole("button", { name: /Publish/ }).click();
+        H.modal().findByText("Create my Library").click();
+        H.modal().findByText("Publish this table").click();
+        cy.wait("@publishTables");
+        TablePicker.getTable("Orders")
+          .findByTestId("table-published")
+          .should("be.visible");
+
+        cy.log("unpublish the table and verify the tree updates");
+        cy.findByRole("button", { name: /Unpublish/ }).click();
+        H.modal().findByText("Unpublish this table").click();
+        cy.wait("@unpublishTables");
+        TablePicker.getTable("Orders")
+          .findByTestId("table-published")
+          .should("not.exist");
+
+        cy.log("rename the table and verify the tree updates");
+        H.DataModel.TableSection.getNameInput()
+          .clear()
+          .type("Renamed Orders")
+          .blur();
+        cy.wait("@updateTable");
+        TablePicker.getTable("Renamed Orders").should("be.visible");
+      },
+    );
+  });
 });
