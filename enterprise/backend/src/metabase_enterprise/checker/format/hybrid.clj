@@ -31,6 +31,7 @@
   (:require
    [clojure.java.io :as io]
    [metabase-enterprise.checker.format.concise :as concise]
+   [metabase-enterprise.checker.format.lenient :as lenient]
    [metabase-enterprise.checker.format.serdes :as serdes]
    [metabase-enterprise.checker.source :as source])
   (:import
@@ -162,6 +163,16 @@
 ;;; Unified API - Auto-detect and create appropriate source
 ;;; ===========================================================================
 
+(defn- make-lenient-source
+  "Create a lenient source, using serdes for cards if collections/ exists."
+  [export-dir format]
+  (let [serdes-src (when (= :serdes (:cards format))
+                     (serdes/make-source export-dir))
+        source     (lenient/make-source serdes-src)]
+    {:source source
+     :format format
+     :type   :lenient}))
+
 (defn make-source
   "Create a MetadataSource from an export directory, auto-detecting format.
 
@@ -169,49 +180,68 @@
    - Pure serdes format (databases as directories)
    - Pure concise format (databases as files, cards in cards/)
    - Hybrid format (concise databases, serdes cards in collections/)
+   - Lenient format (no databases on disk, fabricate metadata on demand)
+
+   Pass :lenient? true to force lenient mode regardless of what's on disk.
 
    Returns the source and format info."
-  [export-dir]
+  [export-dir & {:keys [lenient?]}]
   (let [format (detect-format export-dir)]
-    (case (:databases format)
-      :serdes
-      {:source (serdes/make-source export-dir)
-       :format format
-       :type :serdes}
-
-      :concise
-      (if (= :serdes (:cards format))
-        ;; Hybrid: concise DBs + serdes cards
-        {:source (make-hybrid-source export-dir)
+    (if lenient?
+      (make-lenient-source export-dir format)
+      (case (:databases format)
+        :serdes
+        {:source (serdes/make-source export-dir)
          :format format
-         :type :hybrid}
-        ;; Pure concise (cards in cards/ directory)
-        {:source (concise/make-source export-dir)
-         :format format
-         :type :concise})
+         :type :serdes}
 
-      ;; No databases found
-      (throw (ex-info "No databases found in export directory"
-                      {:export-dir export-dir
-                       :format format})))))
+        :concise
+        (if (= :serdes (:cards format))
+          ;; Hybrid: concise DBs + serdes cards
+          {:source (make-hybrid-source export-dir)
+           :format format
+           :type :hybrid}
+          ;; Pure concise (cards in cards/ directory)
+          {:source (concise/make-source export-dir)
+           :format format
+           :type :concise})
+
+        ;; No databases found — use lenient source that fabricates metadata
+        (make-lenient-source export-dir format)))))
 
 (defn make-enumerators
   "Create enumerators for any source type returned by make-source."
   [{:keys [source type]}]
   (case type
-    :serdes (serdes/make-enumerators source)
+    :serdes  (serdes/make-enumerators source)
     :concise (concise/make-enumerators source)
-    :hybrid (make-hybrid-enumerators source)))
+    :hybrid  (make-hybrid-enumerators source)
+    :lenient (let [delegate (lenient/card-source source)]
+               (lenient/make-enumerators
+                source
+                (when delegate
+                  #(serdes/all-card-ids delegate))))))
 
 (defn check
   "Check all cards using auto-detected format.
-   Returns map of entity-id -> result."
-  [export-dir]
-  (let [{:keys [source] :as src-info} (make-source export-dir)
-        enums (make-enumerators src-info)
+
+   Returns a map:
+     {:results  {entity-id -> result}
+      :type     :serdes|:concise|:hybrid|:lenient
+      :source   the MetadataSource used}
+
+   Pass :lenient? true to force lenient mode.
+
+   When the source is :lenient, callers can use
+   `lenient/build-manifest` and `lenient/write-manifest!` on the source."
+  [export-dir & {:keys [lenient?]}]
+  (let [{:keys [source type] :as src-info} (make-source export-dir :lenient? lenient?)
+        enums    (make-enumerators src-info)
         card-ids ((:cards enums))
-        checker (requiring-resolve 'metabase-enterprise.checker.checker/check-cards)]
-    (checker source enums card-ids)))
+        checker  (requiring-resolve 'metabase-enterprise.checker.checker/check-cards)]
+    {:results (checker source enums card-ids)
+     :type    type
+     :source  source}))
 
 (comment
   ;; Auto-detect and check

@@ -531,21 +531,27 @@
    With just an export dir, checks all cards.
    With entity-ids, checks only those cards.
 
-   Returns map of entity-id → result."
+   Options: :lenient? true to force lenient mode.
+
+   Returns a map with :results, :type, and :source (see hybrid/check)."
   ([export-dir]
    (let [hybrid-check (requiring-resolve 'metabase-enterprise.checker.format.hybrid/check)]
      (hybrid-check export-dir)))
   ([export-dir entity-ids]
-   (let [make-source      (requiring-resolve 'metabase-enterprise.checker.format.hybrid/make-source)
-         make-enumerators (requiring-resolve 'metabase-enterprise.checker.format.hybrid/make-enumerators)
-         {:keys [source] :as src-info} (make-source export-dir)
-         enums (make-enumerators src-info)]
-     (check-cards source enums entity-ids))))
+   (check export-dir entity-ids {}))
+  ([export-dir entity-ids {:keys [lenient?]}]
+   (let [make-source*      (requiring-resolve 'metabase-enterprise.checker.format.hybrid/make-source)
+         make-enumerators* (requiring-resolve 'metabase-enterprise.checker.format.hybrid/make-enumerators)
+         {:keys [source type] :as src-info} (make-source* export-dir :lenient? lenient?)
+         enums (make-enumerators* src-info)]
+     {:results (check-cards source enums entity-ids)
+      :type    type
+      :source  source})))
 
 (comment
   ;; Quick check — all cards, auto-detect format
-  (def results (check "/Users/dan/projects/work/yaml-checked-files-v1/exports/sqlite-based-mixed-versions"))
-  (summarize-results results)
+  (def check-result (check "/Users/dan/projects/work/yaml-checked-files-v1/exports/sqlite-based-mixed-versions"))
+  (summarize-results (:results check-result))
 
   ;; Check just one card
   (check "/path/to/export" ["some-entity-id"])

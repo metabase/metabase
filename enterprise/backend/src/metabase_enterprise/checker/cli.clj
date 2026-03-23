@@ -10,6 +10,7 @@
    [clojure.tools.cli :as cli]
    [metabase-enterprise.checker.checker :as checker]
    [metabase-enterprise.checker.format.hybrid :as hybrid]
+   [metabase-enterprise.checker.format.lenient :as lenient]
    [metabase-enterprise.checker.structural :as structural]))
 
 (set! *warn-on-reflection* true)
@@ -35,18 +36,25 @@
       (fail! (str "Not a directory: " path)))))
 
 (defn- run-cards-checker
-  "Run the cards checker. Auto-detects format (serdes or concise/hybrid)."
-  [export-dir output-file]
-  (let [results (hybrid/check export-dir)
-        summary (checker/summarize-results results)
+  "Run the cards checker. Auto-detects format (serdes or concise/hybrid/lenient)."
+  [export-dir {:keys [output manifest lenient]}]
+  (let [{:keys [results type source]} (hybrid/check export-dir :lenient? lenient)
+        summary  (checker/summarize-results results)
         failures (filter #(not= :ok (checker/result-status (second %))) results)]
     ;; Write to output file if specified
-    (when output-file
-      (spit output-file (pr-str results))
-      (println "Results written to:" output-file))
+    (when output
+      (spit output (pr-str results))
+      (println "Results written to:" output))
+    ;; Write manifest if lenient source was used
+    (when (= :lenient type)
+      (lenient/write-manifest! source (or manifest (str export-dir "/manifest.yaml"))))
+    ;; Write manifest if explicitly requested and source is not lenient
+    (when (and manifest (not= :lenient type))
+      (println "Note: --manifest is only written when no database schema files are present (lenient mode)"))
     ;; Print summary
     (println "Card Check Results")
     (println "==================")
+    (println "Format:" (name type))
     (println "Total cards:" (:total summary))
     (println "  OK:" (:ok summary))
     (println "  Errors:" (:errors summary))
@@ -67,12 +75,12 @@
 
 (defn- run-structural-checker
   "Run the structural checker."
-  [export-dir output-file]
+  [export-dir {:keys [output]}]
   (let [results (structural/check export-dir)
         invalid-count (count (:invalid results))]
-    (when output-file
-      (spit output-file (pr-str results))
-      (println "Results written to:" output-file))
+    (when output
+      (spit output (pr-str results))
+      (println "Results written to:" output))
     (flush)
     (System/exit (if (zero? invalid-count) 0 1))))
 
@@ -87,6 +95,8 @@
    [nil "--checker CHECKER" "Which checker to run (cards, structural)"]
    [nil "--export PATH" "Path to serdes export directory"]
    [nil "--output PATH" "Path to output file for results"]
+   [nil "--manifest PATH" "Path to write manifest YAML (referenced databases/tables/fields)"]
+   [nil "--lenient" "Force lenient mode: ignore schema files on disk, fabricate metadata on demand"]
    ["-h" "--help" "Show this help"]])
 
 (defn- usage [summary]
@@ -101,7 +111,7 @@
   "Main entrypoint for checker mode. Receives raw args."
   [args]
   (let [{:keys [options errors summary]} (cli/parse-opts args cli-spec)
-        {:keys [checker export output help]} options]
+        {:keys [checker export help]} options]
     (cond
       help
       (do (println (usage summary))
@@ -126,7 +136,7 @@
       (do
         (validate-directory! export)
         (if-let [checker-fn (get checkers checker)]
-          (checker-fn export output)
+          (checker-fn export options)
           (fail! (str "Unknown checker: " checker)
                  ""
                  (usage summary)))))))
