@@ -39,7 +39,7 @@ on:
 jobs:
   generate-matrix:
     name: "Breaking changes E2E > Generate matrix"
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     outputs:
       matrix_json: ${{ steps.set_matrix.outputs.matrix_json }}
       shards_total: ${{ steps.set_matrix.outputs.shards_total }}
@@ -64,7 +64,7 @@ jobs:
 
   build-jar:
     name: "Breaking changes E2E > Build jar"
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 45
 
     steps:
@@ -100,7 +100,7 @@ jobs:
   run-breaking-changes-tests:
     name: "Breaking changes E2E > Run breaking changes tests"
     needs: [build-jar, generate-matrix]
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 45
     env:
       TOTAL_SHARDS: ${{ needs.generate-matrix.outputs.shards_total }}

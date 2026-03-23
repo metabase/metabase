@@ -8,7 +8,7 @@ on:
 
 jobs:
   linkChecker:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     permissions:
       issues: write # required for peter-evans/create-issue-from-file
     steps:
