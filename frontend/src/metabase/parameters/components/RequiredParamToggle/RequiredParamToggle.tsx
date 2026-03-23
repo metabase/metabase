@@ -1,8 +1,7 @@
 import { t } from "ttag";
 
-import { Flex, HoverCard, Icon, Stack, Switch, Text } from "metabase/ui";
-
-import S from "./RequiredParamToggle.module.css";
+import { LabelWithInfo } from "metabase/common/components/LabelWithInfo";
+import { Flex, Switch, Text } from "metabase/ui";
 
 interface RequiredParamToggleProps {
   disabled?: boolean;
@@ -33,21 +32,11 @@ export function RequiredParamToggle(props: RequiredParamToggleProps) {
         onChange={(event) => onChange(event.currentTarget.checked)}
       />
       <div>
-        <label className={S.SettingRequiredLabel} htmlFor={id}>
-          {t`Always require a value`}
-          {disabled && (
-            <HoverCard position="top-end" shadow="xs">
-              <HoverCard.Target>
-                <Icon name="info" />
-              </HoverCard.Target>
-              <HoverCard.Dropdown w={320}>
-                <Stack p="md" gap="sm">
-                  {disabledTooltip}
-                </Stack>
-              </HoverCard.Dropdown>
-            </HoverCard>
-          )}
-        </label>
+        <LabelWithInfo
+          label={t`Always require a value`}
+          info={disabled ? disabledTooltip : undefined}
+          htmlFor={id}
+        />
 
         {parametersAreUserVisible && (
           <Text

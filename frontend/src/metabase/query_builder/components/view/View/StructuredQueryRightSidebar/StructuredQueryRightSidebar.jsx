@@ -1,6 +1,6 @@
 import { match } from "ts-pattern";
 
-import { PLUGIN_AI_ENTITY_ANALYSIS } from "metabase/plugins";
+import { AIQuestionAnalysisSidebar } from "metabase/metabot/components/AIQuestionAnalysisSidebar";
 import { QuestionInfoSidebar } from "metabase/query_builder/components/view/sidebars/QuestionInfoSidebar";
 import { QuestionSettingsSidebar } from "metabase/query_builder/components/view/sidebars/QuestionSettingsSidebar";
 import { SummarizeSidebar } from "metabase/query_builder/components/view/sidebars/SummarizeSidebar";
@@ -43,7 +43,7 @@ export const StructuredQueryRightSidebar = ({
         isShowingAIQuestionAnalysisSidebar: true,
       },
       () => (
-        <PLUGIN_AI_ENTITY_ANALYSIS.AIQuestionAnalysisSidebar
+        <AIQuestionAnalysisSidebar
           question={question}
           visibleTimelineEvents={timelineEvents}
           timelines={timelines}

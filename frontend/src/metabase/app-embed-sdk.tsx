@@ -30,6 +30,8 @@ import { SdkIframeEmbedRoute } from "metabase/embedding/embedding-iframe-sdk/com
 function _init() {
   document.body.style.margin = "0";
   document.body.style.backgroundColor = "transparent";
+  document.documentElement.style.overflow = "hidden";
+  document.documentElement.style.height = "100vh";
 
   const rootElement = document.getElementById("root");
 
