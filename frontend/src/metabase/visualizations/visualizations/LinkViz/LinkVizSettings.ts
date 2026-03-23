@@ -37,5 +37,4 @@ export const settings: VisualizationDefinition = {
       }),
     },
   },
-  preventDragging: (e: React.SyntheticEvent) => e.stopPropagation(),
 };
