@@ -5,7 +5,7 @@
    [metabase.channel.render.core :as channel.render]
    [metabase.formatter.core :as formatter]
    [metabase.lib.core :as lib]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.core :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.util :as u]
