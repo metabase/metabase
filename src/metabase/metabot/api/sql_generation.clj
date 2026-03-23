@@ -1,4 +1,4 @@
-(ns metabase.ai-sql-generation.api
+(ns metabase.metabot.api.sql-generation
   "`/api/ai-sql-generation/` routes"
   (:require
    [metabase.api.macros :as api.macros]

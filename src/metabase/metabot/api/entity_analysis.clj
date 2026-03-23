@@ -1,4 +1,4 @@
-(ns metabase.ai-entity-analysis.api
+(ns metabase.metabot.api.entity-analysis
   "`/api/ai-entity-analysis/` routes"
   (:require
    [metabase.api.macros :as api.macros]
