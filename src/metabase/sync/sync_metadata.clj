@@ -14,6 +14,7 @@
    [metabase.sync.sync-metadata.fks :as sync-fks]
    [metabase.sync.sync-metadata.indexes :as sync-indexes]
    [metabase.sync.sync-metadata.metabase-metadata :as metabase-metadata]
+   [metabase.sync.persist.appdb :as persist.appdb]
    [metabase.sync.sync-metadata.sync-timezone :as sync-tz]
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.sync.util :as sync-util]
@@ -46,9 +47,9 @@
   (format "Total number of indexes sync''d %d, %d added and %d removed"
           total-indexes added-indexes removed-indexes))
 
-(defn- make-sync-steps [db-metadata]
-  [(sync-util/create-sync-step "sync-dbms-version" sync-dbms-ver/sync-dbms-version! sync-dbms-version-summary)
-   (sync-util/create-sync-step "sync-timezone" sync-tz/sync-timezone! sync-timezone-summary)
+(defn- make-sync-steps [db-metadata writer]
+  [(sync-util/create-sync-step "sync-dbms-version" #(sync-dbms-ver/sync-dbms-version! % writer) sync-dbms-version-summary)
+   (sync-util/create-sync-step "sync-timezone" #(sync-tz/sync-timezone! % writer) sync-timezone-summary)
    ;; Make sure the relevant table models are up-to-date
    (sync-util/create-sync-step "sync-tables" #(sync-tables/sync-tables-and-database! % db-metadata) sync-tables-summary)
    ;; Now for each table, sync the fields
@@ -65,8 +66,9 @@
   [database :- i/DatabaseInstance]
   (sync-util/sync-operation :sync-metadata database (format "Sync metadata for %s" (sync-util/name-for-logging database))
     (let [db-metadata (tracing/with-span :sync "sync.metadata.fetch-metadata" {:db/id (:id database)}
-                        (fetch-metadata/db-metadata database))]
-      (u/prog1 (sync-util/run-sync-operation "sync" database (make-sync-steps db-metadata))
+                        (fetch-metadata/db-metadata database))
+          writer     (persist.appdb/sync-writer)]
+      (u/prog1 (sync-util/run-sync-operation "sync" database (make-sync-steps db-metadata writer))
         (if (some sync-util/abandon-sync? (map second (:steps <>)))
           (sync-util/set-initial-database-sync-aborted! database)
           (sync-util/set-initial-database-sync-complete! database))))))

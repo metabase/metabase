@@ -6,10 +6,11 @@
    [metabase.lib.schema.expression.temporal
     :as lib.schema.expression.temporal]
    [metabase.sync.interface :as i]
+   [metabase.sync.persist :as persist]
+   [metabase.sync.persist.appdb :as persist.appdb]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -36,13 +37,16 @@
 (mu/defn sync-timezone! :- [:map [:timezone-id [:maybe ::lib.schema.expression.temporal/timezone-id]]]
   "Query `database` for its current time to determine its timezone. The results of this function are used by the sync
   process to update the timezone if it's different."
-  [database :- i/DatabaseInstance]
-  (let [driver  (driver.u/database->driver database)
-        zone-id (driver/db-default-timezone driver database)]
-    (validate-zone-id driver zone-id)
-    (let [zone-id (some-> zone-id str)
-          zone-id (if (= zone-id "Z") "UTC" zone-id)]
-      (log/infof "%s database %s default timezone is %s" driver (pr-str (:id database)) (pr-str zone-id))
-      (when-not (= zone-id (:timezone database))
-        (t2/update! :model/Database (:id database) {:timezone zone-id}))
-      {:timezone-id zone-id})))
+  ([database :- i/DatabaseInstance]
+   (sync-timezone! database (persist.appdb/sync-writer)))
+  ([database :- i/DatabaseInstance
+    writer   :- [:fn #(satisfies? persist/SyncDatabaseWriter %)]]
+   (let [driver  (driver.u/database->driver database)
+         zone-id (driver/db-default-timezone driver database)]
+     (validate-zone-id driver zone-id)
+     (let [zone-id (some-> zone-id str)
+           zone-id (if (= zone-id "Z") "UTC" zone-id)]
+       (log/infof "%s database %s default timezone is %s" driver (pr-str (:id database)) (pr-str zone-id))
+       (when-not (= zone-id (:timezone database))
+         (persist/set-database-timezone! writer (:id database) zone-id))
+       {:timezone-id zone-id}))))
