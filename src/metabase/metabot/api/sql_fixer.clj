@@ -1,4 +1,4 @@
-(ns metabase.ai-sql-fixer.api
+(ns metabase.metabot.api.sql-fixer
   "`/api/ai-sql-fixer/` routes"
   (:require
    [metabase.api.macros :as api.macros]

@@ -1,4 +1,4 @@
-(ns metabase.ai-entity-analysis.api-test
+(ns metabase.metabot.api.entity-analysis-test
   (:require
    [clojure.test :refer :all]
    [metabase.metabot.client :as metabot-client]

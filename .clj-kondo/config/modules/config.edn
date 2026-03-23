@@ -1185,6 +1185,9 @@
   metabot
   {:team    "Metabot"
    :api     #{metabase.metabot.api
+              metabase.metabot.api.entity-analysis
+              metabase.metabot.api.sql-fixer
+              metabase.metabot.api.sql-generation
               metabase.metabot.core
               metabase.metabot.init}
    :friends #{agent-api
@@ -2610,32 +2613,6 @@
    :uses #{api
            util
            enterprise/workspaces}}
-
-  enterprise/ai-entity-analysis
-  {:team "Metabot"
-   :api  #{metabase-enterprise.ai-entity-analysis.api}
-   :uses #{api
-           metabot
-           premium-features}}
-
-  enterprise/ai-sql-fixer
-  {:team "Metabot"
-   :api  #{metabase-enterprise.ai-sql-fixer.api}
-   :uses #{api
-           driver
-           lib
-           lib-be
-           metabot
-           query-processor
-           util}}
-
-  enterprise/ai-sql-generation
-  {:team "Metabot"
-   :api  #{metabase-enterprise.ai-sql-generation.api}
-   :uses #{api
-           driver
-           metabot
-           util}}
 
   enterprise/analytics
   {:team "UX West"

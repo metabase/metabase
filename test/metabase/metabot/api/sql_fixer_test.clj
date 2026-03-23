@@ -1,4 +1,4 @@
-(ns metabase.ai-sql-fixer.api-test
+(ns metabase.metabot.api.sql-fixer-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
