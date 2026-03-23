@@ -94,17 +94,19 @@
   ;; Handle group sync if configured
   (when-let [provider-key (:oidc-provider-key result)]
     (when-let [provider-config (sso-settings/get-oidc-provider provider-key)]
-      (when (get-in provider-config [:group-sync :enabled])
-        (let [group-attribute (get-in provider-config [:group-sync :group-attribute])
-              group-mappings  (get-in provider-config [:group-sync :group-mappings])
-              claims          (:claims result)
-              user-groups     (when (and claims group-attribute)
-                                (get claims (keyword group-attribute)))]
-          (when (and user-groups group-mappings (:user result))
-            (let [groups-to-sync (if (sequential? user-groups) user-groups [user-groups])]
-              (if (empty? group-mappings)
-                (sso/sync-group-memberships! (:user result) (sso-utils/group-names->ids groups-to-sync group-mappings))
-                (sso/sync-group-memberships! (:user result)
-                                             (sso-utils/group-names->ids groups-to-sync group-mappings)
-                                             (sso-utils/all-mapped-group-ids group-mappings)))))))))
+      (let [group-sync-config (get provider-config :group-sync)]
+        (when (:enabled group-sync-config)
+          (let [group-attribute (get group-sync-config :group-attribute)
+                group-mappings  (get group-sync-config :group-mappings)
+                claims          (:claims result)
+                user-groups     (when (and claims group-attribute)
+                                  (or (get claims (keyword group-attribute))
+                                      (get claims group-attribute)))]
+            (when (and user-groups group-mappings (:user result))
+              (let [groups-to-sync (if (sequential? user-groups) user-groups [user-groups])]
+                (if (empty? group-mappings)
+                  (sso/sync-group-memberships! (:user result) (sso-utils/group-names->ids groups-to-sync group-mappings))
+                  (sso/sync-group-memberships! (:user result)
+                                               (sso-utils/group-names->ids groups-to-sync group-mappings)
+                                               (sso-utils/all-mapped-group-ids group-mappings))))))))))
   result)

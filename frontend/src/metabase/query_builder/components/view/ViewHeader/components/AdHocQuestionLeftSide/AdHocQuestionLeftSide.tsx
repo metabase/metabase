@@ -1,8 +1,7 @@
 import type React from "react";
 import { t } from "ttag";
 
-import type { QueryModalType } from "metabase/query_builder/constants";
-import { MODAL_TYPES } from "metabase/query_builder/constants";
+import { MODAL_TYPES, type QueryModalType } from "metabase/querying/constants";
 import { Box, Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";

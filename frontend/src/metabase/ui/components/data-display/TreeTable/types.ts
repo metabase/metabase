@@ -10,7 +10,7 @@ import type {
   Table,
 } from "@tanstack/react-table";
 import type { VirtualItem, Virtualizer } from "@tanstack/react-virtual";
-import type { InitialTableState } from "@tanstack/table-core/src/types";
+import type { InitialTableState } from "@tanstack/table-core";
 import type {
   CSSProperties,
   KeyboardEvent,

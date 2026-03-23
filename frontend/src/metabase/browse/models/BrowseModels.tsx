@@ -31,12 +31,7 @@ import {
   Tooltip,
 } from "metabase/ui";
 
-import {
-  BrowseContainer,
-  BrowseHeader,
-  BrowseMain,
-  BrowseSection,
-} from "../components/BrowseContainer.styled";
+import S from "../components/BrowseContainer.module.css";
 
 import { ModelsVideo } from "./EmptyStates";
 import { ModelExplanationBanner } from "./ModelExplanationBanner";
@@ -70,9 +65,21 @@ export const BrowseModels = () => {
     !isEmbeddingIframe && hasDataAccess && hasNativeWrite;
 
   return (
-    <BrowseContainer aria-labelledby={titleId}>
-      <BrowseHeader role="heading" data-testid="browse-models-header">
-        <BrowseSection>
+    <Flex
+      className={S.browseContainer}
+      flex={1}
+      direction="column"
+      wrap="nowrap"
+      pt="md"
+      aria-labelledby={titleId}
+    >
+      <Flex
+        className={S.browseHeader}
+        direction="column"
+        role="heading"
+        data-testid="browse-models-header"
+      >
+        <Flex maw="64rem" mx="auto" w="100%">
           <Flex
             w="100%"
             h="2.25rem"
@@ -109,10 +116,10 @@ export const BrowseModels = () => {
               )}
             </Group>
           </Flex>
-        </BrowseSection>
-      </BrowseHeader>
-      <BrowseMain>
-        <BrowseSection>
+        </Flex>
+      </Flex>
+      <Flex className={S.browseMain} direction="column" wrap="nowrap" flex={1}>
+        <Flex maw="64rem" mx="auto" w="100%">
           <Stack mb="lg" gap="md" w="100%">
             {isEmpty ? (
               <Stack gap="lg" align="center" data-testid="empty-state">
@@ -156,9 +163,9 @@ export const BrowseModels = () => {
               </>
             )}
           </Stack>
-        </BrowseSection>
-      </BrowseMain>
-    </BrowseContainer>
+        </Flex>
+      </Flex>
+    </Flex>
   );
 };
 

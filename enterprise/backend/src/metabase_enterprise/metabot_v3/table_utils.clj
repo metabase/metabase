@@ -107,7 +107,8 @@
      (lib-be/with-metadata-provider-cache
        (let [mp (lib-be/application-database-metadata-provider database-id)
              table-ids (map :id all-tables)
-             _ (lib.metadata/bulk-metadata mp :metadata/table table-ids)]
+             _ (lib.metadata/bulk-metadata mp :metadata/table table-ids)
+             engine (:engine (lib.metadata/database mp))]
          (mapv (fn [{:keys [id name schema description]}]
                  (let [table-query (lib/query mp (lib.metadata/table mp id))
                        cols (->> (lib/visible-columns table-query)
@@ -118,6 +119,7 @@
                     :name name
                     :display_name (u.humanization/name->human-readable-name :simple name)
                     :database_id database-id
+                    :database_engine engine
                     :database_schema schema
                     :description description
                     :fields (into [] (map-indexed #(metabot-v3.tools.u/->result-column table-query %2 %1 field-id-prefix) cols))

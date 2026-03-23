@@ -106,7 +106,6 @@ export const EditTableDataGrid = ({
     columnsOptions,
     columnOrder,
     columnSizingMap,
-    columnPinning: { left: [ROW_SELECT_COLUMN_ID] },
     enableRowSelection: true,
     rowSelection,
     onRowSelectionChange,
