@@ -29,7 +29,11 @@ import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { type NamedUser, getUserName } from "metabase/lib/user";
-import { PLUGIN_REPLACEMENT, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
+import {
+  PLUGIN_REMOTE_SYNC,
+  PLUGIN_REPLACEMENT,
+  PLUGIN_TRANSFORMS_PYTHON,
+} from "metabase/plugins";
 import { getMetadata } from "metabase/selectors/metadata";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { getShouldShowPythonTransformsUpsell } from "metabase/transforms/selectors";
@@ -361,7 +365,6 @@ export const TransformListPage = ({
               {canReplaceSources && <PLUGIN_REPLACEMENT.TransformToolsMenu />}
             </>
           )}
-          {transformsDatabases.length > 0 && <CreateTransformMenu />}
         </Flex>
 
         <Card withBorder p={0}>
