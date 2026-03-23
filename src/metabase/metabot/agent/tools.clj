@@ -108,7 +108,7 @@
   Tool-specific instructions are loaded from `resources/metabot/prompts/tools/`
   by `extract-tool-instructions` in `prompts.clj`, keyed by `:prompt` or
   `<tool-name>.md` by default."
-  [tools memory-atom]
+  [tools memory-atom metabot-id]
   (reduce-kv
    (fn [acc tool-name tool-var]
      (let [m        (meta tool-var)
@@ -121,11 +121,12 @@
                      :capabilities         (:capabilities m)
                      :fn                   (if (contains? state-dependent-tools tool-name)
                                              (fn [args]
-                                               (binding [shared/*memory-atom* memory-atom]
+                                               (binding [shared/*memory-atom* memory-atom
+                                                         shared/*metabot-id*  metabot-id]
                                                  (tool-var args)))
-                                             #_:clj-kondo/ignore
-                                             (fn [args] ; fn wrapper because `tool-var` fails `fn?` schema
-                                               (tool-var args)))}]
+                                             (fn [args]
+                                               (binding [shared/*metabot-id* metabot-id]
+                                                 (tool-var args))))}]
        (assoc acc tool-name tool-def)))
    {}
    tools))
