@@ -103,9 +103,7 @@ export const DeleteDatabaseModal = ({
   const canDelete =
     (isContentRemovalConfirmed || !hasContent) && isDatabaseNameConfirmed;
 
-  const deleteButtonLabel = hasContent
-    ? t`Delete this content and the DB connection`
-    : t`Delete`;
+  const deleteButtonLabel = t`Delete this DB connection`;
 
   const errorMessage = getErrorMessage(error);
   const hasMoreThanOneEntityType = usageInfo && entityTypesCount(usageInfo) > 1;

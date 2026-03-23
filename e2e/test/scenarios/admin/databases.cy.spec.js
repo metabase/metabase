@@ -970,7 +970,7 @@ describe("scenarios > admin > databases > sample database", () => {
     });
 
     H.modal().within(() => {
-      cy.button("Delete this content and the DB connection")
+      cy.button("Delete this DB connection")
         .as("deleteButton")
         .should("be.disabled");
       cy.findByLabelText(/Delete [0-9]* saved questions?/)
@@ -1046,7 +1046,7 @@ describe("scenarios > admin > databases > sample database", () => {
       cy.findByTestId("database-name-confirmation-input").type(
         "Sample Database",
       );
-      cy.findByText("Delete this content and the DB connection").click();
+      cy.findByText("Delete this DB connection").click();
       cy.wait("@deleteDatabase");
     });
 
