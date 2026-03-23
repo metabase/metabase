@@ -1,13 +1,15 @@
 {
   "sandbox": {
     "enabled": true,
-    "autoAllow": true,
+    "autoAllowBashIfSandboxed": true,
     "allowUnsandboxedCommands": true,
     "filesystem": {
       "allowWrite": [".", "{{pwd}}", "~/.m2", "~/.gitlibs", "~/.deps.clj", "/tmp"]
     },
     "excludedCommands": ["docker"],
-    "allowedDomains": ["localhost"]
+    "network": {
+      "allowedDomains": ["localhost"]
+    }
   },
   "permissions": {
     "allow": [

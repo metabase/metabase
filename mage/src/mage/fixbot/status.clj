@@ -117,8 +117,9 @@
       (.append sb (str (:id issue) " | " (:url issue) "\n")))
     ;; Line 3: Metabase | URL | DB
     (when ports
-      (let [mb-color    (if (= be-status :ready) green red)
-            mb-text     (str "http://localhost:" (:jetty-port ports))
+      (let [be-up?      (= be-status :ready)
+            mb-color    (if be-up? green red)
+            mb-text     (str (if be-up? "http" "error") "://localhost:" (:jetty-port ports))
             db-name     (when (:db-type ports)
                           (str/upper-case (name (:db-type ports))))
             db-color    (if (= db-status :ready) green red)
@@ -128,19 +129,7 @@
         (when db-text
           (.append sb " | ")
           (.append sb (colorize db-color db-text)))
-        (.append sb "\n")
-        ;; Line 4: Health summary
-        (let [be-down (not= be-status :ready)
-              db-down (and (:db-port ports) (not= db-status :ready))
-              problems (cond-> []
-                         be-down (conj "BE")
-                         db-down (conj (or db-name "DB")))
-              health-text (if (empty? problems)
-                            "Healthy"
-                            (str (str/join " and " problems) " down"))
-              health-color (if (empty? problems) green red)]
-          (.append sb (colorize health-color health-text))
-          (.append sb "\n"))))
+        (.append sb "\n")))
     ;; Blank line + LLM status
     (when (seq llm-status)
       (.append sb "\n")

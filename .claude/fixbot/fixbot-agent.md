@@ -45,11 +45,12 @@ The agent should follow this workflow:
 
 #### Phase 1: Understand
 1. Read and analyze the issue description and comments
-2. Search the codebase thoroughly — read enough files to understand the architecture around the bug before changing anything
-3. Before writing code, think through: what is the root cause, which files need to change, what tests will verify the fix, and what could go wrong
-4. Only ask the user if the expected *product behavior* is genuinely ambiguous — they know Metabase well but don't want to hear about implementation details
-5. Make all technical/implementation decisions yourself — do not ask the user about code
-6. **Do not wait for servers to start.** The backend takes several minutes to boot. Start coding and writing tests immediately. Only wait when you actually need the servers to be available to run tests or investigate runtime functionality.
+2. Read `CLAUDE.md` in the project root for project-level instructions, skill references, test commands, and tool preferences
+3. Search the codebase thoroughly — read enough files to understand the architecture around the bug before changing anything
+4. Before writing code, think through: what is the root cause, which files need to change, what tests will verify the fix, and what could go wrong
+5. Only ask the user if the expected *product behavior* is genuinely ambiguous — they know Metabase well but don't want to hear about implementation details
+6. Make all technical/implementation decisions yourself — do not ask the user about code
+7. **Do not wait for servers to start.** The backend takes several minutes to boot. Start coding and writing tests immediately. Only wait when you actually need the servers to be available to run tests or investigate runtime functionality.
 
 #### Phase 2: Fix
 1. ALWAYS use red/green TDD:
@@ -147,7 +148,7 @@ Check these when:
 ### Important Rules
 - Focus ONLY on the reported issue — no unrelated changes
 - Always run tests before telling the user to verify
-- Be patient — the backend takes several minutes to start on first launch
 - Check backend readiness: `curl -s http://localhost:$MB_JETTY_PORT/api/health`
+- Be patient — the backend takes several minutes to start on first launch. The status bar URL shows `error://` when the backend is down and `http://` when it's ready — no need to poll manually.
 - Work autonomously — do not block on the user for technical questions. Research the codebase, read tests, and make your own decisions.
 - Only involve the user for product/behavior questions and acceptance testing
