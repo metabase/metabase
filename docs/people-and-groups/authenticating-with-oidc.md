@@ -1,19 +1,20 @@
 ---
 title: OIDC-based authentication
-summary: Connect an OpenID Connect (OIDC) identity provider to Metabase for SSO login, automatic account provisioning, and user attribute mapping.
+summary: Connect an OpenID Connect (OIDC) identity provider to Metabase for SSO login, automatic account provisioning, user attribute mapping, and group sync.
 ---
 
 # OIDC-based authentication
 
 {% include plans-blockquote.html feature="OIDC authentication" %}
 
-By integrating your Open ID Connect (OIDC) provider with Metabase, you can:
+By integrating your OpenID Connect (OIDC) provider with Metabase, you can:
 
 - [Provision a Metabase account](#user-provisioning) when someone logs in via your identity provider (IdP).
 - Let people access Metabase without re-authenticating.
 - Automatically pass user attributes (name, email) from your IdP to Metabase.
+- [Synchronize group memberships](#synchronize-group-memberships) so that people are automatically assigned to Metabase groups based on their IdP groups.
 
-## Self-hosted Metabases must encrypt database credentials
+## Self-hosted Metabases must set an encryption key
 
 > Metabase Cloud encrypts credentials by default, so this section only applies to self-hosted Metabases.
 
@@ -35,13 +36,13 @@ _Admin > Settings > Authentication > OIDC_
 
 To add an OIDC provider to your Metabase, go to **Admin > Settings > Authentication > OIDC**. You'll need to input the following:
 
-| Field             | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Key**           | A unique identifier for this provider. Lowercase letters, numbers, and hyphens only. Can't be changed after creation. Use a name that describes the provider (e.g., `keycloak` ), not the application. Metabase constructs the redirect URI as `{site-url}/auth/sso/{key}/callback` . Configure this exact URI in your IdP, so choose the key _before_ configuring your IdP for Metabase. The full redirect URI is shown in the admin UI after you enter the key. |
-| **Login prompt**  | The button label on Metabase's sign-in screen. You can put something like "Sign in with Keycloak", or "Ye who wish to enter Metabase".                                                                                                                                                                                                                                                                                                                           |
-| **Issuer URI**    | Your IdP's issuer URI. Metabase fetches the discovery document from `{issuer-uri}/.well-known/openid-configuration` . This request is made from Metabase's server, not from the browser. In containerized deployments (like Docker), the URI must be reachable from Metabase's container, not just from your browser.                                                                                                                                            |
-| **Client ID**     | The Client ID assigned for Metabase in your OIDC provider.                                                                                                                                                                                                                                                                                                                                                                                                       |
-| **Client Secret** | The client secret from your OIDC provider. When editing an existing configuration, leave this blank to keep the current value.                                                                                                                                                                                                                                                                                                                                   |
+| Field             | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Key**           | A unique identifier for this provider. Lowercase letters, numbers, and hyphens only. Can't be changed after creation. Use a name that describes the provider (e.g., `keycloak`), not the application. Metabase constructs the redirect URI as `{site-url}/auth/sso/{key}/callback`. Configure this exact URI in your IdP, so choose the key _before_ configuring your IdP for Metabase. The full redirect URI is shown in the admin UI after you enter the key. |
+| **Login prompt**  | The button label on Metabase's sign-in screen. You can put something like "Sign in with Keycloak", or "Ye who wish to enter Metabase".                                                                                                                                                                                                                                                                                                                          |
+| **Issuer URI**    | Your IdP's issuer URI. Metabase fetches the discovery document from `{issuer-uri}/.well-known/openid-configuration`. This request is made from Metabase's server, not from the browser. In containerized deployments (like Docker), the URI must be reachable from Metabase's container, not just from your browser.                                                                                                                                            |
+| **Client ID**     | The Client ID assigned for Metabase in your OIDC provider.                                                                                                                                                                                                                                                                                                                                                                                                      |
+| **Client Secret** | The client secret from your OIDC provider. When editing an existing configuration, leave this blank to keep the current value.                                                                                                                                                                                                                                                                                                                                  |
 
 ## Optional settings
 
@@ -59,6 +60,30 @@ Metabase maps OIDC claims to account fields. The defaults work for most provider
 
 If your IdP uses different claim names, update these fields to match.
 
+## Synchronize group memberships
+
+You can configure Metabase to automatically sync group memberships from your IdP, so that people are added to (or removed from) Metabase groups based on their IdP groups.
+
+Unlike SAML, OIDC doesn't define a standard groups claim. You'll need to configure your IdP to include a groups claim in the ID token. Some IdPs (like Azure AD/Entra ID) require a specific `groups` scope or API permission to include group claims — check your provider's docs. Keycloak includes groups via a client scope mapper without needing an extra scope. For a Keycloak example, see [Sync groups from Keycloak to Metabase](./oidc-keycloak.md#sync-groups-from-keycloak-to-metabase).
+
+### Configure group sync in Metabase
+
+> Group sync settings appear after you've saved the provider. If you're setting up a new provider, save it first, then return to configure group sync.
+
+1. Go to **Admin** > **Settings** > **Authentication** > **OIDC** and select your provider.
+2. Turn on **Synchronize Group Memberships**.
+3. Set the **Group attribute name** to the claim name your IdP uses for groups (defaults to `groups`). This must match the claim name in the ID token exactly.
+4. Click **New mapping** and enter the group name exactly as your IdP sends it (case-sensitive).
+5. Select one or more Metabase groups to map it to.
+6. Repeat for each group you want to map, then click **Save**.
+
+### How group sync works
+
+- Metabase updates group memberships on each login based on the groups claim in the ID token.
+- If a person's groups claim no longer includes a mapped group, Metabase removes them from the corresponding Metabase group.
+- Only mapped groups are affected. Memberships in unmapped Metabase groups (including Admin) aren't changed.
+- If the groups claim is missing from the token entirely, Metabase leaves existing group memberships unchanged.
+
 ## Check connection
 
 The **Check connection** button verifies two things: 1) that Metabase can fetch the discovery document from your Issuer URI, and 2) that the client credentials are valid.
@@ -69,7 +94,7 @@ If the check reports "OIDC discovery succeeded, but credentials could not be ver
 
 By default, Metabase creates accounts for people who authenticate successfully via OIDC but don't yet have a Metabase account. Metabase uses the email claim to identify and create accounts, so the `email` scope must be included in what your IdP returns.
 
-You can turn auto-provisioning off under **Admin settings** > **Authentication** > **OpenID Connect** > **User provisioning**. If you've set up [User provisioning with SCIM](./user-provisioning.md), turn off automatic account creation to avoid conflicts.
+You can turn auto-provisioning off under **Admin settings** > **Authentication** > **OIDC** > **User provisioning**. If you've set up [User provisioning with SCIM](./user-provisioning.md), turn off automatic account creation to avoid conflicts.
 
 ### Auto-provisioning will link existing accounts or create a new account
 
@@ -81,7 +106,7 @@ If no matching account exists, and auto-provisioning is off, the person gets an 
 
 You can also configure OIDC via environment variables instead of the admin UI:
 
-- [`MB_OIDC_ALLOWED_NETWORKS`](../configuring-metabase/environment-variables.md#mb_oidc_allowed_networks): controls which networks OIDC requests are allowed to reach. Possible values: `allow-all` (default), `allow-private`, or `external-only`.
+- [`MB_OIDC_ALLOWED_NETWORKS`](../configuring-metabase/environment-variables.md#mb_oidc_allowed_networks): controls which networks OIDC requests are allowed to reach. Possible values: `allow-all` (default, no restrictions), `allow-private` (allows external and private networks, but blocks localhost and loopback), or `external-only` (blocks requests to private networks).
 - [`MB_OIDC_USER_PROVISIONING_ENABLED`](../configuring-metabase/environment-variables.md#mb_oidc_user_provisioning_enabled): toggle auto-provisioning (`true` by default).
 - [`MB_OIDC_PROVIDERS`](../configuring-metabase/environment-variables.md#mb_oidc_providers): JSON string containing the full provider configuration. The value is an array of provider objects:
 
@@ -90,7 +115,7 @@ You can also configure OIDC via environment variables instead of the admin UI:
   {
     "key": "keycloak",
     "login-prompt": "Sign in with Keycloak",
-    "issuer-uri": "http://keycloak:2666/realms/metabase",
+    "issuer-uri": "http://keycloak:8080/realms/metabase",
     "client-id": "metabase-client",
     "client-secret": "metabase-client-secret",
     "scopes": ["openid", "email", "profile"],
@@ -99,21 +124,34 @@ You can also configure OIDC via environment variables instead of the admin UI:
       "email": "email",
       "first_name": "given_name",
       "last_name": "family_name"
+    },
+    "group-sync": {
+      "enabled": true,
+      "group-attribute": "groups",
+      "group-mappings": {
+        "engineering": [5, 6],
+        "data-team": [3]
+      }
     }
   }
 ]
 ```
 
-| Field             | Required | Default                          |
-| ----------------- | -------- | -------------------------------- |
-| **key**           | Yes      |                                  |
-| **login-prompt**  | Yes      |                                  |
-| **issuer-uri**    | Yes      |                                  |
-| **client-id**     | Yes      |                                  |
-| **client-secret** | Yes      |                                  |
-| **enabled**       | No       | `true`                           |
-| **scopes**        | No       | `["openid", "email", "profile"]` |
-| **attribute-map** | No       | See attribute map above          |
+| Field                          | Required | Default                          |
+| ------------------------------ | -------- | -------------------------------- |
+| **key**                        | Yes      |                                  |
+| **login-prompt**               | Yes      |                                  |
+| **issuer-uri**                 | Yes      |                                  |
+| **client-id**                  | Yes      |                                  |
+| **client-secret**              | Yes      |                                  |
+| **enabled**                    | No       | `true`                           |
+| **scopes**                     | No       | `["openid", "email", "profile"]` |
+| **attribute-map**              | No       | See attribute map above          |
+| **group-sync.enabled**         | No       | `false`                          |
+| **group-sync.group-attribute** | No       | `"groups"`                       |
+| **group-sync.group-mappings**  | No       | `{}`                             |
+
+The `group-sync` fields are nested inside each provider object. There's no standalone `MB_OIDC_GROUP_SYNC` environment variable. In `group-mappings`, keys are IdP group names and values are arrays of Metabase group IDs. You can find group IDs under **Admin** > **People** > **Groups**, or via the `GET /api/permissions/group` API endpoint.
 
 See [Environment variables](../configuring-metabase/environment-variables.md).
 

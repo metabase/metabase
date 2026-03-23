@@ -11,6 +11,7 @@ Keycloak is an open-source identity provider that supports [OpenID Connect (OIDC
 
 1. [Set up OIDC in Keycloak](#setting-up-a-client-and-user-in-the-keycloak-console) (the identity provider).
 2. [Set up OIDC in Metabase](./authenticating-with-oidc.md#set-up-oidc-in-metabase) (the service provider).
+3. [Sync groups from Keycloak to Metabase](#sync-groups-from-keycloak-to-metabase) (optional).
 
 ## Setting up a client and user in the Keycloak console
 
@@ -18,39 +19,41 @@ Here's a basic user setup to help you test a connection.
 
 1. Go to the Keycloak admin console and sign in as an administrator.
 
-1. Create a new [realm](https://www.keycloak.org/docs/latest/server_admin/index.html#core-concepts-and-terms): click the realm selector in the top-left and select **Create realm**. Set the realm name (like `metabase` ) and click **Create**.
+1. Create a new [realm](https://www.keycloak.org/docs/latest/server_admin/index.html#core-concepts-and-terms): click the realm selector in the top-left and select **Create realm**. Set the realm name (like `metabase`) and click **Create**.
 
 1. Create a user in that realm from **Users** > **Add user**.
 
-- Fill in **Email**, **First name**, and **Last name**. The email field must be set. Metabase uses this email as the account identifier.
-  - Turn on **Email verified**. Without verification, Keycloak won't allow the person to log in.
-  - Make sure **Required user actions** is empty. If any actions are listed, remove them. Keycloak blocks login until required actions are completed.
-  - Click **Create**, then go to the user's **Credentials** (on the top menu, not the side menu).
-  - Click **Set password**, enter a password, and turn off the **Temporary** toggle.
+   - Fill in **Email**, **First name**, and **Last name**. The email field must be set. Metabase uses this email as the account identifier.
+   - Turn on **Email verified**. Without verification, Keycloak won't allow the person to log in.
+   - Make sure **Required user actions** is empty. If any actions are listed, remove them. Keycloak blocks login until required actions are completed.
+   - Click **Create**, then go to the user's **Credentials** (on the top menu, not the side menu).
+   - Click **Set password**, enter a password, and turn off the **Temporary** toggle.
 
 1. Create a new client from **Clients** > **Create client**.
 
-- **Client type**: Select `OpenID Connect` .
-  - **Client ID**: Enter a name for the client (e.g., `metabase-client` ).
-  - Click **Next**.
+   - **Client type**: Select `OpenID Connect`.
+   - **Client ID**: Enter a name for the client (e.g., `metabase-client`).
+   - Click **Next**.
 
 1. On the **Capability config** page:
 
-- Turn on **Client authentication** (this makes the client confidential and enables the client secret).
-  - Turn on **Service accounts roles**. Metabase's **Check connection** test authenticates using the OAuth 2.0 client credentials grant, which requires service accounts. If service accounts aren't allowed, the test returns "the identity provider does not support the grant type used for testing". If you keep getting this error even with the setting on, double-check the client secret in Metabase. You can check the Keycloak event log (**Events** in the Keycloak sidebar) for a `CLIENT_LOGIN_ERROR` entry to confirm (you'll need to have turned on [event logging](https://www.keycloak.org/docs/latest/server_admin/index.html#configuring-auditing-to-track-events)).
-  - Click **Next**.
+   - Turn on **Client authentication** (this makes the client confidential and enables the client secret).
+   - Turn on **Service accounts roles**. Metabase's **Check connection** test authenticates using the OAuth 2.0 client credentials grant, which requires service accounts. If service accounts aren't allowed, the test returns "the identity provider does not support the grant type used for testing".
+   - Click **Next**.
+
+> If you keep getting the "grant type" error even with **Service accounts roles** on, double-check the client secret in Metabase. You can check the Keycloak event log (**Events** in the Keycloak sidebar) for a `CLIENT_LOGIN_ERROR` entry to confirm (you'll need to have turned on [event logging](https://www.keycloak.org/docs/latest/server_admin/index.html#configuring-auditing-to-track-events)).
 
 1. On the **Login settings** page:
 
-- **Valid redirect URIs**: `{metabase-url}/auth/sso/{key}/callback` , where `{key}` is the key you'll use when configuring OIDC in Metabase (like `keycloak` ).
-  - **Web origins**: Your Metabase URL (like `https://metabase.your-company.com` ).
-  - Click **Save**.
+   - **Valid redirect URIs**: `{metabase-url}/auth/sso/{key}/callback`, where `{key}` is the key you'll use when configuring OIDC in Metabase (like `keycloak`).
+   - **Web origins**: Your Metabase URL (like `https://metabase.your-company.com`).
+   - Click **Save**.
 
-1. Go to the clients **Credentials** tab and copy the client secret.
+1. Go to the client's **Credentials** tab and copy the client secret.
 
 ## Configure OIDC in Metabase
 
-If you're self-hosting Metabase, make sure you've set `MB_ENCRYPTION_SECRET_KEY` before enabling OIDC. See [OIDC-based authentication](./authenticating-with-oidc.md#self-hosted-metabases-must-encrypt-database-credentials) for details.
+If you're self-hosting Metabase, make sure you've set `MB_ENCRYPTION_SECRET_KEY` before enabling OIDC. See [OIDC-based authentication](./authenticating-with-oidc.md#self-hosted-metabases-must-set-an-encryption-key) for details.
 
 Go to **Admin settings** > **Authentication** > **OIDC** and enter:
 
@@ -62,7 +65,7 @@ Go to **Admin settings** > **Authentication** > **OIDC** and enter:
 | **Client ID**     | The Client ID from step 4                               |
 | **Client Secret** | The client secret from the client's **Credentials** tab |
 
-The Issuer URI must be reachable from Metabase's server (not just from your browser). In Docker setups, the URI must resolve from inside Metabase's container. See [OIDC-based authentication](./authenticating-with-oidc.md#set-up-oidc-in-metabase) for more on the Issuer URI.
+See [OIDC-based authentication](./authenticating-with-oidc.md#set-up-oidc-in-metabase) for more on the Issuer URI (including container/Docker networking considerations).
 
 Click **Check connection**, then **Save and enable**.
 
@@ -73,12 +76,32 @@ If the connection check fails with "the identity provider does not support the g
 
 To confirm which cause applies, check the [Keycloak event log](https://www.keycloak.org/docs/latest/server_admin/index.html#auditing-user-events) (**Events** in the Keycloak sidebar) for a `CLIENT_LOGIN_ERROR` entry. (You may need to enable event logging first under **Realm settings** > **Events** > **Event listeners**.)
 
-- `unauthorized_client` means service accounts aren't enabled
+- `unauthorized_client` means service accounts aren't enabled.
 - `invalid_client` means the secret is wrong.
 
 ## Map attributes from Keycloak to Metabase
 
-Keycloak's default OIDC claims ( `email` , `given_name` , `family_name` ) match Metabase's defaults, so no extra configuration is needed. See [Attribute mapping](./authenticating-with-oidc.md#attribute-mapping).
+Keycloak's default OIDC claims (`email`, `given_name`, `family_name`) match Metabase's defaults, so no extra configuration is needed. See [Attribute mapping](./authenticating-with-oidc.md#attribute-mapping).
+
+## Sync groups from Keycloak to Metabase
+
+You can configure Keycloak to include a groups claim in the OIDC token, then set up Metabase to sync group memberships based on that claim.
+
+### Add a groups claim in Keycloak
+
+1. In the Keycloak admin console, go to **Clients** and select your Metabase client (e.g., `metabase-client`).
+2. Go to the **Client scopes** tab and click the dedicated scope (e.g., `metabase-client-dedicated`).
+3. Click **Configure a new mapper** (or **Add mapper** > **By configuration**).
+4. Select **Group Membership** from the list.
+5. Configure the mapper:
+   - **Name**: `groups` (or any descriptive name).
+   - **Token Claim Name**: `groups`. This is the claim name Metabase will look for. It must match the **Group attribute name** you set in Metabase.
+   - **Full group path**: When on, group names include the full path (e.g., `/engineering`). When off, only the group name is included (e.g., `engineering`). Full paths avoid name collisions if you have groups with the same name in different parent groups, but the names will include a `/` prefix. The group name in your Metabase mapping must exactly match the value in the token. If **Full group path** is on, include the `/` prefix (e.g., `/engineering`). If it's off, use just the group name (e.g., `engineering`).   - **Add to ID token**: On.
+6. Click **Save**.
+
+### Configure group sync in Metabase
+
+Once Keycloak includes the groups claim in the token, set up the mapping in Metabase. See [Configure group sync in Metabase](./authenticating-with-oidc.md#configure-group-sync-in-metabase) for the steps.
 
 ## Verify the setup
 
