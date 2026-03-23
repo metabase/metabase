@@ -215,8 +215,19 @@ describe("Embed flow > Pro feature upsell indicators", () => {
     });
 
     expect(
+      screen.getByRole("checkbox", {
+        name: "Allow people to drill through on data points",
+      }),
+    ).toBeEnabled();
+    expect(
       screen.getByRole("checkbox", { name: "Allow downloads" }),
     ).toBeEnabled();
+    expect(
+      screen.getByRole("checkbox", {
+        name: "Allow people to save new questions",
+      }),
+    ).toBeEnabled();
+    // "Allow alerts" also requires email setup, so it stays disabled here
 
     PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = () => false;
   });
@@ -257,8 +268,14 @@ describe("Embed flow > Pro feature upsell indicators", () => {
     await userEvent.click(screen.getByRole("button", { name: "Next" }));
 
     expect(
+      screen.getByRole("checkbox", {
+        name: "Allow people to drill through on data points",
+      }),
+    ).toBeEnabled();
+    expect(
       screen.getByRole("checkbox", { name: "Allow downloads" }),
     ).toBeEnabled();
+    // "Allow subscriptions" also requires email setup, so it stays disabled here
 
     PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = () => false;
   });
