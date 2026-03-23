@@ -6,17 +6,13 @@ import type { TransformId, TransformTagId, TransformTarget } from "./transform";
 
 export type SourceReplacementEntityId = ConcreteTableId | CardId | TransformId;
 
-export const SOURCE_REPLACEMENT_ENTITY_TYPES = ["card", "table"] as const;
-export type SourceReplacementEntityType =
-  (typeof SOURCE_REPLACEMENT_ENTITY_TYPES)[number];
-
-export const TARGET_REPLACEMENT_ENTITY_TYPES = [
+export const SOURCE_REPLACEMENT_ENTITY_TYPES = [
   "card",
   "table",
   "transform",
 ] as const;
-export type TargetReplacementEntityType =
-  (typeof TARGET_REPLACEMENT_ENTITY_TYPES)[number];
+export type SourceReplacementEntityType =
+  (typeof SOURCE_REPLACEMENT_ENTITY_TYPES)[number];
 
 export type SourceReplacementEntry = {
   id: SourceReplacementEntityId;
@@ -77,7 +73,7 @@ export type SourceReplacementRun = {
   is_active: boolean | null;
   source_entity_type: SourceReplacementEntityType;
   source_entity_id: SourceReplacementEntityId;
-  target_entity_type: TargetReplacementEntityType;
+  target_entity_type: SourceReplacementEntityType;
   target_entity_id: SourceReplacementEntityId;
   progress: number | null;
   message: string | null;

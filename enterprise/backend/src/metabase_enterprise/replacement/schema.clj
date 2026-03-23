@@ -13,9 +13,6 @@
 (mr/def ::source-entity-type
   [:enum :card :table :transform])
 
-(mr/def ::target-entity-type
-  [:enum :card :table :transform])
-
 (mr/def ::run-id
   pos-int?)
 
@@ -29,7 +26,7 @@
    [:is_active [:maybe :boolean]]
    [:source_entity_type ::source-entity-type]
    [:source_entity_id ::source-entity-id]
-   [:target_entity_type ::target-entity-type]
+   [:target_entity_type ::source-entity-type]
    [:target_entity_id ::source-entity-id]
    [:progress [:maybe number?]]
    [:message [:maybe :string]]
