@@ -48,6 +48,8 @@ export const TransformSettingsSection = ({
 
   return (
     <Stack gap="2.5rem">
+      <UpdateIncrementalSettings transform={transform} readOnly={readOnly} />
+
       <OwnerSection transform={transform} readOnly={readOnly} />
       <TitleSection
         label={t`Transform target`}
@@ -68,7 +70,6 @@ export const TransformSettingsSection = ({
           </>
         )}
       </TitleSection>
-      <UpdateIncrementalSettings transform={transform} readOnly={readOnly} />
     </Stack>
   );
 };
