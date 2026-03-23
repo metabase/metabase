@@ -133,8 +133,7 @@
     ;; Blank line + LLM status
     (when (seq llm-status)
       (.append sb "\n")
-      (let [waiting? (re-find #"(?i)wait|test|verify|check|confirm|review|feedback|input" llm-status)]
-        (.append sb (if waiting? (colorize yellow llm-status) llm-status)))
+      (.append sb llm-status)
       (.append sb "\n"))
     (.toString sb)))
 
@@ -164,7 +163,7 @@
                          (str/trim (slurp f)))
             output    (render-display issue ports be-status db-status llm-status)]
         (when (not= output last-output)
-          (print "\033[H\033[2J")
+          (println "======================")
           (print output)
           (flush))
         (Thread/sleep 1000)
