@@ -6,7 +6,6 @@
    [metabase.util.malli.registry :as mr]))
 
 (mr/def ::frontend-error-type
-  "Allowed type values for frontend error reporting."
   [:enum "component-crash" "chart-render-error"])
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
