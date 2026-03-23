@@ -96,7 +96,7 @@ You can configure Keycloak to include a groups claim in the OIDC token, then set
 5. Configure the mapper:
    - **Name**: `groups` (or any descriptive name).
    - **Token Claim Name**: `groups`. This is the claim name Metabase will look for. It must match the **Group attribute name** you set in Metabase.
-   - **Full group path**: When on, group names include the full path (e.g., `/engineering`). When off, only the group name is included (e.g., `engineering`). Full paths avoid name collisions if you have groups with the same name in different parent groups, but the names will include a `/` prefix. The group name in your Metabase mapping must exactly match the value in the token. If **Full group path** is on, include the `/` prefix (e.g., `/engineering`). If it's off, use just the group name (e.g., `engineering`).
+   - **Full group path**: When on, group names include the full path (e.g., `/engineering`). The group name in your Metabase mapping must exactly match the value in the token.
    - **Add to ID token**: On.
 6. Click **Save**.
 
