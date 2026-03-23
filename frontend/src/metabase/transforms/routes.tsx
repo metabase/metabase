@@ -2,6 +2,7 @@ import { IndexRoute, Route } from "react-router";
 
 import {
   PLUGIN_DEPENDENCIES,
+  PLUGIN_REPLACEMENT,
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
 
@@ -49,6 +50,7 @@ export function getDataStudioTransformRoutes() {
           </Route>
         )}
         {PLUGIN_TRANSFORMS_PYTHON.getPythonTransformsRoutes()}
+        {PLUGIN_REPLACEMENT.getTransformToolsRoutes()}
       </Route>
     </>
   );

@@ -1,14 +1,14 @@
 import { t } from "ttag";
 
 import type {
-  ReplaceSourceColumnErrorType,
-  ReplaceSourceEntry,
-  ReplaceSourceErrorType,
+  SourceReplacementColumnErrorType,
+  SourceReplacementEntry,
+  SourceReplacementErrorType,
 } from "metabase-types/api";
 
 export function isSameEntity(
-  entry1: ReplaceSourceEntry,
-  entry2: ReplaceSourceEntry,
+  entry1: SourceReplacementEntry,
+  entry2: SourceReplacementEntry,
 ): boolean {
   return entry1.id === entry2.id && entry1.type === entry2.type;
 }
@@ -18,7 +18,7 @@ export function getGenericErrorMessage(): string {
 }
 
 export function getSourceErrorMessage(
-  error: ReplaceSourceErrorType,
+  error: SourceReplacementErrorType,
 ): string | undefined {
   switch (error) {
     case "incompatible-implicit-joins":
@@ -29,7 +29,7 @@ export function getSourceErrorMessage(
 }
 
 export function getTargetErrorMessage(
-  error: ReplaceSourceErrorType,
+  error: SourceReplacementErrorType,
 ): string | undefined {
   switch (error) {
     case "database-mismatch":
@@ -42,7 +42,7 @@ export function getTargetErrorMessage(
 }
 
 export function getColumnErrorMessage(
-  error: ReplaceSourceColumnErrorType,
+  error: SourceReplacementColumnErrorType,
 ): string {
   switch (error) {
     case "column-type-mismatch":

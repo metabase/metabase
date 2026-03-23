@@ -1,23 +1,7 @@
-import cx from "classnames";
 import { useState } from "react";
-import { t } from "ttag";
 
-import { ForwardRefLink } from "metabase/common/components/Link";
-import CS from "metabase/css/core/index.css";
 import { trackDependencyEntitySelected } from "metabase/data-studio/analytics";
-import * as Urls from "metabase/lib/urls";
-import {
-  Badge,
-  Box,
-  Breadcrumbs,
-  Card,
-  FixedSizeIcon,
-  Group,
-  Loader,
-  Menu,
-  Stack,
-  Title,
-} from "metabase/ui";
+import { Badge, Group, Loader, Stack, Title } from "metabase/ui";
 import { useListBrokenGraphNodesQuery } from "metabase-enterprise/api";
 import type { DependencyNode } from "metabase-types/api";
 
@@ -30,13 +14,8 @@ import {
   areFilterOptionsEqual,
   getDependentErrorNodesCount,
   getDependentErrorNodesLabel,
-  getNodeIcon,
-  getNodeLabel,
-  getNodeLink,
-  getNodeLocationInfo,
-  getNodeViewCount,
-  getNodeViewCountLabel,
 } from "../../../../utils";
+import { DependencyList } from "../../../DependencyList";
 import { FilterOptionsPicker } from "../../../FilterOptionsPicker";
 import { SortOptionsPicker } from "../../../SortOptionsPicker";
 import {
@@ -44,7 +23,6 @@ import {
   BROKEN_DEPENDENTS_SORT_COLUMNS,
 } from "../../constants";
 
-import S from "./BrokenDependentsSection.module.css";
 import {
   getDefaultFilterOptions,
   getDefaultSortOptions,
@@ -76,6 +54,14 @@ export function BrokenDependentsSection({
       skip: count === 0,
     },
   );
+
+  const handleGraphOpened = (dependent: DependencyNode) => {
+    trackDependencyEntitySelected({
+      entityId: dependent.id,
+      triggeredFrom: "diagnostics-broken-list",
+      eventDetail: dependent.type,
+    });
+  };
 
   if (count === 0) {
     return null;
@@ -111,100 +97,8 @@ export function BrokenDependentsSection({
         )}
       </Group>
       {dependents.length > 0 && (
-        <Card p={0} shadow="none" withBorder>
-          {dependents.map((dependent, dependentIndex) => (
-            <DependentItem key={dependentIndex} node={dependent} />
-          ))}
-        </Card>
+        <DependencyList nodes={dependents} onGraphOpened={handleGraphOpened} />
       )}
     </Stack>
-  );
-}
-
-type DependentItemProps = {
-  node: DependencyNode;
-};
-
-function DependentItem({ node }: DependentItemProps) {
-  const [isOpened, setIsOpened] = useState(false);
-  const label = getNodeLabel(node);
-  const link = getNodeLink(node);
-  const icon = getNodeIcon(node);
-  const location = getNodeLocationInfo(node);
-  const viewCount = getNodeViewCount(node);
-  const registerTrackingEvent = () => {
-    trackDependencyEntitySelected({
-      entityId: node.id,
-      triggeredFrom: "diagnostics-broken-list",
-      eventDetail: node.type,
-    });
-  };
-
-  return (
-    <Menu opened={isOpened} onChange={setIsOpened}>
-      <Menu.Target>
-        <Stack
-          className={cx(S.item, { [S.active]: isOpened })}
-          p="md"
-          gap="sm"
-          aria-label={label}
-        >
-          <Group gap="sm" justify="space-between" wrap="nowrap">
-            <Group gap="sm" wrap="nowrap">
-              <FixedSizeIcon name={icon} />
-              <Box className={CS.textWrap} lh="1rem">
-                {label}
-              </Box>
-            </Group>
-            {viewCount != null && (
-              <Box
-                className={CS.textNoWrap}
-                c="text-secondary"
-                fz="sm"
-                lh="1rem"
-              >
-                {getNodeViewCountLabel(viewCount)}
-              </Box>
-            )}
-          </Group>
-          {location != null && (
-            <Breadcrumbs
-              separator={<FixedSizeIcon name="chevronright" size={12} />}
-              c="text-secondary"
-              ml="1rem"
-              pl="sm"
-            >
-              {location.links.map((link, linkIndex) => (
-                <Box key={linkIndex} className={CS.textWrap} lh="1rem">
-                  {link.label}
-                </Box>
-              ))}
-            </Breadcrumbs>
-          )}
-        </Stack>
-      </Menu.Target>
-      <Menu.Dropdown>
-        {link && (
-          <Menu.Item
-            component={ForwardRefLink}
-            to={link.url}
-            target="_blank"
-            leftSection={<FixedSizeIcon name="external" />}
-          >
-            {t`Go to this`}
-          </Menu.Item>
-        )}
-        <Menu.Item
-          component={ForwardRefLink}
-          to={Urls.dependencyGraph({ entry: node })}
-          target="_blank"
-          leftSection={<FixedSizeIcon name="dependencies" />}
-          onClickCapture={registerTrackingEvent}
-          onAuxClick={registerTrackingEvent}
-        >
-          {t`View in dependency graph`}
-        </Menu.Item>
-      </Menu.Dropdown>
-    </Menu>
   );
 }
