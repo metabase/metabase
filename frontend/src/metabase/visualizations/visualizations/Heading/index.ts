@@ -11,7 +11,7 @@ import { Heading } from "./Heading";
 const HeadingViz: VisualizationDefinition = {
   getUiName: () => t`Heading`,
   identifier: "heading",
-  iconName: "heading",
+  iconName: "empty",
   canSavePng: false,
 
   noHeader: true,

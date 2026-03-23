@@ -11,7 +11,7 @@ import { Text } from "./Text";
 const TextViz: VisualizationDefinition = {
   getUiName: () => t`Text`,
   identifier: "text",
-  iconName: "text",
+  iconName: "empty",
   canSavePng: false,
 
   disableSettingsConfig: false,
