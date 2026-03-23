@@ -63,10 +63,10 @@ The prompt should include:
 - The correct database type and appropriate port information
 - Pre-configured instance: users and API keys are auto-created via config file (admin: `admin@example.com` / `admin123`, regular: `regular@example.com` / `regular123`, API keys: `mb_admin_apikey` and `mb_regular_apikey`)
 - User context: the user is NOT a developer — the agent must work autonomously on all code/technical decisions, but should consult the user on product behavior questions and acceptance testing (they are an expert Metabase user)
-- All the workflow instructions from the reference template (Phase 1-4, important rules)
+- All the workflow instructions from the reference template (Phase 1-5, important rules)
 - Red/green TDD requirement for both backend (Clojure with `./bin/test-agent`) and frontend (Jest/Cypress) changes
-- Playwright instructions: the agent has Playwright with Chromium available and should use it to verify UI changes (screenshots, interaction scripts) before asking the user to test
-- Tell the agent that when the user is ready to ship, they should run `/fixbot-pr` which handles code review, PR creation, and CI monitoring
+- Self-review requirement: after fixing, use `/clojure-review` and `/typescript-review` to review changes, fix findings, and re-review if significant changes were made — repeat until clean before asking user to verify
+- Tell the agent that when the user is ready to ship, it should commit, push, create the PR with `gh pr create`, and run `/fixbot-ci` to monitor CI
 - Enterprise Edition: the dev environment always runs EE. If the fix requires OSS-only behavior, the agent should stop and tell the user.
 
 Use the port computation: ports are based on a deterministic slot derived from the worktree name. Since you don't know the exact worktree name yet, use placeholder descriptions like "the port shown in your environment" and note that the dev environment will be configured automatically.

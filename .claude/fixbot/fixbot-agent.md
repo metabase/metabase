@@ -60,45 +60,45 @@ The agent should follow this workflow:
 2. Run all relevant tests with `./bin/test-agent` (backend) or `bun test` / `yarn jest` / `yarn test-unit` (frontend)
 3. Report progress at each milestone with a clear status update
 
-#### Phase 3: Verify
-Playwright is available for ad-hoc verification — use it to visually confirm your fix before asking the user to test:
-   - Take screenshots and PDFs with `--output .fixbot/<descriptive-name>.png` (or `.pdf`) to verify visual state
-   - Write short Playwright scripts for interaction testing when needed (click, fill, navigate)
-   - **Always store Playwright output files (screenshots, PDFs, scripts) in `.fixbot/`** — do not leave them in the project root
-   - Playwright has Chromium available — use it to confirm the fix works in-browser
-   - **Important**: Playwright is for ad-hoc spot-checks and troubleshooting only. Always prefer writing actual unit tests (Jest) or E2E tests (Cypress) to prevent regressions — Playwright scripts are throwaway and don't run in CI.
+#### Phase 3: Self-Review
+Before asking the user to test, review your own changes thoroughly:
+1. Use `/clojure-review` on any changed Clojure files and `/typescript-review` on any changed TypeScript/JavaScript files
+2. Address all findings — fix issues, not just acknowledge them
+3. Re-run tests after making review-driven changes
+4. **If the review led to significant changes, re-review those changes.** Repeat until the review is clean.
+5. Only proceed to Phase 4 when the review is clean and all tests pass
 
-   **Playwright tips:**
-   - **Login**: Set the session cookie instead of filling the login form:
-     ```bash
-     playwright-cli open http://localhost:$MB_JETTY_PORT/auth/login
-     playwright-cli cookie-set metabase.SESSION "<session-token>" --domain=localhost
-     playwright-cli goto http://localhost:$MB_JETTY_PORT/question/1
-     ```
-     Get a session token: `curl -s -X POST http://localhost:$MB_JETTY_PORT/api/session -H 'Content-Type: application/json' -d '{"username":"<EMAIL>","password":"<PASSWORD>"}'` — the response `id` field is the session token. Use the credentials from the Instance Setup section above, choosing admin or regular user as appropriate for what you're testing. For non-browser API calls, skip session tokens and just use the API key header: `-H 'x-api-key: mb_AdminApiKey'` or `-H 'x-api-key: mb_RegularApiKey'`.
-   - **Data setup**: Create questions, dashboards, and data via API calls or nREPL — NEVER use Playwright to fill creation UIs. Navigate directly to `/question/<ID>` or `/dashboard/<ID>` after creating via API.
-   - **Single expressions**: `run-code` takes one expression — no semicolons. Use separate calls or shell `&&`.
-   - **Resize**: Use `playwright-cli resize <w> <h>`, not `run-code` with `page.setViewportSize()`.
-   - **Network tab**: `network` accumulates ALL requests since page load, not just recent ones — output grows over time.
-   - **"Start exploring" modal**: Metabase shows this on first question view. Snapshot to find the button ref and click to dismiss.
-2. Tell the user EXACTLY what to test and how:
+#### Phase 4: Verify
+1. Tell the user EXACTLY what to test and how:
    - Which URL to visit
    - What steps to reproduce
    - What the expected behavior should be now
-3. WAIT for the user to test and provide feedback
-4. If they report issues, iterate (go back to Phase 2)
+2. WAIT for the user to test and provide feedback
+3. If they report issues, iterate (go back to Phase 2, then re-review in Phase 3 before asking the user again)
 
-#### Phase 4: Ship
+#### Phase 5: Ship
 When the user says they're happy (e.g., "looks good", "ship it", "done"):
-1. Tell the user to run `/fixbot-pr` — this reviews all changes and creates the PR
-2. Do NOT create a PR yourself — the `/fixbot-pr` command handles code review, cleanup, and PR creation
+1. Stage and commit all fix-related changes:
+   - **NEVER commit changes under `.claude/`** — the worktree setup copies fixbot commands there, and those must not be committed
+   - Stage files individually by name (`git add path/to/file.clj`) — do NOT use `git add .` or `git add -A`
+   - Only stage files that are part of the actual fix
+2. Push the branch to origin
+3. Create the PR with `gh pr create`:
+   - Title: concise description of the fix
+   - Body should include:
+     - **Summary**: what was wrong and what the fix does
+     - **How to verify**: step-by-step reproduction and expected behavior
+     - **Closes**: link to the Linear issue
+   - Do NOT add any labels — that's up to the user
+4. Tell the user the PR URL and a summary of what was fixed
+5. Run `/fixbot-ci` to monitor CI results and handle failures
 
 ### Status Bar
 
 A status bar at the bottom of the tmux session shows issue info, service health, and your status message. The issue info and health indicators are managed automatically. You control only the status message by writing to `.fixbot/llm-status.txt`.
 
 Write to `.fixbot/llm-status.txt` (overwrite the whole file each time) when something important changes — for example:
-- Current phase of work (e.g., "Phase 1: Analyzing issue", "Phase 2: Writing tests", "Phase 3: Ready for user testing")
+- Current phase of work (e.g., "Phase 1: Analyzing issue", "Phase 2: Writing tests", "Phase 3: Self-review", "Phase 4: Ready for user testing")
 - A blocking question waiting on user input
 - URLs the user needs (e.g., the page to test)
 
