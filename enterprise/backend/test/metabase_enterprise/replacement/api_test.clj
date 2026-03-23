@@ -359,16 +359,16 @@
                            {:database_id   (mt/id)
                             :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                             :type          :model
-                            :name          "Orders Model"}
+                            :name          "Model"}
 
-                           :model/Card {child-id :id :as child-card}
+                           :model/Card {question-id-id :id :as question-card}
                            {:database_id   (mt/id)
                             :dataset_query (lib/query mp (lib.metadata/card mp model-id))
                             :type          :question
-                            :name          "Child Question"}]
+                            :name          "Question"}]
               (mt/with-model-cleanup [:model/ReplacementRun]
-                ;; Backfill dependencies
-                (doseq [card [model-card child-card]]
+                ;; Populate dependencies via events
+                (doseq [card [model-card question-card]]
                   (events/publish-event! :event/card-create {:object card :user-id (mt/user->id :crowberto)}))
 
                 (let [response (mt/user-http-request :crowberto :post 202
@@ -388,11 +388,11 @@
                   (testing "model is converted to a saved question"
                     (is (= :question (t2/select-one-fn :type :model/Card :id model-id))))
 
-                  (testing "child question now references the output table"
-                    (let [child-query  (t2/select-one-fn :dataset_query :model/Card :id child-id)
-                          output-table (transforms.tu/wait-for-table (:name target) 10000)]
+                  (testing "dependent question now references the output table"
+                    (let [question-query (t2/select-one-fn :dataset_query :model/Card :id question-id-id)
+                          output-table   (transforms.tu/wait-for-table (:name target) 10000)]
                       (is (= (:id output-table)
-                             (lib/primary-source-table-id child-query))))))))))))))
+                             (lib/primary-source-table-id question-query))))))))))))))
 
 (deftest all-endpoints-require-superuser-test
   (testing "All /ee/replacement/ endpoints return 403 for non-admin users"
