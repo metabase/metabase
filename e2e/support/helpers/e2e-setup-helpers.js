@@ -4,6 +4,13 @@ export function snapshot(name) {
   cy.request("POST", `/api/testing/snapshot/${name}`);
 }
 
+export function snapshotCrossVersionDev(name) {
+  if (!Cypress.expose?.("CROSS_VERSION_DEV_MODE")) {
+    return;
+  }
+  cy.request("POST", `/api/testing/snapshot/${name}`);
+}
+
 /**
  *
  * @param { |
@@ -26,6 +33,14 @@ export function restore(name = "default") {
     const dbType = name.includes("postgres") ? "postgres" : "mysql";
 
     resetWritableDb({ type: dbType });
+  }
+
+  return cy.request("POST", `/api/testing/restore/${name}`);
+}
+
+export function restoreCrossVersionDev(name = "blank") {
+  if (!Cypress.expose?.("CROSS_VERSION_DEV_MODE")) {
+    return;
   }
 
   return cy.request("POST", `/api/testing/restore/${name}`);
