@@ -9,11 +9,11 @@ import * as Lib from "metabase-lib";
 import type { Card, Database } from "metabase-types/api";
 
 import { SourceReplacementButton } from "../../../../components/SourceReplacementButton";
-import { ConvertModelModal } from "../../ConvertModelModal";
+import { ReplaceWithTransformModal } from "../../ReplaceWithTransformModal";
 
 import { isTableOnlyQuery } from "./utils";
 
-type ModalType = "replace" | "convert";
+type ModalType = "replace-with-table" | "replace-with-transform";
 
 type ActionSectionProps = {
   card: Card;
@@ -41,7 +41,7 @@ export function ActionSection({ card, database }: ActionSectionProps) {
                   variant="filled"
                   leftSection={<Icon name="table" />}
                   disabled={isButtonDisabled}
-                  onClick={() => setModalType("replace")}
+                  onClick={() => setModalType("replace-with-table")}
                 >
                   {t`Replace with the base table`}
                 </Button>
@@ -61,7 +61,7 @@ export function ActionSection({ card, database }: ActionSectionProps) {
                   variant="filled"
                   leftSection={<Icon name="transform" />}
                   disabled={isButtonDisabled}
-                  onClick={() => setModalType("convert")}
+                  onClick={() => setModalType("replace-with-transform")}
                 >
                   {t`Convert to a transform`}
                 </Button>
@@ -70,9 +70,9 @@ export function ActionSection({ card, database }: ActionSectionProps) {
           }}
         </SourceReplacementButton>
       )}
-      <ConvertModelModal
+      <ReplaceWithTransformModal
         card={card}
-        isOpened={modalType === "convert"}
+        isOpened={modalType === "replace-with-transform"}
         onClose={() => setModalType(undefined)}
       />
     </>
