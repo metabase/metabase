@@ -71,14 +71,14 @@ Playwright is available for ad-hoc verification — use it to visually confirm y
    **Playwright tips:**
    - **Login**: Set the session cookie instead of filling the login form:
      ```bash
-     npx playwright open http://localhost:$MB_JETTY_PORT/auth/login
-     npx playwright cookie-set metabase.SESSION "<session-token>" --domain=localhost
-     npx playwright goto http://localhost:$MB_JETTY_PORT/question/1
+     playwright-cli open http://localhost:$MB_JETTY_PORT/auth/login
+     playwright-cli cookie-set metabase.SESSION "<session-token>" --domain=localhost
+     playwright-cli goto http://localhost:$MB_JETTY_PORT/question/1
      ```
      Get a session token: `curl -s -X POST http://localhost:$MB_JETTY_PORT/api/session -H 'Content-Type: application/json' -d '{"username":"<EMAIL>","password":"<PASSWORD>"}'` — the response `id` field is the session token. Use the credentials from the Instance Setup section above, choosing admin or regular user as appropriate for what you're testing. For non-browser API calls, skip session tokens and just use the API key header: `-H 'x-api-key: mb_AdminApiKey'` or `-H 'x-api-key: mb_RegularApiKey'`.
    - **Data setup**: Create questions, dashboards, and data via API calls or nREPL — NEVER use Playwright to fill creation UIs. Navigate directly to `/question/<ID>` or `/dashboard/<ID>` after creating via API.
    - **Single expressions**: `run-code` takes one expression — no semicolons. Use separate calls or shell `&&`.
-   - **Resize**: Use `npx playwright resize <w> <h>`, not `run-code` with `page.setViewportSize()`.
+   - **Resize**: Use `playwright-cli resize <w> <h>`, not `run-code` with `page.setViewportSize()`.
    - **Network tab**: `network` accumulates ALL requests since page load, not just recent ones — output grows over time.
    - **"Start exploring" modal**: Metabase shows this on first question view. Snapshot to find the button ref and click to dismiss.
 2. Tell the user EXACTLY what to test and how:

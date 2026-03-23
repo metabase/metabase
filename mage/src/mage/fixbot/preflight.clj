@@ -40,6 +40,12 @@
     (println "This token is required to run the Enterprise Edition.")
     (println "Set it in your shell profile or export it before running fixbot.")
     (u/exit 1))
+  (when-not (u/can-run? "playwright-cli")
+    (println (c/red "Playwright CLI is not installed."))
+    (println)
+    (println "Install it globally:")
+    (println "  npm install -g @playwright/cli && playwright-cli install chromium")
+    (u/exit 1))
   ;; Ensure node_modules exists so worktree symlinks have a target
   (when-not (.isDirectory (java.io.File. ^String (str u/project-root-directory "/node_modules")))
     (println (c/yellow "node_modules not found — running bun install..."))
