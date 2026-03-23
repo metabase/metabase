@@ -9,7 +9,6 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.lib.core :as lib]
    [metabase.transforms.core :as transforms]
    [ring.util.response :as response]
    [toucan2.core :as t2]))
@@ -63,32 +62,6 @@
                   source_entity_type source_entity_id
                   target_entity_type target_entity_id api/*current-user-id*)
         progress (replacement-run/run-row->progress job-row)]
-    (replacement.execute/execute-async! work-fn progress)
-    (-> (response/response {:run_id (:id job-row)})
-        (assoc :status 202))))
-
-(api.macros/defendpoint :post "/replace-model-with-table" :- [:map
-                                                              [:status [:= 202]]
-                                                              [:body [:map {:closed true}
-                                                                      [:run_id ::replacement.schema/run-id]]]]
-  "Replace all usages of a model with its primary source table, then un-persist and
-   convert the model to a saved question. Returns 202 with a run_id for polling."
-  [_route-params
-   _query-params
-   {:keys [card_id]}
-   :- [:map
-       [:card_id ::replacement.schema/source-entity-id]]]
-  (api/check-superuser)
-  (let [card     (api/check-404 (t2/select-one :model/Card :id card_id))
-        table-id (lib/primary-source-table-id (:dataset_query card))
-        _        (api/check (some? table-id) 400 "Model does not have a primary source table")
-        job-row  (replacement-run/create-run!
-                  :card card_id
-                  :table table-id
-                  api/*current-user-id*)
-        progress (replacement-run/run-row->progress job-row)
-        work-fn  (fn [progress]
-                   (replacement.runner/run-swap-model-with-table! card_id table-id progress))]
     (replacement.execute/execute-async! work-fn progress)
     (-> (response/response {:run_id (:id job-row)})
         (assoc :status 202))))
