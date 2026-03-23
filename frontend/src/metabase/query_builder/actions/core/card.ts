@@ -15,11 +15,15 @@ export async function loadCard(
   { dispatch }: { dispatch: Dispatch; getState: GetState },
 ) {
   try {
-    const { data } = (await dispatch(
+    const result = (await dispatch(
       cardApi.endpoints.getCard.initiate({ id: token ?? cardId }),
-    )) as { data: Card };
+    )) as { data?: Card; error?: unknown };
 
-    return data;
+    if (result.error) {
+      throw result.error;
+    }
+
+    return result.data as Card;
   } catch (error) {
     console.error("error loading card", error);
     throw error;
