@@ -75,22 +75,6 @@
                           :target target}
                    (:table-id column) (assoc :table-id (:table-id column)))})))
 
-(defn- db-provider-for-query
-  "When the metadata provider is a MetricContextMetadataProvider, return the
-   database-specific provider for the query's source table. The DB provider can
-   resolve column-by-ID lookups that the metric context provider cannot, which
-   is required for FK / implicitly-joinable column resolution.
-
-   For source-card queries (metrics based on models or saved questions), resolves
-   the card's table_id and uses that to find the database provider."
-  [mp query-with-mp]
-  (when (satisfies? lib-metric.provider/MetricMetadataProvider mp)
-    (or (when-let [table-id (lib.util/source-table-id query-with-mp)]
-          (lib-metric.provider/database-provider-for-table mp table-id))
-        (when-let [card-id (lib.util/source-card-id query-with-mp)]
-          (when-let [table-id (t2/select-one-fn :table_id :model/Card card-id)]
-            (lib-metric.provider/database-provider-for-table mp table-id))))))
-
 (defn- group-type->type
   "Convert a column group's group-type to a dimension group type string."
   [group-type]
@@ -104,10 +88,18 @@
    Dimensions are annotated with their source group (main table vs connected tables).
    Columns are enriched with `:has-field-values` from the database."
   [metadata-providerable query]
-  (let [mp            (lib/->metadata-provider metadata-providerable)
+  (let [;; When given a MetricContextMetadataProvider, resolve the real database
+        ;; MetadataProvider via database-provider-for-table *before* calling
+        ;; lib/->metadata-provider, which requires a standard MetadataProvider.
+        db-mp         (when (satisfies? lib-metric.provider/MetricMetadataProvider metadata-providerable)
+                        (or (when-let [table-id (lib.util/source-table-id query)]
+                              (lib-metric.provider/database-provider-for-table metadata-providerable table-id))
+                            (when-let [card-id (lib.util/source-card-id query)]
+                              (when-let [table-id (t2/select-one-fn :table_id :model/Card card-id)]
+                                (lib-metric.provider/database-provider-for-table metadata-providerable table-id)))))
+        mp            (lib/->metadata-provider (or db-mp metadata-providerable))
         query-with-mp (lib/query mp query)
-        db-mp         (db-provider-for-query mp query-with-mp)
-        vc-query      (if db-mp (lib/query db-mp query) query-with-mp)
+        vc-query      query-with-mp
         columns       (cond-> (lib/visible-columns
                                vc-query
                                -1
