@@ -248,14 +248,6 @@
   "Enable the newest LLM-based MetaBot? (The one that lives in [[metabase.metabot.core]].)"
   :metabot-v3)
 
-(define-premium-feature ^{:added "0.54.0"} enable-ai-sql-fixer?
-  "Should Metabase suggest SQL fixes?"
-  :ai-sql-fixer)
-
-(define-premium-feature ^{:added "0.54.0"} enable-ai-sql-generation?
-  "Should Metabase generate SQL queries?"
-  :ai-sql-generation)
-
 ; the "-feature" suffix avoids name collision with the setting getter
 (define-premium-feature ^{:added "0.55.0"} enable-embedding-simple-feature?
   "Should we enable modular embedding?"
@@ -264,10 +256,6 @@
 (define-premium-feature ^{:added "0.57.0"} enable-embedding-hub?
   "Should we enable the embedding hub?"
   :embedding-hub)
-
-(define-premium-feature ^{:added "0.55.0"} enable-ai-entity-analysis?
-  "Should Metabase do AI analysis on entities?"
-  :ai-entity-analysis)
 
 (define-premium-feature ^{:added "0.56.0"} cloud-custom-smtp?
   "Can Metabase have a custom smtp details separate from the default Cloud details."
@@ -327,9 +315,6 @@
 
 (defn- -token-features []
   {:advanced_permissions           (enable-advanced-permissions?)
-   :ai_sql_fixer                   (enable-ai-sql-fixer?)
-   :ai_sql_generation              (enable-ai-sql-generation?)
-   :ai_entity_analysis             (enable-ai-entity-analysis?)
    :attached_dwh                   (has-attached-dwh?)
    :audit_app                      (enable-audit-app?)
    :cache_granular_controls        (enable-cache-granular-controls?)

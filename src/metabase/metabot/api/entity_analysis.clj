@@ -3,8 +3,7 @@
   (:require
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.metabot.core :as metabot]
-   [metabase.premium-features.core :as premium-features]))
+   [metabase.metabot.core :as metabot]))
 
 (set! *warn-on-reflection* true)
 
@@ -26,7 +25,6 @@
                                                                                                                         [:description {:optional true} [:maybe :string]]
                                                                                                                         [:timestamp :string]]]]]]]
 
-  (premium-features/assert-has-feature :ai-entity-analysis "chart analysis")
   (let [chart-data {:image_base64 image_base64
                     :chart {:name name
                             :description description}
