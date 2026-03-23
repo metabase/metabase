@@ -108,7 +108,6 @@ describe("scenarios > embedding > modular embedding", () => {
       });
 
       cy.wait("@getCardQuery");
-      cy.wait(1000);
 
       frame.within(() => {
         // clientWidth excludes the scrollbar gutter, giving us the actual content area
@@ -122,6 +121,7 @@ describe("scenarios > embedding > modular embedding", () => {
             );
             let totalHeaderWidth = 0;
             $headerCells.each((_, el) => {
+              cy.log("" + el.getBoundingClientRect().width);
               totalHeaderWidth += el.getBoundingClientRect().width;
             });
 
