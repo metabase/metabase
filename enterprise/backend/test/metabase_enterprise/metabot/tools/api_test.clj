@@ -1,141 +1,124 @@
 (ns metabase-enterprise.metabot.tools.api-test
-  "Tests for metabot tool endpoints that require EE features (i.e. python transforms)."
+  "Tests for EE-only metabot tool handlers (transforms and python libraries).
+   These test the handler functions directly rather than via HTTP endpoints."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.metabot.tools.transforms-write :as metabot.tools.transforms-write]
    [metabase.lib.core :as lib]
-   [metabase.metabot.client :as metabot.client]
+   [metabase.metabot.tools.transforms :as metabot.tools.transforms]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
-(defn- ai-session-token
-  ([] (ai-session-token :rasta (str (random-uuid))))
-  ([metabot-id] (ai-session-token :rasta metabot-id))
-  ([user metabot-id]
-   (-> user mt/user->id (#'metabot.client/get-ai-service-token metabot-id))))
-
 (deftest get-transforms-test
   (mt/with-premium-features #{:metabot-v3 :transforms-basic :transforms-python}
-    (let [conversation-id (str (random-uuid))
-          rasta-ai-token (ai-session-token)
-          crowberto-ai-token (ai-session-token :crowberto (str (random-uuid)))]
-      (mt/with-temp [:model/Transform t1 {:name "People Transform"
-                                          :description "Simple select on People table"
-                                          :source {:type "query"
-                                                   :query (lib/native-query (mt/metadata-provider) "SELECT * FROM PEOPLE")}
-                                          :target {:type "table"
-                                                   :name "t1_table"}}
-                     :model/Transform t2 {:name "MBQL Transform"
-                                          :description "Simple MQBL query on Products table"
-                                          :source {:type "query"
-                                                   :query (mt/mbql-query products)}
-                                          :target {:type "table"
-                                                   :name "t2_table"}}
-                     :model/Transform t3 {:name "Python Transform"
-                                          :description "Simple python transform"
-                                          :source {:type "python"
-                                                   :source-database (mt/id)
-                                                   :body "print('hello world')"
-                                                   :source-tables []}
-                                          :target {:type "table"
-                                                   :name "t2_table"}}]
-        (testing "With insufficient permissions"
-          (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :post 403 "ee/metabot-tools/get-transforms"
-                                       {:request-options {:headers {"x-metabase-session" rasta-ai-token}}}
-                                       {:conversation_id conversation-id}))))
-        (testing "With superuser permissions"
-          (is (=? {:structured_output [(mt/obj->json->obj (select-keys t1 [:id :entity_id :name :description :source]))
-                                         ;; note: t2 not included because it's a (non-native) MBQL query
-                                       (mt/obj->json->obj (select-keys t3 [:id :entity_id :name :description :source]))]
-                   :conversation_id conversation-id}
-                  (-> (mt/user-http-request :rasta :post 200 "ee/metabot-tools/get-transforms"
-                                            {:request-options {:headers {"x-metabase-session" crowberto-ai-token}}}
-                                            {:conversation_id conversation-id})
-                      (update :structured_output (fn [output]
-                                                   (->> output
-                                                        (filter #(#{(:id t1) (:id t2) (:id t3)} (:id %)))
-                                                        (sort-by :id))))))))))))
+    (mt/with-temp [:model/Transform t1 {:name        "People Transform"
+                                        :description "Simple select on People table"
+                                        :source      {:type  "query"
+                                                      :query (lib/native-query (mt/metadata-provider) "SELECT * FROM PEOPLE")}
+                                        :target      {:type "table"
+                                                      :name "t1_table"}}
+                   :model/Transform t2 {:name        "MBQL Transform"
+                                        :description "Simple MBQL query on Products table"
+                                        :source      {:type  "query"
+                                                      :query (mt/mbql-query products)}
+                                        :target      {:type "table"
+                                                      :name "t2_table"}}
+                   :model/Transform t3 {:name        "Python Transform"
+                                        :description "Simple python transform"
+                                        :source      {:type            "python"
+                                                      :source-database (mt/id)
+                                                      :body            "print('hello world')"
+                                                      :source-tables   []}
+                                        :target      {:type "table"
+                                                      :name "t3_table"}}]
+      (testing "Non-superuser gets 403"
+        (mt/with-current-user (mt/user->id :rasta)
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo #"You don't have permissions to do that"
+               (metabot.tools.transforms/get-transforms {})))))
+      (testing "Superuser gets native and python transforms (not plain MBQL)"
+        (mt/with-current-user (mt/user->id :crowberto)
+          (let [result    (metabot.tools.transforms/get-transforms {})
+                test-ids  #{(:id t1) (:id t2) (:id t3)}
+                filtered  (->> (:structured_output result)
+                               (filter #(test-ids (:id %)))
+                               (sort-by :id))]
+            ;; t2 (non-native MBQL) should be excluded
+            (is (= (map :id filtered) [(:id t1) (:id t3)]))
+            (is (=? [{:id          (:id t1)
+                      :name        "People Transform"
+                      :description "Simple select on People table"}
+                     {:id          (:id t3)
+                      :name        "Python Transform"
+                      :description "Simple python transform"}]
+                    filtered))))))))
 
-(deftest get-transform-test
+(deftest get-transform-details-test
   (mt/with-premium-features #{:metabot-v3 :transforms-basic :transforms-python}
-    (let [conversation-id (str (random-uuid))
-          rasta-ai-token (ai-session-token)
-          crowberto-ai-token (ai-session-token :crowberto (str (random-uuid)))]
-      (mt/with-temp [:model/Transform t1 {:name "People Transform"
-                                          :description "Simple select on People table"
-                                          :source {:type "query"
-                                                   :query (mt/native-query {:query "SELECT * FROM PEOPLE"})}
-                                          :target {:type "table"
-                                                   :name "t1_table"}}
-                     :model/Transform t2 {:name "Python Transform"
-                                          :description "Simple Python transform"
-                                          :source {:type "python"
-                                                   :body "print('hello world')"
-                                                   :source-database (mt/id)
-                                                   :source-tables []}
-                                          :target {:type "table"
-                                                   :name "t2_table"
-                                                   :database (mt/id)}}]
-        (testing "With insufficient permissions"
-          (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :post 403 "ee/metabot-tools/get-transform-details"
-                                       {:request-options {:headers {"x-metabase-session" rasta-ai-token}}}
-                                       {:arguments {:transform_id (:id t1)}
-                                        :conversation_id conversation-id}))))
-        (testing "With non-existent transform"
-          (is (= "Not found."
-                 (mt/user-http-request :rasta :post 404 "ee/metabot-tools/get-transform-details"
-                                       {:request-options {:headers {"x-metabase-session" crowberto-ai-token}}}
-                                       {:arguments {:transform_id (+ 10000 (:id t2))}
-                                        :conversation_id conversation-id}))))
-        (testing "With superuser permissions"
+    (mt/with-temp [:model/Transform t1 {:name        "People Transform"
+                                        :description "Simple select on People table"
+                                        :source      {:type  "query"
+                                                      :query (mt/native-query {:query "SELECT * FROM PEOPLE"})}
+                                        :target      {:type "table"
+                                                      :name "t1_table"}}
+                   :model/Transform t2 {:name        "Python Transform"
+                                        :description "Simple Python transform"
+                                        :source      {:type            "python"
+                                                      :body            "print('hello world')"
+                                                      :source-database (mt/id)
+                                                      :source-tables   []}
+                                        :target      {:type     "table"
+                                                      :name     "t2_table"
+                                                      :database (mt/id)}}]
+      (testing "Non-superuser gets 403"
+        (mt/with-current-user (mt/user->id :rasta)
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo #"You don't have permissions to do that"
+               (metabot.tools.transforms/get-transform-details {:transform-id (:id t1)})))))
+      (testing "Non-existent transform returns 404"
+        (mt/with-current-user (mt/user->id :crowberto)
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo #"Not found"
+               (metabot.tools.transforms/get-transform-details {:transform-id (+ 10000 (:id t2))})))))
+      (testing "Superuser can get transform details"
+        (mt/with-current-user (mt/user->id :crowberto)
           (doseq [transform [t1 t2]]
             (testing (:name transform)
-              (is (=? {:structured_output (mt/obj->json->obj (select-keys transform [:id :entity_id :name :description :source :target]))
-                       :conversation_id conversation-id}
-                      (mt/user-http-request :rasta :post 200 "ee/metabot-tools/get-transform-details"
-                                            {:request-options {:headers {"x-metabase-session" crowberto-ai-token}}}
-                                            {:arguments {:transform_id (:id transform)}
-                                             :conversation_id conversation-id}))))))))))
+              (is (=? {:structured_output {:id          (:id transform)
+                                           :name        (:name transform)
+                                           :description (:description transform)
+                                           :entity_id   (:entity_id transform)
+                                           :target      {:name (:name (:target transform))}}}
+                      (metabot.tools.transforms/get-transform-details {:transform-id (:id transform)}))))))))))
 
 (deftest get-transform-python-library-details-test
   (mt/with-premium-features #{:metabot-v3 :python-transforms :transforms-basic}
-    (let [conversation-id (str (random-uuid))
-          rasta-ai-token (ai-session-token)
-          crowberto-ai-token (ai-session-token :crowberto (str (random-uuid)))
-          saved-python-library (t2/select-one :model/PythonLibrary :path "common.py")]
+    (let [saved-python-library (t2/select-one :model/PythonLibrary :path "common.py")]
       (when (seq saved-python-library)
         (t2/delete! :model/PythonLibrary))
       (try
-        (testing "With no Python library present"
-          (is (= "Not found."
-                 (mt/user-http-request :rasta :post 404 "ee/metabot-tools/get-transform-python-library-details"
-                                       {:request-options {:headers {"x-metabase-session" crowberto-ai-token}}}
-                                       {:arguments {:path "common.py"}
-                                        :conversation_id conversation-id}))))
-        (mt/with-temp [:model/PythonLibrary lib1 {:path "common.py"
+        (testing "With no Python library present, throws 404"
+          (mt/with-current-user (mt/user->id :crowberto)
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo #"Not found"
+                 (metabot.tools.transforms-write/get-transform-python-library-details {:path "common.py"})))))
+        (mt/with-temp [:model/PythonLibrary lib1 {:path   "common.py"
                                                   :source "def hello():\n    return 'world'"}]
-          (testing "With insufficient permissions"
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :post 403 "ee/metabot-tools/get-transform-python-library-details"
-                                         {:request-options {:headers {"x-metabase-session" rasta-ai-token}}}
-                                         {:arguments {:path (:path lib1)}
-                                          :conversation_id conversation-id}))))
-          (testing "With non-existent library path"
-            (is (=? {:allowed-paths ["common.py"]
-                     :message "Invalid library path. Only 'common' is currently supported."
-                     :path "nonexistent.py"}
-                    (mt/user-http-request :rasta :post 400 "ee/metabot-tools/get-transform-python-library-details"
-                                          {:request-options {:headers {"x-metabase-session" crowberto-ai-token}}}
-                                          {:arguments {:path "nonexistent.py"}
-                                           :conversation_id conversation-id}))))
-          (testing "With superuser permissions"
-            (is (=? {:structured_output (select-keys lib1 [:source :path :created_at :updated_at])
-                     :conversation_id conversation-id}
-                    (mt/user-http-request :rasta :post 200 "ee/metabot-tools/get-transform-python-library-details"
-                                          {:request-options {:headers {"x-metabase-session" crowberto-ai-token}}}
-                                          {:arguments {:path (:path lib1)}
-                                           :conversation_id conversation-id})))))
+          (testing "Non-superuser gets 403"
+            (mt/with-current-user (mt/user->id :rasta)
+              (is (thrown-with-msg?
+                   clojure.lang.ExceptionInfo #"You don't have permissions to do that"
+                   (metabot.tools.transforms-write/get-transform-python-library-details {:path (:path lib1)})))))
+          (testing "Non-existent library path throws 400"
+            (mt/with-current-user (mt/user->id :crowberto)
+              (is (thrown-with-msg?
+                   clojure.lang.ExceptionInfo #"Invalid library path"
+                   (metabot.tools.transforms-write/get-transform-python-library-details {:path "nonexistent.py"})))))
+          (testing "Superuser can get library details"
+            (mt/with-current-user (mt/user->id :crowberto)
+              (is (=? {:structured_output {:source (:source lib1)
+                                           :path   (:path lib1)}}
+                      (metabot.tools.transforms-write/get-transform-python-library-details {:path (:path lib1)}))))))
         (finally
           (when (seq saved-python-library)
             (t2/insert! :model/PythonLibrary saved-python-library)))))))
