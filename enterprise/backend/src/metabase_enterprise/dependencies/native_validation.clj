@@ -52,5 +52,6 @@
           (keep #(case (:type %)
                    :snippet {:snippet (:snippet-id %)}
                    :card    {:card (:card-id %)}
+                   :table   {:table (:table-id %)}
                    nil))
           (lib/all-template-tags query))))
