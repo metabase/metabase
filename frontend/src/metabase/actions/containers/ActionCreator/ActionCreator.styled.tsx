@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import SidebarContentS from "metabase/query_builder/components/SidebarContent/SidebarContent.module.css";
+import SidebarContentS from "metabase/common/components/SidebarContent/SidebarContent.module.css";
 
 export const ActionCreatorBodyContainer = styled.div`
   display: grid;

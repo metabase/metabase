@@ -268,7 +268,10 @@ export function seriesSetting({
         getSettingDefinitionsForObject: () => COMMON_SETTINGS,
         component: ChartNestedSettingSeries,
         readDependencies: [SERIES_COLORS_SETTING_KEY, ...readDependencies],
-        noPadding: true,
+        getWrapperStyle: () => ({
+          marginLeft: 0,
+          marginRight: 0,
+        }),
         getExtraProps: (series) => ({
           seriesCardNames: series.reduce<Record<string, string>>(
             (memo, singleSeries) => {

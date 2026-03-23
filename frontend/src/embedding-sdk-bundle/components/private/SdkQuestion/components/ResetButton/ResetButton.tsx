@@ -2,7 +2,7 @@ import type { MouseEvent } from "react";
 
 import { ResetButton } from "embedding-sdk-bundle/components/private/ResetButton";
 import type { ButtonProps } from "embedding-sdk-bundle/types/ui";
-import { isSavedQuestionChanged } from "metabase/query_builder/utils/question";
+import { isSavedQuestionChanged } from "metabase/querying/common/utils/question";
 import * as Lib from "metabase-lib";
 
 import { useSdkQuestionContext } from "../../context";

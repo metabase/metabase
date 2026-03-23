@@ -103,11 +103,13 @@ export const GRAPH_DATA_SETTINGS: VisualizationSettingsDefinitions = {
       return t`X-axis`;
     },
     widget: "fields",
-    getMarginBottom: (series, vizSettings) =>
-      vizSettings["graph.dimensions"]?.length === 2 &&
-      series.length <= MAX_SERIES
-        ? "0.5rem"
-        : "1rem",
+    getWrapperStyle: (series, vizSettings) => ({
+      marginBottom:
+        vizSettings["graph.dimensions"]?.length === 2 &&
+        series.length <= MAX_SERIES
+          ? "0.5rem"
+          : "1rem",
+    }),
     isValid: (series, vizSettings) => {
       const dimensions = vizSettings["graph.dimensions"] ?? [];
       if (dimensions.length === 0) {
@@ -158,8 +160,10 @@ export const GRAPH_DATA_SETTINGS: VisualizationSettingsDefinitions = {
       return t`Data`;
     },
     widget: ChartSettingSeriesOrder,
-    getMarginBottom: () => "1rem",
     useRawSeries: true,
+    getWrapperStyle: () => ({
+      marginBottom: "1rem",
+    }),
     getValue: (rawSeries, settings) => {
       const seriesModels = getSeriesModelsForSettings(rawSeries, settings);
       const seriesKeys = seriesModels.map((s) => s.vizSettingsKey);
@@ -386,7 +390,9 @@ export const SPLIT_PANELS_SETTINGS: VisualizationSettingsDefinitions = {
     widget: "toggle",
     getDefault: () => false,
     inline: true,
-    getMarginBottom: () => "1rem",
+    getWrapperStyle: () => ({
+      marginBottom: "1rem",
+    }),
     getHidden: (series, settings) => {
       const displays = series.map(
         (single) => settings.series?.(single).display,
@@ -464,7 +470,9 @@ export const GRAPH_TREND_SETTINGS: VisualizationSettingsDefinitions = {
     },
     useRawSeries: true,
     inline: true,
-    getMarginBottom: () => "1rem",
+    getWrapperStyle: () => ({
+      marginBottom: "1rem",
+    }),
   },
 };
 
@@ -480,7 +488,9 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS: VisualizationSettingsDefinitions = {
     getHidden: (series, vizSettings) => !canHaveDataLabels(series, vizSettings),
     getDefault: getDefaultShowDataLabels,
     inline: true,
-    getMarginBottom: () => "1rem",
+    getWrapperStyle: () => ({
+      marginBottom: "1rem",
+    }),
   },
   "graph.label_value_frequency": {
     get section() {
@@ -1095,7 +1105,9 @@ export const BOXPLOT_SETTINGS: VisualizationSettingsDefinitions<
     widget: "toggle",
     getDefault: () => false,
     inline: true,
-    getMarginBottom: () => "1rem",
+    getWrapperStyle: () => ({
+      marginBottom: "1rem",
+    }),
   },
   "boxplot.show_values_mode": {
     get section() {

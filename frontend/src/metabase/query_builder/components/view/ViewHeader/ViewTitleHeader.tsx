@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { usePrevious } from "react-use";
 
 import { useToggle } from "metabase/common/hooks/use-toggle";
-import type { QueryModalType } from "metabase/query_builder/constants";
+import type { QueryModalType } from "metabase/querying/constants";
 import { Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";

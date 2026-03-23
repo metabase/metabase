@@ -1140,11 +1140,7 @@ describe("issue 55487", () => {
   it("should be able open object details on browser forward navigation (metabase#55487)", () => {
     H.visitQuestion(ORDERS_QUESTION_ID);
 
-    cy.findByTestId("table-body")
-      .get("[data-index='4']")
-      .within(() => {
-        cy.get("[data-column-id='ID']").click();
-      });
+    cy.findByTestId("table-body").find("[data-column-id='ID']").eq(4).click();
 
     cy.findByTestId("object-detail").should("be.visible");
 
@@ -1283,43 +1279,47 @@ SELECT 2 AS ID, 3 AS USER_ID
     cy.findByTestId("table-body")
       .findAllByRole("row")
       .first()
-      .within(() => {
-        cy.get("[data-column-id='USER_ID']").click();
-      });
+      .find("[data-column-id='USER_ID']")
+      .eq(0)
+      .click();
+
     H.popover().within(() => {
       cy.findByText("View Models with no User").should("be.visible").click();
     });
+
     cy.findByTestId("table-body").within(() => {
-      cy.findAllByRole("row").should("have.length", 1);
-      cy.findAllByRole("row")
+      /**
+       * each row is rendered twice, that's why we need to assert 2 instead of 1
+       */
+      cy.findAllByRole("row").should("have.length", 2);
+      cy.get("[data-column-id='USER_ID']")
         .first()
-        .within(() => {
-          cy.get("[data-column-id='USER_ID']").within(() => {
-            cy.get("[data-testid=cell-data]").should("not.exist");
-          });
-        });
+        .find("[data-testid=cell-data]")
+        .should("not.exist");
     });
 
     H.visitQuestion("@questionId");
 
     cy.findByTestId("table-body")
       .findAllByRole("row")
+      .first()
+      .find("[data-column-id='USER_ID']")
       .eq(1)
-      .within(() => {
-        cy.get("[data-column-id='USER_ID']").click();
-      });
+      .click();
+
     H.popover().within(() => {
       cy.findByText("View this User's Models").should("be.visible").click();
     });
+
     cy.findByTestId("table-body").within(() => {
-      cy.findAllByRole("row").should("have.length", 1);
-      cy.findAllByRole("row")
+      /**
+       * each row is rendered twice, that's why we need to assert 2 instead of 1
+       */
+      cy.findAllByRole("row").should("have.length", 2);
+      cy.get("[data-column-id='USER_ID']")
         .first()
-        .within(() => {
-          cy.get("[data-column-id='USER_ID']").within(() => {
-            cy.get("[data-testid=cell-data]").should("have.text", "3");
-          });
-        });
+        .find("[data-testid=cell-data]")
+        .should("have.text", "3");
     });
   });
 });
