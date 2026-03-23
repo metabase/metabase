@@ -2,6 +2,7 @@ import { t } from "ttag";
 
 import { useTokenRefreshUntil } from "metabase/api/utils";
 import { MetabotLogo } from "metabase/common/components/MetabotLogo";
+import { PLUGIN_METABOT } from "metabase/plugins";
 import {
   Box,
   Button,
@@ -13,14 +14,13 @@ import {
   Text,
   Title,
 } from "metabase/ui";
-import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 export const MetabotSettingUpModal = ({
   onClose,
   opened,
 }: Pick<ModalProps, "opened" | "onClose">) => {
   useTokenRefreshUntil("metabot-v3", { intervalMs: 1000, skip: !opened });
-  const isSettingUp = !hasPremiumFeature("metabot_v3");
+  const isSettingUp = !PLUGIN_METABOT.hasFeature;
 
   return (
     <Modal

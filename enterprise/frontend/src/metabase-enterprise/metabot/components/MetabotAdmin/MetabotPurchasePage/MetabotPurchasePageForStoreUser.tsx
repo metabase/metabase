@@ -13,11 +13,13 @@ import {
   FormProvider,
   FormSubmitButton,
 } from "metabase/forms";
+import { MetabotSettingUpModal } from "metabase/metabot/components/MetabotAdmin/MetabotSettingUpModal";
+import {
+  handleFieldError,
+  isFetchBaseQueryError,
+} from "metabase/metabot/components/MetabotAdmin/utils";
 import { Card, Stack, Text } from "metabase/ui";
 import { usePurchaseCloudAddOnMutation } from "metabase-enterprise/api";
-
-import { MetabotSettingUpModal } from "../MetabotSettingUpModal";
-import { handleFieldError, isFetchBaseQueryError } from "../utils";
 
 import { MetabotRadios } from "./MetabotRadios";
 import { useAddOnsBilling } from "./hooks";
