@@ -2,9 +2,10 @@
   (:require
    [metabase.analytics.prometheus :as prometheus]
    [metabase.api.common :as api]
-   [metabase.api.macros :as api.macros]))
+   [metabase.api.macros :as api.macros]
+   [metabase.util.malli.registry :as mr]))
 
-(def ^:private Type
+(mr/def ::frontend-error-type
   "Allowed type values for frontend error reporting."
   [:enum "component-crash" "chart-render-error"])
 
@@ -14,7 +15,7 @@
    with the given `type` label."
   [_route-params
    _query-params
-   {:keys [type]} :- [:map [:type Type]]]
+   {:keys [type]} :- [:map [:type ::frontend-error-type]]]
   (prometheus/inc! :metabase-frontend/errors {:type type})
   api/generic-204-no-content)
 

@@ -974,7 +974,8 @@
   {:team "UX West"
    :api  #{metabase.frontend-errors.api}
    :uses #{analytics
-           api}}
+           api
+           util}}
 
   geojson
   {:team "UX West"
