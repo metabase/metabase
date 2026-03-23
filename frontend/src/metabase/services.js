@@ -352,6 +352,7 @@ export const UserApi = {
   update_qbnewb: PUT("/api/user/:id/modal/qbnewb"),
 };
 
+// TODO: move to all functions to RTK (metabase/api/util.ts)
 export const UtilApi = {
   password_check: POST("/api/session/password-check"),
   random_token: GET("/api/util/random_token"),

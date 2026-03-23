@@ -3,6 +3,7 @@ import fetchMock from "fetch-mock";
 
 import {
   findRequests,
+  setupGenerateRandomTokenEndpoint,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
   setupUpdateSettingsEndpoint,
@@ -30,11 +31,9 @@ const setup = async (
   setupSettingsEndpoints([]);
   setupPropertiesEndpoints(settings);
   setupUpdateSettingsEndpoint();
+  setupGenerateRandomTokenEndpoint("1234abcd");
 
   fetchMock.get("path:/api/permissions/group", GROUPS);
-  fetchMock.get("path:/api/util/random_token", {
-    token: "1234abcd",
-  });
 
   renderWithProviders(<SettingsJWTForm />);
 

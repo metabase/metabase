@@ -2,10 +2,10 @@ import { useCallback, useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
+import { useLazyGenerateRandomTokenQuery } from "metabase/api/util";
 import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
 import CS from "metabase/css/core/index.css";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { UtilApi } from "metabase/services";
 import {
   Alert,
   Button,
@@ -31,17 +31,19 @@ export const SetupKeyModal = (props: SetupKeyDialogProps) => {
   const { currentValue, onClose, onConfirm } = props;
   const [secretValue, setSecretKey] = useState<string>("");
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
+  const [generateRandomToken] = useLazyGenerateRandomTokenQuery();
 
-  const generateToken = useCallback(() => {
-    UtilApi.random_token()
-      .then((result) => setSecretKey(result.token))
-      .catch(() => {
-        sendErrorToast(t`Error generating secret key.`);
-      });
-  }, [sendErrorToast]);
+  const generateToken = useCallback(async () => {
+    try {
+      const result = await generateRandomToken().unwrap();
+      setSecretKey(result.token);
+    } catch {
+      sendErrorToast(t`Error generating secret key.`);
+    }
+  }, [generateRandomToken, sendErrorToast]);
 
   useMount(() => {
-    generateToken();
+    void generateToken();
   });
 
   return (

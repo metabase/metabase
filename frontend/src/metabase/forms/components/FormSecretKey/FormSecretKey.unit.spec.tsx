@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { setupGenerateRandomTokenEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { Form, FormProvider, FormSubmitButton } from "metabase/forms";
 
@@ -23,9 +24,7 @@ const OBFUSCATED_GENERATED = "**********yz";
 const setup = ({ initialValues = { secret: undefined } }: SetupOpts = {}) => {
   const onSubmit = jest.fn();
 
-  fetchMock.get("path:/api/util/random_token", {
-    token: GENERATED_TOKEN,
-  });
+  setupGenerateRandomTokenEndpoint(GENERATED_TOKEN);
 
   renderWithProviders(
     <FormProvider initialValues={initialValues} onSubmit={onSubmit}>
@@ -69,21 +68,21 @@ describe("FormSecretKey", () => {
     it("auto-generates a token when the modal opens", async () => {
       setup({ initialValues: { secret: undefined } });
 
+      expect(fetchMock.callHistory.calls("generate-random-token")).toHaveLength(
+        0,
+      );
+
       await userEvent.click(screen.getByRole("button", { name: "Set up key" }));
 
-      await waitFor(() => {
-        expect(
-          fetchMock.callHistory.called("path:/api/util/random_token"),
-        ).toBe(true);
-      });
+      expect(fetchMock.callHistory.calls("generate-random-token")).toHaveLength(
+        1,
+      );
 
       // The modal's text input should contain the generated token
       await waitFor(() => {
         const modalInput = within(screen.getByRole("dialog")).getByRole(
           "textbox",
-          {
-            name: "New secret key",
-          },
+          { name: "New secret key" },
         );
         expect(modalInput).toHaveValue(GENERATED_TOKEN);
       });
@@ -190,32 +189,21 @@ describe("FormSecretKey", () => {
     });
   });
 
-  describe("modal interactions", () => {
+  describe("token length validation", () => {
     it("disables 'Done' button when the token is too short", async () => {
-      fetchMock.hardReset();
-      // Return a very short token to trigger the disabled state
-      fetchMock.get("path:/api/util/random_token", { token: "short" });
-
       setup({ initialValues: { secret: undefined } });
 
       await userEvent.click(screen.getByRole("button", { name: "Set up key" }));
-      await screen.findByRole("dialog", { name: "Set up secret key" });
-
       const input = screen.getByRole("textbox", { name: "New secret key" });
 
       await userEvent.clear(input);
-      await userEvent.type(input, "12345678");
-
-      await waitFor(() => {
-        expect(screen.getByRole("button", { name: "Done" })).toBeEnabled();
-      });
+      await userEvent.type(input, "1234");
+      // Token is too short, so 'Done' button should be disabled
+      expect(screen.getByRole("button", { name: "Done" })).toBeDisabled();
 
       await userEvent.clear(input);
-      await userEvent.type(input, "1234");
-
-      await waitFor(() => {
-        expect(screen.getByRole("button", { name: "Done" })).toBeDisabled();
-      });
+      await userEvent.type(input, "12345678");
+      expect(screen.getByRole("button", { name: "Done" })).toBeEnabled();
     });
   });
 });
