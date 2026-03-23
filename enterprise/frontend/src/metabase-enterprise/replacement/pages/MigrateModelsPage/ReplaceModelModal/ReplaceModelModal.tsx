@@ -147,7 +147,7 @@ function ReplaceModelForm({
       <Form>
         <Stack gap="lg" mt="sm">
           <Text>
-            {t`We'll create a transform based on the model and replace usages of the model with the transform's output table. Then we'll un-persist the model and convert it to a saved question.`}
+            {t`We'll create a transform based on the model and replace usages of the model with the transform's output table. Then we'll convert the model to a saved question.`}
           </Text>
           <FormCollectionPicker
             name="collectionId"
