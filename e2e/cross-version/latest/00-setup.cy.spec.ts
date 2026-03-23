@@ -8,12 +8,14 @@
  */
 
 import { USERS } from "e2e/support/cypress_data";
-import { withSampleDatabase } from "e2e/support/helpers";
 
 const { email: ADMIN_EMAIL, password: ADMIN_PASSWORD } = USERS.admin;
 
+const { H } = cy;
+
 describe("Cross-version: Instance setup", () => {
   it("setup: completes the setup wizard", { tags: ["@source"] }, () => {
+    H.restoreCrossVersionDev("blank");
     cy.visit("/");
 
     cy.request("GET", "/api/session/properties").then(({ body }) => {
@@ -39,7 +41,15 @@ describe("Cross-version: Instance setup", () => {
         expect(response.status).to.eq(200);
       });
 
-      withSampleDatabase(({ ORDERS, PRODUCTS, REVIEWS }) => {
+      cy.request("GET", "/api/user/current").then((response) => {
+        expect(response.status).to.eq(200);
+        expect(response.body.email).to.eq(ADMIN_EMAIL);
+
+        cy.log("Dismiss `it's ok to play around` modal for admin");
+        cy.request("PUT", `/api/user/${response.body.id}/modal/qbnewb`);
+      });
+
+      H.withSampleDatabase(({ ORDERS, PRODUCTS, REVIEWS }) => {
         cy.log("Remap display values to use foreign key as Product Title");
         cy.request("POST", `/api/field/${ORDERS.PRODUCT_ID}/dimension`, {
           name: "Product ID",
@@ -68,25 +78,23 @@ describe("Cross-version: Instance setup", () => {
 
   it("verify: admin can authenticate", { tags: ["@target"] }, () => {
     cy.signIn("admin", { skipCache: true });
-    cy.request("GET", "/api/user/current").then((response) => {
-      expect(response.status).to.eq(200);
-      expect(response.body.email).to.eq(ADMIN_EMAIL);
-
-      // Dismiss `it's ok to play around` modal for admin
-      cy.request("PUT", `/api/user/${response.body.id}/modal/qbnewb`);
-    });
 
     cy.visit("/browse/databases");
     cy.findByTestId("database-browser").contains("Sample Database").click();
+
+    cy.log("Verify REVIEWS.Rating values display custom remapping");
     cy.findAllByRole("link").filter(":contains(Reviews)").click();
     cy.findAllByRole("gridcell")
       .should("contain", "Enjoyable")
       .and("contain", "Perfecto");
 
     cy.go("back");
+    cy.log("Verify ORDERS.ProductId FK is remapped to Product Title");
     cy.findAllByRole("link").filter(":contains(Orders)").click();
     cy.findAllByRole("gridcell")
       .should("contain", "Fantastic Wool Shirt")
       .and("contain", "Small Marble Hat");
+
+    H.snapshotCrossVersionDev("00-complete");
   });
 });
