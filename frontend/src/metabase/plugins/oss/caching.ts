@@ -47,6 +47,7 @@ export interface MetricSettingsPageProps {
   urls?: MetricUrls;
   renderBreadcrumbs?: (card: Card) => ReactNode;
   showAppSwitcher?: boolean;
+  showDataStudioLink?: boolean;
 }
 
 const getDefaultPluginCaching = () => ({

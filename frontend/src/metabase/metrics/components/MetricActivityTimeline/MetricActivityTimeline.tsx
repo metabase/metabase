@@ -1,50 +1,41 @@
 import { useMemo } from "react";
 
-import { useListRevisionsQuery } from "metabase/api";
+import { useListRevisionsQuery, useRevertRevisionMutation } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { RevisionHistoryTimeline } from "metabase/common/components/RevisionHistoryTimeline";
 import { getTimelineEvents } from "metabase/common/components/RevisionHistoryTimeline/utils";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import { revertToRevision } from "metabase/query_builder/actions";
 import { getUser } from "metabase/selectors/user";
-import type Question from "metabase-lib/v1/Question";
+import type { Card } from "metabase-types/api";
 
-const { getModerationTimelineEvents } = PLUGIN_MODERATION;
-
-interface QuestionActivityTimelineProps {
-  question: Question;
+interface MetricActivityTimelineProps {
+  card: Card;
 }
 
-export function QuestionActivityTimeline({
-  question,
-}: QuestionActivityTimelineProps) {
+export function MetricActivityTimeline({ card }: MetricActivityTimelineProps) {
   const {
     data: revisions,
     isLoading,
     error,
   } = useListRevisionsQuery({
-    id: question.id(),
+    id: card.id,
     entity: "card",
   });
-
+  const [revertRevision] = useRevertRevisionMutation();
   const currentUser = useSelector(getUser);
-  const dispatch = useDispatch();
-
-  const moderationReviews = question.getModerationReviews();
 
   const events = useMemo(() => {
-    const moderationEvents = getModerationTimelineEvents(
-      moderationReviews,
+    const moderationEvents = PLUGIN_MODERATION.getModerationTimelineEvents(
+      card.moderation_reviews,
       currentUser,
     );
     const revisionEvents = getTimelineEvents({ revisions, currentUser });
-
     return [...revisionEvents, ...moderationEvents].sort(
       (a, b) =>
         new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
     );
-  }, [moderationReviews, revisions, currentUser]);
+  }, [card.moderation_reviews, revisions, currentUser]);
 
   if (isLoading || error) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
@@ -54,8 +45,14 @@ export function QuestionActivityTimeline({
     <RevisionHistoryTimeline
       events={events}
       data-testid="saved-question-history-list"
-      revert={(revision) => dispatch(revertToRevision(question.id(), revision))}
-      canWrite={question.canWrite()}
+      revert={(revision) =>
+        revertRevision({
+          entity: "card",
+          id: card.id,
+          revision_id: revision.id,
+        })
+      }
+      canWrite={card.can_write}
       entity="card"
     />
   );

@@ -13,6 +13,7 @@ export interface MetricUrls {
   query: (cardId: CardId) => string;
   dependencies: (cardId: CardId) => string;
   caching: (cardId: CardId) => string;
+  history: (cardId: CardId) => string;
   database?: (databaseId: DatabaseId) => string;
 }
 
@@ -25,4 +26,5 @@ export interface MetricPageProps {
   urls?: MetricUrls;
   renderBreadcrumbs?: (card: Card) => ReactNode;
   showAppSwitcher?: boolean;
+  showDataStudioLink?: boolean;
 }

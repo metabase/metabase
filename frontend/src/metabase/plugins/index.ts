@@ -1,6 +1,10 @@
 // Re-export all plugins from OSS modules (excluding reinitialize functions to avoid conflicts)
 export { PLUGIN_API } from "./oss/api";
-export { PLUGIN_AUDIT, type InsightsLinkProps } from "./oss/audit";
+export {
+  PLUGIN_AUDIT,
+  type InsightsLinkProps,
+  type InsightsMenuItemProps,
+} from "./oss/audit";
 export {
   PLUGIN_AUTH_PROVIDERS,
   PLUGIN_LDAP_FORM_FIELDS,

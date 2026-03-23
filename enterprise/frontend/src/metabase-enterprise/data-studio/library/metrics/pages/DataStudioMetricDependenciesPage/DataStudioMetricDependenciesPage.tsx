@@ -20,6 +20,7 @@ export function DataStudioMetricDependenciesPage({
       params={params}
       urls={dataStudioMetricUrls}
       showAppSwitcher
+      showDataStudioLink={false}
       renderBreadcrumbs={(card) => <DataStudioMetricBreadcrumbs card={card} />}
     >
       {children}

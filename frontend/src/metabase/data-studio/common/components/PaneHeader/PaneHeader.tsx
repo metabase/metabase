@@ -59,6 +59,7 @@ export const PaneHeader = ({
         className={className}
         gap="sm"
         justify="space-between"
+        align="flex-start"
         wrap="nowrap"
       >
         <Stack gap="md">
