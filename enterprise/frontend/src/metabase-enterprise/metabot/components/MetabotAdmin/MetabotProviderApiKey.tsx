@@ -2,10 +2,10 @@ import { type ChangeEvent, useEffect, useMemo, useState } from "react";
 import { c, jt, t } from "ttag";
 
 import { SetByEnvVar } from "metabase/admin/settings/components/widgets/AdminSettingInput";
+import { useUpdateMetabotSettingsMutation } from "metabase/api";
 import { getErrorMessage, useAdminSetting } from "metabase/api/utils";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Box, Button, Stack, TextInput } from "metabase/ui";
-import { useUpdateMetabotSettingsMutation } from "metabase-enterprise/api";
 import type { MetabotProvider } from "metabase-types/api";
 
 import { API_KEY_SETTING_BY_PROVIDER, PROVIDER_OPTIONS } from "./utils";

@@ -95,7 +95,7 @@
                              :llm-openai-api-key
                              "sk-"
                              (tru "Invalid OpenAI API key format. Key must start with ''sk-''."))
-  :doc               false)
+  :doc              false)
 
 ;;; ------------------------------------------------- OpenRouter ------------------------------------------------
 

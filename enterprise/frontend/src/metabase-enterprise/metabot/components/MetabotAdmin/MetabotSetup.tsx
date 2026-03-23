@@ -6,8 +6,8 @@ import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { useSetting } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
+import { MetabotNavPane } from "metabase/metabot/components/MetabotAdmin/MetabotNavPane";
 
-import { MetabotNavPane } from "./MetabotNavPane";
 import { MetabotProviderSection } from "./MetabotProviderSection";
 
 export function MetabotSetup() {

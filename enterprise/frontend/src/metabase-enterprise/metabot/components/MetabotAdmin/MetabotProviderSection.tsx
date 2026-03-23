@@ -3,7 +3,11 @@ import { match } from "ts-pattern";
 import { c, t } from "ttag";
 
 import { SetByEnvVar } from "metabase/admin/settings/components/widgets/AdminSettingInput";
-import { skipToken } from "metabase/api";
+import {
+  skipToken,
+  useGetMetabotSettingsQuery,
+  useUpdateMetabotSettingsMutation,
+} from "metabase/api";
 import {
   getErrorMessage,
   useAdminSetting,
@@ -18,11 +22,11 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
-import {
-  useGetMetabotSettingsQuery,
-  useUpdateMetabotSettingsMutation,
-} from "metabase-enterprise/api";
-import type { MetabotProvider, SettingDefinition } from "metabase-types/api";
+import type {
+  MetabotProvider,
+  MetabotSettingsResponse,
+  SettingDefinition,
+} from "metabase-types/api";
 
 import { MetabotProviderApiKey } from "./MetabotProviderApiKey";
 import { API_KEY_SETTING_BY_PROVIDER, PROVIDER_OPTIONS } from "./utils";
@@ -92,11 +96,13 @@ export function MetabotProviderSection() {
     () =>
       metabotSettingsQuery.isFetching
         ? []
-        : (metabotSettingsQuery.data?.models ?? []).map((model) => ({
-            value: model.id,
-            label: model.display_name,
-            group: model.group,
-          })),
+        : (metabotSettingsQuery.data?.models ?? []).map(
+            (model: MetabotSettingsResponse["models"][number]) => ({
+              value: model.id,
+              label: model.display_name,
+              group: model.group,
+            }),
+          ),
     [metabotSettingsQuery.isFetching, metabotSettingsQuery.data?.models],
   );
   const groupedModelOptions = useMemo<MetabotModelSelectData>(

@@ -25,6 +25,7 @@
    [metabase.documents.api]
    [metabase.eid-translation.api]
    [metabase.embedding-rest.api]
+   [metabase.frontend-errors.api]
    [metabase.geojson.api]
    [metabase.glossary.api]
    [metabase.indexed-entities.api]
@@ -87,6 +88,7 @@
          metabase.data-studio.api/keep-me
          metabase.documents.api/keep-me
          metabase.eid-translation.api/keep-me
+         metabase.frontend-errors.api/keep-me
          metabase.geojson.api/keep-me
          metabase.glossary.api/keep-me
          metabase.indexed-entities.api/keep-me
@@ -180,6 +182,7 @@
    "/email"                metabase.channel.api/email-routes
    "/embed"                (+message-only-exceptions metabase.embedding-rest.api/embedding-routes)
    "/field"                (+auth metabase.warehouse-schema-rest.api/field-routes)
+   "/frontend-errors"      'metabase.frontend-errors.api
    "/geojson"              'metabase.geojson.api
    "/glossary"             (+auth 'metabase.glossary.api)
    "/google"               (+auth metabase.sso.api/google-auth-routes)

@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [honey.sql :as sql]
+   [java-time.api :as t]
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -12,7 +13,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.execute :as transforms.execute]
@@ -174,7 +175,7 @@
     :integer (= (bigint expected) (bigint actual))
     :float (and (number? actual)
                 (< (Math/abs (double (- expected actual))) 0.01))
-    :temporal (= expected actual)))
+    :temporal (= (t/local-date-time expected) (t/local-date-time actual))))
 
 (defn- insert-test-products!
   "Insert new products into the transforms_products table."

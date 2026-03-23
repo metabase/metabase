@@ -1,9 +1,8 @@
 import { Route } from "react-router";
 
 import { renderWithProviders, screen } from "__support__/ui";
+import { MetabotNavPane } from "metabase/metabot/components/MetabotAdmin/MetabotNavPane";
 import { createMockSettingsState } from "metabase-types/store/mocks";
-
-import { MetabotNavPane } from "./MetabotNavPane";
 
 const setup = ({
   isConfigured = true,

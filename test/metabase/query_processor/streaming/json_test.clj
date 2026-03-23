@@ -1,8 +1,8 @@
 (ns metabase.query-processor.streaming.json-test
   (:require
    [clojure.test :refer :all]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.streaming :as qp.streaming]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt])
   (:import
    [java.io ByteArrayOutputStream OutputStream]))

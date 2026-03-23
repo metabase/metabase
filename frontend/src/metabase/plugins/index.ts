@@ -1,14 +1,5 @@
 // Re-export all plugins from OSS modules (excluding reinitialize functions to avoid conflicts)
 export { PLUGIN_API } from "./oss/api";
-export {
-  PLUGIN_AI_SQL_FIXER,
-  PLUGIN_AI_ENTITY_ANALYSIS,
-  PLUGIN_METABOT,
-  type PluginAiSqlFixer,
-  type AIDashboardAnalysisSidebarProps,
-  type AIQuestionAnalysisSidebarProps,
-  type PluginAIEntityAnalysis,
-} from "./oss/ai";
 export { PLUGIN_AUDIT, type InsightsLinkProps } from "./oss/audit";
 export {
   PLUGIN_AUTH_PROVIDERS,
@@ -59,10 +50,6 @@ export {
   type IllustrationValue,
 } from "./oss/core";
 export {
-  PLUGIN_DASHCARD_MENU,
-  type PluginDashcardMenu,
-} from "./oss/dashcard-menu";
-export {
   PLUGIN_DB_ROUTING,
   PLUGIN_DATABASE_REPLICATION,
   PLUGIN_TABLE_EDITING,
@@ -83,6 +70,7 @@ export {
   type PublishTablesModalProps,
   type UnpublishTablesModalProps,
 } from "./oss/library";
+export { PLUGIN_METABOT, type PluginMetabotType } from "./oss/metabot";
 export { PLUGIN_MODEL_PERSISTENCE } from "./oss/model-persistence";
 export {
   PLUGIN_MODERATION,
@@ -164,7 +152,6 @@ export type {
 // Export a single reinitialize function that calls all individual reinitialize functions
 import { reinitialize as reinitializeNotificationsSdk } from "../../embedding-sdk-bundle/components/public/notifications";
 
-import { reinitialize as reinitializeAi } from "./oss/ai";
 import { reinitialize as reinitializeApi } from "./oss/api";
 import { reinitialize as reinitializeAudit } from "./oss/audit";
 import { reinitialize as reinitializeAuth } from "./oss/auth";
@@ -173,7 +160,6 @@ import { reinitialize as reinitializeCollections } from "./oss/collections";
 import { reinitialize as reinitializeContentTranslation } from "./oss/content-translation";
 import { reinitialize as reinitializeContentVerification } from "./oss/content-verification";
 import { reinitialize as reinitializeCore } from "./oss/core";
-import { reinitialize as reinitializeDashcardMenu } from "./oss/dashcard-menu";
 import { reinitialize as reinitializeDatabase } from "./oss/database";
 import { reinitialize as reinitializeEmbedding } from "./oss/embedding";
 import { reinitialize as reinitializeEmbeddingIframeSdk } from "./oss/embedding-iframe-sdk";
@@ -181,6 +167,7 @@ import { reinitialize as reinitializeEmbeddingIframeSdkSetup } from "./oss/embed
 import { reinitialize as reinitializeEmbeddingSdk } from "./oss/embedding-sdk";
 import { reinitialize as reinitializeEntities } from "./oss/entities";
 import { reinitialize as reinitializeLibrary } from "./oss/library";
+import { reinitialize as reinitializeMetabot } from "./oss/metabot";
 import { reinitialize as reinitializeModelPersistence } from "./oss/model-persistence";
 import { reinitialize as reinitializeModeration } from "./oss/moderation";
 import { reinitialize as reinitializePermissions } from "./oss/permissions";
@@ -205,7 +192,6 @@ import { reinitialize as reinitializeWritableConnection } from "./oss/writable-c
 export function reinitialize() {
   reinitializeNotificationsSdk();
 
-  reinitializeAi();
   reinitializeApi();
   reinitializeAudit();
   reinitializeAuth();
@@ -214,7 +200,6 @@ export function reinitialize() {
   reinitializeContentTranslation();
   reinitializeContentVerification();
   reinitializeCore();
-  reinitializeDashcardMenu();
   reinitializeDatabase();
   reinitializeEmbedding();
   reinitializeEmbeddingIframeSdk();
@@ -223,6 +208,7 @@ export function reinitialize() {
   reinitializeEntities();
   reinitializeLibrary();
   reinitializeModelPersistence();
+  reinitializeMetabot();
   reinitializeModeration();
   reinitializePermissions();
   reinitializeRemoteSync();

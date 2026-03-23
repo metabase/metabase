@@ -16,7 +16,7 @@
    [metabase.metabot.tools.filters :as metabot-filters]
    [metabase.metabot.tools.search :as metabot-search]
    [metabase.metabot.util :as metabot.u]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.core :as qp]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
    [metabase.server.streaming-response :as streaming-response]

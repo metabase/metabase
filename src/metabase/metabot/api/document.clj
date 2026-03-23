@@ -9,7 +9,7 @@
    [metabase.metabot.client :as metabot.client]
    [metabase.metabot.context :as metabot.context]
    [metabase.metabot.table-utils :as table-utils]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.core :as qp]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouses.core :as warehouses]))
 
