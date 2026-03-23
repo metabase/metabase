@@ -8,9 +8,11 @@ import type { MetricSourceId } from "../../../types/viewer-state";
 import type {
   AvailableDimensionsResult,
   DimensionPickerItem,
+  DimensionPickerSection,
   SourceDisplayInfo,
 } from "../../../utils/dimension-picker";
 import { buildDimensionPickerSections } from "../../../utils/dimension-picker";
+import { RESULTS_TAB_DIMENSION_ID } from "../../../utils/tabs";
 
 import S from "./AddDimensionPopover.module.css";
 
@@ -20,6 +22,7 @@ type AddDimensionPopoverProps = {
   sourceDataById: Record<MetricSourceId, SourceDisplayInfo>;
   hasMultipleSources: boolean;
   onAddTab: (dimensionId: string) => void;
+  canAddResultsTab: boolean;
 };
 
 export function AddDimensionPopover({
@@ -28,6 +31,7 @@ export function AddDimensionPopover({
   sourceDataById,
   hasMultipleSources,
   onAddTab,
+  canAddResultsTab,
 }: AddDimensionPopoverProps) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -55,6 +59,25 @@ export function AddDimensionPopover({
     [],
   );
 
+  let finalSections: DimensionPickerSection[] = sections;
+  if (canAddResultsTab) {
+    finalSections = [
+      {
+        items: [
+          {
+            name: "Totals",
+            label: "Totals",
+            tabType: "scalar",
+            icon: "number",
+            dimensionId: RESULTS_TAB_DIMENSION_ID,
+            sourceIds: [],
+          },
+        ],
+      },
+      ...sections,
+    ];
+  }
+
   return (
     <Popover opened={isOpen} onChange={setIsOpen} position="bottom-start">
       <Popover.Target>
@@ -70,7 +93,7 @@ export function AddDimensionPopover({
       <Popover.Dropdown p={0} className={S.dropdown}>
         <AccordionList
           className={S.dimensionPicker}
-          sections={sections}
+          sections={finalSections}
           onChange={handleSelect}
           renderItemIcon={renderItemIcon}
           alwaysExpanded

@@ -19,6 +19,8 @@ import { GEO_SUBTYPE_PRIORITY } from "./geo-dimensions";
 import type { TabTypeDefinition } from "./tab-config";
 import { TAB_TYPE_REGISTRY, getTabConfig } from "./tab-config";
 
+export const RESULTS_TAB_DIMENSION_ID = "\0_results";
+
 // ── Dimension classification ──
 
 export function getDimensionIcon(dimension: DimensionMetadata): IconName {
@@ -498,6 +500,10 @@ export function createTabFromDimension(
   definitionsBySourceId: Record<MetricSourceId, MetricDefinition | null>,
   sourceOrder: MetricSourceId[],
 ): MetricsViewerTabState | null {
+  if (dimensionId === RESULTS_TAB_DIMENSION_ID) {
+    return createResultsTab();
+  }
+
   const mapping: Record<MetricSourceId, string> = {};
   let tabType: MetricsViewerTabType = "category";
   let displayName: string | null = null;
@@ -530,6 +536,21 @@ export function createTabFromDimension(
     label: displayName ?? dimensionId,
     display,
     dimensionMapping: mapping,
+    projectionConfig: {},
+  };
+}
+
+export function createResultsTab(): MetricsViewerTabState | null {
+  const config = getTabConfig("scalar");
+  if (config.matchMode !== "aggregate") {
+    return null;
+  }
+  return {
+    id: config.fixedId,
+    type: config.type,
+    label: config.fixedLabel,
+    display: config.defaultDisplayType,
+    dimensionMapping: {},
     projectionConfig: {},
   };
 }

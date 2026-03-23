@@ -107,7 +107,7 @@ export const TAB_TYPE_REGISTRY: TabTypeDefinition[] = [
     autoCreate: true,
     matchMode: "aggregate",
     fixedId: "scalar",
-    fixedLabel: "Results",
+    fixedLabel: "Totals",
     dimensionPredicate: () => false,
     defaultDisplayType: "scalar",
     availableDisplayTypes: [{ type: "scalar", icon: "number" }],
