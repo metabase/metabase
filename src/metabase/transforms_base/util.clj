@@ -174,14 +174,32 @@
                     lo (assoc :checkpoint_lo_value (encode-checkpoint-value (:value lo)))
                     hi (assoc :checkpoint_hi_value (encode-checkpoint-value (:value hi))))))))
 
+(defn- coerce-to-local-datetime
+  "Coerce a temporal value to LocalDateTime, stripping any timezone information."
+  [t]
+  (condp instance? t
+    LocalDateTime  t
+    OffsetDateTime (t/local-date-time t)
+    ZonedDateTime  (t/local-date-time t)
+    Instant        (t/local-date-time t (t/zone-id "UTC"))
+    t))
+
+(defn- maybe-coerce-temporal
+  [base-type t]
+  (cond-> t
+    (and (isa? base-type :type/DateTime)
+         (not (isa? base-type :type/DateTimeWithTZ)))
+    coerce-to-local-datetime))
+
 (defn- parse-checkpoint-value
-  "Parse a serialized checkpoint value string according to its base-type keyword."
+  "Parse a serialized checkpoint value string according to its base-type keyword.
+  For temporal types, coerces the result to match the column's base-type."
   [base-type s]
   (cond
-    (not (string? s)) s
+    (not (string? s))               (maybe-coerce-temporal base-type s)
     (isa? base-type :type/Float)    (bigdec s)
     (isa? base-type :type/Number)   (biginteger s)
-    (isa? base-type :type/Temporal) (u.date/parse s)
+    (isa? base-type :type/Temporal) (maybe-coerce-temporal base-type (u.date/parse s))
     :else (throw (ex-info (str "Unsupported checkpoint type: " (pr-str base-type))
                           {:base-type base-type}))))
 
