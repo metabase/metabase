@@ -13,13 +13,16 @@ import { ActionIcon, Icon, Menu } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Card } from "metabase-types/api";
 
+import type { MetricUrls } from "../../../types";
+
 type MetricModalType = "move" | "copy" | "archive";
 
-type MetricMoreMenuProps = {
+interface MetricMoreMenuProps {
   card: Card;
-};
+  urls: MetricUrls;
+}
 
-export function MetricMoreMenu({ card }: MetricMoreMenuProps) {
+export function MetricMoreMenu({ card, urls }: MetricMoreMenuProps) {
   const [modalType, setModalType] = useState<MetricModalType>();
 
   return (
@@ -28,6 +31,7 @@ export function MetricMoreMenu({ card }: MetricMoreMenuProps) {
       {modalType != null && (
         <MetricModal
           card={card}
+          urls={urls}
           modalType={modalType}
           onClose={() => setModalType(undefined)}
         />
@@ -36,10 +40,10 @@ export function MetricMoreMenu({ card }: MetricMoreMenuProps) {
   );
 }
 
-type MetricMenuProps = {
+interface MetricMenuProps {
   card: Card;
   onOpenModal: (modalType: MetricModalType) => void;
-};
+}
 
 function MetricMenu({ card, onOpenModal }: MetricMenuProps) {
   const menuItems: ReactNode[] = [];
@@ -111,25 +115,18 @@ function MetricMenu({ card, onOpenModal }: MetricMenuProps) {
   );
 }
 
-type MetricModalProps = {
+interface MetricModalProps {
   card: Card;
+  urls: MetricUrls;
   modalType: MetricModalType;
   onClose: () => void;
-};
+}
 
-function MetricModal({ card, modalType, onClose }: MetricModalProps) {
+function MetricModal({ card, urls, modalType, onClose }: MetricModalProps) {
   const dispatch = useDispatch();
 
   const handleCopy = (newCard: Card) => {
-    dispatch(push(Urls.dataStudioMetric(newCard.id)));
-  };
-
-  const handleArchive = () => {
-    dispatch(push(Urls.dataStudioLibrary()));
-  };
-
-  const handleUnarchive = () => {
-    dispatch(push(Urls.dataStudioMetric(card.id)));
+    dispatch(push(urls.overview(newCard.id)));
   };
 
   switch (modalType) {
@@ -140,14 +137,7 @@ function MetricModal({ card, modalType, onClose }: MetricModalProps) {
         <CardCopyModal card={card} onCopy={handleCopy} onClose={onClose} />
       );
     case "archive":
-      return (
-        <ArchiveCardModal
-          card={card}
-          onArchive={handleArchive}
-          onUnarchive={handleUnarchive}
-          onClose={onClose}
-        />
-      );
+      return <ArchiveCardModal card={card} onClose={onClose} />;
     default:
       return null;
   }

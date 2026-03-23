@@ -7,20 +7,20 @@ import * as Urls from "metabase/lib/urls";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Card, Center } from "metabase/ui";
 
-import { MetricHeader } from "../../components/MetricHeader";
+import { MetricPageShell } from "../../components/MetricPageShell";
+import type { MetricPageProps } from "../../types";
+import { metricUrls as defaultUrls } from "../../urls";
 
-type MetricDependenciesPageParams = {
-  cardId: string;
-};
-
-type MetricDependenciesPageProps = {
-  params: MetricDependenciesPageParams;
+interface MetricDependenciesPageProps extends MetricPageProps {
   children?: ReactNode;
-};
+}
 
 export function MetricDependenciesPage({
   params,
   children,
+  urls = defaultUrls,
+  renderBreadcrumbs,
+  showAppSwitcher,
 }: MetricDependenciesPageProps) {
   const cardId = Urls.extractEntityId(params.cardId);
   const { card, isLoading, error } = useLoadCardWithMetadata(cardId);
@@ -35,10 +35,15 @@ export function MetricDependenciesPage({
 
   return (
     <PageContainer>
-      <MetricHeader card={card} />
+      <MetricPageShell
+        card={card}
+        urls={urls}
+        renderBreadcrumbs={renderBreadcrumbs}
+        showAppSwitcher={showAppSwitcher}
+      />
       <PLUGIN_DEPENDENCIES.DependencyGraphPageContext.Provider
         value={{
-          baseUrl: Urls.dataStudioMetricDependencies(card.id),
+          baseUrl: urls.dependencies(card.id),
           defaultEntry: { id: card.id, type: "card" },
         }}
       >

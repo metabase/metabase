@@ -9,20 +9,22 @@ import { DateTime } from "metabase/common/components/DateTime";
 import { EditableText } from "metabase/common/components/EditableText";
 import { Link } from "metabase/common/components/Link/Link";
 import { Markdown } from "metabase/common/components/Markdown";
-import * as Urls from "metabase/lib/urls";
 import { getUserName } from "metabase/lib/user";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Box, Card, Flex, Group, Icon, Stack, Text, rem } from "metabase/ui";
 import type { Card as CardApiType, CardType } from "metabase-types/api";
 
+import type { MetricUrls } from "../../../../types";
+
 import S from "./DescriptionSection.module.css";
 
-type DescriptionSectionProps = {
+interface DescriptionSectionProps {
   card: CardApiType;
-};
+  urls: MetricUrls;
+}
 
-export function DescriptionSection({ card }: DescriptionSectionProps) {
+export function DescriptionSection({ card, urls }: DescriptionSectionProps) {
   const [updateCard] = useUpdateCardMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
@@ -57,9 +59,10 @@ export function DescriptionSection({ card }: DescriptionSectionProps) {
     }
   };
 
+  const databaseUrl = database && urls.database?.(database.id);
+
   return (
     <Stack gap={0} align="stretch" data-testid="metric-description-sidebar">
-      {/* Description */}
       <Box data-testid="metric-description-section" p={rem(20)}>
         {card.can_write ? (
           <EditableText
@@ -76,7 +79,6 @@ export function DescriptionSection({ card }: DescriptionSectionProps) {
         )}
       </Box>
 
-      {/* Metadata Sections */}
       <Card mx="lg" bg="background-secondary" shadow="none" radius="1rem">
         <Card.Section withBorder p="md">
           <Group gap="sm" mb={4}>
@@ -96,11 +98,17 @@ export function DescriptionSection({ card }: DescriptionSectionProps) {
             <Icon name="database" c="brand" />
 
             {database ? (
-              <Link to={Urls.dataStudioData({ databaseId: database.id })}>
+              databaseUrl ? (
+                <Link to={databaseUrl}>
+                  <Text size="md" fw={600} lh="1rem">
+                    {database.name}
+                  </Text>
+                </Link>
+              ) : (
                 <Text size="md" fw={600} lh="1rem">
                   {database.name}
                 </Text>
-              </Link>
+              )
             ) : (
               <Text size="md" fw={600} lh="1rem">
                 —
@@ -124,7 +132,6 @@ export function DescriptionSection({ card }: DescriptionSectionProps) {
         </Card.Section>
       </Card>
 
-      {/* Statistics */}
       {isDependenciesEnabled && (
         <Card mx="lg" my="lg" shadow="none">
           <Card.Section withBorder py={rem(12)} px="md">
@@ -133,10 +140,7 @@ export function DescriptionSection({ card }: DescriptionSectionProps) {
                 {t`Dependencies`}
               </Text>
               {dependenciesCount > 0 ? (
-                <Link
-                  to={Urls.dataStudioMetricDependencies(card.id)}
-                  className={S.metricLink}
-                >
+                <Link to={urls.dependencies(card.id)} className={S.metricLink}>
                   <Text size="xl" fw={600}>
                     {dependenciesCount}
                   </Text>
@@ -155,10 +159,7 @@ export function DescriptionSection({ card }: DescriptionSectionProps) {
               </Text>
 
               {dependentsCount > 0 ? (
-                <Link
-                  to={Urls.dataStudioMetricDependencies(card.id)}
-                  className={S.metricLink}
-                >
+                <Link to={urls.dependencies(card.id)} className={S.metricLink}>
                   <Text size="xl" fw={600}>
                     {dependentsCount}
                   </Text>

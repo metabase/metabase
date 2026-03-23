@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import {
@@ -5,7 +6,6 @@ import {
   PaneHeaderTabs,
 } from "metabase/data-studio/common/components/PaneHeader";
 import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { PLUGIN_CACHING, PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
@@ -13,21 +13,31 @@ import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Card } from "metabase-types/api";
 
-type MetricTabsProps = {
-  card: Card;
-};
+import type { MetricUrls } from "../../../types";
 
-export function MetricTabs({ card }: MetricTabsProps) {
+interface MetricTabsProps {
+  card: Card;
+  urls: MetricUrls;
+}
+
+export function MetricTabs({ card, urls }: MetricTabsProps) {
   const metadata = useSelector(getMetadata);
-  const tabs = getTabs(card, metadata);
+  const tabs = useMemo(
+    () => getTabs(card, metadata, urls),
+    [card, metadata, urls],
+  );
   return <PaneHeaderTabs tabs={tabs} />;
 }
 
-function getTabs(card: Card, metadata: Metadata): PaneHeaderTab[] {
+function getTabs(
+  card: Card,
+  metadata: Metadata,
+  urls: MetricUrls,
+): PaneHeaderTab[] {
   const tabs: PaneHeaderTab[] = [
     {
       label: t`Overview`,
-      to: Urls.dataStudioMetric(card.id),
+      to: urls.overview(card.id),
     },
   ];
 
@@ -36,14 +46,14 @@ function getTabs(card: Card, metadata: Metadata): PaneHeaderTab[] {
   if (queryInfo.isEditable) {
     tabs.push({
       label: t`Definition`,
-      to: Urls.dataStudioMetricQuery(card.id),
+      to: urls.query(card.id),
     });
   }
 
   if (PLUGIN_DEPENDENCIES.isEnabled) {
     tabs.push({
       label: t`Dependencies`,
-      to: Urls.dataStudioMetricDependencies(card.id),
+      to: urls.dependencies(card.id),
     });
   }
 
@@ -54,7 +64,7 @@ function getTabs(card: Card, metadata: Metadata): PaneHeaderTab[] {
   if (isCacheableQuestion) {
     tabs.push({
       label: t`Caching`,
-      to: Urls.dataStudioMetricCaching(card.id),
+      to: urls.caching(card.id),
     });
   }
 

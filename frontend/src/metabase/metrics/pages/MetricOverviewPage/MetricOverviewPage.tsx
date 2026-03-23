@@ -4,19 +4,18 @@ import { useLoadCardWithMetadata } from "metabase/data-studio/common/hooks/use-l
 import * as Urls from "metabase/lib/urls";
 import { Center } from "metabase/ui";
 
-import { MetricHeader } from "../../components/MetricHeader";
+import { MetricPageShell } from "../../components/MetricPageShell";
+import type { MetricPageProps } from "../../types";
+import { metricUrls as defaultUrls } from "../../urls";
 
 import { MetricOverview } from "./MetricOverview";
 
-type MetricOverviewPageParams = {
-  cardId: string;
-};
-
-type MetricOverviewPageProps = {
-  params: MetricOverviewPageParams;
-};
-
-export function MetricOverviewPage({ params }: MetricOverviewPageProps) {
+export function MetricOverviewPage({
+  params,
+  urls = defaultUrls,
+  renderBreadcrumbs,
+  showAppSwitcher,
+}: MetricPageProps) {
   const cardId = Urls.extractEntityId(params.cardId);
   const { card, isLoading, error } = useLoadCardWithMetadata(cardId);
 
@@ -30,8 +29,13 @@ export function MetricOverviewPage({ params }: MetricOverviewPageProps) {
 
   return (
     <PageContainer data-testid="metric-overview-page" gap="xl">
-      <MetricHeader card={card} />
-      <MetricOverview card={card} />
+      <MetricPageShell
+        card={card}
+        urls={urls}
+        renderBreadcrumbs={renderBreadcrumbs}
+        showAppSwitcher={showAppSwitcher}
+      />
+      <MetricOverview card={card} urls={urls} />
     </PageContainer>
   );
 }

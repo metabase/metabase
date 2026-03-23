@@ -26,16 +26,18 @@ const NEW_METRIC_SCHEMA = Yup.object({
   collection_id: Yup.number().nullable().default(null),
 });
 
-type CreateMetricModalProps = {
+interface CreateMetricModalProps {
   query: Lib.Query;
   defaultValues: Partial<NewMetricValues>;
+  triggeredFrom: "data_studio" | "main_app";
   onCreate: (card: Card) => void;
   onClose: () => void;
-};
+}
 
 export function CreateMetricModal({
   query,
   defaultValues,
+  triggeredFrom,
   onCreate,
   onClose,
 }: CreateMetricModalProps) {
@@ -44,6 +46,7 @@ export function CreateMetricModal({
       <CreateMetricForm
         query={query}
         defaultValues={defaultValues}
+        triggeredFrom={triggeredFrom}
         onCreate={onCreate}
         onClose={onClose}
       />
@@ -51,19 +54,13 @@ export function CreateMetricModal({
   );
 }
 
-type CreateMetricFormProps = {
-  query: Lib.Query;
-  defaultValues: Partial<NewMetricValues>;
-  onCreate: (card: Card) => void;
-  onClose: () => void;
-};
-
 function CreateMetricForm({
   query,
   defaultValues,
+  triggeredFrom,
   onCreate,
   onClose,
-}: CreateMetricFormProps) {
+}: CreateMetricModalProps) {
   const [createCard] = useCreateCardMutation();
 
   const initialValues: NewMetricValues = useMemo(
@@ -75,10 +72,10 @@ function CreateMetricForm({
     try {
       const request = getCreateRequest(query, values);
       const card = await createCard(request).unwrap();
-      trackMetricCreated("success", "data_studio", card.id);
+      trackMetricCreated("success", triggeredFrom, card.id);
       onCreate(card);
     } catch (error) {
-      trackMetricCreated("failure", "data_studio", null);
+      trackMetricCreated("failure", triggeredFrom, null);
       throw error;
     }
   };
