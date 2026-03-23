@@ -131,18 +131,6 @@ function getVizSettings(
   }, null);
 }
 
-function getDefinitionCardId(def: MetricDefinition): number | null {
-  const metricId = LibMetric.sourceMetricId(def);
-  if (metricId != null) {
-    return metricId;
-  }
-  const measureId = LibMetric.sourceMeasureId(def);
-  if (measureId != null) {
-    return nextSyntheticCardId();
-  }
-  return null;
-}
-
 /**
  * Computes colors for each formula entity by building the same series key array
  * that the chart pipeline would produce, then passing it to getColorsForValues.
@@ -233,7 +221,8 @@ export function computeSourceColors(
 export function splitByBreakout(
   series: SingleSeries,
   seriesCount: number,
-  sourceColors?: string[],
+  sourceColors: string[],
+  vizSettings: VisualizationSettings,
 ): SingleSeries[] {
   const { card, data } = series;
   const { cols } = data;
@@ -286,6 +275,7 @@ export function splitByBreakout(
         id: nextSyntheticCardId(),
         name,
         visualization_settings: {
+          ...vizSettings,
           ...computeColorVizSettings({
             displayType: card.display,
             seriesKey,
@@ -384,13 +374,14 @@ export function buildRawSeriesFromDefinitions(
     };
 
     let entrySeries: SingleSeries[];
-    if (!entryHasBreakout(entry)) {
+    if (!entryHasBreakout(definitions[entry.id])) {
       entrySeries = [singleSeries];
     } else {
       entrySeries = splitByBreakout(
         singleSeries,
         defCount,
-        sourceColors[entry.id],
+        sourceColors[entry.id] ?? [],
+        vizSettings,
       );
     }
 

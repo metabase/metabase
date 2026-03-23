@@ -8,6 +8,7 @@ import type {
   MetricsViewerTabType,
 } from "../types/viewer-state";
 
+import { getDefinitionColumnName } from "./definition-builder";
 import {
   getGeoSubtype,
   getMapRegionForDimension,
@@ -230,8 +231,10 @@ function getMapSettings(
   };
 }
 
-function getScalarSettings(_def: MetricDefinition): VisualizationSettings {
-  return {};
+function getScalarSettings(def: MetricDefinition): VisualizationSettings {
+  return {
+    "scalar.field": getDefinitionColumnName(def) ?? undefined,
+  };
 }
 
 export const DISPLAY_TYPE_REGISTRY: Record<
