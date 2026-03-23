@@ -1,4 +1,5 @@
 .SdkDashboardStyleWrapper {
-  min-height: 100vh;
+  min-height: 100%;
   background-color: var(--mb-color-bg-dashboard);
+  scrollbar-gutter: stable;
 }

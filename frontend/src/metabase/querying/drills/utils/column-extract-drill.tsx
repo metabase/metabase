@@ -2,7 +2,6 @@ import { c } from "ttag";
 
 import { useDispatch } from "metabase/lib/redux";
 import { setUIControls } from "metabase/query_builder/actions";
-import { trackColumnExtractViaHeader } from "metabase/querying/analytics";
 import { ClickActionsView } from "metabase/visualizations/components/ClickActions";
 import type {
   ClickActionPopoverProps,
@@ -10,6 +9,8 @@ import type {
   RegularClickAction,
 } from "metabase/visualizations/types/click-actions";
 import * as Lib from "metabase-lib";
+
+import { trackColumnExtractViaHeader } from "../../analytics";
 
 export const columnExtractDrill: Drill<Lib.ColumnExtractDrillThruInfo> = ({
   query,
