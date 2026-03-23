@@ -442,7 +442,6 @@
   "Post-processing steps after a transform has been executed successfully.
 
    Performs:
-   - Save watermark (if source-range-params provided)
    - Sync target table to AppDB
    - Set `transform_id` on the target table
    - Publish Metabase events (unless `:publish-events?` is false)
@@ -453,13 +452,10 @@
    to preserve the correct order of operations."
   [transform opts]
   (let [{:keys [target]} transform
-        {:keys [publish-events? source-range-params]
+        {:keys [publish-events?]
          :or   {publish-events? true}} opts
         db-id (transforms-base.i/target-db-id transform)
         database (t2/select-one :model/Database db-id)]
-    ;; Save watermark if source-range-params available
-    (when source-range-params
-      (save-watermark! (:id transform) source-range-params))
     ;; Sync target table
     (sync-target! target database)
     ;; Mark the table as owned by this transform

@@ -56,7 +56,6 @@
              ;; Post-processing: sync, transform_id, events, secondary indexes (after succeed-started-run!)
              (transforms-base.u/complete-execution! transform
                                                     {:run-id               run-id
-                                                     :source-range-params  (:source-range-params exec-result)
                                                      :with-stage-timing-fn (fn [rid stage thunk]
                                                                              (transforms.instrumentation/with-stage-timing [rid stage]
                                                                                (thunk)))})))))
