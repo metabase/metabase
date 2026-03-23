@@ -11,7 +11,6 @@ import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { getEngineNativeType } from "metabase/lib/engine";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_AI_SQL_FIXER } from "metabase/plugins";
-import { getIsResultDirty } from "metabase/query_builder/selectors";
 import { getLearnUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { Box, Center, Flex, Icon } from "metabase/ui";
@@ -19,7 +18,7 @@ import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { DatasetError, DatasetErrorType } from "metabase-types/api";
 
-import { VISUALIZATION_SLOW_TIMEOUT } from "../../constants";
+import { VISUALIZATION_SLOW_TIMEOUT } from "../../../constants";
 
 import VisErrorS from "./VisualizationError.module.css";
 import { AdminEmail } from "./components";
@@ -32,6 +31,7 @@ interface VisualizationErrorProps {
   duration: number;
   error: DatasetError;
   errorType?: DatasetErrorType;
+  isResultDirty?: boolean;
 }
 
 export function VisualizationError({
@@ -41,9 +41,9 @@ export function VisualizationError({
   duration,
   error,
   errorType,
+  isResultDirty,
 }: VisualizationErrorProps) {
   const query = question.query();
-  const isResultDirty = useSelector(getIsResultDirty);
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
   const isNative = question && Lib.queryDisplayInfo(query).isNative;
 

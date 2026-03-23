@@ -10,18 +10,20 @@ import {
 } from "metabase/api";
 import { getCollectionName } from "metabase/collections/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { Tree } from "metabase/common/components/tree";
 import type {
   ITreeNodeItem,
   TreeNodeProps,
 } from "metabase/common/components/tree/types";
 import CS from "metabase/css/core/index.css";
-import { SidebarContent } from "metabase/query_builder/components/SidebarContent";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type {
-  CollectionId,
-  SchemaName,
-  SearchResult,
+import {
+  type Card,
+  type CollectionId,
+  type SchemaName,
+  type SearchResult,
+  type Table,
+  isConcreteTableId,
 } from "metabase-types/api";
 
 import {
@@ -34,6 +36,11 @@ import {
   NodeListTitleText,
 } from "./NodeList";
 import { ResourceTreeNode } from "./ResourceTreeNode";
+import type {
+  DataReferenceDatabaseItem,
+  DataReferencePaneProps,
+  OnItemClick,
+} from "./types";
 
 const groupModelsByCollection = (models: SearchResult[]) => {
   const grouped = _.groupBy(
@@ -77,21 +84,13 @@ const groupTablesBySchema = (tables: SearchResult[]) => {
   );
 };
 
-export interface TablesListProps {
+export type TablesListProps = {
   schemas: string[];
   tables: SearchResult[];
-  onItemClick: (type: string, item: unknown) => void;
-}
+  onItemClick: OnItemClick;
+};
 
-const TablesList = ({
-  schemas,
-  tables,
-  onItemClick,
-}: {
-  schemas: string[];
-  tables: SearchResult[];
-  onItemClick: (type: string, item: unknown) => void;
-}) => {
+const TablesList = ({ schemas, tables, onItemClick }: TablesListProps) => {
   const hasMultipleSchemas = schemas.length > 1;
 
   if (hasMultipleSchemas) {
@@ -117,10 +116,15 @@ const TablesList = ({
         </NodeListTitle>
         <Tree
           data={tablesBySchema}
-          TreeNode={(props: TreeNodeProps<ITreeNodeItem>) => (
-            <ResourceTreeNode
+          TreeNode={(props: TreeNodeProps<Table>) => (
+            <ResourceTreeNode<Table>
               {...props}
-              onItemClick={() => onItemClick("table", props.item.data)}
+              onItemClick={() => {
+                const { id } = props.item.data ?? {};
+                if (isConcreteTableId(id)) {
+                  onItemClick({ type: "table", id });
+                }
+              }}
             />
           )}
         />
@@ -145,7 +149,11 @@ const TablesList = ({
           <li key={table.id}>
             <NodeListItemLink
               disabled={table.initial_sync_status !== "complete"}
-              onClick={() => onItemClick("table", table)}
+              onClick={() => {
+                if (isConcreteTableId(table.id)) {
+                  onItemClick({ type: "table", id: table.id });
+                }
+              }}
             >
               <NodeListItemIcon
                 disabled={table.initial_sync_status !== "complete"}
@@ -164,18 +172,12 @@ const TablesList = ({
   );
 };
 
-export interface CollectionsListProps {
+export type CollectionsListProps = {
   models: SearchResult[];
-  onItemClick: (type: string, item: unknown) => void;
-}
+  onItemClick: OnItemClick;
+};
 
-const CollectionsList = ({
-  models,
-  onItemClick,
-}: {
-  models: SearchResult[];
-  onItemClick: (type: string, item: unknown) => void;
-}) => {
+const CollectionsList = ({ models, onItemClick }: CollectionsListProps) => {
   if (models.length === 0) {
     return null;
   }
@@ -202,10 +204,14 @@ const CollectionsList = ({
       </NodeListTitle>
       <Tree
         data={modelsByCollection}
-        TreeNode={(props: TreeNodeProps<ITreeNodeItem>) => (
-          <ResourceTreeNode
+        TreeNode={(props: TreeNodeProps<Card>) => (
+          <ResourceTreeNode<Card>
             {...props}
-            onItemClick={() => onItemClick("question", props.item.data)}
+            onItemClick={() => {
+              if (props.item.data) {
+                onItemClick({ type: "question", id: props.item.data.id });
+              }
+            }}
             displayId
           />
         )}
@@ -214,21 +220,15 @@ const CollectionsList = ({
   );
 };
 
-export interface DatabasePaneProps {
-  database: Database;
-  onBack: () => void;
-  onClose: () => void;
-  onItemClick: (type: string, item: unknown) => void;
-}
+export type DatabasePaneProps =
+  DataReferencePaneProps<DataReferenceDatabaseItem>;
 
 export const DatabasePane = ({
-  database,
+  id: databaseId,
   onBack,
   onClose,
   onItemClick,
 }: DatabasePaneProps) => {
-  const databaseId = database.id;
-
   const {
     data: databaseData,
     isLoading: isLoadingDatabase,

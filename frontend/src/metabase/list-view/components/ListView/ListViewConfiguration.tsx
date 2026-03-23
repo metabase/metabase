@@ -16,7 +16,7 @@ import {
   ReorderableTagsInput,
   SortablePill,
 } from "metabase/common/components/ReorderableTagsInput/ReorderableTagsInput";
-import { getColumnExample } from "metabase/query_builder/components/expressions/CombineColumns/util";
+import { getColumnExample } from "metabase/querying/components/expressions/CombineColumns/util";
 import {
   ActionIcon,
   Box,

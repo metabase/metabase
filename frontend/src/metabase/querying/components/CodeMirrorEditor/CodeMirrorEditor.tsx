@@ -19,7 +19,7 @@ import { useLlmSqlGenerationEnabled } from "metabase/metabot/hooks";
 import * as Lib from "metabase-lib";
 import type { CardId } from "metabase-types/api";
 
-import type { SelectionRange } from "../types";
+import type { SelectionRange } from "../../editor/types";
 
 import S from "./CodeMirrorEditor.module.css";
 import { useExtensions } from "./extensions";

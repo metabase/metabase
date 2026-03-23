@@ -13,30 +13,22 @@ import {
   Description,
   EmptyDescription,
 } from "metabase/common/components/MetadataInfo/MetadataInfo";
+import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { useSelector } from "metabase/lib/redux";
-import { SidebarContent } from "metabase/query_builder/components/SidebarContent";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, type IconName } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import * as ML_Urls from "metabase-lib/v1/urls";
-import type { CardId } from "metabase-types/api";
 
 import { FieldList } from "../FieldList";
 import { NodeListTitleText } from "../NodeList";
+import type {
+  DataReferencePaneProps,
+  DataReferenceQuestionItem,
+} from "../types";
 
 import S from "./QuestionPane.module.css";
-
-type QuestionItem = {
-  id: CardId;
-};
-
-type QuestionPaneProps = {
-  question: QuestionItem;
-  onItemClick: (type: string, item: unknown) => void;
-  onBack: () => void;
-  onClose: () => void;
-};
 
 const getIcon = (question: Question): IconName => {
   return match(question.type())
@@ -48,11 +40,11 @@ const getIcon = (question: Question): IconName => {
 };
 
 export const QuestionPane = ({
-  question: { id },
+  id,
   onBack,
   onItemClick,
   onClose,
-}: QuestionPaneProps) => {
+}: DataReferencePaneProps<DataReferenceQuestionItem>) => {
   const {
     data: card,
     isLoading: isLoadingCard,
@@ -147,7 +139,13 @@ export const QuestionPane = ({
         {table.fields && (
           <FieldList
             fields={table.fields}
-            onFieldClick={(f) => onItemClick("field", f)}
+            onFieldClick={(field) => {
+              onItemClick({
+                type: "field",
+                id:
+                  typeof field.id === "number" ? field.id : field.getUniqueId(),
+              });
+            }}
           />
         )}
       </Box>
