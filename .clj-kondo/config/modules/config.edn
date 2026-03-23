@@ -2991,7 +2991,6 @@
            source-swap
            task
            transforms
-           transforms-base
            util
            enterprise/dependencies}
    :model-imports #{:model/Card
@@ -2999,6 +2998,7 @@
                     :model/DashboardCard
                     :model/Field
                     :model/Measure
+                    :model/PersistedInfo
                     :model/Segment
                     :model/Table
                     :model/Transform}}
