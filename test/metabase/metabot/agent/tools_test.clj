@@ -190,7 +190,7 @@
                                      :charts {"c1" {:query-id "q1"}}}})
           base-tools {"create_sql_query" #'agent-tools/create-sql-query-tool
                       "search" #'agent-tools/search-tool}
-          wrapped-tools (agent-tools/wrap-tools-with-state base-tools memory-atom)]
+          wrapped-tools (agent-tools/wrap-tools-with-state base-tools memory-atom nil)]
       ;; State-dependent tool should be wrapped into a tool-def map
       (is (map? (get wrapped-tools "create_sql_query")))
       (is (contains? (get wrapped-tools "create_sql_query") :fn))
@@ -202,7 +202,7 @@
   (testing "wrapped tools preserve original metadata"
     (let [memory-atom (atom {:state {:queries {} :charts {}}})
           base-tools {"create_chart" #'agent-tools/create-chart-tool}
-          wrapped-tools (agent-tools/wrap-tools-with-state base-tools memory-atom)
+          wrapped-tools (agent-tools/wrap-tools-with-state base-tools memory-atom nil)
           wrapped-tool (get wrapped-tools "create_chart")]
       (is (= (:doc (meta #'agent-tools/create-chart-tool)) (:doc wrapped-tool)))
       (is (= (:schema (meta #'agent-tools/create-chart-tool)) (:schema wrapped-tool)))))
@@ -210,7 +210,7 @@
   (testing "wrapped function receives augmented args with state"
     (let [memory-atom (atom {:state {:queries {"test-query" {:db 1}}
                                      :charts {"test-chart" {:type :bar}}}})
-          wrapped (agent-tools/wrap-tools-with-state {"create_sql_query" #'agent-tools/create-sql-query-tool} memory-atom)
+          wrapped (agent-tools/wrap-tools-with-state {"create_sql_query" #'agent-tools/create-sql-query-tool} memory-atom nil)
           wrapped-fn (get-in wrapped ["create_sql_query" :fn])]
       ;; Just verify the wrapped function is callable
       (is (fn? wrapped-fn))))
@@ -219,7 +219,7 @@
     (let [memory-atom (atom {:state {:queries {"q1" {:db 1}} :charts {}}})
           base-tools {"search" #'agent-tools/search-tool
                       "construct_notebook_query" #'agent-tools/construct-notebook-query-tool}
-          wrapped-tools (agent-tools/wrap-tools-with-state base-tools memory-atom)]
+          wrapped-tools (agent-tools/wrap-tools-with-state base-tools memory-atom nil)]
       ;; All tools are converted to tool-def maps
       (is (map? (get wrapped-tools "search")))
       (is (fn? (:fn (get wrapped-tools "search"))))
