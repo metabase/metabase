@@ -477,6 +477,11 @@
                                        :output-schema  (:schema target)
                                        :output-table   (qualified-table-name (:engine database) target)}}))))
 
+(defn output-table
+  "Return the output table created by a transform, looked up via `transform_id`."
+  [transform]
+  (t2/select-one :model/Table :transform_id (:id transform)))
+
 ;;; ------------------------------------------------- Source Table Schemas -------------------------------------------------
 
 ;;; ------------------------------------------------- Source Table Resolution -------------------------------------------------

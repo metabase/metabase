@@ -391,9 +391,10 @@
 
                   (testing "dependent question now references the output table"
                     (let [question-query (t2/select-one-fn :dataset_query :model/Card :id question-id-id)
-                          output-table   (t2/select-one :model/Table :name (:name target))]
+                          transform      (t2/select-one :model/Transform :name "Orders Transform")
+                          output-table   (transforms/output-table transform)]
                       (is (some? output-table)
-                          "output table should exist after synchronous transform execution")
+                          "transforms/output-table should return the output table")
                       (is (= (:id output-table)
                              (lib/primary-source-table-id question-query))))))))))))))
 

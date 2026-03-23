@@ -10,7 +10,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.model-persistence.core :as model-persistence]
-   [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms.core :as transforms]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -169,17 +168,9 @@
 (defn- find-output-table
   "Look up the output table created by a transform execution."
   [transform]
-  (let [target-db-id (transforms-base.i/target-db-id transform)
-        target       (:target transform)
-        table-name   (:name target)
-        table-schema (:schema target)]
-    (or (t2/select-one :model/Table
-                       :db_id target-db-id
-                       :schema table-schema
-                       :name table-name
-                       :active true)
-        (throw (ex-info "Output table not found after transform execution"
-                        {:db-id target-db-id :schema table-schema :name table-name})))))
+  (or (transforms/output-table transform)
+      (throw (ex-info "Output table not found after transform execution"
+                      {:transform-id (:id transform)}))))
 
 (defn- run-model-cleanup!
   "Unpersist the model if it was persisted and convert it to a saved question."
