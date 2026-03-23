@@ -36,7 +36,7 @@
       (try
         (t2/with-connection [_conn]
           (testing "Returns nil if no rows are found"
-            (is (nil? (#'q.appdb/fetch!))))
+            (is (nil? (#'q.appdb/fetch! (listener/queue-names)))))
 
           (t2/insert! :queue_message_batch
                       {:queue_name (name invalid-queue)
@@ -50,9 +50,9 @@
 
           (testing "Returns nil if no queues are defined"
             (binding [listener/*listeners* (atom {})]
-              (is (nil? (#'q.appdb/fetch!)))))
+              (is (nil? (#'q.appdb/fetch! (listener/queue-names))))))
           (testing "Returns finds a row for a valid queue"
-            (let [{:keys [bundle-id queue messages]} (#'q.appdb/fetch!)]
+            (let [{:keys [bundle-id queue messages]} (#'q.appdb/fetch! (listener/queue-names))]
               (is (pos-int? bundle-id))
               (is (= queue1 queue))
               (is (= ["data1"] messages))
@@ -63,12 +63,12 @@
                   (is (= 0 (:failures updated-row)))
                   (is (= @#'q.appdb/owner-id (:owner updated-row)))))))
           (testing "Later calls don't re-pull processing rows"
-            (let [{:keys [bundle-id queue messages]} (#'q.appdb/fetch!)]
+            (let [{:keys [bundle-id queue messages]} (#'q.appdb/fetch! (listener/queue-names))]
               (is (pos-int? bundle-id))
               (is (= queue2 queue))
               (is (= ["data2"] messages))))
           (testing "When everything valid is pending, return nil"
-            (is (nil? (#'q.appdb/fetch!)))))
+            (is (nil? (#'q.appdb/fetch! (listener/queue-names))))))
         (finally
           (t2/delete! :queue_message_batch :queue_name [:in [(name queue1) (name queue2) (name invalid-queue)]]))))))
 
@@ -83,7 +83,7 @@
             (t2/insert! :queue_message_batch
                         {:queue_name (name exclusive-q)
                          :messages   (json/encode ["exclusive-msg1"])})
-            (let [{:keys [queue messages]} (#'q.appdb/fetch!)]
+            (let [{:keys [queue messages]} (#'q.appdb/fetch! (listener/queue-names))]
               (is (= exclusive-q queue))
               (is (= ["exclusive-msg1"] messages))))
 
@@ -92,21 +92,21 @@
                         {:queue_name (name exclusive-q)
                          :messages   (json/encode ["exclusive-msg2"])})
             ;; The first message is now 'processing', so the second should be skipped
-            (is (nil? (#'q.appdb/fetch!))
+            (is (nil? (#'q.appdb/fetch! (listener/queue-names)))
                 "Should return nil because exclusive queue has a processing row"))
 
           (testing "Non-exclusive queue is still fetchable even when exclusive queue is blocked"
             (t2/insert! :queue_message_batch
                         {:queue_name (name normal-q)
                          :messages   (json/encode ["normal-msg1"])})
-            (let [{:keys [queue messages]} (#'q.appdb/fetch!)]
+            (let [{:keys [queue messages]} (#'q.appdb/fetch! (listener/queue-names))]
               (is (= normal-q queue))
               (is (= ["normal-msg1"] messages))))
 
           (testing "After exclusive processing completes, next message can be fetched"
             ;; Mark the processing row as done by deleting it (simulating bundle-successful!)
             (t2/delete! :queue_message_batch :queue_name (name exclusive-q) :status "processing")
-            (let [{:keys [queue messages]} (#'q.appdb/fetch!)]
+            (let [{:keys [queue messages]} (#'q.appdb/fetch! (listener/queue-names))]
               (is (= exclusive-q queue))
               (is (= ["exclusive-msg2"] messages)))))
         (finally

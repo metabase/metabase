@@ -627,6 +627,9 @@
    (prometheus/gauge :metabase-mq/publish-buffer-depth
                      {:description "Messages sitting in the publish buffer awaiting flush."
                       :labels [:channel]})
+   (prometheus/counter :metabase-mq/publish-buffer-flush-errors
+                       {:description "Publish buffer flush failures where messages were re-buffered for retry."
+                        :labels [:channel]})
    (prometheus/counter :metabase-mq/queue-batch-permanent-failures
                        {:description "Queue batches that exhausted retries."
                         :labels [:channel]})

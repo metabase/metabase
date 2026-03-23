@@ -162,6 +162,30 @@
         (catch Exception _))
       (is (= [] @result) "Callbacks should not execute on rollback"))))
 
+(deftest after-commit-callback-registers-new-callback-test
+  (testing "A callback that registers another callback — both execute"
+    (let [result (atom [])]
+      (t2/with-transaction []
+        (mdb.connection/after-commit!
+         (fn []
+           (swap! result conj :first)
+           ;; Register a new callback from within a callback
+           (mdb.connection/after-commit! (fn [] (swap! result conj :second))))))
+      (is (= [:first :second] @result) "Both callbacks should execute")))
+
+  (testing "Deeply chained callbacks all execute"
+    (let [result (atom [])]
+      (t2/with-transaction []
+        (mdb.connection/after-commit!
+         (fn []
+           (swap! result conj :a)
+           (mdb.connection/after-commit!
+            (fn []
+              (swap! result conj :b)
+              (mdb.connection/after-commit!
+               (fn [] (swap! result conj :c))))))))
+      (is (= [:a :b :c] @result)))))
+
 (deftest nested-transactions-share-after-commit-and-state-test
   (testing "Nested transactions share the same *after-commit* and *transaction-state*"
     (let [result (atom [])]

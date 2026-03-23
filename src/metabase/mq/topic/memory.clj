@@ -50,7 +50,7 @@
 (defn- poll-all-topics!
   "Polls all subscribed topics for new messages and dispatches to listeners."
   []
-  (doseq [topic-name (listener/topic-names)]
+  (doseq [topic-name (remove mq.impl/channel-busy? (listener/topic-names))]
     (try
       (let [offset (if (contains? @*offsets* topic-name)
                      (get @*offsets* topic-name)
@@ -65,9 +65,11 @@
                          current-max)))
             {:keys [rows]} (get-topic topic-name)
             new-rows (sort-by :id (filterv #(> (:id %) offset) @rows))]
-        (doseq [{:keys [id messages]} new-rows]
-          (mq.impl/deliver! topic-name messages nil nil)
-          (swap! *offsets* assoc topic-name id)))
+        (when (seq new-rows)
+          (let [all-messages (into [] (mapcat :messages) new-rows)
+                max-id      (:id (last new-rows))]
+            (swap! *offsets* assoc topic-name max-id)
+            (mq.impl/submit-delivery! topic-name all-messages nil nil nil))))
       (catch Exception e
         (log/errorf e "Error polling memory topic %s" (name topic-name))))))
 
@@ -99,6 +101,7 @@
         (cp/shutdown! exec)))))
 
 (defmethod topic.backend/start! :topic.backend/memory [_]
+  (mq.impl/start-worker-pool!)
   (start-polling!))
 
 (defmethod topic.backend/publish! :topic.backend/memory

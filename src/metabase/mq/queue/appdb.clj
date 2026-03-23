@@ -53,12 +53,12 @@
     [:update]))
 
 (defn- fetch!
-  "Fetches the next pending message from any of the listening queues.
+  "Fetches the next pending message from the given queue names.
   Returns a map with :bundle-id, :queue, and :messages keys, or nil if no messages are available.
   Marks the fetched message as 'processing' within the same transaction.
   For exclusive queues, skips fetching if any row for that queue is already processing."
-  []
-  (when-let [queue-names (seq (listener/queue-names))]
+  [queue-names]
+  (when (seq queue-names)
     (let [exclusive-names (q.impl/exclusive-queue-names)]
       (t2/with-transaction [conn]
         ;; Step 1: Find exclusive queues that currently have a processing row (no FOR UPDATE).
@@ -219,6 +219,36 @@
         (catch Exception e
           (log/error e "Error updating queue depth gauges"))))))
 
+;;; ------------------------------------------- Heartbeat -------------------------------------------
+
+(def ^:private heartbeat-interval-ms
+  "How often to update heartbeats for in-flight batches. Currently 2 minutes."
+  (* 2 60 1000))
+
+(def ^:private last-heartbeat-ms
+  "Timestamp of the last heartbeat update."
+  (atom 0))
+
+(defn- update-heartbeats!
+  "Updates status_heartbeat for all currently-processing queue batches."
+  []
+  (doseq [channel (filter #(= "queue" (namespace %)) (mq.impl/busy-channels))]
+    (when-let [{:keys [bundle-id]} (mq.impl/active-handler-metadata channel)]
+      (try
+        (t2/update! :queue_message_batch
+                    {:id bundle-id :owner owner-id :status "processing"}
+                    {:status_heartbeat (mi/now)})
+        (catch Exception e
+          (log/warnf e "Failed to update heartbeat for bundle %d" bundle-id))))))
+
+(defn- maybe-update-heartbeats!
+  "Runs heartbeat updates if enough time has passed since the last update."
+  []
+  (let [now (System/currentTimeMillis)]
+    (when (> (- now @last-heartbeat-ms) heartbeat-interval-ms)
+      (reset! last-heartbeat-ms now)
+      (update-heartbeats!))))
+
 ;;; ------------------------------------------- Polling -------------------------------------------
 
 (def ^:private error-backoff-ms
@@ -226,17 +256,20 @@
   5000)
 
 (defn- process-batch!
-  "Fetches a batch and delivers it to the shared accumulation layer.
-  Return true if there was a batch available. False if not"
+  "Fetches a batch from available (non-busy) queues and submits it to the worker pool.
+   Returns true if a batch was dispatched, false if no work available."
   []
-  (if-let [{:keys [bundle-id queue messages]} (fetch!)]
-    (do
-      (mq.impl/analytics-inc! :metabase-mq/appdb-queue-poll-results {:result "found"})
-      (mq.impl/deliver! queue messages bundle-id :queue.backend/appdb)
-      true)
-    (do
-      (mq.impl/analytics-inc! :metabase-mq/appdb-queue-poll-results {:result "empty"})
-      false)))
+  (let [available-queues (remove mq.impl/channel-busy? (listener/queue-names))]
+    (if-not (seq available-queues)
+      false
+      (if-let [{:keys [bundle-id queue messages]} (fetch! available-queues)]
+        (do
+          (mq.impl/submit-delivery! queue messages bundle-id :queue.backend/appdb {:bundle-id bundle-id})
+          (mq.impl/analytics-inc! :metabase-mq/appdb-queue-poll-results {:result "found"})
+          true)
+        (do
+          (mq.impl/analytics-inc! :metabase-mq/appdb-queue-poll-results {:result "empty"})
+          false)))))
 
 (defn- start-polling!
   "Starts the background polling process if not already running."
@@ -244,6 +277,7 @@
   (when (compare-and-set! background-process nil ::starting)
     (try
       (log/info "Starting background process for appdb queue")
+      (mq.impl/start-worker-pool!)
       (mq.appdb/start-cleanup-loop-once! cleanup-future cleanup-interval-ms cleanup-failed-batches! "Queue")
       ;; On a fresh JVM start, ALL processing batches are orphaned — recover them
       ;; regardless of heartbeat age (the periodic check uses the timeout for multi-node safety)
@@ -259,10 +293,11 @@
                   (loop []
                     (try
                       (maybe-recover-stale-batches!)
+                      (maybe-update-heartbeats!)
                       (update-depth-gauges!)
                       (if (seq (listener/queue-names))
                         (if (process-batch!)
-                          nil                                     ;; delivered a batch, loop immediately to fetch more
+                          nil                                     ;; dispatched a batch, loop immediately to fetch more
                           (Thread/sleep 2000))
                   ;; No queues registered — sleep longer and re-check
                         (Thread/sleep 5000))
@@ -281,6 +316,7 @@
 
 (defmethod q.backend/shutdown! :queue.backend/appdb [_]
   (mq.appdb/stop-cleanup-loop! cleanup-future "Queue")
+  ;; Stop the poll thread
   (when-let [f @background-process]
     (when (instance? Future f)
       (.cancel ^Future f true))

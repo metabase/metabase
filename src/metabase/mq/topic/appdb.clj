@@ -59,6 +59,7 @@
 (defn- start-polling!
   "Starts the single shared polling loop if not already running. Idempotent."
   []
+  (mq.impl/start-worker-pool!)
   (when (compare-and-set! background-process nil ::starting)
     (try
       (reset! background-process
@@ -67,7 +68,7 @@
                   (loop []
                     (when @background-process
                       (update-lag-gauges!)
-                      (doseq [topic-name (listener/topic-names)]
+                      (doseq [topic-name (remove mq.impl/channel-busy? (listener/topic-names))]
                         (try
                           (let [offset (if (contains? @offsets topic-name)
                                          (get @offsets topic-name)
@@ -76,9 +77,13 @@
                                            (swap! offsets assoc topic-name o)
                                            o))
                                 rows (poll-messages! topic-name offset)]
-                            (doseq [{:keys [id messages]} rows]
-                              (mq.impl/deliver! topic-name (json/decode messages) nil nil)
-                              (swap! offsets assoc topic-name id)))
+                            (when (seq rows)
+                              ;; Collect all messages and advance offset before submitting,
+                              ;; so the next poll won't re-fetch these rows
+                              (let [all-messages (into [] (mapcat (comp json/decode :messages)) rows)
+                                    max-id      (:id (last rows))]
+                                (swap! offsets assoc topic-name max-id)
+                                (mq.impl/submit-delivery! topic-name all-messages nil nil nil))))
                           (catch Exception e
                             (log/errorf e "Error polling topic %s" (name topic-name)))))
                       (Thread/sleep (long poll-interval-ms))

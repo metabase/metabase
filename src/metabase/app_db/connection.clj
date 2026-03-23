@@ -171,12 +171,15 @@
                     ;; top-level transaction, commit
                     (.commit connection)
                     ;; drain and execute after-commit callbacks
-                    (when-let [callbacks (some-> *after-commit* deref seq)]
-                      (doseq [cb callbacks]
-                        (try
-                          (cb)
-                          (catch Throwable t
-                            (log/error t "Error in after-commit callback"))))))
+                    (loop []
+                      (when-let [callbacks (seq (first (reset-vals! *after-commit* [])))]
+                        (doseq [cb callbacks]
+                          (try
+                            (cb)
+                            (catch Throwable t
+                              (log/error t "Error in after-commit callback"))))
+                        ;; If callbacks registered new callbacks, drain those too
+                        (recur))))
                   result)
                 (catch Throwable txn-e
                   (try

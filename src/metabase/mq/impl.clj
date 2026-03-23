@@ -5,7 +5,9 @@
    [metabase.mq.publish-buffer :as publish-buffer]
    [metabase.mq.queue.backend :as q.backend]
    [metabase.mq.topic.backend :as topic.backend]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log])
+  (:import
+   (java.util.concurrent Callable ExecutorService Executors Future)))
 
 (set! *warn-on-reflection* true)
 
@@ -21,6 +23,33 @@
 
 (defn- analytics-observe! [& args]
   (apply (requiring-resolve 'metabase.analytics.prometheus/observe!) args))
+
+;;; ------------------------------------------- Active Handler Tracking -------------------------------------------
+
+(def ^:private active-handlers
+  "channel keyword → {:future Future, :metadata map}
+   Tracks which channels have an active handler running across all backends."
+  (atom {}))
+
+(def ^:private worker-pool
+  "Shared thread pool for processing messages off backend poll threads."
+  (atom nil))
+
+(defn channel-busy?
+  "Returns true if the given channel has an active handler running."
+  [channel]
+  (contains? @active-handlers channel))
+
+(defn busy-channels
+  "Returns the set of channels that currently have an active handler."
+  []
+  (set (keys @active-handlers)))
+
+(defn active-handler-metadata
+  "Returns the metadata map for the active handler on the given channel, or nil.
+   Backends store backend-specific data here (e.g. queue backends store :bundle-id for heartbeats)."
+  [channel]
+  (get-in @active-handlers [channel :metadata]))
 
 (defn invoke-listener!
   "Common listener invocation skeleton for both queues and topics.
@@ -50,7 +79,10 @@
 (defn handle!
   "Handles accumulated messages for a channel by invoking the registered listener.
    Processes each message/batch with error isolation — one failure doesn't block others.
-   For queues, bundles are acked on full success or nacked if any message fails."
+   For queues, bundles use all-or-nothing ACK semantics: if ANY message in the bundle
+   fails, the ENTIRE bundle is nacked and will be retried. This means successfully
+   processed messages may be re-delivered. Queue listeners MUST be idempotent.
+   The :dedup-fn option on listeners helps mitigate duplicate processing on retry."
   [channel message-bundles messages]
   (analytics-inc! :metabase-mq/messages-received
                   {:type (namespace channel) :channel (name channel)}
@@ -89,9 +121,44 @@
   [channel messages bundle-id backend]
   (handle! channel (if bundle-id {bundle-id backend} {}) messages))
 
-(defn start-all-backends!
-  "Starts all queue/topic backends."
+(defn submit-delivery!
+  "Submits a delivery to the shared worker pool for non-blocking processing.
+   Returns true if submitted, false if the channel already has an active handler.
+   `metadata` is an opaque map stored alongside the future — backends can use it for
+   backend-specific tracking (e.g. queues store {:bundle-id id} for heartbeat updates).
+   Uses bound-fn to convey dynamic bindings to the worker thread."
+  [channel messages bundle-id backend metadata]
+  (if (channel-busy? channel)
+    false
+    (let [f (.submit ^ExecutorService @worker-pool
+                     ^Callable (bound-fn []
+                                 (try
+                                   (deliver! channel messages bundle-id backend)
+                                   (finally
+                                     (swap! active-handlers dissoc channel)))))]
+      (swap! active-handlers assoc channel {:future f :metadata metadata})
+      true)))
+
+(defn start-worker-pool!
+  "Starts the shared worker pool for non-blocking message delivery."
   []
+  (when-not @worker-pool
+    (reset! worker-pool (Executors/newCachedThreadPool))))
+
+(defn shutdown-worker-pool!
+  "Cancels all active handler futures and shuts down the worker pool."
+  []
+  (doseq [[_ {:keys [^Future future]}] @active-handlers]
+    (.cancel future true))
+  (reset! active-handlers {})
+  (when-let [^ExecutorService pool @worker-pool]
+    (.shutdownNow pool)
+    (reset! worker-pool nil)))
+
+(defn start-all-backends!
+  "Starts the shared worker pool and all queue/topic backends."
+  []
+  (start-worker-pool!)
   (doseq [be [:queue.backend/appdb :queue.backend/memory]]
     (q.backend/start! be))
   (doseq [be [:topic.backend/appdb :topic.backend/memory]]
@@ -106,8 +173,9 @@
     (topic.backend/shutdown! be)))
 
 (defn shutdown!
-  "Shuts down all mq infrastructure: publish buffer, backends, and listener state."
+  "Shuts down all mq infrastructure: publish buffer, worker pool, backends, and listener state."
   []
   (publish-buffer/stop-publish-buffer-flush!)
   (shutdown-all-backends!)
+  (shutdown-worker-pool!)
   (reset! listener/*listeners* {}))

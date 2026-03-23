@@ -41,6 +41,9 @@
 (defn- analytics-set! [& args]
   (apply (requiring-resolve 'metabase.analytics.prometheus/set!) args))
 
+(defn- analytics-inc! [& args]
+  (apply (requiring-resolve 'metabase.analytics.prometheus/inc!) args))
+
 (defn flush-publish-buffer!
   "Drains publish buffer entries past their deadline."
   []
@@ -59,10 +62,19 @@
                      (do (reset! drained entry) (dissoc buf channel))
                      buf))
                  buf)))
-      (when-let [{:keys [messages]} @drained]
+      (when-let [{:keys [messages] :as entry} @drained]
         (try (transport/publish! channel messages)
              (catch Exception e
-               (log/error e "Error flushing publish buffer" {:channel channel})))))))
+               (log/error e "Error flushing publish buffer, re-buffering" {:channel channel})
+               (analytics-inc! :metabase-mq/publish-buffer-flush-errors {:channel (name channel)})
+               ;; Put messages back into the buffer for retry on next flush cycle
+               (swap! *publish-buffer*
+                      (fn [buf]
+                        (update buf channel
+                                (fn [existing]
+                                  (if existing
+                                    (update existing :messages into messages)
+                                    (assoc entry :deadline-ms (+ (System/currentTimeMillis) *publish-buffer-ms*)))))))))))))
 
 (defonce ^:private publish-buffer-executor (atom nil))
 
