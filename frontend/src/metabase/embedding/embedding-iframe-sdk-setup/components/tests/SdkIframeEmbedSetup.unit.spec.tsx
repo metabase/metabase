@@ -5,7 +5,7 @@ import {
   setupCardQueryMetadataEndpoint,
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
-import { screen } from "__support__/ui";
+import { screen, waitFor } from "__support__/ui";
 import { PLUGIN_EMBEDDING_IFRAME_SDK_SETUP } from "metabase/plugins";
 import {
   createMockCard,
@@ -191,7 +191,7 @@ describe("Embed flow > Pro feature upsell indicators", () => {
     ).toBeDisabled();
   });
 
-  it("enables Pro checkboxes for Pro users (question)", () => {
+  it("enables Pro checkboxes for Pro users (question)", async () => {
     PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = jest.fn(() => true);
 
     const mockDatabase = createMockDatabase();
@@ -208,6 +208,7 @@ describe("Embed flow > Pro feature upsell indicators", () => {
 
     setup({
       simpleEmbeddingEnabled: true,
+      hasEmailSetup: true,
       initialState: {
         resourceType: "question",
         resourceId: 456,
@@ -227,7 +228,11 @@ describe("Embed flow > Pro feature upsell indicators", () => {
         name: "Allow people to save new questions",
       }),
     ).toBeEnabled();
-    // "Allow alerts" also requires email setup, so it stays disabled here
+    await waitFor(() => {
+      expect(
+        screen.getByRole("checkbox", { name: "Allow alerts" }),
+      ).toBeEnabled();
+    });
 
     PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = () => false;
   });
@@ -261,6 +266,7 @@ describe("Embed flow > Pro feature upsell indicators", () => {
 
     setup({
       simpleEmbeddingEnabled: true,
+      hasEmailSetup: true,
     });
 
     // Navigate to options step: Next (experience) → Next (resource)
@@ -275,7 +281,11 @@ describe("Embed flow > Pro feature upsell indicators", () => {
     expect(
       screen.getByRole("checkbox", { name: "Allow downloads" }),
     ).toBeEnabled();
-    // "Allow subscriptions" also requires email setup, so it stays disabled here
+    await waitFor(() => {
+      expect(
+        screen.getByRole("checkbox", { name: "Allow subscriptions" }),
+      ).toBeEnabled();
+    });
 
     PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = () => false;
   });
