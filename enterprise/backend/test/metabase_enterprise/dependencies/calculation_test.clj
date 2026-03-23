@@ -209,7 +209,7 @@
         (is (= {:table #{products-id orders-id}}
                (calculation/upstream-deps:transform transform)))))))
 
-(deftest ^:synchronized upstream-deps-native-transform-with-table-tag-test
+(deftest ^:parallel upstream-deps-native-transform-with-table-tag-test
   (testing "GHY-3258: native transform with a table template tag should include the table in dependencies"
     (mt/with-premium-features #{:transforms-basic}
       (let [mp          (mt/metadata-provider)
