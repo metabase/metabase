@@ -43,8 +43,8 @@
    In dev mode (no version info), always returns true."
   [{:keys [min_metabase_version max_metabase_version]}]
   (let [current-major (config/current-major-version)]
-    (if (nil? current-major)
-      ;; In dev mode without version.properties, always compatible
+    (if (or config/is-dev? (nil? current-major))
+      ;; In dev mode always compatible
       true
       (and (or (nil? min_metabase_version) (<= min_metabase_version current-major))
            (or (nil? max_metabase_version) (<= current-major max_metabase_version))))))
