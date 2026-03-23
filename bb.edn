@@ -286,17 +286,21 @@
    :task (task! (doctor/doctor!))}
 
   ci-report
-  {:doc "Generate a CI failure report for a PR"
-   :examples [["./bin/mage ci-report" "Check current branch, find its PR, and generate report"]
+  {:doc "Generate a CI failure report for a PR, branch, or commit"
+   :examples [["./bin/mage ci-report" "Check current branch (PR or branch CI)"]
               ["./bin/mage ci-report 68292" "Generate report for PR #68292"]
-              ["./bin/mage ci-report --detailed 68292" "Generate detailed report with full FAIL/ERROR blocks"]
+              ["./bin/mage ci-report source-replacement" "Report for a branch by name"]
+              ["./bin/mage ci-report abc123def" "Report for a specific commit SHA"]
+              ["./bin/mage ci-report --detailed 68292" "Detailed report with full FAIL/ERROR blocks"]
               ["./bin/mage ci-report --detailed > ci_report.md"
                "Save detailed report to markdown file and print progress."]]
    :options [["-d" "--detailed" "Include full FAIL/ERROR blocks with expected/actual diffs"]]
    :usage-fn (fn [_]
                (str "Fetches CI check status and failed job logs from GitHub Actions.\n"
                     "Parses Trunk test reports to extract test failure details.\n\n"
-                    "With no arguments, looks up the PR for your current git branch.\n\n"
+                    "Accepts a PR number/URL, branch name, or commit SHA.\n"
+                    "With no arguments, uses the current branch's PR if one exists,\n"
+                    "otherwise falls back to the current branch's latest CI run.\n\n"
                     "Use --detailed to get full test failure output with expected/actual diffs.\n\n"
                     "Requires GitHub CLI (gh) to be installed and authenticated.\n"
                     "If you see 'gh: command not found' or auth errors, run: gh auth login"))
