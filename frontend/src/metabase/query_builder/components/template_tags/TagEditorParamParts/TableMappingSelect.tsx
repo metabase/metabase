@@ -1,9 +1,9 @@
 import { useId } from "react";
 import { t } from "ttag";
 
-import S from "metabase/parameters/components/RequiredParamToggle/RequiredParamToggle.module.css";
+import { LabelWithInfo } from "metabase/common/components/LabelWithInfo";
 import { SchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
-import { Box, Group, HoverCard, Icon, Switch, Text } from "metabase/ui";
+import { Group, Switch } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { TableId, TemplateTag } from "metabase-types/api";
 
@@ -55,25 +55,11 @@ export function TableMappingSelect({
             checked={tag["emit-alias"] ?? true}
             onChange={(e) => onChangeEmitAlias(e.currentTarget.checked)}
           />
-          <Box>
-            <label className={S.SettingRequiredLabel} htmlFor={id}>
-              {t`Use variable name as alias`}
-              <HoverCard>
-                <HoverCard.Target>
-                  <Icon
-                    c="text-secondary"
-                    name="info"
-                    data-testid="emit-alias-info-icon"
-                  />
-                </HoverCard.Target>
-                <HoverCard.Dropdown>
-                  <Text p="md" maw="24rem">
-                    {t`You can refer to this table by the variable name in other parts of the query.`}
-                  </Text>
-                </HoverCard.Dropdown>
-              </HoverCard>
-            </label>
-          </Box>
+          <LabelWithInfo
+            label={t`Use variable name as alias`}
+            info={t`You can refer to this table by the variable name in other parts of the query.`}
+            htmlFor={id}
+          />
         </Group>
       </InputContainer>
     </>
