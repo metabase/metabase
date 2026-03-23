@@ -178,7 +178,6 @@
   "Coerce a temporal value to LocalDateTime, stripping any timezone information."
   [t]
   (condp instance? t
-    LocalDateTime  t
     OffsetDateTime (t/local-date-time t)
     ZonedDateTime  (t/local-date-time t)
     Instant        (t/local-date-time t (t/zone-id "UTC"))
