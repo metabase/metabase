@@ -122,6 +122,14 @@
       (let [loader (.open repo object-id)]
         (String. (.getBytes loader) "UTF-8")))))
 
+(defn read-file-bytes
+  "Read a single file at a given commit SHA. Returns the content as a byte array, or nil if not found."
+  ^bytes [{:keys [^Git git]} ^String commit-sha ^String path]
+  (let [repo (.getRepository git)]
+    (when-let [object-id (.resolve repo (str commit-sha ":" path))]
+      (let [loader (.open repo object-id)]
+        (.getBytes loader)))))
+
 ;;; ------------------------------------------------ Lifecycle ------------------------------------------------
 
 ;; open JGit instances keyed by repo cache path

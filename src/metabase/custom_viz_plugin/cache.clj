@@ -1,11 +1,13 @@
 (ns metabase.custom-viz-plugin.cache
-  "Cache layer for custom visualization plugin bundles.
+  "Cache layer for custom visualization plugin bundles and static assets.
    Fetches files from git repos, caches in memory and on disk."
   (:require
    [buddy.core.codecs :as codecs]
    [buddy.core.hash :as buddy-hash]
    [clojure.java.io :as io]
+   [metabase.config.core :as config]
    [metabase.custom-viz-plugin.git :as git]
+   [metabase.custom-viz-plugin.manifest :as manifest]
    [toucan2.core :as t2])
   (:import
    (java.io File)))
@@ -36,6 +38,12 @@
 (defn- disk-cache-file ^File [plugin-id]
   (io/file (disk-cache-dir) (str plugin-id ".js")))
 
+(defn- asset-cache-dir ^File [plugin-id]
+  (io/file (System/getProperty "java.io.tmpdir") "metabase-custom-viz-plugins" "assets" (str plugin-id)))
+
+(defn- asset-cache-file ^File [plugin-id ^String asset-path]
+  (io/file (asset-cache-dir plugin-id) asset-path))
+
 (defn- write-to-disk! [plugin-id ^String content]
   (let [f (disk-cache-file plugin-id)]
     (io/make-parents f)
@@ -51,10 +59,43 @@
     (when (.exists f)
       (.delete f))))
 
+(defn- write-asset-to-disk! [plugin-id ^String asset-path ^bytes content]
+  (let [f (asset-cache-file plugin-id asset-path)]
+    (io/make-parents f)
+    (with-open [out (io/output-stream f)]
+      (.write out content))))
+
+(defn- read-asset-from-disk ^bytes [plugin-id ^String asset-path]
+  (let [f (asset-cache-file plugin-id asset-path)]
+    (when (.exists f)
+      (let [ba (byte-array (.length f))]
+        (with-open [in (io/input-stream f)]
+          (.read in ba))
+        ba))))
+
+(defn- delete-assets-from-disk! [plugin-id]
+  (let [d (asset-cache-dir plugin-id)]
+    (when (.exists d)
+      (org.apache.commons.io.FileUtils/deleteDirectory d))))
+
 ;;; ------------------------------------------------ Hash ------------------------------------------------
 
 (defn- content-hash [^String content]
   (-> content .getBytes buddy-hash/sha256 codecs/bytes->hex))
+
+;;; ------------------------------------------------ Asset Cache ------------------------------------------------
+
+;; plugin-id -> {asset-path -> byte-array}
+(defonce ^:private asset-cache (atom {}))
+
+(defn get-asset
+  "Get a cached static asset for a plugin. Checks in-memory first, then disk.
+   Returns a byte array or nil."
+  ^bytes [plugin-id ^String asset-path]
+  (or (get-in @asset-cache [plugin-id asset-path])
+      (when-let [bytes (read-asset-from-disk plugin-id asset-path)]
+        (swap! asset-cache assoc-in [plugin-id asset-path] bytes)
+        bytes)))
 
 ;;; ------------------------------------------------ Fetch & Cache ------------------------------------------------
 
@@ -64,8 +105,19 @@
     (< (/ (- (System/nanoTime) last-failure-ns) 1e6)
        fetch-failure-cooldown-ms)))
 
+(defn- fetch-and-cache-assets!
+  "Fetch and cache static assets from the plugin repo based on the manifest."
+  [conn commit-sha plugin-id parsed-manifest]
+  (when parsed-manifest
+    (let [all-files    (git/list-files conn commit-sha)
+          asset-paths  (manifest/asset-paths parsed-manifest all-files)]
+      (doseq [path asset-paths]
+        (when-let [bytes (git/read-file-bytes conn commit-sha path)]
+          (swap! asset-cache assoc-in [plugin-id path] bytes)
+          (write-asset-to-disk! plugin-id path bytes))))))
+
 (defn fetch-and-cache!
-  "Fetch index.js from the plugin's git repo, update both caches and DB record.
+  "Fetch index.js and manifest from the plugin's git repo, update both caches and DB record.
    Returns the cached entry or nil on failure."
   ([plugin]
    (fetch-and-cache! plugin nil))
@@ -84,17 +136,33 @@
              content       (git/read-file conn commit-sha "dist/index.js")
              _             (when-not content
                              (throw (ex-info "dist/index.js not found in repository" {:commit commit-sha})))
+             ;; read manifest (optional)
+             manifest-str  (git/read-file conn commit-sha (manifest/manifest-path))
+             parsed        (when manifest-str (manifest/parse-manifest manifest-str))
+             version-bounds (when parsed (manifest/extract-version-bounds parsed))
+             ;; check version compatibility
+             _             (when (and parsed (not (manifest/compatible? version-bounds)))
+                             (throw (ex-info
+                                     (format "Plugin requires Metabase version %s but current version is %s"
+                                             (pr-str (:metabase parsed))
+                                             (str "v" (config/current-major-version)))
+                                     {:min (:min_metabase_version version-bounds)
+                                      :max (:max_metabase_version version-bounds)})))
              hash          (content-hash content)
              cache-entry   {:content content :hash hash :commit commit-sha}]
          ;; update caches
          (swap! bundle-cache assoc id cache-entry)
          (swap! last-fetch-failure-ns dissoc id)
          (write-to-disk! id content)
+         ;; cache static assets
+         (fetch-and-cache-assets! conn commit-sha id parsed)
          ;; update DB
          (t2/update! :model/CustomVizPlugin id
-                     {:status           :active
-                      :error_message    nil
-                      :resolved_commit  commit-sha})
+                     (merge {:status           :active
+                             :error_message    nil
+                             :resolved_commit  commit-sha
+                             :manifest         (when manifest-str manifest-str)}
+                            version-bounds))
          cache-entry)
        (catch Exception e
          (swap! last-fetch-failure-ns assoc id (System/nanoTime))
@@ -115,11 +183,13 @@
           entry))))
 
 (defn evict!
-  "Remove a plugin from both caches."
+  "Remove a plugin from both caches (bundle and assets)."
   [plugin-id]
   (swap! bundle-cache dissoc plugin-id)
+  (swap! asset-cache dissoc plugin-id)
   (swap! last-fetch-failure-ns dissoc plugin-id)
-  (delete-from-disk! plugin-id))
+  (delete-from-disk! plugin-id)
+  (delete-assets-from-disk! plugin-id))
 
 ;;; ------------------------------------------------ Dev Bundle ------------------------------------------------
 

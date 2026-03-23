@@ -11,6 +11,7 @@ import { Command } from "commander";
 import {
   generateGitignore,
   generateIndexTsx,
+  generateManifest,
   generatePackageJson,
   generateTsConfig,
   generateViteConfig,
@@ -51,6 +52,7 @@ program
       writeFile(join(name, "vite.config.ts"), generateViteConfig()),
       writeFile(join(name, "tsconfig.json"), generateTsConfig()),
       writeFile(join(name, "src", "index.tsx"), generateIndexTsx(name)),
+      writeFile(join(name, "metabase-plugin.json"), generateManifest(name)),
       writeFile(join(name, ".gitignore"), generateGitignore()),
     ]);
 
@@ -59,6 +61,7 @@ program
     console.log(`  ${name}/vite.config.ts`);
     console.log(`  ${name}/tsconfig.json`);
     console.log(`  ${name}/src/index.tsx`);
+    console.log(`  ${name}/metabase-plugin.json`);
     console.log(`  ${name}/.gitignore`);
     console.log();
     console.log("Next steps:");

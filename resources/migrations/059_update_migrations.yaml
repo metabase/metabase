@@ -3627,6 +3627,63 @@ databaseChangeLog:
                   type: varchar(254)
                   remarks: Icon name for the visualization type selector
 
+  - changeSet:
+      id: v59.2026-03-23T10:00:00
+      author: bronsa
+      comment: Add manifest column to custom_viz_plugin table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: custom_viz_plugin
+                columnName: manifest
+      changes:
+        - addColumn:
+            tableName: custom_viz_plugin
+            columns:
+              - column:
+                  name: manifest
+                  type: ${text.type}
+                  remarks: JSON manifest from metabase-plugin.json in the plugin repository
+
+  - changeSet:
+      id: v59.2026-03-23T10:00:01
+      author: bronsa
+      comment: Add min_metabase_version column to custom_viz_plugin table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: custom_viz_plugin
+                columnName: min_metabase_version
+      changes:
+        - addColumn:
+            tableName: custom_viz_plugin
+            columns:
+              - column:
+                  name: min_metabase_version
+                  type: int
+                  remarks: Minimum Metabase major version required by the plugin
+
+  - changeSet:
+      id: v59.2026-03-23T10:00:02
+      author: bronsa
+      comment: Add max_metabase_version column to custom_viz_plugin table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: custom_viz_plugin
+                columnName: max_metabase_version
+      changes:
+        - addColumn:
+            tableName: custom_viz_plugin
+            columns:
+              - column:
+                  name: max_metabase_version
+                  type: int
+                  remarks: Maximum Metabase major version supported by the plugin
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

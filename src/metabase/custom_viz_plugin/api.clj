@@ -1,10 +1,13 @@
 (ns metabase.custom-viz-plugin.api
   "/api/custom-viz-plugin endpoints."
   (:require
+   [cheshire.core :as json]
+   [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.custom-viz-plugin.cache :as cache]
    [metabase.custom-viz-plugin.git :as git]
+   [metabase.custom-viz-plugin.manifest :as manifest]
    [metabase.custom-viz-plugin.models.custom-viz-plugin]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -30,6 +33,9 @@
    [:pinned_version  {:optional true} [:maybe :string]]
    [:resolved_commit {:optional true} [:maybe :string]]
    [:dev_bundle_url  {:optional true} [:maybe :string]]
+   [:manifest        {:optional true} [:maybe :any]]
+   [:min_metabase_version {:optional true} [:maybe :int]]
+   [:max_metabase_version {:optional true} [:maybe :int]]
    [:created_at    :any]
    [:updated_at    :any]])
 
@@ -41,7 +47,8 @@
    [:icon            {:optional true} [:maybe :string]]
    [:bundle_url      ms/NonBlankString]
    [:resolved_commit {:optional true} [:maybe :string]]
-   [:dev_bundle_url  {:optional true} [:maybe :string]]])
+   [:dev_bundle_url  {:optional true} [:maybe :string]]
+   [:manifest        {:optional true} [:maybe :any]]])
 
 ;;; ------------------------------------------------ Helpers ------------------------------------------------
 
@@ -51,24 +58,34 @@
   [plugin]
   (dissoc plugin :access_token))
 
+(defn- parse-manifest-json
+  "Parse the manifest JSON string stored in the DB into a map for the response."
+  [manifest-str]
+  (when manifest-str
+    (try
+      (json/parse-string manifest-str true)
+      (catch Exception _ nil))))
+
 (defn- plugin->response
   "Convert a plugin record to API response format (keyword status -> string)."
   [plugin]
   (-> plugin
       strip-token
       (update :status name)
+      (update :manifest parse-manifest-json)
       (assoc :dev_bundle_url (get @dev-bundle-urls (:id plugin)))))
 
 (defn- plugin->runtime-response
   "Convert a plugin record to the safe runtime response shape."
-  [{:keys [id identifier display_name icon resolved_commit]}]
+  [{:keys [id identifier display_name icon resolved_commit manifest]}]
   (let [dev-url (get @dev-bundle-urls id)]
     (cond-> {:id              id
              :identifier      identifier
              :display_name    display_name
              :icon            icon
              :bundle_url      (format "/api/custom-viz-plugin/%d/bundle" id)
-             :resolved_commit resolved_commit}
+             :resolved_commit resolved_commit
+             :manifest        (parse-manifest-json manifest)}
       dev-url (assoc :dev_bundle_url dev-url))))
 
 ;;; ------------------------------------------------ Endpoints ------------------------------------------------
@@ -106,13 +123,18 @@
   (map plugin->response (t2/select :model/CustomVizPlugin {:order-by [[:display_name :asc]]})))
 
 (api.macros/defendpoint :get "/list" :- [:sequential CustomVizPluginRuntimeResponse]
-  "List active and enabled custom visualization plugins. Available to any authenticated user."
+  "List active and enabled custom visualization plugins. Available to any authenticated user.
+   Plugins with incompatible Metabase version requirements are excluded."
   []
-  (map plugin->runtime-response
-       (t2/select [:model/CustomVizPlugin :id :identifier :display_name :icon :resolved_commit]
-                  :status :active
-                  :enabled true
-                  {:order-by [[:display_name :asc]]})))
+  (let [plugins (t2/select [:model/CustomVizPlugin
+                            :id :identifier :display_name :icon :resolved_commit
+                            :manifest :min_metabase_version :max_metabase_version]
+                           :status :active
+                           :enabled true
+                           {:order-by [[:display_name :asc]]})]
+    (->> plugins
+         (filter #(manifest/compatible? %))
+         (map plugin->runtime-response))))
 
 (api.macros/defendpoint :delete "/:id"
   "Remove a custom visualization plugin and evict its cached bundle."
@@ -172,6 +194,38 @@
         (respond {:status 503
                   :headers {"Content-Type" "application/json"}
                   :body   "{\"error\": \"Bundle not available\"}"})))
+    (catch Throwable e
+      (raise e))))
+
+(defn- guess-content-type
+  "Guess the MIME content type from a file path."
+  [^String path]
+  (or (java.net.URLConnection/guessContentTypeFromName path)
+      "application/octet-stream"))
+
+(api.macros/defendpoint :get "/:id/assets/*path"
+  "Serve a static asset from the plugin's cached assets.
+   Assets are files from the dist/assets/ directory or explicitly listed in the manifest."
+  [{:keys [id path]} :- [:map [:id ms/PositiveInt] [:path ms/NonBlankString]]
+   _query-params
+   _body
+   _request
+   respond
+   raise]
+  (try
+    (when (or (str/includes? path "..")
+              (str/starts-with? path "/"))
+      (throw (ex-info "Invalid asset path" {:status-code 400})))
+    (let [plugin (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))
+          bytes  (cache/get-asset (:id plugin) path)]
+      (if bytes
+        (respond {:status  200
+                  :headers {"Content-Type"  (guess-content-type path)
+                            "Cache-Control" "public, max-age=31536000, immutable"}
+                  :body    (java.io.ByteArrayInputStream. bytes)})
+        (respond {:status  404
+                  :headers {"Content-Type" "application/json"}
+                  :body    "{\"error\": \"Asset not found\"}"})))
     (catch Throwable e
       (raise e))))
 
