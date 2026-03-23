@@ -6,6 +6,11 @@ files:
     - bin/bb
 
 post_create:
+  # Copy fixbot tooling from source repo (worktree is based on master, not possibly-different)
+  - cp -r {{SOURCE_REPO}}/.claude/fixbot .claude/fixbot
+  - cp -r {{SOURCE_REPO}}/mage/src/mage/fixbot mage/src/mage/fixbot
+  - cp {{SOURCE_REPO}}/bb.edn bb.edn
+
   - sed "s|{{pwd}}|$(pwd)|;s|{{tmpdir}}|${TMPDIR%/}|" .claude/fixbot/settings.local-template.json > .claude/settings.local.json
   - mkdir -p .fixbot
   - echo '{{ISSUE_ID}} | {{ISSUE_URL}}' > .fixbot/issue.txt

@@ -17,6 +17,7 @@
       (str/replace "{{ISSUE_ID}}" issue-id)
       (str/replace "{{ISSUE_URL}}" issue-url)
       (str/replace "{{APP_DB}}" app-db)
+      (str/replace "{{SOURCE_REPO}}" u/project-root-directory)
       (str/replace "{{MB_PREMIUM_EMBEDDING_TOKEN}}" (u/env "MB_PREMIUM_EMBEDDING_TOKEN" (constantly "")))
       (str/replace "{{LINEAR_API_KEY}}" (u/env "LINEAR_API_KEY" (constantly "")))))
 
@@ -83,11 +84,12 @@
           (println (c/yellow "Prompt: ") prompt-file)
           (println)
 
-          (let [base-args (when base-branch ["--base" base-branch])
+          (let [effective-base (or base-branch "master")
+                base-args ["--base" effective-base]
                 workmux-cmd (str "workmux add " branch-name
                                  " --name " session-name
                                  " -P " prompt-file
-                                 (when base-branch (str " --base " base-branch)))]
+                                 " --base " effective-base)]
             (if in-tmux?
               ;; Already inside tmux — run workmux directly
               (apply shell/sh "workmux" "add" branch-name

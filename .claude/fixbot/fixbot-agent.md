@@ -81,7 +81,7 @@ Before asking the user to test, review your own changes thoroughly:
 When the user says they're happy (e.g., "looks good", "ship it", "done", "open the pr"):
 1. Stage and commit all fix-related changes:
    - **NEVER commit changes under `.claude/`** — the worktree setup copies fixbot commands there, and those must not be committed
-   - **NEVER commit changes under `.fixbot/`** — these are gitignored
+   - **NEVER commit changes under `.fixbot/` or `.beads/` or `mage/`** — these are copied or generated files
    - Stage files individually by name (`git add path/to/file.clj`) — do NOT use `git add .` or `git add -A`
    - Only stage files that are part of the actual fix
    - Do not include yourself as a co-author in the commit message
