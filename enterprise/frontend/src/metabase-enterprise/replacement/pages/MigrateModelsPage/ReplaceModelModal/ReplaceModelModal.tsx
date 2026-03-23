@@ -143,7 +143,7 @@ function ReplaceModelForm({
       <Form>
         <Stack gap="lg" mt="sm">
           <Text>
-            {t`We'll create a transform based on the model, with the same name.`}
+            {t`We'll create a transform based on the model and replace usages of the model with the transform's output table.`}
           </Text>
           <FormCollectionPicker
             name="collectionId"
