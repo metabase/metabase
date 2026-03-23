@@ -70,7 +70,7 @@
 (defsetting use-native-agent
   (deferred-tru "Enable native Clojure agent instead of external Python AI Service.")
   :type       :boolean
-  :default    false
+  :default    true
   :visibility :internal
   :export?    false
   :doc        false)
