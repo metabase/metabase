@@ -88,13 +88,13 @@ export const SetupKeyModal = (props: SetupKeyDialogProps) => {
               {t`You won't be able to see it again.`}
             </Text>
           </Alert>
-          <Alert color="warning">
-            {!!currentValue && (
+          {!!currentValue && (
+            <Alert color="warning">
               <Text mt="md" component="strong" fw="bold">
                 {t`This will cause existing tokens to stop working until the identity provider is updated with the new key.`}
               </Text>
-            )}
-          </Alert>
+            </Alert>
+          )}
         </Stack>
 
         <Group justify="flex-end" gap="sm" mt="sm">

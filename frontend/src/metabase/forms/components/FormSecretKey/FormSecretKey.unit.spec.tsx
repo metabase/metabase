@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { Form, FormProvider, FormSubmitButton } from "metabase/forms";
 
 import { FormSecretKey } from "./FormSecretKey";
@@ -79,7 +79,12 @@ describe("FormSecretKey", () => {
 
       // The modal's text input should contain the generated token
       await waitFor(() => {
-        const modalInput = screen.getByRole("textbox");
+        const modalInput = within(screen.getByRole("dialog")).getByRole(
+          "textbox",
+          {
+            name: "New secret key",
+          },
+        );
         expect(modalInput).toHaveValue(GENERATED_TOKEN);
       });
     });

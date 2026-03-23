@@ -1,23 +1,22 @@
 import { useDisclosure } from "@mantine/hooks";
+import cx from "classnames";
 import { useField } from "formik";
 import { type Ref, forwardRef } from "react";
 import { t } from "ttag";
-import { pick } from "underscore";
 
-import CS from "metabase/css/core/index.css";
 import {
   Button,
-  Flex,
-  type PasswordInputProps,
   Stack,
   Text,
   TextInput,
+  type TextInputProps,
 } from "metabase/ui";
 
+import S from "./FormSecretKey.module.css";
 import { SetupKeyModal } from "./SetupKeyModal";
 
 export interface FormSecretKeyProps
-  extends Omit<PasswordInputProps, "value" | "error"> {
+  extends Omit<TextInputProps, "value" | "error"> {
   name: string;
   nullable?: boolean;
 }
@@ -31,27 +30,31 @@ export const FormSecretKey = forwardRef(function FormSecretKey(
 
   return (
     <>
-      <Stack gap="sm" align="flex-start">
-        <Flex align="end" gap="1rem">
-          <TextInput
-            {...pick(props, ["label", "description", "withAsterisk"])}
-            ref={ref}
-            name={name}
-            readOnly
-            value={obfuscateValue(value)}
-            styles={{
-              wrapper: value ? undefined : { display: "none" }, // Display only 'Set up key' button initially
-            }}
-          />
-          <Button
-            className={CS.flexNoShrink}
-            miw={value ? undefined : "10rem"}
-            onClick={openModal}
-            variant="filled"
-          >
-            {value ? t`Regenerate key` : t`Set up key`}
-          </Button>
-        </Flex>
+      <Stack gap="sm">
+        <TextInput
+          {...props}
+          ref={ref}
+          name={name}
+          readOnly
+          value={obfuscateValue(value)}
+          classNames={{
+            wrapper: S.inputWrapper,
+            input: cx(S.input, {
+              [S.unset]: !value, // Just show the 'Set up key' button when no key is set yet
+            }),
+          }}
+          rightSection={
+            <Button
+              className={S.generateButton}
+              miw={value ? undefined : "10rem"}
+              onClick={openModal}
+              variant="filled"
+            >
+              {value ? t`Regenerate key` : t`Set up key`}
+            </Button>
+          }
+          rightSectionProps={{ className: S.rightSection }}
+        />
         {!!error && <Text c="error">{error}</Text>}
       </Stack>
       {showModal && (
