@@ -164,7 +164,7 @@
                          (str/trim (slurp f)))
             output    (render-display issue ports be-status db-status llm-status)]
         (when (not= output last-output)
-          (print "\033[H\033[J")
+          (print "\033[H\033[2J")
           (print output)
           (flush))
         (Thread/sleep 1000)

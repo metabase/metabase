@@ -32,4 +32,4 @@ panes:
 
   - command: mise x -- ./bin/mage -fixbot-status
     split: vertical
-    size: 5
+    size: 7

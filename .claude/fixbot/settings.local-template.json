@@ -9,7 +9,7 @@
     },
     "excludedCommands": ["docker"],
     "network": {
-      "allowedDomains": ["localhost"]
+      "allowedDomains": ["localhost", "127.0.0.1"]
     }
   },
   "permissions": {
