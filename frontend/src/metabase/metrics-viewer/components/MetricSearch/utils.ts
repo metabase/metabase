@@ -78,6 +78,9 @@ export function buildFullText(
 
 const EXPRESSION_DELIMITERS = new Set(["+", "-", "*", "/", "(", ")", ","]);
 
+/** Delimiters that are always boundaries (everything except comma). */
+const NON_COMMA_DELIMITERS = new Set(["+", "-", "*", "/", "(", ")"]);
+
 /** Returns true for characters that form word continuations (letters, digits, underscore). */
 function isWordChar(ch: string): boolean {
   return /\w/.test(ch);
@@ -85,21 +88,101 @@ function isWordChar(ch: string): boolean {
 
 /**
  * Extracts the "word" (potential metric name) at the given cursor position,
- * using expression delimiters (+, -, *, /, (, ), ,) as boundaries.
+ * using expression delimiters as boundaries.
+ *
  * Spaces are NOT delimiters so that multi-word metric names like "Page Views"
  * are returned as a single word. Surrounding whitespace is trimmed.
+ *
+ * When `metricEntries` is provided, commas are only treated as delimiters
+ * when they are real item separators — i.e. the text before the comma forms
+ * a complete token (known metric, number, or closing paren). This allows
+ * metric names containing commas (e.g. "Revenue, Total") to be typed and
+ * searched as a single word.
  */
 export function getWordAtCursor(
   text: string,
   cursorPos: number,
+  metricEntries?: MetricDefinitionEntry[],
 ): { word: string; start: number; end: number } {
+  // Build a set of metric names (lowercased) for quick lookup.
+  let metricNamesLower: Set<string> | null = null;
+  if (metricEntries && metricEntries.length > 0) {
+    metricNamesLower = new Set(
+      metricEntries
+        .map((e) =>
+          (
+            (e.definition ? getDefinitionName(e.definition) : null) ?? ""
+          ).toLowerCase(),
+        )
+        .filter((n) => n.length > 0),
+    );
+  }
+
+  /**
+   * Decides whether the comma at `pos` is a separator (delimiter) rather
+   * than part of a metric name being typed.
+   *
+   * A comma is a separator when the trimmed text before it ends with:
+   *  - a known metric name,
+   *  - a numeric constant, or
+   *  - a closing parenthesis.
+   *
+   * Otherwise the comma is likely inside a metric name the user is still
+   * typing (e.g. "Revenue," as part of "Revenue, Total").
+   */
+  const isCommaASeparator = (commaPos: number): boolean => {
+    if (!metricNamesLower) {
+      return true; // no entries → fall back to always splitting on commas
+    }
+
+    const before = text.slice(0, commaPos).trimEnd();
+    if (before.length === 0) {
+      return true;
+    }
+
+    const lastCh = before[before.length - 1];
+    // After a closing paren → separator
+    if (lastCh === ")") {
+      return true;
+    }
+    // After a digit → separator (number constant)
+    if (/\d/.test(lastCh)) {
+      return true;
+    }
+    // Check if `before` ends with a known metric name
+    const beforeLower = before.toLowerCase();
+    for (const name of metricNamesLower) {
+      if (
+        beforeLower.endsWith(name) &&
+        (before.length === name.length ||
+          NON_COMMA_DELIMITERS.has(before[before.length - name.length - 1]) ||
+          before[before.length - name.length - 1] === "," ||
+          before[before.length - name.length - 1] === " ")
+      ) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  const isDelimiter = (pos: number): boolean => {
+    const ch = text[pos];
+    if (NON_COMMA_DELIMITERS.has(ch)) {
+      return true;
+    }
+    if (ch === ",") {
+      return isCommaASeparator(pos);
+    }
+    return false;
+  };
+
   let start = cursorPos;
-  while (start > 0 && !EXPRESSION_DELIMITERS.has(text[start - 1])) {
+  while (start > 0 && !isDelimiter(start - 1)) {
     start--;
   }
 
   let end = cursorPos;
-  while (end < text.length && !EXPRESSION_DELIMITERS.has(text[end])) {
+  while (end < text.length && !isDelimiter(end)) {
     end++;
   }
 

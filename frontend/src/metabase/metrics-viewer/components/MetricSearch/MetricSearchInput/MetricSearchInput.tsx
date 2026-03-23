@@ -307,7 +307,11 @@ export function MetricSearchInput({
     // Extract the word at the cursor for the dropdown search
     const view = editorRef.current?.view;
     const cursorPos = view?.state.selection.main.head ?? newText.length;
-    const { word, start: wordStart } = getWordAtCursor(newText, cursorPos);
+    const { word, start: wordStart } = getWordAtCursor(
+      newText,
+      cursorPos,
+      metricEntriesRef.current,
+    );
     // Anchor the dropdown at the word's left edge / line bottom in the viewport
     if (view) {
       const coords = view.coordsAtPos(wordStart);
@@ -323,7 +327,11 @@ export function MetricSearchInput({
     (metric: SelectedMetric) => {
       const cursorPos =
         editorRef.current?.view?.state.selection.main.head ?? editText.length;
-      const { start, end } = getWordAtCursor(editText, cursorPos);
+      const { start, end } = getWordAtCursor(
+        editText,
+        cursorPos,
+        metricEntriesRef.current,
+      );
 
       const metricName = metric.name ?? "";
 
@@ -451,7 +459,11 @@ export function MetricSearchInput({
     // Re-extract word at the new cursor position after a click
     const cursorPos = view.state.selection.main.head;
     const text = view.state.doc.toString();
-    const { word, start: wordStart } = getWordAtCursor(text, cursorPos);
+    const { word, start: wordStart } = getWordAtCursor(
+      text,
+      cursorPos,
+      metricEntriesRef.current,
+    );
     // Update the anchor position so the dropdown is correctly placed
     const coords = view.coordsAtPos(wordStart);
     if (coords) {

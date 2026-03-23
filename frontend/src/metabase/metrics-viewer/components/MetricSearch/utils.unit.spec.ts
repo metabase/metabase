@@ -12,6 +12,7 @@ import {
   findInvalidRanges,
   getSelectedMeasureIds,
   getSelectedMetricIds,
+  getWordAtCursor,
   parseFullText,
 } from "./utils";
 
@@ -627,5 +628,56 @@ describe("findInvalidRanges — unknown token detection", () => {
       to: 29,
       message: expect.stringContaining("!!!"),
     });
+  });
+});
+
+describe("getWordAtCursor — comma handling with metric entries", () => {
+  const commaMetric = makeMetricEntry("metric:99", "Revenue, Total");
+
+  it("without entries, comma is always a delimiter", () => {
+    const text = "Revenue, Total";
+    // cursor at end
+    const result = getWordAtCursor(text, text.length);
+    expect(result.word).toBe("Total");
+  });
+
+  it("with entries, comma inside a known metric name is not a delimiter", () => {
+    const text = "Revenue, Total";
+    const result = getWordAtCursor(text, text.length, [commaMetric]);
+    expect(result.word).toBe("Revenue, Total");
+  });
+
+  it("with entries, separator comma between two metrics is still a delimiter", () => {
+    const revenueEntry = makeMetricEntry("metric:1", "Revenue");
+    const ordersEntry = makeMetricEntry("metric:2", "Orders");
+    const text = "Revenue, Orders";
+    // cursor at end (inside "Orders")
+    const result = getWordAtCursor(text, text.length, [
+      revenueEntry,
+      ordersEntry,
+    ]);
+    expect(result.word).toBe("Orders");
+  });
+
+  it("treats comma as part of metric name when typing a partial match", () => {
+    // User is typing "Revenue, T" which is a prefix of "Revenue, Total"
+    // The comma is NOT a separator because "Revenue" alone is not a known
+    // metric in this set — the only known metric is "Revenue, Total".
+    const text = "Revenue, T";
+    const result = getWordAtCursor(text, text.length, [commaMetric]);
+    expect(result.word).toBe("Revenue, T");
+  });
+
+  it("math-operator delimiters still work with metric entries", () => {
+    const text = "Revenue, Total + 1";
+    const result = getWordAtCursor(text, text.length, [commaMetric]);
+    expect(result.word).toBe("1");
+  });
+
+  it("returns full metric name when cursor is in the middle", () => {
+    const text = "Revenue, Total";
+    // cursor after the comma+space (position 9, inside "Total")
+    const result = getWordAtCursor(text, 9, [commaMetric]);
+    expect(result.word).toBe("Revenue, Total");
   });
 });
