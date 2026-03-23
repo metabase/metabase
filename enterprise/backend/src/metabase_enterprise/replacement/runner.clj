@@ -165,13 +165,6 @@
      (run-swap* {:all-transitive-dependents all-transitive}
                 old-source new-source progress))))
 
-(defn- find-output-table
-  "Look up the output table created by a transform execution."
-  [transform]
-  (or (transforms/output-table transform)
-      (throw (ex-info "Output table not found after transform execution"
-                      {:transform-id (:id transform)}))))
-
 (defn run-swap-model-with-transform!
   "Execute a transform, find the output table, then swap all dependents of the card
    to point at the new table. Finally un-persist and convert the card to a saved question.
@@ -189,7 +182,9 @@
                                       user-id (assoc :user-id user-id)))
 
      ;; phase 2: find the output table and swap sources
-     (let [table (find-output-table transform)]
+     (let [table (or (transforms/output-table transform)
+                     (throw (ex-info "Output table not found after transform execution"
+                                     {:transform-id (:id transform)})))]
        (run-swap-source! [:card card-id] [:table (:id table)] progress))
 
      ;; phase 3: unpersist the model if it was persisted
