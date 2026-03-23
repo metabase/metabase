@@ -1,4 +1,4 @@
-import type { ComponentType, ReactNode } from "react";
+import type { CSSProperties, ComponentType, ReactNode } from "react";
 
 import type { OptionsType } from "metabase/lib/formatting/types";
 import type { IconName, IconProps } from "metabase/ui";
@@ -277,7 +277,6 @@ export type ColumnSettingDefinition<TValue, TProps = unknown> = {
   title?: string;
   hint?: string;
   widget?: string | ComponentType<any>;
-  default?: TValue;
   props?: TProps;
   inline?: boolean;
   readDependencies?: string[];
@@ -351,18 +350,16 @@ export type VisualizationSettingDefinition<
       : ComputedVisualizationSettings,
     extra?: SettingsExtra,
   ) => string;
-  autoOpenWhenUnset?: boolean;
-  default?: TValue;
-  noPadding?: boolean;
-  value?: TValue;
-  set?: boolean;
-  getMarginBottom?: (
+  getWrapperStyle?: (
     object: T,
     settings: T extends DatasetColumn
       ? ColumnSettings
       : ComputedVisualizationSettings,
     extra?: SettingsExtra,
-  ) => string;
+  ) => CSSProperties | undefined;
+  autoOpenWhenUnset?: boolean;
+  value?: TValue;
+  set?: boolean;
   persistDefault?: boolean;
   inline?: boolean;
   getProps?: (
@@ -391,10 +388,10 @@ export type CompleteVisualizationSettingDefinition<
   TProps extends Record<string, unknown> = Record<string, unknown>,
 > = Omit<
   VisualizationSettingDefinition<T, TValue, TProps>,
-  "getMarginBottom" | "getProps"
+  "getProps" | "getWrapperStyle"
 > & {
   id: string;
-  marginBottom?: string;
+  style?: CSSProperties;
   props: Partial<TProps>;
 };
 

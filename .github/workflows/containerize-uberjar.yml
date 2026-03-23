@@ -76,7 +76,7 @@ jobs:
         with:
           ref: ${{ github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@0.29.0
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
         env:
           TRIVY_OFFLINE_SCAN: true
           repo: ${{ fromJson(needs.get-container-info.outputs[matrix.edition]).repo }}

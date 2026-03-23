@@ -203,7 +203,6 @@ export function seriesSetting({
     axis: {
       title: t`Y-axis position`,
       widget: "segmentedControl",
-      default: null,
       getHidden: (single, _seriesSettings, extra) =>
         single.card.display === "row" ||
         extra?.settings?.["graph.split_panels"] === true,
@@ -269,7 +268,10 @@ export function seriesSetting({
         getSettingDefinitionsForObject: () => COMMON_SETTINGS,
         component: ChartNestedSettingSeries,
         readDependencies: [SERIES_COLORS_SETTING_KEY, ...readDependencies],
-        noPadding: true,
+        getWrapperStyle: () => ({
+          marginLeft: 0,
+          marginRight: 0,
+        }),
         getExtraProps: (series) => ({
           seriesCardNames: series.reduce<Record<string, string>>(
             (memo, singleSeries) => {

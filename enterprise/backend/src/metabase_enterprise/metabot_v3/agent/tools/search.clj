@@ -31,7 +31,7 @@
 (mu/defn ^{:tool-name "search"} search-tool
   "Search for tables, models, metrics, dashboards, and saved questions."
   [{:keys [semantic_queries keyword_queries entity_types]} :- [:map {:closed true}
-                                                               [:semantic_queries [:sequential :string]]
+                                                               [:semantic_queries {:feature :semantic-search} [:sequential :string]]
                                                                [:keyword_queries [:sequential :string]]
                                                                [:entity_types {:optional true}
                                                                 [:maybe [:sequential [:enum "table" "model" "metric" "dashboard" "question"]]]]]]
@@ -54,7 +54,7 @@
 (mu/defn ^{:tool-name "search" :prompt "sql_search.md"} sql-search-tool
   "Search for SQL-queryable data sources (tables and models) within a database."
   [{:keys [semantic_queries keyword_queries entity_types database_id]} :- [:map {:closed true}
-                                                                           [:semantic_queries [:sequential :string]]
+                                                                           [:semantic_queries {:feature :semantic-search} [:sequential :string]]
                                                                            [:keyword_queries [:sequential :string]]
                                                                            [:database_id :int]
                                                                            [:entity_types {:optional true}
@@ -79,7 +79,7 @@
 (mu/defn ^{:tool-name "search" :prompt "nql_search.md"} nlq-search-tool
   "Search for NLQ-queryable data sources (models, metrics, tables)."
   [{:keys [semantic_queries keyword_queries entity_types]} :- [:map {:closed true}
-                                                               [:semantic_queries [:sequential :string]]
+                                                               [:semantic_queries {:feature :semantic-search} [:sequential :string]]
                                                                [:keyword_queries [:sequential :string]]
                                                                [:entity_types {:optional true}
                                                                 [:maybe [:sequential [:enum "model" "metric" "table"]]]]]]
@@ -103,7 +103,7 @@
 (mu/defn ^{:tool-name "search" :prompt "transform_search"} transform-search-tool
   "Search for transforms, tables, and models."
   [{:keys [semantic_queries keyword_queries entity_types search_native_query]} :- [:map {:closed true}
-                                                                                   [:semantic_queries [:sequential :string]]
+                                                                                   [:semantic_queries {:feature :semantic-search} [:sequential :string]]
                                                                                    [:keyword_queries [:sequential :string]]
                                                                                    [:search_native_query {:optional true} [:maybe :boolean]]
                                                                                    [:entity_types {:optional true}
