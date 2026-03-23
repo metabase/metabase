@@ -33,19 +33,19 @@ const VALIDATION_SCHEMA = Yup.object({
   tagIds: Yup.array().of(Yup.number().required()).defined(),
 });
 
-type ReplaceModelValues = Yup.InferType<typeof VALIDATION_SCHEMA>;
+type ConvertModelValues = Yup.InferType<typeof VALIDATION_SCHEMA>;
 
-type ReplaceModelModalProps = {
+type ConvertModelModalProps = {
   card: Card;
   isOpened: boolean;
   onClose: () => void;
 };
 
-export function ReplaceModelModal({
+export function ConvertModelModal({
   card,
   isOpened,
   onClose,
-}: ReplaceModelModalProps) {
+}: ConvertModelModalProps) {
   return (
     <Modal
       title={t`Convert this model to a transform?`}
@@ -53,17 +53,17 @@ export function ReplaceModelModal({
       padding="xl"
       onClose={onClose}
     >
-      <ReplaceModelLoader card={card} onClose={onClose} />
+      <ConvertModelLoader card={card} onClose={onClose} />
     </Modal>
   );
 }
 
-type ReplaceModelLoaderProps = {
+type ConvertModelLoaderProps = {
   card: Card;
   onClose: () => void;
 };
 
-function ReplaceModelLoader({ card, onClose }: ReplaceModelLoaderProps) {
+function ConvertModelLoader({ card, onClose }: ConvertModelLoaderProps) {
   const databaseId = card.database_id;
 
   const {
@@ -86,7 +86,7 @@ function ReplaceModelLoader({ card, onClose }: ReplaceModelLoaderProps) {
   }
 
   return (
-    <ReplaceModelForm
+    <ConvertModelForm
       card={card}
       database={database}
       schemas={schemas}
@@ -95,22 +95,22 @@ function ReplaceModelLoader({ card, onClose }: ReplaceModelLoaderProps) {
   );
 }
 
-type ReplaceModelFormProps = {
+type ConvertModelFormProps = {
   card: Card;
   database: Database;
   schemas: string[];
   onClose: () => void;
 };
 
-function ReplaceModelForm({
+function ConvertModelForm({
   card,
   database,
   schemas,
   onClose,
-}: ReplaceModelFormProps) {
+}: ConvertModelFormProps) {
   const [replaceModelWithTransform] = useReplaceModelWithTransformMutation();
   const supportsSchemas = hasFeature(database, "schemas");
-  const initialValues: ReplaceModelValues = useMemo(
+  const initialValues: ConvertModelValues = useMemo(
     () => ({
       name: card.name,
       targetSchema: schemas[0] ?? null,
@@ -121,7 +121,7 @@ function ReplaceModelForm({
     [card.name, schemas],
   );
 
-  const handleSubmit = async (values: ReplaceModelValues) => {
+  const handleSubmit = async (values: ConvertModelValues) => {
     const action = replaceModelWithTransform({
       card_id: card.id,
       transform_name: values.name,
