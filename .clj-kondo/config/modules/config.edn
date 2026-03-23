@@ -1170,9 +1170,9 @@
   mcp
   {:team "Metabot"
    :api  #{metabase.mcp.api}
-   :uses #{api
+   :uses #{agent-api
+           api
            config
-           premium-features
            request
            server
            util}}
