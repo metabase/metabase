@@ -504,6 +504,8 @@ export type VisualizationSettingsDefinitions<
   "line.missing"?: SingleSeriesSettingDefinition<Value, Props>;
   "line.size"?: SingleSeriesSettingDefinition<Value, Props>;
   "line.style"?: SingleSeriesSettingDefinition<Value, Props>;
+  "link.text"?: SeriesSettingDefinition<Value, Props>;
+  "link.url"?: SeriesSettingDefinition<Value, Props>;
   markdown_template?: DatasetColumnSettingDefinition<Value, Props>;
   number_separators?: DatasetColumnSettingDefinition<Value, Props>;
   number_style?: DatasetColumnSettingDefinition<Value, Props>;
@@ -554,6 +556,7 @@ export type VisualizationSettingsDefinitions<
   time_enabled?: DatasetColumnSettingDefinition<Value, Props>;
   time_style?: DatasetColumnSettingDefinition<Value, Props>;
   title?: SingleSeriesSettingDefinition<Value, Props>;
+  view_as?: SeriesSettingDefinition<Value, Props>;
   "waterfall.decrease_color"?: SeriesSettingDefinition<Value, Props>;
   "waterfall.increase_color"?: SeriesSettingDefinition<Value, Props>;
   "waterfall.show_total"?: SeriesSettingDefinition<Value, Props>;
