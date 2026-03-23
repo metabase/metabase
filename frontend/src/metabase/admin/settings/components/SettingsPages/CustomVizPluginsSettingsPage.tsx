@@ -69,8 +69,8 @@ function IconPickerField({
   value,
   onChange,
 }: {
-  value: IconName;
-  onChange: (icon: IconName) => void;
+  value: IconName | null;
+  onChange: (icon: IconName | null) => void;
 }) {
   return (
     <Box>
@@ -82,13 +82,13 @@ function IconPickerField({
           <Select
             data={ICON_OPTIONS}
             value={value}
-            onChange={(val) => onChange((val as IconName) ?? DEFAULT_ICON)}
+            onChange={(val) => onChange((val as IconName) ?? null)}
             searchable
             clearable
-            placeholder={t`Search icons...`}
+            placeholder={t`From manifest or default`}
           />
         </Box>
-        <IconPreview iconName={value} />
+        {value && <IconPreview iconName={value} />}
       </Group>
     </Box>
   );
@@ -105,8 +105,8 @@ function PluginForm({
   const [updatePlugin] = useUpdateCustomVizPluginMutation();
   const isEdit = Boolean(plugin);
 
-  const [selectedIcon, setSelectedIcon] = useState<IconName>(
-    (plugin?.icon as IconName) ?? DEFAULT_ICON,
+  const [selectedIcon, setSelectedIcon] = useState<IconName | null>(
+    isEdit ? ((plugin?.icon as IconName) ?? DEFAULT_ICON) : null,
   );
 
   const initialValues = useMemo(
@@ -132,15 +132,17 @@ function PluginForm({
         await updatePlugin({
           id: plugin.id,
           display_name: values.display_name,
-          icon,
+          icon: icon ?? null,
           access_token: values.access_token || undefined,
           pinned_version: values.pinned_version || null,
         }).unwrap();
       } else {
         await createPlugin({
           repo_url: values.repo_url,
-          display_name: values.display_name,
-          icon,
+          // Only send display_name/icon if explicitly set — otherwise
+          // the backend will use values from the plugin manifest.
+          display_name: values.display_name || undefined,
+          icon: icon ?? undefined,
           access_token: values.access_token || undefined,
           pinned_version: values.pinned_version || null,
         }).unwrap();
@@ -194,10 +196,17 @@ function PluginForm({
               </Stack>
               <Stack gap="md">
                 <Text fw={700}>{t`Customization`}</Text>
+                {!isEdit && (
+                  <Text size="sm" c="text-tertiary">
+                    {t`These fields are optional. If the plugin includes a manifest file, its name and icon will be used automatically.`}
+                  </Text>
+                )}
                 <FormTextInput
                   name="display_name"
-                  label={t`Display name`}
-                  placeholder={t`My Custom Visualization`}
+                  label={isEdit ? t`Display name` : t`Display name (optional)`}
+                  placeholder={
+                    plugin?.manifest?.name ?? t`From manifest or repo name`
+                  }
                   autoFocus={isEdit}
                 />
                 <IconPickerField
@@ -212,7 +221,9 @@ function PluginForm({
                   disabled={
                     !dirty &&
                     selectedIcon ===
-                      ((plugin?.icon as IconName) ?? DEFAULT_ICON)
+                      (isEdit
+                        ? ((plugin?.icon as IconName) ?? DEFAULT_ICON)
+                        : null)
                   }
                   variant="filled"
                 />
@@ -293,6 +304,18 @@ function PluginListItem({
             <Text size="sm" c="text-tertiary">
               {t`Commit`}: {plugin.resolved_commit.slice(0, 8)}
               {plugin.pinned_version && ` (${plugin.pinned_version})`}
+            </Text>
+          )}
+          {(plugin.min_metabase_version != null ||
+              plugin.max_metabase_version != null) && (
+            <Text size="sm" c="text-tertiary">
+              {t`Metabase version`}:{" "}
+              {plugin.min_metabase_version != null &&
+              plugin.max_metabase_version != null
+                ? `v${plugin.min_metabase_version} – v${plugin.max_metabase_version}`
+                : plugin.min_metabase_version != null
+                  ? `v${plugin.min_metabase_version}+`
+                  : `up to v${plugin.max_metabase_version}`}
             </Text>
           )}
         </Stack>

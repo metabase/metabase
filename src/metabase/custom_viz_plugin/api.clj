@@ -97,7 +97,7 @@
    _query-params
    {:keys [repo_url display_name icon access_token pinned_version]} :- [:map
                                                                         [:repo_url       ms/NonBlankString]
-                                                                        [:display_name   ms/NonBlankString]
+                                                                        [:display_name   {:optional true} [:maybe ms/NonBlankString]]
                                                                         [:icon           {:optional true} [:maybe :string]]
                                                                         [:access_token   {:optional true} [:maybe :string]]
                                                                         [:pinned_version {:optional true} [:maybe :string]]]]
@@ -106,13 +106,17 @@
         plugin     (first (t2/insert-returning-instances! :model/CustomVizPlugin
                                                           :repo_url        repo_url
                                                           :access_token    access_token
-                                                          :display_name    display_name
+                                                          ;; Use provided name, fall back to repo name.
+                                                          ;; fetch-and-cache! will override with manifest
+                                                          ;; name if present and display_name was not
+                                                          ;; explicitly provided.
+                                                          :display_name    (or display_name identifier)
                                                           :identifier      identifier
                                                           :icon            icon
                                                           :status          :pending
                                                           :pinned_version  pinned_version))]
     ;; fetch bundle synchronously — validates the repo is accessible
-    (cache/fetch-and-cache! plugin)
+    (cache/fetch-and-cache! plugin {:apply-manifest-defaults? (nil? display_name)})
     ;; re-read to get updated status
     (plugin->response (t2/select-one :model/CustomVizPlugin :id (:id plugin)))))
 

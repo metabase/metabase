@@ -122,8 +122,8 @@
   ([plugin]
    (fetch-and-cache! plugin nil))
   ([{:keys [id repo_url access_token pinned_version]}
-    {:keys [force?]
-     :or   {force? false}}]
+    {:keys [force? apply-manifest-defaults?]
+     :or   {force? false, apply-manifest-defaults? true}}]
    (if (and (not force?) (in-failure-cooldown? id))
      nil
      (try
@@ -156,13 +156,19 @@
          (write-to-disk! id content)
          ;; cache static assets
          (fetch-and-cache-assets! conn commit-sha id parsed)
-         ;; update DB
-         (t2/update! :model/CustomVizPlugin id
-                     (merge {:status           :active
-                             :error_message    nil
-                             :resolved_commit  commit-sha
-                             :manifest         (when manifest-str manifest-str)}
-                            version-bounds))
+         ;; update DB — apply manifest name/icon only on initial registration
+         ;; when the admin didn't explicitly provide them
+         (-> (merge {:status           :active
+                     :error_message    nil
+                     :resolved_commit  commit-sha
+                     :manifest         (when manifest-str manifest-str)}
+                    version-bounds)
+             (cond->
+              (and apply-manifest-defaults? (:name parsed))
+               (assoc :display_name (:name parsed))
+               (and apply-manifest-defaults? (:icon parsed))
+               (assoc :icon (:icon parsed)))
+             (->> (t2/update! :model/CustomVizPlugin id)))
          cache-entry)
        (catch Exception e
          (swap! last-fetch-failure-ns assoc id (System/nanoTime))
