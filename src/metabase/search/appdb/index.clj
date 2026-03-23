@@ -275,25 +275,26 @@
 (defn- safe-batch-upsert!
   "A version of batch-upsert! that no-ops for missing indexes, and handles stale index tracking metadata.
 
-  Returns the name of the table that was written to, or nil if there is none being tracked.
-  We recover gracefully the first time if the tracking atom was stale, but do not check again on retry."
+  We recover gracefully the first time if the tracking atom was stale, but do not check again on retry.
+  Returns whether an upsert happened."
   [table-type table-name-fn entries]
-  ;; For convenience, no-op if we are not tracking any table.
-  (when-let [table-name (table-name-fn)]
-    (let [upsert! (fn [t] (specialization/batch-upsert! t entries) t)]
-      (try
-        (upsert! table-name)
-        (catch Exception e
-          ;; Only suppress failures related to a legitimately non-existent table
-          (if (or (not (table-not-found-exception? e)) (exists? table-name))
-            (throw e)
-            (when-let [refreshed-table-name (do (sync-tracking-atoms!) (table-name-fn))]
-              (if (= table-name refreshed-table-name)
-                (throw (ex-info "Currently tracked index does not exist" e {:table-name table-name}))
-                (try
-                  (upsert! refreshed-table-name)
-                  (catch Exception e2
-                    (retry-upsert-ex table-type table-name refreshed-table-name e e2)))))))))))
+  (boolean
+   ;; For convenience, no-op if we are not tracking any table.
+   (when-let [table-name (table-name-fn)]
+     (let [upsert! (fn [t] (specialization/batch-upsert! t entries) true)]
+       (try
+         (upsert! table-name)
+         (catch Exception e
+           ;; Only suppress failures related to a legitimately non-existent table
+           (if (or (not (table-not-found-exception? e)) (exists? table-name))
+             (throw e)
+             (when-let [refreshed-table-name (do (sync-tracking-atoms!) (table-name-fn))]
+               (if (= table-name refreshed-table-name)
+                 (throw (ex-info "Currently tracked index does not exist" e {:table-name table-name}))
+                 (try
+                   (upsert! refreshed-table-name)
+                   (catch Exception e2
+                     (retry-upsert-ex table-type table-name refreshed-table-name e e2))))))))))))
 
 (defn- batch-update!
   "Create the given search index entries in bulk. Commits after each batch"
@@ -311,19 +312,19 @@
 
   (let [reindexing? (and (= :search/reindexing context) (not search.ingestion/*force-sync*))
         do-writes   (fn []
-                      (let [entries             (map document->entry documents)
+                      (let [entries         (map document->entry documents)
                             ;; No need to update the active index if we are doing a full index, as this table will be
                             ;; swapped out soon. Most updates would be no-ops anyway.
-                            active-updated-table (when-not (and reindexing? (pending-table))
-                                                   (safe-batch-upsert! :active active-table entries))
-                            pending-updated-table (safe-batch-upsert! :pending pending-table entries)]
-                        (when (or active-updated-table pending-updated-table)
+                            active-updated? (when-not (and reindexing? (pending-table))
+                                              (safe-batch-upsert! :active active-table entries))
+                            pending-update? (safe-batch-upsert! :pending pending-table entries)]
+                        (when (or active-updated? pending-update?)
                           (u/prog1 (->> entries (map :model) frequencies)
                             (when reindexing?
                               (t2/query ["commit"]))
                             (log/trace "indexed documents for " <>)
-                            (when active-updated-table
-                              (analytics/set! :metabase-search/appdb-index-size (t2/count (name active-updated-table))))))))]
+                            (when active-updated?
+                              (analytics/set! :metabase-search/appdb-index-size (t2/count (name active-updated?))))))))]
     (if reindexing?
       ;; New connection used for performing the updates which commit periodically without impacting any outer transactions.
       (t2/with-connection [_conn (mdb/data-source)]
