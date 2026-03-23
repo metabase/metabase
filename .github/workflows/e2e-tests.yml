@@ -27,7 +27,7 @@ jobs:
     if: |
       !cancelled() &&
       contains(github.ref, 'release-x')
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     outputs:
       java_version: ${{ fromJson(steps.dependencies.outputs.result).java_version }}
@@ -56,7 +56,7 @@ jobs:
   build:
     needs: [get-build-requirements]
     if: ${{ !cancelled() && !inputs.skip }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     strategy:
       matrix:
@@ -90,7 +90,7 @@ jobs:
 
   reset-e2e-test-comment:
     if: ${{ github.event_name == 'pull_request' }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
       - name: Remove test results comment
@@ -159,7 +159,7 @@ jobs:
     needs:
       - e2e-tests
       - flaky-e2e-tests
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     name: e2e-tests-result
     if: always() && !cancelled()

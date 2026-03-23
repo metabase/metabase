@@ -26,7 +26,7 @@ concurrency:
 jobs:
   workflow-summary:
     name: Log inputs
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
       - name: Generate workflow summary
@@ -43,7 +43,7 @@ jobs:
   send-slack-notification-start:
     name: "Send Slack notification: SDK release started"
     needs: determine-sdk-version
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     outputs:
       slackMessageId: ${{ steps.send-slack-message-start.outputs.result }}
@@ -100,7 +100,7 @@ jobs:
         "publish-npm",
         "git-tag",
       ]
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     env:
       slackMessageId: ${{ needs.send-slack-notification-start.outputs.slackMessageId }}
@@ -138,7 +138,7 @@ jobs:
     name: "Send Slack notification: SDK release successful"
     needs:
       ["determine-sdk-version", "send-slack-notification-start", "publish-npm"]
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     env:
       slackMessageId: ${{ needs.send-slack-notification-start.outputs.slackMessageId }}
@@ -172,7 +172,7 @@ jobs:
             });
 
   determine-sdk-version:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     outputs:
       sdk_version: ${{ fromJson(steps.new-sdk-version.outputs.result).version }}
@@ -225,7 +225,7 @@ jobs:
 
   check-git-tag:
     needs: determine-sdk-version
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     env:
       tag: embedding-sdk-${{ needs.determine-sdk-version.outputs.sdk_version }}
@@ -249,7 +249,7 @@ jobs:
 
   test:
     needs: check-git-tag
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
       - name: Check out the code using the provided branch
@@ -270,7 +270,7 @@ jobs:
 
   build-sdk:
     needs: [test, determine-sdk-version]
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
       - name: Check out the code using the provided branch
@@ -317,7 +317,7 @@ jobs:
 
   publish-npm:
     needs: [build-sdk, determine-sdk-version]
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     env:
       sdk_version: ${{ needs.determine-sdk-version.outputs.sdk_version }}
@@ -411,7 +411,7 @@ jobs:
 
   git-tag:
     needs: [publish-npm, determine-sdk-version]
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     env:
       tag: embedding-sdk-${{ needs.determine-sdk-version.outputs.sdk_version }}

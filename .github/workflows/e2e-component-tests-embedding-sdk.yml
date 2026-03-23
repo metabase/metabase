@@ -10,7 +10,7 @@ on:
 jobs:
   files-changed:
     name: "SDK e2e > Check which files changed"
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 3
     outputs:
       e2e_all: ${{ steps.changes.outputs.e2e_all }}
@@ -29,7 +29,7 @@ jobs:
     if: |
       !cancelled() &&
       contains(github.base_ref || github.ref, 'release-x')
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     outputs:
       java_version: ${{ fromJson(steps.dependencies.outputs.result).java_version }}
@@ -65,7 +65,7 @@ jobs:
     if: |
       !cancelled() &&
       needs.files-changed.outputs.e2e_all == 'true'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 25
     env:
       MB_EDITION: ee
@@ -100,7 +100,7 @@ jobs:
     if: |
       !cancelled() &&
       needs.build-uberjar.result == 'success'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 45
     strategy:
       matrix:

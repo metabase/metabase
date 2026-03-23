@@ -14,7 +14,7 @@ on:
 
 jobs:
   fe-fuzz-lexifier:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -30,7 +30,7 @@ jobs:
         name: Run fuzz testing on the lexifier
 
   fe-fuzz-compiler:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -46,7 +46,7 @@ jobs:
         name: Run fuzz testing on the custom expression compiler
 
   fe-fuzz-string-quoting:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
