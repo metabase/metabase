@@ -485,7 +485,7 @@
       (is (== 0 (mt/metric-value system :metabase-metabot/agent-errors
                                  {:profile-id "internal"})))
       (is (== 2 (mt/metric-value system :metabase-metabot/llm-requests
-                                 {:model "anthropic/claude-haiku-4-5"
+                                 {:model "openrouter/anthropic/claude-haiku-4-5"
                                   :source "agent"})))
       (is (== 1 (:count (mt/metric-value system :metabase-metabot/agent-duration-ms
                                          {:profile-id "internal"}))))
@@ -513,7 +513,7 @@
       (is (== 1 (mt/metric-value system :metabase-metabot/agent-errors
                                  {:profile-id "internal"})))
       (is (== 1 (mt/metric-value system :metabase-metabot/llm-requests
-                                 {:model "anthropic/claude-haiku-4-5"
+                                 {:model "openrouter/anthropic/claude-haiku-4-5"
                                   :source "agent"})))
       (is (== 1 (:count (mt/metric-value system :metabase-metabot/agent-duration-ms
                                          {:profile-id "internal"}))))
@@ -638,7 +638,7 @@
               (let [events       (snowplow-test/pop-event-data-and-user-id!)
                     token-events (filter #(contains? (:data %) "total_tokens") events)]
                 (is (=? [{:user-id (str rasta-id)
-                          :data    {"model_id"            "test-model"
+                          :data    {"model_id"            "openrouter/anthropic/claude-haiku-4-5"
                                     "total_tokens"         120
                                     "prompt_tokens"        100
                                     "completion_tokens"    20
@@ -649,7 +649,7 @@
                                     "tag"                  "agent"
                                     "session_id"           "00000000-0000-0000-0000-000000000001"}}
                          {:user-id (str rasta-id)
-                          :data    {"model_id"            "test-model"
+                          :data    {"model_id"            "openrouter/anthropic/claude-haiku-4-5"
                                     "total_tokens"         180
                                     "prompt_tokens"        150
                                     "completion_tokens"    30
