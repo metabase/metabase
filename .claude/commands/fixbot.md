@@ -61,7 +61,7 @@ The prompt should include:
 - The full issue description
 - All comments formatted with author and timestamp
 - The correct database type and appropriate port information
-- Pre-configured instance: users and API keys are auto-created via config file (admin: `admin@example.com` / `S0v^S$BIteM9NL`, regular: `regular@example.com` / `q5bdJ5A3%Dh@&u75`, API keys: `mb_admin_apikey` and `mb_regular_apikey`)
+- Pre-configured instance: users and API keys are auto-created via config file (admin: `admin@example.com` / `admin123`, regular: `regular@example.com` / `regular123`, API keys: `mb_admin_apikey` and `mb_regular_apikey`)
 - User context: the user is NOT a developer — the agent must work autonomously on all code/technical decisions, but should consult the user on product behavior questions and acceptance testing (they are an expert Metabase user)
 - All the workflow instructions from the reference template (Phase 1-4, important rules)
 - Red/green TDD requirement for both backend (Clojure with `./bin/test-agent`) and frontend (Jest/Cypress) changes

@@ -4,7 +4,8 @@
     "autoAllowBashIfSandboxed": true,
     "allowUnsandboxedCommands": true,
     "filesystem": {
-      "allowWrite": [".", "{{pwd}}", "~/.m2", "~/.gitlibs", "~/.deps.clj", "/tmp"]
+      "allowWrite": [".", "{{pwd}}", "~/.m2", "~/.gitlibs", "~/.deps.clj", "/tmp"],
+      "allowRead": [".", "{{pwd}}", "~/.m2", "~/.gitlibs", "~/.deps.clj", "/tmp"]
     },
     "excludedCommands": ["docker"],
     "network": {
@@ -15,15 +16,8 @@
     "allow": [
       "Edit",
       "Write",
-      "Bash(grep:*)",
       "WebFetch(domain:linear.app)",
-      "WebFetch(domain:metabase.com)",
-      "Bash(clj-nrepl-eval:*)",
-      "Bash(bb:*)",
-      "Bash(tmux list-sessions:*)",
-      "Bash(tmux capture-pane:*)",
-      "Bash(gh search:*)",
-      "Bash(curl:*)"
+      "WebFetch(domain:metabase.com)"
     ]
   },
   "skipDangerousModePermissionPrompt": true

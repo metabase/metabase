@@ -32,8 +32,8 @@ The user is NOT a developer — do not ask them for implementation help, code su
 
 The dev environment is pre-configured with users and API keys via `MB_CONFIG_FILE_PATH`. No manual setup or API calls are needed. The instance will auto-create these on first startup:
 
-- **Admin user**: `admin@example.com` / `S0v^S$BIteM9NL` (superuser)
-- **Regular user**: `regular@example.com` / `q5bdJ5A3%Dh@&u75`
+- **Admin user**: `admin@example.com` / `admin123` (superuser)
+- **Regular user**: `regular@example.com` / `regular123`
 - **Admin API key**: `mb_AdminApiKey` (admin permissions)
 - **Regular API key**: `mb_RegularApiKey` (regular permissions)
 
@@ -62,11 +62,25 @@ The agent should follow this workflow:
 
 #### Phase 3: Verify
 Playwright is available for ad-hoc verification — use it to visually confirm your fix before asking the user to test:
-   - `npx playwright screenshot http://localhost:$MB_JETTY_PORT/path page.png` — take screenshots to verify visual state
-   - `npx playwright pdf http://localhost:$MB_JETTY_PORT/path page.pdf` — capture page as PDF
+   - Take screenshots and PDFs with `--output .fixbot/<descriptive-name>.png` (or `.pdf`) to verify visual state
    - Write short Playwright scripts for interaction testing when needed (click, fill, navigate)
+   - **Always store Playwright output files (screenshots, PDFs, scripts) in `.fixbot/`** — do not leave them in the project root
    - Playwright has Chromium available — use it to confirm the fix works in-browser
    - **Important**: Playwright is for ad-hoc spot-checks and troubleshooting only. Always prefer writing actual unit tests (Jest) or E2E tests (Cypress) to prevent regressions — Playwright scripts are throwaway and don't run in CI.
+
+   **Playwright tips:**
+   - **Login**: Set the session cookie instead of filling the login form:
+     ```bash
+     npx playwright open http://localhost:$MB_JETTY_PORT/auth/login
+     npx playwright cookie-set metabase.SESSION "<session-token>" --domain=localhost
+     npx playwright goto http://localhost:$MB_JETTY_PORT/question/1
+     ```
+     Get a session token: `curl -s -X POST http://localhost:$MB_JETTY_PORT/api/session -H 'Content-Type: application/json' -d '{"username":"<EMAIL>","password":"<PASSWORD>"}'` — the response `id` field is the session token. Use the credentials from the Instance Setup section above, choosing admin or regular user as appropriate for what you're testing. For non-browser API calls, skip session tokens and just use the API key header: `-H 'x-api-key: mb_AdminApiKey'` or `-H 'x-api-key: mb_RegularApiKey'`.
+   - **Data setup**: Create questions, dashboards, and data via API calls or nREPL — NEVER use Playwright to fill creation UIs. Navigate directly to `/question/<ID>` or `/dashboard/<ID>` after creating via API.
+   - **Single expressions**: `run-code` takes one expression — no semicolons. Use separate calls or shell `&&`.
+   - **Resize**: Use `npx playwright resize <w> <h>`, not `run-code` with `page.setViewportSize()`.
+   - **Network tab**: `network` accumulates ALL requests since page load, not just recent ones — output grows over time.
+   - **"Start exploring" modal**: Metabase shows this on first question view. Snapshot to find the button ref and click to dismiss.
 2. Tell the user EXACTLY what to test and how:
    - Which URL to visit
    - What steps to reproduce
@@ -127,6 +141,8 @@ Use nREPL for:
 - Requiring namespaces with `:reload` to pick up code changes
 - Testing functions interactively
 - Checking compilation
+
+**REPL expression rules**: Send one expression per eval call. Multi-expression evals frequently timeout. Split into separate (parallel if independent) calls. Test/dev namespaces (`metabase.test`, `dev`, enterprise test namespaces) are available natively on the classpath.
 
 ### Server Logs
 

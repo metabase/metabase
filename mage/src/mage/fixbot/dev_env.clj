@@ -114,12 +114,12 @@ config:
   users:
     - first_name: Admin
       last_name: User
-      password: S0v^S$BIteM9NL
+      password: admin123
       email: admin@example.com
       is_superuser: true
     - first_name: Regular
       last_name: User
-      password: q5bdJ5A3%Dh@&u75
+      password: regular123
       email: regular@example.com
       is_superuser: false
   api-keys:
