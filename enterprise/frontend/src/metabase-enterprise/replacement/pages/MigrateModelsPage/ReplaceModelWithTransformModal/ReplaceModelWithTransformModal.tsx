@@ -145,23 +145,23 @@ function ReplaceModelForm({
           <Text>
             {t`We'll create a transform based on the model, with the same name.`}
           </Text>
-          <Input.Wrapper label={t`Database`}>
+          <FormCollectionPicker
+            name="collectionId"
+            title={t`Folder to save this transform in`}
+            collectionPickerModalProps={{ namespaces: ["transforms"] }}
+            style={{ marginBottom: 0 }}
+          />
+          <Input.Wrapper label={t`Database this model belongs to`}>
             <Text>{database.name}</Text>
           </Input.Wrapper>
           {supportsSchemas && (
             <SchemaFormSelect
               name="targetSchema"
-              label={t`Schema`}
+              label={t`Schema for the output table`}
               data={schemas}
             />
           )}
           <TargetNameInput />
-          <FormCollectionPicker
-            name="collectionId"
-            title={t`Collection`}
-            collectionPickerModalProps={{ namespaces: ["transforms"] }}
-            style={{ marginBottom: 0 }}
-          />
           <Group>
             <Box flex={1}>
               <FormErrorMessage />

@@ -1,6 +1,6 @@
 import { useField } from "formik";
 import type { HTMLAttributes } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -10,7 +10,6 @@ import {
   isValidCollectionId,
 } from "metabase/collections/utils";
 import { CollectionName } from "metabase/common/components/CollectionName";
-import { FormField } from "metabase/common/components/FormField";
 import type {
   EntityPickerOptions,
   EntityPickerProps,
@@ -24,7 +23,7 @@ import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import { Collections } from "metabase/entities/collections";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_TENANTS } from "metabase/plugins";
-import { Button, Icon } from "metabase/ui";
+import { Button, Icon, Input } from "metabase/ui";
 import type { CollectionId, CollectionNamespace } from "metabase-types/api";
 
 interface FormCollectionPickerProps extends HTMLAttributes<HTMLDivElement> {
@@ -81,7 +80,6 @@ function FormCollectionPicker({
 
   const [{ value }, { error, touched }, { setValue }] = useField(name);
 
-  const formFieldRef = useRef<HTMLDivElement>(null);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
 
   const [openCollectionId] = useState<CollectionId>("root");
@@ -157,13 +155,11 @@ function FormCollectionPicker({
 
   return (
     <>
-      <FormField
+      <Input.Wrapper
         className={className}
         style={style}
-        title={title}
-        htmlFor={id}
+        label={title}
         error={touched ? error : undefined}
-        ref={formFieldRef}
       >
         <Button
           data-testid="collection-picker-button"
@@ -184,7 +180,7 @@ function FormCollectionPicker({
             placeholder
           )}
         </Button>
-      </FormField>
+      </Input.Wrapper>
       {isPickerOpen && (
         <CollectionPickerModal
           title={t`Select a collection`}
