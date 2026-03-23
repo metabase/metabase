@@ -75,7 +75,21 @@ run_e2e() {
   major=$(cli major "$version")
   specs_dir="$REPO_ROOT/e2e/cross-version/${major}"
   if [[ ! -d "$specs_dir" ]]; then
-    specs_dir="$REPO_ROOT/e2e/cross-version/latest"
+    local closest="" closest_dist=999
+    for dir in "$REPO_ROOT"/e2e/cross-version/[0-9]*/; do
+      local v=$(basename "$dir")
+      (( v < major )) && continue
+      local dist=$(( v - major ))
+      if (( dist < closest_dist )); then
+        closest_dist=$dist
+        closest="$dir"
+      fi
+    done
+    if [[ -n "$closest" ]]; then
+      specs_dir="${closest%/}"
+    else
+      specs_dir="$REPO_ROOT/e2e/cross-version/latest"
+    fi
   fi
 
   log "Using specs from ${specs_dir}"

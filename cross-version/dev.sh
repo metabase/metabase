@@ -9,7 +9,7 @@
 #   e2e/cross-version/{major}/ if it exists, otherwise e2e/cross-version/latest/
 #
 # Usage:
-#   ./dev.sh --version v0.57.6
+#   ./dev.sh --version v1.57.6
 #   ./dev.sh --version v1.58.7 --port 3001
 #
 
@@ -33,7 +33,7 @@ usage() {
 Usage: $0 --version VERSION [--port PORT]
 
 Options:
-  --version VERSION   Metabase version to run (e.g., v0.57.6, v1.58.7)
+  --version VERSION   Metabase version to run (e.g., v1.57.6, v1.58.7)
   --port PORT         Port to expose (default: 3077)
   --help              Show this help
 
@@ -66,11 +66,27 @@ cli() {
 IMAGE=$(cli image "$VERSION")
 MAJOR=$(cli major "$VERSION")
 H2_DIR="$SCRIPT_DIR/.xv-h2/v${MAJOR}"
+LOG_FILE="$SCRIPT_DIR/.xv-metabase.log"
 
-# Resolve spec folder: version-specific override or latest
+# Resolve spec folder: exact match, then closest older-version folder, then latest
 SPECS_DIR="$REPO_ROOT/e2e/cross-version/${MAJOR}"
 if [[ ! -d "$SPECS_DIR" ]]; then
-  SPECS_DIR="$REPO_ROOT/e2e/cross-version/latest"
+  closest=""
+  closest_dist=999
+  for dir in "$REPO_ROOT"/e2e/cross-version/[0-9]*/; do
+    v=$(basename "$dir")
+    (( v < MAJOR )) && continue
+    dist=$(( v - MAJOR ))
+    if (( dist < closest_dist )); then
+      closest_dist=$dist
+      closest="$dir"
+    fi
+  done
+  if [[ -n "$closest" ]]; then
+    SPECS_DIR="${closest%/}"
+  else
+    SPECS_DIR="$REPO_ROOT/e2e/cross-version/latest"
+  fi
 fi
 
 log "============================================"
@@ -80,8 +96,12 @@ log "Version: $VERSION"
 log "Image:   $IMAGE"
 log "Port:    $PORT"
 log "H2 dir:  $H2_DIR"
+log "Logs:    $LOG_FILE"
 log "Specs:   $SPECS_DIR"
 log "============================================"
+
+# Clean up previous session
+rm -f "$LOG_FILE"
 
 # Start with a clean app db every time
 # H2 files are owned by the Docker container's user, so use Docker to clean up
@@ -109,6 +129,12 @@ docker run -d \
   -e MB_DANGEROUS_UNSAFE_ENABLE_TESTING_H2_CONNECTIONS_DO_NOT_ENABLE=true \
   "$IMAGE"
 
+# Stream backend logs to file for debugging (docker logs xv-dev-metabase)
+docker logs -f xv-dev-metabase > "$LOG_FILE" 2>&1 &
+
+# Create snapshots dir inside the container for /api/testing/snapshot and /api/testing/restore
+docker exec xv-dev-metabase sh -c "mkdir -p /e2e/snapshots && chmod 777 /e2e/snapshots"
+
 log "Waiting for Metabase to be ready..."
 TIMEOUT=120
 START=$(date +%s)
@@ -126,6 +152,9 @@ while true; do
 done
 log "Metabase is ready at http://localhost:${PORT}"
 
+log "Saving blank snapshot..."
+curl -sf -X POST "http://localhost:${PORT}/api/testing/snapshot/blank"
+
 log ""
 log "Opening Cypress..."
 cd "$REPO_ROOT"
@@ -133,5 +162,6 @@ cd "$REPO_ROOT"
 CROSS_VERSION_DEV_MODE=true \
 CYPRESS_BASE_URL="http://localhost:${PORT}" \
   bunx cypress open \
+    --e2e \
     --config-file "e2e/cross-version/cypress.config.js" \
     --config "specPattern=${SPECS_DIR}/**/*.cy.spec.ts"
