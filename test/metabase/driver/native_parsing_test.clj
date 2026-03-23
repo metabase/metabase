@@ -9,7 +9,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :parameters/table-reference)
     (testing "native-query-deps looks in table tags for dependencies"
       (let [mp (mt/metadata-provider)
-            sql (mt/native-query-with-card-template-tag driver/*driver* "table")
+            sql #_(mt/native-query-with-card-template-tag driver/*driver* "table") "invalid query {{table}}"
             base-query (lib/native-query mp sql)
             template-tag (get (lib/template-tags base-query) "table")
             query (lib/with-template-tags base-query
