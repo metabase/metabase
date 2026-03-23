@@ -112,3 +112,11 @@ export type ReplaceModelWithTransformRequest = {
 export type ReplaceModelWithTransformResponse = {
   run_id: SourceReplacementRunId;
 };
+
+export type ReplaceModelWithTableRequest = {
+  card_id: CardId;
+};
+
+export type ReplaceModelWithTableResponse = {
+  run_id: SourceReplacementRunId;
+};
