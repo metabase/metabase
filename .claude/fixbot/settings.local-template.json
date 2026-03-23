@@ -4,7 +4,7 @@
     "autoAllow": true,
     "allowUnsandboxedCommands": false,
     "filesystem": {
-      "allowWrite": [".", "~/.m2", "~/.gitlibs", "~/.deps.clj", "/tmp"]
+      "allowWrite": [".", "{{pwd}}", "~/.m2", "~/.gitlibs", "~/.deps.clj", "/tmp"]
     },
     "excludedCommands": ["docker"]
   },

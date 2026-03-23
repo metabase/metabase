@@ -106,7 +106,7 @@
 
 (defn- render-display
   "Render the full status pane display."
-  [issue ports be-status fe-status db-status llm-status]
+  [issue ports be-status db-status llm-status]
   (let [sb (StringBuilder.)]
     ;; Line 1: Issue title
     (when (and issue (seq (:title issue)))
@@ -117,10 +117,7 @@
       (.append sb (str (:id issue) " | " (:url issue) "\n")))
     ;; Line 3: Metabase | URL | DB
     (when ports
-      (let [mb-color    (cond
-                          (not= be-status :ready) red
-                          (not= fe-status :ready) yellow
-                          :else                   green)
+      (let [mb-color    (if (= be-status :ready) green red)
             mb-text     (str "http://localhost:" (:jetty-port ports))
             db-name     (when (:db-type ports)
                           (str/upper-case (name (:db-type ports))))
@@ -134,11 +131,9 @@
         (.append sb "\n")
         ;; Line 4: Health summary
         (let [be-down (not= be-status :ready)
-              fe-down (not= fe-status :ready)
               db-down (and (:db-port ports) (not= db-status :ready))
               problems (cond-> []
                          be-down (conj "BE")
-                         fe-down (conj "FE")
                          db-down (conj (or db-name "DB")))
               health-text (if (empty? problems)
                             "Healthy"
@@ -164,7 +159,6 @@
            ports          nil
            issue          nil
            last-be-status :unhealthy
-           last-fe-status :unhealthy
            last-db-status :unhealthy
            tick           0]
       (let [check?    (zero? (mod tick 5))
@@ -173,19 +167,16 @@
             be-status (if (and check? ports)
                         (check-http (str "http://localhost:" (:jetty-port ports) "/api/health") 2000)
                         last-be-status)
-            fe-status (if (and check? ports)
-                        (check-http (str "http://localhost:" (:frontend-port ports) "/webpack-dev-server") 2000)
-                        last-fe-status)
             db-status (if (and check? ports (:db-port ports))
                         (check-tcp (:db-host ports) (:db-port ports) 2000)
                         last-db-status)
             ;; Read LLM status from file
             llm-status (when (.exists f)
                          (str/trim (slurp f)))
-            output    (render-display issue ports be-status fe-status db-status llm-status)]
+            output    (render-display issue ports be-status db-status llm-status)]
         (when (not= output last-output)
           (print "\033[2J\033[H")
           (print output)
           (flush))
         (Thread/sleep 1000)
-        (recur output ports issue be-status fe-status db-status (inc tick))))))
+        (recur output ports issue be-status db-status (inc tick))))))
