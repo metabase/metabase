@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { useMetabotEnabledEmbeddingAware } from "metabase/metabot/hooks";
-import { Card, Radio, Stack, Text } from "metabase/ui";
+import { Card, Flex, Radio, Stack, Text } from "metabase/ui";
 
 import { UPSELL_CAMPAIGN_EXPERIENCE } from "../analytics";
 import { getEmbedExperiences } from "../constants";
@@ -42,23 +42,22 @@ export const SelectEmbedExperienceStep = () => {
           }
         >
           <Stack gap="md">
-            {experiences.map((experience) => {
-              const disabledForOss =
-                !experience.supportsOss && !isSimpleEmbedFeatureAvailable;
-              const disabled =
-                disabledForOss ||
-                (!experience.supportsGuestEmbed && isGuestEmbed);
-
-              return (
-                <Radio
-                  key={experience.value}
-                  value={experience.value}
-                  label={experience.title}
-                  description={experience.description}
-                  disabled={disabled}
-                />
-              );
-            })}
+            {experiences.map((experience) => (
+              <Radio
+                key={experience.value}
+                value={experience.value}
+                label={
+                  <Flex gap="xs" align="center">
+                    {experience.title}
+                  </Flex>
+                }
+                description={experience.description}
+                disabled={
+                  (!experience.supportsOss && !isSimpleEmbedFeatureAvailable) ||
+                  (!experience.supportsGuestEmbed && isGuestEmbed)
+                }
+              />
+            ))}
           </Stack>
         </Radio.Group>
       </Card>
