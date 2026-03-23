@@ -1,5 +1,5 @@
-(ns metabase-enterprise.ai-sql-generation.api
-  "`/api/ee/ai-sql-generation/` routes"
+(ns metabase.ai-sql-generation.api
+  "`/api/ai-sql-generation/` routes"
   (:require
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -26,5 +26,5 @@
       (select-keys [:generated_sql])))
 
 (def ^{:arglists '([request respond raise])} routes
-  "`/api/ee/ai-sql-generation` routes."
+  "`/api/ai-sql-generation` routes."
   (api.macros/ns-handler *ns* +auth))

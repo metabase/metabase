@@ -9,9 +9,6 @@
    [metabase-enterprise.advanced-config.api.logs]
    [metabase-enterprise.advanced-permissions.api.routes]
    [metabase-enterprise.agent-api.workspace :as agent-api.workspace]
-   [metabase-enterprise.ai-entity-analysis.api]
-   [metabase-enterprise.ai-sql-fixer.api]
-   [metabase-enterprise.ai-sql-generation.api]
    [metabase-enterprise.api.core :as ee.api]
    [metabase-enterprise.audit-app.api.routes]
    [metabase-enterprise.billing.api.routes]
@@ -50,9 +47,6 @@
 
 (def ^:private required-feature->message
   {:advanced-permissions       (deferred-tru "Advanced Permissions")
-   :ai-sql-fixer               (deferred-tru "AI SQL Fixer")
-   :ai-sql-generation          (deferred-tru "AI SQL Generation")
-   :ai-entity-analysis         (deferred-tru "AI Entity Analysis")
    :attached-dwh               (deferred-tru "Attached DWH")
    :audit-app                  (deferred-tru "Audit app")
    :collection-cleanup         (deferred-tru "Collection Cleanup")
@@ -98,9 +92,6 @@
   ;; Postponing a granular flag for :actions until it's used more widely.
   {"/action-v2"                    (premium-handler metabase-enterprise.action-v2.api/routes :table-data-editing)
    "/advanced-permissions"         (premium-handler metabase-enterprise.advanced-permissions.api.routes/routes :advanced-permissions)
-   "/ai-entity-analysis"           (premium-handler metabase-enterprise.ai-entity-analysis.api/routes :ai-entity-analysis)
-   "/ai-sql-fixer"                 (premium-handler metabase-enterprise.ai-sql-fixer.api/routes :ai-sql-fixer)
-   "/ai-sql-generation"            (premium-handler metabase-enterprise.ai-sql-generation.api/routes :ai-sql-generation)
    "/audit-app"                    (premium-handler metabase-enterprise.audit-app.api.routes/routes :audit-app)
    "/billing"                      metabase-enterprise.billing.api.routes/routes
    "/content-translation"          (premium-handler metabase-enterprise.content-translation.routes/routes :content-translation)

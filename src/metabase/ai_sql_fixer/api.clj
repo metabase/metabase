@@ -1,5 +1,5 @@
-(ns metabase-enterprise.ai-sql-fixer.api
-  "`/api/ee/ai-sql-fixer/` routes"
+(ns metabase.ai-sql-fixer.api
+  "`/api/ai-sql-fixer/` routes"
   (:require
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -34,5 +34,5 @@
         (select-keys [:fixes]))))
 
 (def ^{:arglists '([request respond raise])} routes
-  "`/api/ee/ai-sql-fixer` routes."
+  "`/api/ai-sql-fixer` routes."
   (api.macros/ns-handler *ns* +auth))

@@ -4,6 +4,9 @@
    [metabase.actions-rest.api]
    [metabase.activity-feed.api]
    [metabase.agent-api.api]
+   [metabase.ai-entity-analysis.api]
+   [metabase.ai-sql-fixer.api]
+   [metabase.ai-sql-generation.api]
    [metabase.analytics.api]
    [metabase.api-keys.api]
    [metabase.api.docs]
@@ -151,6 +154,9 @@
   {"/action"               (+auth 'metabase.actions-rest.api)
    "/activity"             (+auth 'metabase.activity-feed.api)
    "/agent"                metabase.agent-api.api/routes
+   "/ai-entity-analysis"   metabase.ai-entity-analysis.api/routes
+   "/ai-sql-fixer"         metabase.ai-sql-fixer.api/routes
+   "/ai-sql-generation"    metabase.ai-sql-generation.api/routes
    "/alert"                (+auth metabase.pulse.api/alert-routes)
    "/analytics"            (+auth 'metabase.analytics.api)
    "/api-key"              (+auth 'metabase.api-keys.api)
