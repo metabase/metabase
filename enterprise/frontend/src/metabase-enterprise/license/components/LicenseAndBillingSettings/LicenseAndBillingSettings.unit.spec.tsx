@@ -336,4 +336,25 @@ describe("LicenseAndBilling", () => {
       ),
     ).toBeInTheDocument();
   });
+
+  it("shows an message on a 503 (error accessing metabase store)", async () => {
+    await setup({ token: null });
+
+    expect(
+      await screen.findByText(
+        "Bought a license to unlock advanced functionality? Please enter it below.",
+      ),
+    ).toBeInTheDocument();
+
+    setupUpdateSettingEndpoint({ status: 503 });
+
+    await userEvent.type(screen.getByTestId("license-input"), "invalid");
+    await userEvent.click(await screen.findByTestId("activate-button"));
+
+    expect(
+      await screen.findByText(
+        "We're having trouble validating your token. Please double-check that your instance can connect to Metabase's servers.",
+      ),
+    ).toBeInTheDocument();
+  });
 });
