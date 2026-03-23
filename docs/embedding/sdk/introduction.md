@@ -22,7 +22,7 @@ Here's the [Shoppy source code](https://github.com/metabase/shoppy).
 
 ![Modular embedding SDK playground](../images/embedding-sdk-playground.png)
 
-Try out the SDK in the [SDK playground](https://sdk-playground.metabase.com/) without any setup required. The playground lets you experiment with components, theming, and interactivity in your browser.
+Try out the SDK in the [Modular embedding SDK playground](https://sdk-playground.metabase.com/), no setup required. The playground lets you experiment with components, theming, and interactivity in your browser.
 
 ## Modular embedding SDK prerequisites
 
