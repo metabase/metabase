@@ -46,6 +46,7 @@ import {
 } from "metabase/query_builder/selectors";
 import { getWritableColumnProperties } from "metabase/query_builder/utils";
 import { DataReference } from "metabase/querying/components/DataReference/DataReference";
+import type { DataReferenceItem } from "metabase/querying/components/DataReference/types";
 import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
 import { SnippetSidebar } from "metabase/querying/components/SnippetSidebar";
 import { MODAL_TYPES } from "metabase/querying/constants";
@@ -75,8 +76,6 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
-
-import type { DataReferenceItem } from "../dataref/types";
 
 import DatasetEditorS from "./DatasetEditor.module.css";
 import {
