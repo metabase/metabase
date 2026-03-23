@@ -109,7 +109,6 @@ const recents_2 = createMockRecentCollectionItem({
 
 const TOKEN_FEATURES = createMockTokenFeatures({
   content_verification: true,
-  metabot_v3: true,
 });
 
 export interface CommonSetupProps {

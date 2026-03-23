@@ -20,7 +20,6 @@ import { initializeIframeResizer } from "metabase/lib/dom";
 import { connect, useSelector } from "metabase/lib/redux";
 import AppBar from "metabase/nav/containers/AppBar";
 import Navbar from "metabase/nav/containers/Navbar";
-import { PLUGIN_METABOT } from "metabase/plugins";
 import { setErrorPage } from "metabase/redux/app";
 import {
   getErrorPage,
@@ -36,6 +35,7 @@ import type { AppErrorDescriptor, State } from "metabase-types/store";
 import { AppContainer, AppContent, AppContentContainer } from "./App.styled";
 import ErrorBoundary from "./ErrorBoundary";
 import { useTokenRefresh } from "./api/utils/use-token-refresh";
+import { Metabot } from "./metabot/components/Metabot";
 import { NewModals } from "./new/components/NewModals/NewModals";
 import { Palette } from "./palette/components/Palette";
 
@@ -129,7 +129,7 @@ function App({
               <UndoListing />
               <StatusListing />
               <NewModals />
-              <PLUGIN_METABOT.Metabot hide={isAdminApp || isDataStudioApp} />
+              <Metabot hide={isAdminApp || isDataStudioApp} />
             </AppContentContainer>
           </AppContainer>
           <Palette />

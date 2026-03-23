@@ -3,6 +3,7 @@
    [compojure.route :as route]
    [metabase.actions-rest.api]
    [metabase.activity-feed.api]
+   [metabase.agent-api.api]
    [metabase.analytics.api]
    [metabase.api-keys.api]
    [metabase.api.docs]
@@ -32,6 +33,10 @@
    [metabase.logger.api]
    [metabase.login-history.api]
    [metabase.measures.api]
+   [metabase.metabot.api]
+   [metabase.metabot.api.entity-analysis]
+   [metabase.metabot.api.sql-fixer]
+   [metabase.metabot.api.sql-generation]
    [metabase.metrics.api]
    [metabase.model-persistence.api]
    [metabase.native-query-snippets.api]
@@ -69,6 +74,7 @@
 
 (comment metabase.actions-rest.api/keep-me
          metabase.activity-feed.api/keep-me
+         metabase.agent-api.api/keep-me
          metabase.analytics.api/keep-me
          metabase.api-keys.api/keep-me
          metabase.api.util/keep-me
@@ -149,6 +155,10 @@
 (def ^:private route-map
   {"/action"               (+auth 'metabase.actions-rest.api)
    "/activity"             (+auth 'metabase.activity-feed.api)
+   "/agent"                metabase.agent-api.api/routes
+   "/ai-entity-analysis"   metabase.metabot.api.entity-analysis/routes
+   "/ai-sql-fixer"         metabase.metabot.api.sql-fixer/routes
+   "/ai-sql-generation"    metabase.metabot.api.sql-generation/routes
    "/alert"                (+auth metabase.pulse.api/alert-routes)
    "/analytics"            (+auth 'metabase.analytics.api)
    "/api-key"              (+auth 'metabase.api-keys.api)
@@ -181,6 +191,7 @@
    "/logger"               (+auth 'metabase.logger.api)
    "/login-history"        (+auth 'metabase.login-history.api)
    "/measure"              (+auth 'metabase.measures.api)
+   "/metabot"              metabase.metabot.api/routes
    "/metric"               (+auth 'metabase.metrics.api)
    "/model-index"          (+auth 'metabase.indexed-entities.api)
    "/native-query-snippet" (+auth 'metabase.native-query-snippets.api)

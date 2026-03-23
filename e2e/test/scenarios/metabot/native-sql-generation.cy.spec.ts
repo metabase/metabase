@@ -163,9 +163,7 @@ describe("Native SQL generation", () => {
         H.restore();
         cy.signInAsAdmin();
         H.activateToken("bleeding-edge");
-        cy.intercept("POST", "/api/ee/metabot-v3/agent-streaming").as(
-          "agentReq",
-        );
+        cy.intercept("POST", "/api/metabot/agent-streaming").as("agentReq");
       });
 
       it("should be able to successfully generate sql", () => {
@@ -258,9 +256,7 @@ describe("Native SQL generation", () => {
         H.restore("postgres-12");
         cy.signInAsAdmin();
         H.activateToken("bleeding-edge");
-        cy.intercept("POST", "/api/ee/metabot-v3/agent-streaming").as(
-          "agentReq",
-        );
+        cy.intercept("POST", "/api/metabot/agent-streaming").as("agentReq");
       });
 
       it("should manage conversation state correctly", () => {
