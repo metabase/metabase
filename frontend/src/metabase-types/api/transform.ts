@@ -38,6 +38,8 @@ export type Transform = {
   can_write?: boolean;
   can_execute?: boolean;
 
+  source_db_id?: number | null;
+
   // true when transform was deleted but still referenced by runs
   deleted?: boolean;
 

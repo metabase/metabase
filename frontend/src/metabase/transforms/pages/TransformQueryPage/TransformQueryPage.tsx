@@ -33,6 +33,7 @@ import type {
 } from "metabase-types/api";
 
 import { useQueryComplexityChecks } from "../../components/QueryComplexityWarning";
+import { TransformDisconnectedDatabaseBanner } from "../../components/TransformDisconnectedDatabaseBanner";
 import {
   TransformEditor,
   type TransformEditorProps,
@@ -225,6 +226,7 @@ function TransformQueryPageBody({
           isEditMode={isEditMode}
           readOnly={readOnly}
         />
+        <TransformDisconnectedDatabaseBanner transform={transform} />
         <Box
           w="100%"
           bg="background-primary"

@@ -1,12 +1,15 @@
 import type { Location } from "history";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import * as Urls from "metabase/lib/urls";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
+import { isMissingSourceDatabase } from "metabase/transforms/utils";
 import { Alert, Center, Icon, Text } from "metabase/ui";
 
+import { TransformDisconnectedDatabaseBanner } from "../../components/TransformDisconnectedDatabaseBanner";
 import { TransformHeader } from "../../components/TransformHeader";
 import { useTransformWithPolling } from "../../hooks/use-transform-with-polling";
 import { RunSection } from "../TransformRunPage/RunSection";
@@ -46,24 +49,32 @@ export const TransformInspectPage = ({
   return (
     <PageContainer data-testid="transform-inspect-content">
       <TransformHeader transform={transform} />
-      {transform.last_run?.status !== "succeeded" ? (
-        <>
-          <Alert color="brand" icon={<Icon name="info" />}>
-            <Text>{t`To inspect the transform you need to run it first.`}</Text>
-          </Alert>
-          <RunSection
+      {match({
+        hasSucceeded: transform.last_run?.status === "succeeded",
+        isMissingSourceDatabase: isMissingSourceDatabase(transform),
+      })
+        .with({ hasSucceeded: false }, () => (
+          <>
+            <Alert color="brand" icon={<Icon name="info" />}>
+              <Text>{t`To inspect the transform you need to run it first.`}</Text>
+            </Alert>
+            <RunSection
+              transform={transform}
+              noTitle={true}
+              readOnly={readOnly}
+            />
+          </>
+        ))
+        .with({ isMissingSourceDatabase: true }, () => (
+          <TransformDisconnectedDatabaseBanner transform={transform} />
+        ))
+        .otherwise(() => (
+          <InspectorContent
             transform={transform}
-            noTitle={true}
-            readOnly={readOnly}
+            params={params}
+            location={location}
           />
-        </>
-      ) : (
-        <InspectorContent
-          transform={transform}
-          params={params}
-          location={location}
-        />
-      )}
+        ))}
     </PageContainer>
   );
 };
