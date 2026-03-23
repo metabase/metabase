@@ -19,22 +19,25 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { Card, Center } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import type { Card as CardType } from "metabase-types/api";
+import type { Card as CardApiType } from "metabase-types/api";
 
-import { MetricHeader } from "../../components/MetricHeader";
+import { MetricPageShell } from "../../components/MetricPageShell";
 import { MetricQueryEditor } from "../../components/MetricQueryEditor";
-import { getValidationResult } from "../../utils";
+import type { MetricPageProps, MetricUrls } from "../../types";
+import { metricUrls as defaultUrls } from "../../urls";
+import { getValidationResult } from "../../utils/validation";
 
-type MetricQueryPageParams = {
-  cardId: string;
-};
-
-type MetricQueryPageProps = {
-  params: MetricQueryPageParams;
+interface MetricQueryPageProps extends MetricPageProps {
   route: Route;
-};
+}
 
-export function MetricQueryPage({ params, route }: MetricQueryPageProps) {
+export function MetricQueryPage({
+  params,
+  route,
+  urls = defaultUrls,
+  renderBreadcrumbs,
+  showAppSwitcher,
+}: MetricQueryPageProps) {
   const cardId = Urls.extractEntityId(params.cardId);
   const { card, isLoading, error } = useLoadCardWithMetadata(cardId);
 
@@ -46,15 +49,30 @@ export function MetricQueryPage({ params, route }: MetricQueryPageProps) {
     );
   }
 
-  return <MetricQueryPageBody card={card} route={route} />;
+  return (
+    <MetricQueryPageBody
+      card={card}
+      route={route}
+      urls={urls}
+      renderBreadcrumbs={renderBreadcrumbs}
+      showAppSwitcher={showAppSwitcher}
+    />
+  );
 }
 
-type MetricQueryPageBodyProps = {
-  card: CardType;
-  route: Route;
-};
+interface MetricQueryPageBodyProps
+  extends Omit<MetricQueryPageProps, "params"> {
+  card: CardApiType;
+  urls: MetricUrls;
+}
 
-function MetricQueryPageBody({ card, route }: MetricQueryPageBodyProps) {
+function MetricQueryPageBody({
+  card,
+  route,
+  urls,
+  renderBreadcrumbs,
+  showAppSwitcher,
+}: MetricQueryPageBodyProps) {
   const metadata = useSelector(getMetadata);
   const [datasetQuery, setDatasetQuery] = useState(card.dataset_query);
   const [uiState, setUiState] = useState(getInitialUiState);
@@ -131,8 +149,11 @@ function MetricQueryPageBody({ card, route }: MetricQueryPageBodyProps) {
   return (
     <>
       <PageContainer pos="relative" data-testid="metric-query-editor" gap="xl">
-        <MetricHeader
+        <MetricPageShell
           card={card}
+          urls={urls}
+          renderBreadcrumbs={renderBreadcrumbs}
+          showAppSwitcher={showAppSwitcher}
           actions={
             <PaneHeaderActions
               errorMessage={validationResult.errorMessage}
