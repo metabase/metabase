@@ -1187,7 +1187,7 @@
         (testing "Products table is related by PRODUCT_ID FK"
           (is (= "PRODUCT_ID" (:related_by products-table))))))))
 
-(deftest get-snippets-test
+(deftest ^:sequential get-snippets-test
   (mt/with-premium-features #{:metabot-v3}
     (let [conversation-id (str (random-uuid))]
       (mt/with-temp [:model/NativeQuerySnippet snippet-1 {:content     "1"
@@ -1215,7 +1215,7 @@
                                                    (filter #(#{(:id snippet-1) (:id snippet-2)} (:id %))
                                                            output)))))))))))
 
-(deftest get-snippet-details-test
+(deftest ^:sequential get-snippet-details-test
   (mt/with-premium-features #{:metabot-v3}
     (let [conversation-id (str (random-uuid))]
       (mt/with-temp [:model/NativeQuerySnippet snippet-1 {:content     "1"

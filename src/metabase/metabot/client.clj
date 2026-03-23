@@ -129,7 +129,6 @@
   "Make a streaming request to the AI service. Returns the HTTP response.
    Caller is responsible for reading from the response body and closing it."
   [{:keys [context message history profile-id conversation-id session-id state debug?]}]
-  (premium-features/assert-has-feature :metabot-v3 "MetaBot")
   (let [url      (ai-url "/v2/agent/stream")
         body     (cond-> {:messages        (conj (vec history) message)
                           :context         context
