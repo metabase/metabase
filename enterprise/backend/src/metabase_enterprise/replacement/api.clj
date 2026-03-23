@@ -72,7 +72,15 @@
                                                                           [:run_id ::replacement.schema/run-id]]]]
   "Create a transform from a model, execute it, and replace all usages of the model
    with the output table. Un-persists the model and converts it to a saved question.
-   Returns 202 with a run_id for polling."
+   Returns 202 with a run_id for polling.
+   
+   If there is an error during the transform execution, no replacement will be 
+   performed and the model will remain unchanged. 
+   
+   If there is an error during the source swap, the transform and the output 
+   table will be retained, and the model will remain unchanged. We cannot delete 
+   the transform or the output table because they can be used by other queries at 
+   this point."
   [_route-params
    _query-params
    {:keys [card_id transform_name transform_target target_collection_id]}

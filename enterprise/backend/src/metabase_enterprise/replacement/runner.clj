@@ -181,6 +181,16 @@
         (throw (ex-info "Output table not found after transform execution"
                         {:db-id target-db-id :schema table-schema :name table-name})))))
 
+(defn- run-model-cleanup!
+  "Unpersist the model if it was persisted and convert it to a saved question."
+  [card-id]
+  ;; unpersist the model if it was persisted
+  (when-let [persisted-info (t2/select-one :model/PersistedInfo :card_id card-id)]
+    (model-persistence/mark-for-pruning! {:id (:id persisted-info)} "off"))
+
+  ;; convert the model to a saved question
+  (t2/update! :model/Card card-id {:type :question}))
+
 (defn run-swap-model-with-transform!
   "Execute a transform, find the output table, then swap all dependents of the card
    to point at the new table. Finally un-persist and convert the card to a saved question.
@@ -200,9 +210,5 @@
      (let [table (find-output-table transform)]
        (run-swap-source! [:card card-id] [:table (:id table)] progress))
 
-     ;; phase 3: un-persist the model if it was persisted
-     (when-let [persisted-info (t2/select-one :model/PersistedInfo :card_id card-id)]
-       (model-persistence/mark-for-pruning! {:id (:id persisted-info)} "off"))
-
-     ;; phase 4: convert the model to a saved question
-     (t2/update! :model/Card card-id {:type :question}))))
+     ;; phase 3: unpersist and convert the model to a saved question
+     (run-model-cleanup! card-id))))
