@@ -5,7 +5,6 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.suggested-prompts :as metabot.suggested-prompts]
-   [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.task.core :as task]
    [metabase.util.log :as log]
@@ -22,20 +21,19 @@
 
 (defn- maybe-generate-suggested-prompts! []
   (try
-    (when (premium-features/has-feature? :metabot-v3)
-      ;; Run as admin since this is a system task generating prompts for all content in scope.
-      ;; Users will only see prompts for content they have access to (filtered at query time).
-      (request/as-admin
-        (let [metabot-eid (get-in metabot.config/metabot-config
-                                  [metabot.config/internal-metabot-id :entity-id])
-              metabot-id (t2/select-one-pk :model/Metabot :entity_id metabot-eid)
-              suggested-prompts-cnt (t2/count :model/MetabotPrompt :metabot_id metabot-id)]
-          (if (zero? suggested-prompts-cnt)
-            (do
-              (log/info "No suggested prompts found. Generating suggested prompts.")
-              (metabot.suggested-prompts/generate-sample-prompts metabot-id)
-              (log/info "Suggested prompts generated successfully."))
-            (log/info "Suggested prompts are present. Not generating.")))))
+    ;; Run as admin since this is a system task generating prompts for all content in scope.
+    ;; Users will only see prompts for content they have access to (filtered at query time).
+    (request/as-admin
+      (let [metabot-eid (get-in metabot.config/metabot-config
+                                [metabot.config/internal-metabot-id :entity-id])
+            metabot-id  (t2/select-one-pk :model/Metabot :entity_id metabot-eid)
+            suggested-prompts-cnt (t2/count :model/MetabotPrompt :metabot_id metabot-id)]
+        (if (zero? suggested-prompts-cnt)
+          (do
+            (log/info "No suggested prompts found. Generating suggested prompts.")
+            (metabot.suggested-prompts/generate-sample-prompts metabot-id)
+            (log/info "Suggested prompts generated successfully."))
+          (log/info "Suggested prompts are present. Not generating."))))
     (catch Exception e
       (log/errorf "Suggested prompts generation failed: %s" (.getMessage e)))))
 
@@ -46,13 +44,11 @@
 
 (defmethod task/init! ::SuggestedPromptsGenerator
   [_]
-  (when (premium-features/has-feature? :metabot-v3)
-    (let [job
-          (jobs/build
-           (jobs/of-type SuggestedPromptsGenerator)
-           (jobs/with-identity generator-job-key))
-          trigger (triggers/build
-                   (triggers/with-identity generator-trigger-key)
-                   ;; Start the job a moment after startup.
-                   (triggers/start-at (Date/from (.plusSeconds (Instant/now) 10))))]
-      (task/schedule-task! job trigger))))
+  (let [job     (jobs/build
+                 (jobs/of-type SuggestedPromptsGenerator)
+                 (jobs/with-identity generator-job-key))
+        trigger (triggers/build
+                 (triggers/with-identity generator-trigger-key)
+                  ;; Start the job a moment after startup.
+                 (triggers/start-at (Date/from (.plusSeconds (Instant/now) 10))))]
+    (task/schedule-task! job trigger)))
