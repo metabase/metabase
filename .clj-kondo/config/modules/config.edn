@@ -1600,45 +1600,37 @@
    :model-imports #{:model/Card :model/Field}}
 
   query-processor
-  {:team "Querying"
-   :api  #{metabase.query-processor
-           metabase.query-processor.api
-           metabase.query-processor.card
-           metabase.query-processor.compile
-           metabase.query-processor.dashboard
-           metabase.query-processor.debug
-           metabase.query-processor.error-type
-           metabase.query-processor.init
-           metabase.query-processor.interface
-           metabase.query-processor.metadata
-           metabase.query-processor.middleware.add-remaps
-           metabase.query-processor.middleware.annotate
-           metabase.query-processor.middleware.cache-backend.db
-           metabase.query-processor.middleware.catch-exceptions
-           metabase.query-processor.middleware.constraints
-           metabase.query-processor.middleware.limit
-           metabase.query-processor.middleware.permissions
-           metabase.query-processor.middleware.wrap-value-literals
-           metabase.query-processor.parameters.dates
-           metabase.query-processor.parameters.operators
-           metabase.query-processor.pipeline
-           metabase.query-processor.pivot
-           metabase.query-processor.preprocess
-           metabase.query-processor.reducible
-           metabase.query-processor.schema
-           metabase.query-processor.setup
-           metabase.query-processor.store
-           metabase.query-processor.streaming
-           metabase.query-processor.streaming.common
-           metabase.query-processor.streaming.interface
-           metabase.query-processor.timezone
-           metabase.query-processor.util
-           metabase.query-processor.util.add-alias-info
-           metabase.query-processor.util.nest-query
-           metabase.query-processor.util.persisted-cache
-           metabase.query-processor.util.relative-datetime
-           metabase.query-processor.util.transformations.nest-breakouts
-           metabase.query-processor.writeback}
+  {:team    "Querying"
+   :friends #{driver-api
+              enterprise/cache
+              enterprise/sandbox
+              parameters
+              transforms-base
+              warehouse-schema}
+   :api     #{metabase.query-processor.api
+              metabase.query-processor.card
+              metabase.query-processor.compile
+              metabase.query-processor.core
+              metabase.query-processor.dashboard
+              metabase.query-processor.error-type
+              metabase.query-processor.init
+              metabase.query-processor.interface
+              metabase.query-processor.metadata
+              metabase.query-processor.middleware.constraints
+              metabase.query-processor.middleware.permissions
+              metabase.query-processor.parameters.dates
+              metabase.query-processor.parameters.operators
+              metabase.query-processor.pipeline
+              metabase.query-processor.pivot
+              metabase.query-processor.preprocess
+              metabase.query-processor.schema
+              metabase.query-processor.store
+              metabase.query-processor.streaming
+              metabase.query-processor.streaming.common
+              metabase.query-processor.streaming.interface
+              metabase.query-processor.timezone
+              metabase.query-processor.util
+              metabase.query-processor.util.persisted-cache}
    :uses #{analytics
            analyze
            api
