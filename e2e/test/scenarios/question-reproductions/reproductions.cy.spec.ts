@@ -1275,52 +1275,39 @@ SELECT 2 AS ID, 3 AS USER_ID
         { wrapId: true, visitQuestion: true },
       );
     });
+    const findDataRows = () => {
+      return H.tableInteractiveBody()
+        .findByTestId("center-center-quadrant")
+        .findAllByRole("row");
+    };
+    const findUserIdCell = (rowIndex: number) => {
+      return findDataRows()
+        .should("have.length.gt", 0)
+        .eq(rowIndex)
+        .find("[data-column-id='USER_ID']")
+        .first();
+    };
 
-    cy.findByTestId("table-body")
-      .findAllByRole("row")
-      .first()
-      .find("[data-column-id='USER_ID']")
-      .eq(0)
-      .click();
+    findUserIdCell(0).click();
 
     H.popover().within(() => {
       cy.findByText("View Models with no User").should("be.visible").click();
     });
 
-    cy.findByTestId("table-body").within(() => {
-      /**
-       * each row is rendered twice, that's why we need to assert 2 instead of 1
-       */
-      cy.findAllByRole("row").should("have.length", 2);
-      cy.get("[data-column-id='USER_ID']")
-        .first()
-        .find("[data-testid=cell-data]")
-        .should("not.exist");
-    });
+    findDataRows().should("have.length", 1);
+
+    findUserIdCell(0).find("[data-testid=cell-data]").should("not.exist");
 
     H.visitQuestion("@questionId");
 
-    cy.findByTestId("table-body")
-      .findAllByRole("row")
-      .first()
-      .find("[data-column-id='USER_ID']")
-      .eq(1)
-      .click();
+    findUserIdCell(1).click();
 
     H.popover().within(() => {
       cy.findByText("View this User's Models").should("be.visible").click();
     });
 
-    cy.findByTestId("table-body").within(() => {
-      /**
-       * each row is rendered twice, that's why we need to assert 2 instead of 1
-       */
-      cy.findAllByRole("row").should("have.length", 2);
-      cy.get("[data-column-id='USER_ID']")
-        .first()
-        .find("[data-testid=cell-data]")
-        .should("have.text", "3");
-    });
+    findDataRows().should("have.length", 1);
+    findUserIdCell(0).should("have.text", "3");
   });
 });
 

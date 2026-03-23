@@ -573,8 +573,8 @@ describe("scenarios > question > offset", () => {
 
       verifyNoQuestionError();
       verifyTableContent([
-        ["", "April 2025", "Gadget", "15,713", "31,426.01"],
-        ["", "September 2025", "Gadget", "15,017.31", "30,034.62"],
+        ["April 2025", "Gadget", "15,713", "31,426.01"],
+        ["September 2025", "Gadget", "15,017.31", "30,034.62"],
       ]);
     });
   });
@@ -1330,9 +1330,9 @@ function verifyLineChart({
   }
 }
 
-function verifyTableContent(rows: string[][]) {
-  const columnsCount = rows[0].length;
-  const pairs = rows.flatMap((row, rowIndex) => {
+function verifyTableContent(dataRows: string[][]) {
+  const columnsCount = dataRows[0].length;
+  const pairs = dataRows.flatMap((row, rowIndex) => {
     return row.map((text, cellIndex) => {
       const index = rowIndex * columnsCount + cellIndex;
       return { index, text };
@@ -1340,6 +1340,8 @@ function verifyTableContent(rows: string[][]) {
   });
 
   for (const { index, text } of pairs) {
+    cy.log("index", index);
+    cy.log("text", text);
     verifyTableCellContent(index, text);
   }
 }
@@ -1347,6 +1349,7 @@ function verifyTableContent(rows: string[][]) {
 function verifyTableCellContent(index: number, text: string) {
   // eslint-disable-next-line metabase/no-unsafe-element-filtering
   H.tableInteractiveBody()
+    .findByTestId("center-center-quadrant")
     .findAllByRole("gridcell")
     .eq(index)
     .should("have.text", text);

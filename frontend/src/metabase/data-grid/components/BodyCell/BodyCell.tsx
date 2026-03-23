@@ -70,6 +70,7 @@ export const BodyCell = memo(function BodyCell<TValue>({
         [S.pill]: variant === "pill",
       })}
       backgroundColor={backgroundColor}
+      data-testid="body-cell-container"
     >
       {formattedValue != null ? (
         <div

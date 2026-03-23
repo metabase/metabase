@@ -1167,11 +1167,10 @@ describe("scenarios > visualizations > table > conditional formatting", () => {
         "is true",
       );
 
-      cy.findByRole("gridcell", { name: "true" }).should(
-        "have.css",
-        "background-color",
-        "rgba(80, 158, 227, 0.65)",
-      );
+      H.tableInteractiveBody()
+        .findByRole("gridcell", { name: "true" })
+        .findByTestId("body-cell-container")
+        .should("have.css", "background-color", "rgba(80, 158, 227, 0.65)");
     });
   });
 });

@@ -375,9 +375,10 @@ describe("scenarios > table-editing", () => {
       });
 
       it("should allow to edit a cell with datetime type", () => {
-        cy.findByTestId("table-root")
+        H.tableInteractiveBody()
+          .findByTestId("center-center-quadrant")
           .findAllByRole("row")
-          .eq(2)
+          .eq(1)
           .within(() => {
             cy.get("[data-column-id='datetime']").as("targetCell").click({
               scrollBehavior: false,
