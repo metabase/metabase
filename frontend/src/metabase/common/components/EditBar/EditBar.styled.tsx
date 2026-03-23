@@ -3,9 +3,9 @@ import isPropValid from "@emotion/is-prop-valid";
 import styled from "@emotion/styled";
 
 import ButtonsS from "metabase/css/components/buttons.module.css";
-import { alpha } from "metabase/lib/colors";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { Icon } from "metabase/ui";
+import { alpha } from "metabase/ui/colors";
 import { color } from "metabase/ui/utils/colors";
 
 export const Root = styled(FullWidthContainer, {

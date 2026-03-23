@@ -7,6 +7,8 @@
    [metabase-enterprise.metabot-v3.reactions]
    [metabase-enterprise.metabot-v3.settings :as metabot-v3.settings]
    [metabase-enterprise.metabot-v3.table-utils :as table-utils]
+   [metabase-enterprise.metabot-v3.tools.create-alert
+    :as metabot-v3.tools.create-alert]
    [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription
     :as metabot-v3.tools.create-dashboard-subscription]
    [metabase-enterprise.metabot-v3.tools.deftool :refer [deftool]]
@@ -14,7 +16,6 @@
    [metabase-enterprise.metabot-v3.tools.entity-details :as metabot-v3.tools.entity-details]
    [metabase-enterprise.metabot-v3.tools.field-stats :as metabot-v3.tools.field-stats]
    [metabase-enterprise.metabot-v3.tools.filters :as metabot-v3.tools.filters]
-   [metabase-enterprise.metabot-v3.tools.find-outliers :as metabot-v3.tools.find-outliers]
    [metabase-enterprise.metabot-v3.tools.generate-insights :as metabot-v3.tools.generate-insights]
    [metabase-enterprise.metabot-v3.tools.search :as metabot-v3.tools.search]
    [metabase-enterprise.metabot-v3.tools.snippets :as metabot-v3.tools.snippets]
@@ -503,15 +504,33 @@
   [:and
    [:map
     [:dashboard_id :int]
-    [:email :string]
+    [:slack_channel :string]
     [:schedule ::subscription-schedule]]
    [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
 (deftool "/create-dashboard-subscription"
-  "Create a dashboard subscription."
+  "Create a dashboard subscription and send it to a slack channel."
   {:args-schema   ::create-dashboard-subscription-arguments
-   :result-schema [:map [:output :string]]
+   :result-schema [:map [:error  {:optional true} :string
+                         :output {:optional true} :string]]
    :handler       metabot-v3.tools.create-dashboard-subscription/create-dashboard-subscription})
+
+(mr/def ::create-alert-arguments
+  [:and
+   [:map
+    [:card_id :int]
+    [:send_condition [:enum {:encode/tool-api-request keyword} "has_result" "goal_above" "goal_below"]]
+    [:send_once {:optional true, :default false} :boolean]
+    [:schedule ::subscription-schedule]
+    [:slack_channel :string]]
+   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+
+(deftool "/create-alert"
+  "Create an alert for a saved question."
+  {:args-schema   ::create-alert-arguments
+   :result-schema [:map [:error  {:optional true} :string
+                         :output {:optional true} :string]]
+   :handler       metabot-v3.tools.create-alert/create-alert})
 
 ;;; ---------------------------------------------------- Analytics ----------------------------------------------------
 
@@ -530,8 +549,9 @@
     [:structured_output
      [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
       [:field_id :string]
-      [:statistics {:optional true} [:maybe ::statistics]]
-      [:values {:optional true} [:maybe [:sequential :any]]]]]]
+      [:value_metadata [:map
+                        [:field_values {:optional true} [:maybe [:sequential :any]]]
+                        [:statistics {:optional true} [:maybe ::statistics]]]]]]]
    [:map
     [:output :string]]])
 
@@ -540,42 +560,6 @@
   {:args-schema   ::field-values-arguments
    :result-schema ::field-values-result
    :handler       metabot-v3.tools.field-stats/field-values})
-
-(mr/def ::find-outliers-arguments
-  [:and
-   [:map
-    [:data_source [:and
-                   [:or
-                    [:map
-                     [:query [:map
-                              [:database :int]]]
-                     [:query_id {:optional true} :string]
-                     [:result_field_id :string]]
-                    [:map
-                     [:metric_id :int]]
-                    [:map
-                     [:report_id :int]
-                     [:result_field_id :string]]
-                    [:map
-                     [:table_id :string]
-                     [:result_field_id :string]]]
-                   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
-
-(mr/def ::find-outliers-result
-  [:or
-   [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
-    [:structured_output [:sequential
-                         [:map
-                          [:dimension :any]
-                          [:value [:or :int :double]]]]]]
-   [:map [:output :string]]])
-
-(deftool "/find-outliers"
-  "Find outliers in the values provided by a data source for a given column."
-  {:args-schema   ::find-outliers-arguments
-   :result-schema ::find-outliers-result
-   :handler       metabot-v3.tools.find-outliers/find-outliers})
 
 (mr/def ::generate-insights-arguments
   [:map
@@ -923,7 +907,7 @@
    [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
 (deftool "/filter-records"
-  "Construct a query from a metric."
+  "Apply filters to records from a data source (query, report, or table)."
   {:args-schema   ::filter-records-arguments
    :result-schema ::filtering-result
    :handler       metabot-v3.tools.filters/filter-records})

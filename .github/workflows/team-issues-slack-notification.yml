@@ -7,7 +7,7 @@ on:
 
 jobs:
   on-team-label-added:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     if: |
       contains(github.event.label.name, '.Team/') &&
@@ -19,7 +19,7 @@ jobs:
         id: vars
         with:
           script: |
-            core.setOutput('issue_title', ${{ toJson(github.event.issue.title) }}.replaceAll(/"/g, '\\"'));
+            core.setOutput('issue_title', JSON.stringify(${{ toJson(github.event.issue.title) }} + '\n' + ${{ toJson(github.event.issue.html_url) }}));
       - name: Extracting team name
         id: team_name
         run: |
@@ -39,7 +39,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "${{ steps.vars.outputs.issue_title }}\n${{ github.event.issue.html_url }}"
+                    "text": ${{ steps.vars.outputs.issue_title }}
                   }
                 }
               ]

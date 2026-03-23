@@ -133,6 +133,7 @@ export function DashboardHeaderView({
               {titled && (
                 <Box
                   role="heading"
+                  aria-level={1}
                   className={cx(S.HeaderContent, {
                     [S.showSubHeader]: showSubHeader,
                   })}

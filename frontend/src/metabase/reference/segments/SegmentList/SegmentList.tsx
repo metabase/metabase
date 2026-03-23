@@ -9,11 +9,12 @@ import { ListItem } from "metabase/common/components/ListItem";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
+import { getShallowSegments } from "metabase/selectors/metadata";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 
 import ReferenceHeader from "../../components/ReferenceHeader";
-import { getError, getLoading, getSegments } from "../../selectors";
+import { getError, getLoading } from "../../selectors";
 
 const emptyStateData = {
   get title() {
@@ -36,7 +37,7 @@ interface SegmentListProps {
 }
 
 export function SegmentList({ style }: SegmentListProps) {
-  const entities = useSelector(getSegments);
+  const entities = useSelector(getShallowSegments);
   const loading = useSelector(getLoading);
   const loadingError = useSelector(getError);
   const adminLink = useSelector((state) =>

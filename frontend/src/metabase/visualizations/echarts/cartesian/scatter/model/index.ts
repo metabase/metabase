@@ -3,6 +3,7 @@ import { isNotNull } from "metabase/lib/types";
 import type { ShowWarning } from "metabase/visualizations/echarts/types";
 import type {
   ComputedVisualizationSettings,
+  Extent,
   RenderingContext,
 } from "metabase/visualizations/types";
 import type { RawSeries } from "metabase-types/api";
@@ -22,7 +23,6 @@ import { getAxisTransforms } from "../../model/transforms";
 import { getTrendLines } from "../../model/trend-line";
 import type {
   ChartDataset,
-  Extent,
   ScatterPlotModel,
   SeriesModel,
 } from "../../model/types";
@@ -108,16 +108,17 @@ export function getScatterPlotModel(
     showWarning,
   );
 
-  const { leftAxisModel, rightAxisModel } = getYAxesModels(
-    seriesModels,
-    dataset,
-    transformedDataset,
-    settings,
-    columnByDataKey,
-    false,
-    [],
-    false,
-  );
+  const { leftAxisModel, rightAxisModel, splitPanelYAxisModels } =
+    getYAxesModels(
+      seriesModels,
+      dataset,
+      transformedDataset,
+      settings,
+      columnByDataKey,
+      false,
+      [],
+      false,
+    );
 
   const trendLinesModel = getTrendLines(
     rawSeries,
@@ -141,6 +142,7 @@ export function getScatterPlotModel(
     xAxisModel,
     leftAxisModel,
     rightAxisModel,
+    splitPanelYAxisModels,
     trendLinesModel,
     bubbleSizeDomain: getBubbleSizeDomain(seriesModels, transformedDataset),
     seriesLabelsFormatters: {},

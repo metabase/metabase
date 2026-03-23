@@ -32,7 +32,6 @@ import type {
   Transform,
 } from "metabase-types/api";
 
-import { useQueryComplexityChecks } from "../../components/QueryComplexityWarning";
 import { TransformDisconnectedDatabaseBanner } from "../../components/TransformDisconnectedDatabaseBanner";
 import {
   TransformEditor,
@@ -132,8 +131,6 @@ function TransformQueryPageBody({
 
   useRegisterMetabotTransformContext(transform, source, lastRunError);
 
-  const { confirmIfQueryIsComplex, modal } = useQueryComplexityChecks();
-
   const {
     checkData,
     isCheckingDependencies,
@@ -187,13 +184,6 @@ function TransformQueryPageBody({
     if (!isCompleteSource(source)) {
       return;
     }
-    if ("source-incremental-strategy" in source) {
-      const confirmed = await confirmIfQueryIsComplex(source);
-      if (!confirmed) {
-        return;
-      }
-    }
-
     await handleInitialSave({ id: transform.id, source });
   };
 
@@ -291,7 +281,6 @@ function TransformQueryPageBody({
         isEnabled={isDirty && !isSaving && !isCheckingDependencies}
         onConfirm={rejectProposed}
       />
-      {modal}
     </>
   );
 }

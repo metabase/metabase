@@ -17,6 +17,7 @@ export type TreeNode = {
   collectionId?: number;
   url?: string;
   can_read?: boolean;
+  warningTooltip?: string;
 };
 
 export function isCollectionNode(

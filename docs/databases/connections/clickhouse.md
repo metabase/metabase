@@ -77,10 +77,10 @@ You can limit the number of HTTP connections in the JDBC driver used to connect 
 
 ### Additional JDBC connection string options
 
-You can append options to the JDBC connection string. Separate options with `&`, like so:
+You can append options to the JDBC connection string. All [server settings must be prefixed with `clickhouse_setting_`](https://clickhouse.com/docs/integrations/language-clients/java/jdbc#connection-properties). Separate options with `&`, like so:
 
 ```
-connection_timeout=1000&socket_timeout=300000
+clickhouse_setting_connection_timeout=1000&clickhouse_setting_socket_timeout=300000
 ```
 
 ### Re-run queries for simple explorations
@@ -101,9 +101,9 @@ Turn this option **ON** to scan a sample of values every time Metabase runs a [s
 
 A fingerprinting query examines the first 10,000 rows from each column and uses that data to guesstimate how many unique values each column has, what the minimum and maximum values are for numeric and timestamp columns, and so on. If you leave this option **OFF**, Metabase will only fingerprint your columns once during setup.
 
-## Writeable connection
+## Writable connection
 
-Set up an additional connection used for write operations. See [Writeable connections](../writeable-connection.md).
+Set up an additional connection used for write operations. See [Writable connections](../writable-connection.md).
 
 ## Model features
 

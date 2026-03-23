@@ -1813,3 +1813,89 @@
                       (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :quantity)))))]
         (is (= [[44]]
                (mt/rows (mt/user-http-request :rasta :post 202 "dataset" query))))))))
+
+(deftest ^:parallel attr-remapping-parameter-type-test
+  (testing "attr-remapping->parameter uses explicit parameter types instead of :category (QUE2-326)"
+    (let [attr-remapping->parameter #'sandboxing/attr-remapping->parameter
+          mp                        (mt/metadata-provider)]
+      (testing "numeric field → :number/="
+        (is (= :number/=
+               (:type (attr-remapping->parameter mp {"cat" "50"} ["cat" [:variable [:field (mt/id :venues :price) nil]]])))))
+      (testing "text field → :string/="
+        (is (= :string/=
+               (:type (attr-remapping->parameter mp {"cat" "foo"} ["cat" [:variable [:field (mt/id :venues :name) nil]]]))))))))
+
+(deftest unix-timestamp-coercion-with-mbql-sandbox-test
+  (testing "UNIX timestamp coercion should be applied when querying through an MBQL sandbox (#69867)"
+    (mt/test-drivers (e2e-test-drivers)
+      ;; Use venues.price (an integer column) and temporarily give it a UNIX timestamp coercion strategy.
+      ;; With coercion applied, price values (1-4) become timestamps near the Unix epoch.
+      ;; Without coercion, they come back as raw integers.
+      (met/with-gtaps! {:gtaps      {:venues {:query (mt/mbql-query venues)}}
+                        :attributes {}}
+        (tu/with-temp-vals-in-db :model/Field (mt/id :venues :price)
+                                 {:coercion_strategy :Coercion/UNIXSeconds->DateTime
+                                  :effective_type    :type/Instant}
+          (let [result (mt/run-mbql-query venues {:limit 1, :order-by [[:asc $id]]})]
+            ;; venues.price for venue 1 is 3; with coercion this becomes 1970-01-01T00:00:03Z
+            ;; The native_form SQL should contain a timestamp coercion expression
+            (is (string? (-> result mt/rows first last))
+                "Price column should be coerced to a timestamp string, not returned as a raw integer")))))))
+
+(deftest unix-timestamp-coercion-with-native-sandbox-test
+  (testing "UNIX timestamp coercion should be applied when querying through a native SQL sandbox (#69867)"
+    (mt/test-drivers (e2e-test-drivers)
+      ;; Use venues.price (an integer column) and temporarily give it a UNIX timestamp coercion strategy.
+      ;; With coercion applied, price values (1-4) become timestamps near the Unix epoch.
+      ;; Without coercion, they come back as raw integers.
+      (met/with-gtaps! {:gtaps      {:venues {:query (mt/native-query
+                                                      {:query (format-honeysql
+                                                               {:select   [:*]
+                                                                :from     [[(identifier :venues)]]
+                                                                :order-by [[(identifier :venues :id) :asc]]})})}}
+                        :attributes {}}
+        (tu/with-temp-vals-in-db :model/Field (mt/id :venues :price)
+                                 {:coercion_strategy :Coercion/UNIXSeconds->DateTime
+                                  :effective_type    :type/Instant}
+          (let [result (mt/run-mbql-query venues {:limit 1, :order-by [[:asc $id]]})]
+            ;; BUG (#69867): With a native SQL sandbox, the coercion is NOT applied.
+            (is (string? (-> result mt/rows first last))
+                "Price column should be coerced to a timestamp string, not returned as a raw integer")))))))
+
+(deftest unix-timestamp-coercion-with-native-sandbox-and-multiple-stages-test
+  (testing "UNIX timestamp coercion should be applied when querying through a native SQL sandbox (#69867)"
+    (mt/test-drivers (e2e-test-drivers)
+      ;; Use venues.price (an integer column) and temporarily give it a UNIX timestamp coercion strategy.
+      ;; With coercion applied, price values (1-4) become timestamps near the Unix epoch.
+      ;; Without coercion, they come back as raw integers.
+      (testing "and a multi-stage query should apply coercion exactly once (no double-coercion)"
+        (met/with-gtaps! {:gtaps      {:venues {:query (mt/native-query
+                                                        {:query (format-honeysql
+                                                                 {:select   [:*]
+                                                                  :from     [[(identifier :venues)]]
+                                                                  :order-by [[(identifier :venues :id) :asc]]})})}}
+                          :attributes {}}
+          (tu/with-temp-vals-in-db :model/Field (mt/id :venues :price)
+                                   {:coercion_strategy :Coercion/UNIXSeconds->DateTime
+                                    :effective_type    :type/Instant}
+            ;; A 2-stage query: inner stage selects from venues, outer stage wraps it.
+            ;; With sandboxing this becomes 3 levels deep. Coercion must be applied only in the
+            ;; innermost stage (closest to the table), not re-applied in outer stages.
+            ;; If double-coerced, the value would be wildly wrong (treating a timestamp as seconds
+            ;; and adding it to epoch again).
+            (let [mp     (mt/metadata-provider)
+                  base   (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                             (lib/order-by (lib.metadata/field mp (mt/id :venues :id)))
+                             (lib/limit 1)
+                             lib/append-stage)
+                  field  (lib.metadata/field mp (mt/id :venues :price))
+                  price  (m/find-first #(= (:name field) (:name %))
+                                       (lib/filterable-columns base))
+                  query  (lib/filter base (lib/< price "2037-12-31"))
+                  [row]  (-> query qp/process-query mt/rows)]
+              ;; price=3 → coerced once → "1970-01-01T00:00:03Z"
+              ;; price=3 → coerced twice → would be an enormous date or an error
+              (is (string? (last row))
+                  "Price column should be coerced to a timestamp string")
+              (is (str/starts-with? (last row) "1970-01-01")
+                  "Price should be coerced exactly once, producing a date near the Unix epoch"))))))))

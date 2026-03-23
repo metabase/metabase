@@ -69,7 +69,7 @@ Object.assign(Funnel, {
     }
 
     if (rows.length < 1) {
-      throw new MinRowsError(1, rows.length);
+      throw new MinRowsError(rows.length);
     }
     if (!settings["funnel.dimension"] || !settings["funnel.metric"]) {
       throw new ChartSettingsError(
@@ -92,7 +92,9 @@ Object.assign(Funnel, {
       dashboard: false,
       useRawSeries: true,
       showColumnSetting: true,
-      marginBottom: "0.625rem",
+      getWrapperStyle: () => ({
+        marginBottom: "0.625rem",
+      }),
     }),
     "funnel.order_dimension": {
       getValue: (_series: RawSeries, settings: ComputedVisualizationSettings) =>
@@ -147,9 +149,9 @@ Object.assign(Funnel, {
 
         return getUniqueFunnelRows(funnelRows);
       },
-      props: {
+      getProps: () => ({
         hasEditSettings: false,
-      },
+      }),
       getHidden: (series: RawSeries, settings: ComputedVisualizationSettings) =>
         settings["funnel.dimension"] === null ||
         settings["funnel.metric"] === null,
@@ -175,14 +177,12 @@ Object.assign(Funnel, {
       section: t`Display`,
 
       widget: "select",
-      props: {
+      getProps: () => ({
         options: [
-          // eslint-disable-next-line ttag/no-module-declaration -- see metabase#5504
           { name: t`Funnel`, value: "funnel" },
-          // eslint-disable-next-line ttag/no-module-declaration -- see metabase#5504
           { name: t`Bar chart`, value: "bar" },
         ],
-      },
+      }),
       // legacy "bar" funnel was only previously available via multiseries
       getDefault: (series: RawSeries) => (series.length > 1 ? "bar" : "funnel"),
       useRawSeries: true,

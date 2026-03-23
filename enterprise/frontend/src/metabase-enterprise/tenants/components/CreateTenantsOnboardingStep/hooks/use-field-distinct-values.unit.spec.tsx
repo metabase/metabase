@@ -30,7 +30,7 @@ function setup({ fieldId, rows }: SetupOpts) {
     setupFieldEndpoints(field);
 
     if (rows) {
-      setupCardDataset({ data: { rows } });
+      setupCardDataset({ dataset: { data: { rows } } });
     }
   }
 

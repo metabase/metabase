@@ -7,6 +7,7 @@
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
+   [metabase.transforms.test-util :as transforms.tu]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -46,7 +47,7 @@
        ~@body)))
 
 (deftest check-transform-dependencies-test
-  (mt/with-premium-features [:transforms-basic]
+  (mt/with-premium-features [:transforms]
     (testing "removing total field from transform1 breaks transform2"
       (mt/as-admin
         (with-dependent-transforms! [transform1-id transform2-id]
@@ -64,7 +65,7 @@
 
 (deftest check-transform-dependencies-limit-test
   (testing "max-reported-broken-transforms limit"
-    (mt/with-premium-features #{:transforms-basic}
+    (mt/with-premium-features #{:transforms}
       (mt/as-admin
         (with-dependent-transforms! [transform1-id _]
           (mt/with-temp
@@ -97,7 +98,7 @@
 
 (deftest check-transform-dependencies-with-cards-test
   (testing "removing field from transform breaks dependent card"
-    (mt/with-premium-features [:transforms-basic]
+    (mt/with-premium-features [:transforms]
       (mt/as-admin
         (with-dependent-transforms! [transform1-id _]
           (mt/with-temp
@@ -125,7 +126,7 @@
                 (is (some? (:errors (first bad-questions))))))))))))
 
 (deftest check-transform-dependencies-card-limit-test
-  (mt/with-premium-features #{:transforms-basic}
+  (mt/with-premium-features #{:transforms}
     (testing "max-reported-broken-transforms limit applies to cards"
       (mt/as-admin
         (with-dependent-transforms! [transform1-id _]
@@ -180,7 +181,7 @@
 
 (deftest check-transform-dependencies-permission-filtering-test
   (testing "Broken cards in inaccessible collections are filtered from results"
-    (mt/with-premium-features #{:transforms-basic}
+    (mt/with-premium-features #{:transforms}
       (with-dependent-transforms! [transform1-id _]
         (mt/with-temp
           [:model/Collection {restricted-collection-id :id} {:name "Restricted Collection"}
@@ -251,13 +252,13 @@
                         :source {:type "python"
                                  :body "print('hello')"
                                  :source-database (mt/id)
-                                 :source-tables [{:alias "test" :table_id (t2/select-one-pk :model/Table :db_id (mt/id))}]}
+                                 :source-tables [(transforms.tu/source-table-entry "test" (t2/select-one-pk :model/Table :db_id (mt/id)))]}
                         :target {:type "table"
                                  :schema "public"
                                  :name "python_transform_table"}}]
           (let [modified-source {:type "python"
                                  :body "print('modified')"
-                                 :source-tables [{:alias "test" :table_id (t2/select-one-pk :model/Table :db_id (mt/id))}]}
+                                 :source-tables [(transforms.tu/source-table-entry "test" (t2/select-one-pk :model/Table :db_id (mt/id)))]}
                 result (metabot.dependencies/check-transform-dependencies
                         {:id python-transform-id
                          :source modified-source})]

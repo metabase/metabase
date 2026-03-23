@@ -35,7 +35,11 @@ export const DefaultViewTitle = ({ title }: SdkQuestionDefaultViewProps) => {
       <DefaultViewTitleText
         title={
           titleText && (
-            <Text fw={700} c="text-primary" fz="xl">
+            <Text
+              fw={700}
+              fz="xl"
+              style={{ color: "var(--mb-color-text-primary)" }}
+            >
               {titleText}
             </Text>
           )
@@ -50,7 +54,11 @@ export const DefaultViewTitle = ({ title }: SdkQuestionDefaultViewProps) => {
     return (
       <DefaultViewTitleText
         title={
-          <Text fw={700} c="text-primary" fz="xl">
+          <Text
+            fw={700}
+            fz="xl"
+            style={{ color: "var(--mb-color-text-primary)" }}
+          >
             {titleText}
           </Text>
         }

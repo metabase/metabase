@@ -114,11 +114,16 @@
         ;; In practice, our serialized representation should not contain any database ids, and this should
         ;; not be required.
         ;; TODO (Chris 2026-02-02) -- Update tests so this workaround is unnecessary.
-        valid-db-id? (and target-db-id (t2/exists? :model/Database :id target-db-id))]
+        valid-db-id? (and target-db-id (t2/exists? :model/Database :id target-db-id))
+        target-name  (get-in transform [:target :name])
+        table-id     (when (and valid-db-id? target-name)
+                       (transforms-base.u/upsert-target-table!
+                        target-db-id (get-in transform [:target :schema]) target-name))]
     (when-not valid-db-id?
       (log/warnf "Invalid target database id (%s) ignored for new transform (%s)" target-db-id (:name transform)))
     (-> transform
         (assoc-in [:target :database] target-db-id)
+        (cond-> table-id (assoc-in [:target :table_id] table-id))
         (assoc
          :source_type (transforms-base.u/transform-source-type source)
          :target_db_id (when valid-db-id? target-db-id)
@@ -129,14 +134,33 @@
   (when-let [new-collection (:collection_id (t2/changes transform))]
     (collection/check-collection-namespace :model/Transform new-collection)
     (collection/check-allowed-content :model/Transform new-collection))
-  (cond-> transform
-    source
-    (assoc :source_type (transforms-base.u/transform-source-type source)
-           :source_db_id (transforms-base.i/source-db-id transform))
+  ;; The target db is recomputed when source changes because for MBQL transforms,
+  ;; the source query's :database is the source of truth for the target database.
+  (let [target-changed? (or (:source (t2/changes transform)) (:target (t2/changes transform)))
+        target-db-id    (when target-changed?
+                          ;; No database existence check added here, unlike for insert.
+                          ;; Just allow updates for an invalid target to fail.
+                          (transforms-base.i/target-db-id transform))
+        target-name     (get-in transform [:target :name])
+        table-id        (when (and target-db-id target-name)
+                          (transforms-base.u/upsert-target-table!
+                           target-db-id (get-in transform [:target :schema]) target-name))]
+    (cond-> transform
+      source
+      (assoc :source_type (transforms-base.u/transform-source-type source)
+             :source_db_id (transforms-base.i/source-db-id transform))
 
-    (or (:source (t2/changes transform)) (:target (t2/changes transform)))
-    ;; No database existence check added here, unlike for insert. Just allow updates for an invalid target to fail.
-    (assoc :target_db_id (transforms-base.i/target-db-id transform))))
+      target-changed?
+      (assoc :target_db_id target-db-id)
+
+      table-id
+      (assoc-in [:target :table_id] table-id)
+
+      ;; Reset checkpoint when the incremental filter field changes
+      (let [old-field-id (get-in (t2/original transform) [:source :source-incremental-strategy :checkpoint-filter-field-id])
+            new-field-id (get-in transform [:source :source-incremental-strategy :checkpoint-filter-field-id])]
+        (and old-field-id (not= old-field-id new-field-id)))
+      (assoc :last_checkpoint_value nil))))
 
 (t2/define-after-select :model/Transform
   [{:keys [source] :as transform}]
@@ -254,6 +278,9 @@
   transform)
 
 (t2/define-before-delete :model/Transform [transform]
+  ;; TODO (Chris 2026-03-19) -- Once we have indexed FKs pointing from both global and workspace transforms
+  ;; to their target table, we should consider synchronously deleting orphaned provisional table rows
+  ;; (tables that have never been physically materialized). See gc-transform-target-tables! for the batch equivalent.
   (events/publish-event! :event/delete-transform {:id (:id transform)})
   (search.core/delete! :model/Transform [(str (:id transform))])
   transform)
@@ -356,7 +383,7 @@
 (defmethod serdes/make-spec "Transform"
   [_model-name opts]
   {:copy      [:name :description :entity_id :owner_email]
-   :skip      [:dependency_analysis_version :source_type :target_db_id]
+   :skip      [:dependency_analysis_version :source_type :target_db_id :last_checkpoint_value]
    :transform {:created_at         (serdes/date)
                :creator_id         (serdes/fk :model/User)
                :owner_user_id      (serdes/fk :model/User)
@@ -371,7 +398,8 @@
                                                                          (transforms-base.u/source-tables-map->vec st)
                                                                          st)))
                                                   (m/update-existing :query serdes/import-mbql)))}
-               :target             {:export serdes/export-mbql :import serdes/import-mbql}
+               :target             {:export #(serdes/export-mbql (dissoc % :table_id))
+                                    :import serdes/import-mbql}
                :tags               (serdes/nested :model/TransformTransformTag :transform_id opts)}})
 
 (defmethod serdes/dependencies "Transform"

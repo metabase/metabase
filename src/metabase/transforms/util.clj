@@ -108,20 +108,25 @@
 (defn run-cancelable-transform!
   "Execute a transform with cancellation support and proper error handling.
 
+  Computes `source-range-params` once upfront, saves them to the run record, and passes them
+  to `run-transform!` which receives `cancel-chan` and `source-range-params` as arguments.
+
   Options:
   - `:ex-message-fn` change how caught exceptions are presented to the user in run logs, by default the same as clojure.core/ex-message"
-  [run-id driver {:keys [db-id conn-spec output-schema]} run-transform! & {:keys [ex-message-fn] :or {ex-message-fn ex-message}}]
+  [run-id transform driver {:keys [db-id conn-spec output-schema]} run-transform! & {:keys [ex-message-fn] :or {ex-message-fn ex-message}}]
   ;; local run is responsible for status, using canceling lifecycle
   (try
     (when-not (driver/schema-exists? driver db-id output-schema)
       (driver/create-schema-if-needed! driver conn-spec output-schema))
-    (canceling/chan-start-timeout-vthread! run-id (transforms.settings/transform-timeout))
-    (let [cancel-chan (a/promise-chan)
-          ret (binding [qp.pipeline/*canceled-chan* cancel-chan]
-                (canceling/chan-start-run! run-id cancel-chan)
-                (run-transform! cancel-chan))]
-      (transform-run/succeed-started-run! run-id)
-      ret)
+    (let [source-range-params (transforms-base.u/get-source-range-params transform)]
+      (transforms-base.u/save-run-checkpoint-range! run-id source-range-params)
+      (canceling/chan-start-timeout-vthread! run-id (transforms.settings/transform-timeout))
+      (let [cancel-chan (a/promise-chan)
+            ret (binding [qp.pipeline/*canceled-chan* cancel-chan]
+                  (canceling/chan-start-run! run-id cancel-chan)
+                  (run-transform! cancel-chan source-range-params))]
+        (transform-run/succeed-started-run! run-id)
+        ret))
     (catch Throwable t
       (if (:timeout (ex-data t))
         (transform-run/timeout-run! run-id {:message (ex-message-fn t)})

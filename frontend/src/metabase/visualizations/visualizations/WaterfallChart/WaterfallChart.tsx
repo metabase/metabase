@@ -1,7 +1,7 @@
 import Color from "color";
 import { t } from "ttag";
 
-import { color, staticVizOverrides } from "metabase/lib/colors";
+import { color, staticVizOverrides } from "metabase/ui/colors";
 import {
   GRAPH_AXIS_SETTINGS,
   GRAPH_DATA_SETTINGS,
@@ -52,16 +52,14 @@ Object.assign(
       "waterfall.increase_color": {
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         section: t`Display`,
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        props: { title: t`Increase color` },
+        getProps: () => ({ title: t`Increase color` }),
         widget: "color",
         getDefault: () => color("accent1"),
       },
       "waterfall.decrease_color": {
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         section: t`Display`,
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        props: { title: t`Decrease color` },
+        getProps: () => ({ title: t`Decrease color` }),
         widget: "color",
         getDefault: () => color("accent3"),
       },
@@ -71,14 +69,13 @@ Object.assign(
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         title: t`Show total`,
         widget: "toggle",
-        default: true,
+        getDefault: () => true,
         inline: true,
       },
       "waterfall.total_color": {
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         section: t`Display`,
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-        props: { title: t`Total color` },
+        getProps: () => ({ title: t`Total color` }),
         widget: "color",
         // Unfortunately, to get static viz to look right, we need to avoid using alpha colors here
         getDefault: () =>
