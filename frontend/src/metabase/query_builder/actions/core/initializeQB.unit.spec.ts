@@ -490,11 +490,9 @@ describe("QB Actions > initializeQB", () => {
 
         it("handles error if couldn't deserialize card hash", async () => {
           const error = new Error("failed to deserialize card");
-          jest
-            .spyOn(CardLib, "deserializeCardFromUrl")
-            .mockImplementation(() => {
-              throw error;
-            });
+          jest.spyOn(CardLib, "deserializeCard").mockImplementation(() => {
+            throw error;
+          });
 
           const { dispatch } = await setup({ card: card });
 
