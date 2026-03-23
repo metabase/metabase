@@ -10,13 +10,13 @@ import {
 } from "metabase/api";
 import { getCollectionName } from "metabase/collections/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { Tree } from "metabase/common/components/tree";
 import type {
   ITreeNodeItem,
   TreeNodeProps,
 } from "metabase/common/components/tree/types";
 import CS from "metabase/css/core/index.css";
-import { SidebarContent } from "metabase/query_builder/components/SidebarContent";
 import {
   type Card,
   type CollectionId,

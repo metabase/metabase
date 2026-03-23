@@ -2,7 +2,7 @@ import { msgid, ngettext } from "ttag";
 
 import { useListDatabaseSchemaTablesQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { SidebarContent } from "metabase/query_builder/components/SidebarContent";
+import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { isConcreteTableId } from "metabase-types/api";
 
 import {

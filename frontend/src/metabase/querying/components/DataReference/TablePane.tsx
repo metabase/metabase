@@ -6,13 +6,13 @@ import {
   Description,
   EmptyDescription,
 } from "metabase/common/components/MetadataInfo/MetadataInfo";
+import { SidebarContent } from "metabase/common/components/SidebarContent";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
-import { SidebarContent } from "metabase/query_builder/components/SidebarContent";
-import { ConnectedTableList } from "metabase/query_builder/components/dataref/ConnectedTableList";
 import { getMetadata } from "metabase/selectors/metadata";
 import { isConcreteTableId } from "metabase-types/api";
 
+import { ConnectedTableList } from "./ConnectedTableList";
 import { FieldList } from "./FieldList";
 import {
   NodeListIcon,

@@ -5,6 +5,8 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { canonicalCollectionId } from "metabase/collections/utils";
+import { SidebarContent } from "metabase/common/components/SidebarContent";
+import { SidebarHeader } from "metabase/common/components/SidebarHeader";
 import CS from "metabase/css/core/index.css";
 import { Search } from "metabase/entities/search";
 import { SnippetCollections } from "metabase/entities/snippet-collections";
@@ -17,12 +19,9 @@ import {
   PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS,
   PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS,
 } from "metabase/plugins";
-import { SidebarContent } from "metabase/query_builder/components/SidebarContent";
-import { SidebarHeader } from "metabase/query_builder/components/SidebarHeader";
 import { Box, Button, Flex, Icon, Menu } from "metabase/ui";
 
-import { SnippetRow } from "../SnippetRow";
-
+import { SnippetRow } from "./SnippetRow";
 import S from "./SnippetSidebar.module.css";
 import { SnippetSidebarEmptyState } from "./SnippetSidebarEmptyState";
 

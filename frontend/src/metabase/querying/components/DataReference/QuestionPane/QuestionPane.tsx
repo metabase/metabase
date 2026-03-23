@@ -13,8 +13,8 @@ import {
   Description,
   EmptyDescription,
 } from "metabase/common/components/MetadataInfo/MetadataInfo";
+import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { useSelector } from "metabase/lib/redux";
-import { SidebarContent } from "metabase/query_builder/components/SidebarContent";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, type IconName } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";

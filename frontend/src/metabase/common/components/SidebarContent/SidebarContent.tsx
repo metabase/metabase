@@ -12,7 +12,7 @@ import {
 } from "metabase/ui";
 
 import { SidebarHeader } from "../SidebarHeader";
-import { ViewButton } from "../view/ViewButton";
+import { ViewButton } from "../ViewButton";
 
 import SidebarContentS from "./SidebarContent.module.css";
 
