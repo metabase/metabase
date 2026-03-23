@@ -77,97 +77,132 @@
           :when entity-type]
     (f path entity-type)))
 
+;;; ---------------------------------------------------------------------------
+;;; Database tree indexing
+;;;
+;;; The serdes database directory has a regular, recursive structure that we
+;;; describe as data and interpret with a single walker.
+;;;
+;;; Layout grammar (each step is a vector):
+;;;
+;;;   [:dir "name" & children]     — descend into literal subdirectory "name"
+;;;   [:each & children]           — iterate subdirs, capture dir-name into ref
+;;;   [:entity :kind]              — <dirname>.yaml here is an entity of :kind
+;;;   [:files :kind]               — each .yaml file here is an entity of :kind
+;;;   [:maybe & children]          — like progn, but ok if directory is missing
+;;;   [:insert val & children]     — push a literal value into the ref (e.g. nil for schema)
+;;;
+;;; The walker accumulates captured names into a `ref` vector as it descends.
+;;; When it hits :entity or :files, it emits {:kind :ref :file} index entries.
+;;; ---------------------------------------------------------------------------
+
+(def ^:private table-layout
+  "Shared layout for a table directory and its fields."
+  [:each
+   [:entity :table]
+   [:maybe [:dir "fields" [:files :field]]]])
+
+(def ^:private database-layout
+  "Layout descriptor for the databases/ tree."
+  [:dir "databases"
+   [:each                                           ; <db-name>/
+    [:entity :database]                             ;   <db-name>.yaml
+    [:maybe                                         ;   with schemas:
+     [:dir "schemas"
+      [:each                                        ;     <schema>/
+       [:dir "tables" table-layout]]]]
+    [:maybe                                         ;   without schemas (schema-less):
+     [:dir "tables"
+      [:insert nil table-layout]]]]])
+
+(defn- subdirs
+  "Subdirectories of `dir`, or [] if it doesn't exist."
+  [^File dir]
+  (if (.isDirectory dir)
+    (filterv #(.isDirectory ^File %) (.listFiles dir))
+    []))
+
+(defn- walk-layout
+  "Interpret a layout descriptor against `dir`, accumulating captured names in `ref`.
+   Returns a lazy seq of {:kind :ref :file} index entries."
+  [^File dir ref layout]
+  (let [op       (first layout)
+        ;; :dir, :entity, :files, :insert take an arg; :each, :maybe do not
+        has-arg? (#{:dir :entity :files :insert} op)
+        arg      (when has-arg? (second layout))
+        children (if has-arg? (nnext layout) (next layout))]
+    (case op
+      :dir
+      (let [child-dir (io/file dir ^String arg)]
+        (when (.isDirectory child-dir)
+          (mapcat #(walk-layout child-dir ref %) children)))
+
+      :each
+      (for [^File child-dir (subdirs dir)
+            :let [name (.getName child-dir)
+                  ref' (conj ref name)]
+            entry (mapcat #(walk-layout child-dir ref' %) children)]
+        entry)
+
+      :entity
+      (let [name (.getName dir)
+            f    (io/file dir (str name ".yaml"))]
+        (when (.isFile f)
+          [{:kind arg :ref (if (= 1 (count ref)) (first ref) ref) :file (.getPath f)}]))
+
+      :files
+      (for [^File f (.listFiles dir)
+            :when (.isFile f)
+            :let  [fname (.getName f)]
+            :when (str/ends-with? fname ".yaml")
+            :when (not (str/includes? fname "___"))
+            :let  [field-name (str/replace fname ".yaml" "")]]
+        {:kind arg :ref (conj ref field-name) :file (.getPath f)})
+
+      :insert
+      (mapcat #(walk-layout dir (conj ref arg) %) children)
+
+      :maybe
+      (when (.isDirectory dir)
+        (mapcat #(walk-layout dir ref %) children))
+
+      nil)))
+
+(defn- index-entity-id-files
+  "Index entries for cards/dashboards found by walking the file tree.
+   Assigns `kind` to each file whose path matches `pattern`."
+  [export-dir kind pattern]
+  (for [^File file (file-seq (io/file export-dir))
+        :when (.isFile file)
+        :let  [path (.getPath file)]
+        :when (re-find pattern path)
+        :let  [entity-id (extract-entity-id path)]
+        :when entity-id]
+    {:kind kind :ref entity-id :file path}))
+
 (defn build-file-index
-  "Build index of all entity files in export directory.
-   Returns map with :databases, :tables, :fields, :cards, :dashboards, :collections.
-   Each is a map from identifying path/id to file path."
+  "Build index of all entity files in an export directory.
+   Returns `{kind {ref file-path}}` where kind is :database, :table, :field,
+   :card, or :dashboard."
   [export-dir]
-  (let [index (atom {:db-name->file {}
-                     :table-path->file {}
-                     :field-path->file {}
-                     :card-entity-id->file {}
-                     :dashboard-entity-id->file {}
-                     :collection-entity-id->file {}})]
-    ;; Index databases, tables, fields via directory structure
-    (let [db-dir (io/file export-dir "databases")]
-      (when (.exists db-dir)
-        (doseq [^File db-folder (.listFiles db-dir)
-                :when (.isDirectory db-folder)
-                :let [folder-name (.getName db-folder)
-                      db-yaml-file (io/file db-folder (str folder-name ".yaml"))]
-                :when (.exists db-yaml-file)
-                :let [db-name folder-name]]
-          ;; Index database
-          (swap! index assoc-in [:db-name->file db-name] (.getPath db-yaml-file))
-          ;; Index tables and fields - two possible structures
-          (let [schemas-dir (io/file db-folder "schemas")
-                tables-dir-no-schema (io/file db-folder "tables")]
-            ;; With schemas: databases/<db>/schemas/<schema>/tables/<table>/
-            (when (.exists schemas-dir)
-              (doseq [^File schema-dir (.listFiles schemas-dir)
-                      :when (.isDirectory schema-dir)
-                      :let [schema-name (.getName schema-dir)
-                            tables-dir (io/file schema-dir "tables")]
-                      :when (.exists tables-dir)
-                      ^File table-dir (.listFiles tables-dir)
-                      :when (.isDirectory table-dir)
-                      :let [table-name (.getName table-dir)
-                            table-path [db-name schema-name table-name]
-                            table-yaml (io/file table-dir (str table-name ".yaml"))]]
-                (when (.exists table-yaml)
-                  (swap! index assoc-in [:table-path->file table-path] (.getPath table-yaml)))
-                (let [fields-dir (io/file table-dir "fields")]
-                  (when (.exists fields-dir)
-                    (doseq [^File field-file (.listFiles fields-dir)
-                            :when (.isFile field-file)
-                            :when (str/ends-with? (.getName field-file) ".yaml")
-                            :when (not (str/includes? (.getName field-file) "___"))
-                            :let [field-name (str/replace (.getName field-file) ".yaml" "")
-                                  field-path [db-name schema-name table-name field-name]]]
-                      (swap! index assoc-in [:field-path->file field-path] (.getPath field-file)))))))
-            ;; Without schemas: databases/<db>/tables/<table>/
-            (when (.exists tables-dir-no-schema)
-              (doseq [^File table-dir (.listFiles tables-dir-no-schema)
-                      :when (.isDirectory table-dir)
-                      :let [table-name (.getName table-dir)
-                            table-path [db-name nil table-name]
-                            table-yaml (io/file table-dir (str table-name ".yaml"))]]
-                (when (.exists table-yaml)
-                  (swap! index assoc-in [:table-path->file table-path] (.getPath table-yaml)))
-                (let [fields-dir (io/file table-dir "fields")]
-                  (when (.exists fields-dir)
-                    (doseq [^File field-file (.listFiles fields-dir)
-                            :when (.isFile field-file)
-                            :when (str/ends-with? (.getName field-file) ".yaml")
-                            :when (not (str/includes? (.getName field-file) "___"))
-                            :let [field-name (str/replace (.getName field-file) ".yaml" "")
-                                  field-path [db-name nil table-name field-name]]]
-                      (swap! index assoc-in [:field-path->file field-path] (.getPath field-file)))))))))))
-    ;; Index cards (entity_id based)
-    (doseq [^File file (file-seq (io/file export-dir))
-            :when (.isFile file)
-            :when (re-matches #".*/cards/[^/]+\.yaml$" (.getPath file))
-            :let [entity-id (extract-entity-id (.getPath file))]
-            :when entity-id]
-      (swap! index assoc-in [:card-entity-id->file entity-id] (.getPath file)))
-    ;; Index dashboards
-    (doseq [^File file (file-seq (io/file export-dir))
-            :when (.isFile file)
-            :when (re-matches #".*/dashboards/[^/]+\.yaml$" (.getPath file))
-            :let [entity-id (extract-entity-id (.getPath file))]
-            :when entity-id]
-      (swap! index assoc-in [:dashboard-entity-id->file entity-id] (.getPath file)))
-    @index))
+  (let [entries (concat
+                 (walk-layout (io/file export-dir) [] database-layout)
+                 (index-entity-id-files export-dir :card      #"/cards/[^/]+\.yaml$")
+                 (index-entity-id-files export-dir :dashboard #"/dashboards/[^/]+\.yaml$"))]
+    (reduce (fn [idx {:keys [kind ref file]}]
+              (assoc-in idx [kind ref] file))
+            {}
+            entries)))
 
 (defn index-stats
   "Get statistics about a file index."
   [index]
-  {:databases (count (:db-name->file index))
-   :tables (count (:table-path->file index))
-   :fields (count (:field-path->file index))
-   :cards (count (:card-entity-id->file index))
-   :dashboards (count (:dashboard-entity-id->file index))
-   :database-names (vec (keys (:db-name->file index)))})
+  {:databases      (count (:database index))
+   :tables         (count (:table index))
+   :fields         (count (:field index))
+   :cards          (count (:card index))
+   :dashboards     (count (:dashboard index))
+   :database-names (vec (keys (:database index)))})
 
 ;;; ===========================================================================
 ;;; MetadataSource Implementation
@@ -179,19 +214,19 @@
 (deftype SerdesSource [export-dir index]
   source/MetadataSource
   (resolve-database [_ db-name]
-    (when-let [file (get (:db-name->file index) db-name)]
+    (when-let [file (get-in index [:database db-name])]
       (load-yaml file)))
 
   (resolve-table [_ table-path]
-    (when-let [file (get (:table-path->file index) table-path)]
+    (when-let [file (get-in index [:table table-path])]
       (load-yaml file)))
 
   (resolve-field [_ field-path]
-    (when-let [file (get (:field-path->file index) field-path)]
+    (when-let [file (get-in index [:field field-path])]
       (load-yaml file)))
 
   (resolve-card [_ entity-id]
-    (when-let [file (get (:card-entity-id->file index) entity-id)]
+    (when-let [file (get-in index [:card entity-id])]
       (load-yaml file))))
 
 (defn make-source
@@ -219,22 +254,22 @@
 (defn all-card-ids
   "Get all card entity-ids from source."
   [^SerdesSource source]
-  (keys (:card-entity-id->file (.-index source))))
+  (keys (:card (.-index source))))
 
 (defn all-database-names
   "Get all database names from source."
   [^SerdesSource source]
-  (keys (:db-name->file (.-index source))))
+  (keys (:database (.-index source))))
 
 (defn all-table-paths
   "Get all table paths from source."
   [^SerdesSource source]
-  (keys (:table-path->file (.-index source))))
+  (keys (:table (.-index source))))
 
 (defn all-field-paths
   "Get all field paths from source."
   [^SerdesSource source]
-  (keys (:field-path->file (.-index source))))
+  (keys (:field (.-index source))))
 
 (defn make-enumerators
   "Create enumerators map for use with checker/check-cards."
@@ -261,44 +296,3 @@
   [^SerdesSource source card-ids]
   (let [checker (requiring-resolve 'metabase-enterprise.checker.checker/check-cards)]
     (checker source (make-enumerators source) card-ids)))
-
-;;; ===========================================================================
-;;; CLI Entrypoint
-;;; ===========================================================================
-
-(defn cli-check-cards
-  "CLI entrypoint for checking card queries in a serdes export.
-   Prints summary and exits with code 0 on success, 1 on failures.
-   If output-file is provided, writes results to that file."
-  [export-dir output-file]
-  (let [source (make-source export-dir)
-        results (check source)
-        summarize (requiring-resolve 'metabase-enterprise.checker.checker/summarize-results)
-        format-result (requiring-resolve 'metabase-enterprise.checker.checker/format-result)
-        result-status (requiring-resolve 'metabase-enterprise.checker.checker/result-status)
-        summary (summarize results)
-        failures (filter #(not= :ok (result-status (second %))) results)]
-    ;; Write to output file if specified
-    (when output-file
-      (spit output-file (pr-str results))
-      (println "Results written to:" output-file))
-    ;; Print summary
-    (println "Card Check Results")
-    (println "==================")
-    (println "Total cards:" (:total summary))
-    (println "  OK:" (:ok summary))
-    (println "  Errors:" (:errors summary))
-    (println "  Unresolved refs:" (:unresolved summary))
-    (println "  Issues:" (:issues summary))
-    ;; Print failures
-    (when (seq failures)
-      (println "\nFailures:")
-      (println "---------")
-      (doseq [entry (sort-by (comp :name second) failures)]
-        (println)
-        (println (format-result entry))))
-    ;; Exit with appropriate code
-    (flush)
-    (System/exit (if (zero? (+ (:errors summary) (:unresolved summary) (:issues summary)))
-                   0
-                   1))))

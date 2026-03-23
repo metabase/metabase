@@ -37,12 +37,12 @@
   (testing "Source correctly indexes databases, tables, fields, and cards"
     (let [source (make-test-source)
           index (serdes-format/source-index source)]
-      (is (= 2 (count (:db-name->file index))) "Should have 2 databases (Test Database, SQLite DB)")
-      (is (= 4 (count (:table-path->file index))) "Should have 4 tables")
-      (is (= 11 (count (:field-path->file index))) "Should have 11 fields")
-      (is (= 5 (count (:card-entity-id->file index))) "Should have 5 cards")
-      (is (contains? (:db-name->file index) "Test Database") "Should include Test Database")
-      (is (contains? (:db-name->file index) "SQLite DB") "Should include SQLite DB"))))
+      (is (= 2 (count (:database index))) "Should have 2 databases (Test Database, SQLite DB)")
+      (is (= 4 (count (:table index))) "Should have 4 tables")
+      (is (= 11 (count (:field index))) "Should have 11 fields")
+      (is (= 5 (count (:card index))) "Should have 5 cards")
+      (is (contains? (:database index) "Test Database") "Should include Test Database")
+      (is (contains? (:database index) "SQLite DB") "Should include SQLite DB"))))
 
 (deftest simple-mbql-query-test
   (testing "Simple MBQL query on orders table validates successfully"
@@ -104,10 +104,10 @@
     (let [source (make-test-source)
           index (serdes-format/source-index source)]
       ;; Should have both "Test Database" and "SQLite DB"
-      (is (= 2 (count (:db-name->file index))) "Should have 2 databases")
+      (is (= 2 (count (:database index))) "Should have 2 databases")
       ;; Test Database has 2 tables, SQLite DB has 2 tables = 4 total
-      (is (= 4 (count (:table-path->file index))) "Should have 4 tables")
-      (is (contains? (:db-name->file index) "SQLite DB") "Should include SQLite DB"))))
+      (is (= 4 (count (:table index))) "Should have 4 tables")
+      (is (contains? (:database index) "SQLite DB") "Should include SQLite DB"))))
 
 (deftest schemaless-query-test
   (testing "Query on schema-less database validates successfully"
@@ -131,8 +131,8 @@
   (testing "FK target in field metadata is resolved to integer ID"
     (let [source (make-test-source)
           enumerators (serdes-format/make-enumerators source)
-          session (#'checker/make-session source enumerators)
-          provider (checker/make-provider session)
+          store (checker/make-store source enumerators)
+          provider (checker/make-provider store)
           ;; Get the product_id field which has FK to products.id
           fields (metabase.lib.metadata.protocols/metadatas
                   provider {:lib/type :metadata/column})
