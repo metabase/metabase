@@ -51,6 +51,7 @@ export type PythonTransformSourceValidationResult = {
 export type PythonTransformsPlugin = {
   isEnabled: boolean;
   getPythonTransformsRoutes: () => ReactNode;
+  getInspectorRoutes: () => ReactNode;
   getPythonSourceValidationResult: (
     source: PythonTransformSourceDraft,
   ) => PythonTransformSourceValidationResult;
@@ -72,6 +73,7 @@ export const PLUGIN_TRANSFORMS = getDefaultPluginTransforms();
 const getDefaultPluginTransformsPython = (): PythonTransformsPlugin => ({
   isEnabled: false,
   getPythonTransformsRoutes: () => null,
+  getInspectorRoutes: () => null,
   getPythonSourceValidationResult: () => ({ isValid: true }),
   TransformEditor: PluginPlaceholder,
   SourceSection: PluginPlaceholder,

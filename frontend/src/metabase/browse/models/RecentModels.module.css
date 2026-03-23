@@ -1,0 +1,8 @@
+.recentModelsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+  gap: var(--mantine-spacing-sm);
+  margin: 0;
+  width: 100%;
+  margin-bottom: var(--mantine-spacing-sm);
+}

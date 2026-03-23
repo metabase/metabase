@@ -35,7 +35,7 @@ on:
 jobs:
   determine-test-type:
     name: Determine test type
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     outputs:
       type: ${{ steps.detect.outputs.type }}
@@ -53,7 +53,7 @@ jobs:
   workflow-summary:
     name: Stress test inputs
     needs: [determine-test-type]
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
       - name: Generate workflow summary
@@ -72,7 +72,7 @@ jobs:
 
   stress-test-flake-fix:
     needs: [determine-test-type]
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     name: Stress test E2E flake fix
     env:

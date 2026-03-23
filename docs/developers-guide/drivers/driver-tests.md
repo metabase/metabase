@@ -204,7 +204,7 @@ Here is an example configuration for PostgreSQL.
 be-tests-postgres-latest-ee:
   needs: files-changed
   if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
-  runs-on: ubuntu-22.04
+  runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
   timeout-minutes: 40
   env:
     CI: "true"

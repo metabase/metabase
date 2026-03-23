@@ -1,5 +1,5 @@
 import { useFormikContext } from "formik";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import type * as Yup from "yup";
@@ -20,13 +20,8 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import { IncrementalTransformSettings } from "metabase/transforms/components/IncrementalTransform/IncrementalTransformSettings";
-import {
-  QueryComplexityWarning,
-  useQueryComplexityChecks,
-} from "metabase/transforms/components/QueryComplexityWarning";
 import { Box, Button, Group, Modal, Stack } from "metabase/ui";
 import type {
-  QueryComplexity,
   SchemaName,
   Transform,
   TransformSource,
@@ -158,17 +153,9 @@ function CreateTransformForm({
   showIncrementalSettings = true,
 }: CreateTransformFormFieldsProps) {
   const { values, setFieldValue } = useFormikContext<NewTransformValues>();
-  const { checkComplexity } = useQueryComplexityChecks();
-  const [complexity, setComplexity] = useState<QueryComplexity | undefined>();
 
-  const handleIncrementalChange = async (value: boolean) => {
+  const handleIncrementalChange = (value: boolean) => {
     setFieldValue("incremental", value);
-    if (value) {
-      const complexity = await checkComplexity(source);
-      setComplexity(complexity);
-    } else {
-      setComplexity(undefined);
-    }
   };
 
   return (
@@ -201,17 +188,12 @@ function CreateTransformForm({
             onIncrementalChange={handleIncrementalChange}
           />
         )}
-        {complexity && <QueryComplexityWarning variant="standout" />}
         <Group>
           <Box flex={1}>
             <FormErrorMessage />
           </Box>
           <Button onClick={onClose}>{t`Back`}</Button>
-          <FormSubmitButton
-            label={complexity ? t`Save anyway` : t`Save`}
-            variant="filled"
-            color={complexity ? "saturated-red" : undefined}
-          />
+          <FormSubmitButton label={t`Save`} variant="filled" />
         </Group>
       </Stack>
     </Form>
