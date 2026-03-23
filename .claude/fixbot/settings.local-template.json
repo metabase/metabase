@@ -4,8 +4,8 @@
     "autoAllowBashIfSandboxed": true,
     "allowUnsandboxedCommands": true,
     "filesystem": {
-      "allowWrite": [".", "{{pwd}}", "~/.m2", "~/.gitlibs", "~/.deps.clj", "/tmp"],
-      "allowRead": [".", "{{pwd}}", "~/.m2", "~/.gitlibs", "~/.deps.clj", "/tmp"]
+      "allowWrite": [".", "{{pwd}}", "~/.m2", "~/.gitlibs", "~/.deps.clj", "~/.local/state/workmux", "~/.cache/workmux", "/tmp"],
+      "allowRead": [".", "{{pwd}}", "~/.m2", "~/.gitlibs", "~/.deps.clj", "~/.local/state/workmux", "~/.cache/workmux", "/tmp"]
     },
     "excludedCommands": ["docker"],
     "network": {
