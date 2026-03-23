@@ -567,9 +567,6 @@
   (mt/with-dynamic-fn-redefs [search.index/now (constantly (+ simulated-delay-ns (System/nanoTime)))]
     (search.index/active-table)))
 
-(defn- missing-table-cause []
-  (org.h2.jdbc.JdbcSQLSyntaxErrorException. "missing" nil nil 0 nil nil))
-
 (deftest auto-refresh-test
   (when (search/supports-index?)
     (binding [search.spec/*testing-only-index-version-hash* "auto-refresh-test"]
