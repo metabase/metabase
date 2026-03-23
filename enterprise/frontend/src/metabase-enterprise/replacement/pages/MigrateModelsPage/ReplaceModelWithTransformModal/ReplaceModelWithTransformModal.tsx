@@ -33,17 +33,17 @@ const VALIDATION_SCHEMA = Yup.object({
 
 type ReplaceModelValues = Yup.InferType<typeof VALIDATION_SCHEMA>;
 
-type ReplaceModelModalProps = {
+type ReplaceModelWithTransformModalProps = {
   card: Card;
   isOpened: boolean;
   onClose: () => void;
 };
 
-export function ReplaceModelModal({
+export function ReplaceModelWithTransformModal({
   card,
   isOpened,
   onClose,
-}: ReplaceModelModalProps) {
+}: ReplaceModelWithTransformModalProps) {
   return (
     <Modal
       title={t`Convert this model to a transform?`}

@@ -6,7 +6,7 @@ import { Button, Icon, Tooltip } from "metabase/ui";
 import type { Card, Database } from "metabase-types/api";
 
 import { SourceReplacementButton } from "../../../../components/SourceReplacementButton";
-import { ReplaceModelModal } from "../../ReplaceModelModal";
+import { ReplaceModelWithTransformModal } from "../../ReplaceModelWithTransformModal";
 
 type ModalType = "replace";
 
@@ -40,7 +40,7 @@ export function ActionSection({ card, database }: ActionSectionProps) {
           );
         }}
       </SourceReplacementButton>
-      <ReplaceModelModal
+      <ReplaceModelWithTransformModal
         card={card}
         isOpened={modalType === "replace"}
         onClose={() => setModalType(undefined)}
