@@ -76,7 +76,9 @@ export function buildFullText(
     .join(", ");
 }
 
-const EXPRESSION_DELIMITERS = new Set(["+", "-", "*", "/", "(", ")", ","]);
+const COMMA = ",";
+
+const EXPRESSION_DELIMITERS = new Set(["+", "-", "*", "/", "(", ")", COMMA]);
 
 /** Delimiters that are always boundaries (everything except comma). */
 const NON_COMMA_DELIMITERS = new Set(["+", "-", "*", "/", "(", ")"]);
@@ -156,7 +158,7 @@ export function getWordAtCursor(
         beforeLower.endsWith(name) &&
         (before.length === name.length ||
           NON_COMMA_DELIMITERS.has(before[before.length - name.length - 1]) ||
-          before[before.length - name.length - 1] === "," ||
+          before[before.length - name.length - 1] === COMMA ||
           before[before.length - name.length - 1] === " ")
       ) {
         return true;
@@ -170,7 +172,7 @@ export function getWordAtCursor(
     if (NON_COMMA_DELIMITERS.has(ch)) {
       return true;
     }
-    if (ch === ",") {
+    if (ch === COMMA) {
       return isCommaASeparator(pos);
     }
     return false;
@@ -210,7 +212,10 @@ function findSeparatorCommaPositions(
   const metricRanges = allTokens.filter((t) => t.type === "metric");
   const commas: number[] = [];
   for (let i = 0; i < text.length; i++) {
-    if (text[i] === "," && !metricRanges.some((r) => i >= r.from && i < r.to)) {
+    if (
+      text[i] === COMMA &&
+      !metricRanges.some((r) => i >= r.from && i < r.to)
+    ) {
       commas.push(i);
     }
   }
@@ -536,7 +541,7 @@ export function parseFullTextWithPositions(
 
     // Commas are item separators — tracked for position-based splitting
     // but NOT emitted as a token type (no more "separator" tokens).
-    if (ch === ",") {
+    if (ch === COMMA) {
       i++;
       continue;
     }
@@ -616,18 +621,11 @@ export function parseFullTextWithPositions(
       const start = i;
       i++;
       while (i < text.length) {
-        const c = text[i];
+        const char = text[i];
         if (
-          c === " " ||
-          c === "\t" ||
-          c === "," ||
-          c === "(" ||
-          c === ")" ||
-          c === "+" ||
-          c === "-" ||
-          c === "*" ||
-          c === "/" ||
-          (c >= "0" && c <= "9")
+          EXPRESSION_DELIMITERS.has(char) ||
+          char === " " ||
+          (char >= "0" && char <= "9")
         ) {
           break;
         }
@@ -635,13 +633,12 @@ export function parseFullTextWithPositions(
         let metricStartsHere = false;
         for (const { name } of sortedMetrics) {
           if (lower.startsWith(name, i)) {
-            const nI = i + name.length;
-            const nC = text[nI];
+            const nameEndIndex = i + name.length;
+            const afterNameChar = text[nameEndIndex];
             if (
-              !nC ||
-              nC === " " ||
-              nC === "\t" ||
-              EXPRESSION_DELIMITERS.has(nC)
+              !afterNameChar ||
+              afterNameChar === " " ||
+              EXPRESSION_DELIMITERS.has(afterNameChar)
             ) {
               metricStartsHere = true;
               break;
