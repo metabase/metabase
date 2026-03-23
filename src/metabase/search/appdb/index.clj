@@ -273,16 +273,14 @@
            e-after))
 
 (defn- safe-batch-upsert!
-  "Best-effort upsert into the search index table returned by `table-name-fn`.
+  "A version of batch-upsert! that no-ops for missing indexes, and handles stale index tracking metadata.
 
-  Returns the table name that was written to, or nil if there is no tracked table or if the
-  tracked table disappeared during a concurrent index rotation. Missing-table races are
-  intentionally suppressed because search indexing is best-effort and must not fail the caller's
-  primary write path."
+  Returns the name of the table that was written to, or nil if there is none being tracked.
+  We recover gracefully the first time if the tracking atom was stale, but do not check again on retry."
   [table-type table-name-fn entries]
   ;; For convenience, no-op if we are not tracking any table.
   (when-let [table-name (table-name-fn)]
-    (let [upsert! #(specialization/batch-upsert! % entries)]
+    (let [upsert! (fn [t] (specialization/batch-upsert! t entries) t)]
       (try
         (upsert! table-name)
         (catch Exception e
