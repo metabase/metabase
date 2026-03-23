@@ -48,6 +48,16 @@ databaseChangeLog:
       rollback: # No need to roll back
 
   - changeSet:
+      id: v59.2025-12-01T18:53:27
+      author: nvoxland
+      comment: Make transform.source_database_id not nullable
+      changes:
+        - addNotNullConstraint:
+            tableName: transform
+            columnName: source_database_id
+            columnDataType: int
+
+  - changeSet:
       id: v59.2025-12-03T17:08:36
       author: nvoxland
       comment: Add collection_id column to transform table
@@ -3460,7 +3470,6 @@ databaseChangeLog:
         - customChange:
             class: "metabase.app_db.custom_migrations.DropMedallionNamesForDataLayer"
 
-  ## The original changeset that made this not null has been removed, but keep the switch to nullable to handle existing DBs.
   - changeSet:
       id: v59.2026-03-01T11:00:00
       author: nvoxland
@@ -3470,7 +3479,6 @@ databaseChangeLog:
             tableName: transform
             columnName: source_database_id
             columnDataType: int
-      rollback: ## don't roll back, we don't want to add a null constraint that shouldn't have been there
 
   - changeSet:
       id: v59.2026-03-01T11:01:00
@@ -3511,6 +3519,7 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_tranforms_source_db_id
             onDelete: SET NULL
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
