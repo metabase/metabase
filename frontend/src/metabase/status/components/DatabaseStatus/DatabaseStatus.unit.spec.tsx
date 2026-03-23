@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupDatabasesEndpoints } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { Database, User } from "metabase-types/api";
 import { createMockDatabase, createMockUser } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
@@ -34,7 +34,7 @@ describe("DatabaseStatus", () => {
       ],
     });
 
-    expect(screen.getByText("Syncing…")).toBeInTheDocument();
+    expect(await screen.findByText("Syncing…")).toBeInTheDocument();
 
     await userEvent.click(screen.getByLabelText("chevrondown icon"));
     expect(screen.getByLabelText("Syncing database…")).toBeInTheDocument();
@@ -63,7 +63,7 @@ describe("DatabaseStatus", () => {
     expect(screen.queryByText("Syncing…")).not.toBeInTheDocument();
   });
 
-  it("assigns 'sync-status-visible' class to body element when database is in sync", () => {
+  it("assigns 'sync-status-visible' class to body element when database is in sync", async () => {
     setup({
       user: createMockUser({ id: 1 }),
       databases: [
@@ -74,6 +74,8 @@ describe("DatabaseStatus", () => {
       ],
     });
 
-    expect(document.body).toHaveClass("sync-status-visible");
+    await waitFor(() => {
+      expect(document.body).toHaveClass("sync-status-visible");
+    });
   });
 });
