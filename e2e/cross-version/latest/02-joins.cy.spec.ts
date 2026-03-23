@@ -1,9 +1,11 @@
 import { Q2_JOINS_NAME } from "../constants";
+import { saveSimpleQuestion } from "../cross-version-helpers";
 
 const { H } = cy;
 
 describe("Cross-version questions - joins", () => {
   it("setup: creates a joined question", { tags: ["@source"] }, () => {
+    H.restoreCrossVersionDev("01-complete");
     cy.signIn("admin", { skipCache: true });
 
     cy.visit("/");
@@ -44,7 +46,7 @@ describe("Cross-version questions - joins", () => {
     H.visualize();
     cy.findByTestId("question-row-count").should("have.text", "Showing 4 rows");
 
-    H.saveQuestion(Q2_JOINS_NAME);
+    saveSimpleQuestion(Q2_JOINS_NAME);
   });
 
   it("verify: bar chart is preserved", { tags: ["@target"] }, () => {
@@ -67,5 +69,7 @@ describe("Cross-version questions - joins", () => {
       .and("contain", "Gizmo")
       .and("contain", "$0")
       .and("contain", "$5.00");
+
+    H.snapshotCrossVersionDev("02-complete");
   });
 });

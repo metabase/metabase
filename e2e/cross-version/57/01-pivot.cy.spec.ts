@@ -1,9 +1,11 @@
 import { Q1_PIVOT_NAME } from "../constants";
+import { saveSimpleQuestion } from "../cross-version-helpers";
 
 const { H } = cy;
 
 describe("Cross-version questions - pivot", () => {
   it("setup: creates a pivot table", { tags: ["@source"] }, () => {
+    H.restoreCrossVersionDev("00-complete");
     cy.signIn("admin", { skipCache: true });
 
     cy.visit("/");
@@ -48,7 +50,7 @@ describe("Cross-version questions - pivot", () => {
       "have.text",
       "Showing 155 rows",
     );
-    H.saveQuestion(Q1_PIVOT_NAME);
+    saveSimpleQuestion(Q1_PIVOT_NAME);
   });
 
   it("verify: pivot table is preserved", { tags: ["@target"] }, () => {
@@ -72,5 +74,7 @@ describe("Cross-version questions - pivot", () => {
       .and("contain", "Organic")
       .and("contain", "Row totals")
       .and("contain", "KS");
+
+    H.snapshotCrossVersionDev("01-complete");
   });
 });
