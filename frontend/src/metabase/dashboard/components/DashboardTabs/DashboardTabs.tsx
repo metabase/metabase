@@ -134,7 +134,12 @@ export function DashboardTabs() {
           />
         ) : (
           tabs.map((tab) => (
-            <Sortable key={tab.id} id={tab.id} disabled={!isEditing}>
+            <Sortable
+              key={tab.id}
+              id={tab.id}
+              disabled={!isEditing}
+              role="presentation"
+            >
               <TabButton.Renameable
                 value={tab.id}
                 label={tab.name}

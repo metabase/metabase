@@ -148,11 +148,6 @@ function getComputedSetting<T, TValue, TProps extends Record<string, unknown>>(
       computedSettings[settingId] = defaultValue;
       return;
     }
-
-    if ("default" in settingDef) {
-      computedSettings[settingId] = settingDef.default;
-      return;
-    }
   } catch (e) {
     console.warn("Error getting setting", settingId, e);
   }

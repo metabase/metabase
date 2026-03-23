@@ -1,9 +1,13 @@
 export const ROW_HEIGHT = 36;
-export const HEADER_HEIGHT = 36;
+export const HEADER_BASE_HEIGHT = 36;
+export const HEADER_BORDER_SIZE = 1;
+export const HEADER_HEIGHT = HEADER_BASE_HEIGHT + HEADER_BORDER_SIZE;
 export const ADD_COLUMN_BUTTON_WIDTH = 36;
 export const MIN_COLUMN_WIDTH = 60;
 export const ROW_ID_COLUMN_ID = `\0_INDEX`;
 export const TRUNCATE_LONG_CELL_WIDTH = 780;
-export const PINNED_COLUMN_Z_INDEX = 1;
 export const DEFAULT_FONT_SIZE = "12.5px";
 export const FOOTER_HEIGHT = 30;
+export const PINNED_BORDER_SEPARATOR_WIDTH = 3;
+export const DATASET_INDEX_ATTRIBUTE_NAME = "data-dataset-index";
+export const VIRTUAL_INDEX_ATTRIBUTE_NAME = "data-index";

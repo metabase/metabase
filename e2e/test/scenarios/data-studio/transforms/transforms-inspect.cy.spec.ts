@@ -15,8 +15,10 @@ describe("scenarios > data-studio > transforms > inspect", () => {
     H.activateToken("bleeding-edge");
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
-    cy.intercept("GET", "/api/transform/*/inspect").as("inspectorDiscovery");
-    cy.intercept("GET", "/api/transform/*/inspect/*").as("inspectorLens");
+    cy.intercept("GET", "/api/ee/transforms/*/inspect").as(
+      "inspectorDiscovery",
+    );
+    cy.intercept("GET", "/api/ee/transforms/*/inspect/*").as("inspectorLens");
 
     H.resetSnowplow();
     H.enableTracking();

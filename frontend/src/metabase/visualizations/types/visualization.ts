@@ -277,7 +277,6 @@ export type ColumnSettingDefinition<TValue, TProps = unknown> = {
   title?: string;
   hint?: string;
   widget?: string | ComponentType<any>;
-  default?: TValue;
   props?: TProps;
   inline?: boolean;
   readDependencies?: string[];
@@ -352,7 +351,6 @@ export type VisualizationSettingDefinition<
     extra?: SettingsExtra,
   ) => string;
   autoOpenWhenUnset?: boolean;
-  default?: TValue;
   noPadding?: boolean;
   value?: TValue;
   set?: boolean;

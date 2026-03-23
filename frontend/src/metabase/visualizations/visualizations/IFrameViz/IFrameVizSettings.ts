@@ -29,7 +29,7 @@ export const settings = {
     },
     iframe: {
       value: "",
-      default: "",
+      getDefault: () => "",
     },
   },
 };
