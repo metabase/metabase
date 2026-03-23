@@ -6,7 +6,7 @@ files:
     - bin/bb
 
 post_create:
-  - sed "s|{{pwd}}|$(pwd)|" .claude/fixbot/settings.local-template.json > .claude/settings.local.json
+  - sed "s|{{pwd}}|$(pwd)|;s|{{tmpdir}}|${TMPDIR%/}|" .claude/fixbot/settings.local-template.json > .claude/settings.local.json
   - mkdir -p .fixbot
   - echo '{{ISSUE_ID}} | {{ISSUE_URL}}' > .fixbot/issue.txt
   - rm -f .claude/commands/fixbot*.md
