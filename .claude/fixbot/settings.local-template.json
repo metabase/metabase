@@ -10,7 +10,7 @@
     "excludedCommands": ["docker"],
     "network": {
       "allowLocalBinding": true,
-      "allowedDomains": []
+      "allowedDomains": ["github.com", "api.github.com"]
     }
   },
   "permissions": {

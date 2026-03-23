@@ -163,7 +163,7 @@
                          (str/trim (slurp f)))
             output    (render-display issue ports be-status db-status llm-status)]
         (when (not= output last-output)
-          (println "==========================\n")
+          (println "=========================================\n")
           (print output)
           (flush))
         (Thread/sleep 1000)

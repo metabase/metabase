@@ -70,18 +70,23 @@ Before asking the user to test, review your own changes thoroughly:
 
 #### Phase 4: Verify
 1. Tell the user EXACTLY what to test and how:
-   - Which URL to visit
+   - Which URL to visit — **always use `http://localhost:$MB_JETTY_PORT/...`** (the backend port), never the frontend dev server port
    - What steps to reproduce
    - What the expected behavior should be now
+   - Remind them of login credentials: admin (`admin@example.com` / `admin123`) and regular user (`regular@example.com` / `regular123`), and API keys (`mb_AdminApiKey`, `mb_RegularApiKey`)
 2. WAIT for the user to test and provide feedback
 3. If they report issues, iterate (go back to Phase 2, then re-review in Phase 3 before asking the user again)
 
-#### Phase 5: Ship
-When the user says they're happy (e.g., "looks good", "ship it", "done"):
+#### Phase 5: Open PR
+When the user says they're happy (e.g., "looks good", "ship it", "done", "open the pr"):
 1. Stage and commit all fix-related changes:
    - **NEVER commit changes under `.claude/`** — the worktree setup copies fixbot commands there, and those must not be committed
+   - **NEVER commit changes under `.fixbot/`** — these are gitignored
    - Stage files individually by name (`git add path/to/file.clj`) — do NOT use `git add .` or `git add -A`
    - Only stage files that are part of the actual fix
+   - Do not include yourself as a co-author in the commit message
+   - **REMEMBER that the commit history is public and NO sensitive information should ever be stored in the git messages**
+   - **REMEMBER that the pull request is public and NO sensitive information should ever be stored in the pull request**
 2. Push the branch to origin
 3. Create the PR with `gh pr create`:
    - Title: concise description of the fix
@@ -91,7 +96,10 @@ When the user says they're happy (e.g., "looks good", "ship it", "done"):
      - **Closes**: link to the Linear issue
    - Do NOT add any labels — that's up to the user
 4. Tell the user the PR URL and a summary of what was fixed
-5. Run `/fixbot-ci` to monitor CI results and handle failures
+
+#### Phase 6: Monitor PR
+After submitting the pull request, monitor the pull request until it passes. NOTE: this may take a while and several attempts.
+1. Run `/fixbot-ci` to monitor CI results and handle failures
 
 ### Status Bar
 
