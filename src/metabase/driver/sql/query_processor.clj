@@ -935,15 +935,24 @@
           ;; https://linear.app/metabase-inc/issue/ENG-8766/[epic]-field-refs-overhaul
           field-metadata       (when (integer? id-or-name)
                                  (driver-api/field (driver-api/metadata-provider) id-or-name))
-          allow-casting?       (and field-metadata
-                                    (or (pos-int? (driver-api/qp.add.source-table options))
-                                        (:qp/allow-coercion-for-columns-without-integer-qp.add.source-table options))
+          allow-casting?       (and (or (:qp/native-sandbox-column.force-coercion-strategy options)
+                                        (and field-metadata
+                                             (or (pos-int? (driver-api/qp.add.source-table options))
+                                                 (:qp/allow-coercion-for-columns-without-integer-qp.add.source-table options))))
                                     (not (:qp/ignore-coercion options)))
           ;; preserve metadata attached to the original field clause, for example BigQuery temporal type information.
           identifier           (-> (apply h2x/identifier :field
                                           (concat source-table-aliases (->honeysql driver (mbql-clause driver ::nfc-path source-nfc-path)) [source-alias]))
                                    (with-meta (meta field-clause)))
           identifier           (->honeysql driver identifier)
+          ;; If no field-metadata is available, but a coercion strategy must be applied, synthesize enough
+          ;; `field-metadata` to be able to cast it correctly.
+          field-metadata       (or field-metadata
+                                   (when allow-casting?
+                                     (-> options
+                                         (select-keys [:base-type :effetive-type])
+                                         (assoc :coercion-strategy
+                                                (:qp/native-sandbox-column.force-coercion-strategy options)))))
           casted-field         (cast-field-if-needed driver field-metadata identifier)
           database-type        (or (h2x/database-type casted-field)
                                    (:database-type field-metadata))

@@ -13,6 +13,7 @@
    [malli.json-schema :as mjs]
    [metabase-enterprise.llm.settings :as llm]
    [metabase-enterprise.metabot-v3.self.core :as core]
+   [metabase-enterprise.metabot-v3.self.schema :as schema]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -84,6 +85,7 @@
   [[tool-name tool]]
   (let [{:keys [doc schema]} (if (map? tool) tool (meta tool))
         [_:=> [_:cat params] _out] schema
+        params     (schema/filter-schema-by-features params)
         doc        (if (str/starts-with? (or doc "") "Inputs: ")
                      (second (str/split doc #"\n\n  " 2))
                      doc)

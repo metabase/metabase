@@ -8,6 +8,7 @@
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib-metric.dimension :as lib-metric.dimension]
    [metabase.lib-metric.dimension.jvm :as lib-metric.dimension.jvm]
    [metabase.lib-metric.metadata.provider :as provider]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -56,13 +57,16 @@
 
 (defn- extract-dimensions-from-entity
   "Extract dimensions from a metric or measure, annotating with source info.
-   Each dimension is enriched with its corresponding dimension-mapping if available."
+   Each dimension is enriched with its corresponding dimension-mapping if available.
+   Dimensions are normalized after DB read to fix JSON round-trip artifacts
+   (e.g. string enum values for :has-field-values, :status, :sources)."
   [entity source-type]
   (let [dims         (:dimensions entity)
         mappings     (:dimension-mappings entity)
         mappings-by-dim-id (m/index-by :dimension-id mappings)]
     (for [dim dims]
       (-> dim
+          lib-metric.dimension/normalize-persisted-dimension
           (assoc :lib/type :metadata/dimension
                  :source-type source-type
                  :source-id (:id entity))
