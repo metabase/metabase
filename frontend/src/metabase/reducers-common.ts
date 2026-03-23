@@ -20,6 +20,8 @@ import { undoReducer as undo } from "metabase/redux/undo";
 import upload from "metabase/redux/uploads";
 import { currentUser } from "metabase/redux/user";
 
+import { metabotReducer as metabot } from "./metabot/state";
+
 export const commonReducers = {
   // global reducers
   app,
@@ -40,4 +42,5 @@ export const commonReducers = {
   dashboard,
   parameters: combineReducers(parameters),
   downloads,
+  metabot,
 };
