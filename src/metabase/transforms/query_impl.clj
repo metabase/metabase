@@ -36,7 +36,7 @@
                                                            :db/engine             (name driver)}
            (let [conn-spec         (driver/connection-spec driver db)
                  transform-details {:db-id (:id db) :conn-spec conn-spec :output-schema (:schema target)}
-                 exec-result
+                 _exec-result
                  (transforms.instrumentation/with-stage-timing [run-id [:computation :mbql-query]]
                    (transforms.u/run-cancelable-transform!
                     run-id transform driver transform-details
