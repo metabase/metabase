@@ -239,7 +239,7 @@ export default class NativeQuery {
     // NOTE: The snippet tags are part of the snippet tags map, but they do
     // not appear in the parameter lists. To correctly reorder the parameters
     // and keep track of indexes, we need to pluck out the snippet tags first.
-    // We then tack them on before returning the reorder tags map.
+    // We then tack them on before returning the reordered tags map.
     // The order of snippet tags is not consequential, which allows us to do this.
     const nonSnippetTags = tags.filter((tag) => tag.type !== "snippet");
     const snippetTags = tags.filter((tag) => tag.type === "snippet");
