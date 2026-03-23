@@ -20,6 +20,7 @@
    [metabase.metabot.feedback :as metabot.feedback]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.settings :as metabot.settings]
+   [metabase.metabot.tools.api]
    [metabase.metabot.util :as metabot.u]
    [metabase.server.streaming-response :as sr]
    [metabase.slackbot.api]
@@ -29,6 +30,10 @@
    [toucan2.core :as t2])
   (:import
    (java.io OutputStream)))
+
+(comment
+  metabase.metabot.api.describe/keep-me
+  metabase.metabot.tools.api/keep-me)
 
 (set! *warn-on-reflection* true)
 
