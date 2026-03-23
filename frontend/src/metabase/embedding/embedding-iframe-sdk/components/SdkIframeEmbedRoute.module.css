@@ -2,11 +2,11 @@
   display: grid;
   width: 100%;
   grid-template-columns: 1fr;
-  grid-template-rows: 1fr;
+  grid-template-rows: minmax(0, 1fr);
 }
 
 .Container:has(.BrandingFooter) {
-  grid-template-rows: 1fr auto;
+  grid-template-rows: minmax(0, 1fr) auto;
 }
 
 .Dashboard {

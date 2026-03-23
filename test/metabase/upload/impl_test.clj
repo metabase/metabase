@@ -24,7 +24,7 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.test :as qp]
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.test :as mt]
    [metabase.test.data.impl :as data.impl]
