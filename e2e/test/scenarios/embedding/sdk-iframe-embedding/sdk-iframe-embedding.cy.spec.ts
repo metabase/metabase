@@ -108,6 +108,7 @@ describe("scenarios > embedding > modular embedding", () => {
       });
 
       cy.wait("@getCardQuery");
+      cy.wait(1000);
 
       frame.within(() => {
         // clientWidth excludes the scrollbar gutter, giving us the actual content area
