@@ -3,7 +3,7 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.metabot.config :as metabot.config]
+   [metabase.metabot.agent.tools.shared :as shared]
    [metabase.metabot.tools.entity-details :as entity-details-tools]
    [metabase.metabot.tools.field-stats :as field-stats-tools]
    [metabase.metabot.tools.get-metadata :as metadata-tools]
@@ -51,7 +51,7 @@
   "List all data sources (metrics and models) available to the metabot instance."
   [_args :- [:maybe [:map {:closed true}]]]
   (add-output
-   (entity-details-tools/answer-sources {:metabot-id metabot.config/embedded-metabot-id
+   (entity-details-tools/answer-sources {:metabot-id         shared/*metabot-id*
                                          :with-field-values? false})
    format-answer-sources-output))
 

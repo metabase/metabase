@@ -14,6 +14,7 @@
   "Base schema for all tool requests. Contains the conversation ID and optional profile ID."
   [:map
    [:conversation_id ms/UUIDString]
+   [:metabot_id {:optional true} [:maybe :string]]
    [:profile_id {:optional true} [:maybe :string]]])
 
 (def request-transformer
@@ -40,11 +41,11 @@
 
   The handler receives a single map argument containing the encoded args plus `:metabot-id`
   and `:profile-id` (extracted from the request body)."
-  [{:keys [arguments conversation_id profile_id] :as body}
+  [{:keys [arguments conversation_id metabot_id profile_id] :as body}
    request
    {:keys [api-name args-schema result-schema handler]}]
   (metabot.context/log (assoc body :api api-name) :llm.log/llm->be)
-  (let [metabot-id   (:metabot/metabot-id request)
+  (let [metabot-id   (or (:metabot/metabot-id request) metabot_id)
         encoded-args (cond-> (if args-schema
                                (mc/encode args-schema arguments request-transformer)
                                {})

@@ -9,6 +9,11 @@
   "Dynamic memory atom bound for tools that need access to agent state."
   nil)
 
+(def ^:dynamic *metabot-id*
+  "The resolved metabot ID for the current agent session. Bound during the agent loop
+   so that tools can scope queries to the correct metabot instance's collection."
+  nil)
+
 (defn current-memory
   "Returns the current agent memory map, or nil if not in an agent context."
   []
