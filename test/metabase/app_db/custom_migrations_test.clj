@@ -2776,9 +2776,168 @@
           (is (nil? (id->target none-id)))
           (is (nil? (id->target deleted-id))))))))
 
+(deftest fix-clickhouse-upload-db-schema-names-test
+  (testing "FixClickHouseUploadDBSchemaNames, v59.2026-03-04T00:00:00: fix clickhouse upload db schema names"
+    (encryption-test/with-secret-key "fake-secret-key"
+      ;; Test when the upload db doesn't have an upload_schema_name set (both upload db and upload
+      ;; tables are in a bad state) and when it does have an upload_schema_name set (upload db and
+      ;; new upload tables are in a good state, but existing upload tables are in a bad state)
+      (doseq [uploads-schema-name [nil "db_foo"]]
+        (impl/test-migrations
+         ["v59.2026-03-04T00:00:00"] [migrate!]
+          (let [db-id (t2/insert-returning-pk! :metabase_database
+                                               {:name "clickhouse cloud upload db"
+                                                :engine "clickhouse"
+                                                :created_at :%now
+                                                :updated_at :%now
+                                                :uploads_enabled true
+                                                :uploads_schema_name uploads-schema-name
+                                                :uploads_table_prefix "uploads_"
+                                                :details (mi/encrypted-json-in {:dbname "db_foo"})})
+                insert-table! (fn [db-id name schema active is-upload display-name]
+                                (t2/insert-returning-pk! :metabase_table
+                                                         {:db_id db-id
+                                                          :name name
+                                                          :schema schema
+                                                          :active active
+                                                          :is_upload is-upload
+                                                          :display_name display-name
+                                                          :created_at :%now
+                                                          :updated_at :%now}))
+                ;; An uploads table in a good state, created before uploads_schema_name was set to null
+                uploaded-0 (insert-table! db-id "uploads_test_table_0" "db_foo" true true "Test Table 0")
+                ;; Two upload tables in a bad state, created after uploads_schema_name was set to null
+                uploaded-1 (insert-table! db-id "uploads_test_table_1" nil false true "Test Table 1")
+                uploaded-2 (insert-table! db-id "uploads_test_table_2" nil false true "Test Table 2")
+                ;; The two non-upload versions of the above tables, created by the sync process
+                synced-1 (insert-table! db-id "uploads_test_table_1" "db_foo" true false "Uploads Test Table 1")
+                synced-2 (insert-table! db-id "uploads_test_table_2" "db_foo" true false "Uploads Test Table 2")
+                ;; An unrelated non-upload table in the same schema that should be left alone
+                unrelated (insert-table! db-id "unrelated_table" "db_foo" true false "Unrelated Table")]
+            (migrate!)
+            ;; The uploads db has the correct uploads_schema_name from the details
+            (is (= "db_foo" (:uploads_schema_name (t2/select-one :metabase_database :id db-id))))
+            (are [exp table-id] (= exp
+                                   (t2/select-one [:metabase_table :name :schema :active :is_upload] :id table-id))
+              ;; The upload table that was already in a good state remains unchanged
+              {:name "uploads_test_table_0"
+               :schema "db_foo"
+               :active true
+               :is_upload true} uploaded-0
+              ;; The two upload tables in a bad state are updated to be active and have the correct schema
+              {:name "uploads_test_table_1"
+               :schema "db_foo"
+               :active true
+               :is_upload true} uploaded-1
+              {:name "uploads_test_table_2"
+               :schema "db_foo"
+               :active true
+               :is_upload true} uploaded-2
+              ;; The two non-upload tables created by the sync have been renamed and set as inactive
+              {:name "uploads_test_table_1_retired_69667"
+               :schema "db_foo"
+               :active false
+               :is_upload false} synced-1
+              {:name "uploads_test_table_2_retired_69667"
+               :schema "db_foo"
+               :active false
+               :is_upload false} synced-2
+              ;; The unrelated table remains unchanged
+              {:name "unrelated_table"
+               :schema "db_foo"
+               :active true
+               :is_upload false} unrelated)))))))
+
+(deftest remove-legacy-incremental-strategies-test
+  (testing "v59.2026-03-13T00:00:00: migrate legacy checkpoint-filter to checkpoint-filter-field-id"
+    (impl/test-migrations ["v59.2026-03-13T00:00:00"] [migrate!]
+      (let [db-id    (:id (new-instance-with-default :metabase_database))
+            table-id (:id (new-instance-with-default :metabase_table {:db_id db-id}))
+            field-id (t2/insert-returning-pk! :metabase_field
+                                              {:name          "updated_at"
+                                               :table_id      table-id
+                                               :base_type     "type/DateTimeWithLocalTZ"
+                                               :database_type "timestamptz"
+                                               :active        true
+                                               :created_at    :%now
+                                               :updated_at    :%now})
+            target   (json/encode {:type "table" :schema "public" :name "out"})
+            insert-transform!
+            (fn [source]
+              (t2/insert-returning-pk!
+               :transform {:name               (mt/random-name)
+                           :source             source
+                           :target             target
+                           :source_type        "mbql"
+                           :source_database_id db-id
+                           :created_at         :%now
+                           :updated_at         :%now}))
+            ;; Transform with resolvable legacy checkpoint strategy
+            resolvable-source
+            (json/encode {:type  "query"
+                          :query {:stages [{:source-table table-id}]}
+                          :source-incremental-strategy
+                          {:type                        "checkpoint"
+                           :checkpoint-filter-unique-key "column-unique-key-v1$updated_at"
+                           :checkpoint-filter           {:some "filter"}}})
+            resolvable-id (insert-transform! resolvable-source)
+            ;; Transform with unresolvable legacy checkpoint strategy (no matching field)
+            unresolvable-source
+            (json/encode {:type  "query"
+                          :query {:stages [{:source-table table-id}]}
+                          :source-incremental-strategy
+                          {:type                        "checkpoint"
+                           :checkpoint-filter-unique-key "column-unique-key-v1$nonexistent_column"
+                           :checkpoint-filter           {:some "filter"}}})
+            unresolvable-id (insert-transform! unresolvable-source)
+            ;; Transform without any incremental strategy — should be untouched
+            no-strategy-source
+            (json/encode {:type  "query"
+                          :query {:stages [{:source-table table-id}]}})
+            no-strategy-id (insert-transform! no-strategy-source)
+            ;; Python transform with resolvable checkpoint strategy
+            python-resolvable-source
+            (json/encode {:type          "python"
+                          :body          "x=1"
+                          :source-tables [{"alias" "t" "table_id" table-id}]
+                          :source-incremental-strategy
+                          {:type                        "checkpoint"
+                           :checkpoint-filter-unique-key "column-unique-key-v1$updated_at"
+                           :checkpoint-filter           {:some "filter"}}})
+            python-resolvable-id (insert-transform! python-resolvable-source)
+            ;; Native transform — can't resolve source table, strategy stripped
+            native-source
+            (json/encode {:type "native"
+                          :source-incremental-strategy
+                          {:type                        "checkpoint"
+                           :checkpoint-filter-unique-key "column-unique-key-v1$updated_at"
+                           :checkpoint-filter           {:some "filter"}}})
+            native-id (insert-transform! native-source)
+            get-source (fn [id]
+                         (json/decode
+                          (t2/select-one-fn :source :transform :id id)
+                          keyword))]
+        (migrate!)
+        (testing "Resolvable legacy strategy is migrated to checkpoint-filter-field-id"
+          (let [strategy (:source-incremental-strategy (get-source resolvable-id))]
+            (is (= field-id (:checkpoint-filter-field-id strategy)))
+            (is (not (contains? strategy :checkpoint-filter-unique-key)))
+            (is (not (contains? strategy :checkpoint-filter)))))
+        (testing "Unresolvable legacy strategy is stripped entirely"
+          (is (not (contains? (get-source unresolvable-id) :source-incremental-strategy))))
+        (testing "Transform without strategy is untouched"
+          (is (not (contains? (get-source no-strategy-id) :source-incremental-strategy))))
+        (testing "Python transform with single source-table resolves correctly"
+          (let [strategy (:source-incremental-strategy (get-source python-resolvable-id))]
+            (is (= field-id (:checkpoint-filter-field-id strategy)))
+            (is (not (contains? strategy :checkpoint-filter-unique-key)))
+            (is (not (contains? strategy :checkpoint-filter)))))
+        (testing "Native transform strategy is stripped (can't resolve source table)"
+          (is (not (contains? (get-source native-id) :source-incremental-strategy))))))))
+
 (deftest unify-source-tables-format-test
-  (testing "v59.2026-03-03T12:00:00: convert source-tables from map to vec format"
-    (impl/test-migrations ["v59.2026-03-03T12:00:00"] [migrate!]
+  (testing "v60.2026-03-03T12:00:00: convert source-tables from map to vec format"
+    (impl/test-migrations ["v60.2026-03-03T12:00:00"] [migrate!]
       (let [user-id     (:id (new-instance-with-default :core_user))
             db-id       (:id (new-instance-with-default :metabase_database))
             ;; source-tables as map with int values (FE format)
@@ -2851,79 +3010,129 @@
             (is (= 2 (count st)))))
 
         (testing "Rollback converts vec back to map"
-          (migrate! :down 58)
+          (migrate! :down 59)
           (let [st (get-source-tables :transform {:id int-id})]
             (is (map? st))
             (is (= 42 (get st "orders")))
             (is (= 99 (get st "products")))))))))
-(deftest fix-clickhouse-upload-db-schema-names-test
-  (testing "FixClickHouseUploadDBSchemaNames, v59.2026-03-04T00:00:00: fix clickhouse upload db schema names"
-    (encryption-test/with-secret-key "fake-secret-key"
-      ;; Test when the upload db doesn't have an upload_schema_name set (both upload db and upload
-      ;; tables are in a bad state) and when it does have an upload_schema_name set (upload db and
-      ;; new upload tables are in a good state, but existing upload tables are in a bad state)
-      (doseq [uploads-schema-name [nil "db_foo"]]
-        (impl/test-migrations
-         ["v59.2026-03-04T00:00:00"] [migrate!]
-          (let [db-id (t2/insert-returning-pk! :metabase_database
-                                               {:name "clickhouse cloud upload db"
-                                                :engine "clickhouse"
-                                                :created_at :%now
-                                                :updated_at :%now
-                                                :uploads_enabled true
-                                                :uploads_schema_name uploads-schema-name
-                                                :uploads_table_prefix "uploads_"
-                                                :details (mi/encrypted-json-in {:dbname "db_foo"})})
-                insert-table! (fn [db-id name schema active is-upload display-name]
-                                (t2/insert-returning-pk! :metabase_table
-                                                         {:db_id db-id
-                                                          :name name
-                                                          :schema schema
-                                                          :active active
-                                                          :is_upload is-upload
-                                                          :display_name display-name
-                                                          :created_at :%now
-                                                          :updated_at :%now}))
-                ;; An uploads table in a good state, created before uploads_schema_name was set to null
-                uploaded-0 (insert-table! db-id "uploads_test_table_0" "db_foo" true true "Test Table 0")
-                ;; Two upload tables in a bad state, created after uploads_schema_name was set to null
-                uploaded-1 (insert-table! db-id "uploads_test_table_1" nil false true "Test Table 1")
-                uploaded-2 (insert-table! db-id "uploads_test_table_2" nil false true "Test Table 2")
-                ;; The two non-upload versions of the above tables, created by the sync process
-                synced-1 (insert-table! db-id "uploads_test_table_1" "db_foo" true false "Uploads Test Table 1")
-                synced-2 (insert-table! db-id "uploads_test_table_2" "db_foo" true false "Uploads Test Table 2")
-                ;; An unrelated non-upload table in the same schema that should be left alone
-                unrelated (insert-table! db-id "unrelated_table" "db_foo" true false "Unrelated Table")]
-            (migrate!)
-            ;; The uploads db has the correct uploads_schema_name from the details
-            (is (= "db_foo" (:uploads_schema_name (t2/select-one :metabase_database :id db-id))))
-            (are [exp table-id] (= exp
-                                   (t2/select-one [:metabase_table :name :schema :active :is_upload] :id table-id))
-              ;; The upload table that was already in a good state remains unchanged
-              {:name "uploads_test_table_0"
-               :schema "db_foo"
-               :active true
-               :is_upload true} uploaded-0
-              ;; The two upload tables in a bad state are updated to be active and have the correct schema
-              {:name "uploads_test_table_1"
-               :schema "db_foo"
-               :active true
-               :is_upload true} uploaded-1
-              {:name "uploads_test_table_2"
-               :schema "db_foo"
-               :active true
-               :is_upload true} uploaded-2
-              ;; The two non-upload tables created by the sync have been renamed and set as inactive
-              {:name "uploads_test_table_1_retired_69667"
-               :schema "db_foo"
-               :active false
-               :is_upload false} synced-1
-              {:name "uploads_test_table_2_retired_69667"
-               :schema "db_foo"
-               :active false
-               :is_upload false} synced-2
-              ;; The unrelated table remains unchanged
-              {:name "unrelated_table"
-               :schema "db_foo"
-               :active true
-               :is_upload false} unrelated)))))))
+
+(deftest backfill-transform-target-tables-test
+  (testing "v60.2026-03-07T00:00:04 : backfill transform target tables and workspace FK columns"
+    (impl/test-migrations ["v60.2026-03-07T00:00:04"] [migrate!]
+      (let [user-id   (:id (new-instance-with-default :core_user))
+            db-id     (:id (new-instance-with-default :metabase_database))
+            ws-id     (:id (t2/insert-returning-instance!
+                            :workspace {:name       "test-ws"
+                                        :creator_id user-id
+                                        :created_at :%now
+                                        :updated_at :%now}))
+            ref-id    (str (random-uuid))
+            source    (json/encode {:type "query" :query {:database db-id}})
+            target    (json/encode {:type "table" :schema "public" :name "orders"})
+            ;; -- 1. Transform with a target that has no existing metabase_table → should create provisional row --
+            tx-id     (t2/insert-returning-pk!
+                       :transform {:name               "create-output"
+                                   :source             source
+                                   :target             (json/encode {:type "table" :schema "public" :name "new_target_table"})
+                                   :source_type        "mbql"
+                                   :source_database_id db-id
+                                   :target_db_id       db-id
+                                   :created_at         :%now
+                                   :updated_at         :%now})
+            ;; -- An existing metabase_table that inputs and outputs should resolve to --
+            table-id  (:id (t2/insert-returning-instance!
+                            :metabase_table {:db_id      db-id
+                                             :name       "orders"
+                                             :schema     "public"
+                                             :active     true
+                                             :created_at :%now
+                                             :updated_at :%now}))
+            ;; -- workspace_transform needed for workspace_output FK --
+            _         (t2/insert! :workspace_transform
+                                  {:ref_id       ref-id
+                                   :workspace_id ws-id
+                                   :name         "ws-tx"
+                                   :source       source
+                                   :target       target
+                                   :created_at   :%now
+                                   :updated_at   :%now})
+            ;; -- 2-3. workspace_output with null table FKs --
+            wo-id     (:id (t2/insert-returning-instance!
+                            :workspace_output {:workspace_id    ws-id
+                                               :ref_id          ref-id
+                                               :db_id           db-id
+                                               :global_schema   "public"
+                                               :global_table    "orders"
+                                               :isolated_schema "public"
+                                               :isolated_table  "orders"
+                                               :created_at      :%now
+                                               :updated_at      :%now}))
+            ;; -- 4-5. workspace_output_external with null table FKs --
+            woe-id    (:id (t2/insert-returning-instance!
+                            :workspace_output_external {:workspace_id    ws-id
+                                                        :transform_id    tx-id
+                                                        :db_id           db-id
+                                                        :global_schema   "public"
+                                                        :global_table    "orders"
+                                                        :isolated_schema "public"
+                                                        :isolated_table  "orders"
+                                                        :created_at      :%now
+                                                        :updated_at      :%now}))
+            ;; -- 6. workspace_input with null table_id --
+            wi-id     (:id (t2/insert-returning-instance!
+                            :workspace_input {:workspace_id ws-id
+                                              :db_id        db-id
+                                              :schema       "public"
+                                              :table        "orders"
+                                              :created_at   :%now
+                                              :updated_at   :%now}))
+            ;; -- 7. workspace_input_external with null table_id --
+            wie-id    (:id (t2/insert-returning-instance!
+                            :workspace_input_external {:workspace_id ws-id
+                                                       :db_id        db-id
+                                                       :schema       "public"
+                                                       :table        "orders"
+                                                       :created_at   :%now
+                                                       :updated_at   :%now}))
+            ;; -- workspace_input_external with no matching table — should stay nil --
+            wie-no-match-id (:id (t2/insert-returning-instance!
+                                  :workspace_input_external {:workspace_id ws-id
+                                                             :db_id        db-id
+                                                             :schema       "public"
+                                                             :table        "no_such_table"
+                                                             :created_at   :%now
+                                                             :updated_at   :%now}))]
+        (testing "Before backfill, all FKs are nil"
+          (is (nil? (t2/select-one-fn :global_table_id :workspace_output :id wo-id)))
+          (is (nil? (t2/select-one-fn :isolated_table_id :workspace_output :id wo-id)))
+          (is (nil? (t2/select-one-fn :global_table_id :workspace_output_external :id woe-id)))
+          (is (nil? (t2/select-one-fn :isolated_table_id :workspace_output_external :id woe-id)))
+          (is (nil? (t2/select-one-fn :table_id :workspace_input :id wi-id)))
+          (is (nil? (t2/select-one-fn :table_id :workspace_input_external :id wie-id)))
+          (is (nil? (t2/select-one-fn :table_id :workspace_input_external :id wie-no-match-id))))
+        (migrate!)
+        (testing "Provisional metabase_table created for transform target"
+          (let [provisional (first (t2/query {:select [:active :transform_target :data_source :data_authority :display_name]
+                                              :from   [:metabase_table]
+                                              :where  [:and
+                                                       [:= :db_id db-id]
+                                                       [:= :name "new_target_table"]
+                                                       [:= :schema "public"]]}))]
+            (is (some? provisional))
+            (is (false? (:active provisional)))
+            (is (true? (:transform_target provisional)))
+            (is (= "metabase-transform" (:data_source provisional)))
+            (is (= "computed" (:data_authority provisional)))
+            (is (= "New Target Table" (:display_name provisional)))))
+        (testing "workspace_output FKs backfilled"
+          (is (= table-id (t2/select-one-fn :global_table_id :workspace_output :id wo-id)))
+          (is (= table-id (t2/select-one-fn :isolated_table_id :workspace_output :id wo-id))))
+        (testing "workspace_output_external FKs backfilled"
+          (is (= table-id (t2/select-one-fn :global_table_id :workspace_output_external :id woe-id)))
+          (is (= table-id (t2/select-one-fn :isolated_table_id :workspace_output_external :id woe-id))))
+        (testing "workspace_input table_id backfilled"
+          (is (= table-id (t2/select-one-fn :table_id :workspace_input :id wi-id))))
+        (testing "workspace_input_external table_id backfilled"
+          (is (= table-id (t2/select-one-fn :table_id :workspace_input_external :id wie-id))))
+        (testing "Non-matching input stays nil"
+          (is (nil? (t2/select-one-fn :table_id :workspace_input_external :id wie-no-match-id))))))))

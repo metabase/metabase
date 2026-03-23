@@ -298,6 +298,7 @@ export type TransformCreateEvent = ValidateEvent<{
 export type TransformCreatedEvent = ValidateEvent<{
   event: "transform_created";
   target_id: number;
+  event_detail: "incremental" | undefined;
 }>;
 
 export type TransformRunTagsUpdated = ValidateEvent<{
@@ -306,6 +307,13 @@ export type TransformRunTagsUpdated = ValidateEvent<{
   triggered_from: "transform_run_page";
   event_detail: "tag_added" | "tag_removed";
   target_id: number;
+}>;
+
+export type TransformJobCreatedEvent = ValidateEvent<{
+  event: "transform_job_created";
+  triggered_from: "transform_job_new";
+  result: "success" | "failure";
+  target_id: number | null;
 }>;
 
 export type TransformInspectLensLoadedEvent = ValidateEvent<{
@@ -763,6 +771,7 @@ export type SimpleEvent =
   | TransformCreatedEvent
   | TransformCreateEvent
   | TransformRunTagsUpdated
+  | TransformJobCreatedEvent
   | TransformInspectEvent
   | DocumentAddCardEvent
   | DocumentAddSmartLinkEvent

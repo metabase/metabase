@@ -119,7 +119,7 @@
 .content
   :global(.ProseMirror)
   :global(blockquote):not(:global(.editor-style-boundary) *) {
-  border-left: 3px solid var(--mb-color-border-strong);
+  border-left: 3px solid var(--mb-color-border-stronger);
   margin: 0 0 0.5rem 0;
   color: var(--mb-color-text-secondary);
   font-style: italic;

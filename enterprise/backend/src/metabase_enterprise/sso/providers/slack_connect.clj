@@ -64,7 +64,7 @@
   (when (and (sso-settings/slack-connect-client-id)
              (sso-settings/slack-connect-client-secret))
     {:client-id (sso-settings/slack-connect-client-id)
-     :client-secret (sso-settings/slack-connect-client-secret)
+     :client-secret (sso-settings/unobfuscated-slack-connect-client-secret)
      :issuer-uri slack-issuer-uri
      :scopes ["openid" "profile" "email"]
      :redirect-uri (get request :redirect-uri)}))

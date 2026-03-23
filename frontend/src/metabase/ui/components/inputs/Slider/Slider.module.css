@@ -1,0 +1,3 @@
+.Mark:not([data-filled]) {
+  border-color: var(--mb-color-border);
+}

@@ -9,6 +9,7 @@
    [metabase.lib.core :as lib]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
    [metabase.transforms-base.interface :as transforms-base.i]
@@ -209,10 +210,10 @@
               result (transforms-base.u/normalize-source-tables source-tables)]
           (is (= 999 (:table_id (first result))))))
 
-      (testing "leaves table_id nil for non-existent table ref"
+      (testing "creates transform target table for non-existent table ref"
         (let [source-tables [{:alias "t" :database_id (:id db) :schema nil :table "nonexistent"}]
               result (transforms-base.u/normalize-source-tables source-tables)]
-          (is (nil? (:table_id (first result))))))
+          (is (int? (:table_id (first result))))))
 
       (testing "handles entries needing different kinds of enrichment"
         (let [source-tables [{:alias "t1" :table_id (:id t1)}
@@ -223,17 +224,19 @@
           (is (= (:id t1) (:table_id (second result)))))))))
 
 (deftest resolve-source-tables-test
-  (testing "resolve-source-tables returns {alias -> table_id} map from vec input"
+  (testing "resolve-source-tables returns entries with :table_id filled in"
     (mt/with-temp [:model/Database db {}
                    :model/Table    t1 {:db_id (:id db) :name "table_one" :schema nil}
                    :model/Table    t2 {:db_id (:id db) :name "table_two" :schema nil}]
       (testing "resolves entry with table_id"
-        (let [source-tables [{:alias "t" :database_id (:id db) :schema nil :table "table_one" :table_id (:id t1)}]]
-          (is (= {"t" (:id t1)} (transforms-base.u/resolve-source-tables source-tables)))))
+        (let [source-tables [{:alias "t" :database_id (:id db) :schema nil :table "table_one" :table_id (:id t1)}]
+              result        (transforms-base.u/resolve-source-tables source-tables)]
+          (is (= (:id t1) (:table_id (first result))))))
 
       (testing "looks up table_id for entry without it"
-        (let [source-tables [{:alias "t" :database_id (:id db) :schema nil :table "table_one"}]]
-          (is (= {"t" (:id t1)} (transforms-base.u/resolve-source-tables source-tables)))))
+        (let [source-tables [{:alias "t" :database_id (:id db) :schema nil :table "table_one"}]
+              result        (transforms-base.u/resolve-source-tables source-tables)]
+          (is (= (:id t1) (:table_id (first result))))))
 
       (testing "throws for non-existent table"
         (let [source-tables [{:alias "t" :database_id (:id db) :schema nil :table "nonexistent"}]]
@@ -246,10 +249,11 @@
                                 (transforms-base.u/resolve-source-tables source-tables)))))
 
       (testing "handles multiple entries"
-        (let [source-tables [{:alias "t1" :table_id (:id t1)}
-                             {:alias "t2" :database_id (:id db) :schema nil :table "table_two"}]]
-          (is (= {"t1" (:id t1) "t2" (:id t2)}
-                 (transforms-base.u/resolve-source-tables source-tables))))))))
+        (let [source-tables [{:alias "t1" :table_id (:id t1) :database_id (:id db) :schema nil}
+                             {:alias "t2" :database_id (:id db) :schema nil :table "table_two"}]
+              result        (transforms-base.u/resolve-source-tables source-tables)]
+          (is (= (:id t1) (:table_id (first result))))
+          (is (= (:id t2) (:table_id (second result)))))))))
 
 (deftest source-tables-readable?-test
   (testing "source-tables-readable? function"
@@ -320,28 +324,55 @@
                         (is (false? (transforms.u/source-tables-readable? transform))
                             "User who cannot read all source tables should have source_readable=false")))))))))))))
 
+(deftest activate-table-and-mark-computed-sets-is-writable-false-test
+  (testing "activate-table-and-mark-computed! sets is_writable to false on computed transform tables"
+    (let [target {:type "table" :schema nil :name "test_computed_writable"}
+          synced-table (atom nil)]
+      (mt/with-temp [:model/Database db {:engine :h2}]
+        ;; Mock sync-table! to just create the table in Metabase without needing a real DB table
+        (with-redefs [sync/create-table! (fn [database table-map]
+                                           (let [created (t2/insert-returning-instance!
+                                                          :model/Table
+                                                          {:db_id          (:id database)
+                                                           :name           (:name table-map)
+                                                           :schema         (:schema table-map)
+                                                           :active         true
+                                                           :is_writable    (:is_writable table-map)
+                                                           :data_source    (:data_source table-map)
+                                                           :data_authority (:data_authority table-map)})]
+                                             (reset! synced-table created)
+                                             created))
+                      sync/sync-table!   (constantly nil)]
+          (transforms-base.u/activate-table-and-mark-computed! db target)
+          (is (some? @synced-table))
+          (let [table (t2/select-one :model/Table (:id @synced-table))]
+            (is (= :computed (:data_authority table)))
+            (is (false? (:is_writable table))
+                "Computed transform tables should have is_writable=false")))))))
+
 (deftest execute-sets-transform-id-on-target-table-test
   (testing "Executing a query transform sets transform_id on the target table"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/with-premium-features #{:transforms-basic}
         (let [target {:type "table" :schema nil :name "test_output_table"}]
+          ;; The Transform after-insert hook creates a provisional table for the target,
+          ;; so we don't need to create one explicitly.
           (mt/with-temp [:model/Transform {transform-id :id :as transform}
                          {:target target
                           :source {:type  "query"
-                                   :query (lib/query (mt/metadata-provider) (mt/mbql-query venues))}}
-                         :model/Table {table-id :id} {:db_id (mt/id) :name "test_output_table" :schema nil}]
-            ;; Mock execute-base! to return success without actually running a query,
-            ;; run-cancelable-transform! to bypass schema creation / cancellation infra,
-            ;; and sync/indexes to skip driver calls. complete-execution! runs normally
-            ;; so it sets transform_id on the target table.
-            (with-redefs [transforms-base.i/execute-base!                            (constantly {:status :succeeded})
-                          transforms-base.u/sync-target!                             (constantly nil)
-                          transforms-base.u/execute-secondary-index-ddl-if-required! (constantly nil)
-                          transforms.u/run-cancelable-transform!                     (fn [_run-id _driver _details run-fn & _opts]
-                                                                                       (run-fn (a/promise-chan)))]
-              (transforms.execute/execute! transform {:run-method :manual})
-              (is (= transform-id
-                     (t2/select-one-fn :transform_id :model/Table :id table-id))))))))))
+                                   :query (lib/query (mt/metadata-provider) (mt/mbql-query venues))}}]
+            (let [table-id (t2/select-one-fn :id :model/Table :db_id (mt/id) :name "test_output_table" :schema nil)]
+              ;; Mock execute-base! to return success without actually running a query,
+              ;; run-cancelable-transform! to bypass schema creation / cancellation infra,
+              ;; and sync/indexes to skip driver calls. complete-execution! runs normally
+              ;; so it sets transform_id on the target table.
+              (with-redefs [transforms-base.i/execute-base!                            (constantly {:status :succeeded})
+                            transforms-base.u/sync-target!                             (constantly nil)
+                            transforms.u/run-cancelable-transform!                     (fn [_run-id _transform _driver _details run-fn & _opts]
+                                                                                         (run-fn (a/promise-chan) nil))]
+                (transforms.execute/execute! transform {:run-method :manual})
+                (is (= transform-id
+                       (t2/select-one-fn :transform_id :model/Table :id table-id)))))))))))
 
 (deftest transform-hydration-test
   (testing "hydrating :transform on a table"
@@ -372,7 +403,7 @@
       (mt/with-premium-features #{:transforms-basic}
         (let [transform {:source {:type  "query"
                                   :query (lib/query (mt/metadata-provider) (mt/mbql-query venues))}}
-              {:keys [query]} (transforms-base.u/compile-source transform)]
+              {:keys [query]} (transforms-base.u/compile-source transform (transforms-base.u/get-source-range-params transform))]
           (is (string? query))
           (is (not (re-find #"(?i)\bLIMIT\b" query))
               (str "Expected no LIMIT clause in compiled SQL, got: " query)))))))

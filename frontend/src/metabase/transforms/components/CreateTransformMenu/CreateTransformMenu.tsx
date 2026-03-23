@@ -2,12 +2,13 @@ import { useDisclosure } from "@mantine/hooks";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { UpsellGem } from "metabase/admin/upsells/components/UpsellGem";
 import { useListDatabasesQuery } from "metabase/api";
 import { QuestionPickerModal } from "metabase/common/components/Pickers";
+import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { getShouldShowPythonTransformsUpsell } from "metabase/transforms/selectors";
 import { Button, Center, Icon, Loader, Menu, Tooltip } from "metabase/ui";
 
@@ -35,6 +36,9 @@ export const CreateTransformMenu = () => {
   });
   const shouldShowPythonScriptOption =
     hasPythonTransformsFeature || shouldShowPythonTransformsUpsell;
+  const isRemoteSyncReadOnly = useSelector(
+    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
+  );
 
   const handlePythonClick = () => {
     dispatch(push(Urls.newPythonTransform())); // Route will show upsell modal if feature is not enabled
@@ -44,6 +48,22 @@ export const CreateTransformMenu = () => {
     }
   };
 
+  if (isRemoteSyncReadOnly) {
+    return (
+      <Tooltip
+        label={t`Transforms can't be created when Remote Sync is in read-only mode`}
+      >
+        <Button
+          aria-label={t`Create a transform`}
+          disabled
+          leftSection={<Icon name="add" size={16} />}
+        >
+          {t`New`}
+        </Button>
+      </Tooltip>
+    );
+  }
+
   return (
     <>
       <Menu position="bottom-end">
@@ -52,7 +72,9 @@ export const CreateTransformMenu = () => {
             <Button
               aria-label={t`Create a transform`}
               leftSection={<Icon name="add" size={16} />}
-            >{t`New`}</Button>
+            >
+              {t`New`}
+            </Button>
           </Tooltip>
         </Menu.Target>
         <Menu.Dropdown>

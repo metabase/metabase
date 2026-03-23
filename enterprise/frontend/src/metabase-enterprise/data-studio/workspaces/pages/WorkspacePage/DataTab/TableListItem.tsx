@@ -27,6 +27,7 @@ type TableListItemProps = {
   hasChanges?: boolean;
   transform?: WorkspaceTransformListItem;
   tableId?: TableId;
+  tableActive?: boolean;
   isSelected?: boolean;
   isRunning?: boolean;
   readOnly?: boolean;
@@ -43,6 +44,7 @@ export const TableListItem = ({
   hasChanges = false,
   transform,
   tableId,
+  tableActive = false,
   isSelected = false,
   isRunning = false,
   readOnly = false,
@@ -59,29 +61,30 @@ export const TableListItem = ({
     }
   };
 
+  const tableExists = !!tableId && (type !== "output" || tableActive);
+
   const handleTableClick = () => {
     if (isRunning) {
       return;
     }
-    if (tableId && onTableClick) {
+    if (tableExists && tableId && onTableClick) {
       onTableClick({ tableId, name, schema, transformId: transform?.ref_id });
     } else if (type === "output" && transform && onRunTransform && !readOnly) {
       onRunTransform(transform);
     }
   };
 
-  const hasResults = type === "output" && !!tableId;
   const canRunTransform =
-    type === "output" && !hasResults && transform && onRunTransform;
-  const isClickable = (tableId && onTableClick) || canRunTransform;
-  const displayTooltip = type !== "input" && !hasResults && !isRunning;
+    type === "output" && !tableExists && transform && onRunTransform;
+  const isClickable = (tableExists && onTableClick) || canRunTransform;
+  const displayTooltip = type !== "input" && !tableExists && !isRunning;
 
   return (
     <Box
       className={cx(S.root, {
         [S.selected]: isSelected,
         [S.clickable]: isClickable,
-        [S.noResults]: type === "output" && !tableId,
+        [S.noResults]: type === "output" && !tableExists,
       })}
       aria-label={displayName}
       onClick={isClickable ? handleTableClick : undefined}

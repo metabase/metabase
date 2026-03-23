@@ -14,7 +14,7 @@ import { CodeMirror } from "metabase/common/components/CodeMirror";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import EditorS from "metabase/query_builder/components/NativeQueryEditor/CodeMirrorEditor/CodeMirrorEditor.module.css";
+import EditorS from "metabase/querying/components/CodeMirrorEditor/CodeMirrorEditor.module.css";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getIsWorkspace } from "metabase/selectors/routing";
 import {

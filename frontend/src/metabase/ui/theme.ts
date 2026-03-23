@@ -49,6 +49,7 @@ import {
   segmentedControlOverrides,
   selectOverrides,
   skeletonOverrides,
+  sliderOverrides,
   switchOverrides,
   tabsOverrides,
   textInputOverrides,
@@ -85,6 +86,7 @@ export const getThemeOverrides = (
     colorScheme,
   },
   shadows: {
+    xs: "0 0 0 0.5px var(--mb-color-border), 0 1px 2px 0 var(--mb-color-shadow)",
     // eslint-disable-next-line metabase/no-color-literals
     sm: "0px 1px 4px 2px rgba(0, 0, 0, 0.08)",
     // eslint-disable-next-line metabase/no-color-literals
@@ -189,6 +191,7 @@ export const getThemeOverrides = (
     ...segmentedControlOverrides,
     ...skeletonOverrides,
     ...selectOverrides,
+    ...sliderOverrides,
     ...switchOverrides,
     ...tabsOverrides,
     ...textareaOverrides,

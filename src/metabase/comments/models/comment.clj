@@ -12,6 +12,11 @@
   (derive :metabase/model)
   (derive :hook/timestamped?))
 
+;; NOTE: the `content_html` column is deprecated and no longer written to.
+;; HTML for email notifications is now rendered server-side from the `content` JSON
+;; via `metabase.comments.render/content->html`. The column can be dropped in a
+;; future migration.
+
 (t2/deftransforms :model/Comment
   {:content mi/transform-json})
 

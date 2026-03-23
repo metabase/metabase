@@ -1764,3 +1764,40 @@
                             :previous {:first_name "John"
                                        :last_name "Cena"}}}
                  (mt/latest-audit-log-entry :user-update id))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                  Password Reset URL -- POST /api/user/:id/password-reset-url                                    |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest password-reset-url-admin-can-generate-test
+  (testing "POST /api/user/:id/password-reset-url admin can generate a password reset URL"
+    (mt/with-temp [:model/User {user-id :id} {:first_name "Test"
+                                              :last_name "User"
+                                              :email "reseturl@test.com"}]
+      (let [response (mt/user-http-request :crowberto :post 200
+                                           (format "user/%d/password-reset-url" user-id))]
+        (is (contains? response :password_reset_url))
+        (is (string? (:password_reset_url response)))
+        (is (re-find #"/auth/reset_password/" (:password_reset_url response)))))))
+
+(deftest password-reset-url-non-admin-forbidden-test
+  (testing "POST /api/user/:id/password-reset-url non-admin gets 403"
+    (mt/with-temp [:model/User {user-id :id} {:first_name "Test"
+                                              :last_name "User"
+                                              :email "reseturl2@test.com"}]
+      (mt/user-http-request :rasta :post 403
+                            (format "user/%d/password-reset-url" user-id)))))
+
+(deftest password-reset-url-inactive-user-not-found-test
+  (testing "POST /api/user/:id/password-reset-url inactive user gets 404"
+    (mt/with-temp [:model/User {user-id :id} {:first_name "Test"
+                                              :last_name "User"
+                                              :email "reseturl3@test.com"
+                                              :is_active false}]
+      (mt/user-http-request :crowberto :post 404
+                            (format "user/%d/password-reset-url" user-id)))))
+
+(deftest password-reset-url-nonexistent-user-not-found-test
+  (testing "POST /api/user/:id/password-reset-url nonexistent user gets 404"
+    (mt/user-http-request :crowberto :post 404
+                          "user/999999/password-reset-url")))
