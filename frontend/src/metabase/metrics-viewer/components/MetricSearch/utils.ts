@@ -78,6 +78,11 @@ export function buildFullText(
 
 const EXPRESSION_DELIMITERS = new Set(["+", "-", "*", "/", "(", ")", ","]);
 
+/** Returns true for characters that form word continuations (letters, digits, underscore). */
+function isWordChar(ch: string): boolean {
+  return /\w/.test(ch);
+}
+
 /**
  * Extracts the "word" (potential metric name) at the given cursor position,
  * using expression delimiters (+, -, *, /, (, ), ,) as boundaries.
@@ -110,30 +115,99 @@ export function getWordAtCursor(
 }
 
 /**
+ * Returns positions of commas in the text that are NOT inside a metric token.
+ * These are the real item separators. Metric names may contain commas (e.g.
+ * "Revenue, Total") — those commas are consumed by the greedy metric matcher
+ * in `parseFullTextWithPositions` and must not be treated as separators.
+ */
+function findSeparatorCommaPositions(
+  text: string,
+  allTokens: PositionedToken[],
+): number[] {
+  const metricRanges = allTokens.filter((t) => t.type === "metric");
+  const commas: number[] = [];
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] === "," && !metricRanges.some((r) => i >= r.from && i < r.to)) {
+      commas.push(i);
+    }
+  }
+  return commas;
+}
+
+/**
+ * Groups an array of positioned tokens into segments split by separator commas.
+ */
+function groupTokensBySegment(
+  allTokens: PositionedToken[],
+  separatorPositions: number[],
+): PositionedToken[][] {
+  const segments: PositionedToken[][] = [];
+  let current: PositionedToken[] = [];
+  let commaIdx = 0;
+
+  for (const token of allTokens) {
+    while (
+      commaIdx < separatorPositions.length &&
+      token.from > separatorPositions[commaIdx]
+    ) {
+      segments.push(current);
+      current = [];
+      commaIdx++;
+    }
+    current.push(token);
+  }
+  segments.push(current);
+  return segments;
+}
+
+/** Strip position info from a positioned token, dropping unknown tokens. */
+function stripPositions(token: PositionedToken): ExpressionSubToken | null {
+  if (token.type === "metric") {
+    return { type: "metric", sourceId: token.sourceId };
+  }
+  if (token.type === "operator") {
+    return { type: "operator", op: token.op };
+  }
+  if (token.type === "constant") {
+    return { type: "constant", value: token.value };
+  }
+  if (token.type === "open-paren") {
+    return { type: "open-paren" };
+  }
+  if (token.type === "unknown") {
+    return null;
+  }
+  return { type: "close-paren" };
+}
+
+/**
  * Parses a full expression text (with ", " separating items) into a
  * `MetricsViewerFormulaEntity[]`. Each comma-separated segment becomes
  * either a standalone metric entry (if it matches a single metric name) or
  * an expression entry (if it contains operators / multiple operands).
  *
  * Metric names are matched greedily, longest first, so names containing
- * operators (e.g. "Year-to-Date") are handled correctly.
+ * operators (e.g. "Year-to-Date") or commas (e.g. "Revenue, Total") are
+ * handled correctly — metrics are identified before commas are used as
+ * separators.
  */
 export function parseFullText(
   text: string,
   metricEntries: MetricDefinitionEntry[],
 ): MetricsViewerFormulaEntity[] {
-  const rawItems = text.split(",");
+  const allTokens = parseFullTextWithPositions(text, metricEntries);
+  const separators = findSeparatorCommaPositions(text, allTokens);
+  const segments = groupTokensBySegment(allTokens, separators);
   const result: MetricsViewerFormulaEntity[] = [];
 
-  for (const rawItem of rawItems) {
-    const trimmed = rawItem.trim();
-    if (trimmed.length === 0) {
+  for (const segmentTokens of segments) {
+    if (segmentTokens.length === 0) {
       continue;
     }
-    const subTokens = parseItemText(rawItem, metricEntries);
-    if (subTokens.length === 0) {
-      continue;
-    }
+
+    const subTokens = segmentTokens
+      .map(stripPositions)
+      .filter((t): t is ExpressionSubToken => t !== null);
 
     // Single metric reference without operators → standalone metric entry
     const firstToken = subTokens[0];
@@ -146,8 +220,7 @@ export function parseFullText(
     }
 
     // Multiple tokens or operators → expression entry
-    const metricEntriesForName = metricEntries;
-    const name = buildExpressionText(subTokens, metricEntriesForName);
+    const name = buildExpressionText(subTokens, metricEntries);
     result.push({
       id: `expression:${name}`,
       type: "expression",
@@ -157,104 +230,6 @@ export function parseFullText(
   }
 
   return result;
-}
-
-function parseItemText(
-  text: string,
-  metricEntries: MetricDefinitionEntry[],
-): ExpressionSubToken[] {
-  const tokens: ExpressionSubToken[] = [];
-
-  // Sort metrics by name length descending for greedy longest-first matching
-  const sortedMetrics = metricEntries
-    .map((entry) => ({
-      name: (
-        (entry.definition ? getDefinitionName(entry.definition) : null) ?? ""
-      ).toLowerCase(),
-      sourceId: entry.id,
-    }))
-    .filter((m) => m.name.length > 0)
-    .sort((a, b) => b.name.length - a.name.length);
-
-  const lower = text.toLowerCase();
-  let i = 0;
-
-  while (i < text.length) {
-    const ch = text[i];
-
-    // Skip whitespace
-    if (ch === " " || ch === "\t") {
-      i++;
-      continue;
-    }
-
-    // Parens
-    if (ch === "(") {
-      tokens.push({ type: "open-paren" });
-      i++;
-      continue;
-    }
-    if (ch === ")") {
-      tokens.push({ type: "close-paren" });
-      i++;
-      continue;
-    }
-
-    // Math operators
-    if (ch === "+" || ch === "-" || ch === "*" || ch === "/") {
-      tokens.push({ type: "operator", op: ch as MathOperator });
-      i++;
-      continue;
-    }
-
-    // Numeric literal
-    if (ch >= "0" && ch <= "9") {
-      let numStr = "";
-      while (i < text.length && text[i] >= "0" && text[i] <= "9") {
-        numStr += text[i++];
-      }
-      if (
-        i < text.length &&
-        text[i] === "." &&
-        i + 1 < text.length &&
-        text[i + 1] >= "0" &&
-        text[i + 1] <= "9"
-      ) {
-        numStr += text[i++];
-        while (i < text.length && text[i] >= "0" && text[i] <= "9") {
-          numStr += text[i++];
-        }
-      }
-      tokens.push({ type: "constant", value: parseFloat(numStr) });
-      continue;
-    }
-
-    // Try to match a metric name (greedy, longest first)
-    let matched = false;
-    for (const { name, sourceId } of sortedMetrics) {
-      if (lower.startsWith(name, i)) {
-        const nextI = i + name.length;
-        const nextCh = text[nextI];
-        if (
-          !nextCh ||
-          nextCh === " " ||
-          nextCh === "\t" ||
-          EXPRESSION_DELIMITERS.has(nextCh)
-        ) {
-          tokens.push({ type: "metric", sourceId });
-          i = nextI;
-          matched = true;
-          break;
-        }
-      }
-    }
-
-    if (!matched) {
-      i++;
-    }
-  }
-
-  return tokens;
 }
 
 export function getSelectedMetricIds(
@@ -444,7 +419,10 @@ export function validateExpression(
 
 // ── Positioned token type (internal) ────────────────────────────────────────
 
-export type PositionedToken = ExpressionSubToken & { from: number; to: number };
+export type PositionedToken = (
+  | ExpressionSubToken
+  | { type: "unknown"; text: string }
+) & { from: number; to: number };
 
 /** Same as the main parser but records character positions for each token. */
 export function parseFullTextWithPositions(
@@ -535,11 +513,12 @@ export function parseFullTextWithPositions(
       if (lower.startsWith(name, i)) {
         const nextI = i + name.length;
         const nextCh = text[nextI];
+        // Accept the match unless the next character continues an
+        // alphanumeric word (e.g. "Revenue" inside "Revenues").
         if (
           !nextCh ||
-          nextCh === " " ||
-          nextCh === "\t" ||
-          EXPRESSION_DELIMITERS.has(nextCh)
+          !isWordChar(nextCh) ||
+          !isWordChar(name[name.length - 1])
         ) {
           tokens.push({ type: "metric", sourceId, from: i, to: nextI });
           i = nextI;
@@ -550,7 +529,53 @@ export function parseFullTextWithPositions(
     }
 
     if (!matched) {
+      // Collect consecutive unrecognized characters into a single unknown token
+      const start = i;
       i++;
+      while (i < text.length) {
+        const c = text[i];
+        if (
+          c === " " ||
+          c === "\t" ||
+          c === "," ||
+          c === "(" ||
+          c === ")" ||
+          c === "+" ||
+          c === "-" ||
+          c === "*" ||
+          c === "/" ||
+          (c >= "0" && c <= "9")
+        ) {
+          break;
+        }
+        // Check if a metric name starts here — if so, stop the unknown span
+        let metricStartsHere = false;
+        for (const { name } of sortedMetrics) {
+          if (lower.startsWith(name, i)) {
+            const nI = i + name.length;
+            const nC = text[nI];
+            if (
+              !nC ||
+              nC === " " ||
+              nC === "\t" ||
+              EXPRESSION_DELIMITERS.has(nC)
+            ) {
+              metricStartsHere = true;
+              break;
+            }
+          }
+        }
+        if (metricStartsHere) {
+          break;
+        }
+        i++;
+      }
+      tokens.push({
+        type: "unknown",
+        text: text.slice(start, i),
+        from: start,
+        to: i,
+      });
     }
   }
 
@@ -570,33 +595,9 @@ export function findInvalidRanges(
   text: string,
   metricEntries: MetricDefinitionEntry[],
 ): ErrorRange[] {
-  // Split text by commas to get item boundaries, then parse + validate each
   const allTokens = parseFullTextWithPositions(text, metricEntries);
-
-  // Group tokens by their comma-separated segment (by character position)
-  const commaPositions: number[] = [];
-  for (let i = 0; i < text.length; i++) {
-    if (text[i] === ",") {
-      commaPositions.push(i);
-    }
-  }
-
-  // Build segments: tokens between consecutive commas
-  const segments: PositionedToken[][] = [];
-  let segmentTokens: PositionedToken[] = [];
-  let commaIdx = 0;
-  for (const token of allTokens) {
-    while (
-      commaIdx < commaPositions.length &&
-      token.from > commaPositions[commaIdx]
-    ) {
-      segments.push(segmentTokens);
-      segmentTokens = [];
-      commaIdx++;
-    }
-    segmentTokens.push(token);
-  }
-  segments.push(segmentTokens);
+  const separators = findSeparatorCommaPositions(text, allTokens);
+  const segments = groupTokensBySegment(allTokens, separators);
 
   const invalid: ErrorRange[] = [];
 
@@ -674,6 +675,17 @@ export function findInvalidRanges(
         to: prevSignificant.to,
         message: t`Expression cannot end with an operator`,
       });
+    }
+
+    // Unknown tokens
+    for (const token of itemTokens) {
+      if (token.type === "unknown") {
+        itemInvalid.push({
+          from: token.from,
+          to: token.to,
+          message: t`Unknown token: "${token.text}"`,
+        });
+      }
     }
 
     // No operands at all

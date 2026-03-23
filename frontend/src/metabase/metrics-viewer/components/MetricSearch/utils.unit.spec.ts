@@ -9,6 +9,7 @@ import {
   buildExpressionText,
   cleanupParens,
   filterSearchResults,
+  findInvalidRanges,
   getSelectedMeasureIds,
   getSelectedMetricIds,
   parseFullText,
@@ -409,10 +410,10 @@ describe("parseFullText — numeric literal parsing", () => {
   });
 
   it("does not parse a trailing dot as part of the number", () => {
-    // "1." — trailing dot with no digit after it; "1" is the constant, "." is skipped
+    // "1." — trailing dot with no digit after it; "1" is the constant, "." is
+    // dropped (unknown tokens are filtered out of committed data)
     const result = parseFullText("1.", metricEntries);
     expect(result).toHaveLength(1);
-    // Single constant → still becomes an expression entry since it's not a metric name
     expect(result[0]).toMatchObject({
       type: "expression",
       tokens: [k(1)],
@@ -445,5 +446,186 @@ describe("parseFullText — numeric literal parsing", () => {
     } else {
       throw new Error("Expected expression entry");
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// parseFullText — metric names containing commas
+// ---------------------------------------------------------------------------
+
+describe("parseFullText — metric names with commas", () => {
+  const revTotalEntry = makeMetricEntry("metric:10", "Revenue, Total");
+  const costsEntry = makeMetricEntry("metric:2", "Costs");
+  const costsAnnualEntry = makeMetricEntry("metric:11", "Costs, Annual");
+  const revenueEntry = makeMetricEntry("metric:1", "Revenue");
+
+  const m = (sourceId: MetricSourceId): ExpressionSubToken => ({
+    type: "metric",
+    sourceId,
+  });
+  const op = (o: "+" | "-" | "*" | "/"): ExpressionSubToken => ({
+    type: "operator",
+    op: o,
+  });
+  const k = (v: number): ExpressionSubToken => ({
+    type: "constant",
+    value: v,
+  });
+
+  it("parses a single metric whose name contains a comma", () => {
+    const entries = [revTotalEntry, costsEntry];
+    const result = parseFullText("Revenue, Total", entries);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ type: "metric", id: "metric:10" });
+  });
+
+  it("parses metric-with-comma followed by another metric", () => {
+    const entries = [revTotalEntry, costsEntry];
+    const result = parseFullText("Revenue, Total, Costs", entries);
+    expect(result).toHaveLength(2);
+    expect(result[0]).toMatchObject({ type: "metric", id: "metric:10" });
+    expect(result[1]).toMatchObject({ type: "metric", id: "metric:2" });
+  });
+
+  it("parses metric-with-comma in an expression", () => {
+    const entries = [revTotalEntry, costsEntry];
+    const result = parseFullText("Revenue, Total + Costs", entries);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      type: "expression",
+      tokens: [m("metric:10"), op("+"), m("metric:2")],
+    });
+  });
+
+  it("parses two metrics whose names each contain commas", () => {
+    const entries = [revTotalEntry, costsAnnualEntry];
+    const result = parseFullText("Revenue, Total, Costs, Annual", entries);
+    expect(result).toHaveLength(2);
+    expect(result[0]).toMatchObject({ type: "metric", id: "metric:10" });
+    expect(result[1]).toMatchObject({ type: "metric", id: "metric:11" });
+  });
+
+  it("prefers longer metric name over shorter one when both match", () => {
+    // "Revenue, Total" should match as one metric, not "Revenue" + separator
+    const entries = [revTotalEntry, revenueEntry, costsEntry];
+    const result = parseFullText("Revenue, Total, Costs", entries);
+    expect(result).toHaveLength(2);
+    expect(result[0]).toMatchObject({ type: "metric", id: "metric:10" });
+    expect(result[1]).toMatchObject({ type: "metric", id: "metric:2" });
+  });
+
+  it("falls back to shorter metric when longer does not match", () => {
+    // Only "Revenue" is known, not "Revenue, Total"
+    const entries = [revenueEntry, costsEntry];
+    const result = parseFullText("Revenue, Costs", entries);
+    expect(result).toHaveLength(2);
+    expect(result[0]).toMatchObject({ type: "metric", id: "metric:1" });
+    expect(result[1]).toMatchObject({ type: "metric", id: "metric:2" });
+  });
+
+  it("handles metric-with-comma multiplied by a constant", () => {
+    const entries = [revTotalEntry];
+    const result = parseFullText("Revenue, Total * 0.85", entries);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      type: "expression",
+      tokens: [m("metric:10"), op("*"), k(0.85)],
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// findInvalidRanges — unknown token detection
+// ---------------------------------------------------------------------------
+
+describe("findInvalidRanges — unknown token detection", () => {
+  const revenueEntry = makeMetricEntry("metric:1", "Revenue");
+  const costsEntry = makeMetricEntry("metric:2", "Costs");
+  const metricEntries = [revenueEntry, costsEntry];
+
+  it("returns no errors for valid expression", () => {
+    expect(findInvalidRanges("Revenue + Costs", metricEntries)).toEqual([]);
+  });
+
+  it("returns no errors for valid expression with constant", () => {
+    expect(findInvalidRanges("Revenue * 0.85", metricEntries)).toEqual([]);
+  });
+
+  it("flags a single unknown word", () => {
+    const errors = findInvalidRanges("Revenue + xyz", metricEntries);
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toMatchObject({
+      from: 10,
+      to: 13,
+      message: expect.stringContaining("xyz"),
+    });
+  });
+
+  it("flags unknown text that is not a known metric", () => {
+    const errors = findInvalidRanges("Foo", metricEntries);
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toMatchObject({
+      message: expect.stringContaining("Foo"),
+    });
+  });
+
+  it("flags multiple unknown tokens in different segments", () => {
+    const errors = findInvalidRanges("abc, def", metricEntries);
+    expect(errors.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("flags unknown token mixed with valid tokens", () => {
+    const errors = findInvalidRanges(
+      "Revenue + unknown + Costs",
+      metricEntries,
+    );
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toMatchObject({
+      message: expect.stringContaining("unknown"),
+    });
+  });
+
+  it("does not flag numbers as unknown", () => {
+    expect(findInvalidRanges("Revenue * 100", metricEntries)).toEqual([]);
+  });
+
+  it("does not flag parentheses as unknown", () => {
+    expect(findInvalidRanges("(Revenue + Costs)", metricEntries)).toEqual([]);
+  });
+
+  it("does not flag operators as unknown", () => {
+    expect(
+      findInvalidRanges("Revenue + Costs - Revenue", metricEntries),
+    ).toEqual([]);
+  });
+
+  it("flags unknown token at the start of expression", () => {
+    const errors = findInvalidRanges("xyz + Revenue", metricEntries);
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toMatchObject({
+      from: 0,
+      to: 3,
+      message: expect.stringContaining("xyz"),
+    });
+  });
+
+  it("returns both structural and unknown errors", () => {
+    // "xyz +" has an unknown token AND a trailing operator
+    const errors = findInvalidRanges("xyz +", metricEntries);
+    expect(errors.length).toBeGreaterThanOrEqual(2);
+    const messages = errors.map((e) => e.message);
+    expect(messages.some((m) => m.includes("xyz"))).toBe(true);
+    expect(messages.some((m) => m.includes("end with an operator"))).toBe(true);
+  });
+
+  it("flags trailing characters after a metric name with special chars", () => {
+    const entry = makeMetricEntry("metric:99", "People Q H2 Orders, Count!");
+    const errors = findInvalidRanges("People Q H2 Orders, Count!!!!", [entry]);
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toMatchObject({
+      from: 26,
+      to: 29,
+      message: expect.stringContaining("!!!"),
+    });
   });
 });

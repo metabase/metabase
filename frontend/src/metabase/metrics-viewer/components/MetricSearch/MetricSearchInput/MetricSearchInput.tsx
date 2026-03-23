@@ -271,6 +271,15 @@ export function MetricSearchInput({
 
     // Text was modified — validate on blur but do NOT commit.
     // The expression is only executed when the user explicitly clicks "Run".
+    const invalidRanges = findInvalidRanges(
+      editTextRef.current,
+      metricEntriesRef.current,
+    );
+    if (invalidRanges.length > 0) {
+      setValidationError(invalidRanges[0].message);
+      return;
+    }
+
     const newEntities = parseFullText(
       editTextRef.current,
       metricEntriesRef.current,
@@ -461,6 +470,18 @@ export function MetricSearchInput({
 
   /** Validate the expression and either show an error or commit + run the query. */
   const handleRun = useCallback(() => {
+    // Check for unknown / invalid tokens in the raw text first, before
+    // parseFullText strips them.  This catches trailing junk like "!!!"
+    // that would otherwise be silently dropped.
+    const invalidRanges = findInvalidRanges(
+      editTextRef.current,
+      metricEntriesRef.current,
+    );
+    if (invalidRanges.length > 0) {
+      setValidationError(invalidRanges[0].message);
+      return;
+    }
+
     const newEntities = parseFullText(
       editTextRef.current,
       metricEntriesRef.current,
