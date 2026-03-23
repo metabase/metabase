@@ -263,23 +263,56 @@
   (or (instance? PSQLException (ex-cause e))
       (instance? JdbcSQLSyntaxErrorException (ex-cause e))))
 
-(defn- safe-batch-upsert! [table-name entries]
+(defn- retry-upsert-ex [table-id table-name refreshed-table-name e e2]
+  (ex-info "Failed retrying search index batch upsert"
+           {:table-id                  table-id
+            :table-name-before-retry  table-name
+            :table-name-after-retry   refreshed-table-name
+            :initial-exception-class  (class e)
+            :initial-exception-message (ex-message e)}
+           e2))
+
+(defn- safe-batch-upsert!
+  "Best-effort upsert into the search index table returned by `table-name-fn`.
+
+  Returns the table name that was written to, or nil if there is no tracked table or if the
+  tracked table disappeared during a concurrent index rotation. Missing-table races are
+  intentionally suppressed because search indexing is best-effort and must not fail the caller's
+  primary write path."
+  [table-id table-name-fn entries]
   ;; For convenience, no-op if we are not tracking any table.
-  (when table-name
-    (try
-      (specialization/batch-upsert! table-name entries)
-      (catch Exception e
-        (if (table-not-found-exception? e)
-          ;; If resetting tracking atoms resolves the issue (which is likely happened because of stale tracking data),
-          ;; suppress the issue - but throw it all the way to the caller if the issue persists
-          (try
-            (sync-tracking-atoms!)
-            (specialization/batch-upsert! table-name entries)
-            (catch Exception e2
-              (if (table-not-found-exception? e2)
-                (log/warnf "Search index table %s no longer exists, skipping upsert" table-name)
-                (throw e))))
-          (throw e))))))
+  (when-let [table-name (table-name-fn)]
+    (letfn [(upsert! [table-name]
+              (specialization/batch-upsert! table-name entries)
+              table-name)]
+      (try
+        (upsert! table-name)
+        (catch Exception e
+          (cond
+            (not (table-not-found-exception? e))
+            (throw e)
+
+            (exists? table-name)
+            (throw e)
+
+            :else
+            (let [refreshed-table-name (do (sync-tracking-atoms!)
+                                           (table-name-fn))]
+              (if-not refreshed-table-name
+                (do
+                  (log/warnf "Search index %s table %s no longer exists, skipping upsert" table-id table-name)
+                  nil)
+                (try
+                  (upsert! refreshed-table-name)
+                  (catch Exception e2
+                    (if (table-not-found-exception? e2)
+                      ;; This method is allowed to skip writes when a concurrent rotation removes the
+                      ;; target index, because dropping a batch is preferable to failing the main write.
+                      (do
+                        (log/warnf "Search index %s table moved from %s to %s during upsert, skipping batch"
+                                   table-id table-name refreshed-table-name)
+                        nil)
+                      (throw (retry-upsert-ex table-id table-name refreshed-table-name e e2)))))))))))))
 
 (defn- batch-update!
   "Create the given search index entries in bulk. Commits after each batch"
@@ -297,19 +330,19 @@
 
   (let [reindexing? (and (= :search/reindexing context) (not search.ingestion/*force-sync*))
         do-writes   (fn []
-                      (let [active-table    (active-table)
-                            entries          (map document->entry documents)
+                      (let [active-table-name   (active-table)
+                            entries             (map document->entry documents)
                             ;; No need to update the active index if we are doing a full index and it will be swapped out soon. Most updates are no-ops anyway.
-                            active-updated?  (when-not (and active-table (pending-table) reindexing?)
-                                               (safe-batch-upsert! active-table entries))
-                            pending-updated? (safe-batch-upsert! (pending-table) entries)]
-                        (when (or active-updated? pending-updated?)
+                            active-updated-table (when-not (and active-table-name (pending-table) reindexing?)
+                                                   (safe-batch-upsert! :active (constantly active-table-name) entries))
+                            pending-updated-table (safe-batch-upsert! :pending pending-table entries)]
+                        (when (or active-updated-table pending-updated-table)
                           (u/prog1 (->> entries (map :model) frequencies)
                             (when reindexing?
                               (t2/query ["commit"]))
                             (log/trace "indexed documents for " <>)
-                            (when active-updated?
-                              (analytics/set! :metabase-search/appdb-index-size (t2/count (name active-table))))))))]
+                            (when active-updated-table
+                              (analytics/set! :metabase-search/appdb-index-size (t2/count (name active-updated-table))))))))]
     (if reindexing?
       ;; New connection used for performing the updates which commit periodically without impacting any outer transactions.
       (t2/with-connection [_conn (mdb/data-source)]
