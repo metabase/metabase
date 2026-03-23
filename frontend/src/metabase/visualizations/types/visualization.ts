@@ -618,7 +618,7 @@ export type VisualizationDefinition = {
   settings: VisualizationSettingsDefinitions;
 
   transformSeries?: (series: Series) => TransformedSeries;
-  isSensible: (data: DatasetData) => boolean;
+  isSensible?: (data: DatasetData) => boolean;
   columnSettings?:
     | VisualizationSettingsDefinitions
     | ((column: DatasetColumn) => VisualizationSettingsDefinitions);

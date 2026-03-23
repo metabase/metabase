@@ -4,10 +4,11 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
+import type { VisualizationDefinition } from "metabase/visualizations/types";
 
 import { Heading } from "./Heading";
 
-const HeadingWrapper = Object.assign(Heading, {
+const HeadingViz: VisualizationDefinition = {
   getUiName: () => t`Heading`,
   identifier: "heading",
   iconName: "heading",
@@ -41,6 +42,8 @@ const HeadingWrapper = Object.assign(Heading, {
       getDefault: () => false,
     },
   },
-});
+};
+
+const HeadingWrapper = Object.assign(Heading, HeadingViz);
 
 export { HeadingWrapper as Heading };

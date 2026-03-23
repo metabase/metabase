@@ -4,8 +4,9 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
+import type { VisualizationDefinition } from "metabase/visualizations/types";
 
-export const settings = {
+export const settings: VisualizationDefinition = {
   getUiName: () => "Link",
   canSavePng: false,
   identifier: "link",
@@ -20,7 +21,7 @@ export const settings = {
   settings: {
     "card.title": {
       dashboard: false,
-      get default() {
+      getDefault() {
         return t`Link card`;
       },
     },
