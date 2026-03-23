@@ -1188,7 +1188,6 @@
               metabase.metabot.api.entity-analysis
               metabase.metabot.api.sql-fixer
               metabase.metabot.api.sql-generation
-              metabase.metabot.core
               metabase.metabot.init}
    :friends #{agent-api
               enterprise/metabot
