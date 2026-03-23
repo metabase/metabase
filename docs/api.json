@@ -15001,8 +15001,8 @@
       "ApiKeyAuth" : {
         "type" : "apiKey",
         "in" : "header",
-        "name" : "X-Metabase-Session",
-        "description" : "Session token obtained from /api/session endpoint"
+        "name" : "X-API-Key",
+        "description" : "API key for authentication"
       }
     }
   },
@@ -19916,9 +19916,6 @@
                   "content" : {
                     "type" : "object"
                   },
-                  "html" : {
-                    "type" : "string"
-                  },
                   "parent_comment_id" : {
                     "oneOf" : [ {
                       "description" : "value must be an integer greater than zero.",
@@ -19938,7 +19935,7 @@
                     "enum" : [ "document" ]
                   }
                 },
-                "required" : [ "target_type", "target_id", "content", "html" ]
+                "required" : [ "target_type", "target_id", "content" ]
               }
             }
           }
@@ -20000,9 +19997,6 @@
                 "properties" : {
                   "content" : {
                     "type" : "object"
-                  },
-                  "html" : {
-                    "type" : "string"
                   },
                   "is_resolved" : {
                     "type" : "boolean"
