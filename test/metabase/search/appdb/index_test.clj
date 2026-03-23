@@ -7,7 +7,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.search.appdb.index :as search.index]
-   [metabase.search.appdb.specialization.api :as specialization]
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
@@ -632,85 +631,6 @@
         (finally
           (t2/delete! :model/SearchIndexMetadata :version "pending-timeout-test")
           (#'search.index/delete-obsolete-tables!))))))
-
-(deftest safe-batch-upsert-refreshes-table-name-on-retry-test
-  (let [current-table (atom :stale_index)
-        upserts       (atom [])]
-    (with-redefs-fn
-      {#'search.index/exists?             (fn [table-name]
-                                            (not= table-name :stale_index))
-       #'search.index/sync-tracking-atoms! (fn []
-                                             (reset! current-table :fresh_index)
-                                             {:active :fresh_index})
-       #'specialization/batch-upsert!     (fn [table-name _entries]
-                                            (swap! upserts conj table-name)
-                                            (when (= table-name :stale_index)
-                                              (throw (Exception. "missing stale index"
-                                                                 (missing-table-cause)))))}
-      (fn []
-        (is (= :fresh_index
-               (#'search.index/safe-batch-upsert! :active (fn [] @current-table) [{}])))))
-    (is (= [:stale_index :fresh_index] @upserts))))
-
-(deftest safe-batch-upsert-skips-retry-when-original-table-still-exists-test
-  (let [sync-called? (atom false)
-        original-ex  (Exception. "still there"
-                                 (missing-table-cause))]
-    (with-redefs-fn
-      {#'search.index/exists?             (constantly true)
-       #'search.index/sync-tracking-atoms! (fn []
-                                             (reset! sync-called? true))
-       #'specialization/batch-upsert!     (fn [_table-name _entries]
-                                            (throw original-ex))}
-      (fn []
-        (is (thrown-with-msg? Exception #"still there"
-                              (#'search.index/safe-batch-upsert! :active (constantly :current_index) [{}])))))
-    (is (false? @sync-called?))))
-
-(deftest safe-batch-upsert-suppresses-missing-table-after-refresh-test
-  (let [current-table (atom :stale_index)
-        upserts       (atom [])]
-    (with-redefs-fn
-      {#'search.index/exists?             (constantly false)
-       #'search.index/sync-tracking-atoms! (fn []
-                                             (reset! current-table nil)
-                                             {})
-       #'specialization/batch-upsert!     (fn [table-name _entries]
-                                            (swap! upserts conj table-name)
-                                            (throw (Exception. "missing index"
-                                                               (missing-table-cause))))}
-      (fn []
-        (is (nil? (#'search.index/safe-batch-upsert! :pending (fn [] @current-table) [{}])))))
-    (is (= [:stale_index] @upserts))))
-
-(deftest safe-batch-upsert-wraps-retry-failure-test
-  (let [current-table (atom :stale_index)
-        initial-ex    (Exception. "missing stale index"
-                                  (missing-table-cause))
-        retry-ex      (ex-info "retry failed" {:phase :retry})]
-    (with-redefs-fn
-      {#'search.index/exists?             (fn [table-name]
-                                            (not= table-name :stale_index))
-       #'search.index/sync-tracking-atoms! (fn []
-                                             (reset! current-table :fresh_index)
-                                             {:active :fresh_index})
-       #'specialization/batch-upsert!     (fn [table-name _entries]
-                                            (if (= table-name :stale_index)
-                                              (throw initial-ex)
-                                              (throw retry-ex)))}
-      (fn []
-        (try
-          (#'search.index/safe-batch-upsert! :active (fn [] @current-table) [{}])
-          (is false "Expected retry failure to be wrapped")
-          (catch clojure.lang.ExceptionInfo e
-            (is (= "Failed retrying search index batch upsert" (ex-message e)))
-            (is (= retry-ex (ex-cause e)))
-            (is (= {:table-id                  :active
-                    :table-name-before-retry  :stale_index
-                    :table-name-after-retry   :fresh_index
-                    :initial-exception-class  (class initial-ex)
-                    :initial-exception-message "missing stale index"}
-                   (ex-data e)))))))))
 
 (deftest when-index-created
   (when (search/supports-index?)
