@@ -111,8 +111,9 @@ function MetricToolbarButtons({
         to={Urls.exploreMetric(card.id)}
         target="_blank"
         leftSection={<Icon name="external" />}
+        data-testid="explore-link"
       >
-        {c("A verb, not a noun").t`Explore`}
+        {t`Explore`}
       </Button>
       <Menu position="bottom-end">
         <Menu.Target>
@@ -213,7 +214,7 @@ function MetricModal({ card, urls, modalType, onClose }: MetricModalProps) {
   const dispatch = useDispatch();
 
   const handleCopy = (newCard: Card) => {
-    dispatch(push(urls.overview(newCard.id)));
+    dispatch(push(urls.about(newCard.id)));
   };
 
   switch (modalType) {

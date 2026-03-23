@@ -1,15 +1,18 @@
-import { MetricDimensionGridPage } from "metabase/metrics/pages/MetricDimensionGridPage";
+import { MetricAboutPage } from "metabase/metrics/pages/MetricAboutPage";
+import type { MetricPageParams } from "metabase/metrics/types";
 
 import { DataStudioMetricBreadcrumbs } from "../../components/DataStudioMetricBreadcrumbs";
 import { dataStudioMetricUrls } from "../../urls";
 
-export function DataStudioMetricDimensionGridPage({
+interface DataStudioMetricAboutPageProps {
+  params: MetricPageParams;
+}
+
+export function DataStudioMetricAboutPage({
   params,
-}: {
-  params: { cardId: string };
-}) {
+}: DataStudioMetricAboutPageProps) {
   return (
-    <MetricDimensionGridPage
+    <MetricAboutPage
       params={params}
       urls={dataStudioMetricUrls}
       showAppSwitcher

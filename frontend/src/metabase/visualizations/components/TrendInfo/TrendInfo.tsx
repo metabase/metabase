@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { Flex, Icon, Text, Title } from "metabase/ui";
+import type { PreviousPeriodChange } from "metabase/visualizations/lib/trend-helpers";
 import { formatChange } from "metabase/visualizations/visualizations/SmartScalar/utils";
 
 import S from "./TrendInfo.module.css";
@@ -8,10 +9,7 @@ import S from "./TrendInfo.module.css";
 type TrendInfoProps = {
   value: string;
   dateLabel: string;
-  change?: {
-    percent: number;
-    description: string;
-  };
+  change?: PreviousPeriodChange;
 };
 
 export function TrendInfo({ value, dateLabel, change }: TrendInfoProps) {

@@ -15,7 +15,7 @@ interface MetricPageShellProps {
   actions?: ReactNode;
   renderBreadcrumbs?: (card: Card) => ReactNode;
   showAppSwitcher?: boolean;
-  showDataStudioLink: boolean;
+  showDataStudioLink?: boolean;
 }
 
 export function MetricPageShell({
@@ -24,7 +24,7 @@ export function MetricPageShell({
   actions,
   renderBreadcrumbs,
   showAppSwitcher,
-  showDataStudioLink,
+  showDataStudioLink = true,
 }: MetricPageShellProps) {
   const [updateCard] = useUpdateCardMutation();
   const [deleteCard] = useDeleteCardMutation();

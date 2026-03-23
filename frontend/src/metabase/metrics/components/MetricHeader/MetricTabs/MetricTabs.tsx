@@ -37,11 +37,11 @@ function getTabs(
   const tabs: PaneHeaderTab[] = [
     {
       label: t`About`,
-      to: urls.overview(card.id),
+      to: urls.about(card.id),
     },
     {
       label: t`Overview`,
-      to: urls.dimensionGrid(card.id),
+      to: urls.overview(card.id),
     },
   ];
 

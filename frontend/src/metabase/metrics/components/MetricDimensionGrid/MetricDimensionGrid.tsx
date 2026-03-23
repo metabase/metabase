@@ -1,35 +1,57 @@
+import { useCallback, useMemo } from "react";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { MetricsViewerCardsGrid } from "metabase/metrics-viewer/components/MetricsViewerCardsGrid";
-import { Button, Flex, Icon, Loader } from "metabase/ui";
+import { useDispatch } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
+import { useMetricDimensionQuery } from "metabase/metrics/common/hooks";
+import type { DimensionType } from "metabase/metrics/common/utils/dimension-types";
+import {
+  Button,
+  Flex,
+  Icon,
+  Paper,
+  SimpleGrid,
+  Stack,
+  Text,
+} from "metabase/ui";
+import Visualization from "metabase/visualizations/components/Visualization";
+import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
+import type { MetricDefinition } from "metabase-lib/metric";
+import type {
+  Card,
+  CardDisplayType,
+  Dataset,
+  SingleSeries,
+} from "metabase-types/api";
 import type { MetricId } from "metabase-types/api/metric";
 
-import { AddDimensionPopover } from "./AddDimensionPopover";
+import S from "./MetricDimensionGrid.module.css";
 import { useMetricDimensionCards } from "./use-metric-dimension-cards";
+import type { DefaultDimension } from "./utils";
 
 type MetricDimensionGridProps = {
   metricId: MetricId;
 };
 
-export function MetricDimensionGrid({ metricId }: MetricDimensionGridProps) {
-  const {
-    cards,
-    definitions,
-    sourceColors,
-    availableDimensions,
-    sourceOrder,
-    sourceDataById,
-    isLoading,
-    updateCard,
-    addCard,
-  } = useMetricDimensionCards(metricId);
+const DEFAULT_SKELETON_COUNT = 3;
 
-  if (isLoading) {
-    return (
-      <Flex align="center" justify="center" flex={1}>
-        <Loader />
-      </Flex>
-    );
+const DISPLAY_TYPE_BY_DIMENSION = {
+  time: "line",
+  geo: "map",
+  category: "bar",
+  boolean: "bar",
+  numeric: "bar",
+} as const satisfies Record<DimensionType, CardDisplayType>;
+
+type DimensionDisplayType = (typeof DISPLAY_TYPE_BY_DIMENSION)[DimensionType];
+
+export function MetricDimensionGrid({ metricId }: MetricDimensionGridProps) {
+  const { cards, definition, isLoading, hasMore, showMore } =
+    useMetricDimensionCards(metricId);
+
+  if (isLoading || !definition) {
+    return <DimensionGridSkeleton count={DEFAULT_SKELETON_COUNT} />;
   }
 
   if (cards.length === 0) {
@@ -38,25 +60,119 @@ export function MetricDimensionGrid({ metricId }: MetricDimensionGridProps) {
 
   return (
     <Flex direction="column" gap="lg" flex={1}>
-      <MetricsViewerCardsGrid
-        definitions={definitions}
-        tabs={cards}
-        updateTab={updateCard}
-        sourceColors={sourceColors}
-        showDimensionPills={false}
-        isInteractive={false}
-      />
-      <AddDimensionPopover
-        availableDimensions={availableDimensions}
-        sourceOrder={sourceOrder}
-        sourceDataById={sourceDataById}
-        hasMultipleSources={false}
-        onAddTab={addCard}
-      >
-        <Button variant="default" fullWidth leftSection={<Icon name="add" />}>
-          {t`Add a dimension`}
+      <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
+        {cards.map((card) => (
+          <MetricDimensionCard
+            key={card.dimensionId}
+            metricId={metricId}
+            definition={definition}
+            dimension={card}
+            displayType={DISPLAY_TYPE_BY_DIMENSION[card.dimensionType]}
+          />
+        ))}
+      </SimpleGrid>
+      {hasMore && (
+        <Button
+          fullWidth
+          leftSection={<Icon name="chevrondown" />}
+          onClick={showMore}
+        >
+          {t`Show more`}
         </Button>
-      </AddDimensionPopover>
+      )}
     </Flex>
+  );
+}
+
+interface MetricDimensionCardProps {
+  metricId: MetricId;
+  definition: MetricDefinition;
+  dimension: DefaultDimension;
+  displayType: DimensionDisplayType;
+}
+
+function MetricDimensionCard({
+  metricId,
+  definition,
+  dimension,
+  displayType,
+}: MetricDimensionCardProps) {
+  const dispatch = useDispatch();
+  const { data } = useMetricDimensionQuery(definition, dimension.dimensionId);
+
+  const rawSeries = useMemo(
+    () => (data ? buildSingleSeries(data, displayType) : null),
+    [data, displayType],
+  );
+
+  const handleClick = useCallback(() => {
+    dispatch(
+      push(
+        Urls.exploreMetricDimension({
+          metricId,
+          dimensionId: dimension.dimensionId,
+          dimensionType: dimension.dimensionType,
+          displayType,
+          label: dimension.label,
+        }),
+      ),
+    );
+  }, [dispatch, metricId, dimension, displayType]);
+
+  return (
+    <Paper withBorder shadow="none" className={S.card} onClick={handleClick}>
+      <Stack h="100%">
+        <Text fw="bold" size="md" truncate="end" px="md" pt="sm">
+          {t`By ${dimension.label}`}
+        </Text>
+        <div className={S.chartArea}>
+          {rawSeries ? (
+            <Visualization
+              className={S.visualization}
+              rawSeries={rawSeries}
+              isQueryBuilder={false}
+              hideLegend
+              onChangeCardAndRun={() => {}}
+            />
+          ) : (
+            <ChartSkeleton display={displayType} className={S.visualization} />
+          )}
+        </div>
+      </Stack>
+    </Paper>
+  );
+}
+
+function buildSingleSeries(
+  dataset: Dataset,
+  displayType: CardDisplayType,
+): SingleSeries[] {
+  const { cols } = dataset.data;
+  const dimensionName = cols[0]?.name;
+  const metricName = cols[1]?.name;
+
+  return [
+    {
+      card: {
+        display: displayType,
+        visualization_settings: {
+          ...(dimensionName ? { "graph.dimensions": [dimensionName] } : {}),
+          ...(metricName ? { "graph.metrics": [metricName] } : {}),
+        },
+      } as Card,
+      data: dataset.data,
+    },
+  ];
+}
+
+function DimensionGridSkeleton({ count }: { count: number }) {
+  return (
+    <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
+      {Array.from({ length: count }, (_, index) => (
+        <Paper key={index} withBorder shadow="none" className={S.skeletonCard}>
+          <ChartSkeleton display="bar" />
+        </Paper>
+      ))}
+    </SimpleGrid>
   );
 }

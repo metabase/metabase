@@ -84,15 +84,15 @@ export function NewMetricPage({
 
   const defaultValues = useMemo(
     () => ({
-      name,
+      name: name === "" ? Lib.suggestedName(query) : name,
       result_metadata: resultMetadata,
       collection_id: initialCollectionId ?? defaultCollectionId,
     }),
-    [name, resultMetadata, initialCollectionId, defaultCollectionId],
+    [name, query, resultMetadata, initialCollectionId, defaultCollectionId],
   );
 
   const handleCreate = (card: CardApiType) => {
-    dispatch(push(urls.overview(card.id)));
+    dispatch(push(urls.about(card.id)));
   };
 
   const handleChangeQuery = (query: Lib.Query) => {

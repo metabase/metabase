@@ -9,8 +9,8 @@ export interface DimensionWithDefinition {
 }
 
 export interface MetricUrls {
+  about: (cardId: CardId) => string;
   overview: (cardId: CardId) => string;
-  dimensionGrid: (cardId: CardId) => string;
   query: (cardId: CardId) => string;
   dependencies: (cardId: CardId) => string;
   caching: (cardId: CardId) => string;

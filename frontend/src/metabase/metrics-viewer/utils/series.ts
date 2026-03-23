@@ -249,13 +249,10 @@ export function buildRawSeriesFromDefinitions(
     return { series: [], cardIdToDimensionId: {} };
   }
 
-  const vizSettings = {
-    ...DISPLAY_TYPE_REGISTRY[display].getSettings(
-      firstSettingsEntry.def,
-      firstSettingsEntry.dimension,
-    ),
-    ...settingsOverrides,
-  };
+  const baseSettings = DISPLAY_TYPE_REGISTRY[display].getSettings(
+    firstSettingsEntry.def,
+    firstSettingsEntry.dimension,
+  );
 
   const cardIdToDimensionId: Record<CardId, MetricSourceId> = {};
 
@@ -293,12 +290,13 @@ export function buildRawSeriesFromDefinitions(
 
     const singleSeries: SingleSeries = {
       card: createSeriesCard(cardId, name, display, {
-        ...vizSettings,
+        ...baseSettings,
         ...computeColorVizSettings({
           displayType: display,
           seriesKey,
           color: sourceColors[entry.id]?.[0],
         }),
+        ...settingsOverrides,
       }),
       data: result.data,
     };

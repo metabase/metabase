@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 
 import { isNotNull } from "metabase/lib/types";
-import { Paper, Stack, Text } from "metabase/ui";
+import { Paper, Skeleton, Stack, Text } from "metabase/ui";
+import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
 import type { DimensionMetadata } from "metabase-lib/metric";
 import type { VisualizationSettings } from "metabase-types/api";
 
@@ -32,8 +33,7 @@ type MetricsViewerCardProps = {
   ) => void;
   onDimensionRemove?: (definitionId: MetricSourceId) => void;
   sourceColors: SourceColorMap;
-  showDimensionPills?: boolean;
-  isInteractive?: boolean;
+  mode?: "interactive" | "readonly";
   settingsOverrides?: VisualizationSettings;
 };
 
@@ -44,10 +44,10 @@ export function MetricsViewerCard({
   onDimensionChange,
   onDimensionRemove,
   sourceColors,
-  showDimensionPills = true,
-  isInteractive = true,
+  mode = "interactive",
   settingsOverrides,
 }: MetricsViewerCardProps) {
+  const isInteractive = mode === "interactive";
   const tabConfig = getTabConfig(tab.type);
 
   const { resultsByDefinitionId, modifiedDefinitions } = useDefinitionQueries(
@@ -106,10 +106,6 @@ export function MetricsViewerCard({
   const dimensionRemoveHandler =
     mappedDimensionCount > 1 ? onDimensionRemove : undefined;
 
-  if (rawSeries.length === 0) {
-    return null;
-  }
-
   return (
     <Paper
       withBorder
@@ -118,25 +114,31 @@ export function MetricsViewerCard({
       data-testid="metrics-viewer-card"
     >
       <Stack h="100%">
-        {tab.label && (
+        {tab.label != null ? (
           <Text fw="bold" size="md" truncate="end" px="md" pt="sm">
             {tab.label}
           </Text>
+        ) : (
+          <Skeleton h="1rem" w="40%" mx="md" mt="sm" />
         )}
-        <MetricsViewerVisualization
-          className={S.visualization}
-          rawSeries={rawSeries}
-          dimensionItems={showDimensionPills ? dimensionItems : []}
-          onDimensionChange={showDimensionPills ? onDimensionChange : undefined}
-          onDimensionRemove={
-            showDimensionPills ? dimensionRemoveHandler : undefined
-          }
-          definitions={definitions}
-          tab={tab}
-          onTabUpdate={onTabUpdate}
-          cardIdToDimensionId={cardIdToDimensionId}
-          isInteractive={isInteractive}
-        />
+        {rawSeries.length === 0 ? (
+          <ChartSkeleton display={tab.display} className={S.visualization} />
+        ) : (
+          <MetricsViewerVisualization
+            className={S.visualization}
+            rawSeries={rawSeries}
+            dimensionItems={isInteractive ? dimensionItems : []}
+            onDimensionChange={isInteractive ? onDimensionChange : undefined}
+            onDimensionRemove={
+              isInteractive ? dimensionRemoveHandler : undefined
+            }
+            definitions={definitions}
+            tab={tab}
+            onTabUpdate={onTabUpdate}
+            cardIdToDimensionId={cardIdToDimensionId}
+            interactive={isInteractive}
+          />
+        )}
       </Stack>
     </Paper>
   );

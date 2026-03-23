@@ -21,8 +21,7 @@ type MetricsViewerCardsGridProps = {
   ) => void;
   onDimensionRemove?: (tabId: string, definitionId: MetricSourceId) => void;
   sourceColors: SourceColorMap;
-  showDimensionPills?: boolean;
-  isInteractive?: boolean;
+  mode?: "interactive" | "readonly";
   settingsOverrides?: VisualizationSettings;
 };
 
@@ -33,8 +32,7 @@ export function MetricsViewerCardsGrid({
   onDimensionChange,
   onDimensionRemove,
   sourceColors,
-  showDimensionPills,
-  isInteractive,
+  mode,
   settingsOverrides,
 }: MetricsViewerCardsGridProps) {
   return (
@@ -57,8 +55,7 @@ export function MetricsViewerCardsGrid({
               : undefined
           }
           sourceColors={sourceColors}
-          showDimensionPills={showDimensionPills}
-          isInteractive={isInteractive}
+          mode={mode}
           settingsOverrides={settingsOverrides}
         />
       ))}

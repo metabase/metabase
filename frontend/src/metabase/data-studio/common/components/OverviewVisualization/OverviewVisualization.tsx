@@ -7,38 +7,28 @@ import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
 import type { Card, Dataset } from "metabase-types/api";
 
-import S from "./OverviewVisualization.module.css";
-import { useCardQueryData } from "./use-card-query-data";
+import { useCardQueryData } from "../../hooks/use-card-query-data";
 
-type OverviewVisualizationProps = {
+import S from "./OverviewVisualization.module.css";
+
+type CardVisualizationProps = {
   card: Card;
-  data?: Dataset;
-  isLoading?: boolean;
+  data: Dataset | undefined;
+  isLoading: boolean;
   className?: string;
 };
 
-export function OverviewVisualization({
+export function CardVisualization({
   card,
-  data: externalData,
-  isLoading: externalIsLoading,
+  data,
+  isLoading,
   className,
-}: OverviewVisualizationProps) {
+}: CardVisualizationProps) {
   const metadata = useSelector(getMetadata);
   const question = useMemo(
     () => new Question(card, metadata),
     [card, metadata],
   );
-
-  const hasExternalData = externalData !== undefined;
-  const { data: internalData, isLoading: internalIsLoading } = useCardQueryData(
-    card,
-    { skip: hasExternalData },
-  );
-
-  const data = hasExternalData ? externalData : internalData;
-  const isLoading = hasExternalData
-    ? (externalIsLoading ?? false)
-    : internalIsLoading;
 
   const rawSeries = useMemo(
     () => (data ? [{ card, data: data.data }] : null),
@@ -52,7 +42,7 @@ export function OverviewVisualization({
         question={question}
         result={data}
         rawSeries={rawSeries}
-        queryBuilderMode="dataset" // disable the object details column
+        queryBuilderMode="dataset"
         isRunnable={false}
         isRunning={isLoading}
         isDirty
@@ -60,4 +50,14 @@ export function OverviewVisualization({
       />
     </DebouncedFrame>
   );
+}
+
+type OverviewVisualizationProps = {
+  card: Card;
+};
+
+export function OverviewVisualization({ card }: OverviewVisualizationProps) {
+  const { data, isLoading } = useCardQueryData(card);
+
+  return <CardVisualization card={card} data={data} isLoading={isLoading} />;
 }

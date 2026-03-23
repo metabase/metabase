@@ -3,8 +3,8 @@ import * as Urls from "metabase/lib/urls";
 import type { MetricUrls } from "./types";
 
 export const metricUrls: MetricUrls = {
+  about: Urls.metricAbout,
   overview: Urls.metricOverview,
-  dimensionGrid: Urls.metricDimensionGrid,
   query: Urls.metricQuery,
   dependencies: Urls.metricDependencies,
   caching: Urls.metricCaching,
