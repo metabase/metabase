@@ -2998,6 +2998,7 @@
                     :model/DashboardCard
                     :model/Field
                     :model/Measure
+                    :model/PersistedInfo
                     :model/Segment
                     :model/Table
                     :model/Transform}}
