@@ -181,7 +181,7 @@
         (throw (ex-info "Output table not found after transform execution"
                         {:db-id target-db-id :schema table-schema :name table-name})))))
 
-(defn run-swap-model!
+(defn run-swap-model-with-transform!
   "Execute a transform, find the output table, then swap all dependents of the card
    to point at the new table. Finally un-persist and convert the card to a saved question.
 
@@ -189,7 +189,7 @@
    `transform-id` — the transform to execute
    `progress`     — IRunnerProgress for tracking"
   ([card-id transform-id]
-   (run-swap-model! card-id transform-id noop-progress))
+   (run-swap-model-with-transform! card-id transform-id noop-progress))
   ([card-id transform-id progress]
    (let [transform (or (t2/select-one :model/Transform :id transform-id)
                        (throw (ex-info "Transform not found" {:transform-id transform-id})))]
@@ -200,9 +200,9 @@
      (let [table (find-output-table transform)]
        (run-swap-source! [:card card-id] [:table (:id table)] progress))
 
-     ;; phase 3: un-persist the card if it was persisted
+     ;; phase 3: un-persist the model if it was persisted
      (when-let [persisted-info (t2/select-one :model/PersistedInfo :card_id card-id)]
        (model-persistence/mark-for-pruning! {:id (:id persisted-info)} "off"))
 
-     ;; phase 4: convert model to saved question
+     ;; phase 4: convert the model to a saved question
      (t2/update! :model/Card card-id {:type :question}))))

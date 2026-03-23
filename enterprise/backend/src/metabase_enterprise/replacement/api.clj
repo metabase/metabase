@@ -66,10 +66,10 @@
     (-> (response/response {:run_id (:id job-row)})
         (assoc :status 202))))
 
-(api.macros/defendpoint :post "/replace-model" :- [:map
-                                                   [:status [:= 202]]
-                                                   [:body [:map {:closed true}
-                                                           [:run_id ::replacement.schema/run-id]]]]
+(api.macros/defendpoint :post "/replace-model-with-transform" :- [:map
+                                                                  [:status [:= 202]]
+                                                                  [:body [:map {:closed true}
+                                                                          [:run_id ::replacement.schema/run-id]]]]
   "Create a transform from a model, execute it, and replace all usages of the model
    with the output table. Un-persists the model and converts it to a saved question.
    Returns 202 with a run_id for polling."
@@ -95,7 +95,7 @@
                    api/*current-user-id*)
         progress  (replacement-run/run-row->progress job-row)
         work-fn   (fn [progress]
-                    (replacement.runner/run-swap-model! card_id (:id transform) progress))]
+                    (replacement.runner/run-swap-model-with-transform! card_id (:id transform) progress))]
     (replacement.execute/execute-async! work-fn progress)
     (-> (response/response {:run_id (:id job-row)})
         (assoc :status 202))))

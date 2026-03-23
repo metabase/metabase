@@ -21,7 +21,7 @@ import { slugify } from "metabase/lib/formatting/url";
 import { SchemaFormSelect } from "metabase/transforms/components/SchemaFormSelect";
 import { TargetNameInput } from "metabase/transforms/components/TargetNameInput";
 import { Box, Button, Group, Input, Modal, Stack, Text } from "metabase/ui";
-import { useReplaceModelMutation } from "metabase-enterprise/api";
+import { useReplaceModelWithTransformMutation } from "metabase-enterprise/api";
 import type { Card, Database } from "metabase-types/api";
 
 const VALIDATION_SCHEMA = Yup.object({
@@ -106,7 +106,7 @@ function ReplaceModelForm({
   schemas,
   onClose,
 }: ReplaceModelFormProps) {
-  const [replaceModel] = useReplaceModelMutation();
+  const [replaceModelWithTransform] = useReplaceModelWithTransformMutation();
   const supportsSchemas = hasFeature(database, "schemas");
   const initialValues: ReplaceModelValues = useMemo(
     () => ({
@@ -119,7 +119,7 @@ function ReplaceModelForm({
   );
 
   const handleSubmit = async (values: ReplaceModelValues) => {
-    const action = replaceModel({
+    const action = replaceModelWithTransform({
       card_id: card.id,
       transform_name: values.name,
       transform_target: {

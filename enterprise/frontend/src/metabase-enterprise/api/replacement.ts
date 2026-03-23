@@ -1,7 +1,7 @@
 import type {
   ListSourceReplacementRunsRequest,
-  ReplaceModelRequest,
-  ReplaceModelResponse,
+  ReplaceModelWithTransformRequest,
+  ReplaceModelWithTransformResponse,
   ReplaceSourceRequest,
   ReplaceSourceResponse,
   SourceReplacementCheckInfo,
@@ -68,10 +68,13 @@ export const replacementApi = EnterpriseApi.injectEndpoints({
       }),
       providesTags: (run) => (run ? provideSourceReplacementRunTags(run) : []),
     }),
-    replaceModel: builder.mutation<ReplaceModelResponse, ReplaceModelRequest>({
+    replaceModelWithTransform: builder.mutation<
+      ReplaceModelWithTransformResponse,
+      ReplaceModelWithTransformRequest
+    >({
       query: (body) => ({
         method: "POST",
-        url: "/api/ee/replacement/replace-model",
+        url: "/api/ee/replacement/replace-model-with-transform",
         body,
       }),
       invalidatesTags: (_response, error) =>
@@ -85,5 +88,5 @@ export const {
   useReplaceSourceMutation,
   useListSourceReplacementRunsQuery,
   useGetSourceReplacementRunQuery,
-  useReplaceModelMutation,
+  useReplaceModelWithTransformMutation,
 } = replacementApi;
