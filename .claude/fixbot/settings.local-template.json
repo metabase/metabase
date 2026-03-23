@@ -9,7 +9,8 @@
     },
     "excludedCommands": ["docker"],
     "network": {
-      "allowedDomains": ["localhost", "127.0.0.1"]
+      "allowLocalBinding": true,
+      "allowedDomains": []
     }
   },
   "permissions": {
