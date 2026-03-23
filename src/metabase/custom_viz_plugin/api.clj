@@ -66,26 +66,41 @@
       (json/parse-string manifest-str true)
       (catch Exception _ nil))))
 
+(defn- apply-manifest-defaults
+  "Merge manifest defaults for display_name and icon into a plugin map.
+   User-set (non-nil) values in the DB take precedence.
+   Falls back to identifier if neither user nor manifest provides a display_name."
+  [plugin parsed-manifest]
+  (cond-> plugin
+    (nil? (:display_name plugin))
+    (assoc :display_name (or (:name parsed-manifest) (:identifier plugin)))
+    (and (nil? (:icon plugin)) (:icon parsed-manifest))
+    (assoc :icon (:icon parsed-manifest))))
+
 (defn- plugin->response
   "Convert a plugin record to API response format (keyword status -> string)."
   [plugin]
-  (-> plugin
-      strip-token
-      (update :status name)
-      (update :manifest parse-manifest-json)
-      (assoc :dev_bundle_url (get @dev-bundle-urls (:id plugin)))))
+  (let [parsed (parse-manifest-json (:manifest plugin))]
+    (-> plugin
+        strip-token
+        (apply-manifest-defaults parsed)
+        (update :status name)
+        (assoc :manifest parsed)
+        (assoc :dev_bundle_url (get @dev-bundle-urls (:id plugin))))))
 
 (defn- plugin->runtime-response
   "Convert a plugin record to the safe runtime response shape."
-  [{:keys [id identifier display_name icon resolved_commit manifest]}]
-  (let [dev-url (get @dev-bundle-urls id)]
+  [{:keys [id identifier display_name icon resolved_commit manifest] :as plugin}]
+  (let [parsed  (parse-manifest-json manifest)
+        plugin  (apply-manifest-defaults plugin parsed)
+        dev-url (get @dev-bundle-urls id)]
     (cond-> {:id              id
              :identifier      identifier
-             :display_name    display_name
-             :icon            icon
+             :display_name    (:display_name plugin)
+             :icon            (:icon plugin)
              :bundle_url      (format "/api/custom-viz-plugin/%d/bundle" id)
              :resolved_commit resolved_commit
-             :manifest        (parse-manifest-json manifest)}
+             :manifest        parsed}
       dev-url (assoc :dev_bundle_url dev-url))))
 
 ;;; ------------------------------------------------ Endpoints ------------------------------------------------
@@ -106,17 +121,15 @@
         plugin     (first (t2/insert-returning-instances! :model/CustomVizPlugin
                                                           :repo_url        repo_url
                                                           :access_token    access_token
-                                                          ;; Use provided name, fall back to repo name.
-                                                          ;; fetch-and-cache! will override with manifest
-                                                          ;; name if present and display_name was not
-                                                          ;; explicitly provided.
-                                                          :display_name    (or display_name identifier)
+                                                          ;; Store user-provided values or nil;
+                                                          ;; manifest defaults are merged JIT in the API response.
+                                                          :display_name    display_name
                                                           :identifier      identifier
                                                           :icon            icon
                                                           :status          :pending
                                                           :pinned_version  pinned_version))]
     ;; fetch bundle synchronously — validates the repo is accessible
-    (cache/fetch-and-cache! plugin {:apply-manifest-defaults? (nil? display_name)})
+    (cache/fetch-and-cache! plugin)
     ;; re-read to get updated status
     (plugin->response (t2/select-one :model/CustomVizPlugin :id (:id plugin)))))
 

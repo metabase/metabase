@@ -3506,9 +3506,9 @@ databaseChangeLog:
               - column:
                   name: display_name
                   type: varchar(254)
-                  remarks: Human-readable name for the plugin
+                  remarks: Admin-provided display name override (null = use manifest default)
                   constraints:
-                    nullable: false
+                    nullable: true
               - column:
                   name: identifier
                   type: varchar(254)
