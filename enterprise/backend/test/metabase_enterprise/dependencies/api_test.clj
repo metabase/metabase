@@ -2923,3 +2923,46 @@
           (testing "graph with transform"
             (is (map? (mt/user-http-request analyst-id :get 200
                                             (str "ee/dependencies/graph?type=transform&id=" transform-id))))))))))
+
+; POST a transform
+; POST a transform run
+; POST a card
+; GET http://localhost:3055/api/ee/dependencies/graph?id=525&type=card
+; assert precondition: all the things are connected. Dependencies are listed and exist. No broken dependencies exist.
+; DELETE table
+; DELETE transform
+; GET transform
+; assert transform doesnt exist (demonstrate the test condition has been reproduced)
+; REPRO bug: assert GET http://localhost:3055/api/ee/dependencies/graph?id=525&type=card should say card has a broken dependency (currenly fails)
+
+; Simpler repro
+; Create a question based on a table
+; Create another question based on the first question
+; Move the first question to the trash
+; Dependency graph doesn't show the upstream q when looking at the downstream q
+; Dependency problems doesn't show the downstream q whose input is archived
+; Delete the first question permanently
+; Dependency graph doesn't show the upstream q when looking at the downstream q
+; Dependency problems doesn't show the downstream q whose input is deleted
+
+(comment
+  (t2/select :model/Dependency :from_entity_id 525)
+  (t2/select :model/Dependency :from_entity_id 527)
+  (t2/select :model/Card :id 527)
+  (t2/select :model/Card :id 526)
+  (t2/select :model/Card :id 529)
+  (t2/select :model/Card :id 528)
+  (t2/select :model/AnalysisFindingError)
+  (t2/select :model/AnalysisFinding :analyzed_entity_id 525))
+
+; Table:
+; - ID
+; - Name
+
+; Query:
+; Select * from Table
+
+; Query:
+; Select Name from Table
+
+; Remove Name from table

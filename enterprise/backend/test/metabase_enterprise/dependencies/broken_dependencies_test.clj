@@ -61,7 +61,6 @@
                     (let [graph (mt/user-http-request :crowberto :get 200
                                                       (format "ee/dependencies/graph?type=card&id=%d" card-id))]
 
-                      ;; Assert precondition: card's upstream graph includes the output table
                       (testing "precondition: card depends on the output table in the dependency graph"
                         (let [table-nodes (->> (:nodes graph)
                                                (filter #(= "table" (:type %)))
@@ -69,7 +68,6 @@
                           (is (seq table-nodes)
                               "Output table should appear in the card's upstream dependency graph")))
 
-                      ;; Assert precondition: no broken dependencies for this card
                       (testing "precondition: card analysis is passing (not broken)"
                         (let [finding (t2/select-one :model/AnalysisFinding
                                                      :analyzed_entity_type "card"
@@ -98,3 +96,9 @@
                         (let [breaking (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/breaking" :types "table")]
                           ;; TODO - What should be the assertion here? Is the card broken? Is the table broken?
                           (is (=? [{:id output-table-id}] (:data breaking)) "Deactivated table should appear as a breaking entity"))))))))))))))
+
+; Create query based on table
+; Directly mark table as inactive (update with T2)
+; Run backfill-dependencies!
+; Assert that broken dependencies are returned
+
