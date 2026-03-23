@@ -211,7 +211,6 @@
 (def ^:private all-date-string-decoders
   (concat relative-date-string-decoders absolute-date-string-decoders))
 
-;; TODO(rileythomp, 2026-03-18): Add back schemas here
 (mu/defn date-string->filter :- ::mbql.s/Filter
   "Takes a string description of a *date* (not datetime) range such as 'lastmonth' or '2016-07-15~2016-08-6', or
   an absolute date *or datetime* string, and returns a corresponding MBQL filter clause for a given field reference."

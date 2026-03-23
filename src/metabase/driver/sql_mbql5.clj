@@ -75,7 +75,7 @@
   [driver {:keys [stages]}]
   (stages->honeysql driver stages))
 
-;; TODO(rileythomp): Add schemas like in the :sql impl
+;; TODO(rileythomp, 2026-03): Add schemas like in the :sql impl
 (mu/defmethod sql.qp/join->honeysql :sql-mbql5
   [driver {:keys [conditions] :as join}]
   (let [join-alias ((some-fn driver-api/qp.add.alias :alias) join)]
@@ -88,7 +88,7 @@
 
 (defmethod sql.qp/->honeysql [:sql-mbql5 :aggregation]
   [driver [_ opts agg-uuid :as clause]]
-  ;; TODO(rileythomp): Handle more cases here?
+  ;; TODO(rileythomp, 2026-03): Handle more cases here?
   (if-let [desired-alias (get opts driver-api/qp.add.desired-alias)]
     (sql.qp/->honeysql driver (h2x/identifier :field-alias desired-alias))
     (throw (ex-info "Aggregation reference missing ::desired-alias. Was add-alias-info run?"
