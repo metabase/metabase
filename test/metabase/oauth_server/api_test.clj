@@ -559,7 +559,6 @@
                     (str "Refresh token expiry should be ~7200s from now, got "
                          (/ actual 1000.0) "s"))))))))))
 
-
 (deftest dcr-strips-client-credentials-grant-type-test
   (testing "Dynamic client registration strips client_credentials from grant_types"
     ;; client_credentials tokens have no user context (user_id = NULL) which makes

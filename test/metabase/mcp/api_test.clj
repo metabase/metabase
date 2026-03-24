@@ -98,7 +98,6 @@
     (when-not (:isError result)
       (json/decode+kw (:text (first (:content result)))))))
 
-
 ;;; ---------------------------------------------------- Tests -----------------------------------------------------
 
 (deftest authentication-required-test
