@@ -76,6 +76,11 @@ describe("scenarios > admin > settings > SSO > JWT", () => {
     enableJwtAuth();
     cy.visit("/admin/settings/authentication/jwt");
 
+    cy.findByLabelText(/String used by the JWT signing key/i).should(
+      "have.value",
+      "**********00",
+    );
+
     cy.button("Regenerate key").click();
     H.modal().within(() => {
       cy.findByText("Set up secret key").should("exist");

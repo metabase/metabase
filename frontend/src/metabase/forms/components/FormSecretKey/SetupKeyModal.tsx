@@ -12,6 +12,7 @@ import {
   Flex,
   Group,
   Icon,
+  Loader,
   Modal,
   Stack,
   Text,
@@ -31,7 +32,8 @@ export const SetupKeyModal = (props: SetupKeyDialogProps) => {
   const { currentValue, onClose, onConfirm } = props;
   const [secretValue, setSecretKey] = useState<string>("");
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
-  const [generateRandomToken] = useLazyGenerateRandomTokenQuery();
+  const [generateRandomToken, { isFetching: isGenerating }] =
+    useLazyGenerateRandomTokenQuery();
 
   const generateToken = useCallback(async () => {
     try {
@@ -53,22 +55,29 @@ export const SetupKeyModal = (props: SetupKeyDialogProps) => {
           <TextInput
             onChange={(event) => setSecretKey(event.target.value || "")}
             value={secretValue}
+            disabled={isGenerating}
             rightSection={
-              <Tooltip label={t`Copy to clipboard`}>
-                <IconButtonWrapper
-                  aria-label={t`Preview the query`}
-                  onClick={async () => {
-                    try {
-                      await navigator.clipboard.writeText(secretValue);
-                      sendSuccessToast(t`Secret key copied to clipboard`);
-                    } catch {
-                      sendErrorToast(t`Error copying secret key to clipboard.`);
-                    }
-                  }}
-                >
-                  <Icon name="copy" />
-                </IconButtonWrapper>
-              </Tooltip>
+              isGenerating ? (
+                <Loader size="xs" />
+              ) : (
+                <Tooltip label={t`Copy to clipboard`}>
+                  <IconButtonWrapper
+                    aria-label={t`Preview the query`}
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(secretValue);
+                        sendSuccessToast(t`Secret key copied to clipboard`);
+                      } catch {
+                        sendErrorToast(
+                          t`Error copying secret key to clipboard.`,
+                        );
+                      }
+                    }}
+                  >
+                    <Icon name="copy" />
+                  </IconButtonWrapper>
+                </Tooltip>
+              )
             }
             flex="1 0 auto"
             aria-label={t`New secret key`}
