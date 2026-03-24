@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [mage.color :as c]
+   [mage.fixbot.preflight :as preflight]
    [mage.shell :as shell]
    [mage.util :as u]))
 
@@ -148,6 +149,7 @@
 (defn resume!
   "Resume a paused fixbot session."
   [{:keys [arguments]}]
+  (preflight/preflight!)
   (let [name-or-id (first arguments)]
     (when (str/blank? name-or-id)
       (println (c/red "Usage: ./bin/mage -fixbot-resume <name-or-issue-id>"))
@@ -171,9 +173,7 @@
       (if session
         (let [wt-path      (worktree-path session)
               in-tmux?     (not (str/blank? (u/env "TMUX" (constantly nil))))
-              resume-prompt "Continue where you left off."
-              workmux-cmd  (str "workmux open " session " --run-hooks"
-                                " -p '" resume-prompt "'")]
+              resume-prompt "Continue where you left off."]
           (when wt-path
             (write-resume-workmux-yaml! wt-path))
           (println (c/yellow "Resuming session: " session "..."))
@@ -187,11 +187,14 @@
             ;; cd to worktree first so workmux finds the resume .workmux.yaml
             (do
               (println (c/yellow "Not inside tmux. Creating detached tmux session..."))
+              ;; Kill stale tmux session if one exists from a previous run
+              (shell/sh* {:quiet? true} "tmux" "kill-session" "-t" session)
               (shell/sh "nohup" "bash" "-c"
                         (str "cd " wt-path
                              " && tmux new-session -d -s " session
                              " && tmux send-keys -t " session
-                             " '" workmux-cmd "' Enter"))))
+                             " \"workmux open " session " --run-hooks"
+                             " -p '" resume-prompt "'\" Enter"))))
           (println)
           (if in-tmux?
             (println (c/bold (c/green "Session resumed: ") (c/cyan session)))
