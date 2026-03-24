@@ -221,8 +221,8 @@ export function computeSourceColors(
 export function splitByBreakout(
   series: SingleSeries,
   seriesCount: number,
-  sourceColors: string[],
-  vizSettings: VisualizationSettings,
+  sourceColors?: string[],
+  vizSettings?: VisualizationSettings,
 ): SingleSeries[] {
   const { card, data } = series;
   const { cols } = data;
