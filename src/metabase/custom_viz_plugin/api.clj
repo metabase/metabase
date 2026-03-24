@@ -28,7 +28,7 @@
    [:identifier      ms/NonBlankString]
    [:status          [:enum "pending" "active" "error"]]
    [:enabled         :boolean]
-   [:icon            {:optional true} [:maybe :string]]
+   [:icon            ms/NonBlankString]
    [:error_message   {:optional true} [:maybe :string]]
    [:pinned_version  {:optional true} [:maybe :string]]
    [:resolved_commit {:optional true} [:maybe :string]]
@@ -43,7 +43,7 @@
    [:id              ms/PositiveInt]
    [:identifier      ms/NonBlankString]
    [:display_name    ms/NonBlankString]
-   [:icon            {:optional true} [:maybe :string]]
+   [:icon            ms/NonBlankString]
    [:bundle_url      ms/NonBlankString]
    [:resolved_commit {:optional true} [:maybe :string]]
    [:dev_bundle_url  {:optional true} [:maybe :string]]
@@ -65,41 +65,26 @@
       (json/parse-string manifest-str true)
       (catch Exception _ nil))))
 
-(defn- apply-manifest-defaults
-  "Merge manifest defaults for display_name and icon into a plugin map.
-   User-set (non-nil) values in the DB take precedence.
-   Falls back to identifier if neither user nor manifest provides a display_name."
-  [plugin parsed-manifest]
-  (cond-> plugin
-    (nil? (:display_name plugin))
-    (assoc :display_name (or (:name parsed-manifest) (:identifier plugin)))
-    (and (nil? (:icon plugin)) (:icon parsed-manifest))
-    (assoc :icon (:icon parsed-manifest))))
-
 (defn- plugin->response
   "Convert a plugin record to API response format (keyword status -> string)."
   [plugin]
-  (let [parsed (parse-manifest-json (:manifest plugin))]
-    (-> plugin
-        strip-token
-        (apply-manifest-defaults parsed)
-        (update :status name)
-        (assoc :manifest parsed)
-        (assoc :dev_bundle_url (get @dev-bundle-urls (:id plugin))))))
+  (-> plugin
+      strip-token
+      (update :status name)
+      (update :manifest parse-manifest-json)
+      (assoc :dev_bundle_url (get @dev-bundle-urls (:id plugin)))))
 
 (defn- plugin->runtime-response
   "Convert a plugin record to the safe runtime response shape."
-  [{:keys [id identifier display_name icon resolved_commit manifest] :as plugin}]
-  (let [parsed  (parse-manifest-json manifest)
-        plugin  (apply-manifest-defaults plugin parsed)
-        dev-url (get @dev-bundle-urls id)]
+  [{:keys [id identifier display_name icon resolved_commit manifest]}]
+  (let [dev-url (get @dev-bundle-urls id)]
     (cond-> {:id              id
              :identifier      identifier
-             :display_name    (:display_name plugin)
-             :icon            (:icon plugin)
+             :display_name    display_name
+             :icon            icon
              :bundle_url      (format "/api/custom-viz-plugin/%d/bundle" id)
              :resolved_commit resolved_commit
-             :manifest        parsed}
+             :manifest        (parse-manifest-json manifest)}
       dev-url (assoc :dev_bundle_url dev-url))))
 
 ;;; ------------------------------------------------ Endpoints ------------------------------------------------
@@ -109,25 +94,22 @@
    Validates by fetching index.js from the repo."
   [_route-params
    _query-params
-   {:keys [repo_url display_name icon access_token pinned_version]} :- [:map
-                                                                        [:repo_url       ms/NonBlankString]
-                                                                        [:display_name   {:optional true} [:maybe ms/NonBlankString]]
-                                                                        [:icon           {:optional true} [:maybe :string]]
-                                                                        [:access_token   {:optional true} [:maybe :string]]
-                                                                        [:pinned_version {:optional true} [:maybe :string]]]]
+   {:keys [repo_url access_token pinned_version]} :- [:map
+                                                       [:repo_url       ms/NonBlankString]
+                                                       [:access_token   {:optional true} [:maybe :string]]
+                                                       [:pinned_version {:optional true} [:maybe :string]]]]
   (api/check-superuser)
   (let [identifier (git/parse-repo-name repo_url)
         plugin     (first (t2/insert-returning-instances! :model/CustomVizPlugin
                                                           :repo_url        repo_url
                                                           :access_token    access_token
-                                                          ;; Store user-provided values or nil;
-                                                          ;; manifest defaults are merged JIT in the API response.
-                                                          :display_name    display_name
+                                                          :display_name    identifier
                                                           :identifier      identifier
-                                                          :icon            icon
+                                                          :icon            "area"
                                                           :status          :pending
                                                           :pinned_version  pinned_version))]
     ;; fetch bundle synchronously — validates the repo is accessible
+    ;; and updates display_name/icon from manifest
     (cache/fetch-and-cache! plugin)
     ;; re-read to get updated status
     (plugin->response (t2/select-one :model/CustomVizPlugin :id (:id plugin)))))
@@ -168,15 +150,11 @@
    _query-params
    body :- [:map
             [:enabled        {:optional true} [:maybe :boolean]]
-            [:display_name   {:optional true} [:maybe ms/NonBlankString]]
-            [:icon           {:optional true} [:maybe :string]]
             [:access_token   {:optional true} [:maybe :string]]
             [:pinned_version {:optional true} [:maybe :string]]]]
   (api/check-superuser)
   (let [existing    (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))
-        ;; select-keys preserves nil values (meaning "clear this field"),
-        ;; while absent keys are simply not included.
-        updates    (select-keys body [:enabled :display_name :icon :access_token :pinned_version])]
+        updates    (select-keys body [:enabled :access_token :pinned_version])]
     (when (seq updates)
       (t2/update! :model/CustomVizPlugin id updates))
     (when (and (contains? updates :pinned_version)
@@ -213,15 +191,16 @@
     (catch Throwable e
       (raise e))))
 
-(defn- guess-content-type
-  "Guess the MIME content type from a file path."
+(defn- image-content-type
+  "Return the MIME content type for an image file, or nil if not a recognized image."
   [^String path]
-  (or (java.net.URLConnection/guessContentTypeFromName path)
-      "application/octet-stream"))
+  (let [ct (java.net.URLConnection/guessContentTypeFromName path)]
+    (when (and ct (str/starts-with? ct "image/"))
+      ct)))
 
 (api.macros/defendpoint :get "/:id/assets/*path"
-  "Serve a static asset from the plugin's cached assets.
-   Assets are files from the dist/assets/ directory or explicitly listed in the manifest."
+  "Serve a static image asset from the plugin's cached assets.
+   Only image files are served; other file types return 404."
   [{:keys [id path]} :- [:map [:id ms/PositiveInt] [:path ms/NonBlankString]]
    _query-params
    _body
@@ -232,16 +211,19 @@
     (when (or (str/includes? path "..")
               (str/starts-with? path "/"))
       (throw (ex-info "Invalid asset path" {:status-code 400})))
-    (let [plugin (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))
-          bytes  (cache/get-asset (:id plugin) path)]
-      (if bytes
-        (respond {:status  200
-                  :headers {"Content-Type"  (guess-content-type path)
-                            "Cache-Control" "public, max-age=31536000, immutable"}
-                  :body    (java.io.ByteArrayInputStream. bytes)})
-        (respond {:status  404
-                  :headers {"Content-Type" "application/json"}
-                  :body    "{\"error\": \"Asset not found\"}"})))
+    (let [content-type (image-content-type path)]
+      (when-not content-type
+        (throw (ex-info "Only image assets are served" {:status-code 404})))
+      (let [plugin (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))
+            bytes  (cache/get-asset (:id plugin) path)]
+        (if bytes
+          (respond {:status  200
+                    :headers {"Content-Type"  content-type
+                              "Cache-Control" "public, max-age=31536000, immutable"}
+                    :body    (java.io.ByteArrayInputStream. bytes)})
+          (respond {:status  404
+                    :headers {"Content-Type" "application/json"}
+                    :body    "{\"error\": \"Asset not found\"}"}))))
     (catch Throwable e
       (raise e))))
 

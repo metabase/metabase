@@ -121,7 +121,7 @@
    Returns the cached entry or nil on failure."
   ([plugin]
    (fetch-and-cache! plugin nil))
-  ([{:keys [id repo_url access_token pinned_version]}
+  ([{:keys [id repo_url access_token pinned_version identifier]}
     {:keys [force?] :or {force? false}}]
    (if (and (not force?) (in-failure-cooldown? id))
      nil
@@ -155,12 +155,15 @@
          (write-to-disk! id content)
          ;; cache static assets
          (fetch-and-cache-assets! conn commit-sha id parsed)
-         (->> (merge {:status           :active
-                      :error_message    nil
-                      :resolved_commit  commit-sha
-                      :manifest         manifest-str}
-                     version-bounds)
-              (t2/update! :model/CustomVizPlugin id))
+         ;; update DB — display_name and icon always come from manifest
+         (t2/update! :model/CustomVizPlugin id
+                     {:status            :active
+                      :error_message     nil
+                      :resolved_commit   commit-sha
+                      :manifest          manifest-str
+                      :display_name      (or (:name parsed) identifier)
+                      :icon              (:icon parsed)
+                      :metabase_version  version-str})
          cache-entry)
        (catch Exception e
          (swap! last-fetch-failure-ns assoc id (System/nanoTime))
