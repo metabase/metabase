@@ -6,18 +6,21 @@ import { useUpdateMetabotSettingsMutation } from "metabase/api";
 import { getErrorMessage, useAdminSetting } from "metabase/api/utils";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Box, Button, Flex, TextInput } from "metabase/ui";
-import type { MetabotProvider } from "metabase-types/api";
 
-import { API_KEY_SETTING_BY_PROVIDER, PROVIDER_OPTIONS } from "./utils";
+import {
+  API_KEY_SETTING_BY_PROVIDER,
+  type MetabotApiKeyProvider,
+  getProviderOptions,
+} from "./utils";
 
 export function MetabotProviderApiKey({
   provider,
   error,
 }: {
-  provider: MetabotProvider;
+  provider: MetabotApiKeyProvider;
   error?: string | null;
 }) {
-  const selectedProvider = PROVIDER_OPTIONS[provider];
+  const selectedProvider = getProviderOptions(true)[provider];
   const selectedApiKeySetting = API_KEY_SETTING_BY_PROVIDER[provider];
   const { value, settingDetails } = useAdminSetting(selectedApiKeySetting);
   const [updateMetabotSettings, updateMetabotSettingsResult] =
@@ -74,14 +77,14 @@ export function MetabotProviderApiKey({
           description={jt`Need a key? ${(
             <ExternalLink
               key={selectedProvider.value}
-              href={selectedProvider.addKeyUrl}
+              href={selectedProvider.apiKey.addKeyUrl}
             >
               {c("{0} is the name of an AI provider")
                 .t`Create one in ${selectedProvider.label}`}
             </ExternalLink>
           )}`}
           placeholder={
-            selectedProvider.apiKeyPlaceholder ?? t`Enter your API key`
+            selectedProvider.apiKey?.placeholder ?? t`Enter your API key`
           }
           value={displayValue}
           onChange={handleChange}

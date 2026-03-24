@@ -188,7 +188,11 @@ export type MetabotAgentResponse = {
   state: any;
 };
 
-export type MetabotProvider = "anthropic" | "openai" | "openrouter";
+export type MetabotProvider =
+  | "metabase"
+  | "anthropic"
+  | "openai"
+  | "openrouter";
 
 export interface MetabotSettingsResponse {
   value: string | null;

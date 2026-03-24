@@ -18,6 +18,7 @@ import {
 import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import { MetabotSetup } from "./MetabotSetup";
+import type { MetabotApiKeyProvider } from "./utils";
 
 jest.mock("./MetabotNavPane", () => ({
   MetabotNavPane: () => <div>Metabot navigation</div>,
@@ -39,6 +40,14 @@ jest.mock("./MetabotProviderApiKey", () => ({
 }));
 
 const DEFAULT_RESPONSES: Record<MetabotProvider, MetabotSettingsResponse> = {
+  metabase: {
+    value: "metabase/smart",
+    models: [
+      { id: "fast", display_name: "Fast" },
+      { id: "smart", display_name: "Smart" },
+      { id: "genius", display_name: "Genius" },
+    ],
+  },
   anthropic: {
     value: "anthropic/claude-haiku-4-5",
     models: [
@@ -105,7 +114,7 @@ async function setup({
   fetchMock.removeRoutes();
   fetchMock.clearHistory();
 
-  const mergedApiKeyValues: Record<MetabotProvider, string | null> = {
+  const mergedApiKeyValues: Record<MetabotApiKeyProvider, string | null> = {
     anthropic: "**********45",
     openai: null,
     openrouter: null,

@@ -6,43 +6,109 @@ import { useSelector } from "metabase/lib/redux";
 import { getLocation } from "metabase/selectors/routing";
 import type { MetabotProvider } from "metabase-types/api";
 
-export type MetabotProviderOption = {
-  value: MetabotProvider;
+type ApiKeylessProviders = "metabase";
+type ApiKeyProviders = Exclude<MetabotProvider, ApiKeylessProviders>;
+
+type MetabotApiKeylessProviderOption = {
+  value: ApiKeylessProviders;
   label: string;
-  apiKeyPlaceholder: string;
-  addKeyUrl: string;
 };
 
-export const PROVIDER_OPTIONS: Record<MetabotProvider, MetabotProviderOption> =
-  {
+type MetabotApiKeyProviderOption = {
+  value: ApiKeyProviders;
+  label: string;
+  apiKey: {
+    placeholder: string;
+    addKeyUrl: string;
+  };
+};
+
+export type MetabotProviderOption =
+  | MetabotApiKeylessProviderOption
+  | MetabotApiKeyProviderOption;
+
+export function getProviderOptions(
+  isHosted: boolean,
+): Partial<Record<ApiKeylessProviders, MetabotApiKeylessProviderOption>> &
+  Record<ApiKeyProviders, MetabotApiKeyProviderOption> {
+  return {
+    ...(isHosted && {
+      metabase: {
+        value: "metabase" as const,
+        // eslint-disable-next-line metabase/no-literal-metabase-strings -- This is used in admin settings
+        label: "Metabase",
+      },
+    }),
     anthropic: {
       value: "anthropic",
       label: "Anthropic",
-      apiKeyPlaceholder: "sk-ant-api03-...",
-      addKeyUrl: "https://console.anthropic.com/settings/keys",
+      apiKey: {
+        placeholder: "sk-ant-api03-...",
+        addKeyUrl: "https://console.anthropic.com/settings/keys",
+      },
     },
     openai: {
       value: "openai",
       label: "OpenAI",
-      apiKeyPlaceholder: "sk-proj-...",
-      addKeyUrl: "https://platform.openai.com/api-keys",
+      apiKey: {
+        placeholder: "sk-proj-...",
+        addKeyUrl: "https://platform.openai.com/api-keys",
+      },
     },
     openrouter: {
       value: "openrouter",
       label: "OpenRouter",
-      apiKeyPlaceholder: "sk-or-v1-...",
-      addKeyUrl: "https://openrouter.ai/keys",
+      apiKey: {
+        placeholder: "sk-or-v1-...",
+        addKeyUrl: "https://openrouter.ai/keys",
+      },
     },
   };
+}
+
+export type MetabotApiKeyProvider = Exclude<
+  MetabotProvider,
+  ApiKeylessProviders
+>;
+
+export function isMetabotProvider(
+  value: string | null | undefined,
+): value is MetabotProvider {
+  return !!value && value in getProviderOptions(true);
+}
+
+export function isApiKeyMetabotProvider(
+  provider: MetabotProvider,
+): provider is MetabotApiKeyProvider {
+  return "apiKey" in (getProviderOptions(true)[provider] ?? {});
+}
+
+export function isAvailableProvider(provider: MetabotProvider): boolean {
+  return provider === "anthropic" || provider === "metabase";
+}
 
 export const API_KEY_SETTING_BY_PROVIDER: Record<
-  MetabotProvider,
+  MetabotApiKeyProvider,
   "llm-anthropic-api-key" | "llm-openai-api-key" | "llm-openrouter-api-key"
 > = {
   anthropic: "llm-anthropic-api-key",
   openai: "llm-openai-api-key",
   openrouter: "llm-openrouter-api-key",
 };
+
+export function parseProviderAndModel(value: string | null | undefined) {
+  if (!value) {
+    return { provider: null, model: null };
+  }
+
+  const [provider, model] = value.split(/\/(.+)/, 2);
+
+  if (!isMetabotProvider(provider) || !model) {
+    return { provider: null, model: null };
+  }
+
+  return { provider, model };
+}
 
 export function useMetabotIdPath() {
   const location = useSelector(getLocation);
@@ -59,12 +125,8 @@ export const isFetchBaseQueryError = (
 
 type IFieldError<Values> =
   | string
-  | {
-      message: string;
-    }
-  | {
-      errors: FormikErrors<Values>;
-    };
+  | { message: string }
+  | { errors: FormikErrors<Values> };
 
 const isFieldError = <Values>(error: unknown): error is IFieldError<Values> =>
   isMatching(

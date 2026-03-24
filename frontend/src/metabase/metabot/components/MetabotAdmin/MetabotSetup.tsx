@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
@@ -33,7 +32,14 @@ import type {
 
 import { MetabotNavPane } from "./MetabotNavPane";
 import { MetabotProviderApiKey } from "./MetabotProviderApiKey";
-import { API_KEY_SETTING_BY_PROVIDER, PROVIDER_OPTIONS } from "./utils";
+import {
+  API_KEY_SETTING_BY_PROVIDER,
+  getProviderOptions,
+  isApiKeyMetabotProvider,
+  isAvailableProvider,
+  isMetabotProvider,
+  parseProviderAndModel,
+} from "./utils";
 
 type MetabotModelOption = ComboboxItem & {
   group?: string | null;
@@ -49,6 +55,7 @@ type MetabotModelGroup = {
 type MetabotModelSelectData = MetabotModelOption[] | MetabotModelGroup[];
 
 export function MetabotSetup() {
+  const isHosted = !!useSetting("is-hosted?");
   const isConfigured = useSetting("llm-metabot-configured?");
   const { value: savedProviderValue, settingDetails } = useAdminSetting(
     "llm-metabot-provider",
@@ -67,33 +74,31 @@ export function MetabotSetup() {
   const [updateMetabotSettings, updateMetabotSettingsResult] =
     useUpdateMetabotSettingsMutation();
 
-  const { provider: savedProvider, model: savedModel } = useMemo(
-    () =>
-      parseProviderAndModel(savedProviderValue as string | null | undefined),
+  const saved = useMemo(
+    () => parseProviderAndModel(savedProviderValue),
     [savedProviderValue],
   );
 
   const isConnected =
     !updateMetabotSettingsResult.isLoading &&
-    savedProvider &&
-    savedModel &&
+    saved.provider &&
+    saved.model &&
     isConfigured;
 
   const [provider, setProvider] = useState<MetabotProvider | null>(
-    savedProvider,
+    saved.provider,
   );
-  const providerDetails = provider ? PROVIDER_OPTIONS?.[provider] : null;
-
-  const [modelInputValue, setModelInputValue] = useState(savedModel);
+  const [modelInputValue, setModelInputValue] = useState(saved.model);
 
   useEffect(() => {
-    setProvider(savedProvider);
-    setModelInputValue(savedModel);
-  }, [savedModel, savedProvider]);
+    setProvider(saved.provider);
+    setModelInputValue(saved.model);
+  }, [saved.model, saved.provider]);
 
-  const selectedApiKeySetting = provider
-    ? API_KEY_SETTING_BY_PROVIDER[provider]
-    : null;
+  const selectedApiKeySetting =
+    provider && isApiKeyMetabotProvider(provider)
+      ? API_KEY_SETTING_BY_PROVIDER[provider]
+      : null;
   const hasSelectedProviderApiKey = selectedApiKeySetting
     ? hasConfiguredSettingValue(providerApiKeyDetails[selectedApiKeySetting])
     : false;
@@ -101,6 +106,16 @@ export function MetabotSetup() {
   const metabotSettingsQuery = useGetMetabotSettingsQuery(
     provider ? { provider } : skipToken,
   );
+
+  const providerOptions = useMemo(() => {
+    return Object.values(getProviderOptions(isHosted)).map(
+      ({ label, value }) => ({
+        label,
+        value,
+        disabled: !isAvailableProvider(value),
+      }),
+    );
+  }, [isHosted]);
 
   const modelOptions = useMemo<MetabotModelOption[]>(
     () =>
@@ -140,18 +155,21 @@ export function MetabotSetup() {
     }
 
     setProvider(value);
-    setModelInputValue(value === savedProvider ? (savedModel ?? null) : null);
+    setModelInputValue(value === saved.provider ? (saved.model ?? null) : null);
   };
 
   const handleModelChange = async (value: string | null) => {
     setModelInputValue(value);
-
-    if (!provider || !value) {
-      return;
+    if (provider && value) {
+      await updateMetabotSettings({ provider, model: value });
     }
-
-    await updateMetabotSettings({ provider, model: value });
   };
+
+  const needsApiKey =
+    provider &&
+    isApiKeyMetabotProvider(provider) &&
+    !hasSelectedProviderApiKey &&
+    !!apiKeyError;
 
   return (
     <AdminSettingsLayout sidebar={<MetabotNavPane />}>
@@ -181,16 +199,8 @@ export function MetabotSetup() {
           <Select
             label={t`Provider`}
             placeholder={t`Select a provider`}
-            description={
-              providerDetails
-                ? getProviderDescription(providerDetails.value)
-                : null
-            }
-            data={Object.values(PROVIDER_OPTIONS).map(({ label, value }) => ({
-              label,
-              value,
-              disabled: value !== "anthropic",
-            }))}
+            description={t`Choose your preferred AI provider.`}
+            data={providerOptions}
             value={provider}
             onChange={handleProviderChange}
             disabled={isEnvSetting}
@@ -208,7 +218,7 @@ export function MetabotSetup() {
                 >
                   {option.label}
                 </Text>
-                {option.value !== "anthropic" ? (
+                {!isAvailableProvider(option.value as MetabotProvider) ? (
                   <Text c="text-tertiary" lh="1rem" size="sm">
                     {t`Coming soon`}
                   </Text>
@@ -217,11 +227,11 @@ export function MetabotSetup() {
             )}
           />
 
-          {provider ? (
+          {provider && isApiKeyMetabotProvider(provider) && (
             <MetabotProviderApiKey provider={provider} error={apiKeyError} />
-          ) : null}
+          )}
 
-          {provider && hasSelectedProviderApiKey && !apiKeyError && (
+          {!needsApiKey && (
             <Select
               label={t`Model`}
               placeholder={
@@ -236,12 +246,7 @@ export function MetabotSetup() {
               data={groupedModelOptions}
               value={modelInputValue}
               onChange={handleModelChange}
-              disabled={
-                isEnvSetting ||
-                !provider ||
-                !hasSelectedProviderApiKey ||
-                !!apiKeyError
-              }
+              disabled={isEnvSetting || needsApiKey}
               searchable
               nothingFoundMessage={t`No models found`}
             />
@@ -266,44 +271,6 @@ export function MetabotSetup() {
       </SettingsSection>
     </AdminSettingsLayout>
   );
-}
-
-function isMetabotProvider(
-  value: string | null | undefined,
-): value is MetabotProvider {
-  return value === "anthropic" || value === "openai" || value === "openrouter";
-}
-
-function parseProviderAndModel(value: string | null | undefined) {
-  if (!value) {
-    return { provider: null, model: null };
-  }
-
-  const [provider, model] = value.split(/\/(.+)/, 2);
-
-  if (!isMetabotProvider(provider) || !model) {
-    return { provider: null, model: null };
-  }
-
-  return { provider, model };
-}
-
-function getProviderDescription(provider: MetabotProvider) {
-  return match(provider)
-    .with(
-      "anthropic",
-      () => t`Use Anthropic models directly with your Anthropic API key.`,
-    )
-    .with(
-      "openai",
-      () => t`Use OpenAI models directly with your OpenAI API key.`,
-    )
-    .with(
-      "openrouter",
-      () =>
-        t`Use OpenRouter to access models from multiple providers with one API key.`,
-    )
-    .exhaustive();
 }
 
 function hasConfiguredSettingValue(setting: SettingDefinition | undefined) {
