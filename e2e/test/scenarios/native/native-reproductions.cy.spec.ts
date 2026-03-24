@@ -1016,3 +1016,43 @@ describe("issue 59075", () => {
     });
   });
 });
+
+describe("issue 69160", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+
+    H.createSnippet({
+      name: "A and B",
+      content: "{{ a }} and {{ b }}",
+    });
+    H.startNewNativeQuestion();
+    H.NativeEditor.type("{{ snippet: A and B }}", {
+      allowFastSet: true,
+    }).blur();
+  });
+
+  const options = {
+    force: true,
+    isPrimary: true,
+    button: 0,
+  };
+
+  it("should be possible to reorder parameters when there are snippets in the query (metabase#69160)", () => {
+    cy.log("reorder parameters");
+    cy.findByTestId("native-query-top-bar")
+      .findAllByRole("listitem")
+      .first()
+      .as("param");
+
+    cy.get("@param").trigger("pointerdown", 5, 5, options).wait(200);
+    cy.get("@param").trigger("pointermove", 20, 20, options).wait(200);
+    cy.get("@param").trigger("pointermove", 200, 0, options).wait(200);
+    cy.get("@param").trigger("pointerup", options).wait(200);
+
+    cy.findByTestId("native-query-top-bar")
+      .findAllByRole("textbox")
+      .first()
+      .should("have.attr", "placeholder", "B");
+  });
+});

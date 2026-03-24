@@ -2,6 +2,7 @@ import cx from "classnames";
 import type { LegacyRef } from "react";
 import { t } from "ttag";
 
+import { useMetabotAgent } from "metabase/metabot/hooks";
 import {
   Flex,
   Icon,
@@ -11,7 +12,6 @@ import {
   Tooltip,
   UnstyledButton,
 } from "metabase/ui";
-import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 
 import S from "./MetabotQuestion.module.css";
 

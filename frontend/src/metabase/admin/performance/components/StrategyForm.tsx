@@ -7,6 +7,7 @@ import _ from "underscore";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Schedule } from "metabase/common/components/Schedule/Schedule";
+import { cronToScheduleSettings } from "metabase/common/components/Schedule/cron";
 import type { FormTextInputProps } from "metabase/forms";
 import {
   Form,
@@ -44,11 +45,7 @@ import { strategyValidationSchema } from "../constants/complex";
 import { defaultCronSchedule, rootId } from "../constants/simple";
 import { useIsFormPending } from "../hooks/useIsFormPending";
 import { isModelWithClearableCache } from "../types";
-import {
-  cronToScheduleSettings,
-  getDefaultValueForField,
-  getLabelString,
-} from "../utils";
+import { getDefaultValueForField, getLabelString } from "../utils";
 
 import Styles from "./PerformanceApp.module.css";
 import {

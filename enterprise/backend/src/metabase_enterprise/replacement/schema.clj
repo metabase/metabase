@@ -11,7 +11,7 @@
   [:or ::lib.schema.id/card ::lib.schema.id/table])
 
 (mr/def ::source-entity-type
-  [:enum :card :table])
+  [:enum :card :table :transform])
 
 (mr/def ::run-id
   pos-int?)

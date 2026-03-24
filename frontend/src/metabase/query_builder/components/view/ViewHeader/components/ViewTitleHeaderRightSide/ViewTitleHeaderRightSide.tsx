@@ -7,8 +7,9 @@ import { QuestionSharingMenu } from "metabase/embedding/components/SharingMenu";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import { useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
+import { AIQuestionAnalysisButton } from "metabase/metabot/components/AIQuestionAnalysisButton";
+import { canAnalyzeQuestion } from "metabase/metabot/utils/chart-analysis";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
-import { PLUGIN_AI_ENTITY_ANALYSIS } from "metabase/plugins";
 import { canExploreResults } from "metabase/query_builder/components/view/ViewHeader/utils";
 import { RunButtonWithTooltip } from "metabase/querying/components/QueryVisualization/RunButtonWithTooltip";
 import { MODAL_TYPES, type QueryModalType } from "metabase/querying/constants";
@@ -225,9 +226,8 @@ export function ViewTitleHeaderRightSide({
       {!isShowingNotebook && (hasSaveButton || isSaved) && (
         <QuestionSharingMenu question={question} />
       )}
-      {!isShowingNotebook &&
-      PLUGIN_AI_ENTITY_ANALYSIS.canAnalyzeQuestion(question) ? (
-        <PLUGIN_AI_ENTITY_ANALYSIS.AIQuestionAnalysisButton />
+      {!isShowingNotebook && canAnalyzeQuestion(question.card().display) ? (
+        <AIQuestionAnalysisButton />
       ) : null}
       {isSaved && (
         <QuestionActions
