@@ -284,7 +284,9 @@ export async function loadCustomVizPlugin(
       );
     }
 
-    const getAssetUrl = (path: string) => getPluginAssetUrl(plugin.id, path);
+    const cacheBust = cacheBustSuffix ? `&t=${Date.now()}` : "";
+    const getAssetUrl = (path: string) =>
+      `${getPluginAssetUrl(plugin.id, path) ?? ""}${cacheBust}`;
     const vizDef = factory({ getAssetUrl });
     if (!vizDef || !vizDef.VisualizationComponent) {
       throw new Error(
