@@ -1330,7 +1330,6 @@
            legacy-mbql
            lib
            lib-be
-           oauth-server
            permissions
            query-processor
            remote-sync
@@ -1432,8 +1431,7 @@
    :model-exports #{:model/OAuthAccessToken
                     :model/OAuthAuthorizationCode
                     :model/OAuthClient
-                    :model/OAuthRefreshToken}
-   :model-imports #{:model/User}}
+                    :model/OAuthRefreshToken}}
 
   ;; TODO -- too many API namespaces
   parameters
