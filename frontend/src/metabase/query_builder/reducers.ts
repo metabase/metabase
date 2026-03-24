@@ -3,6 +3,12 @@ import { assoc, merge } from "icepick";
 import _ from "underscore";
 
 import {
+  createCardPublicLink,
+  deleteCardPublicLink,
+  updateCardEmbeddingParams,
+  updateCardEnableEmbedding,
+} from "metabase/api";
+import {
   EDIT_QUESTION,
   NAVIGATE_TO_NEW_CARD,
 } from "metabase/dashboard/actions";
@@ -80,6 +86,7 @@ import {
   SET_UI_CONTROLS,
   SHOW_CHART_SETTINGS,
   SHOW_TIMELINE_EVENTS,
+  SOFT_RELOAD_CARD,
   TOGGLE_DATA_REFERENCE,
   TOGGLE_SNIPPET_SIDEBAR,
   TOGGLE_TEMPLATE_TAGS_EDITOR,
@@ -619,4 +626,134 @@ export const selectedTimelineEventIds = createReducer<number[]>(
   },
 );
 
-export * from "./reducers-typed";
+// the card that is actively being worked on
+export const card = createReducer<Card | null>(null, (builder) => {
+  // @ts-expect-error — Draft<Card> triggers TS2589 due to Card's recursive types (StructuredQuery, Field, etc.)
+  builder
+    .addCase(RESET_QB, () => null)
+    .addCase(CLOSE_QB, () => null)
+    .addCase<
+      string,
+      {
+        type: string;
+        payload: {
+          card: Card;
+        };
+      }
+    >(INITIALIZE_QB, (state, action) =>
+      action.payload ? action.payload.card : null,
+    )
+    .addCase<
+      string,
+      {
+        type: string;
+        payload: Card;
+      }
+    >(SOFT_RELOAD_CARD, (state, action) => action.payload)
+    .addCase<
+      string,
+      {
+        type: string;
+        payload: Card;
+      }
+    >(RELOAD_CARD, (state, action) => action.payload)
+    .addCase<
+      string,
+      {
+        type: string;
+        payload: {
+          card: Card;
+        };
+      }
+    >(SET_CARD_AND_RUN, (state, action) => action.payload.card)
+    .addCase<
+      string,
+      {
+        type: string;
+        payload: Card;
+      }
+    >(API_CREATE_QUESTION, (state, action) => action.payload)
+    .addCase<
+      string,
+      {
+        type: string;
+        payload: Card;
+      }
+    >(API_UPDATE_QUESTION, (state, action) => action.payload)
+    .addCase<
+      string,
+      {
+        type: string;
+        payload: {
+          card: Card;
+        };
+      }
+    >(CANCEL_QUESTION_CHANGES, (state, action) => action.payload.card)
+    .addCase<
+      string,
+      {
+        type: string;
+        payload: {
+          card: Card;
+        };
+      }
+    >(UPDATE_QUESTION, (state, action) => action.payload.card)
+    .addCase<
+      string,
+      {
+        type: string;
+        payload: {
+          card: Card;
+        };
+      }
+    >(QUERY_COMPLETED, (state, action) => {
+      if (!state) {
+        return state;
+      }
+      return {
+        ...state,
+        display: action.payload.card.display,
+        result_metadata: action.payload.card.result_metadata,
+        visualization_settings: action.payload.card.visualization_settings,
+      };
+    })
+    .addMatcher(createCardPublicLink.matchFulfilled, (state, action) => {
+      if (!state) {
+        return state;
+      }
+      return {
+        ...state,
+        public_uuid: action.payload.uuid,
+      };
+    })
+    .addMatcher(deleteCardPublicLink.matchFulfilled, (state) => {
+      if (!state) {
+        return state;
+      }
+
+      return {
+        ...state,
+        public_uuid: null,
+      };
+    })
+    .addMatcher(updateCardEnableEmbedding.matchFulfilled, (state, action) => {
+      if (!state) {
+        return state;
+      }
+      return {
+        ...state,
+        enable_embedding: action.payload.enable_embedding,
+      };
+    })
+    .addMatcher(updateCardEmbeddingParams.matchFulfilled, (state, action) => {
+      if (!state) {
+        return state;
+      }
+
+      return {
+        ...state,
+        embedding_params: action.payload.embedding_params,
+        initially_published_at: action.payload.initially_published_at,
+      };
+    });
+});
