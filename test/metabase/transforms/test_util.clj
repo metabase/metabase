@@ -177,6 +177,23 @@
           :else    (do (Thread/sleep 200)
                        (recur)))))))
 
+(defn wait-for-field-deactivation
+  "Wait for a field with `field-name` to no longer be active on the table named `table-name`.
+   Useful after schema changes where a column was dropped but sync hasn't caught up yet."
+  [table-name field-name timeout-ms]
+  (let [timer (u/start-timer)]
+    (loop []
+      (let [table  (t2/select-one :model/Table :name table-name :db_id (mt/id))
+            field  (when table
+                     (t2/select-one :model/Field :table_id (:id table) :name field-name :active true))]
+        (cond
+          (nil? field) nil
+          (> (u/since-ms timer) timeout-ms)
+          (throw (ex-info (format "Field %s on table %s still active after %dms" field-name table-name timeout-ms)
+                          {:table-name table-name :field-name field-name :timeout-ms timeout-ms}))
+          :else        (do (Thread/sleep 200)
+                           (recur)))))))
+
 (defn get-test-schema
   "Get the schema from the products table in the test dataset.
    This is needed for databases like BigQuery that require a schema/dataset."

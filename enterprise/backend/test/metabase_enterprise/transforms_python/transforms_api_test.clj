@@ -559,8 +559,12 @@
                 (transforms.tu/wait-for-transform-completion transform-id 10000)
 
                 ;; Sync runs asynchronously after succeed-started-run!, so wait for
-                ;; the new "friend" field to appear in metadata before querying.
+                ;; the new "friend" field to appear AND the old "age" field to be
+                ;; deactivated before querying. Sync activates new fields and retires
+                ;; old fields in separate non-transactional steps, so there's a window
+                ;; where both are active simultaneously.
                 (transforms.tu/wait-for-field table-name "friend" 10000)
+                (transforms.tu/wait-for-field-deactivation table-name "age" 10000)
                 (let [updated-rows (transforms.tu/table-rows table-name)]
                   (is (= [["Alice" "Bob"] ["Bob" "Alice"]] updated-rows)
                       "Updated data should show Alice/Bob with friends instead of ages"))))))))))
