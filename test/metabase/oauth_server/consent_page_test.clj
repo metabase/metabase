@@ -31,4 +31,3 @@
       (is (re-find #"<svg" html) "should contain inline SVG")
       (is (not (re-find #"currentColor" html)) "should not contain currentColor")
       (is (re-find #"#509ee3" html) "should contain the default brand color"))))
-
