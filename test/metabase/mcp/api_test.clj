@@ -25,39 +25,35 @@
   ([body]
    (mcp-request body {}))
   ([body extra-headers]
-   (mt/with-additional-premium-features #{:agent-api}
-     (client/client-full-response (test.users/username->token :crowberto)
-                                  :post "mcp"
-                                  {:request-options {:headers extra-headers}}
-                                  body))))
+   (client/client-full-response (test.users/username->token :crowberto)
+                                :post "mcp"
+                                {:request-options {:headers extra-headers}}
+                                body)))
 
 (defn- mcp-request-unauthenticated
   "Make an unauthenticated POST request to /api/mcp."
   ([body]
    (mcp-request-unauthenticated body {}))
   ([body extra-headers]
-   (mt/with-additional-premium-features #{:agent-api}
-     (client/client-full-response :post 401 "mcp"
-                                  {:request-options {:headers extra-headers}}
-                                  body))))
+   (client/client-full-response :post 401 "mcp"
+                                {:request-options {:headers extra-headers}}
+                                body)))
 
 (defn- mcp-request-with-bearer
   "Make a POST request to /api/mcp with a bearer token and optional extra headers."
   [bearer-token expected-status body extra-headers]
-  (mt/with-additional-premium-features #{:agent-api}
-    (client/client-full-response :post expected-status "mcp"
-                                 {:request-options {:headers (merge {"authorization" (str "Bearer " bearer-token)}
-                                                                    extra-headers)}}
-                                 body)))
+  (client/client-full-response :post expected-status "mcp"
+                               {:request-options {:headers (merge {"authorization" (str "Bearer " bearer-token)}
+                                                                  extra-headers)}}
+                               body))
 
 (defn- mcp-delete
   "Make a DELETE request to /api/mcp with optional headers.
    Authenticates as :crowberto (superuser) by default."
   [extra-headers]
-  (mt/with-additional-premium-features #{:agent-api}
-    (client/client-full-response (test.users/username->token :crowberto)
-                                 :delete "mcp"
-                                 {:request-options {:headers extra-headers}})))
+  (client/client-full-response (test.users/username->token :crowberto)
+                               :delete "mcp"
+                               {:request-options {:headers extra-headers}}))
 
 (defn- jsonrpc-request
   "Build a JSON-RPC 2.0 request map."
@@ -105,19 +101,17 @@
 (defn- mcp-request-as
   "Make a POST request to /api/mcp authenticated as the given test user."
   [username body extra-headers]
-  (mt/with-additional-premium-features #{:agent-api}
-    (client/client-full-response (test.users/username->token username)
-                                 :post "mcp"
-                                 {:request-options {:headers extra-headers}}
-                                 body)))
+  (client/client-full-response (test.users/username->token username)
+                               :post "mcp"
+                               {:request-options {:headers extra-headers}}
+                               body))
 
 ;;; ---------------------------------------------------- Tests -----------------------------------------------------
 
 (deftest authentication-required-test
   (testing "unauthenticated requests return 401"
-    (let [response (mt/with-additional-premium-features #{:agent-api}
-                     (client/client-full-response :post 401 "mcp"
-                                                  (jsonrpc-request "initialize")))]
+    (let [response (client/client-full-response :post 401 "mcp"
+                                                (jsonrpc-request "initialize"))]
       (is (= 401 (:status response)))
       (is (= -32603 (get-in response [:body :error :code]))))))
 
@@ -276,9 +270,8 @@
 
 (deftest get-without-session-test
   (testing "GET without auth returns 401"
-    (let [response (mt/with-additional-premium-features #{:agent-api}
-                     (client/client-full-response (test.users/username->token :crowberto)
-                                                  :get "mcp"))]
+    (let [response (client/client-full-response (test.users/username->token :crowberto)
+                                                :get "mcp")]
       (is (= 400 (:status response)))
       (is (= -32600 (get-in response [:body :error :code]))))))
 
@@ -479,17 +472,15 @@
 
 (deftest tools-call-scope-enforcement-test
   (testing "tool call is rejected when token scopes don't include the required scope"
-    (mt/with-premium-features #{:agent-api}
-      (let [result (mt/with-current-user (mt/user->id :crowberto)
-                     (mcp.tools/call-tool #{"agent:search"} "get_table" {:id (mt/id :orders)}))]
-        (is (=? {:isError true} result))
-        (is (str/includes? (-> result :content first :text) "scope")
-            "Error should mention scope"))))
+    (let [result (mt/with-current-user (mt/user->id :crowberto)
+                   (mcp.tools/call-tool #{"agent:search"} "get_table" {:id (mt/id :orders)}))]
+      (is (=? {:isError true} result))
+      (is (str/includes? (-> result :content first :text) "scope")
+          "Error should mention scope")))
   (testing "tool call with matching scope is not rejected by scope enforcement"
-    (mt/with-premium-features #{:agent-api}
-      (let [result (mt/with-current-user (mt/user->id :crowberto)
-                     (mcp.tools/call-tool #{"agent:table:read"} "get_table" {:id (mt/id :orders)}))]
-        (is (not (:isError result))))))
+    (let [result (mt/with-current-user (mt/user->id :crowberto)
+                   (mcp.tools/call-tool #{"agent:table:read"} "get_table" {:id (mt/id :orders)}))]
+      (is (not (:isError result)))))
   (testing "tool call with empty scopes is rejected for scoped tools"
     (let [result (mt/with-current-user (mt/user->id :crowberto)
                    (mcp.tools/call-tool #{} "get_table" {:id (mt/id :orders)}))]
