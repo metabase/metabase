@@ -68,7 +68,7 @@ Example JWT payload:
 
 ### 2. Session-based
 
-Exchange a JWT at `POST /auth/sso` to get a session token, then pass it via:
+Exchange a JWT at `POST /auth/sso/to_session` to get a session token, then pass it via:
 
 ```
 X-Metabase-Session: <session-token>
