@@ -21,19 +21,19 @@
                       (oauth-server/reset-provider!)))
 
 (deftest discovery-endpoint-test
-  (testing "Discovery endpoint returns valid OIDC metadata"
+  (testing "Discovery endpoint returns valid OAuth metadata"
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"
                                        oauth-server-dynamic-registration-enabled true]
       (let [response (mt/user-http-request :crowberto :get 200
-                                           ".well-known/openid-configuration")]
-        (is (=? {:issuer                                "http://localhost:3000"
-                 :authorization_endpoint                string?
-                 :token_endpoint                        string?
-                 :jwks_uri                              string?
-                 :response_types_supported              sequential?
-                 :id_token_signing_alg_values_supported sequential?
-                 :registration_endpoint                 "http://localhost:3000/oauth/register"}
-                response))))))
+                                           ".well-known/oauth-authorization-server")]
+        (is (=? {:issuer                 "http://localhost:3000"
+                 :authorization_endpoint string?
+                 :token_endpoint         string?
+                 :response_types_supported sequential?
+                 :registration_endpoint  "http://localhost:3000/oauth/register"}
+                response))
+        (is (nil? (:jwks_uri response)))
+        (is (nil? (:id_token_signing_alg_values_supported response)))))))
 
 (deftest protected-resource-metadata-test
   (testing "GET /.well-known/oauth-protected-resource/api/mcp returns correct metadata"
@@ -44,14 +44,6 @@
                  :authorization_servers   ["http://localhost:3000"]
                  :bearer_methods_supported ["header"]}
                 response))))))
-
-(deftest jwks-endpoint-test
-  (testing "JWKS endpoint returns valid key set"
-    (mt/with-temporary-setting-values [site-url "http://localhost:3000"
-                                       oauth-server-signing-key nil]
-      (let [response (mt/user-http-request :crowberto :get 200 "oauth/jwks")]
-        (is (=? {:keys #(pos? (count %))} response))
-        (is (=? {:kty "RSA" :use "sig"} (first (:keys response))))))))
 
 ;;; ----------------------------------------- Dynamic Client Registration ----------------------------------------------
 
@@ -179,7 +171,7 @@
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"
                                        oauth-server-dynamic-registration-enabled false]
       (let [response (mt/user-http-request :crowberto :get 200
-                                           ".well-known/openid-configuration")]
+                                           ".well-known/oauth-authorization-server")]
         (is (not (contains? response :registration_endpoint)))))))
 
 (deftest discovery-registration-endpoint-enabled-test
@@ -187,7 +179,7 @@
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"
                                        oauth-server-dynamic-registration-enabled true]
       (let [response (mt/user-http-request :crowberto :get 200
-                                           ".well-known/openid-configuration")]
+                                           ".well-known/oauth-authorization-server")]
         (is (= "http://localhost:3000/oauth/register" (:registration_endpoint response)))))))
 
 ;;; ----------------------------------------- Authorization Endpoint ------------------------------------------------
@@ -206,7 +198,7 @@
                         :client_name        "Test Auth Client"
                         :grant_types        ["authorization_code" "refresh_token"]
                         :response_types     ["code"]
-                        :scopes             ["openid" "profile"]
+                        :scopes             ["profile"]
                         :application_type   "web"
                         :registration_type  "static"}
          [inserted]    (t2/insert-returning-instances! :model/OAuthClient (merge defaults overrides))]
@@ -223,12 +215,11 @@
                          :client_id     client-id
                          :redirect_uri  "https://example.com/callback"
                          :response_type "code"
-                         :scope         "openid profile"
+                         :scope         "profile"
                          :state         "test-state")
               body      (:body response)]
           (is (str/includes? (get-in response [:headers "Content-Type"]) "text/html"))
           (is (str/includes? body "Test Auth Client"))
-          (is (str/includes? body "openid"))
           (is (str/includes? body "profile"))
           (is (str/includes? body client-id))
           (is (str/includes? body "test-state"))
@@ -277,7 +268,7 @@
    :client_id     client-id
    :redirect_uri  "https://example.com/callback"
    :response_type "code"
-   :scope         "openid profile"
+   :scope         "profile"
    :state         "test-state"))
 
 (defn- extract-csrf-token-from-consent
@@ -326,7 +317,7 @@
                              :client_id     client-id
                              :redirect_uri  "https://example.com/callback"
                              :response_type "code"
-                             :scope         "openid profile"
+                             :scope         "profile"
                              :state         "test-state"}
                             302
                             :csrf-cookie csrf-cookie)
@@ -355,7 +346,7 @@
                              :client_id     client-id
                              :redirect_uri  "https://example.com/callback"
                              :response_type "code"
-                             :scope         "openid profile"
+                             :scope         "profile"
                              :state         "test-state"}
                             302
                             :csrf-cookie csrf-cookie)
@@ -377,7 +368,7 @@
                           :client_id     client-id
                           :redirect_uri  "https://example.com/callback"
                           :response_type "code"
-                          :scope         "openid profile"
+                          :scope         "profile"
                           :state         "test-state"}
                          403)]
           (is (= "csrf_validation_failed" (:error (:body response)))))))))
@@ -397,7 +388,7 @@
                              :client_id     client-id
                              :redirect_uri  "https://example.com/callback"
                              :response_type "code"
-                             :scope         "openid profile"
+                             :scope         "profile"
                              :state         "test-state"}
                             403
                             :csrf-cookie csrf-cookie)]
@@ -439,7 +430,7 @@
                        :client_id     client-id
                        :redirect_uri  "https://example.com/callback"
                        :response_type "code"
-                       :scope         "openid profile"
+                       :scope         "profile"
                        :state         "test-state"}
                       302
                       :csrf-cookie csrf-cookie)
@@ -477,14 +468,13 @@
                    :token_type    "Bearer"
                    :expires_in    pos-int?
                    :refresh_token string?
-                   :id_token      string?
                    :scope         string?}
                   (token-request!
                    {:grant_type    "authorization_code"
                     :code          code
                     :redirect_uri  "https://example.com/callback"}
                    :authorization (basic-auth-header client-id client-secret)))
-              "Should return full token response with id_token for openid scope"))))))
+              "Should return full token response"))))))
 
 (deftest token-auth-code-invalid-code-test
   (testing "Authorization code grant -- invalid code returns error"
@@ -510,7 +500,7 @@
                                                   :client_name    "Other Client"
                                                   :grant_types    ["authorization_code"]
                                                   :response_types ["code"]
-                                                  :scopes         ["openid" "profile"]})
+                                                  :scopes         ["profile"]})
               code          (authorize-and-get-code! (:client_id client-a))
               response      (token-request!
                              {:grant_type    "authorization_code"
@@ -620,7 +610,7 @@
                               :client_id     client-id
                               :redirect_uri  "https://example.com/callback"
                               :response_type "code"
-                              :scope         "openid profile"
+                              :scope         "profile"
                               :state         "test-state"}
                              extra-params)
                       302
@@ -766,7 +756,7 @@
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"
                                        oauth-server-dynamic-registration-enabled true]
       (let [response (mt/user-http-request :crowberto :get 200
-                                           ".well-known/openid-configuration")]
+                                           ".well-known/oauth-authorization-server")]
         (is (= "http://localhost:3000/oauth/revoke"
                (:revocation_endpoint response)))))))
 
@@ -802,7 +792,7 @@
                             :client_id     client-id
                             :redirect_uri  "https://example.com/callback"
                             :response_type "code"
-                            :scope         "openid profile"
+                            :scope         "profile"
                             :state         state)
               csrf-token   (extract-csrf-token-from-consent (:body consent-resp))
               csrf-cookie  (extract-csrf-cookie consent-resp)
@@ -813,7 +803,7 @@
                              :client_id     client-id
                              :redirect_uri  "https://example.com/callback"
                              :response_type "code"
-                             :scope         "openid profile"
+                             :scope         "profile"
                              :state         state}
                             302
                             :csrf-cookie csrf-cookie)
@@ -835,7 +825,7 @@
                          :client_id     client-id
                          :redirect_uri  "https://example.com/callback"
                          :response_type "code"
-                         :scope         "openid profile"
+                         :scope         "profile"
                          :state         "test-state")
               body      (:body response)]
           (is (not (str/includes? body "<script>alert('xss')</script>"))

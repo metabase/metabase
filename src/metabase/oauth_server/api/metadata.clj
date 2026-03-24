@@ -1,5 +1,5 @@
 (ns metabase.oauth-server.api.metadata
-  "Endpoints for OAuth/OIDC discovery and resource metadata.
+  "Endpoints for OAuth discovery and resource metadata.
    Mounted under `/.well-known/`."
   (:require
    [metabase.api.macros :as api.macros]
@@ -11,10 +11,11 @@
 (set! *warn-on-reflection* true)
 
 (defn- discovery-response
-  "Build the OIDC discovery document response, or nil if the provider is unavailable."
+  "Build the OAuth discovery document response, or nil if the provider is unavailable."
   []
   (when-let [provider (oauth-server/get-provider)]
-    (let [metadata (oidc/discovery-metadata provider)]
+    (let [metadata (-> (oidc/discovery-metadata provider)
+                       (dissoc :jwks_uri :id_token_signing_alg_values_supported))]
       {:status  200
        :headers {"Content-Type" "application/json"}
        :body    (if (oauth-settings/oauth-server-dynamic-registration-enabled)
@@ -28,29 +29,11 @@
        [:body [:map
                [:issuer :string]
                [:authorization_endpoint :string]
-               [:token_endpoint :string]
-               [:jwks_uri :string]]]]
+               [:token_endpoint :string]]]]
       [:map
        [:status [:= 404]]
        [:body [:map [:error [:= "not_found"]]]]]]
   "Returns the OAuth Authorization Server Metadata (RFC 8414)."
-  []
-  (or (discovery-response)
-      {:status 404 :body {:error "not_found"}}))
-
-(api.macros/defendpoint :get "/openid-configuration"
-  :- [:or
-      [:map
-       [:status [:= 200]]
-       [:body [:map
-               [:issuer :string]
-               [:authorization_endpoint :string]
-               [:token_endpoint :string]
-               [:jwks_uri :string]]]]
-      [:map
-       [:status [:= 404]]
-       [:body [:map [:error [:= "not_found"]]]]]]
-  "Returns the OIDC discovery document (OpenID Connect Discovery 1.0)."
   []
   (or (discovery-response)
       {:status 404 :body {:error "not_found"}}))

@@ -6,38 +6,14 @@
    [metabase.oauth-server.store :as store]
    [metabase.system.core :as system]
    [metabase.util :as u]
-   [oidc-provider.core :as oidc]
-   [oidc-provider.token :as oidc-token])
-  (:import
-   (com.nimbusds.jose.jwk RSAKey)))
+   [oidc-provider.core :as oidc]))
 
 (set! *warn-on-reflection* true)
 
 (defonce ^:private provider (atom nil))
 
-(defn- serialize-key
-  "Serialize an RSAKey to a JSON string for storage."
-  [^RSAKey k]
-  (.toJSONString k))
-
-(defn- deserialize-key
-  "Deserialize a JSON string back to an RSAKey."
-  ^RSAKey [^String s]
-  (RSAKey/parse s))
-
-(defn- get-or-generate-signing-key!
-  "Returns the RSA signing key. Reads from settings if persisted, otherwise generates
-   a new key and persists it."
-  []
-  (if-let [stored (oauth-settings/oauth-server-signing-key)]
-    (deserialize-key stored)
-    (let [k (oidc-token/generate-rsa-key)]
-      (oauth-settings/oauth-server-signing-key! (serialize-key k))
-      k)))
-
 (defn all-agent-scopes
-  "All supported OAuth scopes: standard OIDC scopes plus tool-derived scopes.
-   Derives scopes directly from defendpoint metadata on the agent API."
+  "All supported OAuth scopes derived from defendpoint metadata on the agent API."
   []
   (into []
         (comp (keep #(get-in % [:form :metadata :scope]))
@@ -46,31 +22,25 @@
         (vals (api.macros/ns-routes 'metabase.agent-api.api))))
 
 (defn- build-provider-config
-  "Build the configuration map for the OIDC provider from Metabase settings."
-  [signing-key]
+  "Build the configuration map for the OAuth provider from Metabase settings."
+  []
   (let [base-url (system/site-url)]
     {:issuer                         base-url
      :authorization-endpoint         (str base-url "/oauth/authorize")
      :token-endpoint                 (str base-url "/oauth/token")
-     :jwks-uri                       (str base-url "/oauth/jwks")
      :registration-endpoint          (str base-url "/oauth/register")
      :revocation-endpoint            (str base-url "/oauth/revoke")
-     :signing-key                    signing-key
      :access-token-ttl-seconds       (oauth-settings/oauth-server-access-token-ttl)
-     :id-token-ttl-seconds           (oauth-settings/oauth-server-id-token-ttl)
      :authorization-code-ttl-seconds (oauth-settings/oauth-server-authorization-code-ttl)
      :client-store                   (store/create-client-store)
      :code-store                     (store/create-authorization-code-store)
      :token-store                    (store/create-token-store)
-     :scopes-supported               (all-agent-scopes)
-     :claims-provider                (store/create-claims-provider)}))
+     :scopes-supported               (all-agent-scopes)}))
 
 (defn- create-provider
-  "Create a new OIDC provider instance."
+  "Create a new OAuth provider instance."
   []
-  (let [signing-key (get-or-generate-signing-key!)
-        config      (build-provider-config signing-key)]
-    (oidc/create-provider config)))
+  (oidc/create-provider (build-provider-config)))
 
 (defn get-provider
   "Returns the current provider instance, creating it lazily if needed."

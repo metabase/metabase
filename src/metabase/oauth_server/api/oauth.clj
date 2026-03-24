@@ -1,5 +1,5 @@
 (ns metabase.oauth-server.api.oauth
-  "OAuth/OIDC protocol endpoints. Mounted under `/oauth/`."
+  "OAuth protocol endpoints. Mounted under `/oauth/`."
   (:require
    [buddy.core.codecs :as codecs]
    [buddy.core.nonce :as nonce]
@@ -41,18 +41,6 @@
     redirect))
 
 ;;; ------------------------------------------------ Endpoints ----------------------------------------------------
-
-(api.macros/defendpoint :get "/jwks"
-  :- [:or
-      [:map [:status [:= 200]] [:body [:map [:keys [:sequential :map]]]]]
-      [:map [:status [:= 404]] [:body [:map [:error [:= "not_found"]]]]]]
-  "Returns the JWKS (JSON Web Key Set)."
-  []
-  (or (when-let [provider (oauth-server/get-provider)]
-        {:status  200
-         :headers {"Content-Type" "application/json"}
-         :body    (oidc/jwks provider)})
-      {:status 404 :body {:error "not_found"}}))
 
 (api.macros/defendpoint :post "/register"
   :- [:map [:status [:enum 201 400 403 404]] [:body :any]]

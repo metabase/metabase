@@ -1,5 +1,5 @@
 (ns metabase.oauth-server.store
-  "Database-backed implementations of OIDC provider storage protocols."
+  "Database-backed implementations of OAuth provider storage protocols."
   (:require
    [metabase.util :as u]
    [oidc-provider.protocol :as proto]
@@ -205,24 +205,6 @@
       (t2/update! :model/OAuthRefreshToken {:token token} {:revoked_at now}))
     true))
 
-;;; ---------------------------------------------- ClaimsProvider ------------------------------------------------------
-
-(defrecord MetabaseClaimsProvider []
-  proto/ClaimsProvider
-  (get-claims [_ user-id scope]
-    (let [scope-set (set scope)
-          user      (t2/select-one [:model/User :id :first_name :last_name :email] :id (parse-user-id user-id))]
-      (when user
-        (cond-> {:sub (str user-id)}
-          (scope-set "profile")
-          (assoc :name               (str (:first_name user) " " (:last_name user))
-                 :preferred_username (:email user))
-          (scope-set "email")
-          ;; Metabase does not track email verification status, so we report true.
-          ;; Users are created by admins or via SSO with verified emails.
-          (assoc :email          (:email user)
-                 :email_verified true))))))
-
 ;;; ------------------------------------------------ Constructors ------------------------------------------------------
 
 (defn create-client-store
@@ -239,8 +221,3 @@
   "Creates a database-backed token store."
   []
   (->DbTokenStore))
-
-(defn create-claims-provider
-  "Creates a Metabase-backed claims provider."
-  []
-  (->MetabaseClaimsProvider))

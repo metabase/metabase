@@ -292,31 +292,3 @@
       (is (nil? (proto/get-access-token ts "nonexistent"))))
     (testing "get-refresh-token returns nil for nonexistent token"
       (is (nil? (proto/get-refresh-token ts "nonexistent"))))))
-
-;;; ---------------------------------------------- ClaimsProvider ------------------------------------------------------
-
-(deftest claims-provider-openid-only-test
-  (let [cp      (store/create-claims-provider)
-        user-id (mt/user->id :rasta)
-        claims  (proto/get-claims cp user-id ["openid"])]
-    (testing "claims contain :sub"
-      (is (= (str user-id) (:sub claims))))
-    (testing "no profile or email claims with openid-only scope"
-      (is (nil? (:name claims)))
-      (is (nil? (:email claims))))))
-
-(deftest claims-provider-full-scope-test
-  (let [cp      (store/create-claims-provider)
-        user-id (mt/user->id :rasta)
-        claims  (proto/get-claims cp user-id ["openid" "profile" "email"])]
-    (testing "claims contain profile and email fields"
-      (is (=? {:name               string?
-               :preferred_username string?
-               :email              "rasta@metabase.com"
-               :email_verified     true}
-              claims)))))
-
-(deftest claims-provider-nonexistent-user-test
-  (let [cp (store/create-claims-provider)]
-    (testing "get-claims returns nil for nonexistent user"
-      (is (nil? (proto/get-claims cp Integer/MAX_VALUE ["openid"]))))))
