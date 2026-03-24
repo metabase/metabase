@@ -427,7 +427,7 @@ const RowViz: VisualizationDefinition = {
 };
 
 function isTransformedCard(card: Card): card is TransformedCard {
-  return "transformed" in card && card.transformed === true;
+  return "_transformed" in card && card._transformed === true;
 }
 
 Object.assign(RowChartVisualization, RowViz);
