@@ -361,7 +361,6 @@ def transform(animals):
       cy.log("go to Transform Settings and reset checkpoint");
       cy.go("back");
       H.DataStudio.Transforms.settingsTab().click();
-
       cy.findByRole("group", { name: /Current checkpoint/i }).within(() => {
         cy.findByText(/31/).should("exist");
       });
