@@ -98,9 +98,9 @@
        [:body
         [:div.consent
          [:div.logo
-         (if-let [svg (when default-logo? (branded-logo-svg brand-color))]
-           (h/raw svg)
-           [:img {:src logo-url :alt "Logo" :height "32"}])]
+          (if-let [svg (when default-logo? (branded-logo-svg brand-color))]
+            (h/raw svg)
+            [:img {:src logo-url :alt "Logo" :height "32"}])]
          [:h1 "Authorize " client-name "?"]
          [:p.subtitle "This MCP client is requesting to be authorized. If you approve, it will be able to access resources from "
           [:strong (appearance/application-name)] " on your behalf."]
