@@ -76,7 +76,7 @@ X-Metabase-Session: <session-token>
 
 ## Further reading
 
-- [Agent API complete reference](../../src/metabase/agent_api/reference.md)
+- [Agent API complete reference](https://github.com/metabase/metabase/blob/master/src/metabase/agent_api/reference.md)
 - [Metabase Agent API demo](https://github.com/metabase/metabase-agent-api-demo)
 - [Metabase API docs](../api.html)
 - [JWT authentication](../people-and-groups/authenticating-with-jwt.md)
