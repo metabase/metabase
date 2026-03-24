@@ -12,7 +12,7 @@
    [metabase.channel.render.png :as png]
    [metabase.channel.render.style :as style]
    [metabase.notification.payload.core :as notification.payload]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.core :as qp]
    [metabase.test :as mt]
    [metabase.util.markdown :as markdown]
    [toucan2.core :as t2])

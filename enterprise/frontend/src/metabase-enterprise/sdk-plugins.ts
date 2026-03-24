@@ -1,3 +1,4 @@
+/* eslint-disable import/order */
 import { PLUGIN_IS_EE_BUILD } from "metabase/plugins";
 
 import { initializeHandleLinkPlugin } from "../embedding-sdk-ee/handle-link/handle-link";
@@ -17,7 +18,6 @@ import { initializePlugin as initializeTenants } from "./tenants";
 import { initializePlugin as initializeWhitelabelPlugin } from "./whitelabel";
 import { initializePlugin as initializeWhitelabelOverridePlugin } from "./whitelabel/sdk-overrides";
 
-// eslint-disable-next-line import/order -- This needs to be imported after Metabot plugin, otherwise it will initialize reducers before the Metabot plugin has set a reducer.
 import { initializePlugin as initializeNotifications } from "../embedding-sdk-ee/notifications";
 
 /**

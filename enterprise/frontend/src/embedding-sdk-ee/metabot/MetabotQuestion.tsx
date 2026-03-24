@@ -14,8 +14,8 @@ import { METABOT_SDK_EE_PLUGIN } from "embedding-sdk-bundle/components/public/Me
 import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
 import { useSetting } from "metabase/common/hooks";
 import { useLocale } from "metabase/common/hooks/use-locale";
+import { useMetabotReactions } from "metabase/metabot/hooks/use-metabot-reactions";
 import { Stack } from "metabase/ui";
-import { useMetabotReactions } from "metabase-enterprise/metabot/hooks/use-metabot-reactions";
 
 import { MetabotChatHistory } from "./MetabotChatHistory";
 import { MetabotChatInput } from "./MetabotChatInput";

@@ -207,8 +207,13 @@ export type SingleSeriesWithTranslation = SingleSeries & {
   };
 };
 
+export type TransformedCard = Card & {
+  _seriesKey: string;
+  _transformed: true;
+};
+
 export type RawSeries = SingleSeries[];
-export type TransformedSeries = RawSeries & { _raw: Series };
+export type TransformedSeries = RawSeries & { _raw?: Series };
 export type MaybeTranslatedSeries = SingleSeriesWithTranslation[];
 export type Series = RawSeries | TransformedSeries;
 

@@ -5,12 +5,16 @@ import { merge, updateIn } from "icepick";
 import _ from "underscore";
 
 import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
-import { Databases } from "metabase/entities/databases";
 import { cleanIndexFlags } from "metabase/entities/model-indexes/actions";
 import { Timelines } from "metabase/entities/timelines";
 import { parseTimestamp } from "metabase/lib/time-dayjs";
 import { getSortedTimelines } from "metabase/lib/timelines";
 import { isNotNull } from "metabase/lib/types";
+import {
+  isQuestionDirty,
+  isQuestionRunnable,
+  isSavedQuestionChanged,
+} from "metabase/querying/common/utils/question";
 import {
   getEmbedOptions,
   getIsEmbeddingIframe,
@@ -42,11 +46,6 @@ import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 
 import { getQuestionWithDefaultVisualizationSettings } from "./actions/core/utils";
 import { createRawSeries, getWritableColumnProperties } from "./utils";
-import {
-  isQuestionDirty,
-  isQuestionRunnable,
-  isSavedQuestionChanged,
-} from "./utils/question";
 
 // This selector can be called from public questions / dashboards, which do not have state.qb
 export const getUiControls = (state) => state.qb?.uiControls;
@@ -128,20 +127,6 @@ export const getDatabaseId = createSelector(
 
 export const getTableForeignKeyReferences = (state) =>
   state.qb.tableForeignKeyReferences;
-
-const getDatabasesListDefaultValue = [];
-export const getDatabasesList = (state) =>
-  Databases.selectors.getList(state, {
-    entityQuery: { include: "tables", saved: true },
-  }) || getDatabasesListDefaultValue;
-
-export const getSampleDatabaseId = createSelector(
-  [getDatabasesList],
-  (databases) => {
-    const sampleDatabase = _.findWhere(databases, { is_sample: true });
-    return sampleDatabase && sampleDatabase.id;
-  },
-);
 
 export const getParameters = createSelector(
   [getCard, getMetadata, getParameterValues],

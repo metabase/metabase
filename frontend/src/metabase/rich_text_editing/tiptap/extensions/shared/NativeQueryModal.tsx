@@ -13,9 +13,9 @@ import {
 import { isMac } from "metabase/lib/browser";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { NativeQueryEditor } from "metabase/query_builder/components/NativeQueryEditor";
-import { DataReference } from "metabase/query_builder/components/dataref/DataReference";
-import type { DataReferenceItem } from "metabase/query_builder/components/dataref/types";
 import { createRawSeries } from "metabase/query_builder/utils";
+import { DataReference } from "metabase/querying/components/DataReference/DataReference";
+import type { DataReferenceItem } from "metabase/querying/components/DataReference/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Button, Flex, Loader, Modal, Stack, Text } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";

@@ -11,7 +11,7 @@ import { useDispatch } from "metabase/lib/redux";
 import { Button, Flex } from "metabase/ui";
 import type { Dashboard, VirtualDashboardCard } from "metabase-types/api";
 
-import type { VisualizationProps } from "../types";
+import type { VisualizationDefinition, VisualizationProps } from "../types";
 
 type Props = VisualizationProps & {
   dashcard: VirtualDashboardCard;
@@ -111,7 +111,7 @@ function preventDragging(e: React.MouseEvent<HTMLButtonElement>) {
   e.stopPropagation();
 }
 
-export const DashCardPlaceholder = Object.assign(DashCardPlaceholderInner, {
+const PlaceholderViz: VisualizationDefinition = {
   getUiName: () => t`Empty card`,
   identifier: "placeholder",
   iconName: "table",
@@ -125,4 +125,9 @@ export const DashCardPlaceholder = Object.assign(DashCardPlaceholderInner, {
   checkRenderable: () => {
     // always renderable
   },
-});
+};
+
+export const DashCardPlaceholder = Object.assign(
+  DashCardPlaceholderInner,
+  PlaceholderViz,
+);

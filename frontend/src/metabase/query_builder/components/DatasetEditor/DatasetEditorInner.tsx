@@ -33,12 +33,8 @@ import {
   updateQuestion as updateQuestionAction,
 } from "metabase/query_builder/actions";
 import { getInitialEditorHeight } from "metabase/query_builder/components/NativeQueryEditor/utils";
-import { QueryVisualization } from "metabase/query_builder/components/QueryVisualization";
-import { DataReference } from "metabase/query_builder/components/dataref/DataReference";
-import { SnippetSidebar } from "metabase/query_builder/components/template_tags/SnippetSidebar/SnippetSidebar";
 import { TagEditorSidebar } from "metabase/query_builder/components/template_tags/TagEditorSidebar";
 import { ViewSidebar } from "metabase/query_builder/components/view/ViewSidebar";
-import { MODAL_TYPES } from "metabase/query_builder/constants";
 import {
   getDatasetEditorTab,
   getIsListViewConfigurationShown,
@@ -49,6 +45,11 @@ import {
   isResultsMetadataDirty,
 } from "metabase/query_builder/selectors";
 import { getWritableColumnProperties } from "metabase/query_builder/utils";
+import { DataReference } from "metabase/querying/components/DataReference/DataReference";
+import type { DataReferenceItem } from "metabase/querying/components/DataReference/types";
+import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
+import { SnippetSidebar } from "metabase/querying/components/SnippetSidebar";
+import { MODAL_TYPES } from "metabase/querying/constants";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, Tooltip } from "metabase/ui";
 import {
@@ -75,8 +76,6 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
-
-import type { DataReferenceItem } from "../dataref/types";
 
 import DatasetEditorS from "./DatasetEditor.module.css";
 import {

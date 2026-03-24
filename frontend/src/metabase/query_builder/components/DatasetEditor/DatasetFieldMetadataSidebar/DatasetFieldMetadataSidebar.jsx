@@ -3,6 +3,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { SidebarContent } from "metabase/common/components/SidebarContent";
 import {
   canIndexField,
   fieldHasIndex,
@@ -16,7 +17,6 @@ import {
   FormTextarea,
 } from "metabase/forms";
 import { FIELD_VISIBILITY_TYPES } from "metabase/lib/core";
-import { SidebarContent } from "metabase/query_builder/components/SidebarContent";
 import { Box, Radio, Stack, Tabs } from "metabase/ui";
 import { color } from "metabase/ui/colors";
 import {

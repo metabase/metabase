@@ -898,6 +898,9 @@ describe("scenarios - embedding hub", () => {
       cy.log("pick first table and column");
       H.main().findByText("Pick a table").click();
 
+      cy.log("Our analytics should be hidden in the table picker");
+      H.miniPicker().findByText("Our analytics").should("not.exist");
+
       H.miniPicker().findByText("Sample Database").click();
       H.miniPicker().findByText("Orders").click();
 

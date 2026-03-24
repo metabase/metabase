@@ -56,12 +56,12 @@ export type CustomVisualization<CustomVisualizationSettings> = {
   /**
    * Min size on dashboard grid.
    */
-  minSize: VisualizationGridSize;
+  minSize?: VisualizationGridSize;
 
   /**
    * Default size on dashboard grid.
    */
-  defaultSize: VisualizationGridSize;
+  defaultSize?: VisualizationGridSize;
 
   /**
    * Visualization settings definitions.
@@ -92,7 +92,7 @@ export type CustomVisualization<CustomVisualizationSettings> = {
   /**
    * Component that renders the visualization.
    */
-  StaticVisualizationComponent: ComponentType<
+  StaticVisualizationComponent?: ComponentType<
     CustomStaticVisualizationProps<CustomVisualizationSettings>
   >;
 };
@@ -103,7 +103,6 @@ export type CustomVisualizationSettingsDefinitions<
     keyof CustomVisualizationSettings,
 > = {
   [Key in K]-?: VisualizationSettingDefinition<
-    unknown,
     CustomVisualizationSettings[Key],
     Record<string, unknown>,
     CustomVisualizationSettings
@@ -117,12 +116,7 @@ export type BaseWidgetProps<TValue, CustomVisualizationSettings> = {
   onChangeSettings: (settings: Partial<CustomVisualizationSettings>) => void;
 };
 
-// TODO: infer TProps for built-in widgets
-type VisualizationSettingDefinitionBase<
-  T,
-  TValue,
-  CustomVisualizationSettings,
-> = {
+type VisualizationSettingDefinitionBase<TValue, CustomVisualizationSettings> = {
   id: string;
   section?: string;
   title?: string;
@@ -139,77 +133,67 @@ type VisualizationSettingDefinitionBase<
   writeDependencies?: string[];
   eraseDependencies?: string[];
 
-  isValid?: (object: T, settings: CustomVisualizationSettings) => boolean;
-  getDefault?: (object: T, settings: CustomVisualizationSettings) => TValue;
-  getValue?: (object: T, settings: CustomVisualizationSettings) => TValue;
+  isValid?: (series: Series, settings: CustomVisualizationSettings) => boolean;
+  getDefault?: (
+    series: Series,
+    settings: CustomVisualizationSettings,
+  ) => TValue;
+  getValue?: (series: Series, settings: CustomVisualizationSettings) => TValue;
 };
 
 type VisualizationSettingDefinitionWithBuiltInWidget<
-  T,
   TValue,
   CustomVisualizationSettings,
 > = {
   [Key in WidgetName]: VisualizationSettingDefinitionBase<
-    T,
     TValue,
     CustomVisualizationSettings
   > & {
     widget: Key;
     getProps?: (
-      object: T,
+      object: Series,
       vizSettings: CustomVisualizationSettings,
     ) => Widgets[Key];
   };
 }[WidgetName];
 
 type VisualizationSettingDefinitionWithCustomWidget<
-  T,
   TValue,
   TProps,
   CustomVisualizationSettings,
-> = VisualizationSettingDefinitionBase<
-  T,
-  TValue,
-  CustomVisualizationSettings
-> & {
+> = VisualizationSettingDefinitionBase<TValue, CustomVisualizationSettings> & {
   widget: ComponentType<
     TProps & BaseWidgetProps<TValue, CustomVisualizationSettings>
   >;
-  getProps?: (object: T, vizSettings: CustomVisualizationSettings) => TProps;
+  getProps?: (
+    object: Series,
+    vizSettings: CustomVisualizationSettings,
+  ) => TProps;
 };
 
 type VisualizationSettingDefinitionWithoutWidget<
-  T,
   TValue,
   CustomVisualizationSettings,
-> = VisualizationSettingDefinitionBase<
-  T,
-  TValue,
-  CustomVisualizationSettings
-> & {
+> = VisualizationSettingDefinitionBase<TValue, CustomVisualizationSettings> & {
   widget?: never;
   getProps?: never;
 };
 
 export type VisualizationSettingDefinition<
-  T,
   TValue,
   TProps,
   CustomVisualizationSettings,
 > =
   | VisualizationSettingDefinitionWithBuiltInWidget<
-      T,
       TValue,
       CustomVisualizationSettings
     >
   | VisualizationSettingDefinitionWithCustomWidget<
-      T,
       TValue,
       TProps,
       CustomVisualizationSettings
     >
   | VisualizationSettingDefinitionWithoutWidget<
-      T,
       TValue,
       CustomVisualizationSettings
     >;
