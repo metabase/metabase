@@ -22,7 +22,7 @@
   ],
   "scripts": {
     "dev": "vite build --watch",
-    "build": "vite build",
+    "build": "vite build && cp -r src/templates dist/templates",
     "lint": "oxlint src/",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

@@ -229,14 +229,15 @@
 
 (defn ^:dynamic *javascript-visualization*
   "Clojure entrypoint to render javascript visualizations. This functions is dynamic only for testing purposes.
-   `custom-viz-bundles` is an optional seq of `{:identifier str :source str}` maps for custom visualization plugins."
+   `custom-viz-bundles` is an optional seq of `{:identifier str :source str :assets map}` maps for custom visualization plugins."
   [cards-with-data dashcard-viz-settings custom-viz-bundles]
   (let [response (with-static-viz-context context
                    (when (seq custom-viz-bundles)
                      (taint-context!)
-                     (doseq [{:keys [identifier source]} custom-viz-bundles]
+                     (doseq [{:keys [identifier source assets]} custom-viz-bundles]
                        (js.engine/load-js-string context source (str "custom-viz-" identifier ".js"))
-                       (js.engine/execute-fn-name context "register_custom_viz_plugin" identifier)))
+                       (js.engine/execute-fn-name context "register_custom_viz_plugin" identifier
+                                                  (json/encode (or assets {})))))
                    (.asString (js.engine/execute-fn-name context "javascript_visualization"
                                                          (json/encode cards-with-data)
                                                          (json/encode dashcard-viz-settings)

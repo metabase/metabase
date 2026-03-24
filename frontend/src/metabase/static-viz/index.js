@@ -101,8 +101,10 @@ function getVisualizerRawSeries(rawSeries, dashcardSettings) {
   ];
 }
 
-export function registerCustomVizPlugin(factory, identifier) {
-  const vizDef = factory({});
+export function registerCustomVizPlugin(factory, identifier, assets) {
+  const assetMap = assets || {};
+  const getAssetUrl = (name) => assetMap[name] || "";
+  const vizDef = factory({ getAssetUrl });
   const display = `custom:${identifier}`;
   customVizRegistry.set(display, vizDef);
 

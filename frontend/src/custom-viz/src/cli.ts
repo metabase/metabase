@@ -16,6 +16,7 @@ import {
   generatePackageJson,
   generateTsConfig,
   generateViteConfig,
+  readBinaryTemplate,
 } from "./templates";
 
 const program = new Command();
@@ -58,6 +59,8 @@ program
       writeFile(join(name, "src", "index.tsx"), generateIndexTsx(name)),
       writeFile(join(name, "metabase-plugin.json"), generateManifest(name)),
       writeFile(join(name, "public", "assets", "icon.svg"), generateIconSvg()),
+      writeFile(join(name, "public", "assets", "thumbs-up.png"), readBinaryTemplate("thumbs-up.png")),
+      writeFile(join(name, "public", "assets", "thumbs-down.png"), readBinaryTemplate("thumbs-down.png")),
       writeFile(join(name, ".gitignore"), generateGitignore()),
     ]);
 
@@ -68,6 +71,8 @@ program
     console.log(`  ${name}/src/index.tsx`);
     console.log(`  ${name}/metabase-plugin.json`);
     console.log(`  ${name}/public/assets/icon.svg`);
+    console.log(`  ${name}/public/assets/thumbs-up.png`);
+    console.log(`  ${name}/public/assets/thumbs-down.png`);
     console.log(`  ${name}/.gitignore`);
     console.log();
     console.log("Next steps:");
