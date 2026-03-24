@@ -6,8 +6,6 @@ summary: The Agent API is a REST API for building headless, agentic BI applicati
 
 # Agent API
 
-{% include plans-blockquote.html feature="Metabase agent API" %}
-
 The Agent API is a REST API for building headless, agentic BI applications on top of Metabase's semantic layer, scoped to an authenticated user's permissions.
 
 ## Why use the Agent API
@@ -27,7 +25,7 @@ The Agent API supports:
 - Inspecting their fields
 - Constructing and executing queries
 
-Base path:[/api/agent](../api.html#tag/apiagent)
+Base path: `/api/agent`. See the [complete API reference](../../src/metabase/agent_api/reference.md).
 
 ## Authentication
 
@@ -58,6 +56,14 @@ Example JWT payload:
 }
 ```
 
+### Session-based authentication
+
+Exchange a JWT at `POST /auth/sso/to_session` to get a session token, then pass it via:
+
+```
+X-Metabase-Session: <session-token>
+```
+
 ## Example application
 
 ![Metabase Agent chat answering a product rating question](./images/agent-api-demo.png)
@@ -66,6 +72,7 @@ Check out the [Metabase Agent API demo](https://github.com/metabase/metabase-age
 
 ## Further reading
 
+- [Agent API complete reference](../../src/metabase/agent_api/reference.md)
 - [Metabase Agent API demo](https://github.com/metabase/metabase-agent-api-demo)
 - [Metabase API docs](../api.html)
 - [JWT authentication](../people-and-groups/authenticating-with-jwt.md)
