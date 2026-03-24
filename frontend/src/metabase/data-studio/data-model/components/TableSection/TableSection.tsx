@@ -304,7 +304,7 @@ const TableSectionBase = ({
         </Box>
       </Group>
 
-      <TableAttributesEditSingle table={table} />
+      <TableAttributesEditSingle table={table} onUpdate={onUpdate} />
 
       <TableSectionGroup title={t`Metadata`}>
         <TableMetadata table={table} />

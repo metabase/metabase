@@ -231,6 +231,23 @@ describe("Table editing", () => {
           .blur();
         cy.wait("@updateTable");
         TablePicker.getTable("Renamed Orders").should("be.visible");
+
+        cy.log("update the owner and verify it is reflected");
+        TablePicker.getTable("Renamed Orders").should(
+          "not.contain.text",
+          "Bobby Tables",
+        );
+        H.selectHasValue("Owner", "No owner").click();
+        H.selectDropdown().contains("Bobby Tables").click();
+        cy.wait("@updateTable");
+        H.undoToastListContainer()
+          .findByText("Table owner updated")
+          .should("be.visible");
+        H.selectHasValue("Owner", "Bobby Tables");
+        TablePicker.getTable("Renamed Orders").should(
+          "contain.text",
+          "Bobby Tables",
+        );
       },
     );
   });
