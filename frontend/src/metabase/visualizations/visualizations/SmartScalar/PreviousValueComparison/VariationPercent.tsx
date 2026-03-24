@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
-import type { ColorName } from "metabase/lib/colors/types";
 import { Flex } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 
 import type { ComparisonResult } from "../compute";
 

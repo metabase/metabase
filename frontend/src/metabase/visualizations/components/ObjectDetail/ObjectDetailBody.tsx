@@ -14,6 +14,7 @@ export interface ObjectDetailBodyProps {
   settings: VisualizationSettings;
   onVisualizationClick: OnVisualizationClickType;
   visualizationIsClickable: (clicked: unknown) => boolean;
+  isDashboard: boolean;
 }
 
 export function ObjectDetailBody({
@@ -22,6 +23,7 @@ export function ObjectDetailBody({
   settings,
   onVisualizationClick,
   visualizationIsClickable,
+  isDashboard,
 }: ObjectDetailBodyProps): JSX.Element {
   return (
     <ObjectDetailBodyWrapper>
@@ -31,6 +33,7 @@ export function ObjectDetailBody({
         settings={settings}
         onVisualizationClick={onVisualizationClick}
         visualizationIsClickable={visualizationIsClickable}
+        isDashboard={isDashboard}
       />
     </ObjectDetailBodyWrapper>
   );

@@ -14,7 +14,7 @@ jobs:
   files-changed:
     if: ${{ !contains(github.event.pull_request.labels.*.name,'ci skip') && !contains(github.event.pull_request.labels.*.name,'minimal-tests') }}
     name: Check which files changed
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     outputs:
       e2e_all: ${{ steps.changes.outputs.e2e_all }}
@@ -110,7 +110,7 @@ jobs:
 
   sdk-tests:
     needs: [uberjar, embedding-sdk-package, files-changed]
-    if: always()
+    if: always() && !cancelled()
     uses: ./.github/workflows/embedding-sdk.yml
     secrets: inherit
     with:

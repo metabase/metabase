@@ -1,10 +1,6 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import {
-  hourTo24HourFormat,
-  hourToTwelveHourFormat,
-} from "metabase/admin/performance/utils";
 import { capitalize } from "metabase/lib/formatting/strings";
 import { useSelector } from "metabase/lib/redux";
 import { has24HourModeSetting } from "metabase/lib/time-dayjs";
@@ -19,6 +15,7 @@ import type {
 
 import { AutoWidthSelect } from "./AutoWidthSelect";
 import { defaultHour } from "./constants";
+import { hourTo24HourFormat, hourToTwelveHourFormat } from "./cron";
 import {
   type Weekday,
   getHours,

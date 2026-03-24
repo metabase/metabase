@@ -5,11 +5,11 @@ import {
   isSyncedCollection,
 } from "metabase/collections/utils";
 import { getLibraryCollectionType } from "metabase/data-studio/utils";
-import { color } from "metabase/lib/colors";
-import type { ColorName } from "metabase/lib/colors/types";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type { IconName, IconProps } from "metabase/ui";
+import { color } from "metabase/ui/colors";
+import type { ColorName } from "metabase/ui/colors/types";
 import type { Collection, CollectionContentModel } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 

@@ -14,7 +14,7 @@ concurrency:
 jobs:
   be-tests-mariadb:
     if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
       fail-fast: false
@@ -128,7 +128,7 @@ jobs:
 
   be-tests-mysql:
     if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
       fail-fast: false
@@ -252,7 +252,7 @@ jobs:
 
   be-tests-postgres:
     if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
       fail-fast: false
@@ -366,7 +366,7 @@ jobs:
       - be-tests-mariadb
       - be-tests-mysql
       - be-tests-postgres
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     name: app-db-tests-result
     if: always() && !cancelled()

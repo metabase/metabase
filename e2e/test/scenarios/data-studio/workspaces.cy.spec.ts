@@ -1765,7 +1765,20 @@ describe("scenarios > data studio > workspaces", () => {
         }).then((id2) => {
           createPythonTransform({
             body: TEST_PYTHON_TRANSFORM,
-            sourceTables: { foo: id1, bar: id2 },
+            sourceTables: [
+              {
+                alias: "foo",
+                table_id: id1,
+                database_id: WRITABLE_DB_ID,
+                schema: "Schema A",
+              },
+              {
+                alias: "bar",
+                table_id: id2,
+                database_id: WRITABLE_DB_ID,
+                schema: "Schema B",
+              },
+            ],
             visitTransform: true,
           });
         });
@@ -1808,7 +1821,6 @@ describe("scenarios > data studio > workspaces", () => {
       cy.log("change target table");
       cy.button(/Change target/).click();
       H.modal().within(() => {
-        cy.findByLabelText("Schema").clear().type("new_schema");
         cy.findByLabelText("New table name").clear().type("epic_table");
         cy.button("Change target").click();
       });
@@ -1908,7 +1920,20 @@ describe("scenarios > data studio > workspaces", () => {
           }).then((id2) => {
             createPythonTransform({
               body: TEST_PYTHON_TRANSFORM_MULTI_TABLE,
-              sourceTables: { animals_a: id1, animals_b: id2 },
+              sourceTables: [
+                {
+                  alias: "animals_a",
+                  table_id: id1,
+                  database_id: WRITABLE_DB_ID,
+                  schema: "Schema A",
+                },
+                {
+                  alias: "animals_b",
+                  table_id: id2,
+                  database_id: WRITABLE_DB_ID,
+                  schema: "Schema B",
+                },
+              ],
               visitTransform: true,
             });
           });
@@ -2517,7 +2542,14 @@ function createTransforms({ visit }: { visit?: boolean } = { visit: false }) {
   H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then((id) => {
     createPythonTransform({
       body: TEST_PYTHON_TRANSFORM,
-      sourceTables: { foo: id },
+      sourceTables: [
+        {
+          alias: "foo",
+          table_id: id,
+          database_id: WRITABLE_DB_ID,
+          schema: TARGET_SCHEMA,
+        },
+      ],
     });
   });
 

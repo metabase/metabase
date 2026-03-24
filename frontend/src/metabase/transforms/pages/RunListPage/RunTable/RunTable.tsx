@@ -2,6 +2,7 @@ import type { Row, SortingState, Updater } from "@tanstack/react-table";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { Card, TreeTable, useTreeTableInstance } from "metabase/ui";
@@ -11,7 +12,6 @@ import type {
   TransformTag,
 } from "metabase-types/api";
 
-import { ListEmptyState } from "../../../components/ListEmptyState";
 import type { TransformRunSortOptions } from "../types";
 
 import { getColumns, getSortingOptions, getSortingState } from "./utils";

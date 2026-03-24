@@ -20,6 +20,7 @@ You'll write a query or a Python script in Metabase, a transform will run this q
   - You assign tags (e.g., daily, hourly) to group your transforms.
   - A job runs on a schedule (e.g., every day at midnight) and executes all transforms that have been assigned a specific tag.
 - Each execution of a transform is a **run**. A run replaces the target table with fresh results. You can review the history of runs to monitor their success or failure.
+- You can **inspect** a transform to analyze its data flow, join behavior, and column distributions. See [Transform inspector](transform-inspector.md).
 
 ## Databases that support transforms
 
@@ -177,6 +178,12 @@ You can see the time and status of the latest transform run on the transform's p
 
 For Python transforms, you'll also see the transform's execution logs.
 
+## Inspect a transform
+
+_Data Studio > Transforms > [transform name] > Inspect_
+
+The [transform inspector](./transform-inspector.md) lets you poke at the input and outputs of your transform.
+
 ## Transform dependencies
 
 {% include plans-blockquote.html feature="Transform dependencies" is_plural=true%}
@@ -203,7 +210,6 @@ Incremental transforms only append new data since the previous transform run. Fo
 
 - There is a column in your data that Metabase can check for new values to determine which data is new. We'll refer to this as a "Checkpoint" column.
 - The checkpoint column has to have increasing values, like a sequential ID or timestamp column. Metabase will determine what "new" data is by looking for values that are _greater than_ already-written checkpoint values.
-- The checkpoint column should be present in both input and output table.
 - Your schema is stable, meaning that the structure of the tables is not going to change from run to run.
 
 ### Make a transform incremental

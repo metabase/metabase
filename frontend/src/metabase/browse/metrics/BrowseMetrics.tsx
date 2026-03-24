@@ -28,12 +28,7 @@ import {
   Tooltip,
 } from "metabase/ui";
 
-import {
-  BrowseContainer,
-  BrowseHeader,
-  BrowseMain,
-  BrowseSection,
-} from "../components/BrowseContainer.styled";
+import S from "../components/BrowseContainer.module.css";
 
 import { MetricsTable } from "./MetricsTable";
 import { trackNewMetricInitiated } from "./analytics";
@@ -70,9 +65,21 @@ export function BrowseMetrics() {
   const canCreateMetric = !isEmbeddingIframe && hasDataAccess;
 
   return (
-    <BrowseContainer aria-labelledby={titleId}>
-      <BrowseHeader role="heading" data-testid="browse-metrics-header">
-        <BrowseSection>
+    <Flex
+      className={S.browseContainer}
+      flex={1}
+      direction="column"
+      wrap="nowrap"
+      pt="md"
+      aria-labelledby={titleId}
+    >
+      <Flex
+        className={S.browseHeader}
+        direction="column"
+        role="heading"
+        data-testid="browse-metrics-header"
+      >
+        <Flex maw="64rem" mx="auto" w="100%">
           <Flex
             w="100%"
             h="2.25rem"
@@ -112,10 +119,10 @@ export function BrowseMetrics() {
               )}
             </Group>
           </Flex>
-        </BrowseSection>
-      </BrowseHeader>
-      <BrowseMain>
-        <BrowseSection>
+        </Flex>
+      </Flex>
+      <Flex className={S.browseMain} direction="column" wrap="nowrap" flex={1}>
+        <Flex maw="64rem" mx="auto" w="100%">
           <Stack mb="lg" gap="md" w="100%">
             {isEmpty ? (
               <MetricsEmptyState
@@ -133,9 +140,9 @@ export function BrowseMetrics() {
               </DelayedLoadingAndErrorWrapper>
             )}
           </Stack>
-        </BrowseSection>
-      </BrowseMain>
-    </BrowseContainer>
+        </Flex>
+      </Flex>
+    </Flex>
   );
 }
 

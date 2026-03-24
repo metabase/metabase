@@ -13,7 +13,6 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -306,8 +305,8 @@
    (semantic-version-gte [4 0 1] [4 1]) => false
    (semantic-version-gte [4 1] [4]) => true
    (semantic-version-gte [3 1] [4]) => false"
-  [xv :- [:maybe [:sequential ::lib.schema.common/int-greater-than-or-equal-to-zero]]
-   yv :- [:maybe [:sequential ::lib.schema.common/int-greater-than-or-equal-to-zero]]]
+  [xv :- [:maybe [:sequential nat-int?]]
+   yv :- [:maybe [:sequential nat-int?]]]
   (loop [xv (seq xv), yv (seq yv)]
     (or (nil? yv)
         (let [[x & xs] xv

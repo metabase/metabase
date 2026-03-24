@@ -54,6 +54,7 @@ export interface ObjectDetailProps {
   viewNextObjectDetail: () => void;
   closeObjectDetail: () => void;
   className?: string;
+  isDashboard: boolean;
 }
 
 export type ForeignKeyReferences = {

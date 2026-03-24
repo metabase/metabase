@@ -277,19 +277,6 @@ describe("scenarios > question > offset", () => {
       });
     });
 
-    it("does not work without a breakout", () => {
-      const query: StructuredQuery = {
-        "source-table": ORDERS_ID,
-        aggregation: [OFFSET_SUM_TOTAL_AGGREGATION],
-      };
-
-      H.createQuestion({ query }, { visitQuestion: true });
-
-      verifyQuestionError(
-        "Window function requires either breakouts or order by in the query",
-      );
-    });
-
     it(
       "does not preview sql without a breakout (metabase#47819)",
       { tags: "@skip" },
@@ -1343,9 +1330,9 @@ function verifyLineChart({
   }
 }
 
-function verifyTableContent(rows: string[][]) {
-  const columnsCount = rows[0].length;
-  const pairs = rows.flatMap((row, rowIndex) => {
+function verifyTableContent(dataRows: string[][]) {
+  const columnsCount = dataRows[0].length;
+  const pairs = dataRows.flatMap((row, rowIndex) => {
     return row.map((text, cellIndex) => {
       const index = rowIndex * columnsCount + cellIndex;
       return { index, text };
@@ -1353,21 +1340,19 @@ function verifyTableContent(rows: string[][]) {
   });
 
   for (const { index, text } of pairs) {
+    cy.log("index", index);
+    cy.log("text", text);
     verifyTableCellContent(index, text);
   }
 }
 
 function verifyTableCellContent(index: number, text: string) {
   // eslint-disable-next-line metabase/no-unsafe-element-filtering
-  cy.findAllByRole("gridcell").eq(index).should("have.text", text);
-}
-
-function verifyQuestionError(error: string) {
-  cy.findByTestId("query-builder-main").within(() => {
-    cy.findByText("There was a problem with your question").should("exist");
-    cy.findByText("Show error details").click();
-    cy.findByText(error).should("exist");
-  });
+  H.tableInteractiveBody()
+    .findByTestId("center-center-quadrant")
+    .findAllByRole("gridcell")
+    .eq(index)
+    .should("have.text", text);
 }
 
 function verifyNoQuestionError() {

@@ -14,9 +14,9 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.card-test :as qp.card-test]
    [metabase.query-processor.metadata :as qp.metadata]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -217,7 +217,7 @@
   (mt/with-test-user :rasta
     (automagic-dashboards.test/with-rollback-only-transaction
       (doseq [[table cardinality] (map vector
-                                       (t2/select :model/Table :db_id (mt/id) {:order-by [[:name :asc]]})
+                                       (t2/select :model/Table :db_id (mt/id) :active true {:order-by [[:name :asc]]})
                                        [2 8 11 11 15 17 5 7])]
         (test-automagic-analysis table cardinality)))))
 

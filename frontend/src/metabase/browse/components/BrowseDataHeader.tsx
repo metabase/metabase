@@ -5,17 +5,13 @@ import { trackDataReferenceClicked } from "metabase/collections/analytics";
 import { PLUGIN_UPLOAD_MANAGEMENT } from "metabase/plugins";
 import { Flex, Group, Icon, Text, Title } from "metabase/ui";
 
-import {
-  BrowseHeader,
-  BrowseSection,
-  LearnAboutDataIcon,
-} from "./BrowseContainer.styled";
-import { BrowseHeaderIconContainer } from "./BrowseHeader.styled";
+import S from "./BrowseContainer.module.css";
+import HeaderS from "./BrowseHeader.module.css";
 
 export const BrowseDataHeader = () => {
   return (
-    <BrowseHeader>
-      <BrowseSection>
+    <Flex className={S.browseHeader} direction="column">
+      <Flex maw="64rem" mx="auto" w="100%">
         <Flex
           w="100%"
           h="2.25rem"
@@ -31,20 +27,20 @@ export const BrowseDataHeader = () => {
           </Title>
           <LearnAboutDataLink />
         </Flex>
-      </BrowseSection>
-    </BrowseHeader>
+      </Flex>
+    </Flex>
   );
 };
 
 const LearnAboutDataLink = () => (
-  <Flex p=".75rem" justify="flex-end" align="center" gap="md">
+  <Flex p="0.75rem" justify="flex-end" align="center" gap="md">
     <Link to="reference" onClick={trackDataReferenceClicked}>
-      <BrowseHeaderIconContainer>
-        <LearnAboutDataIcon size={14} name="reference" />
-        <Text size="md" lh="1" fw="bold" ml=".5rem" c="inherit">
+      <Flex className={HeaderS.browseHeaderIconContainer} align="center">
+        <Icon className={S.learnAboutDataIcon} size={14} name="reference" />
+        <Text size="md" lh="1" fw="bold" ml="sm" c="inherit">
           {t`Learn about our data`}
         </Text>
-      </BrowseHeaderIconContainer>
+      </Flex>
     </Link>
     <PLUGIN_UPLOAD_MANAGEMENT.GdriveDbMenu />
   </Flex>

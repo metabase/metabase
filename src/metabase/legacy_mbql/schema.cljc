@@ -2069,7 +2069,7 @@
     [:expressions  {:optional true} [:ref ::Expressions]]
     [:fields       {:optional true} [:ref ::Fields]]
     [:filter       {:optional true} [:ref ::Filter]]
-    [:limit        {:optional true} ::lib.schema.common/int-greater-than-or-equal-to-zero]
+    [:limit        {:optional true} nat-int?]
     [:order-by     {:optional true} [:ref ::OrderBys]]
     [:page         {:optional true} [:ref :metabase.lib.schema/page]]
     [:joins        {:optional true} [:ref ::Joins]]

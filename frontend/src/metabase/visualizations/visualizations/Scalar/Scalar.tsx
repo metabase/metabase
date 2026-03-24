@@ -101,7 +101,10 @@ export class Scalar extends Component<
       },
       widget: ChartSettingSegmentsEditor,
       persistDefault: true,
-      noPadding: true,
+      getWrapperStyle: () => ({
+        marginLeft: 0,
+        marginRight: 0,
+      }),
       getProps: () => ({
         canRemoveAll: true,
       }),
@@ -131,7 +134,7 @@ export class Scalar extends Component<
       //     { name: "100.000,00", value: "de" },
       //   ],
       // }),
-      // default: "en",
+      // getDefault:() => "en",
     },
     "scalar.decimals": {
       // title: t`Number of decimal places`,

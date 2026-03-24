@@ -26,6 +26,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli.registry :as mr]
+   [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -53,8 +54,7 @@
    [:python
     [:map {:closed true}
      [:source-database {:optional true} :int]
-     [:source-tables   [:sequential {:decode/normalize transforms-base.u/normalize-source-tables-structure}
-                        [:map [:alias [:string {:min 1}]] [:table_id :int]]]]
+     [:source-tables   [:sequential ::transforms-base.u/source-table-entry]]
      [:type [:= "python"]]
      [:body :string]]]])
 
@@ -80,7 +80,7 @@
 
 ;;; ------------------------------------------------- Utilities ------------------------------------------------------
 
-(defn flag-enabled?
+(defn- flag-enabled?
   "Coerce a flag parameter (true, false, or 1) to boolean."
   [v]
   (boolean (#{1 true} v)))
@@ -193,9 +193,7 @@
   (-> (select-model-malli-keys :model/WorkspaceTransform WorkspaceTransform workspace-transform-alias)
       (t2/select-one :workspace_id ws-id :ref_id tx-id)
       api/check-404
-      attach-isolated-target
-      ;; TODO (Ngoc 2026-03-04) -- remove when FE sends/expects array format for source-tables
-      transforms/source-tables-vec->map-for-fe))
+      attach-isolated-target))
 
 (defn create-workspace-transform!
   "Shared logic for creating a new workspace transform.
@@ -233,12 +231,14 @@
           ;; Check for internal target conflict AFTER adding database to target
           _         (api/check-400 (not (internal-target-conflict? ws-id (:target body)))
                                    (deferred-tru "Another transform in this workspace already targets that table"))
+          ;; Eagerly create global target table row so it's immediately visible
+          {:keys [database schema name]} (:target body)
+          _         (when (and database name)
+                      (table/upsert-transform-target-table! database schema name))
           transform (ws.common/add-to-changeset! api/*current-user-id* workspace :transform global-id body
                                                  :ref-id ref-id)]
       (-> (select-malli-keys WorkspaceTransform workspace-transform-alias transform)
-          attach-isolated-target
-          ;; TODO (Ngoc 2026-03-04) -- remove when FE sends/expects array format for source-tables
-          transforms/source-tables-vec->map-for-fe))))
+          attach-isolated-target))))
 
 ;;; ---------------------------------------- Pending inputs ----------------------------------------
 
@@ -411,14 +411,18 @@
         ;; Build a map of [d s t] => id for every table that has been synced since the output row was written.
         fallback-map     (merge
                           (ws.impl/table-ids-fallbacks :global_schema :global_table :global_table_id all-outputs)
-                          (ws.impl/table-ids-fallbacks :isolated_schema :isolated_table :isolated_table_id all-outputs))]
+                          (ws.impl/table-ids-fallbacks :isolated_schema :isolated_table :isolated_table_id all-outputs))
+        table-ids        (into (into #{} (keep :isolated_table_id) all-outputs) (vals fallback-map))
+        active-table-ids (t2/select-fn-set :id [:model/Table :id] :id [:in table-ids] :active true)]
     {:inputs  (sort-by (juxt :db_id :schema :table) inputs)
      :outputs (sort-by
                (juxt :db_id (comp (juxt :schema :table) :global))
                (concat
                 ;; Workspace transform outputs
                 (for [{:keys [ref_id db_id global_schema global_table global_table_id
-                              isolated_schema isolated_table isolated_table_id]} outputs]
+                              isolated_schema isolated_table isolated_table_id]} outputs
+                      :let [isolated_table_id (or isolated_table_id
+                                                  (get fallback-map [db_id isolated_schema isolated_table]))]]
                   {:db_id    db_id
                    :global   {:transform_id nil
                               :schema       global_schema
@@ -427,10 +431,14 @@
                    :isolated {:transform_id ref_id
                               :schema       isolated_schema
                               :table        isolated_table
-                              :table_id     (or isolated_table_id (get fallback-map [db_id isolated_schema isolated_table]))}})
+                              :table_id     isolated_table_id
+                              :active       (contains? active-table-ids isolated_table_id)}})
+
                 ;; External transform outputs
                 (for [{:keys [transform_id db_id global_schema global_table global_table_id
-                              isolated_schema isolated_table isolated_table_id]} external-outputs]
+                              isolated_schema isolated_table isolated_table_id]} external-outputs
+                      :let [isolated_table_id (or isolated_table_id
+                                                  (get fallback-map [db_id isolated_schema isolated_table]))]]
                   {:db_id    db_id
                    :global   {:transform_id transform_id
                               :schema       global_schema
@@ -439,7 +447,8 @@
                    :isolated {:transform_id transform_id
                               :schema       isolated_schema
                               :table        isolated_table
-                              :table_id     (or isolated_table_id (get fallback-map [db_id isolated_schema isolated_table]))}})))}))
+                              :table_id     isolated_table_id
+                              :active       (contains? active-table-ids isolated_table_id)}})))}))
 
 (defn get-workspace-log
   "Handler body for GET /:ws-id/log."
@@ -598,6 +607,7 @@
   (let [workspace (t2/select-one :model/Workspace :id ws-id)
         _         (api/check-404 workspace)
         _         (api/check-400 (not= :archived (:base_status workspace)) "Cannot execute archived workspace")
+        _         (check-transforms-enabled! (:database_id workspace))
         graph     (ws.impl/get-or-calculate-graph! workspace)]
     (ws.impl/execute-workspace! workspace graph {:stale-only? (flag-enabled? stale_only)})))
 
@@ -678,7 +688,11 @@
           ;; If target is changing, check for conflicts with other transforms (excluding this one)
           (when (:target body)
             (api/check-400 (not (internal-target-conflict? ws-id (:target merged-body) tx-id))
-                           (deferred-tru "Another transform in this workspace already targets that table")))
+                           (deferred-tru "Another transform in this workspace already targets that table"))
+            ;; Eagerly create global target table row so it's immediately visible
+            (let [{:keys [database schema name]} (:target merged-body)]
+              (when (and database name)
+                (table/upsert-transform-target-table! database schema name))))
           (t2/update! :model/WorkspaceTransform {:workspace_id ws-id :ref_id tx-id} merged-body)
           ;; If source or target changed, increment versions for re-analysis
           (when source-or-target-changed?

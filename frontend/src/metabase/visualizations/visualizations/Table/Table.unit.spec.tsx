@@ -354,7 +354,7 @@ describe("text_wrapping", () => {
       const stringColumn = createMockCategoryColumn();
       const textWrappingSetting = getTextWrappingSetting(stringColumn);
 
-      expect(textWrappingSetting.default).toBe(false);
+      expect(textWrappingSetting.getDefault?.(stringColumn, {})).toBe(false);
     });
   });
 });

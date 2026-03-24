@@ -15,6 +15,19 @@
 
 (set! *warn-on-reflection* true)
 
+(defn source-table-entry
+  "Build a full source-table-entry from alias + table_id by looking up database_id and schema."
+  [alias table-id]
+  (let [{:keys [db_id schema]} (t2/select-one [:model/Table :db_id :schema] :id table-id)]
+    {:alias alias :table_id table-id :database_id db_id :schema schema}))
+
+(defn default-source-table-entry
+  "Build a source-table-entry for the first active table in the current test database."
+  ([]
+   (default-source-table-entry "test"))
+  ([alias]
+   (source-table-entry alias (t2/select-one-pk :model/Table :db_id (mt/id) :active true))))
+
 (defn drop-target!
   "Drop transform target `target` and clean up its metadata.
    `target` can be a string or a map. If `target` is a string, type :table is assumed.

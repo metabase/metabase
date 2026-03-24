@@ -2,8 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.test.data.clickhouse :as ctd]
    [metabase.util :as u]

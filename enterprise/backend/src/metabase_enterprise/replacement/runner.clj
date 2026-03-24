@@ -9,6 +9,8 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.model-persistence.core :as model-persistence]
+   [metabase.transforms.core :as transforms]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -141,26 +143,53 @@
         (throw (ex-info (failure-message fs (count all-transitive-dependents))
                         {:failures fs}))))))
 
-(defn run-swap
+(defn run-swap-source!
   "Replace all usages of `old-source` with `new-source` across all dependent entities.
 
    Both arguments are [type id] pairs like [:card 123] or [:table 45].
    `progress` implements `IRunnerProgress` for tracking and cancellation.
 
    Example:
-     (swap-source [:card 123] [:card 789])
+     (run-swap-source! [:card 123] [:card 789])
 
    This finds all entities that depend on the old source and updates their queries
    to reference the new source instead. This includes ALL transitive dependents,
    which is necessary for implicit joins to work correctly (e.g., when card D filters
-   on Products.Category but is based on card C → card B → card A → Orders).
-
-   Returns {:swapped [...]} with the list of entities that were updated."
+   on Products.Category but is based on card C → card B → card A → Orders)."
   ([old-source new-source]
-   (run-swap old-source new-source noop-progress))
+   (run-swap-source! old-source new-source noop-progress))
   ([old-source
     new-source
     progress]
    (let [all-transitive (replacement.usages/transitive-usages old-source)]
      (run-swap* {:all-transitive-dependents all-transitive}
                 old-source new-source progress))))
+
+(defn run-swap-model-with-transform!
+  "Execute a transform, find the output table, then swap all dependents of the card
+   to point at the new table. Finally un-persist and convert the card to a saved question.
+
+   `card-id`      — the model card to replace
+   `transform-id` — the transform to execute
+   `progress`     — IRunnerProgress for tracking"
+  ([card-id transform-id]
+   (run-swap-model-with-transform! card-id transform-id noop-progress))
+  ([card-id transform-id progress & {:keys [user-id]}]
+   (let [transform (or (t2/select-one :model/Transform :id transform-id)
+                       (throw (ex-info "Transform not found" {:transform-id transform-id})))]
+     ;; phase 1: execute the transform
+     (transforms/execute! transform (cond-> {:run-method :manual}
+                                      user-id (assoc :user-id user-id)))
+
+     ;; phase 2: find the output table and swap sources
+     (let [table (or (transforms/output-table transform)
+                     (throw (ex-info "Output table not found after transform execution"
+                                     {:transform-id (:id transform)})))]
+       (run-swap-source! [:card card-id] [:table (:id table)] progress))
+
+     ;; phase 3: unpersist the model if it was persisted
+     (when-let [persisted-info (t2/select-one :model/PersistedInfo :card_id card-id)]
+       (model-persistence/mark-for-pruning! {:id (:id persisted-info)} "off"))
+
+     ;; phase 4: convert the model to a saved question
+     (t2/update! :model/Card card-id {:type :question}))))

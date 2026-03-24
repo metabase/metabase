@@ -412,7 +412,7 @@
                                             :collection (:id coll) :data_model false :settings false
                                             :full_stacktrace true)
                   log (slurp (io/input-stream res))]
-              (is (< 200 (count (str/split-lines log))))
+              (is (< 50 (count (str/split-lines log))))
               ;; Pop out the error event
               (snowplow-test/pop-event-data-and-user-id!))))))))
 

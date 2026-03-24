@@ -13,6 +13,7 @@ import {
 import { getParameterMappings } from "metabase/dashboard/actions/auto-wire-parameters/utils";
 import { updateDashboard } from "metabase/dashboard/actions/save";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
+import { isQuestionDashCard } from "metabase/lib/dashboard";
 import { createAction, createThunkAction } from "metabase/lib/redux";
 import {
   type NewParameterOpts,
@@ -78,7 +79,6 @@ import {
   findDashCardForInlineParameter,
   hasInlineParameters,
   isDashcardInlineParameter,
-  isQuestionDashCard,
   setDashboardHeaderParameterIndex,
   supportsInlineParameters,
 } from "../utils";

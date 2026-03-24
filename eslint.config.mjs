@@ -656,7 +656,6 @@ const configs = [
             {
               group: [
                 "metabase/lib/*",
-                "!metabase/lib/colors",
                 "!metabase/lib/encoding",
                 "!metabase/lib/formatting",
                 "!metabase/lib/number",

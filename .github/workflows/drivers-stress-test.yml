@@ -49,7 +49,7 @@ jobs:
 
   be-tests-athena-ee:
     if: inputs.driver == 'Athena'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 90
     env:
       CI: 'true'
@@ -68,7 +68,7 @@ jobs:
 
   be-tests-bigquery-cloud-sdk-ee:
     if: inputs.driver == 'BigQuery'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 90
     env:
       CI: 'true'
@@ -89,7 +89,7 @@ jobs:
 
   be-tests-druid-ee:
     if: inputs.driver == 'Druid'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 90
     env:
       CI: 'true'
@@ -111,7 +111,7 @@ jobs:
 
   be-tests-mariadb-10-6-ee:
     if: inputs.driver == 'Maria DB'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 90
     env:
       CI: 'true'
@@ -140,7 +140,7 @@ jobs:
 
   be-tests-mariadb-latest-ee:
     if: inputs.driver == 'Maria DB (latest)'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 90
     env:
       CI: 'true'
@@ -169,7 +169,7 @@ jobs:
 
   be-tests-mongo-4-4-ee:
     if: inputs.driver == 'Mongo 4'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 90
     env:
       CI: 'true'
@@ -191,7 +191,7 @@ jobs:
 
   be-tests-mongo-4-4-ssl-ee:
     if: inputs.driver == 'Mongo 4 (SSL)'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 90
     env:
       CI: 'true'
@@ -225,7 +225,7 @@ jobs:
 
   be-tests-mongo-5-0-ee:
     if: inputs.driver == 'Mongo 5'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 90
     env:
       CI: 'true'
@@ -247,7 +247,7 @@ jobs:
 
   be-tests-mongo-5-0-ssl-ee:
     if: inputs.driver == 'Mongo 5 (SSL)'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 90
     env:
       CI: 'true'
@@ -281,7 +281,7 @@ jobs:
 
   be-tests-mongo-latest-ee:
     if: inputs.driver == 'Mongo (latest)'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 90
     env:
       CI: 'true'
@@ -306,7 +306,7 @@ jobs:
 
   be-tests-mysql-8-4-ee:
     if: inputs.driver == 'MySQL'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 90
     env:
       CI: 'true'
@@ -335,7 +335,7 @@ jobs:
 
   be-tests-mysql-latest-ee:
     if: inputs.driver == 'MySQL (latest)'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 90
     env:
       CI: 'true'
@@ -373,7 +373,7 @@ jobs:
 
   be-tests-oracle-18-4-ee:
     if: inputs.driver == 'Oracle 18'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 90
     env:
       CI: 'true'
@@ -399,7 +399,7 @@ jobs:
 
   be-tests-oracle-21-3-ee:
     if: inputs.driver == 'Oracle 21'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 90
     env:
       CI: 'true'
@@ -434,7 +434,7 @@ jobs:
 
   be-tests-postgres-ee:
     if: inputs.driver == 'Postgres'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 90
     env:
       CI: 'true'
@@ -464,7 +464,7 @@ jobs:
 
   be-tests-postgres-latest-ee:
     if: inputs.driver == 'Postgres (latest)'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 90
     env:
       CI: 'true'
@@ -497,7 +497,7 @@ jobs:
 
   be-tests-presto-jdbc-ee:
     if: inputs.driver == 'Presto JDBC'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 90
     env:
       CI: 'true'
@@ -546,7 +546,7 @@ jobs:
 
   be-tests-redshift-ee:
     if: inputs.driver == 'Redshift'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 90
     env:
       CI: 'true'
@@ -565,7 +565,7 @@ jobs:
 
   be-tests-snowflake-ee:
     if: inputs.driver == 'Snowflake'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 90
     env:
       CI: 'true'
@@ -586,7 +586,7 @@ jobs:
 
   be-tests-sparksql-ee:
     if: inputs.driver == 'SparkSQL'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 90
     env:
       CI: 'true'
@@ -606,7 +606,7 @@ jobs:
 
   be-tests-sqlite-ee:
     if: inputs.driver == 'SQLite'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 90
     env:
       CI: 'true'
@@ -621,7 +621,7 @@ jobs:
 
   be-tests-sqlserver-2017-ee:
     if: inputs.driver == 'SQL Server 2017'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 90
     env:
       CI: 'true'
@@ -648,7 +648,7 @@ jobs:
 
   be-tests-sqlserver-2022-ee:
     if: inputs.driver == 'SQL Server 2022'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 90
     env:
       CI: 'true'
@@ -675,7 +675,7 @@ jobs:
 
   be-tests-starburst-ee:
     if: inputs.driver == 'Starburst'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 90
     env:
       CI: 'true'
@@ -700,7 +700,7 @@ jobs:
 
   login-to-ecr:
     if: inputs.driver == 'Vertica'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     permissions:
       id-token: write
@@ -729,7 +729,7 @@ jobs:
 
   be-tests-vertica-ee:
     if: inputs.driver == 'Vertica'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     needs: login-to-ecr
     timeout-minutes: 90
     env:

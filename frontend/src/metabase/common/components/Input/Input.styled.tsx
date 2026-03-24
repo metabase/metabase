@@ -10,8 +10,8 @@ import {
   inputPadding,
   inputTypography,
 } from "metabase/common/style/input";
-import type { ColorName } from "metabase/lib/colors/types";
 import { monospaceFontFamily } from "metabase/styled-components/theme";
+import type { ColorName } from "metabase/ui/colors/types";
 import { color } from "metabase/ui/utils/colors";
 
 import type { InputSize } from "../../style/types";

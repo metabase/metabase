@@ -176,4 +176,16 @@ describe("DatabaseConnectionInfoSection", () => {
       });
     });
   });
+
+  describe("Cloud-attached databases", () => {
+    it("should not show the sync actions", async () => {
+      setup({ database: createMockDatabase({ is_attached_dwh: true }) });
+      expect(
+        screen.queryByText(/Sync database schema/i),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(/Re-scan field values/i),
+      ).not.toBeInTheDocument();
+    });
+  });
 });

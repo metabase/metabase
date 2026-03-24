@@ -42,7 +42,7 @@ describe("Metabot Query Builder", () => {
       H.restore();
       cy.signInAsAdmin();
       H.activateToken("bleeding-edge");
-      cy.intercept("POST", "/api/ee/metabot-v3/agent-streaming").as("agentReq");
+      cy.intercept("POST", "/api/metabot/agent-streaming").as("agentReq");
     });
 
     it("should redirect to notebook when metabot-enabled? is false", () => {
@@ -110,7 +110,7 @@ describe("Metabot Query Builder", () => {
 
     it("should support clicking suggested prompts", () => {
       // mock suggested prompts
-      cy.intercept("GET", "/api/ee/metabot-v3/metabot/*/prompt-suggestions*", {
+      cy.intercept("GET", "/api/metabot/metabot/*/prompt-suggestions*", {
         prompts: [{ prompt: "Show me all orders" }],
       });
 
@@ -170,7 +170,7 @@ describe("Metabot Query Builder", () => {
     });
 
     it("should not reuse the nlq profile after falling back to notebook chat", () => {
-      cy.intercept("POST", "/api/ee/metabot-v3/agent-streaming", (req) => {
+      cy.intercept("POST", "/api/metabot/agent-streaming", (req) => {
         req.reply({
           statusCode: 200,
           body: mockTextOnlyResponse("ok"),
