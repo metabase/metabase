@@ -16,7 +16,7 @@
    [metabase.system.core :as system]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [oidc-provider.protocol :as proto])
+   [oidc-provider.store :as oidc.store])
   (:import
    (java.io BufferedWriter OutputStreamWriter)
    (java.net URI)
@@ -41,7 +41,7 @@
   "Look up and validate an OAuth bearer token. Returns `{:user-id <int> :scopes <set>}` on success, nil on failure."
   [token-string]
   (when-let [provider (oauth-server/get-provider)]
-    (when-let [token-data (proto/get-access-token (:token-store provider) token-string)]
+    (when-let [token-data (oidc.store/get-access-token (:token-store provider) token-string)]
       (let [expiry (:expiry token-data)]
         (when (or (nil? expiry)
                   (t/after? (t/instant expiry) (t/instant)))
