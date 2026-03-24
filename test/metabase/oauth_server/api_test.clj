@@ -542,21 +542,18 @@
                    :expires_in   pos-int?}
                   refresh-response)))))))
 
-(deftest token-client-credentials-grant-test
-  (testing "Client credentials grant -- returns access token"
-    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+(deftest dcr-strips-client-credentials-grant-type-test
+  (testing "Dynamic client registration strips client_credentials from grant_types"
+    ;; client_credentials tokens have no user context (user_id = NULL) which makes
+    ;; them unusable for MCP — validate-bearer-token requires a valid integer user-id.
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
       (t2/with-transaction [_conn nil {:rollback-only true}]
-        (let [test-client (create-test-client! {:client_name  "CC Client"
-                                                :grant_types  ["client_credentials"]})
-              client-id     (:client_id test-client)
-              client-secret (:client_secret test-client)
-              response      (token-request!
-                             {:grant_type    "client_credentials"}
-                             :authorization (basic-auth-header client-id client-secret))]
-          (is (=? {:access_token string?
-                   :token_type   "Bearer"
-                   :expires_in   pos-int?}
-                  response)))))))
+        (let [response (mt/user-http-request :crowberto :post 201 "oauth/register"
+                                             {:client_name   "CC Client"
+                                              :redirect_uris ["https://example.com/callback"]
+                                              :grant_types   ["authorization_code" "client_credentials"]})]
+          (is (= ["authorization_code"] (:grant_types response))))))))
 
 (deftest token-invalid-client-credentials-test
   (testing "Invalid client credentials -- returns 401"

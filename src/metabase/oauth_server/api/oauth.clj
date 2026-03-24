@@ -69,14 +69,22 @@
              :body    {"error"             "invalid_client_metadata"
                        "error_description" "Invalid or missing JSON body"}}
             (try
-              ;; Default to "native" (not the RFC default "web") so that dynamically
-              ;; registered clients (CLI tools, desktop apps) can use HTTP loopback redirects.
-              ;; Default scopes to all provider-supported scopes when not specified.
+              ;; MCP clients frequently omit application_type, scope, and may request
+              ;; unsupported grant types. We are required to support poorly-configured
+              ;; clients, so we apply sensible defaults here:
+              ;; - application_type defaults to "native" (not the RFC default "web") so
+              ;;   CLI tools and desktop apps can use HTTP loopback redirects.
+              ;; - scope defaults to all provider-supported scopes when not specified.
               (let [body       (cond-> body
                                  (not (contains? body :application_type))
                                  (assoc :application_type "native")
                                  (not (contains? body :scope))
-                                 (assoc :scope (str/join " " (oauth-server/all-agent-scopes))))
+                                 (assoc :scope (str/join " " (oauth-server/all-agent-scopes)))
+                                 ;; Remove client_credentials grant type — tokens issued without a
+                                 ;; user context are unusable for MCP (validate-bearer-token requires
+                                 ;; a valid user-id).
+                                 (contains? body :grant_types)
+                                 (update :grant_types (fn [gts] (vec (remove #{"client_credentials"} gts)))))
                     response   (oidc/dynamic-register-client provider body)
                     client-id  (:client_id response)]
                 ;; Mark as dynamically registered (the library doesn't know about registration_type)
