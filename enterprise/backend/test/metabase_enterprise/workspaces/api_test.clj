@@ -1570,7 +1570,7 @@
                   result))))
 
       (testing "returns results for multi-row queries"
-        (let [sql    "SELECT 1 as num UNION ALL SELECT 2 UNION ALL SELECT 3 ORDER BY 1"
+        (let [sql    "SELECT * FROM (SELECT 1 as num UNION ALL SELECT 2 UNION ALL SELECT 3) t ORDER BY 1"
               result (mt/user-http-request :crowberto :post 200
                                            (ws-url (:id ws) "/query")
                                            {:sql sql})]
