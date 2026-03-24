@@ -633,6 +633,7 @@
                                            (lib.metadata/field mp (mt/id :products :created_at)) :week)))
           question-data {:name "Question?"
                          :description "Descriptive?"
+                         :display :bar
                          :dataset_query (lib/->legacy-MBQL source-query)
                          :type :question}]
       (mt/with-temp [:model/Card {question-id :id} question-data]
@@ -664,6 +665,7 @@
                                               (select-keys [:name :description :database_id])
                                               (assoc :id question-id
                                                      :type "question"
+                                                     :display "bar"
                                                      :verified true
                                                      :result_columns
                                                      (map-indexed #(assoc %2 :field_id (format "c%d-%d" question-id %1))

@@ -278,15 +278,15 @@
     :chart_type (if chart-type (clojure.core/name chart-type) "table")}))
 
 (defn question->xml
-  "Format question for LLM consumption.
-   Matches Python Question.llm_representation exactly."
-  [{:keys [id name description verified collection visualization]}]
+  "Format question for LLM consumption."
+  [{:keys [id name description verified collection visualization display]}]
   (render-llm-template
    :question
    {:question_id (str id)
     :question_verified (boolean verified)
     :question_name name
     :question_description description
+    :question_display_type (some-> display clojure.core/name)
     :question_collection_xml (when collection (collection->xml collection))
     :question_visualization_xml (when visualization (visualization->xml visualization))}))
 
