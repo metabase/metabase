@@ -339,6 +339,15 @@ def transform(animals):
         `INSERT INTO "${SCHEMA_B}"."Animals" (name, score) VALUES (\'NewRow\', 31)`,
       );
 
+      cy.intercept("GET", /\/api\/transform\/\d+$/, (req) => {
+        req.on("response", (res) => {
+          Cypress.log({
+            name: "dbg",
+            message: `checkpoint=${res.body.last_checkpoint_value} status=${res.body.last_run?.status}`,
+          });
+        });
+      });
+
       cy.go("back");
       H.DataStudio.Transforms.runTab().click();
       runTransformAndWaitForSuccess();
@@ -361,6 +370,16 @@ def transform(animals):
       cy.log("go to Transform Settings and reset checkpoint");
       cy.go("back");
       H.DataStudio.Transforms.settingsTab().click();
+      cy.url().then((url) => {
+        const id = url.match(/transforms\/(\d+)/)?.[1];
+        if (id) {
+          cy.request("GET", `/api/transform/${id}`).then((res) => {
+            cy.log(
+              `DBG server: checkpoint=${res.body.last_checkpoint_value} status=${res.body.last_run?.status}`,
+            );
+          });
+        }
+      });
       cy.findByRole("group", { name: /Current checkpoint/i }).within(() => {
         cy.findByText(/31/).should("exist");
       });
