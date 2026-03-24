@@ -4,6 +4,8 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useUpgradeAction } from "metabase/common/components/upsells/components/UpgradeModal";
 import { DATA_STUDIO_UPGRADE_URL } from "metabase/common/components/upsells/constants";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
+import { DottedBackground } from "metabase/data-studio/upsells/components/DottedBackground";
+import { LineDecorator } from "metabase/data-studio/upsells/components/LineDecorator";
 import { UpsellCardContent } from "metabase/data-studio/upsells/components/UpsellCardContent";
 import * as Urls from "metabase/lib/urls";
 import { TransformHeader } from "metabase/transforms/components/TransformHeader";
@@ -38,18 +40,22 @@ export function TransformInspectorUpsellPage({
   }
 
   return (
-    <PageContainer>
-      <TransformHeader transform={transform} />
-      <Stack align="center" py="xl">
-        <UpsellCardContent
-          campaign={CAMPAIGN}
-          location={LOCATION}
-          title={t`See what's happening inside your transforms`}
-          description={t`Get a diagnostic view of your transforms, so you can catch data quality issues before they cause problems downstream.`}
-          upgradeOnClick={upgradeOnClick}
-          upgradeUrl={upgradeUrl}
-        />
-      </Stack>
-    </PageContainer>
+    <DottedBackground>
+      <PageContainer>
+        <TransformHeader transform={transform} />
+        <Stack align="center" py="xl">
+          <LineDecorator>
+            <UpsellCardContent
+              campaign={CAMPAIGN}
+              location={LOCATION}
+              title={t`See what's happening inside your transforms`}
+              description={t`Get a diagnostic view of your transforms, so you can catch data quality issues before they cause problems downstream.`}
+              upgradeOnClick={upgradeOnClick}
+              upgradeUrl={upgradeUrl}
+            />
+          </LineDecorator>
+        </Stack>
+      </PageContainer>
+    </DottedBackground>
   );
 }
