@@ -254,7 +254,7 @@
                                      :total :discount :created-at :quantity]
                           :let      [field (meta/field-metadata :orders field-key)]]
                       {:name                         (:name field)
-                       :lib/join-alias "Orders"
+                       :lib/join-alias "Orders_2"
                        :lib/source-column-alias      (:name field)
                        :lib/source                   :source/joins})]
     (testing "just own columns"
@@ -417,8 +417,8 @@
                         (m/index-by (juxt :fk-join-alias :fk-field-id)))
         sr-email   (get emails [nil (meta/id :gh/issues :reporter-id)])
         sa-email   (get emails [nil (meta/id :gh/issues :assignee-id)])
-        jr-email   (get emails ["GH Issues" (meta/id :gh/issues :reporter-id)])
-        ja-email   (get emails ["GH Issues" (meta/id :gh/issues :assignee-id)])]
+        jr-email   (get emails ["GH Issues_2" (meta/id :gh/issues :reporter-id)])
+        ja-email   (get emails ["GH Issues_2" (meta/id :gh/issues :assignee-id)])]
     (testing "explicit self-join allows implicit joins via all duplicated FKs"
       (is (= 4 (count (filter some? [sr-email sa-email jr-email ja-email]))))
       (is (= 4 (count (into #{} [sr-email sa-email jr-email ja-email])))))))
