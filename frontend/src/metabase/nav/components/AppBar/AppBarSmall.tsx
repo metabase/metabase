@@ -1,8 +1,8 @@
 import { useCallback, useState } from "react";
 
 import { Nav as DetailViewNav } from "metabase/detail-view/components";
+import { MetabotAppBarButton } from "metabase/metabot/components/MetabotAppBarButton";
 import { SearchBar } from "metabase/nav/components/search/SearchBar";
-import { PLUGIN_METABOT } from "metabase/plugins";
 import { Box, Flex } from "metabase/ui";
 import type { DetailViewState } from "metabase-types/store";
 
@@ -91,7 +91,7 @@ const AppBarSmall = ({
                   </Flex>
                 ))}
             </AppBarSearchContainer>
-            {!isEmbeddingIframe && <PLUGIN_METABOT.MetabotAppBarButton />}
+            {!isEmbeddingIframe && <MetabotAppBarButton />}
             {isAppSwitcherVisible && <AppSwitcher />}
           </Flex>
           <AppBarLogoContainer isVisible={isLogoVisible && !isSearchActive}>

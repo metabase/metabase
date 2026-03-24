@@ -13,6 +13,7 @@ import type { DownloadsState } from "./downloads";
 import type { EmbedState } from "./embed";
 import type { EmbeddingDataPickerState } from "./embedding-data-picker";
 import type { EntitiesState } from "./entities";
+import type { MetabotState } from "./metabot";
 import type { ModalState } from "./modal";
 import type { ParametersState } from "./parameters";
 import type { PulseState } from "./pulse";
@@ -54,6 +55,7 @@ export interface State {
   };
   "metabase-api": MetabaseApiState;
   documents: DocumentsState;
+  metabot: MetabotState;
 }
 
 export type Dispatch<T = any> = (action: T) => unknown | Promise<unknown>;

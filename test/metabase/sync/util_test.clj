@@ -363,3 +363,13 @@
                 (is (= "complete"   (:initial_sync_status (get-inactive-table)))))))
           (a/close! syncing-chan)
           (a/close! completed-chan))))))
+
+(deftest sync-failure-increments-prometheus-counter-test
+  (testing "When a sync operation fails, the :metabase-sync/failures counter is incremented"
+    (mt/with-prometheus-system! [_ system]
+      (mt/with-temp [:model/Database db {:engine :h2}]
+        (let [initial (mt/metric-value system :metabase-sync/failures {:driver "h2"})]
+          (sync-util/do-sync-operation
+           :sync db "test sync failure"
+           (fn [] (throw (Exception. "sync boom"))))
+          (is (< initial (mt/metric-value system :metabase-sync/failures {:driver "h2"}))))))))

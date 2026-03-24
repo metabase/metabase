@@ -19,10 +19,10 @@ import {
   type ExternalTransform,
   type MeasureDependencyNode,
   type PythonLibrary,
-  type ReplaceSourceRun,
   type SandboxDependencyNode,
   type SegmentDependencyNode,
   type SnippetDependencyNode,
+  type SourceReplacementRun,
   type SupportAccessGrant,
   type TableDependencyNode,
   type TransformDependencyNode,
@@ -34,9 +34,6 @@ import {
 export const ENTERPRISE_TAG_TYPES = [
   ...TAG_TYPES,
   "scim",
-  "metabot",
-  "metabot-entities-list",
-  "metabot-prompt-suggestions",
   "gsheets-status",
   "sandbox",
   "workspace-transforms",
@@ -49,7 +46,7 @@ export const ENTERPRISE_TAG_TYPES = [
   "remote-sync-branches",
   "remote-sync-current-task",
   "remote-sync-has-remote-changes",
-  "replace-source-run",
+  "source-replacement-run",
   "python-transform-library",
   "workspace",
   "support-access-grant",
@@ -281,8 +278,17 @@ export function provideWorkspaceAllowedDatabaseTags(
   ];
 }
 
-export function provideReplaceSourceRunTags(
-  run: ReplaceSourceRun,
+export function provideSourceReplacementRunTags(
+  run: SourceReplacementRun,
 ): TagDescription<EnterpriseTagType>[] {
-  return [idTag("replace-source-run", run.id)];
+  return [idTag("source-replacement-run", run.id)];
+}
+
+export function provideSourceReplacementRunListTags(
+  runs: SourceReplacementRun[],
+): TagDescription<EnterpriseTagType>[] {
+  return [
+    listTag("source-replacement-run"),
+    ...runs.flatMap(provideSourceReplacementRunTags),
+  ];
 }

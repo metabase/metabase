@@ -10,7 +10,7 @@ import { useListModelsQuery } from "metabase/api/llm";
 import { getErrorMessage } from "metabase/api/utils/errors";
 import { useAdminSetting } from "metabase/api/utils/settings";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useToast } from "metabase/common/hooks";
+import { useSetting, useToast } from "metabase/common/hooks";
 import { Box, PasswordInput, Select, Stack, TextInput } from "metabase/ui";
 
 export function MetabotSQLGenerationSettingsSection() {
@@ -31,9 +31,14 @@ export function MetabotSQLGenerationSettingsSection() {
     modelDetails?.is_env_setting && modelDetails?.env_name
   );
 
+  const isApiKeyConfigured = useSetting("llm-anthropic-api-key-configured?");
   const savedApiKey = apiKey.value ?? "";
-  const hasApiKey = savedApiKey.trim().length > 0;
+  const hasApiKey = isApiKeyConfigured || savedApiKey.trim().length > 0;
   const apiKeyDisplayValue = localApiKey ?? savedApiKey;
+  const apiKeyPlaceholder =
+    isApiKeyConfigured && !localApiKey
+      ? "•".repeat(108)
+      : t`Enter your API key`;
   const ApiKeyInput = isApiKeyEnvVar ? TextInput : PasswordInput;
 
   const {
@@ -105,7 +110,7 @@ export function MetabotSQLGenerationSettingsSection() {
             <ApiKeyInput
               disabled={isApiKeyEnvVar}
               label={t`Anthropic API Key`}
-              placeholder={t`Enter your API key`}
+              placeholder={apiKeyPlaceholder}
               value={apiKeyDisplayValue}
               onChange={(e) => {
                 setLocalApiKey(e.target.value);
