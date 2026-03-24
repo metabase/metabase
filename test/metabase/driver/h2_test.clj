@@ -89,17 +89,17 @@
                    (catch Exception e e)))]
       (testing "connection-uri"
         (let [result (f {:connection-uri conn})]
-          (is (= "Cannot specify subname, protocol, or connection-uri in details map"
+          (is (= "Cannot specify connection-uri in details map"
                  (ex-message result)))
           (is (= {:invalid-keys #{"connection-uri"}} (ex-data result)))))
       (testing "subprotocol"
         (let [result (f {:db conn, :subprotocol "h2"})]
-          (is (= "Cannot specify subname, protocol, or connection-uri in details map"
+          (is (= "Cannot specify subprotocol in details map"
                  (ex-message result)))
           (is (= {:invalid-keys #{"subprotocol"}} (ex-data result)))))
-      (testing "subprotocol"
+      (testing "classname"
         (let [result (f {:db conn, :classname "org.h2.Driver"})]
-          (is (= "Cannot specify subname, protocol, or connection-uri in details map"
+          (is (= "Cannot specify classname in details map"
                  (ex-message result)))
           (is (= {:invalid-keys #{"classname"}} (ex-data result))))))))
 

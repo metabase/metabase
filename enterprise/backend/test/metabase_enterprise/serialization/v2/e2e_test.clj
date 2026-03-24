@@ -10,6 +10,7 @@
    [metabase-enterprise.serialization.v2.ingest :as ingest]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase-enterprise.serialization.v2.storage :as storage]
+   [metabase.models.database :as models.database]
    [metabase.models.serialization :as serdes]
    [metabase.models.setting :as setting]
    [metabase.test :as mt]
@@ -22,6 +23,11 @@
    (java.nio.file Path)))
 
 (set! *warn-on-reflection* true)
+
+#_{:clj-kondo/ignore [:metabase/validate-deftest]}
+(use-fixtures :each (fn [thunk]
+                      (mt/with-dynamic-fn-redefs [models.database/assert-not-h2! (constantly nil)]
+                        (thunk))))
 
 (defn- dir->contents-set [p ^File dir]
   (->> dir
