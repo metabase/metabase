@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { Sidebar } from "metabase/dashboard/components/Sidebar";
+import { Sidebar } from "metabase/common/components/Sidebar";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { getIsDashCardsLoadingComplete } from "metabase/dashboard/selectors";
 import { useSelector } from "metabase/lib/redux";

@@ -1,7 +1,7 @@
 import _ from "underscore";
 
 import { tag_names } from "cljs/metabase.parameters.shared";
-import { isQuestionCard, isQuestionDashCard } from "metabase/dashboard/utils";
+import { isQuestionCard, isQuestionDashCard } from "metabase/lib/dashboard";
 import { slugify } from "metabase/lib/formatting";
 import { isNotNull } from "metabase/lib/types";
 import { generateParameterId } from "metabase/parameters/utils/parameter-id";

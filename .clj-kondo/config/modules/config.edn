@@ -3002,10 +3002,12 @@
            events
            lib
            lib-be
+           model-persistence
            models
            queries
            source-swap
            task
+           transforms
            util
            enterprise/dependencies}
    :model-imports #{:model/Card
@@ -3013,6 +3015,7 @@
                     :model/DashboardCard
                     :model/Field
                     :model/Measure
+                    :model/PersistedInfo
                     :model/Segment
                     :model/Table
                     :model/Transform}}

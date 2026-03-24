@@ -8,6 +8,7 @@ import {
   SIDEBAR_NAME,
 } from "metabase/dashboard/constants";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { isQuestionCard, isQuestionDashCard } from "metabase/lib/dashboard";
 import { isNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import {
@@ -56,8 +57,6 @@ import {
   hasDatabaseActionsEnabled,
   hasInlineParameters,
   isDashcardInlineParameter,
-  isQuestionCard,
-  isQuestionDashCard,
 } from "./utils";
 
 type SidebarState = State["dashboard"]["sidebar"];

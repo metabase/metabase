@@ -19,10 +19,8 @@ import {
   getSelectedTabId,
   getTabs,
 } from "metabase/dashboard/selectors";
-import {
-  findDashCardForInlineParameter,
-  isQuestionDashCard,
-} from "metabase/dashboard/utils";
+import { findDashCardForInlineParameter } from "metabase/dashboard/utils";
+import { isQuestionDashCard } from "metabase/lib/dashboard";
 import {
   getMappingOptionByTarget,
   getParameterMappingOptions,

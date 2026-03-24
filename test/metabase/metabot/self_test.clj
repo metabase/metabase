@@ -559,7 +559,7 @@
 (deftest call-llm-prometheus-test
   (mt/with-prometheus-system! [_ system]
     (with-redefs [self/retry-delay-ms (constantly 0)]
-      (let [labels {:model "test-model" :source "agent"}]
+      (let [labels {:model "openrouter/test-model" :source "agent"}]
         (testing "increments llm-requests and observes duration on success"
           (with-redefs [openrouter/openrouter (constantly (test-util/mock-llm-response [{:type :start :id "m1"}]))]
             (run! identity (self/call-llm "openrouter/test-model" nil [] {} {:tag "agent"})))
@@ -635,7 +635,7 @@
 (deftest call-llm-structured-prometheus-test
   (mt/with-prometheus-system! [_ system]
     (with-redefs [self/retry-delay-ms (constantly 0)]
-      (let [labels        {:model "test-model" :source "agent"}
+      (let [labels        {:model "openrouter/test-model" :source "agent"}
             success-mock  (test-util/mock-llm-response
                            [{:type :start :id "m1"}
                             {:type :tool-input :id "call-1" :function "json"
@@ -734,7 +734,7 @@
           (snowplow-test/with-fake-snowplow-collector
             (run! identity (self/call-llm "openrouter/test-model" nil [] test-util/TOOLS snowplow-tracking-opts))
             (is (=? [{:user-id (str rasta-id)
-                      :data    {"model_id"            "test-model"
+                      :data    {"model_id"            "openrouter/test-model"
                                 "total_tokens"         120
                                 "prompt_tokens"        100
                                 "completion_tokens"    20
@@ -771,7 +771,7 @@
                                       1024
                                       snowplow-tracking-opts)
             (is (=? [{:user-id (str rasta-id)
-                      :data    {"model_id"            "test-model"
+                      :data    {"model_id"            "openrouter/test-model"
                                 "total_tokens"         60
                                 "prompt_tokens"        50
                                 "completion_tokens"    10
