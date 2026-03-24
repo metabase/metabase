@@ -168,6 +168,22 @@ function useTouchBrush({
 
     disableBrush();
 
+    // Prevent selection highlight and callout on long-press (touch only).
+    // Applied as inline styles so desktop text selection is unaffected.
+    // Save originals to restore on cleanup.
+    const savedStyles = {
+      userSelect: containerEl.style.userSelect,
+      webkitTouchCallout: containerEl.style.getPropertyValue(
+        "-webkit-touch-callout",
+      ),
+      webkitTapHighlightColor: containerEl.style.getPropertyValue(
+        "-webkit-tap-highlight-color",
+      ),
+    };
+    containerEl.style.userSelect = "none";
+    containerEl.style.setProperty("-webkit-touch-callout", "none");
+    containerEl.style.setProperty("-webkit-tap-highlight-color", "transparent");
+
     const cancel = () => {
       clearTimeout(timerRef.current);
 
@@ -228,6 +244,16 @@ function useTouchBrush({
     const onContextMenu = (e: Event) => e.preventDefault();
     containerEl.addEventListener("contextmenu", onContextMenu);
 
+    // Prevent browser scroll ONLY when brush is active (after long-press).
+    // Must be non-passive to allow preventDefault(). Before the long-press
+    // fires, touchmove is not prevented and the browser scrolls normally.
+    const onTouchMove = (e: TouchEvent) => {
+      if (activeRef.current) {
+        e.preventDefault();
+      }
+    };
+    containerEl.addEventListener("touchmove", onTouchMove, { passive: false });
+
     const removeListeners = addPointerListeners(containerEl, {
       pointerdown: onPointerDown,
       pointermove: onPointerMove,
@@ -239,6 +265,16 @@ function useTouchBrush({
       cancel();
       removeListeners();
       containerEl.removeEventListener("contextmenu", onContextMenu);
+      containerEl.removeEventListener("touchmove", onTouchMove);
+      containerEl.style.userSelect = savedStyles.userSelect;
+      containerEl.style.setProperty(
+        "-webkit-touch-callout",
+        savedStyles.webkitTouchCallout,
+      );
+      containerEl.style.setProperty(
+        "-webkit-tap-highlight-color",
+        savedStyles.webkitTapHighlightColor,
+      );
     };
   }, [
     containerEl,

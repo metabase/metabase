@@ -5,20 +5,13 @@ export const EChartsRendererRoot = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  /* Prevent the browser from selecting / highlighting the chart container
-     on long-press. Without this the browser claims the gesture for element
-     selection and swallows subsequent pointer events, blocking brush. */
-  user-select: none;
-  -webkit-user-select: none;
-  -webkit-touch-callout: none;
-  -webkit-tap-highlight-color: transparent;
-  /* zrender sets touch-action: none on the SVG which blocks all native
-     scrolling. We override with pan-y so vertical page scroll works on
-     touch devices while horizontal drags stay available for brush selection
-     (gated behind a long-press, see useTouchBrush). */
+  /* HACK: zrender adds user-select: none to the root svg element which prevents users from selecting text on charts */
+  /* zrender also sets touch-action: none which blocks all native scrolling.
+     We override with auto so the browser handles scroll in all directions.
+     Brush selection is gated behind a long-press that calls preventDefault
+     on touchmove to reclaim the gesture from the browser (see useBrush). */
   & svg {
-    user-select: none !important;
-    -webkit-touch-callout: none !important;
-    touch-action: pan-y !important;
+    user-select: auto !important;
+    touch-action: auto !important;
   }
 `;

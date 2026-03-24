@@ -283,6 +283,30 @@ describe("use-brush", () => {
         expect(dispatchAction).not.toHaveBeenCalled();
       });
 
+      it("allows scroll (touchmove) before long press", () => {
+        const { el } = setupTouchBrush();
+
+        firePointer(el, "pointerdown", { clientX: 100, clientY: 100 });
+        act(() => jest.advanceTimersByTime(200));
+
+        const touchmove = new Event("touchmove", { cancelable: true });
+        el.dispatchEvent(touchmove);
+
+        expect(touchmove.defaultPrevented).toBe(false);
+      });
+
+      it("prevents scroll (touchmove) after long press", () => {
+        const { el } = setupTouchBrush();
+
+        firePointer(el, "pointerdown", { clientX: 100, clientY: 100 });
+        act(() => jest.advanceTimersByTime(500));
+
+        const touchmove = new Event("touchmove", { cancelable: true });
+        el.dispatchEvent(touchmove);
+
+        expect(touchmove.defaultPrevented).toBe(true);
+      });
+
       it("prevents context menu on the container", () => {
         const { el } = setupTouchBrush();
 
