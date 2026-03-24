@@ -680,16 +680,15 @@
 
 (deftest token-auth-code-expired-code-test
   (testing "Authorization code grant with expired code returns error"
-    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+    (mt/with-temporary-setting-values [site-url                            "http://localhost:3000"
+                                       oauth-server-authorization-code-ttl 1]
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (let [test-client   (create-test-client!)
               client-id     (:client_id test-client)
               client-secret (:client_secret test-client)
               code          (authorize-and-get-code! client-id)]
           (is (string? code) "Should get an authorization code")
-          ;; Expire the code by setting expiry to 1 hour ago (epoch millis)
-          (t2/update! :model/OAuthAuthorizationCode {:code code}
-                      {:expiry (- (inst-ms (java.util.Date.)) 3600000)})
+          (Thread/sleep 1500)
           (is (=? {:error string?}
                   (token-request!
                    {:grant_type    "authorization_code"
@@ -697,6 +696,18 @@
                     :redirect_uri  "https://example.com/callback"}
                    :expected-status 400
                    :authorization (basic-auth-header client-id client-secret)))))))))
+
+;;; ------------------------------------------ Revocation Endpoint -----------------------------------------------
+
+(defn- revoke-request!
+  "POST to /oauth/revoke with form-encoded params."
+  [params & {:keys [expected-status authorization]
+             :or   {expected-status 200}}]
+  (let [request-options (cond-> {:headers {"content-type" "application/x-www-form-urlencoded"}}
+                          authorization (assoc-in [:headers "authorization"] authorization))]
+    (client/client :post expected-status "oauth/revoke"
+                   {:request-options request-options}
+                   params)))
 
 (deftest token-refresh-revoked-token-test
   (testing "Refresh token grant with revoked refresh token returns error"
@@ -712,27 +723,16 @@
                                :redirect_uri  "https://example.com/callback"}
                               :authorization (basic-auth-header client-id client-secret))
               refresh-token  (:refresh_token token-response)]
-          ;; Revoke the refresh token
-          (t2/update! :model/OAuthRefreshToken {:token refresh-token}
-                      {:revoked_at [:raw "now()"]})
+          ;; Revoke via the revocation endpoint (tokens are hashed in the DB)
+          (revoke-request!
+           {:token refresh-token}
+           :authorization (basic-auth-header client-id client-secret))
           (let [response (token-request!
                           {:grant_type    "refresh_token"
                            :refresh_token refresh-token}
                           :expected-status 400
                           :authorization (basic-auth-header client-id client-secret))]
             (is (=? {:error string?} response))))))))
-
-;;; ------------------------------------------ Revocation Endpoint -----------------------------------------------
-
-(defn- revoke-request!
-  "POST to /oauth/revoke with form-encoded params."
-  [params & {:keys [expected-status authorization]
-             :or   {expected-status 200}}]
-  (let [request-options (cond-> {:headers {"content-type" "application/x-www-form-urlencoded"}}
-                          authorization (assoc-in [:headers "authorization"] authorization))]
-    (client/client :post expected-status "oauth/revoke"
-                   {:request-options request-options}
-                   params)))
 
 (deftest revocation-valid-token-test
   (testing "Revocation returns 200 for a valid access token"
