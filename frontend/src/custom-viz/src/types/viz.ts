@@ -109,7 +109,6 @@ export type BaseWidgetProps<TValue, CustomVisualizationSettings> = {
   onChangeSettings: (settings: Partial<CustomVisualizationSettings>) => void;
 };
 
-// TODO: infer TProps for built-in widgets
 type VisualizationSettingDefinitionBase<TValue, CustomVisualizationSettings> = {
   id: string;
   section?: string;
@@ -145,7 +144,7 @@ type VisualizationSettingDefinitionWithBuiltInWidget<
   > & {
     widget: Key;
     getProps?: (
-      object: T,
+      object: Series,
       vizSettings: CustomVisualizationSettings,
     ) => Widgets[Key];
   };
@@ -159,7 +158,10 @@ type VisualizationSettingDefinitionWithCustomWidget<
   widget: ComponentType<
     TProps & BaseWidgetProps<TValue, CustomVisualizationSettings>
   >;
-  getProps?: (object: T, vizSettings: CustomVisualizationSettings) => TProps;
+  getProps?: (
+    object: Series,
+    vizSettings: CustomVisualizationSettings,
+  ) => TProps;
 };
 
 type VisualizationSettingDefinitionWithoutWidget<
