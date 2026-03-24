@@ -870,8 +870,8 @@ function getXDomainForTimelines<T extends Numeric>(
   if (
     xDomain &&
     isAbsoluteDateTimeUnit(dataInterval?.unit) &&
-    xDomain[0] instanceof dayjs.Dayjs &&
-    xDomain[1] instanceof dayjs.Dayjs
+    dayjs.isDayjs(xDomain[0]) &&
+    dayjs.isDayjs(xDomain[1])
   ) {
     let maxValue = xDomain[1]
       .clone()
