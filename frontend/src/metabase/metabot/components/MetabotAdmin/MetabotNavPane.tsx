@@ -21,6 +21,11 @@ export function MetabotNavPane() {
           label={t`Embedded Metabot`}
           path={`/admin/metabot/${FIXED_METABOT_IDS.EMBEDDED}`}
         />
+        <AdminNavItem
+          icon="lock"
+          label={t`Usage controls`}
+          path={`/admin/metabot/${FIXED_METABOT_IDS.DEFAULT}/usage-controls`}
+        />
       </AdminNavWrapper>
     </Flex>
   );

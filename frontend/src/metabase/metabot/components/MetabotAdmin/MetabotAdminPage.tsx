@@ -49,6 +49,7 @@ import type {
 import { MetabotPromptSuggestionPane } from "./MetabotAdminSuggestedPrompts";
 import { MetabotNavPane } from "./MetabotNavPane";
 import { MetabotSQLGenerationSettingsSection } from "./MetabotSQLGenerationSettingsSection";
+import { MetabotUsageControlsPage } from "./MetabotUsageControlsPage";
 import { useMetabotIdPath } from "./utils";
 
 export function getAdminRoutes() {
@@ -64,6 +65,11 @@ export function getFullAdminRoutes() {
   return [
     <IndexRoute key="index" component={MetabotAdminPage} />,
     <Route key="metabot" path=":metabotId" component={MetabotAdminPage} />,
+    <Route
+      key="usage-controls"
+      path=":metabotId/usage-controls"
+      component={MetabotUsageControlsPage}
+    />,
   ];
 }
 
