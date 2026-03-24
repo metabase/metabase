@@ -54,8 +54,7 @@ function ensureVizApi() {
  */
 function createGetAssetUrl(pluginId: number) {
   return (assetPath: string): string => {
-    const cleanPath = assetPath.replace(/^\/+/, "");
-    return `/api/custom-viz-plugin/${pluginId}/assets/${cleanPath}`;
+    return `/api/custom-viz-plugin/${pluginId}/asset?path=${encodeURIComponent(assetPath)}`;
   };
 }
 

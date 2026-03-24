@@ -55,7 +55,7 @@ function PluginIconPreview({ plugin }: { plugin: CustomVizPlugin }) {
         style={{ border: "1px solid var(--mb-color-border)" }}
       >
         <img
-          src={`/api/custom-viz-plugin/${plugin.id}/assets/${icon}`}
+          src={`/api/custom-viz-plugin/${plugin.id}/asset?path=${encodeURIComponent(icon)}`}
           alt={plugin.display_name}
           width={20}
           height={20}

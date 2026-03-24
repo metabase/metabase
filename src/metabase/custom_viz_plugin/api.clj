@@ -198,24 +198,36 @@
     (when (and ct (str/starts-with? ct "image/"))
       ct)))
 
-(api.macros/defendpoint :get "/:id/assets/*path"
+(defn- validate-asset-path
+  "Validate that an asset path is a simple filename (no directory traversal).
+   Returns the normalized path or throws on invalid input."
+  ^String [^String raw-path]
+  (let [root     (.toPath (java.io.File. "/"))
+        resolved (.normalize (.resolve root raw-path))
+        normalized (str (.relativize root resolved))]
+    (when (or (str/blank? normalized)
+              (not (.startsWith resolved root)))
+      (throw (ex-info "Invalid asset path" {:status-code 400 :path raw-path})))
+    normalized))
+
+(api.macros/defendpoint :get "/:id/asset"
   "Serve a static image asset from the plugin's cached assets.
-   Only image files are served; other file types return 404."
-  [{:keys [id path]} :- [:map [:id ms/PositiveInt] [:path ms/NonBlankString]]
-   _query-params
+   The asset path is passed as a `path` query parameter (e.g. `?path=icon.svg`)
+   and must match an entry in the manifest's `assets` whitelist.
+   Only image files are served."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   {:keys [path]} :- [:map [:path ms/NonBlankString]]
    _body
    _request
    respond
    raise]
   (try
-    (when (or (str/includes? path "..")
-              (str/starts-with? path "/"))
-      (throw (ex-info "Invalid asset path" {:status-code 400})))
-    (let [content-type (image-content-type path)]
+    (let [asset-path   (validate-asset-path path)
+          content-type (image-content-type asset-path)]
       (when-not content-type
         (throw (ex-info "Only image assets are served" {:status-code 404})))
       (let [plugin (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))
-            bytes  (cache/get-asset (:id plugin) path)]
+            bytes  (cache/get-asset (:id plugin) asset-path)]
         (if bytes
           (respond {:status  200
                     :headers {"Content-Type"  content-type

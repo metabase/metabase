@@ -90,14 +90,12 @@
     (some #(str/ends-with? lower %) image-extensions)))
 
 (defn asset-paths
-  "List the static image asset paths whitelisted by the manifest.
-   Includes paths from the `assets` array and the `icon` path (if it's a file path).
-   Only image files are included. Returns a sequence of paths relative to the repo root."
+  "List the static image asset names whitelisted by the manifest.
+   Includes names from the `assets` array and the `icon` (if it's an image filename).
+   Only image files are included. Returns simple filenames like `icon.svg`.
+   These map to `dist/assets/<name>` in the repo."
   [manifest]
-  (let [;; assets explicitly listed in manifest (filtered to images only)
-        declared  (filter image-file? (get manifest :assets []))
-        ;; include the icon if it's a path (contains a slash) and is an image
-        icon-path (when-let [icon (:icon manifest)]
-                    (when (and (re-find #"/" icon) (image-file? icon))
-                      icon))]
-    (distinct (concat declared (when icon-path [icon-path])))))
+  (let [declared  (filter image-file? (get manifest :assets []))
+        icon-name (when-let [icon (:icon manifest)]
+                    (when (image-file? icon) icon))]
+    (distinct (concat declared (when icon-name [icon-name])))))

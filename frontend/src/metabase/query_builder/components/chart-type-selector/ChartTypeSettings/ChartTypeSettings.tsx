@@ -44,7 +44,7 @@ function CustomVizOption({
     ? "area"
     : ((rawIcon as IconName) ?? "area");
   const iconUrl = isAssetIcon
-    ? `/api/custom-viz-plugin/${plugin.id}/assets/${rawIcon}`
+    ? `/api/custom-viz-plugin/${plugin.id}/asset?path=${encodeURIComponent(rawIcon)}`
     : undefined;
 
   return (
