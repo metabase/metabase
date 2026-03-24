@@ -1,6 +1,5 @@
 import { IndexRoute, Route } from "react-router";
 
-import { TransformInspectorUpsellPage } from "metabase/data-studio/upsells/pages";
 import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_REPLACEMENT,
@@ -17,6 +16,7 @@ import {
 } from "./pages/NewTransformPage";
 import { RunListPage } from "./pages/RunListPage";
 import { TransformDependenciesPage } from "./pages/TransformDependenciesPage";
+import { TransformInspectorUpsellPage } from "./pages/TransformInspectorUpsellPage";
 import { TransformListPage } from "./pages/TransformListPage";
 import { TransformQueryPage } from "./pages/TransformQueryPage";
 import { TransformRunPage } from "./pages/TransformRunPage";
