@@ -348,7 +348,7 @@ Permissions are granted to groups. Which permissions are available to each group
 ### Internal user collection permissions
 
 - Metabase Admins will have **Curate** access to all shared collections and all tenant collections.
-- Other internal groups and non-admin users have **No** access by default, but can be granted **View** or **Curate** access to shared or tenant collections. See [Configuring shared collection permissions](#configuring-shared-collections-permissions) for details.
+- Other internal and non-admin groups have **No** access by default, but can be granted **View** or **Curate** access to shared or tenant collections. See [Configuring shared collection permissions](#configuring-shared-collections-permissions) for details.
 
 For configuring permissions to _internal_ collections for internal users, see [general docs on collection permissions](../permissions/collections.md).
 
