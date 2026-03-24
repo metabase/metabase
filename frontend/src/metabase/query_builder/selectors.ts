@@ -409,7 +409,7 @@ export const getRowIndexToPKMap = createSelector(
 function areLegacyQueriesEqual(
   queryA: DatasetQuery | undefined,
   queryB: DatasetQuery | undefined,
-  tableMetadata: Table,
+  tableMetadata?: Table | null,
 ) {
   if (queryA == null || queryB == null) {
     return false;
@@ -484,7 +484,7 @@ export function areQueriesEquivalent({
   originalQuestion?: Question | null;
   lastRunQuestion?: Question | null;
   currentQuestion?: Question | null;
-  tableMetadata: Table;
+  tableMetadata?: Table | null;
 }) {
   return (
     areLegacyQueriesEqual(
@@ -525,7 +525,6 @@ export const getIsResultDirty = createSelector(
     return Boolean(
       haveParametersChanged ||
         (isEditable &&
-          tableMetadata &&
           !areQueriesEquivalent({
             originalQuestion,
             lastRunQuestion,
