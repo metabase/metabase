@@ -130,14 +130,6 @@ export default class NativeQuery {
     );
   }
 
-  canRun() {
-    return Boolean(
-      this.hasData() &&
-        this.queryText().length > 0 &&
-        this._allTemplateTagsAreValid(),
-    );
-  }
-
   isEmpty() {
     return this._databaseId() == null || this.queryText().length === 0;
   }

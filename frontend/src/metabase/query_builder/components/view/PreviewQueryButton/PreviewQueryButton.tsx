@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
+import { canRunQuestion } from "metabase/lib/question";
 import { MODAL_TYPES, type QueryModalType } from "metabase/querying/constants";
 import { Icon, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -53,5 +54,5 @@ PreviewQueryButton.shouldRender = ({ question }: PreviewQueryButtonOpts) => {
   const hasVariableTemplateTags = nativeQuestion.hasVariableTemplateTags();
   const hasSnippets = nativeQuestion.hasSnippets();
 
-  return question.canRun() && (hasVariableTemplateTags || hasSnippets);
+  return canRunQuestion(question) && (hasVariableTemplateTags || hasSnippets);
 };

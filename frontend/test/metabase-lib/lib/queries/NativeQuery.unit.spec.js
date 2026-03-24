@@ -1,4 +1,5 @@
 import { createMockMetadata } from "__support__/metadata";
+import { canRunQuestion } from "metabase/lib/question";
 import Question from "metabase-lib/v1/Question";
 import NativeQuery, {
   updateCardTemplateTagNames,
@@ -212,19 +213,19 @@ describe("NativeQuery", () => {
       let q = makeQuery().setQueryText("SELECT * from ORDERS where {{foo}}");
 
       it("base case", () => {
-        expect(q.canRun()).toBe(true);
+        expect(canRunQuestion(q)).toBe(true);
       });
 
       it("requires a display name", () => {
         q = q.setTemplateTag("foo", { name: "foo", type: "text" });
-        expect(q.canRun()).toBe(false);
+        expect(canRunQuestion(q)).toBe(false);
 
         q = q.setTemplateTag("foo", {
           name: "foo",
           type: "text",
           "display-name": "Foo",
         });
-        expect(q.canRun()).toBe(true);
+        expect(canRunQuestion(q)).toBe(true);
       });
 
       it("dimension type without a dimension", () => {
@@ -233,7 +234,7 @@ describe("NativeQuery", () => {
           "widget-type": "category",
           "display-name": "bar",
         });
-        expect(q.canRun()).toBe(false);
+        expect(canRunQuestion(q)).toBe(false);
 
         q = q.setTemplateTag("foo", {
           name: "foo",
@@ -242,7 +243,7 @@ describe("NativeQuery", () => {
           dimension: ["field", 123, null],
           "display-name": "bar",
         });
-        expect(q.canRun()).toBe(true);
+        expect(canRunQuestion(q)).toBe(true);
       });
     });
 

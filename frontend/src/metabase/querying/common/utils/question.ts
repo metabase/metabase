@@ -1,3 +1,4 @@
+import { canRunQuestion } from "metabase/lib/question";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/models";
@@ -28,10 +29,10 @@ export function isQuestionRunnable(
 
   if (!question.isSaved() || isDirty) {
     const { isEditable } = Lib.queryDisplayInfo(question.query());
-    return question.canRun() && isEditable;
+    return canRunQuestion(question) && isEditable;
   }
 
-  return question.canRun();
+  return canRunQuestion(question);
 }
 
 export const isSavedQuestionChanged = (

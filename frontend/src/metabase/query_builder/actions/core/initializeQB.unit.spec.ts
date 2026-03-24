@@ -5,6 +5,7 @@ import { createMockEntitiesState } from "__support__/store";
 import { Databases } from "metabase/entities/databases";
 import { Snippets } from "metabase/entities/snippets";
 import * as CardLib from "metabase/lib/card";
+import * as QuestionLib from "metabase/lib/question";
 import { checkNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import * as questionActions from "metabase/questions/actions";
@@ -267,7 +268,7 @@ describe("QB Actions > initializeQB", () => {
 
         it("does not run non-runnable question queries", async () => {
           const runQuestionQuerySpy = jest.spyOn(querying, "runQuestionQuery");
-          jest.spyOn(Question.prototype, "canRun").mockReturnValue(false);
+          jest.spyOn(QuestionLib, "canRunQuestion").mockReturnValue(false);
 
           await setup({ card });
 

@@ -6,6 +6,7 @@ import { replace } from "react-router-redux";
 import { Questions } from "metabase/entities/questions";
 import { Snippets } from "metabase/entities/snippets";
 import { deserializeCardFromUrl } from "metabase/lib/card";
+import { canRunQuestion } from "metabase/lib/question";
 import { isNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import {
@@ -416,7 +417,7 @@ async function handleQBInit(
 
   if (uiControls.queryBuilderMode !== "notebook") {
     const { isNative } = Lib.queryDisplayInfo(question.query());
-    if (question.canRun() && (question.isSaved() || !isNative)) {
+    if (canRunQuestion(question) && (question.isSaved() || !isNative)) {
       // Timeout to allow Parameters widget to set parameterValues
       setTimeout(
         () => dispatch(runQuestionQuery({ shouldUpdateUrl: false })),

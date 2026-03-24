@@ -1,7 +1,11 @@
 import { b64hash_to_utf8, utf8_to_b64url } from "metabase/lib/encoding";
 import { stableStringify } from "metabase/lib/objects";
 import { equals } from "metabase/lib/utils";
+import * as Lib from "metabase-lib";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Card, ParameterValuesMap, UnsavedCard } from "metabase-types/api";
+
+import { canRunQuery } from "./query";
 
 export type SerializeCardOptions = {
   includeDatasetQuery?: boolean;
@@ -80,4 +84,20 @@ export function serializeCardForUrl(
 
 export function deserializeCardFromUrl(serialized: string): Card {
   return JSON.parse(b64hash_to_utf8(serialized));
+}
+
+/**
+ * Hydrates the cards dataset_query in to a Lib.Query.
+ */
+export function getCardQuery(metadata: Metadata, card: Card) {
+  const provider = Lib.metadataProvider(card.dataset_query.database, metadata);
+  return Lib.fromJsQuery(provider, card.dataset_query);
+}
+
+/**
+ * Returns true if the card is valid and runnable.
+ */
+export function canRunCard(metadata: Metadata, card: Card) {
+  const query = getCardQuery(metadata, card);
+  return canRunQuery(query, card.type);
 }

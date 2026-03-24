@@ -4,6 +4,7 @@ import { assoc, dissoc } from "icepick";
 
 import { createMockMetadata } from "__support__/metadata";
 import { deserializeCardFromUrl } from "metabase/lib/card";
+import { canRunQuestion } from "metabase/lib/question";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import NativeQuery from "metabase-lib/v1/queries/NativeQuery";
@@ -281,7 +282,7 @@ describe("Question", () => {
       });
 
       it("is runnable", () => {
-        expect(orders_raw_question.canRun()).toBe(true);
+        expect(canRunQuestion(orders_raw_question)).toBe(true);
       });
 
       it("has correct display settings", () => {
@@ -305,7 +306,7 @@ describe("Question", () => {
   describe("STATUS METHODS", () => {
     describe("canRun()", () => {
       it("You should be able to run a newly created query", () => {
-        expect(orders_raw_question.canRun()).toBe(true);
+        expect(canRunQuestion(orders_raw_question)).toBe(true);
       });
     });
 

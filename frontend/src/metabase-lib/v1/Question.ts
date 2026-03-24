@@ -9,6 +9,8 @@ import {
   type SerializeCardOptions,
   serializeCardForUrl,
 } from "metabase/lib/card";
+// eslint-disable-next-line no-restricted-imports
+import { canRunQuestion } from "metabase/lib/question";
 import { equals } from "metabase/lib/utils";
 import { applyParameter } from "metabase/querying/parameters/utils/query";
 import * as Lib from "metabase-lib";
@@ -354,16 +356,6 @@ class Question {
     return this.card().parameter_usage_count || 0;
   }
 
-  /**
-   * Question is valid (as far as we know) and can be executed
-   */
-  canRun(): boolean {
-    const { isNative } = Lib.queryDisplayInfo(this.query());
-    return isNative
-      ? this.legacyNativeQuery().canRun()
-      : Lib.canRun(this.query(), this.type());
-  }
-
   canWrite(): boolean {
     return this._card && this._card.can_write;
   }
@@ -408,7 +400,7 @@ class Question {
   alertType(visualizationSettings): NotificationTriggerType | null {
     const display = this.display();
 
-    if (!this.canRun()) {
+    if (canRunQuestion(this)) {
       return null;
     }
 
@@ -676,7 +668,7 @@ class Question {
 
   // predicate function that determines if the question is "dirty" compared to the given question
   isDirtyComparedTo(originalQuestion: Question) {
-    if (!this.isSaved() && this.canRun() && originalQuestion == null) {
+    if (!this.isSaved() && canRunQuestion(this) && originalQuestion == null) {
       // If it's new, then it's dirty if it is runnable
       return true;
     } else {
