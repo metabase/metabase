@@ -1,12 +1,14 @@
 (ns metabase.geojson.settings
   (:require
    [clojure.java.io :as io]
+   [metabase.config.core :as config]
    [metabase.settings.core :as setting :refer [defsetting]]
+   [metabase.util.http :as http]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms])
   (:import
-   (java.net InetAddress URL)))
+   (java.net URI URL)))
 
 (set! *warn-on-reflection* true)
 
@@ -52,24 +54,19 @@
 
 (def ^:private CustomGeoJSONValidator (mr/validator CustomGeoJSON))
 
+(defn allow-classpath-geojson?
+  "Whether classpath GeoJSON resources are allowed, controlled by MB_ALLOW_CLASSPATH_GEOJSON."
+  []
+  (config/config-bool :mb-allow-classpath-geojson))
+
 (defn invalid-location-msg
   "Error message when a GeoJSON URL is invalid."
   []
-  (str (tru "Invalid GeoJSON file location: must either start with http:// or https:// or be a relative path to a file on the classpath.")
+  (str (if (allow-classpath-geojson?)
+         (tru "Invalid GeoJSON file location: must either start with http:// or https:// or be a relative path to a file on the classpath.")
+         (tru "Invalid GeoJSON file location: must start with http:// or https://."))
        " "
        (tru "URLs referring to hosts that supply internal hosting metadata are prohibited.")))
-
-(def ^:private invalid-hosts
-  #{"metadata.google.internal"}) ; internal metadata for GCP
-
-(defn- valid-host?
-  [^URL url]
-  (let [host (.getHost url)
-        host->url (fn [host] (URL. (str "http://" host)))
-        base-url  (host->url (.getHost url))]
-    (and (not-any? (fn [invalid-url] (.equals ^URL base-url invalid-url))
-                   (map host->url invalid-hosts))
-         (not (.isLinkLocalAddress (InetAddress/getByName host))))))
 
 (defn- valid-protocol?
   [^URL url]
@@ -78,16 +75,22 @@
 (defn- valid-url?
   [url-string]
   (try
-    (let [url (URL. url-string)]
+    (let [url (.toURL (URI. url-string))]
       (and (valid-protocol? url)
-           (valid-host? url)))
-    (catch Throwable e
-      (throw (ex-info (invalid-location-msg) {:status-code 400, :url url-string} e)))))
+           (http/valid-host? :external-only url)))
+    (catch Throwable _ false)))
+
+(defn valid-geojson-resource-path?
+  "Whether GeoJSON `url` points to a valid resource. Does not check whether the contents are valid GeoJSON or not.
+   User-defined classpath resources are only allowed when MB_ALLOW_CLASSPATH_GEOJSON is true."
+  [url]
+  (and (allow-classpath-geojson?)
+       (boolean (io/resource url))))
 
 (defn valid-geojson-url?
-  "Whether GeoJSON `url` points to a valid resource. Does not check whether the contents are valid GeoJSON or not."
+  "Whether GeoJSON `url` points to a valid resource or "
   [url]
-  (or (io/resource url)
+  (or (valid-geojson-resource-path? url)
       (valid-url? url)))
 
 (defn- valid-geojson-urls?
@@ -134,3 +137,8 @@
   :visibility :public
   :export?    true
   :audit      :raw-value)
+
+(defn user-defined-custom-geojson
+  "Returns the subset of custom-geojson that users defined, without the built-in geojson entries."
+  []
+  (reduce dissoc (custom-geojson) (keys (builtin-geojson))))

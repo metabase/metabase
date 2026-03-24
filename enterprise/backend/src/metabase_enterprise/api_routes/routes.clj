@@ -8,10 +8,7 @@
    [metabase-enterprise.action-v2.api]
    [metabase-enterprise.advanced-config.api.logs]
    [metabase-enterprise.advanced-permissions.api.routes]
-   [metabase-enterprise.agent-api.api]
-   [metabase-enterprise.ai-entity-analysis.api]
-   [metabase-enterprise.ai-sql-fixer.api]
-   [metabase-enterprise.ai-sql-generation.api]
+   [metabase-enterprise.agent-api.workspace :as agent-api.workspace]
    [metabase-enterprise.api.core :as ee.api]
    [metabase-enterprise.audit-app.api.routes]
    [metabase-enterprise.billing.api.routes]
@@ -27,9 +24,6 @@
    [metabase-enterprise.embedding-hub.api]
    [metabase-enterprise.gsheets.api :as gsheets.api]
    [metabase-enterprise.library.api]
-   [metabase-enterprise.llm.api]
-   [metabase-enterprise.metabot-v3.api]
-   [metabase-enterprise.metabot-v3.tools.api]
    [metabase-enterprise.permission-debug.api]
    [metabase-enterprise.remote-sync.api]
    [metabase-enterprise.replacement.api]
@@ -41,22 +35,18 @@
    [metabase-enterprise.support-access-grants.api]
    [metabase-enterprise.tenants.api]
    [metabase-enterprise.transforms-python.api]
+   [metabase-enterprise.transforms.api]
    [metabase-enterprise.upload-management.api]
    [metabase-enterprise.workspaces.api]
+   [metabase.agent-api.api :as agent-api]
    [metabase.api.macros :as api.macros]
    [metabase.api.util.handlers :as handlers]
    [metabase.util.i18n :refer [deferred-tru]]))
 
-(comment metabase-enterprise.advanced-config.api.logs/keep-me
-         metabase-enterprise.llm.api/keep-me
-         metabase-enterprise.agent-api.api/keep-me)
+(comment metabase-enterprise.advanced-config.api.logs/keep-me)
 
 (def ^:private required-feature->message
   {:advanced-permissions       (deferred-tru "Advanced Permissions")
-   :agent-api                  (deferred-tru "Agent API")
-   :ai-sql-fixer               (deferred-tru "AI SQL Fixer")
-   :ai-sql-generation          (deferred-tru "AI SQL Generation")
-   :ai-entity-analysis         (deferred-tru "AI Entity Analysis")
    :attached-dwh               (deferred-tru "Attached DWH")
    :audit-app                  (deferred-tru "Audit app")
    :collection-cleanup         (deferred-tru "Collection Cleanup")
@@ -67,7 +57,6 @@
    :remote-sync                (deferred-tru "Remote Sync")
    :etl-connections            (deferred-tru "ETL Connections")
    :etl-connections-pg         (deferred-tru "ETL Connections PG replication")
-   :llm-autodescription        (deferred-tru "LLM Auto-description")
    :metabot-v3                 (deferred-tru "MetaBot")
    :scim                       (deferred-tru "SCIM configuration")
    :semantic-search            (deferred-tru "Semantic Search")
@@ -92,8 +81,7 @@
   `/ee/<feature>/`).
 
   TODO -- Please fix them! See #22687"
-  {"/agent"             (premium-handler metabase-enterprise.agent-api.api/routes :agent-api)
-   "/moderation-review" metabase-enterprise.content-verification.api.routes/routes
+  {"/moderation-review" metabase-enterprise.content-verification.api.routes/routes
    "/mt"                metabase-enterprise.sandbox.api.routes/sandbox-routes
    "/table"             metabase-enterprise.sandbox.api.routes/sandbox-table-routes})
 
@@ -104,11 +92,7 @@
   ;; Postponing a granular flag for :actions until it's used more widely.
   {"/action-v2"                    (premium-handler metabase-enterprise.action-v2.api/routes :table-data-editing)
    "/advanced-permissions"         (premium-handler metabase-enterprise.advanced-permissions.api.routes/routes :advanced-permissions)
-   "/ai-entity-analysis"           (premium-handler metabase-enterprise.ai-entity-analysis.api/routes :ai-entity-analysis)
-   "/ai-sql-fixer"                 (premium-handler metabase-enterprise.ai-sql-fixer.api/routes :ai-sql-fixer)
-   "/ai-sql-generation"            (premium-handler metabase-enterprise.ai-sql-generation.api/routes :ai-sql-generation)
    "/audit-app"                    (premium-handler metabase-enterprise.audit-app.api.routes/routes :audit-app)
-   "/autodescribe"                 (premium-handler 'metabase-enterprise.llm.api :llm-autodescription)
    "/billing"                      metabase-enterprise.billing.api.routes/routes
    "/content-translation"          (premium-handler metabase-enterprise.content-translation.routes/routes :content-translation)
    "/cloud-add-ons"                metabase-enterprise.cloud-add-ons.api/routes
@@ -129,9 +113,9 @@
                                        (premium-handler :etl-connections))
    "/library"                      (premium-handler metabase-enterprise.library.api/routes :library)
    "/logs"                         (premium-handler 'metabase-enterprise.advanced-config.api.logs :audit-app)
-   "/metabot-tools"                metabase-enterprise.metabot-v3.tools.api/routes
-   "/metabot-v3"                   (premium-handler metabase-enterprise.metabot-v3.api/routes :metabot-v3)
    "/permission_debug"             (premium-handler metabase-enterprise.permission-debug.api/routes :advanced-permissions)
+   ;; TODO (Ngoc 2026-03-25) -- use :transforms-advanced feature flag once it exists
+   "/transforms"                   (premium-handler metabase-enterprise.transforms.api/routes :transforms-python)
    "/transforms-python"            (premium-handler metabase-enterprise.transforms-python.api/routes :transforms-python)
    "/scim"                         (premium-handler metabase-enterprise.scim.routes/routes :scim)
    "/semantic-search"              (premium-handler metabase-enterprise.semantic-search.api/routes :semantic-search)
@@ -146,7 +130,8 @@
 (def ^:private routes-map
   (merge
    naughty-routes-map
-   {"/ee" ee-routes-map}))
+   {"/agent" {"/v1" {"/workspace" (premium-handler (agent-api.workspace/workspace-handler agent-api/+auth) :workspaces)}}
+    "/ee"    ee-routes-map}))
 
 (def ^{:arglists '([request respond raise])} routes
   "API routes only available when running Metabase® Enterprise Edition™.

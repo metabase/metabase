@@ -9,7 +9,7 @@ describe("Metabot UI", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.intercept("POST", "/api/ee/metabot-v3/agent-streaming").as("agentReq");
+    cy.intercept("POST", "/api/metabot/agent-streaming").as("agentReq");
     cy.intercept("GET", "/api/automagic-dashboards/database/*/candidates").as(
       "xrayCandidates",
     );
@@ -206,11 +206,11 @@ d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
 
         H.lastChatMessage().should("have.text", "You, but don't tell anyone.");
 
-        H.mockMetabotResponse({ statusCode: 500 });
+        H.mockMetabotResponse({ statusCode: 200, body: apiKeyInvalidResponse });
         H.sendMetabotMessage("Who is your favorite?");
         H.lastChatMessage().should(
           "have.text",
-          "Metabot is currently offline. Please try again later.",
+          "Sorry, an error occurred: Anthropic API key expired or invalid. If this persists, please contact your administrator.",
         );
       });
 
@@ -274,3 +274,6 @@ describe("Metabot in full-app embedding", () => {
 const whoIsYourFavoriteResponse = `0:"You, but don't tell anyone."
 2:{"type":"state","version":1,"value":{"queries":{}}}
 d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`;
+
+const apiKeyInvalidResponse = `3:"Anthropic API key expired or invalid"
+d:{"finishReason":"error","usage":{}}`;

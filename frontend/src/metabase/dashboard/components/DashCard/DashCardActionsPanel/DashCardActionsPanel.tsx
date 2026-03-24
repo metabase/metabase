@@ -8,11 +8,10 @@ import { AddFilterParameterMenu } from "metabase/dashboard/components/AddFilterP
 import {
   isHeadingDashCard,
   isLinkDashCard,
-  isQuestionDashCard,
-  isVirtualDashCard,
   supportsInlineParameters,
 } from "metabase/dashboard/utils";
 import { trackSimpleEvent } from "metabase/lib/analytics";
+import { isQuestionDashCard, isVirtualDashCard } from "metabase/lib/dashboard";
 import type { NewParameterOpts } from "metabase/parameters/utils/dashboards";
 import { Box, Icon } from "metabase/ui";
 import { getVisualizationRaw } from "metabase/visualizations";

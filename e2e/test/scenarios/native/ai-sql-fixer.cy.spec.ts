@@ -9,7 +9,6 @@ describe("scenarios > native > ai sql fixer", () => {
     cy.signInAsAdmin();
     H.enableTracking();
     H.activateToken("bleeding-edge");
-    cy.intercept("POST", "/api/ee/ai-sql-fixer/fix").as("fixSql");
   });
 
   afterEach(() => {

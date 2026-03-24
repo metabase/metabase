@@ -8,10 +8,10 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.query-processor.timezones-test :as timezones-test]
    [metabase.test :as mt]
@@ -1040,10 +1040,10 @@
   (testing (str "Filtering on a specific date (DATE column) should work correctly regardless of report timezone/DB"
                 " timezone support (#39769)")
     (mt/test-drivers (mt/normal-drivers)
-      (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
+      (mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
         (let [metadata-provider (lib.tu/merged-mock-metadata-provider
                                  (mt/metadata-provider)
-                                 {:database {:timezone "US/Pacific"}})
+                                 {:database {:timezone "America/Los_Angeles"}})
               checkins          (lib.metadata/table metadata-provider (mt/id :checkins))
               checkins-id       (lib.metadata/field metadata-provider (mt/id :checkins :id))
               checkins-date     (lib.metadata/field metadata-provider (mt/id :checkins :date))
@@ -1079,10 +1079,10 @@
   (testing (str "Filtering on a specific date (TIMESTAMP WITH TIME ZONE column) should work correctly regardless of"
                 " report timezone/DB timezone support (#39769)")
     (mt/test-drivers (mt/normal-drivers)
-      (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
+      (mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
         (let [metadata-provider (lib.tu/merged-mock-metadata-provider
                                  (mt/metadata-provider)
-                                 {:database {:timezone "US/Pacific"}})
+                                 {:database {:timezone "America/Los_Angeles"}})
               orders            (lib.metadata/table metadata-provider (mt/id :orders))
               orders-id         (lib.metadata/field metadata-provider (mt/id :orders :id))
               orders-created-at (lib.metadata/field metadata-provider (mt/id :orders :created_at))

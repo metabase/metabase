@@ -4,13 +4,14 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
+import type { VisualizationDefinition } from "metabase/visualizations/types";
 
 import { Text } from "./Text";
 
-const TextWrapper = Object.assign(Text, {
+const TextViz: VisualizationDefinition = {
   getUiName: () => t`Text`,
   identifier: "text",
-  iconName: "text",
+  iconName: "empty",
   canSavePng: false,
 
   disableSettingsConfig: false,
@@ -28,15 +29,14 @@ const TextWrapper = Object.assign(Text, {
   settings: {
     "card.title": {
       dashboard: false,
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-      default: t`Text card`,
+      getDefault: () => t`Text card`,
     },
     "card.description": {
       dashboard: false,
     },
     text: {
       value: "",
-      default: "",
+      getDefault: () => "",
     },
     "text.align_vertical": {
       // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
@@ -51,7 +51,7 @@ const TextWrapper = Object.assign(Text, {
           { name: t`Bottom`, value: "bottom" },
         ],
       }),
-      default: "top",
+      getDefault: () => "top",
     },
     "text.align_horizontal": {
       // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
@@ -66,7 +66,7 @@ const TextWrapper = Object.assign(Text, {
           { name: t`Right`, value: "right" },
         ],
       }),
-      default: "left",
+      getDefault: () => "left",
     },
     "dashcard.background": {
       // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
@@ -76,9 +76,11 @@ const TextWrapper = Object.assign(Text, {
       dashboard: true,
       inline: true,
       widget: "toggle",
-      default: true,
+      getDefault: () => true,
     },
   },
-});
+};
+
+const TextWrapper = Object.assign(Text, TextViz);
 
 export { TextWrapper as Text };

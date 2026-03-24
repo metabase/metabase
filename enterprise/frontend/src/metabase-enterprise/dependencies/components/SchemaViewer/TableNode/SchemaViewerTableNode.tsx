@@ -11,7 +11,7 @@ import cx from "classnames";
 import { Fragment, memo, useCallback, useEffect, useMemo } from "react";
 import { t } from "ttag";
 
-import { getAccentColors } from "metabase/lib/colors/groups";
+import { getAccentColors } from "metabase/ui/colors/groups";
 import {
   ActionIcon,
   Anchor,

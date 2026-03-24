@@ -8,7 +8,7 @@
    [metabase.channel.render.core :as channel.render]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.pulse.render.test-util :as render.tu]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]))
 

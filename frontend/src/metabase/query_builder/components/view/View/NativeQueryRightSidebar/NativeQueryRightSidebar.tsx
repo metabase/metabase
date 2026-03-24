@@ -1,13 +1,14 @@
 import { match } from "ts-pattern";
 
-import { PLUGIN_AI_ENTITY_ANALYSIS } from "metabase/plugins";
+import { AIQuestionAnalysisSidebar } from "metabase/metabot/components/AIQuestionAnalysisSidebar";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
-import { DataReference } from "metabase/query_builder/components/dataref/DataReference";
-import { SnippetSidebar } from "metabase/query_builder/components/template_tags/SnippetSidebar";
 import { TagEditorSidebar } from "metabase/query_builder/components/template_tags/TagEditorSidebar";
 import { QuestionInfoSidebar } from "metabase/query_builder/components/view/sidebars/QuestionInfoSidebar";
 import { QuestionSettingsSidebar } from "metabase/query_builder/components/view/sidebars/QuestionSettingsSidebar";
 import { TimelineSidebar } from "metabase/query_builder/components/view/sidebars/TimelineSidebar";
+import { DataReference } from "metabase/querying/components/DataReference/DataReference";
+import type { DataReferenceItem } from "metabase/querying/components/DataReference/types";
+import { SnippetSidebar } from "metabase/querying/components/SnippetSidebar";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
@@ -51,6 +52,10 @@ interface NativeQueryRightSidebarProps {
   getEmbeddedParameterVisibility: (
     slug: string,
   ) => EmbeddingParameterVisibility;
+
+  dataReferenceStack: DataReferenceItem[];
+  pushDataReferenceStack: (item: DataReferenceItem) => void;
+  popDataReferenceStack: () => void;
 }
 
 export const NativeQueryRightSidebar = (
@@ -121,7 +126,7 @@ export const NativeQueryRightSidebar = (
       <QuestionSettingsSidebar question={question} />
     ))
     .with({ isShowingAIQuestionAnalysisSidebar: true }, () => (
-      <PLUGIN_AI_ENTITY_ANALYSIS.AIQuestionAnalysisSidebar
+      <AIQuestionAnalysisSidebar
         question={question}
         visibleTimelineEvents={timelineEvents}
         timelines={timelines}

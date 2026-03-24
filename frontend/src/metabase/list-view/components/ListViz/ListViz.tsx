@@ -20,6 +20,7 @@ import {
 } from "metabase/visualizations/shared/utils/sizes";
 import type {
   ColumnSettingDefinition,
+  VisualizationDefinition,
   VisualizationProps,
 } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
@@ -39,7 +40,7 @@ import { ListViewConfiguration } from "../ListView/ListViewConfiguration";
 
 import S from "./ListViz.module.css";
 
-const vizDefinition = {
+const vizDefinition: VisualizationDefinition = {
   identifier: "list",
   iconName: "list",
   getUiName: () => t`List`,
@@ -53,16 +54,16 @@ const vizDefinition = {
   settings: {
     ...columnSettings({ hidden: true }),
     "list.entity_icon": {
-      default: null,
+      getDefault: () => null,
     },
     "list.entity_icon_color": {
-      default: color("text-primary"),
+      getDefault: () => color("text-primary"),
     },
     "list.entity_icon_enabled": {
-      default: true,
+      getDefault: () => true,
     },
     "list.use_image_column": {
-      default: false,
+      getDefault: () => false,
     },
     "list.columns": {
       getDefault: ([
@@ -154,7 +155,7 @@ const vizDefinition = {
 
       settings["text_wrapping"] = {
         title: t`Wrap text`,
-        default: false,
+        getDefault: () => false,
         widget: "toggle",
         inline: true,
         isValid: (_column, columnSettings) => {
@@ -190,7 +191,7 @@ const vizDefinition = {
       settings["view_as"] = {
         title: t`Display as`,
         widget: options.length === 2 ? "radio" : "select",
-        default: defaultValue,
+        getDefault: () => defaultValue,
         props: {
           options,
         },
@@ -203,7 +204,7 @@ const vizDefinition = {
       title: t`Link text`,
       widget: ChartSettingLinkUrlInput,
       hint: linkFieldsHint,
-      default: null,
+      getDefault: () => null,
       getHidden: (_, settings) =>
         settings["view_as"] !== "link" && settings["view_as"] !== "email_link",
       readDependencies: ["view_as"],
@@ -230,7 +231,7 @@ const vizDefinition = {
       title: t`Link URL`,
       widget: ChartSettingLinkUrlInput,
       hint: linkFieldsHint,
-      default: null,
+      getDefault: () => null,
       getHidden: (_, settings) => settings["view_as"] !== "link",
       readDependencies: ["view_as"],
       getProps: (

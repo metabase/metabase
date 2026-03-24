@@ -34,10 +34,10 @@
    [metabase.pulse.dashboard-subscription-test :as dashboard-subscription-test]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.queries-rest.api.card-test :as api.card-test]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pivot.test-util :as api.pivots]
    [metabase.query-processor.streaming.test-util :as streaming.test-util]
+   [metabase.query-processor.test :as qp]
    [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -3659,7 +3659,19 @@
                 (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
                 (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
                 (is (malli= (dashboard-card-query-expected-results-schema)
-                            (mt/user-http-request :rasta :post 202 (url)))))))
+                            (mt/user-http-request :rasta :post 202 (url))))))
+            (testing "Should return 403 if user does not have view-data permission (GHY-3228)"
+              (mt/with-no-data-perms-for-all-users!
+                (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :blocked)
+                (is (= "You don't have permissions to do that."
+                       (mt/user-http-request :rasta :post 403 (url))))))
+            (testing "Should return 403 for blocked view-data even with invalid parameters (GHY-3228)"
+              (mt/with-no-data-perms-for-all-users!
+                (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :blocked)
+                (is (= "You don't have permissions to do that."
+                       (mt/user-http-request :rasta :post 403 (url)
+                                             {:parameters [{:id    "FAKE_PARAM"
+                                                            :value "fake"}]}))))))
           (testing "Validation"
             (testing "404s"
               (testing "Should return 404 if Dashboard doesn't exist"
