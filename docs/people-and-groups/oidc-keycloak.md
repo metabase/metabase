@@ -13,17 +13,17 @@ Keycloak is an open-source identity provider that supports [OpenID Connect (OIDC
 2. [Set up OIDC in Metabase](./authenticating-with-oidc.md#set-up-oidc-in-metabase) (the service provider).
 3. [Sync groups from Keycloak to Metabase](#sync-groups-from-keycloak-to-metabase) (optional).
 
-## Setting up a client and user in the Keycloak console
+## Set up OIDC in Keycloak
 
 Here's a basic user setup to help you test a connection.
 
-1. Go to the Keycloak admin console and sign in as an administrator.
+1. In Keycloak, sign in as an administrator and go to the admin console.
 
-2. Create a new [realm](https://www.keycloak.org/docs/latest/server_admin/index.html#core-concepts-and-terms): click the realm selector in the top-left and select **Create realm**. Set the realm name (like `metabase-realm`) and click **Create**.
+2. Create a new [realm](https://www.keycloak.org/docs/latest/server_admin/index.html#core-concepts-and-terms) for Metabase.
 
 3. Create a user in that realm from **Users** > **Add user**.
 
-   - Fill in **Email**, **First name**, and **Last name**. The email field must be set. Metabase uses this email as the account identifier.
+   - Fill in **Email**, **First name**, and **Last name**. The email field is required because Metabase uses this email as the account identifier. These fields will be mapped to Metabase user properties.
    - Turn on **Email verified**. Without verification, Keycloak won't allow the person to log in.
    - Make sure **Required user actions** is empty. If any actions are listed, remove them. Keycloak blocks login until required actions are completed.
    - Click **Create**, then go to the user's **Credentials** (on the top menu, not the side menu).
@@ -51,7 +51,7 @@ Here's a basic user setup to help you test a connection.
 
 7. Go to the client's **Credentials** tab and copy the client secret.
 
-## Configure OIDC in Metabase
+## Set up OIDC in Metabase
 
 If you're self-hosting Metabase, make sure you've set `MB_ENCRYPTION_SECRET_KEY` before enabling OIDC. See [OIDC-based authentication](./authenticating-with-oidc.md#self-hosted-metabases-must-set-an-encryption-key) for details.
 
@@ -71,7 +71,7 @@ Click **Check connection**, then **Save and enable**.
 
 If the connection check fails with "the identity provider does not support the grant type used for testing", check:
 
-- **That service accounts are enabled**: Go back to Step 5 and make sure **Service accounts roles** is on. (Requires **Client authentication** to be on first.)
+- **Service accounts are enabled**: Go back to Step 5 and make sure **Service accounts roles** is on. (Requires **Client authentication** to be on first.)
 - **You have the correct client secret**: In Keycloak, go to **Clients** > your client > **Credentials** tab, click **Regenerate**. Then re-enter the new secret in Metabase.
 
 To confirm which cause applies, check the [Keycloak event log](https://www.keycloak.org/docs/latest/server_admin/index.html#auditing-user-events) (**Events** in the Keycloak sidebar) for a `CLIENT_LOGIN_ERROR` entry. (You may need to enable event logging first under **Realm settings** > **Events** > **Event listeners**.)

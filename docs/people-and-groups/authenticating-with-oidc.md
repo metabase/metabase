@@ -44,11 +44,11 @@ You'll need to enter the following:
 | **Client ID**     | The Client ID assigned for Metabase in your OIDC provider.                                                                                                                                                                                                                                                                                                                                                                                                      |
 | **Client Secret** | The client secret from your OIDC provider. When editing an existing configuration, leave this blank to keep the current value.                                                                                                                                                                                                                                                                                                                                  |
 
-## Optional settings
+### Optional settings
 
 **Scopes**: The OIDC scopes to request. In the admin UI, enter scopes as a comma-separated string (e.g., `openid, email, profile`). Defaults to `openid, email, profile`. Most providers don't require changes here. If you're setting this with the `MB_OIDC_PROVIDERS` environment variable JSON, use an array (e.g., `["openid", "email", "profile"]`).
 
-## Attribute mapping
+### Attribute mapping
 
 Metabase maps OIDC claims to account fields. The defaults work for most providers:
 
