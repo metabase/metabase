@@ -33,7 +33,7 @@ export function provisioningOptions(
   label: string,
 ): { label: string; value: string }[] {
   const trueLabel = t`Enabled: When a user logs in via ${label}, automatically create an account for them if they don't have one, or reactivate their existing account.`;
-  // eslint-disable-next-line metabase/no-literal-metabase-strings -- Emphasizes the difference between Metabase accounts and SSO accounts
+  // eslint-disable-next-line no-literal-metabase-strings -- Emphasizes the difference between Metabase accounts and SSO accounts
   const falseLabel = t`Disabled: Only users with active Metabase accounts can log in using ${label}.`;
   return [
     { value: "true", label: trueLabel },
