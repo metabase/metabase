@@ -67,8 +67,8 @@ export const TransformSettingsSection = ({
             </Group>
           </>
         )}
-        <UpdateIncrementalSettings transform={transform} readOnly={readOnly} />
       </TitleSection>
+      <UpdateIncrementalSettings transform={transform} readOnly={readOnly} />
     </Stack>
   );
 };
