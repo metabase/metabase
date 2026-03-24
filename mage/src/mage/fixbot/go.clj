@@ -102,8 +102,12 @@
               ;; in the tmux session's environment.
               (do
                 (println (c/yellow "Not inside tmux. Creating detached tmux session..."))
-                (shell/sh "tmux" "new-session" "-d" "-s" session-name)
-                (shell/sh "tmux" "send-keys" "-t" session-name workmux-cmd "Enter")
+                ;; Use nohup to ensure the tmux session survives if the
+                ;; parent process (Claude Code) is killed.
+                (shell/sh "nohup" "bash" "-c"
+                          (str "tmux new-session -d -s " session-name
+                               " && tmux send-keys -t " session-name
+                               " '" workmux-cmd "' Enter"))
                 (println)
                 (println (c/bold (c/green "Tmux session created: ") (c/cyan session-name)))
                 (println)

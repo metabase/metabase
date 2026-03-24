@@ -110,6 +110,41 @@
           (u/exit 1))
         (pause-one! session)))))
 
+(defn- worktree-path
+  "Get the filesystem path for a workmux session."
+  [session]
+  (let [{:keys [exit out]} (shell/sh* {:quiet? true} "workmux" "path" session)]
+    (when (zero? exit)
+      (str/trim (str/join "" out)))))
+
+(defn- write-resume-workmux-yaml!
+  "Write a .workmux.yaml in the worktree that overrides the agent to use
+   'claude --continue' so the agent resumes the previous conversation.
+   Only includes agent override and panes (no post_create/files/pre_remove
+   since the worktree already exists)."
+  [wt-path]
+  (let [template   (slurp (str u/project-root-directory "/.claude/fixbot/workmux-template.yaml"))
+        ;; Extract panes section (from "panes:" to end of file)
+        panes-idx  (str/index-of template "\npanes:")
+        panes-section (when panes-idx (subs template panes-idx))
+        yaml-path  (str wt-path "/.workmux.yaml")]
+    (let [ee-token   (u/env "MB_PREMIUM_EMBEDDING_TOKEN" (constantly ""))
+          linear-key (u/env "LINEAR_API_KEY" (constantly ""))]
+      (spit yaml-path
+            (str "agent: 'claude --continue'\n"
+                 "\n"
+                 "post_create:\n"
+                 ;; Copy fixbot tooling from source repo (bb.edn, mage tasks)
+                 ;; since the worktree was branched from master which lacks them.
+                 "  - cp -r " u/project-root-directory "/.claude/fixbot .claude/fixbot\n"
+                 "  - cp -r " u/project-root-directory "/mage/src/mage/fixbot mage/src/mage/fixbot\n"
+                 "  - cp " u/project-root-directory "/bb.edn bb.edn\n"
+                 "  - MB_PREMIUM_EMBEDDING_TOKEN=" ee-token
+                 " LINEAR_API_KEY=" linear-key
+                 " ./bin/mage -fixbot-dev-env\n"
+                 panes-section)))
+    (println (c/yellow "Wrote resume config to " yaml-path))))
+
 (defn resume!
   "Resume a paused fixbot session."
   [{:keys [arguments]}]
@@ -134,11 +169,37 @@
                       arg)
           session   (find-session lookup)]
       (if session
-        (do
+        (let [wt-path      (worktree-path session)
+              in-tmux?     (not (str/blank? (u/env "TMUX" (constantly nil))))
+              resume-prompt "Continue where you left off."
+              workmux-cmd  (str "workmux open " session " --run-hooks"
+                                " -p '" resume-prompt "'")]
+          (when wt-path
+            (write-resume-workmux-yaml! wt-path))
           (println (c/yellow "Resuming session: " session "..."))
-          (shell/sh "workmux" "open" session "--run-hooks")
+          (if in-tmux?
+            ;; Run from worktree dir so workmux finds the resume .workmux.yaml
+            (shell/sh {:dir wt-path} "workmux" "open" session "--run-hooks"
+                      "-p" resume-prompt)
+            ;; Not inside tmux — create a detached session and run workmux in it.
+            ;; Use nohup to ensure the tmux session survives if the
+            ;; parent process (Claude Code) is killed.
+            ;; cd to worktree first so workmux finds the resume .workmux.yaml
+            (do
+              (println (c/yellow "Not inside tmux. Creating detached tmux session..."))
+              (shell/sh "nohup" "bash" "-c"
+                        (str "cd " wt-path
+                             " && tmux new-session -d -s " session
+                             " && tmux send-keys -t " session
+                             " '" workmux-cmd "' Enter"))))
           (println)
-          (println (c/bold (c/green "Session resumed: ") (c/cyan session))))
+          (if in-tmux?
+            (println (c/bold (c/green "Session resumed: ") (c/cyan session)))
+            (do
+              (println (c/bold (c/green "Tmux session created: ") (c/cyan session)))
+              (println)
+              (println "Attach to it with:")
+              (println (str "  tmux attach -t " session)))))
         (do
           (println (c/red "No paused session found matching: ") lookup)
           (print-available-sessions!)

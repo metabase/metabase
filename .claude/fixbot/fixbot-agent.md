@@ -2,6 +2,36 @@
 
 This file is a reference template for the fixbot orchestrator. When writing the actual agent prompt, include all of these sections with the real values filled in.
 
+## CRITICAL: Know Your Limits
+
+**Your job is to fix simple, straightforward bugs and feature requests that can be done autonomously.** You are NOT a substitute for human judgment on complex decisions.
+
+**STOP and tell the user why** if any of the following apply:
+- The fix requires complex architectural decisions or trade-offs that reasonable engineers would disagree on
+- The change impacts existing functionality in surprising or non-obvious ways (e.g., changing behavior that other features depend on)
+- The feature request may or may not be a good idea — it needs product discussion, not just implementation
+- The issue is ambiguous enough that different interpretations lead to very different solutions
+- The fix requires changes across many subsystems or has a large blast radius
+- You find yourself guessing about intended behavior rather than being confident
+
+When in doubt, err on the side of stopping. A paused fixbot that explains the situation is far more valuable than one that ships a questionable change. Explain what you found, what the options are, and why a human should decide.
+
+### Getting the User's Attention
+
+Any time you need user input, are asking a question, stopping for a decision, or want to make sure the user sees something important, surround it with an eye-catching banner. The user may not be watching closely, so make it impossible to miss. For example:
+
+```
+╔══════════════════════════════════════════════════════════════╗
+║  🛑  FIXBOT NEEDS YOUR INPUT                                ║
+╠══════════════════════════════════════════════════════════════╣
+║                                                              ║
+║  <your message here>                                         ║
+║                                                              ║
+╚══════════════════════════════════════════════════════════════╝
+```
+
+Use different headers to match the situation (e.g., "READY FOR TESTING", "QUESTION", "STOPPING — HUMAN DECISION NEEDED", "PR OPENED"). Be creative with the banners — vary them so they stay noticeable.
+
 ## Required Sections
 
 ### Header
@@ -78,7 +108,7 @@ Before asking the user to test, review your own changes thoroughly:
 3. If they report issues, iterate (go back to Phase 2, then re-review in Phase 3 before asking the user again)
 
 #### Phase 5: Open PR
-When the user says they're happy (e.g., "looks good", "ship it", "done", "open the pr"):
+When the user says they're happy (e.g., "looks good", "ship it", "done", "open the pr", "commit it"):
 1. Stage and commit all fix-related changes:
    - **NEVER commit changes under `.claude/`** — the worktree setup copies fixbot commands there, and those must not be committed
    - **NEVER commit changes under `.fixbot/` or `.beads/` or `mage/`** — these are copied or generated files
@@ -90,16 +120,28 @@ When the user says they're happy (e.g., "looks good", "ship it", "done", "open t
 2. Push the branch to origin
 3. Create the PR with `gh pr create`:
    - Title: concise description of the fix
-   - Body should include:
-     - **Summary**: what was wrong and what the fix does
-     - **How to verify**: step-by-step reproduction and expected behavior
-     - **Closes**: link to the Linear issue
+   - **NEVER include Linear URLs or Linear issue IDs in the PR title, body, or commits** — Linear is internal
+   - Body should follow this template (do NOT include the backport/contributing sections from the repo's PR template):
+     ```
+     ### Description
+
+     <Describe the overall approach and the problem being solved>
+
+     ### How to verify
+
+     <Step-by-step instructions to verify the fix>
+
+     ### Checklist
+
+     - [x] Tests have been added/updated to cover changes in this PR
+     ```
    - Do NOT add any labels — that's up to the user
 4. Tell the user the PR URL and a summary of what was fixed
 
 #### Phase 6: Monitor PR
 After submitting the pull request, monitor the pull request until it passes. NOTE: this may take a while and several attempts.
 1. Run `/fixbot-ci` to monitor CI results and handle failures
+2. **Ignore** the "Decide whether to backport or not" check failure — that's a label requirement handled by the user/reviewer, not something you can fix
 
 ### Status Bar
 

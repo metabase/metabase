@@ -1,7 +1,9 @@
 (ns mage.fixbot.status
   (:require
    [babashka.http-client :as http]
-   [clojure.string :as str])
+   [babashka.json :as json]
+   [clojure.string :as str]
+   [mage.shell :as shell])
   (:import
    (java.io File)
    (java.net Socket)))
@@ -104,17 +106,31 @@
          :url (str/trim (or url ""))
          :title (or title "")}))))
 
+(defn- check-pr
+  "Check if there's an open PR for the current branch. Returns {:url ... :number ...} or nil."
+  []
+  (try
+    (let [result (shell/sh* {:quiet? true} "gh" "pr" "view" "--json" "url,number,state")]
+      (when (zero? (:exit result))
+        (let [data (json/read-str (str/join "\n" (:out result)) {:key-fn keyword})]
+          (when (= "OPEN" (:state data))
+            {:url (:url data) :number (:number data)}))))
+    (catch Exception _ nil)))
+
 (defn- render-display
   "Render the full status pane display."
-  [issue ports be-status db-status llm-status]
+  [issue ports be-status db-status llm-status pr-info]
   (let [sb (StringBuilder.)]
     ;; Line 1: Issue title
     (when (and issue (seq (:title issue)))
       (.append sb (:title issue))
       (.append sb "\n"))
-    ;; Line 2: Issue ID | URL
+    ;; Line 2: Issue ID | URL | PR
     (when issue
-      (.append sb (str (:id issue) " | " (:url issue) "\n")))
+      (.append sb (str (:id issue) " | " (:url issue)))
+      (when pr-info
+        (.append sb (str " | " (colorize green (str "PR #" (:number pr-info))))))
+      (.append sb "\n"))
     ;; Line 3: Metabase | URL | DB
     (when ports
       (let [be-up?      (= be-status :ready)
@@ -146,12 +162,15 @@
     (loop [last-output    ""
            ports          nil
            issue          nil
+           pr-info        nil
            last-be-status :unhealthy
            last-db-status :unhealthy
            tick           0]
       (let [check?    (zero? (mod tick 5))
+            pr-check? (and (not pr-info) (zero? (mod tick 30)))
             ports     (or ports (when check? (load-ports mise-path)))
             issue     (or issue (when check? (load-issue-info)))
+            pr-info   (or pr-info (when pr-check? (check-pr)))
             be-status (if (and check? ports)
                         (check-http (str "http://localhost:" (:jetty-port ports) "/api/health") 2000)
                         last-be-status)
@@ -161,10 +180,10 @@
             ;; Read LLM status from file
             llm-status (when (.exists f)
                          (str/trim (slurp f)))
-            output    (render-display issue ports be-status db-status llm-status)]
+            output    (render-display issue ports be-status db-status llm-status pr-info)]
         (when (not= output last-output)
           (println "=========================================\n")
           (print output)
           (flush))
         (Thread/sleep 1000)
-        (recur output ports issue be-status db-status (inc tick))))))
+        (recur output ports issue pr-info be-status db-status (inc tick))))))
