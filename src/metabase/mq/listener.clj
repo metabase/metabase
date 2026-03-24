@@ -2,6 +2,7 @@
   "Listener registry: registration, lookup, instrumentation, and the `def-listener!` macro."
   (:require
    [metabase.mq.transport :as transport]
+   [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
@@ -130,10 +131,14 @@
 
 (defn register-listeners!
   "Call all [[def-listener!]] implementations to register their listeners.
-   Called at startup and in test setup (from `with-sync-mq`)."
+   Called at startup and in test setup (from `with-sync-mq`).
+   Throws on the first registration failure so broken listeners are caught early."
   []
   (doseq [[k f] (methods def-listener*)]
     (try
       (f k)
       (catch Throwable e
-        (.println System/err (str "Error registering listener " k ": " e))))))
+        (log/errorf e "Failed to register listener %s" k)
+        (throw (ex-info (str "Failed to register listener " k)
+                        {:channel k}
+                        e))))))

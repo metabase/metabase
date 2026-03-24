@@ -127,16 +127,18 @@
    `metadata` is an opaque map stored alongside the future — backends can use it for
    backend-specific tracking (e.g. queues store {:bundle-id id} for heartbeat updates).
    Uses bound-fn to convey dynamic bindings to the worker thread.
-   The busy-check and registration are atomic via a single swap!."
+   The busy-check and registration are atomic via a single swap!.
+   A generation counter prevents a completed future's cleanup from clobbering a
+   re-submission that won the slot between the finally and the dissoc."
   [channel messages bundle-id backend metadata]
-  (let [claimed? (atom false)]
+  (let [claimed? (atom false)
+        gen      (Object.)]
     (swap! active-handlers
            (fn [handlers]
              (if (contains? handlers channel)
                handlers
                (do (reset! claimed? true)
-                   ;; Reserve the slot with a placeholder; real future set below
-                   (assoc handlers channel {:future nil :metadata metadata})))))
+                   (assoc handlers channel {:future nil :metadata metadata :gen gen})))))
     (if-not @claimed?
       false
       (let [f (.submit ^ExecutorService @worker-pool
@@ -144,9 +146,18 @@
                                    (try
                                      (deliver! channel messages bundle-id backend)
                                      (finally
-                                       (swap! active-handlers dissoc channel)))))]
-        ;; Update the placeholder with the real future
-        (swap! active-handlers assoc-in [channel :future] f)
+                                       ;; Only remove if this generation still owns the slot
+                                       (swap! active-handlers
+                                              (fn [handlers]
+                                                (if (identical? gen (:gen (get handlers channel)))
+                                                  (dissoc handlers channel)
+                                                  handlers)))))))]
+        ;; Only set the future if this generation still owns the slot
+        (swap! active-handlers
+               (fn [handlers]
+                 (if (identical? gen (:gen (get handlers channel)))
+                   (assoc-in handlers [channel :future] f)
+                   handlers)))
         true))))
 
 (defn start-worker-pool!
@@ -162,7 +173,8 @@
   "Cancels all active handler futures and shuts down the worker pool."
   []
   (doseq [[_ {:keys [^Future future]}] @active-handlers]
-    (.cancel future true))
+    (when future
+      (.cancel future true)))
   (reset! active-handlers {})
   (when-let [^ExecutorService pool @worker-pool]
     (.shutdownNow pool)

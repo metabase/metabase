@@ -126,7 +126,7 @@
       (if (true? v) as [v as]))))
 
 (defn- spec-index-query*
-  [search-model]
+  [_db-type search-model]
   (let [spec         (search.spec/spec search-model)
         fn-deps      (search.spec/collect-fn-attr-req-fields spec)
         fn-selects   (map (fn [field]
@@ -153,8 +153,13 @@
                            [[(t2/table-name join-model) join-alias]
                             join-condition])))})))
 
-(def ^{:private true, :arglists '([search-model])} spec-index-query
-  (memoize spec-index-query*))
+(def ^:private spec-index-query-memo (memoize spec-index-query*))
+
+(defn- spec-index-query
+  ;; Memoized per db-type since the generated HoneySQL varies by database engine
+  ;; (e.g. searchable-value-trim-sql emits LEFT/CAST only for postgres and h2).
+  [search-model]
+  (spec-index-query-memo (mdb/db-type) search-model))
 
 (defn- spec-index-query-where [search-model where-clause]
   (-> (spec-index-query search-model)
@@ -265,7 +270,7 @@
     (lib-be/with-metadata-provider-cache
       (if (seq (search.engine/active-engines))
         (let [updates  (mapv (fn [[model where]] [model (deserialize-where-clause where)]) updates)
-            documents (->> (for [[search-model where-clauses] (u/group-by first second updates)]
+              documents (->> (for [[search-model where-clauses] (u/group-by first second updates)]
                                (spec-index-reducible search-model (into [:or] where-clauses)))
                              ;; init collection is only for clj-kondo, as we know that the list is non-empty
                              (reduce u/rconcat [])
