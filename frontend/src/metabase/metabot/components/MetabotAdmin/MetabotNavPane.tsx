@@ -18,7 +18,7 @@ export function MetabotNavPane() {
         {!isHosted && (
           <AdminNavItem
             icon="gear"
-            label={t`Setup Metabot`}
+            label={t`Connection settings`}
             path="/admin/metabot/setup"
           />
         )}

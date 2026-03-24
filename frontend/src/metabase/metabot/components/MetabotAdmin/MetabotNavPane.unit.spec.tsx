@@ -34,9 +34,9 @@ describe("MetabotNavPane", () => {
     expect(screen.queryByText("Embedded Metabot")).not.toBeInTheDocument();
   });
 
-  it("should not show Setup Metabot if it is hosted", () => {
+  it("should not show Connection settings if it is hosted", () => {
     setup({ isHosted: true });
 
-    expect(screen.queryByText("Setup Metabot")).not.toBeInTheDocument();
+    expect(screen.queryByText("Connection settings")).not.toBeInTheDocument();
   });
 });
