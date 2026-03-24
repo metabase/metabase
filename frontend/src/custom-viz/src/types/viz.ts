@@ -49,12 +49,12 @@ export type CustomVisualization<CustomVisualizationSettings> = {
   /**
    * Min size on dashboard grid.
    */
-  minSize: VisualizationGridSize;
+  minSize?: VisualizationGridSize;
 
   /**
    * Default size on dashboard grid.
    */
-  defaultSize: VisualizationGridSize;
+  defaultSize?: VisualizationGridSize;
 
   /**
    * Visualization settings definitions.
