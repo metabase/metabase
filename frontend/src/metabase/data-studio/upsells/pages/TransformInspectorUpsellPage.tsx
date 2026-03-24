@@ -13,7 +13,7 @@ export function TransformInspectorUpsellPage() {
       location="data-studio-transform-inspector-page"
       header={t`Transform inspector`}
       title={t`Inspect transform inputs and outputs at every step`}
-      description={t`See what data flows through each stage of a Python transform, so you can debug issues and understand results without guesswork.`}
+      description={t`See what data flows through each stage of a transform, so you can debug issues and understand results without guesswork.`}
     />
   );
 }
