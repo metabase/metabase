@@ -29,68 +29,37 @@ import {
   Flex,
   Group,
   Icon,
-  type IconName,
   Loader,
   Menu,
-  Select,
-  type SelectOption,
   Stack,
   Switch,
   Text,
   TextInput,
 } from "metabase/ui";
-import { iconNames } from "metabase/ui/components/icons/Icon/icons";
+import { getPluginAssetUrl } from "metabase/visualizations/custom-viz-plugins";
 import type { CustomVizPlugin } from "metabase-types/api";
 
-const DEFAULT_ICON: IconName = "area";
-
-const ICON_OPTIONS: SelectOption[] = iconNames.map((name) => ({
-  value: name,
-  label: name,
-  icon: name as IconName,
-}));
-
-function IconPreview({ iconName }: { iconName: IconName }) {
+function PluginIconPreview({ plugin }: { plugin: CustomVizPlugin }) {
+  const iconUrl = getPluginAssetUrl(plugin.id, plugin.icon);
   return (
     <ActionIcon
       w="3.125rem"
       h="3.125rem"
       radius="xl"
-      color="brand"
       variant="outline"
       style={{ border: "1px solid var(--mb-color-border)" }}
     >
-      <Icon name={iconName} c="brand" size={20} />
+      {iconUrl ? (
+        <img
+          src={iconUrl}
+          alt={plugin.display_name}
+          width={20}
+          height={20}
+        />
+      ) : (
+        <Icon name="unknown" size={20} />
+      )}
     </ActionIcon>
-  );
-}
-
-function IconPickerField({
-  value,
-  onChange,
-}: {
-  value: IconName;
-  onChange: (icon: IconName) => void;
-}) {
-  return (
-    <Box>
-      <Text fw={700} size="sm" mb={4}>
-        {t`Icon (optional)`}
-      </Text>
-      <Group gap="md" align="center">
-        <Box style={{ flex: 1 }}>
-          <Select
-            data={ICON_OPTIONS}
-            value={value}
-            onChange={(val) => onChange((val as IconName) ?? DEFAULT_ICON)}
-            searchable
-            clearable
-            placeholder={t`Search icons...`}
-          />
-        </Box>
-        <IconPreview iconName={value} />
-      </Group>
-    </Box>
   );
 }
 
@@ -105,14 +74,9 @@ function PluginForm({
   const [updatePlugin] = useUpdateCustomVizPluginMutation();
   const isEdit = Boolean(plugin);
 
-  const [selectedIcon, setSelectedIcon] = useState<IconName>(
-    (plugin?.icon as IconName) ?? DEFAULT_ICON,
-  );
-
   const initialValues = useMemo(
     () => ({
       repo_url: plugin?.repo_url ?? "",
-      display_name: plugin?.display_name ?? "",
       access_token: "",
       pinned_version: plugin?.pinned_version ?? "",
     }),
@@ -122,32 +86,25 @@ function PluginForm({
   const handleSubmit = useCallback(
     async (values: {
       repo_url: string;
-      display_name: string;
       access_token: string;
       pinned_version: string;
     }) => {
-      const icon = selectedIcon === DEFAULT_ICON ? null : selectedIcon;
-
       if (isEdit && plugin) {
         await updatePlugin({
           id: plugin.id,
-          display_name: values.display_name,
-          icon,
           access_token: values.access_token || undefined,
           pinned_version: values.pinned_version || null,
         }).unwrap();
       } else {
         await createPlugin({
           repo_url: values.repo_url,
-          display_name: values.display_name,
-          icon,
           access_token: values.access_token || undefined,
           pinned_version: values.pinned_version || null,
         }).unwrap();
       }
       onClose();
     },
-    [createPlugin, updatePlugin, plugin, isEdit, selectedIcon, onClose],
+    [createPlugin, updatePlugin, plugin, isEdit, onClose],
   );
 
   return (
@@ -192,28 +149,11 @@ function PluginForm({
                   placeholder="main"
                 />
               </Stack>
-              <Stack gap="md">
-                <Text fw={700}>{t`Customization`}</Text>
-                <FormTextInput
-                  name="display_name"
-                  label={t`Display name`}
-                  placeholder={t`My Custom Visualization`}
-                  autoFocus={isEdit}
-                />
-                <IconPickerField
-                  value={selectedIcon}
-                  onChange={setSelectedIcon}
-                />
-              </Stack>
               <FormErrorMessage />
               <Group gap="sm">
                 <FormSubmitButton
                   label={isEdit ? t`Update plugin` : t`Add plugin`}
-                  disabled={
-                    !dirty &&
-                    selectedIcon ===
-                      ((plugin?.icon as IconName) ?? DEFAULT_ICON)
-                  }
+                  disabled={!dirty}
                   variant="filled"
                 />
                 <Button variant="subtle" onClick={onClose}>
@@ -270,7 +210,7 @@ function PluginListItem({
       }}
     >
       <Group gap="md" align="flex-start">
-        <IconPreview iconName={(plugin.icon as IconName) ?? DEFAULT_ICON} />
+        <PluginIconPreview plugin={plugin} />
         <Stack gap="xs">
           <Text fw={700}>{plugin.display_name}</Text>
           <Text
@@ -293,6 +233,11 @@ function PluginListItem({
             <Text size="sm" c="text-tertiary">
               {t`Commit`}: {plugin.resolved_commit.slice(0, 8)}
               {plugin.pinned_version && ` (${plugin.pinned_version})`}
+            </Text>
+          )}
+          {plugin.metabase_version != null && (
+            <Text size="sm" c="text-tertiary">
+              {t`Metabase version`}: {plugin.metabase_version}
             </Text>
           )}
         </Stack>

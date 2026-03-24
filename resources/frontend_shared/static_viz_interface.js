@@ -37,9 +37,10 @@ function funnel(data, settings, tokenFeatures) {
 }
 
 
-function register_custom_viz_plugin(identifier) {
+function register_custom_viz_plugin(identifier, assetsJson) {
   if (typeof __customVizPlugin__ === "function") {
-    StaticViz.registerCustomVizPlugin(__customVizPlugin__, identifier);
+    var assets = assetsJson ? JSON.parse(assetsJson) : {};
+    StaticViz.registerCustomVizPlugin(__customVizPlugin__, identifier, assets);
   }
 }
 

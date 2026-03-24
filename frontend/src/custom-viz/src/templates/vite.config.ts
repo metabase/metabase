@@ -1,5 +1,6 @@
 import { resolve } from "path";
 import { createServer } from "http";
+import { watch, cpSync } from "fs";
 import { defineConfig } from "vite";
 
 /**
@@ -79,6 +80,19 @@ function metabaseNotifyReload() {
           `[metabase-notify] SSE server listening on http://localhost:${NOTIFY_PORT}`,
         );
       });
+
+      // Watch public/assets/ for changes — copy to dist/assets/ and notify
+      const assetsDir = resolve(__dirname, "public/assets");
+      watch(assetsDir, { recursive: true }, (_event, filename) => {
+        if (!filename) {
+          return;
+        }
+        cpSync(resolve(assetsDir, filename), resolve(__dirname, "dist/assets", filename));
+        for (const client of clients) {
+          client.write("data: reload\n\n");
+        }
+        console.log(`[metabase-notify] Asset changed: ${filename}, notified ${clients.size} client(s)`);
+      });
     },
 
     closeBundle() {
@@ -96,6 +110,7 @@ const isWatch = process.argv.includes("--watch");
 
 export default defineConfig({
   plugins: [metabaseVizExternals(), ...(isWatch ? [metabaseNotifyReload()] : [])],
+  publicDir: "public",
   build: {
     outDir: "dist",
     lib: {

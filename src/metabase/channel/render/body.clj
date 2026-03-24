@@ -13,6 +13,7 @@
    [metabase.channel.render.util :as render.util]
    [metabase.channel.settings :as channel.settings]
    [metabase.custom-viz-plugin.cache]
+   [metabase.custom-viz-plugin.manifest]
    [metabase.formatter.core :as formatter]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor.streaming :as qp.streaming]
@@ -390,9 +391,18 @@
        (map add-dashcard-timeline-events)
        (m/distinct-by #(get-in % [:card :id]))))
 
+(defn- asset->data-uri
+  "Convert an asset's bytes to a data: URI string."
+  [^String asset-name ^bytes asset-bytes]
+  (let [content-type (or (java.net.URLConnection/guessContentTypeFromName asset-name)
+                         "application/octet-stream")]
+    (str "data:" content-type ";base64,"
+         (.encodeToString (java.util.Base64/getEncoder) asset-bytes))))
+
 (defn- custom-viz-bundles
-  "If the card has a custom:* display type, resolve the plugin's bundle for static rendering.
-   Respects dev bundle URL if set, so static viz previews work during development."
+  "If the card has a custom:* display type, resolve the plugin's bundle and assets for static rendering.
+   Assets are included as a map of `{name -> data-uri}` so the static viz JS context
+   can resolve `getAssetUrl` calls without HTTP."
   [card]
   (let [display-type (some-> card :display name)]
     (when (and display-type (str/starts-with? display-type "custom:"))
@@ -401,7 +411,14 @@
         (when-let [content (some-> plugin
                                    metabase.custom-viz-plugin.cache/resolve-bundle
                                    :content)]
-          [{:identifier identifier :source content}])))))
+          (let [manifest   (some-> plugin :manifest metabase.custom-viz-plugin.manifest/parse-manifest)
+                asset-names (metabase.custom-viz-plugin.manifest/asset-paths manifest)
+                assets     (into {}
+                                 (keep (fn [asset-name]
+                                         (when-let [bytes (metabase.custom-viz-plugin.cache/get-asset (:id plugin) asset-name)]
+                                           [asset-name (asset->data-uri asset-name bytes)])))
+                                 asset-names)]
+            [{:identifier identifier :source content :assets assets}]))))))
 
 ;; the `:javascript_visualization` render method
 ;; is and will continue to handle more and more 'isomorphic' chart types.

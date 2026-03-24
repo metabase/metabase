@@ -3506,7 +3506,7 @@ databaseChangeLog:
               - column:
                   name: display_name
                   type: varchar(254)
-                  remarks: Human-readable name for the plugin
+                  remarks: Human-readable name from the plugin manifest
                   constraints:
                     nullable: false
               - column:
@@ -3625,7 +3625,47 @@ databaseChangeLog:
               - column:
                   name: icon
                   type: varchar(254)
-                  remarks: Icon name for the visualization type selector
+                  remarks: Icon from plugin manifest - asset path resolved to a URL
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v59.2026-03-23T10:00:00
+      author: bronsa
+      comment: Add manifest column to custom_viz_plugin table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: custom_viz_plugin
+                columnName: manifest
+      changes:
+        - addColumn:
+            tableName: custom_viz_plugin
+            columns:
+              - column:
+                  name: manifest
+                  type: ${text.type}
+                  remarks: JSON manifest from metabase-plugin.json in the plugin repository
+
+  - changeSet:
+      id: v59.2026-03-23T10:00:01
+      author: bronsa
+      comment: Add metabase_version column to custom_viz_plugin table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: custom_viz_plugin
+                columnName: metabase_version
+      changes:
+        - addColumn:
+            tableName: custom_viz_plugin
+            columns:
+              - column:
+                  name: metabase_version
+                  type: varchar(254)
+                  remarks: Metabase version range requirement from manifest (e.g. ">=59 <62")
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

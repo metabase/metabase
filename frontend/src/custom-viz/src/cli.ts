@@ -10,10 +10,13 @@ import { Command } from "commander";
 
 import {
   generateGitignore,
+  generateIconSvg,
   generateIndexTsx,
+  generateManifest,
   generatePackageJson,
   generateTsConfig,
   generateViteConfig,
+  readBinaryTemplate,
 } from "./templates";
 
 const program = new Command();
@@ -44,13 +47,20 @@ program
 
     console.log(`Scaffolding custom visualization: ${name}\n`);
 
-    await mkdir(join(name, "src"), { recursive: true });
+    await Promise.all([
+      mkdir(join(name, "src"), { recursive: true }),
+      mkdir(join(name, "public", "assets"), { recursive: true }),
+    ]);
 
     await Promise.all([
       writeFile(join(name, "package.json"), generatePackageJson(name)),
       writeFile(join(name, "vite.config.ts"), generateViteConfig()),
       writeFile(join(name, "tsconfig.json"), generateTsConfig()),
       writeFile(join(name, "src", "index.tsx"), generateIndexTsx(name)),
+      writeFile(join(name, "metabase-plugin.json"), generateManifest(name)),
+      writeFile(join(name, "public", "assets", "icon.svg"), generateIconSvg()),
+      writeFile(join(name, "public", "assets", "thumbs-up.png"), readBinaryTemplate("thumbs-up.png")),
+      writeFile(join(name, "public", "assets", "thumbs-down.png"), readBinaryTemplate("thumbs-down.png")),
       writeFile(join(name, ".gitignore"), generateGitignore()),
     ]);
 
@@ -59,6 +69,10 @@ program
     console.log(`  ${name}/vite.config.ts`);
     console.log(`  ${name}/tsconfig.json`);
     console.log(`  ${name}/src/index.tsx`);
+    console.log(`  ${name}/metabase-plugin.json`);
+    console.log(`  ${name}/public/assets/icon.svg`);
+    console.log(`  ${name}/public/assets/thumbs-up.png`);
+    console.log(`  ${name}/public/assets/thumbs-down.png`);
     console.log(`  ${name}/.gitignore`);
     console.log();
     console.log("Next steps:");

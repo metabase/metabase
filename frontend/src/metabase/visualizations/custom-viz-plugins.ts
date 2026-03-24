@@ -47,6 +47,19 @@ function ensureVizApi() {
   }
 }
 
+/**
+ * Build a URL for a plugin's static asset.
+ */
+export function getPluginAssetUrl(
+  pluginId: number,
+  assetPath: string | null,
+): string | undefined {
+  if (!assetPath) {
+    return undefined;
+  }
+  return `/api/custom-viz-plugin/${pluginId}/asset?path=${encodeURIComponent(assetPath)}`;
+}
+
 // ---------------------------------------------------------------------------
 // Plugin loading & registration
 // ---------------------------------------------------------------------------
@@ -271,7 +284,10 @@ export async function loadCustomVizPlugin(
       );
     }
 
-    const vizDef = factory({});
+    const cacheBust = cacheBustSuffix ? `&t=${Date.now()}` : "";
+    const getAssetUrl = (path: string) =>
+      `${getPluginAssetUrl(plugin.id, path) ?? ""}${cacheBust}`;
+    const vizDef = factory({ getAssetUrl });
     if (!vizDef || !vizDef.VisualizationComponent) {
       throw new Error(
         "Factory must return an object with a VisualizationComponent property",
@@ -286,7 +302,7 @@ export async function loadCustomVizPlugin(
     Object.assign(Component, {
       identifier,
       getUiName: () => plugin.display_name,
-      iconName: (plugin.icon ?? "area") as IconName,
+      iconUrl: getPluginAssetUrl(plugin.id, plugin.icon),
       minSize: vizDef.minSize,
       defaultSize: vizDef.defaultSize,
       isSensible: vizDef.isSensible,
