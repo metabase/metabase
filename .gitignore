@@ -167,3 +167,7 @@ CLAUDE.local.md
 /logs
 /.clojure-mcp
 
+# sqlglot (installed at dev time, bundled at build time)
+resources/python-sources/sqlglot/
+resources/python-sources/sqlglot-*.dist-info/
+

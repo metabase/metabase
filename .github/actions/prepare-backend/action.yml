@@ -33,6 +33,9 @@ runs:
           exit 1
         fi
 
+    - name: Install uv (Python package manager)
+      uses: astral-sh/setup-uv@v6
+
     - name: Get M2 cache key
       uses: ./.github/actions/get-cache-keys
       id: get-cache-keys
