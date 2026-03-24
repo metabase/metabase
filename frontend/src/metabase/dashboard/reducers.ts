@@ -4,7 +4,7 @@ import { assoc, chain, merge, updateIn } from "icepick";
 import { Actions } from "metabase/entities/actions";
 import { Questions } from "metabase/entities/questions";
 import { combineReducers } from "metabase/lib/redux";
-import { initialize } from "metabase/redux/dashboard";
+import { SET_PARAMETER_VALUES, initialize } from "metabase/redux/dashboard";
 import type { Card, WritebackAction } from "metabase-types/api";
 
 import {
@@ -12,7 +12,6 @@ import {
   REMOVE_PARAMETER,
   RESET_PARAMETERS,
   SET_PARAMETER_VALUE,
-  SET_PARAMETER_VALUES,
   UNDO_REMOVE_CARD_FROM_DASH,
   addCardToDash,
   addManyCardsToDash,

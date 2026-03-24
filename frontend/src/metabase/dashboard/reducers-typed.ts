@@ -12,7 +12,14 @@ import { Dashboards } from "metabase/entities/dashboards";
 import { Questions } from "metabase/entities/questions";
 import { handleActions } from "metabase/lib/redux";
 import { REVERT_TO_REVISION } from "metabase/query_builder/actions";
-import { INITIALIZE, RESET, initialize, reset } from "metabase/redux/dashboard";
+import {
+  INITIALIZE,
+  RESET,
+  SET_PARAMETER_VALUES,
+  SHOW_ADD_PARAMETER_POPOVER,
+  initialize,
+  reset,
+} from "metabase/redux/dashboard";
 import { NAVIGATE_BACK_TO_DASHBOARD } from "metabase/redux/query-builder";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
@@ -36,9 +43,7 @@ import {
   RESET_PARAMETERS,
   SET_EDITING_DASHBOARD,
   SET_PARAMETER_VALUE,
-  SET_PARAMETER_VALUES,
   SET_SIDEBAR,
-  SHOW_ADD_PARAMETER_POPOVER,
   SHOW_AUTO_APPLY_FILTERS_TOAST,
   addCardToDash,
   addDashcardIdsToLoadingQueue,
