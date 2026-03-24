@@ -140,6 +140,7 @@ export class ClickActionsPopover extends Component<
           }
         }}
         trapFocus
+        hideDetached
         position="bottom-start"
         offset={8}
         popoverContentTestId="click-actions-popover"
