@@ -38,7 +38,14 @@ function CustomVizOption({
   plugin: CustomVizPluginRuntime;
   onSelect: (plugin: CustomVizPluginRuntime) => void;
 }) {
-  const iconName: IconName = (plugin.icon as IconName) ?? "area";
+  const rawIcon = plugin.icon;
+  const isAssetIcon = rawIcon != null && rawIcon.includes("/");
+  const iconName: IconName = isAssetIcon
+    ? "area"
+    : ((rawIcon as IconName) ?? "area");
+  const iconUrl = isAssetIcon
+    ? `/api/custom-viz-plugin/${plugin.id}/assets/${rawIcon}`
+    : undefined;
 
   return (
     <Center data-testid="chart-type-option">
@@ -55,7 +62,16 @@ function CustomVizOption({
             ChartTypeOptionS.VisualizationButton,
           )}
         >
-          <Icon name={iconName} c="brand" size={20} />
+          {iconUrl ? (
+            <img
+              src={iconUrl}
+              alt={plugin.display_name}
+              width={20}
+              height={20}
+            />
+          ) : (
+            <Icon name={iconName} c="brand" size={20} />
+          )}
         </ActionIcon>
         <Text lh="unset" ta="center" fw="bold" fz="sm" c="text-secondary">
           {plugin.display_name}

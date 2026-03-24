@@ -96,6 +96,7 @@ const isWatch = process.argv.includes("--watch");
 
 export default defineConfig({
   plugins: [metabaseVizExternals(), ...(isWatch ? [metabaseNotifyReload()] : [])],
+  publicDir: "public",
   build: {
     outDir: "dist",
     lib: {

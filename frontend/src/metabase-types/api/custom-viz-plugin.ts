@@ -2,8 +2,7 @@ export interface CustomVizPluginManifest {
   name?: string;
   icon?: string;
   metabase?: {
-    min_version?: number;
-    max_version?: number;
+    version?: string;
   };
   assets?: string[];
 }
@@ -15,14 +14,13 @@ export interface CustomVizPlugin {
   identifier: string;
   status: "pending" | "active" | "error";
   enabled: boolean;
-  icon: string | null;
+  icon: string;
   error_message: string | null;
   pinned_version: string | null;
   resolved_commit: string | null;
   dev_bundle_url?: string | null;
   manifest?: CustomVizPluginManifest | null;
-  min_metabase_version?: number | null;
-  max_metabase_version?: number | null;
+  metabase_version?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -31,7 +29,7 @@ export interface CustomVizPluginRuntime {
   id: number;
   identifier: string;
   display_name: string;
-  icon: string | null;
+  icon: string;
   bundle_url: string;
   resolved_commit: string | null;
   dev_bundle_url?: string | null;
@@ -40,8 +38,6 @@ export interface CustomVizPluginRuntime {
 
 export interface CreateCustomVizPluginRequest {
   repo_url: string;
-  display_name?: string;
-  icon?: string | null;
   access_token?: string;
   pinned_version?: string | null;
 }
@@ -49,8 +45,6 @@ export interface CreateCustomVizPluginRequest {
 export interface UpdateCustomVizPluginRequest {
   id: number;
   enabled?: boolean;
-  display_name?: string;
-  icon?: string | null;
   access_token?: string;
   pinned_version?: string | null;
 }

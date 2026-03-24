@@ -1,4 +1,5 @@
 import gitignoreTemplate from "./templates/.gitignore?raw";
+import iconSvgTemplate from "./templates/icon.svg?raw";
 import indexTsxTemplate from "./templates/index.tsx?raw";
 import manifestTemplate from "./templates/metabase-plugin.json?raw";
 import packageJsonTemplate from "./templates/package.json?raw";
@@ -29,6 +30,10 @@ export function generateIndexTsx(name: string): string {
 
 export function generateManifest(name: string): string {
   return replaceName(manifestTemplate, name);
+}
+
+export function generateIconSvg(): string {
+  return iconSvgTemplate;
 }
 
 export function generateGitignore(): string {

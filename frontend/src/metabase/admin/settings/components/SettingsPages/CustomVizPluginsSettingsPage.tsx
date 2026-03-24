@@ -32,25 +32,38 @@ import {
   type IconName,
   Loader,
   Menu,
-  Select,
-  type SelectOption,
   Stack,
   Switch,
   Text,
   TextInput,
 } from "metabase/ui";
-import { iconNames } from "metabase/ui/components/icons/Icon/icons";
 import type { CustomVizPlugin } from "metabase-types/api";
 
 const DEFAULT_ICON: IconName = "area";
 
-const ICON_OPTIONS: SelectOption[] = iconNames.map((name) => ({
-  value: name,
-  label: name,
-  icon: name as IconName,
-}));
+function PluginIconPreview({ plugin }: { plugin: CustomVizPlugin }) {
+  const icon = plugin.icon;
+  const isAssetPath = icon != null && icon.includes("/");
 
-function IconPreview({ iconName }: { iconName: IconName }) {
+  if (isAssetPath) {
+    return (
+      <ActionIcon
+        w="3.125rem"
+        h="3.125rem"
+        radius="xl"
+        variant="outline"
+        style={{ border: "1px solid var(--mb-color-border)" }}
+      >
+        <img
+          src={`/api/custom-viz-plugin/${plugin.id}/assets/${icon}`}
+          alt={plugin.display_name}
+          width={20}
+          height={20}
+        />
+      </ActionIcon>
+    );
+  }
+
   return (
     <ActionIcon
       w="3.125rem"
@@ -60,37 +73,8 @@ function IconPreview({ iconName }: { iconName: IconName }) {
       variant="outline"
       style={{ border: "1px solid var(--mb-color-border)" }}
     >
-      <Icon name={iconName} c="brand" size={20} />
+      <Icon name={(icon as IconName) ?? DEFAULT_ICON} c="brand" size={20} />
     </ActionIcon>
-  );
-}
-
-function IconPickerField({
-  value,
-  onChange,
-}: {
-  value: IconName | null;
-  onChange: (icon: IconName | null) => void;
-}) {
-  return (
-    <Box>
-      <Text fw={700} size="sm" mb={4}>
-        {t`Icon (optional)`}
-      </Text>
-      <Group gap="md" align="center">
-        <Box style={{ flex: 1 }}>
-          <Select
-            data={ICON_OPTIONS}
-            value={value}
-            onChange={(val) => onChange((val as IconName) ?? null)}
-            searchable
-            clearable
-            placeholder={t`From manifest or default`}
-          />
-        </Box>
-        {value && <IconPreview iconName={value} />}
-      </Group>
-    </Box>
   );
 }
 
@@ -105,14 +89,9 @@ function PluginForm({
   const [updatePlugin] = useUpdateCustomVizPluginMutation();
   const isEdit = Boolean(plugin);
 
-  const [selectedIcon, setSelectedIcon] = useState<IconName | null>(
-    isEdit ? ((plugin?.icon as IconName) ?? DEFAULT_ICON) : null,
-  );
-
   const initialValues = useMemo(
     () => ({
       repo_url: plugin?.repo_url ?? "",
-      display_name: plugin?.display_name ?? "",
       access_token: "",
       pinned_version: plugin?.pinned_version ?? "",
     }),
@@ -122,34 +101,25 @@ function PluginForm({
   const handleSubmit = useCallback(
     async (values: {
       repo_url: string;
-      display_name: string;
       access_token: string;
       pinned_version: string;
     }) => {
-      const icon = selectedIcon === DEFAULT_ICON ? null : selectedIcon;
-
       if (isEdit && plugin) {
         await updatePlugin({
           id: plugin.id,
-          display_name: values.display_name,
-          icon: icon ?? null,
           access_token: values.access_token || undefined,
           pinned_version: values.pinned_version || null,
         }).unwrap();
       } else {
         await createPlugin({
           repo_url: values.repo_url,
-          // Only send display_name/icon if explicitly set — otherwise
-          // the backend will use values from the plugin manifest.
-          display_name: values.display_name || undefined,
-          icon: icon ?? undefined,
           access_token: values.access_token || undefined,
           pinned_version: values.pinned_version || null,
         }).unwrap();
       }
       onClose();
     },
-    [createPlugin, updatePlugin, plugin, isEdit, selectedIcon, onClose],
+    [createPlugin, updatePlugin, plugin, isEdit, onClose],
   );
 
   return (
@@ -194,37 +164,11 @@ function PluginForm({
                   placeholder="main"
                 />
               </Stack>
-              <Stack gap="md">
-                <Text fw={700}>{t`Customization`}</Text>
-                {!isEdit && (
-                  <Text size="sm" c="text-tertiary">
-                    {t`These fields are optional. If the plugin includes a manifest file, its name and icon will be used automatically.`}
-                  </Text>
-                )}
-                <FormTextInput
-                  name="display_name"
-                  label={isEdit ? t`Display name` : t`Display name (optional)`}
-                  placeholder={
-                    plugin?.manifest?.name ?? t`From manifest or repo name`
-                  }
-                  autoFocus={isEdit}
-                />
-                <IconPickerField
-                  value={selectedIcon}
-                  onChange={setSelectedIcon}
-                />
-              </Stack>
               <FormErrorMessage />
               <Group gap="sm">
                 <FormSubmitButton
                   label={isEdit ? t`Update plugin` : t`Add plugin`}
-                  disabled={
-                    !dirty &&
-                    selectedIcon ===
-                      (isEdit
-                        ? ((plugin?.icon as IconName) ?? DEFAULT_ICON)
-                        : null)
-                  }
+                  disabled={!dirty}
                   variant="filled"
                 />
                 <Button variant="subtle" onClick={onClose}>
@@ -281,7 +225,7 @@ function PluginListItem({
       }}
     >
       <Group gap="md" align="flex-start">
-        <IconPreview iconName={(plugin.icon as IconName) ?? DEFAULT_ICON} />
+        <PluginIconPreview plugin={plugin} />
         <Stack gap="xs">
           <Text fw={700}>{plugin.display_name}</Text>
           <Text
@@ -306,16 +250,9 @@ function PluginListItem({
               {plugin.pinned_version && ` (${plugin.pinned_version})`}
             </Text>
           )}
-          {(plugin.min_metabase_version != null ||
-              plugin.max_metabase_version != null) && (
+          {plugin.metabase_version != null && (
             <Text size="sm" c="text-tertiary">
-              {t`Metabase version`}:{" "}
-              {plugin.min_metabase_version != null &&
-              plugin.max_metabase_version != null
-                ? `v${plugin.min_metabase_version} – v${plugin.max_metabase_version}`
-                : plugin.min_metabase_version != null
-                  ? `v${plugin.min_metabase_version}+`
-                  : `up to v${plugin.max_metabase_version}`}
+              {t`Metabase version`}: {plugin.metabase_version}
             </Text>
           )}
         </Stack>

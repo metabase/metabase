@@ -17,6 +17,13 @@ export type CreateCustomVisualizationProps = {
    */
   translate: (text: string) => string;
 
+  /**
+   * Returns a URL for a static asset declared in the plugin manifest.
+   * Use this to reference images and other static files from your plugin.
+   * @example getAssetUrl("dist/assets/my_icon.svg")
+   */
+  getAssetUrl: (assetPath: string) => string;
+
   // settings: CustomVisualizationSettings;
 
   /**

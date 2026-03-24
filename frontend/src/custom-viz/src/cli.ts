@@ -10,6 +10,7 @@ import { Command } from "commander";
 
 import {
   generateGitignore,
+  generateIconSvg,
   generateIndexTsx,
   generateManifest,
   generatePackageJson,
@@ -45,7 +46,10 @@ program
 
     console.log(`Scaffolding custom visualization: ${name}\n`);
 
-    await mkdir(join(name, "src"), { recursive: true });
+    await Promise.all([
+      mkdir(join(name, "src"), { recursive: true }),
+      mkdir(join(name, "public", "assets"), { recursive: true }),
+    ]);
 
     await Promise.all([
       writeFile(join(name, "package.json"), generatePackageJson(name)),
@@ -53,6 +57,7 @@ program
       writeFile(join(name, "tsconfig.json"), generateTsConfig()),
       writeFile(join(name, "src", "index.tsx"), generateIndexTsx(name)),
       writeFile(join(name, "metabase-plugin.json"), generateManifest(name)),
+      writeFile(join(name, "public", "assets", "icon.svg"), generateIconSvg()),
       writeFile(join(name, ".gitignore"), generateGitignore()),
     ]);
 
@@ -62,6 +67,7 @@ program
     console.log(`  ${name}/tsconfig.json`);
     console.log(`  ${name}/src/index.tsx`);
     console.log(`  ${name}/metabase-plugin.json`);
+    console.log(`  ${name}/public/assets/icon.svg`);
     console.log(`  ${name}/.gitignore`);
     console.log();
     console.log("Next steps:");

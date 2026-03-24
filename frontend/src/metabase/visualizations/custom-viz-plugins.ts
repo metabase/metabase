@@ -47,6 +47,18 @@ function ensureVizApi() {
   }
 }
 
+/**
+ * Create a getAssetUrl function scoped to a specific plugin.
+ * Plugins call `getAssetUrl("dist/assets/my_icon.svg")` to get a full URL
+ * that resolves to the `/api/custom-viz-plugin/:id/assets/...` endpoint.
+ */
+function createGetAssetUrl(pluginId: number) {
+  return (assetPath: string): string => {
+    const cleanPath = assetPath.replace(/^\/+/, "");
+    return `/api/custom-viz-plugin/${pluginId}/assets/${cleanPath}`;
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Plugin loading & registration
 // ---------------------------------------------------------------------------
@@ -271,7 +283,8 @@ export async function loadCustomVizPlugin(
       );
     }
 
-    const vizDef = factory({});
+    const getAssetUrl = createGetAssetUrl(plugin.id);
+    const vizDef = factory({ getAssetUrl });
     if (!vizDef || !vizDef.VisualizationComponent) {
       throw new Error(
         "Factory must return an object with a VisualizationComponent property",
@@ -281,12 +294,20 @@ export async function loadCustomVizPlugin(
     // Build a Metabase-compatible identifier, prefixed to avoid collisions
     const identifier = `custom:${plugin.identifier}` as VisualizationDisplay;
 
+    // Resolve icon: if it's an asset path (contains "/"), convert to asset URL;
+    // otherwise treat as a built-in icon name.
+    const rawIcon = plugin.icon;
+    const isAssetIcon = rawIcon != null && rawIcon.includes("/");
+    const iconName = isAssetIcon ? undefined : rawIcon;
+    const iconUrl = isAssetIcon ? getAssetUrl(rawIcon) : undefined;
+
     // Attach the required static properties onto the component function
     const Component = vizDef.VisualizationComponent as Visualization;
     Object.assign(Component, {
       identifier,
       getUiName: () => plugin.display_name,
-      iconName: (plugin.icon ?? "area") as IconName,
+      iconName: (iconName ?? "area") as IconName,
+      ...(iconUrl != null && { iconUrl }),
       minSize: vizDef.minSize,
       defaultSize: vizDef.defaultSize,
       isSensible: vizDef.isSensible,
