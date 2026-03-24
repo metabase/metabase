@@ -1,4 +1,6 @@
-import { Box, Icon } from "metabase/ui";
+import { useState } from "react";
+
+import { Box, Icon, TextInput } from "metabase/ui";
 
 import { iconNames } from "./icons";
 
@@ -22,9 +24,21 @@ const argTypes = {
 };
 
 const ListTemplate = () => {
+  const [search, setSearch] = useState("");
+  const filteredIcons = iconNames.filter((icon) =>
+    icon.toLowerCase().includes(search.toLowerCase()),
+  );
+
   return (
     <Box>
-      {iconNames.map((icon) => (
+      <Box mb="lg">
+        <TextInput
+          placeholder="Search icons by name..."
+          value={search}
+          onChange={(e) => setSearch(e.currentTarget.value)}
+        />
+      </Box>
+      {filteredIcons.map((icon) => (
         <Box key={icon} display="inline-block" w="100px" m="20px" ta="center">
           <p>{icon}</p>
           <Icon name={icon} />
