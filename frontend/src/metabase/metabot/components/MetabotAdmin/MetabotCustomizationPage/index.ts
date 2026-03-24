@@ -1,0 +1,1 @@
+export { MetabotSystemPromptsPage } from "./MetabotSystemPromptsPage";

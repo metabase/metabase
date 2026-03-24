@@ -47,8 +47,10 @@ import type {
 } from "metabase-types/api";
 
 import { MetabotPromptSuggestionPane } from "./MetabotAdminSuggestedPrompts";
+import { MetabotSystemPromptsPage } from "./MetabotCustomizationPage";
 import { MetabotNavPane } from "./MetabotNavPane";
 import { MetabotSQLGenerationSettingsSection } from "./MetabotSQLGenerationSettingsSection";
+import { MetabotCustomizationPage } from "./MetabotSystemPromptsPage";
 import { MetabotUsageControlsPage } from "./MetabotUsageControlsPage";
 import { useMetabotIdPath } from "./utils";
 
@@ -69,6 +71,16 @@ export function getFullAdminRoutes() {
       key="usage-controls"
       path=":metabotId/usage-controls"
       component={MetabotUsageControlsPage}
+    />,
+    <Route
+      key="customization"
+      path=":metabotId/customization"
+      component={MetabotCustomizationPage}
+    />,
+    <Route
+      key="system-prompts"
+      path=":metabotId/system-prompts"
+      component={MetabotSystemPromptsPage}
     />,
   ];
 }

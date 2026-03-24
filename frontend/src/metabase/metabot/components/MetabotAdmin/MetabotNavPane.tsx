@@ -12,19 +12,24 @@ export function MetabotNavPane() {
     <Flex direction="column" flex="0 0 auto">
       <AdminNavWrapper>
         <AdminNavItem
-          icon="metabot"
-          label={t`Metabot`}
+          icon="gear"
+          label={t`Settings`}
           path={`/admin/metabot/${FIXED_METABOT_IDS.DEFAULT}`}
-        />
-        <AdminNavItem
-          icon="embed"
-          label={t`Embedded Metabot`}
-          path={`/admin/metabot/${FIXED_METABOT_IDS.EMBEDDED}`}
         />
         <AdminNavItem
           icon="lock"
           label={t`Usage controls`}
           path={`/admin/metabot/${FIXED_METABOT_IDS.DEFAULT}/usage-controls`}
+        />
+        <AdminNavItem
+          icon="palette"
+          label={t`Customize`}
+          path={`/admin/metabot/${FIXED_METABOT_IDS.DEFAULT}/customization`}
+        />
+        <AdminNavItem
+          icon="document"
+          label={t`System prompts`}
+          path={`/admin/metabot/${FIXED_METABOT_IDS.DEFAULT}/system-prompts`}
         />
       </AdminNavWrapper>
     </Flex>
