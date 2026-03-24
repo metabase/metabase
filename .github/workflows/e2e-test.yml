@@ -31,7 +31,7 @@ on:
 
 jobs:
   e2e-tests:
-    runs-on: ${{ inputs.runner }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 45
     name: e2e-tests-${{ inputs.name }}-${{ inputs.edition }}
     env:
