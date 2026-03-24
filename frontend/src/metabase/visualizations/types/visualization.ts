@@ -1,7 +1,8 @@
-import type { ComponentType, ReactNode } from "react";
+import type { CSSProperties, ComponentType, ReactNode } from "react";
 
 import type { OptionsType } from "metabase/lib/formatting/types";
 import type { IconName, IconProps } from "metabase/ui";
+import type { ColorGetter } from "metabase/ui/colors/types";
 import type {
   TextHeightMeasurer,
   TextWidthMeasurer,
@@ -62,8 +63,6 @@ export type Formatter = (
   options?: OptionsType,
 ) => string | null;
 export type TableCellFormatter = (value: RowValue) => ReactNode;
-
-export type ColorGetter = (colorName: string) => string;
 
 export type Extent = [number, number];
 
@@ -278,7 +277,6 @@ export type ColumnSettingDefinition<TValue, TProps = unknown> = {
   title?: string;
   hint?: string;
   widget?: string | ComponentType<any>;
-  default?: TValue;
   props?: TProps;
   inline?: boolean;
   readDependencies?: string[];
@@ -345,13 +343,6 @@ export type VisualizationSettingDefinition<
       : ComputedVisualizationSettings,
     extra?: SettingsExtra,
   ) => TValue;
-  getDisabled?: (
-    object: T,
-    settings: T extends DatasetColumn
-      ? ColumnSettings
-      : ComputedVisualizationSettings,
-    extra?: SettingsExtra,
-  ) => boolean;
   getSection?: (
     object: T,
     settings: T extends DatasetColumn
@@ -359,20 +350,16 @@ export type VisualizationSettingDefinition<
       : ComputedVisualizationSettings,
     extra?: SettingsExtra,
   ) => string;
-  autoOpenWhenUnset?: boolean;
-  disabled?: boolean;
-  default?: TValue;
-  marginBottom?: string;
-  noPadding?: boolean;
-  value?: TValue;
-  set?: boolean;
-  getMarginBottom?: (
+  getWrapperStyle?: (
     object: T,
     settings: T extends DatasetColumn
       ? ColumnSettings
       : ComputedVisualizationSettings,
     extra?: SettingsExtra,
-  ) => string;
+  ) => CSSProperties | undefined;
+  autoOpenWhenUnset?: boolean;
+  value?: TValue;
+  set?: boolean;
   persistDefault?: boolean;
   inline?: boolean;
   getProps?: (
@@ -399,8 +386,12 @@ export type CompleteVisualizationSettingDefinition<
   T = unknown,
   TValue = unknown,
   TProps extends Record<string, unknown> = Record<string, unknown>,
-> = Omit<VisualizationSettingDefinition<T, TValue, TProps>, "getProps"> & {
+> = Omit<
+  VisualizationSettingDefinition<T, TValue, TProps>,
+  "getProps" | "getWrapperStyle"
+> & {
   id: string;
+  style?: CSSProperties;
   props: Partial<TProps>;
 };
 
@@ -458,6 +449,8 @@ export type VisualizationSettingsDefinitions<
   >;
   "graph.colors"?: SeriesSettingDefinition<Value, Props>;
   "graph.dimensions"?: SeriesSettingDefinition<Value, Props>;
+  "graph.goal_label"?: SeriesSettingDefinition<Value, Props>;
+  "graph.goal_value"?: SeriesSettingDefinition<Value, Props>;
   "graph.metrics"?: SeriesSettingDefinition<Value, Props>;
   "graph.label_value_frequency"?: SeriesSettingDefinition<
     Value,
@@ -477,10 +470,12 @@ export type VisualizationSettingsDefinitions<
     ChartSettingSeriesOrderProps
   >;
   "graph.series_order_dimension"?: SeriesSettingDefinition<Value, Props>;
+  "graph.show_goal"?: SeriesSettingDefinition<Value, Props>;
   "graph.show_mean"?: SeriesSettingDefinition<Value, Props>;
   "graph.show_stack_values"?: SeriesSettingDefinition<Value, Props>;
   "graph.show_trendline"?: SeriesSettingDefinition<Value, Props>;
   "graph.show_values"?: SeriesSettingDefinition<Value, Props>;
+  "graph.split_panels"?: SeriesSettingDefinition<Value, Props>;
   "graph.tooltip_columns"?: SeriesSettingDefinition<Value, Props>;
   "graph.tooltip_type"?: SeriesSettingDefinition<Value, Props>;
   "graph.x_axis._is_histogram"?: SeriesSettingDefinition<Value, Props>;

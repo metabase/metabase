@@ -17,6 +17,7 @@ import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { ExplicitSizeRefreshModeContext } from "metabase/common/components/ExplicitSize/ExplicitSize";
 import { QuestionPickerModal } from "metabase/common/components/Pickers";
 import type { QuestionPickerValueItem } from "metabase/common/components/Pickers/QuestionPicker/types";
+import { useDownloadData } from "metabase/common/components/QuestionDownloadWidget/use-download-data";
 import { navigateToCardFromDocument } from "metabase/documents/actions";
 import {
   trackDocumentAddSupportingText,
@@ -39,7 +40,6 @@ import {
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { usePublicDocumentContext } from "metabase/public/contexts/PublicDocumentContext";
 import { usePublicDocumentCardData } from "metabase/public/hooks/use-public-document-card-data";
-import { useDownloadData } from "metabase/query_builder/components/QuestionDownloadWidget/use-download-data";
 import { DropZone } from "metabase/rich_text_editing/tiptap/extensions/shared/dnd/DropZone";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, Loader, Menu, Text, TextInput } from "metabase/ui";

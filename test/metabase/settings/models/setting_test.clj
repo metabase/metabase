@@ -69,6 +69,12 @@
   :visibility :internal
   :encryption :when-encryption-key-set)
 
+(defsetting test-setting-with-deprecated-name
+  "Test setting with a deprecated env var name"
+  :visibility :internal
+  :encryption :when-encryption-key-set
+  :deprecated-name :old-test-setting-name)
+
 (defsetting toucan-name
   "Name for the Metabase Toucan mascot."
   :visibility :internal
@@ -1787,3 +1793,48 @@
           (mt/with-temporary-setting-values [test-setting-that-is-not-included-when-listing-in-api "fun-times"]
             (is (= ::not-present
                    (f :test-setting-that-is-not-included-when-listing-in-api)))))))))
+
+;;; ----------------------------------------- deprecated-name env var fallback -----------------------------------------
+
+(defn- deprecated-env-var-warnings
+  "Return warning log messages mentioning the deprecated env var after running [[setting/log-deprecated-env-var-usage!]]."
+  []
+  (mt/with-log-messages-for-level [messages :warn]
+    (setting/log-deprecated-env-var-usage!)
+    (->> (messages) (mapv :message) (filterv #(str/includes? % "OLD_TEST_SETTING")))))
+
+(deftest deprecated-name-only-legacy-set-test
+  (mt/with-temp-env-var-value! [mb-old-test-setting-name "LEGACY"]
+    (is (= "LEGACY" (setting/env-var-value :test-setting-with-deprecated-name)))
+    (is (= ["Deprecated MB_OLD_TEST_SETTING_NAME is set; rename it to MB_TEST_SETTING_WITH_DEPRECATED_NAME."]
+           (deprecated-env-var-warnings)))))
+
+(deftest deprecated-name-both-set-different-values-test
+  (mt/with-temp-env-var-value! [mb-test-setting-with-deprecated-name "PRIMARY"
+                                mb-old-test-setting-name             "LEGACY"]
+    (is (= "PRIMARY" (setting/env-var-value :test-setting-with-deprecated-name)))
+    (is (= [(str "MB_TEST_SETTING_WITH_DEPRECATED_NAME and deprecated MB_OLD_TEST_SETTING_NAME"
+                 " have conflicting values; using MB_TEST_SETTING_WITH_DEPRECATED_NAME."
+                 " Remove MB_OLD_TEST_SETTING_NAME.")]
+           (deprecated-env-var-warnings)))))
+
+(deftest deprecated-name-both-set-same-value-test
+  (mt/with-temp-env-var-value! [mb-test-setting-with-deprecated-name "SAME"
+                                mb-old-test-setting-name             "SAME"]
+    (is (= "SAME" (setting/env-var-value :test-setting-with-deprecated-name)))
+    (is (= ["MB_TEST_SETTING_WITH_DEPRECATED_NAME and deprecated MB_OLD_TEST_SETTING_NAME are both set. Remove MB_OLD_TEST_SETTING_NAME."]
+           (deprecated-env-var-warnings)))))
+
+(deftest deprecated-name-only-primary-set-test
+  (mt/with-temp-env-var-value! [mb-test-setting-with-deprecated-name "PRIMARY"]
+    (is (= "PRIMARY" (setting/env-var-value :test-setting-with-deprecated-name)))
+    (is (= [] (deprecated-env-var-warnings)))))
+
+(deftest deprecated-name-neither-set-test
+  (is (nil? (setting/env-var-value :test-setting-with-deprecated-name)))
+  (is (= [] (deprecated-env-var-warnings))))
+
+(deftest deprecated-name-empty-primary-blocks-fallback-test
+  (mt/with-temp-env-var-value! [mb-test-setting-with-deprecated-name ""
+                                mb-old-test-setting-name             "LEGACY"]
+    (is (nil? (setting/env-var-value :test-setting-with-deprecated-name)))))

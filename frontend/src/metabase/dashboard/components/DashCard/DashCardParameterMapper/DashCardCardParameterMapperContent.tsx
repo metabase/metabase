@@ -8,10 +8,9 @@ import CS from "metabase/css/core/index.css";
 import { setParameterMapping } from "metabase/dashboard/actions/parameters";
 import {
   getVirtualCardType,
-  isQuestionDashCard,
-  isVirtualDashCard,
   showVirtualDashCardInfoText,
 } from "metabase/dashboard/utils";
+import { isQuestionDashCard, isVirtualDashCard } from "metabase/lib/dashboard";
 import { useDispatch } from "metabase/lib/redux";
 import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
 import {

@@ -226,6 +226,7 @@
   (setting/migrate-encrypted-settings!)
   (database/check-health!)
   (startup/run-startup-logic!)
+  (setting/log-deprecated-env-var-usage!)
   (init-status/set-progress! 0.95)
   (task/start-scheduler!)
   (init-status/set-complete!)

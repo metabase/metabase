@@ -192,7 +192,7 @@
 
 (defn- paged-runs-where-clause
   "Builds a `:where` clause for transform runs from the given filter parameters."
-  [{:keys [start-time end-time run-methods transform-ids transform-tag-ids statuses]}]
+  [{:keys [start-time end-time run-methods transform-ids transform-tag-ids statuses user-id]}]
   (let [where-cond (cond-> []
                      (some? start-time)
                      (conj (timestamp-constraint :start_time start-time))
@@ -217,7 +217,10 @@
                      ;; optimization: is_active condition for started status
                      (and (= (first statuses) "started")
                           (nil? (next statuses)))
-                     (conj [:= :is_active true]))]
+                     (conj [:= :is_active true])
+
+                     (some? user-id)
+                     (conj [:= :user_id user-id]))]
     (when (seq where-cond)
       (into [:and] where-cond))))
 

@@ -1,7 +1,7 @@
 import Color from "color";
 import { t } from "ttag";
 
-import { color, staticVizOverrides } from "metabase/lib/colors";
+import { color, staticVizOverrides } from "metabase/ui/colors";
 import {
   GRAPH_AXIS_SETTINGS,
   GRAPH_DATA_SETTINGS,
@@ -69,7 +69,7 @@ Object.assign(
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         title: t`Show total`,
         widget: "toggle",
-        default: true,
+        getDefault: () => true,
         inline: true,
       },
       "waterfall.total_color": {

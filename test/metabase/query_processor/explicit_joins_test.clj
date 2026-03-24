@@ -13,10 +13,10 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.mocks-31769 :as lib.tu.mocks-31769]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.query-processor.timezones-test :as timezones-test]
    [metabase.test :as mt]
@@ -1572,6 +1572,23 @@
                      2 1 123 110.93 6.1 117.03 nil "2018-05-15T08:04:04.58Z" 3
                      2 1 123 110.93 6.1 117.03 nil "2018-05-15T08:04:04.58Z" 3]]
                    (mt/rows (qp/process-query q2))))))))))
+
+(deftest ^:parallel self-join-with-capitalized-table-test
+  (mt/test-drivers (mt/normal-driver-select {:+features [:left-join]})
+    (mt/dataset (mt/dataset-definition "self-join-db"
+                                       [["TableA"
+                                         [{:field-name "foo" :base-type :type/Integer}]
+                                         [[1] [2]]]])
+      (let [mp    (mt/metadata-provider)
+            table-kw (try (mt/id :TableA) :TableA (catch Exception _ :tablea))
+            table-a   (lib.metadata/table mp (mt/id table-kw))
+            id   (lib.metadata/field mp (mt/id table-kw :id))
+            query (-> (lib/query mp table-a)
+                      (lib/join (lib/join-clause table-a [(lib/= id id)]))
+                      (lib/order-by id :asc))]
+        (is (= [[1 1 1 1] [2 2 2 2]]
+               (mt/formatted-rows [int int int int]
+                                  (qp/process-query query))))))))
 
 (deftest ^:parallel dangling-join-condition-lhs-errors-if-fuzzy-matched-to-rhs-test
   (testing (str "When upstream changes leave a dangling ref in a join condition LHS, QP throws if it is fuzzy-matched"

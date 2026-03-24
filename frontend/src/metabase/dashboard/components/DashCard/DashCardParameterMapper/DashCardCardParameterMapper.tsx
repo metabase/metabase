@@ -8,7 +8,8 @@ import {
   getParameterTarget,
   getQuestionByCard,
 } from "metabase/dashboard/selectors";
-import { isNativeDashCard, isQuestionDashCard } from "metabase/dashboard/utils";
+import { isNativeDashCard } from "metabase/dashboard/utils";
+import { isQuestionDashCard } from "metabase/lib/dashboard";
 import { connect } from "metabase/lib/redux";
 import {
   type ParameterMappingOption,
