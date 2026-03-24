@@ -21,6 +21,15 @@
   :export?    false
   :audit      :never)
 
+(defsetting oauth-server-refresh-token-ttl
+  (deferred-tru "Refresh token time-to-live in seconds for the embedded OAuth server.")
+  :type       :integer
+  :visibility :internal
+  :default    2592000
+  :doc        false
+  :export?    false
+  :audit      :never)
+
 (defsetting oauth-server-dynamic-registration-enabled
   (deferred-tru "Whether dynamic client registration (RFC 7591) is enabled for the embedded OAuth server.")
   :type       :boolean

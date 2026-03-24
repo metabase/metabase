@@ -32,6 +32,7 @@
      :revocation-endpoint            (str base-url "/oauth/revoke")
      :access-token-ttl-seconds       (oauth-settings/oauth-server-access-token-ttl)
      :authorization-code-ttl-seconds (oauth-settings/oauth-server-authorization-code-ttl)
+     :refresh-token-ttl-seconds      (oauth-settings/oauth-server-refresh-token-ttl)
      :client-store                   (store/create-client-store)
      :code-store                     (store/create-authorization-code-store)
      :token-store                    (store/create-token-store)

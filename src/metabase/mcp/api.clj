@@ -88,7 +88,7 @@
 
 (defn- dispatch-request
   "Dispatch a single JSON-RPC request. Returns a response map or nil for notifications."
-  [msg session-id token-scopes]
+  [msg _session-id token-scopes]
   (let [id     (:id msg)
         method (:method msg)
         params (:params msg)]

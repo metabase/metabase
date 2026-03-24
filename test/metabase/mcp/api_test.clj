@@ -98,13 +98,6 @@
     (when-not (:isError result)
       (json/decode+kw (:text (first (:content result)))))))
 
-(defn- mcp-request-as
-  "Make a POST request to /api/mcp authenticated as the given test user."
-  [username body extra-headers]
-  (client/client-full-response (test.users/username->token username)
-                               :post "mcp"
-                               {:request-options {:headers extra-headers}}
-                               body))
 
 ;;; ---------------------------------------------------- Tests -----------------------------------------------------
 
@@ -300,12 +293,12 @@
 
 (deftest initialized-notification-compatibility-test
   (testing "requests succeed without notifications/initialized"
-    (let [response   (mcp-request (jsonrpc-request "initialize"))
-          session-id (get-in response [:headers "Mcp-Session-Id"])]
-      (let [list-response (mcp-request (jsonrpc-request "tools/list")
-                                       {"mcp-session-id" session-id})]
-        (is (= 200 (:status list-response)))
-        (is (some? (get-in list-response [:body :result :tools]))))))
+    (let [response      (mcp-request (jsonrpc-request "initialize"))
+          session-id    (get-in response [:headers "Mcp-Session-Id"])
+          list-response (mcp-request (jsonrpc-request "tools/list")
+                                     {"mcp-session-id" session-id})]
+      (is (= 200 (:status list-response)))
+      (is (some? (get-in list-response [:body :result :tools])))))
 
   (testing "notifications/initialized remains accepted for compatibility"
     (let [response   (mcp-request (jsonrpc-request "initialize"))

@@ -532,6 +532,34 @@
                    :expires_in   pos-int?}
                   refresh-response)))))))
 
+(deftest refresh-token-has-expiry-test
+  (testing "Refresh tokens are stored with an expiry derived from oauth-server-refresh-token-ttl"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"
+                                       oauth-server-refresh-token-ttl 7200]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [test-client    (create-test-client!)
+              client-id      (:client_id test-client)
+              client-secret  (:client_secret test-client)
+              code           (authorize-and-get-code! client-id)
+              token-response (token-request!
+                              {:grant_type    "authorization_code"
+                               :code          code
+                               :redirect_uri  "https://example.com/callback"}
+                              :authorization (basic-auth-header client-id client-secret))]
+          (is (some? (:refresh_token token-response)))
+          (let [db-token (t2/select-one :model/OAuthRefreshToken :client_id client-id)]
+            (is (some? db-token) "Refresh token should be stored in the database")
+            (is (some? (:expiry db-token)) "Refresh token should have an expiry set")
+            (when (:expiry db-token)
+              (let [now-ms    (System/currentTimeMillis)
+                    ;; expiry should be ~7200s from now; allow 60s tolerance
+                    expected  (* 7200 1000)
+                    actual    (- (:expiry db-token) now-ms)]
+                (is (< (abs (- actual expected)) 60000)
+                    (str "Refresh token expiry should be ~7200s from now, got "
+                         (/ actual 1000.0) "s"))))))))))
+
+
 (deftest dcr-strips-client-credentials-grant-type-test
   (testing "Dynamic client registration strips client_credentials from grant_types"
     ;; client_credentials tokens have no user context (user_id = NULL) which makes
