@@ -127,7 +127,12 @@ export function useViewerUrl(
       if (isExpressionEntry(entity)) {
         entity.tokens.forEach((token) => {
           if (token.type === "metric") {
-            metricIds.push(parseSourceId(token.sourceId).id);
+            const { type, id } = parseSourceId(token.sourceId);
+            if (type === "metric") {
+              metricIds.push(id);
+            } else if (type === "measure") {
+              measureIds.push(id);
+            }
           }
         });
       }
