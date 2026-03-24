@@ -239,6 +239,11 @@ export function checkRenderable(
   if (!databaseSupportsPivotTables(query)) {
     throw new Error(t`This database does not support pivot tables.`);
   }
+  if (data.pivot_rows_truncated != null) {
+    throw new Error(
+      t`Too many rows for a pivot table. Please add a filter or remove breakouts to reduce the number of rows.`,
+    );
+  }
 }
 
 export const leftHeaderCellSizeAndPositionGetter = (

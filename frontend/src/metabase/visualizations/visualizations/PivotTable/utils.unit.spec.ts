@@ -10,6 +10,7 @@ import {
 import type { HeaderItem } from "./types";
 import {
   addMissingCardBreakouts,
+  checkRenderable,
   getColumnValues,
   getLeftHeaderWidths,
   isColumnValid,
@@ -295,6 +296,33 @@ describe("Visualizations > Visualizations > PivotTable > utils", () => {
         MIN_HEADER_CELL_WIDTH,
         MIN_HEADER_CELL_WIDTH,
       ]);
+    });
+  });
+
+  describe("checkRenderable", () => {
+    it("should throw when pivot_rows_truncated is set", () => {
+      const data = {
+        cols: [
+          createMockColumn({ source: "breakout", name: "field-1" }),
+          createMockColumn({ source: "aggregation", name: "count" }),
+        ],
+        rows: [],
+        pivot_rows_truncated: 100000,
+      };
+      expect(() => checkRenderable([{ data }] as any, {} as any)).toThrow(
+        /Too many rows/,
+      );
+    });
+
+    it("should not throw when pivot_rows_truncated is not set", () => {
+      const data = {
+        cols: [
+          createMockColumn({ source: "breakout", name: "field-1" }),
+          createMockColumn({ source: "aggregation", name: "count" }),
+        ],
+        rows: [],
+      };
+      expect(() => checkRenderable([{ data }] as any, {} as any)).not.toThrow();
     });
   });
 
