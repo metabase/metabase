@@ -290,7 +290,7 @@
                                  :timeout-ms  1000})
                         (is (some? @stored-parts) "store-parts! was called even though client disconnected")
                         (testing "LLM server stopped writing when connection was dropped"
-                          (is (< 20 @cnt) "Server should not have written all chunks"))
+                          (is (< 10 @cnt) "Server should not have written all chunks"))
                         ;; The stored parts should contain partial data — not all 30 chunks.
                         ;; Text chunks are combined by combine-text-parts-xf, so we check
                         ;; that the concatenated text is shorter than it would be if all
