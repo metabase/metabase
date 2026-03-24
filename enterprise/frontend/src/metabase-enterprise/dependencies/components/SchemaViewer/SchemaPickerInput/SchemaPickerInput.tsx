@@ -142,7 +142,8 @@ export function SchemaPickerInput({
               data-testid="schema-picker-button"
               onClick={toggle}
             >
-              {t`Database`}
+              {databases?.find((db) => db.id === databaseId)?.name ??
+                t`Database`}
             </Button>
           ) : (
             <Button

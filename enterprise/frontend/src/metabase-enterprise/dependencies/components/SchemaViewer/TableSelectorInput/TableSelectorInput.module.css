@@ -12,10 +12,9 @@
 
 .triggerButton {
   border: none;
-  background: transparent;
+  background: transparent !important;
 
   &:hover {
-    background-color: var(--mb-color-background-secondary);
     color: var(--mb-color-brand) !important;
   }
 }
