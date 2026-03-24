@@ -785,10 +785,10 @@
                      {:order-by [[:desc $price]]})))))
          (testing "Should support floor/ceil/round (#32068)"
            (doseq [[expr expected] (mt/$ids bird_prices
-                                     {[:ceil $price]                      [[24M] [6M]]
-                                      [:floor $price]                     [[23M] [6M]]
-                                      [:round $price]                     [[24M] [6M]]
-                                      [:* [:floor [:/ $price 10.0]] 10.0] [[20.0] [1.0]]})]
+                                     {[:ceil $price]                      [[24M]  [6M]]
+                                      [:floor $price]                     [[23M]  [6M]]
+                                      [:round $price]                     [[24M]  [6M]]
+                                      [:* [:floor [:/ $price 10.0]] 10.0] [[20.0] [0.0]]})]
              (testing (pr-str expr)
                (let [query (mt/mbql-query bird_prices
                              {:fields      [[:expression "expr"]]
