@@ -475,8 +475,9 @@
     (let [result (mt/with-current-user (mt/user->id :crowberto)
                    (mcp.tools/call-tool #{"agent:search"} "get_table" {:id (mt/id :orders)}))]
       (is (=? {:isError true} result))
-      (is (str/includes? (-> result :content first :text) "scope")
-          "Error should mention scope")))
+      (is (= "Insufficient scope to call tool: get_table"
+             (-> result :content first :text))
+          "Error must not leak the required scope name")))
   (testing "tool call with matching scope is not rejected by scope enforcement"
     (let [result (mt/with-current-user (mt/user->id :crowberto)
                    (mcp.tools/call-tool #{"agent:table:read"} "get_table" {:id (mt/id :orders)}))]
@@ -485,5 +486,6 @@
     (let [result (mt/with-current-user (mt/user->id :crowberto)
                    (mcp.tools/call-tool #{} "get_table" {:id (mt/id :orders)}))]
       (is (=? {:isError true} result))
-      (is (str/includes? (-> result :content first :text) "scope")
-          "Error should mention scope"))))
+      (is (= "Insufficient scope to call tool: get_table"
+             (-> result :content first :text))
+          "Error must not leak the required scope name"))))

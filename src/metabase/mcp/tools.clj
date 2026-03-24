@@ -236,8 +236,7 @@
   [token-scopes tool-name arguments]
   (if-let [tool-def (get (tool-index) tool-name)]
     (if-not (scope-matches? token-scopes (:scope tool-def))
-      (error-content (str "Insufficient scope to call tool: " tool-name
-                          ". Required scope: " (:scope tool-def)))
+      (error-content (str "Insufficient scope to call tool: " tool-name))
       (try
         (dispatch-via-agent-api tool-def arguments token-scopes)
         (catch Exception e
