@@ -33,7 +33,10 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-import type { VisualizationProps } from "metabase/visualizations/types";
+import type {
+  VisualizationDefinition,
+  VisualizationProps,
+} from "metabase/visualizations/types";
 import type { State } from "metabase-types/store";
 
 import {
@@ -612,19 +615,21 @@ export const PivotTableView = ExplicitSize<
   refreshMode: "debounceLeading",
 })(PivotTableInner);
 
+const PivotViz: VisualizationDefinition = {
+  getUiName: () => t`Pivot Table`,
+  identifier: "pivot",
+  iconName: "pivot_table",
+  minSize: getMinSize("pivot"),
+  defaultSize: getDefaultSize("pivot"),
+  canSavePng: false,
+  isSensible,
+  checkRenderable,
+  settings,
+  columnSettings,
+  isLiveResizable: () => false,
+};
+
 export const PivotTable = Object.assign(
   connect(mapStateToProps)(PivotTableView),
-  {
-    getUiName: () => t`Pivot Table`,
-    identifier: "pivot",
-    iconName: "pivot_table",
-    minSize: getMinSize("pivot"),
-    defaultSize: getDefaultSize("pivot"),
-    canSavePng: false,
-    isSensible,
-    checkRenderable,
-    settings,
-    columnSettings,
-    isLiveResizable: () => false,
-  },
+  PivotViz,
 );
