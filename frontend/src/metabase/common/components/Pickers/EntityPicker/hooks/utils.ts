@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { collectionApi } from "metabase/api";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
-import type { DispatchFn } from "metabase/lib/redux";
+import type { DispatchFn } from "metabase/utils/redux";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { getRootCollectionItem as getTransformsRootCollectionItem } from "metabase/transforms/utils";
 import type { CollectionNamespace } from "metabase-types/api";

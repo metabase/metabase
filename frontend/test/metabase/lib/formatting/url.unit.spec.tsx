@@ -3,7 +3,7 @@ import { mockSettings } from "__support__/settings";
 import { render, screen } from "__support__/ui";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
-import { formatUrl } from "metabase/lib/formatting/url";
+import { formatUrl } from "metabase/utils/formatting/url";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 describe("formatUrl", () => {

@@ -7,7 +7,7 @@ import {
   createMeasurementContainer,
   removeMeasurementContainer,
 } from "metabase/data-grid/utils/measure-utils";
-import { renderRoot } from "metabase/lib/react-compat";
+import { renderRoot } from "metabase/utils/react-compat";
 import { SortableHeaderPill } from "metabase/ui";
 
 import {

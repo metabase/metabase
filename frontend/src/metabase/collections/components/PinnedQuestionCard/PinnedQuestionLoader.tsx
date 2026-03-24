@@ -2,8 +2,8 @@ import { useMemo } from "react";
 
 import { useGetCardQuery } from "metabase/api";
 import { QuestionResultLoader } from "metabase/common/components/QuestionResultLoader";
-import { getResponseErrorMessage } from "metabase/lib/errors";
-import { useSelector } from "metabase/lib/redux";
+import { getResponseErrorMessage } from "metabase/utils/errors";
+import { useSelector } from "metabase/utils/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { IconName } from "metabase/ui";
 import {

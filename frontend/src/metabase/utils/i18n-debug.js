@@ -1,4 +1,4 @@
-import { HAS_LOCAL_STORAGE } from "metabase/lib/dom";
+import { HAS_LOCAL_STORAGE } from "metabase/utils/dom";
 
 // If enabled this monkeypatches `t` and `jt` to return blacked out
 // strings/elements to assist in finding untranslated strings.

@@ -1,8 +1,8 @@
 import {
   isValidColorScheme,
   setUserColorSchemeAfterUpdate,
-} from "metabase/lib/color-scheme";
-import MetabaseSettings from "metabase/lib/settings";
+} from "metabase/utils/color-scheme";
+import MetabaseSettings from "metabase/utils/settings";
 import { loadSettings } from "metabase/redux/settings";
 import type {
   EnterpriseSettings,

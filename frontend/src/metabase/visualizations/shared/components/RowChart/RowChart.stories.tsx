@@ -1,7 +1,7 @@
 import type { StoryFn } from "@storybook/react";
 
 import { SdkVisualizationWrapper } from "__support__/storybook";
-import { measureTextWidth } from "metabase/lib/measure-text";
+import { measureTextWidth } from "metabase/utils/measure-text";
 import { getStaticChartTheme } from "metabase/static-viz/components/RowChart/theme";
 import { Box } from "metabase/ui";
 import { color } from "metabase/ui/colors";

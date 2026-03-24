@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { isNotNull } from "metabase/lib/types";
+import { isNotNull } from "metabase/utils/types";
 import { getSensibleVisualizations } from "metabase/query_builder/components/chart-type-selector/use-question-visualization-state";
 import type { IconName } from "metabase/ui";
 import visualizations from "metabase/visualizations";

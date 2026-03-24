@@ -1,4 +1,4 @@
-import type { Deferred } from "metabase/lib/promise";
+import type { Deferred } from "metabase/utils/promise";
 import type { QueryModalType } from "metabase/querying/constants";
 import type { Widget } from "metabase/visualizations/types";
 import type {

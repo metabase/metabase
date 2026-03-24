@@ -5,7 +5,7 @@ import {
   useCreateDocumentPublicLinkMutation,
   useDeleteDocumentPublicLinkMutation,
 } from "metabase/api";
-import { publicDocument as getPublicDocumentUrl } from "metabase/lib/urls/documents";
+import { publicDocument as getPublicDocumentUrl } from "metabase/utils/urls/documents";
 import {
   trackPublicEmbedCodeCopied,
   trackPublicLinkCopied,

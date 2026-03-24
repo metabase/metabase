@@ -1,4 +1,4 @@
-import { trackSchemaEvent } from "metabase/lib/analytics";
+import { trackSchemaEvent } from "metabase/utils/analytics";
 import type { EmbeddingHomepageDismissReason } from "metabase-types/api";
 
 import type { EmbeddingHomepageInitialTab } from "./types";

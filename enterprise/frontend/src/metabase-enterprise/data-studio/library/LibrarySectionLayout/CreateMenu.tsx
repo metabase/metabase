@@ -4,8 +4,8 @@ import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { trackMetricCreateStarted } from "metabase/data-studio/analytics";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { useDispatch, useSelector } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
 import {
   canUserCreateNativeQueries,

@@ -3,7 +3,7 @@ import {
   SPECIFIC_DATE_TIME_UNITS,
   formatDateTimeForParameter,
   formatDateTimeRangeWithUnit,
-} from "metabase/lib/formatting/date";
+} from "metabase/utils/formatting/date";
 
 describe("formatDateTimeRangeWithUnit", () => {
   for (const unit of SPECIFIC_DATE_TIME_UNITS) {

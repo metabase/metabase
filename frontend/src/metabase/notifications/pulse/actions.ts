@@ -7,8 +7,8 @@ import {
   NEW_PULSE_TEMPLATE,
   createChannel,
   getDefaultChannel,
-} from "metabase/lib/pulse";
-import { createThunkAction } from "metabase/lib/redux";
+} from "metabase/utils/pulse";
+import { createThunkAction } from "metabase/utils/redux";
 import { setErrorPage } from "metabase/redux/app";
 import { addUndo } from "metabase/redux/undo";
 import { PulseApi } from "metabase/services";

@@ -5,9 +5,9 @@ import ReactMarkdown from "react-markdown";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
-import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
-import { renderLinkTextForClick } from "metabase/lib/formatting/link";
-import { parseNumber } from "metabase/lib/number";
+import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { renderLinkTextForClick } from "metabase/utils/formatting/link";
+import { parseNumber } from "metabase/utils/number";
 import {
   clickBehaviorIsValid,
   getDataFromClicked,

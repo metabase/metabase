@@ -1,7 +1,7 @@
 import { useBeforeUnload } from "react-use";
 import { t } from "ttag";
 
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/utils/redux";
 import {
   PLUGIN_REMOTE_SYNC,
   PLUGIN_REPLACEMENT,

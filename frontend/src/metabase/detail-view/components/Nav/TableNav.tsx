@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import { skipToken, useListDatabaseSchemasQuery } from "metabase/api";
-import * as Urls from "metabase/lib/urls";
+import * as Urls from "metabase/utils/urls";
 import { Group, type GroupProps } from "metabase/ui";
 import type { Table } from "metabase-types/api";
 

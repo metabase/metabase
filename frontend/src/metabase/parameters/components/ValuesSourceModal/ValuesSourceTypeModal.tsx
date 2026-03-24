@@ -14,7 +14,7 @@ import { Option, Select } from "metabase/common/components/Select";
 import { SelectButton } from "metabase/common/components/SelectButton";
 import { Questions } from "metabase/entities/questions";
 import { Tables } from "metabase/entities/tables";
-import { connect, useSelector } from "metabase/lib/redux";
+import { connect, useSelector } from "metabase/utils/redux";
 import { getLearnUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { Box, Flex, Icon } from "metabase/ui";

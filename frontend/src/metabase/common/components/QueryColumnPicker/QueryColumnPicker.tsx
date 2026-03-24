@@ -13,7 +13,7 @@ import {
 import { useLocale } from "metabase/common/hooks";
 import { getColumnGroupIcon } from "metabase/common/utils/column-groups";
 import { useTranslateContent } from "metabase/i18n/hooks";
-import { isNotNull } from "metabase/lib/types";
+import { isNotNull } from "metabase/utils/types";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import {
   type DefinedClauseName,

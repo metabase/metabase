@@ -7,7 +7,7 @@ import {
 import {
   exportFormats,
   publicQuestion as getPublicQuestionUrl,
-} from "metabase/lib/urls";
+} from "metabase/utils/urls";
 import {
   trackPublicLinkCopied,
   trackPublicLinkRemoved,

@@ -10,10 +10,10 @@ import {
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Select } from "metabase/common/components/Select";
-import { useSelector } from "metabase/lib/redux";
-import { isSyncCompleted } from "metabase/lib/syncing";
-import { isNotNull } from "metabase/lib/types";
-import * as Urls from "metabase/lib/urls";
+import { useSelector } from "metabase/utils/redux";
+import { isSyncCompleted } from "metabase/utils/syncing";
+import { isNotNull } from "metabase/utils/types";
+import * as Urls from "metabase/utils/urls";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import type { Database, DatabaseXray } from "metabase-types/api";
 

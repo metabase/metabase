@@ -7,7 +7,7 @@ import {
   isAdminGroup,
   isDataAnalystGroup,
   isDefaultGroup,
-} from "metabase/lib/groups";
+} from "metabase/utils/groups";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import type { Group } from "metabase-types/api";
 

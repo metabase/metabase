@@ -2,7 +2,7 @@ import type { EChartsType } from "echarts/core";
 import { type MutableRefObject, useEffect, useMemo } from "react";
 import { t } from "ttag";
 
-import { checkNotNull } from "metabase/lib/types";
+import { checkNotNull } from "metabase/utils/types";
 import { formatPercent } from "metabase/static-viz/lib/numbers";
 import type {
   EChartsTooltipModel,

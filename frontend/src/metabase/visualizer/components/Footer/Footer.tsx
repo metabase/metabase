@@ -1,8 +1,8 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { trackSimpleEvent } from "metabase/lib/analytics";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { trackSimpleEvent } from "metabase/utils/analytics";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import { Button, Flex } from "metabase/ui";
 import {
   getDatasets,

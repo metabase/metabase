@@ -26,10 +26,10 @@ import {
   type IconModel,
   type ObjectWithModel,
   getIcon,
-} from "metabase/lib/icon";
-import { useDispatch } from "metabase/lib/redux";
-import { modelToUrl } from "metabase/lib/urls/modelToUrl";
-import { extractEntityId } from "metabase/lib/urls/utils";
+} from "metabase/utils/icon";
+import { useDispatch } from "metabase/utils/redux";
+import { modelToUrl } from "metabase/utils/urls/modelToUrl";
+import { extractEntityId } from "metabase/utils/urls/utils";
 import {
   METABSE_PROTOCOL_MD_LINK,
   parseMetabaseProtocolMarkdownLink,

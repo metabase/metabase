@@ -16,9 +16,9 @@ import {
 import { useIsParameterPanelSticky } from "metabase/dashboard/hooks/use-is-parameter-panel-sticky";
 import { EmbeddingFooter } from "metabase/embedding/components/EmbeddingFooter/EmbeddingFooter";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { getDashboardType } from "metabase/lib/dashboard";
-import { initializeIframeResizer, isSmallScreen } from "metabase/lib/dom";
-import { useSelector } from "metabase/lib/redux";
+import { getDashboardType } from "metabase/utils/dashboard";
+import { initializeIframeResizer, isSmallScreen } from "metabase/utils/dom";
+import { useSelector } from "metabase/utils/redux";
 import { FilterApplyToast } from "metabase/parameters/components/FilterApplyToast";
 import { ParametersList } from "metabase/parameters/components/ParametersList";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";

@@ -1,4 +1,4 @@
-import { measureTextWidth as measureDynamic } from "metabase/lib/measure-text";
+import { measureTextWidth as measureDynamic } from "metabase/utils/measure-text";
 import { measureTextWidth as measureStatic } from "metabase/static-viz/lib/text";
 
 import type { TextWidthMeasurer } from "../shared/types/measure-text";

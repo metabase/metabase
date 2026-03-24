@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import { skipToken, useSearchQuery } from "metabase/api";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
-import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import {
   Box,
   Combobox,

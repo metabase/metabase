@@ -1,4 +1,4 @@
-import { getIcon } from "metabase/lib/icon";
+import { getIcon } from "metabase/utils/icon";
 import {
   DEFAULT_ICON_SIZE,
   LARGE_ICON_SIZE,

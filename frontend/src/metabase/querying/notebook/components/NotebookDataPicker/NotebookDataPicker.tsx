@@ -14,8 +14,8 @@ import type {
   MiniPickerPickableItem,
 } from "metabase/common/components/Pickers/MiniPicker/types";
 import { isEmbedding } from "metabase/embedding/config";
-import { useDispatch, useSelector, useStore } from "metabase/lib/redux";
-import { checkNotNull } from "metabase/lib/types";
+import { useDispatch, useSelector, useStore } from "metabase/utils/redux";
+import { checkNotNull } from "metabase/utils/types";
 import { loadMetadataForTable } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getIsTenantUser } from "metabase/selectors/user";

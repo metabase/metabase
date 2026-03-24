@@ -7,7 +7,7 @@ import { getPlan } from "metabase/common/utils/plan";
 import { getIsHosted } from "metabase/databases/selectors";
 import { Groups } from "metabase/entities/groups";
 import { Tables } from "metabase/entities/tables";
-import { getSpecialGroupType, isDefaultGroup } from "metabase/lib/groups";
+import { getSpecialGroupType, isDefaultGroup } from "metabase/utils/groups";
 import {
   PLUGIN_AUDIT,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,

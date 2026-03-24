@@ -1,7 +1,7 @@
 import fetchMock from "fetch-mock";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import MetabaseSettings from "metabase/lib/settings";
+import MetabaseSettings from "metabase/utils/settings";
 import {
   deriveChartShadeColor,
   deriveChartTintColor,

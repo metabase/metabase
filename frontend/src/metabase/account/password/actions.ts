@@ -1,6 +1,6 @@
 import { getIn } from "icepick";
 
-import MetabaseSettings from "metabase/lib/settings";
+import MetabaseSettings from "metabase/utils/settings";
 import { UtilApi } from "metabase/services";
 
 export const validatePassword = async (password: string) => {

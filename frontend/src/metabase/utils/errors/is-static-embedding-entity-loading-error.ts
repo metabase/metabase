@@ -1,4 +1,4 @@
-import type { StaticEmbeddingEntityError } from "metabase/lib/errors/types";
+import type { StaticEmbeddingEntityError } from "metabase/utils/errors/types";
 
 export const isStaticEmbeddingEntityLoadingError = (
   error: unknown,

@@ -9,7 +9,7 @@ import {
   useGetSettingsQuery,
 } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { createMockSettings } from "metabase-types/api/mocks";
 import type { State } from "metabase-types/store";

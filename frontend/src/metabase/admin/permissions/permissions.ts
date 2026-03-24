@@ -25,7 +25,7 @@ import {
   combineReducers,
   createAction,
   createThunkAction,
-} from "metabase/lib/redux";
+} from "metabase/utils/redux";
 import {
   PLUGIN_ADVANCED_PERMISSIONS,
   PLUGIN_DATA_PERMISSIONS,

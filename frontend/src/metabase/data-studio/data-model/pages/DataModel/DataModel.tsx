@@ -15,7 +15,7 @@ import { PageContainer } from "metabase/data-studio/common/components/PageContai
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import { hasLibraryCollection } from "metabase/data-studio/common/utils";
 import { isCypressActive } from "metabase/env";
-import * as Urls from "metabase/lib/urls";
+import * as Urls from "metabase/utils/urls";
 import {
   FieldSection,
   FieldValuesModal,

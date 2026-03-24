@@ -16,8 +16,8 @@ import {
   getGroupNameLocalized,
   isAdminGroup,
   isDefaultGroup,
-} from "metabase/lib/groups";
-import { KEYCODE_ENTER } from "metabase/lib/keyboard";
+} from "metabase/utils/groups";
+import { KEYCODE_ENTER } from "metabase/utils/keyboard";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import {
   Box,

@@ -10,7 +10,7 @@ import {
 } from "metabase/admin/datamodel/utils/segments";
 import { Button } from "metabase/common/components/Button/Button";
 import { FieldSet } from "metabase/common/components/FieldSet";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/utils/redux";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { SegmentEditor } from "metabase/querying/segments/components/SegmentEditor";
 import { getMetadata } from "metabase/selectors/metadata";

@@ -5,8 +5,8 @@ import { type PlainRoute, withRouter } from "react-router";
 import { t } from "ttag";
 
 import { useOnClickOutside } from "metabase/common/hooks/use-on-click-outside";
-import { isWithinIframe } from "metabase/lib/dom";
-import { useSelector } from "metabase/lib/redux";
+import { isWithinIframe } from "metabase/utils/dom";
+import { useSelector } from "metabase/utils/redux";
 import { getUser } from "metabase/selectors/user";
 import { Box, Card, Center, Icon, Overlay, Stack, rem } from "metabase/ui";
 

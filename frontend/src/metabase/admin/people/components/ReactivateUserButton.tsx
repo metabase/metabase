@@ -2,7 +2,7 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
-import * as Urls from "metabase/lib/urls";
+import * as Urls from "metabase/utils/urls";
 import { Icon, Tooltip } from "metabase/ui";
 import type { User } from "metabase-types/api";
 

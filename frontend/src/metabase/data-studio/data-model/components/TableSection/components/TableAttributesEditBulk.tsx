@@ -7,7 +7,7 @@ import {
   trackDataStudioBulkAttributeUpdated,
   trackDataStudioBulkSyncSettingsClicked,
 } from "metabase/data-studio/analytics";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/utils/redux";
 import {
   DataSourceInput,
   EntityTypeInput,

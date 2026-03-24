@@ -6,9 +6,9 @@ import _ from "underscore";
 
 import { ColorSelector } from "metabase/common/components/ColorSelector";
 import type { DragEndEvent } from "metabase/common/components/Sortable";
-import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
-import { getEventTarget } from "metabase/lib/dom";
-import { isEmpty } from "metabase/lib/validate";
+import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { getEventTarget } from "metabase/utils/dom";
+import { isEmpty } from "metabase/utils/validate";
 import { Box, Button, Flex, Group, Icon, Select, Text } from "metabase/ui";
 import { color } from "metabase/ui/colors";
 import { getAccentColors } from "metabase/ui/colors/groups";

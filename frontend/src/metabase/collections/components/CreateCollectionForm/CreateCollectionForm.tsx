@@ -18,8 +18,8 @@ import type {
 } from "metabase/common/components/Pickers";
 import { Collections } from "metabase/entities/collections";
 import { Form, FormProvider } from "metabase/forms";
-import * as Errors from "metabase/lib/errors";
-import { connect } from "metabase/lib/redux";
+import * as Errors from "metabase/utils/errors";
+import { connect } from "metabase/utils/redux";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import type { Collection } from "metabase-types/api";
 import type { State } from "metabase-types/store";

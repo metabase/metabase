@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { ButtonGroup } from "metabase/common/components/ButtonGroup";
 import { ViewButton } from "metabase/common/components/ViewButton";
 import CS from "metabase/css/core/index.css";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import {
   onCloseChartSettings,

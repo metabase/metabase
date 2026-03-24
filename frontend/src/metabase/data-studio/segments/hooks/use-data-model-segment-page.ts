@@ -7,8 +7,8 @@ import {
   useGetSegmentQuery,
   useUpdateSegmentMutation,
 } from "metabase/api";
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { useDispatch } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getSchemaName } from "metabase-lib/v1/metadata/utils/schema";
 

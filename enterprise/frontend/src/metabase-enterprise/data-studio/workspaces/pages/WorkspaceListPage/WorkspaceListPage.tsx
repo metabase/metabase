@@ -3,8 +3,8 @@ import { replace } from "react-router-redux";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { useDispatch } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import { Box, Text, Title } from "metabase/ui";
 import { useGetWorkspacesQuery } from "metabase-enterprise/api";
 

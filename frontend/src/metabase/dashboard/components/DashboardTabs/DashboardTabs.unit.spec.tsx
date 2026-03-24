@@ -14,7 +14,7 @@ import { getDefaultTab, resetTempTabId } from "metabase/dashboard/actions";
 import { useDashboardUrlQuery } from "metabase/dashboard/hooks/use-dashboard-url-query";
 import { getSelectedTabId } from "metabase/dashboard/selectors";
 import { createTabSlug } from "metabase/dashboard/utils";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/utils/redux";
 import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
 import { TEST_CARD } from "metabase/query_builder/containers/test-utils";
 import type { DashboardTab } from "metabase-types/api";

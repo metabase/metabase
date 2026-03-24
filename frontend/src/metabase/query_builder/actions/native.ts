@@ -1,7 +1,7 @@
 import { createAction } from "redux-actions";
 
 import { Questions } from "metabase/entities/questions";
-import { createThunkAction } from "metabase/lib/redux";
+import { createThunkAction } from "metabase/utils/redux";
 import { updateUserSetting } from "metabase/redux/settings";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {

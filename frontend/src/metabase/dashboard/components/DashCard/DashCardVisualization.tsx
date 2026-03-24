@@ -15,10 +15,10 @@ import {
 } from "metabase/dashboard/selectors";
 import { getVirtualCardType } from "metabase/dashboard/utils";
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
-import { isVirtualDashCard } from "metabase/lib/dashboard";
-import { duration } from "metabase/lib/formatting";
-import { measureTextWidth } from "metabase/lib/measure-text";
-import { useSelector } from "metabase/lib/redux";
+import { isVirtualDashCard } from "metabase/utils/dashboard";
+import { duration } from "metabase/utils/formatting";
+import { measureTextWidth } from "metabase/utils/measure-text";
+import { useSelector } from "metabase/utils/redux";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
 import {

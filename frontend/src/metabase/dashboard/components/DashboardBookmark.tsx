@@ -2,7 +2,7 @@ import { BookmarkToggle } from "metabase/common/components/BookmarkToggle";
 import { useBookmarkListQuery } from "metabase/common/hooks";
 import { useDashboardContext } from "metabase/dashboard/context/context";
 import { Bookmarks } from "metabase/entities/bookmarks";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch } from "metabase/utils/redux";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import type { DashboardId, Bookmark as IBookmark } from "metabase-types/api";
 

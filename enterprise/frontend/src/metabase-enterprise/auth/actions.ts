@@ -1,6 +1,6 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 
-import { redirect } from "metabase/lib/dom";
+import { redirect } from "metabase/utils/dom";
 import { getSetting } from "metabase/selectors/settings";
 import type { State } from "metabase-types/store";
 

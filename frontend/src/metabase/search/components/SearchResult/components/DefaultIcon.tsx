@@ -1,4 +1,4 @@
-import { getIcon } from "metabase/lib/icon";
+import { getIcon } from "metabase/utils/icon";
 import { Icon } from "metabase/ui";
 
 import type { IconComponentProps } from "./ItemIcon";

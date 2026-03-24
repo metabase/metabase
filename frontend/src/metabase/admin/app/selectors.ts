@@ -1,5 +1,5 @@
 import { getEngines } from "metabase/databases/selectors";
-import { isDeprecatedEngine } from "metabase/lib/engine";
+import { isDeprecatedEngine } from "metabase/utils/engine";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { State } from "metabase-types/store";
 

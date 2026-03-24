@@ -2,7 +2,7 @@ import { useDebouncedCallback } from "@mantine/hooks";
 import { type ChangeEvent, memo, useState } from "react";
 import { t } from "ttag";
 
-import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import { FixedSizeIcon, Group, Loader, TextInput } from "metabase/ui";
 
 import type { DependencyFilterOptions } from "../../../types";

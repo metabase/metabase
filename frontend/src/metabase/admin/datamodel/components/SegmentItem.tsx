@@ -1,6 +1,6 @@
 import { Link } from "react-router";
 
-import * as Urls from "metabase/lib/urls";
+import * as Urls from "metabase/utils/urls";
 import { TableBreadcrumbs } from "metabase/metadata/components";
 import { Box, Flex, Group, Icon } from "metabase/ui";
 import type { Segment } from "metabase-types/api";

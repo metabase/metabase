@@ -10,7 +10,7 @@ import { useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useUnmount } from "react-use";
 
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import { Box } from "metabase/ui";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import { useVisualizerHistory } from "metabase/visualizer/hooks/use-visualizer-history";

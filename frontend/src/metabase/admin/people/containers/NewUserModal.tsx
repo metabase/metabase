@@ -2,10 +2,10 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useCreateUserMutation } from "metabase/api";
-import { useDispatch } from "metabase/lib/redux";
-import { generatePassword } from "metabase/lib/security";
-import MetabaseSettings from "metabase/lib/settings";
-import * as Urls from "metabase/lib/urls";
+import { useDispatch } from "metabase/utils/redux";
+import { generatePassword } from "metabase/utils/security";
+import MetabaseSettings from "metabase/utils/settings";
+import * as Urls from "metabase/utils/urls";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { Modal } from "metabase/ui";
 import type { User as UserType } from "metabase-types/api";

@@ -1,8 +1,8 @@
 import dayjs from "dayjs";
 
 import { useSetting, useUserSetting } from "metabase/common/hooks";
-import { isWithinIframe } from "metabase/lib/dom";
-import { useSelector } from "metabase/lib/redux";
+import { isWithinIframe } from "metabase/utils/dom";
+import { useSelector } from "metabase/utils/redux";
 import { DevModeBanner } from "metabase/nav/components/DevModeBanner";
 import {
   LicenseTokenMissingBanner,

@@ -9,8 +9,8 @@ import {
 } from "metabase/common/components/DateTime";
 import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
-import { isWithinIframe } from "metabase/lib/dom";
-import { useSelector } from "metabase/lib/redux";
+import { isWithinIframe } from "metabase/utils/dom";
+import { useSelector } from "metabase/utils/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   ActionIcon,

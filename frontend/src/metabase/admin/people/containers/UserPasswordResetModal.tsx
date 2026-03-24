@@ -13,9 +13,9 @@ import { CopyButton } from "metabase/common/components/CopyButton";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PasswordReveal } from "metabase/common/components/PasswordReveal";
 import { useToast } from "metabase/common/hooks/use-toast";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { generatePassword } from "metabase/lib/security";
-import MetabaseSettings from "metabase/lib/settings";
+import { useDispatch, useSelector } from "metabase/utils/redux";
+import { generatePassword } from "metabase/utils/security";
+import MetabaseSettings from "metabase/utils/settings";
 import { Button, Flex, Modal, Text, TextInput } from "metabase/ui";
 import type { User } from "metabase-types/api";
 

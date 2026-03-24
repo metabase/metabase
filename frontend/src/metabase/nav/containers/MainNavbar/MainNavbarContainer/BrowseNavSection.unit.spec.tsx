@@ -11,7 +11,7 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
-import * as domUtils from "metabase/lib/dom";
+import * as domUtils from "metabase/utils/dom";
 import { createMockDatabase, createMockUser } from "metabase-types/api/mocks";
 import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 import { createMockState } from "metabase-types/store/mocks";

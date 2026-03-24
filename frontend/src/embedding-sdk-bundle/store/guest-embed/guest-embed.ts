@@ -1,5 +1,5 @@
 import { overrideRequestsForGuestEmbeds } from "metabase/embedding/lib/override-requests-for-embeds";
-import { createAsyncThunk } from "metabase/lib/redux";
+import { createAsyncThunk } from "metabase/utils/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
 
 export const initGuestEmbed = createAsyncThunk<void, undefined>(

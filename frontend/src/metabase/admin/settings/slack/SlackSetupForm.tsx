@@ -9,7 +9,7 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import * as Errors from "metabase/lib/errors";
+import * as Errors from "metabase/utils/errors";
 import { Flex, Stack } from "metabase/ui";
 
 type FormValues = { "slack-app-token": string };

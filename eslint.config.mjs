@@ -42,7 +42,7 @@ const baseMetabaseRestrictedConfig = {
     {
       name: "react-redux",
       importNames: ["useSelector", "useDispatch", "connect"],
-      message: "Please import from `metabase/lib/redux` instead.",
+      message: "Please import from `metabase/utils/redux` instead.",
     },
     {
       name: "@mantine/core",
@@ -547,7 +547,7 @@ const configs = [
     },
   },
   {
-    files: ["frontend/src/metabase/lib/redux/hooks.ts"],
+    files: ["frontend/src/metabase/utils/redux/hooks.ts"],
     rules: {
       "no-restricted-imports": "off",
     },
@@ -609,7 +609,7 @@ const configs = [
             {
               name: "react-redux",
               importNames: ["useSelector", "useDispatch", "connect"],
-              message: "Please import from `metabase/lib/redux` instead.",
+              message: "Please import from `metabase/utils/redux` instead.",
             },
             {
               name: "@mantine/core",
@@ -648,22 +648,22 @@ const configs = [
               group: [
                 "metabase/*",
                 "!metabase/env",
-                "!metabase/lib",
+                "!metabase/utils",
                 "!metabase/querying",
                 "!metabase/services",
               ],
             },
             {
               group: [
-                "metabase/lib/*",
-                "!metabase/lib/encoding",
-                "!metabase/lib/formatting",
-                "!metabase/lib/number",
-                "!metabase/lib/time",
-                "!metabase/lib/time-dayjs",
-                "!metabase/lib/types",
-                "!metabase/lib/urls",
-                "!metabase/lib/utils",
+                "metabase/utils/*",
+                "!metabase/utils/encoding",
+                "!metabase/utils/formatting",
+                "!metabase/utils/number",
+                "!metabase/utils/time",
+                "!metabase/utils/time-dayjs",
+                "!metabase/utils/types",
+                "!metabase/utils/urls",
+                "!metabase/utils/utils",
               ],
             },
           ],
@@ -836,7 +836,7 @@ const configs = [
               message: 'Please use "useSdkSelector", "useSdkDispatch"',
             },
             {
-              name: "metabase/lib/redux",
+              name: "metabase/utils/redux",
               importNames: ["useStore", "useDispatch"],
               message: 'Please use "useSdkStore", "useSdkDispatch"',
             },

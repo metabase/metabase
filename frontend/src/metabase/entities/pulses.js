@@ -10,7 +10,7 @@ import {
   createEntity,
   entityCompatibleQuery,
   undo,
-} from "metabase/lib/entities";
+} from "metabase/utils/entities";
 import { color } from "metabase/ui/colors";
 /**
  * @deprecated use "metabase/api" instead

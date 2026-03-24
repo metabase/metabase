@@ -2,7 +2,7 @@ import { useMemo } from "react";
 
 import { useSdkQuestionContext } from "embedding-sdk-bundle/components/private/SdkQuestion/context";
 import { useDatabaseListQuery } from "metabase/common/hooks";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/utils/redux";
 import {
   isQuestionDirty,
   isQuestionRunnable,

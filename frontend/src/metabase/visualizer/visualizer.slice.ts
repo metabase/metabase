@@ -9,8 +9,8 @@ import undoable, { combineFilters, includeAction } from "redux-undo";
 import _ from "underscore";
 
 import { cardApi } from "metabase/api";
-import { createAsyncThunk, createThunkAction } from "metabase/lib/redux";
-import { copy } from "metabase/lib/utils";
+import { createAsyncThunk, createThunkAction } from "metabase/utils/redux";
+import { copy } from "metabase/utils/utils";
 import { isCartesianChart } from "metabase/visualizations";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type {

@@ -3,8 +3,8 @@ import { Link } from "react-router";
 import { match } from "ts-pattern";
 import { c, t } from "ttag";
 
-import { useSelector } from "metabase/lib/redux";
-import { getSubpathSafeUrl } from "metabase/lib/urls";
+import { useSelector } from "metabase/utils/redux";
+import { getSubpathSafeUrl } from "metabase/utils/urls";
 import { getSetting } from "metabase/selectors/settings";
 import {
   Alert,

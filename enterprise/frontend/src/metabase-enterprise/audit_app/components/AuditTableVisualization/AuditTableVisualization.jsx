@@ -9,7 +9,7 @@ import { CheckBox } from "metabase/common/components/CheckBox";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
-import { displayNameForColumn, formatValue } from "metabase/lib/formatting";
+import { displayNameForColumn, formatValue } from "metabase/utils/formatting";
 import { Icon } from "metabase/ui";
 import { registerVisualization } from "metabase/visualizations/index";
 import { isColumnRightAligned } from "metabase/visualizations/lib/table";

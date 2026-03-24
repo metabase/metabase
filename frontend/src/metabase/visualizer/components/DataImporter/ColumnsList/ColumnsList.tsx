@@ -2,8 +2,8 @@ import { useDraggable } from "@dnd-kit/core";
 import { t } from "ttag";
 
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
-import { trackSimpleEvent } from "metabase/lib/analytics";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { trackSimpleEvent } from "metabase/utils/analytics";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import { Box, Flex, Icon, Loader, Menu, Text } from "metabase/ui";
 import { isPivotGroupColumn } from "metabase/visualizations/lib/data_grid";
 import { DRAGGABLE_ID } from "metabase/visualizer/constants";

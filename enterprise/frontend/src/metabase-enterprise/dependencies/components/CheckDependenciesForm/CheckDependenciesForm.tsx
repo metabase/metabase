@@ -9,7 +9,7 @@ import {
   FormProvider,
   FormSubmitButton,
 } from "metabase/forms";
-import * as Urls from "metabase/lib/urls";
+import * as Urls from "metabase/utils/urls";
 import type { CheckDependenciesFormProps } from "metabase/plugins";
 import {
   Anchor,

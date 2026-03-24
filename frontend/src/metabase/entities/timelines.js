@@ -15,8 +15,8 @@ import {
   createEntity,
   entityCompatibleQuery,
   undo,
-} from "metabase/lib/entities";
-import { getDefaultTimeline, getTimelineName } from "metabase/lib/timelines";
+} from "metabase/utils/entities";
+import { getDefaultTimeline, getTimelineName } from "metabase/utils/timelines";
 import { TimelineSchema } from "metabase/schema";
 
 import { TimelineEvents } from "./timeline-events";

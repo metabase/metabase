@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { reload } from "metabase/lib/dom";
+import { reload } from "metabase/utils/dom";
 import { SettingsApi, StoreApi } from "metabase/services";
 import type { TokenStatus } from "metabase-types/api";
 

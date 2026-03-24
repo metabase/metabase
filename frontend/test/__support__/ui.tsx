@@ -22,7 +22,7 @@ import { Api } from "metabase/api";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { baseStyle } from "metabase/css/core/base.styled";
 import { HistoryProvider } from "metabase/history";
-import { MetabaseReduxProvider } from "metabase/lib/redux";
+import { MetabaseReduxProvider } from "metabase/utils/redux";
 import { makeMainReducers } from "metabase/reducers-main";
 import { publicReducers } from "metabase/reducers-public";
 import { RouterProvider } from "metabase/router";

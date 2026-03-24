@@ -1,9 +1,9 @@
-import { isSameOrSiteUrlOrigin } from "metabase/lib/dom";
+import { isSameOrSiteUrlOrigin } from "metabase/utils/dom";
 import {
   formatValue,
   getUrlProtocol,
   isDefaultLinkProtocol,
-} from "metabase/lib/formatting";
+} from "metabase/utils/formatting";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type { ParameterValueOrArray } from "metabase-types/api";
 import type { DatasetColumn, RowValue } from "metabase-types/api/dataset";

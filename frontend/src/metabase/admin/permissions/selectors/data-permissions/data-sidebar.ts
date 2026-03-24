@@ -3,7 +3,7 @@ import { createSelector } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
-import { isNotNull } from "metabase/lib/types";
+import { isNotNull } from "metabase/utils/types";
 import { PLUGIN_AUDIT } from "metabase/plugins";
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 import type Database from "metabase-lib/v1/metadata/Database";

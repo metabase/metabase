@@ -6,8 +6,8 @@ import { t } from "ttag";
 import { skipToken } from "metabase/api";
 import { UpsellStorage } from "metabase/common/components/upsells/UpsellStorage";
 import { useHasTokenFeature, useStoreUrl } from "metabase/common/hooks";
-import { useSelector } from "metabase/lib/redux";
-import { getSubpathSafeUrl } from "metabase/lib/urls";
+import { useSelector } from "metabase/utils/redux";
+import { getSubpathSafeUrl } from "metabase/utils/urls";
 import {
   CONTENT_MAX_WIDTH,
   ContactAdminAlert,

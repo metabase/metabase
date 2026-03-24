@@ -8,9 +8,9 @@ import {
   formatChangeWithSign,
   formatNumber,
   formatValue,
-} from "metabase/lib/formatting";
-import { formatNullable } from "metabase/lib/formatting/nullable";
-import { isNotNull } from "metabase/lib/types";
+} from "metabase/utils/formatting";
+import { formatNullable } from "metabase/utils/formatting/nullable";
+import { isNotNull } from "metabase/utils/types";
 import { color } from "metabase/ui/colors";
 import {
   FunnelNormalRoot,

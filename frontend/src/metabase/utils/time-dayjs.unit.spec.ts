@@ -4,7 +4,7 @@ import {
   parseTime,
   parseTimestamp,
   timezoneToUTCOffset,
-} from "metabase/lib/time-dayjs";
+} from "metabase/utils/time-dayjs";
 
 describe("time-dayjs", () => {
   describe("parseTimestamp", () => {

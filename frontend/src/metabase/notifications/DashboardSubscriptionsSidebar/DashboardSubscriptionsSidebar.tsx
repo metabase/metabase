@@ -11,8 +11,8 @@ import {
   NEW_PULSE_TEMPLATE,
   cleanPulse,
   createChannel,
-} from "metabase/lib/pulse";
-import { connect } from "metabase/lib/redux";
+} from "metabase/utils/pulse";
+import { connect } from "metabase/utils/redux";
 import {
   AddEditEmailSidebar,
   AddEditSlackSidebar,

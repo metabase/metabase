@@ -25,7 +25,7 @@ import {
   getGroupNameLocalized,
   isAdminGroup,
   isDefaultGroup,
-} from "metabase/lib/groups";
+} from "metabase/utils/groups";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import type {
   CollectionId,

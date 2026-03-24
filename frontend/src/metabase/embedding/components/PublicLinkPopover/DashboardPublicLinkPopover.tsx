@@ -2,7 +2,7 @@ import {
   useCreateDashboardPublicLinkMutation,
   useDeleteDashboardPublicLinkMutation,
 } from "metabase/api";
-import { publicDashboard as getPublicDashboardUrl } from "metabase/lib/urls";
+import { publicDashboard as getPublicDashboardUrl } from "metabase/utils/urls";
 import {
   trackPublicLinkCopied,
   trackPublicLinkRemoved,

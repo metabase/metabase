@@ -24,8 +24,8 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
-import * as Urls from "metabase/lib/urls";
+import { checkNotNull } from "metabase/utils/types";
+import * as Urls from "metabase/utils/urls";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import registerVisualizations from "metabase/visualizations/register";
 import type {

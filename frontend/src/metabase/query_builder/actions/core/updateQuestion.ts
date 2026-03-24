@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { createThunkAction } from "metabase/lib/redux";
+import { createThunkAction } from "metabase/utils/redux";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";

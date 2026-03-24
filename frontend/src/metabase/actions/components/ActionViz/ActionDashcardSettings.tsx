@@ -6,7 +6,7 @@ import { Button } from "metabase/common/components/Button";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import CS from "metabase/css/core/index.css";
 import { setActionForDashcard } from "metabase/dashboard/actions";
-import { connect } from "metabase/lib/redux";
+import { connect } from "metabase/utils/redux";
 import type {
   ActionDashboardCard,
   Dashboard,

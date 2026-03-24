@@ -1,5 +1,5 @@
 import type { DataPickerValue } from "metabase/common/components/Pickers/DataPicker";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch } from "metabase/utils/redux";
 import { setUIControls } from "metabase/query_builder/actions";
 import { Box } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";

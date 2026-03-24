@@ -1,5 +1,5 @@
-import { trackSchemaEvent } from "metabase/lib/analytics";
-import Settings from "metabase/lib/settings";
+import { trackSchemaEvent } from "metabase/utils/analytics";
+import Settings from "metabase/utils/settings";
 import type { SearchRequest, SearchResponse } from "metabase-types/api";
 
 const MB_STATS_ANALYTICS_UUID = "d97541bd-59b0-4656-b437-d659ac48eae1";

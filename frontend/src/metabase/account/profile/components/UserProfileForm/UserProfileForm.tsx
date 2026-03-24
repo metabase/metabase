@@ -13,7 +13,7 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import * as Errors from "metabase/lib/errors";
+import * as Errors from "metabase/utils/errors";
 import { Box, Text } from "metabase/ui";
 import type { LocaleData, User } from "metabase-types/api";
 

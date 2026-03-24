@@ -8,8 +8,8 @@ import {
 import { t } from "ttag";
 
 import { resetParameterMapping } from "metabase/dashboard/actions";
-import { isQuestionDashCard } from "metabase/lib/dashboard";
-import { useDispatch } from "metabase/lib/redux";
+import { isQuestionDashCard } from "metabase/utils/dashboard";
+import { useDispatch } from "metabase/utils/redux";
 import {
   getDashboardParameterSections,
   getDefaultOptionForParameterSectionMap,

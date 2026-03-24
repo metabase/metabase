@@ -2,7 +2,7 @@ import { renderHook } from "@testing-library/react";
 import type { Location } from "history";
 import type { PropsWithChildren } from "react";
 
-import { MetabaseReduxProvider } from "metabase/lib/redux";
+import { MetabaseReduxProvider } from "metabase/utils/redux";
 import { mainReducers } from "metabase/reducers-main";
 import { getStore } from "metabase/store";
 import type { EmbedState } from "metabase-types/store";

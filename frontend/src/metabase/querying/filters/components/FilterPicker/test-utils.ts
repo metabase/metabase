@@ -2,7 +2,7 @@
 import dayjs from "dayjs";
 
 import { createMockEntitiesState } from "__support__/store";
-import { checkNotNull } from "metabase/lib/types";
+import { checkNotNull } from "metabase/utils/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import {

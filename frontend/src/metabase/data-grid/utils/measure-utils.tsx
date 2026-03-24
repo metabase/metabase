@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import type { Root } from "react-dom/client";
 
-import { unmountRoot } from "metabase/lib/react-compat";
+import { unmountRoot } from "metabase/utils/react-compat";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { ThemeProvider } from "metabase/ui";
 

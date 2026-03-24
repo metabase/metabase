@@ -3,7 +3,7 @@ import {
   getEngineNativeType,
   getNativeQueryLanguage,
   isDeprecatedEngine,
-} from "metabase/lib/engine";
+} from "metabase/utils/engine";
 import type { Engine } from "metabase-types/api";
 
 describe("getEngineNativeType", () => {

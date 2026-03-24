@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { getEngineNativeType } from "metabase/lib/engine";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { getEngineNativeType } from "metabase/utils/engine";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import { setUIControls } from "metabase/query_builder/actions";
 import { trackNotebookNativePreviewShown } from "metabase/query_builder/analytics";
 import { getUiControls } from "metabase/query_builder/selectors";

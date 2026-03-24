@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
 import type { DataSegregationStrategy } from "metabase/embedding/embedding-hub";
-import { slugify } from "metabase/lib/formatting";
+import { slugify } from "metabase/utils/formatting";
 import type { CreatedTenantData } from "metabase/plugins/oss/tenants";
 import {
   Button,

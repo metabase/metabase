@@ -13,9 +13,9 @@ import {
   getDateStyleOptionsForUnit,
   getTimeStyleOptions,
   numberFormatterForOptions,
-} from "metabase/lib/formatting";
-import { hasHour } from "metabase/lib/formatting/datetime-utils";
-import MetabaseSettings from "metabase/lib/settings";
+} from "metabase/utils/formatting";
+import { hasHour } from "metabase/utils/formatting/datetime-utils";
+import MetabaseSettings from "metabase/utils/settings";
 import { getVisualizationRaw } from "metabase/visualizations";
 import { ChartNestedSettingColumns } from "metabase/visualizations/components/settings/ChartNestedSettingColumns";
 import { ChartSettingTableColumns } from "metabase/visualizations/components/settings/ChartSettingTableColumns";

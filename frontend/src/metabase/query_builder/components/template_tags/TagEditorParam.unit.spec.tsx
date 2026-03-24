@@ -7,7 +7,7 @@ import {
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
+import { checkNotNull } from "metabase/utils/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getTemplateTagParameter } from "metabase-lib/v1/parameters/utils/template-tags";
 import type { Card, TemplateTag, TemplateTagType } from "metabase-types/api";

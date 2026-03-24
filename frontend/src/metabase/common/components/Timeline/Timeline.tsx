@@ -3,7 +3,7 @@ import _ from "underscore";
 
 import { Button } from "metabase/common/components/Button";
 import { getFormattedTime } from "metabase/common/components/DateTime/DateTime";
-import { getRelativeTime } from "metabase/lib/time-dayjs";
+import { getRelativeTime } from "metabase/utils/time-dayjs";
 import type { RevisionOrModerationEvent } from "metabase/plugins";
 import { Icon, Tooltip } from "metabase/ui";
 import type { Revision } from "metabase-types/api";

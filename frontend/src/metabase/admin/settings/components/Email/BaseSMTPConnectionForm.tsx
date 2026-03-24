@@ -17,7 +17,7 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import * as Errors from "metabase/lib/errors";
+import * as Errors from "metabase/utils/errors";
 import { Box, Button, Chip, Flex, Modal, Stack } from "metabase/ui";
 import type { SettingDefinitionMap, SettingKey } from "metabase-types/api";
 

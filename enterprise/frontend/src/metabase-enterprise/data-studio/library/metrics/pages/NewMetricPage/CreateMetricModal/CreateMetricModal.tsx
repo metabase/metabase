@@ -13,7 +13,7 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
-import * as Errors from "metabase/lib/errors";
+import * as Errors from "metabase/utils/errors";
 import { Box, Button, Group, Modal, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Card, CreateCardRequest } from "metabase-types/api";

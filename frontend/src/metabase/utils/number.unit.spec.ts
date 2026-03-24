@@ -1,6 +1,6 @@
 import { parseNumber, parseNumberValue } from "./number";
 
-describe("metabase/lib/number", () => {
+describe("metabase/utils/number", () => {
   describe("parseNumberValue", () => {
     it("should return null for non-number values", () => {
       expect(parseNumberValue("")).toBeNull();

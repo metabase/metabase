@@ -11,8 +11,8 @@ import {
   getGroupNameLocalized,
   isAdminGroup,
   isDefaultGroup,
-} from "metabase/lib/groups";
-import { isNotNull } from "metabase/lib/types";
+} from "metabase/utils/groups";
+import { isNotNull } from "metabase/utils/types";
 import { Icon } from "metabase/ui";
 import { color } from "metabase/ui/colors";
 import type { GroupInfo } from "metabase-types/api";

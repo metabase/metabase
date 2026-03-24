@@ -12,7 +12,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { Sidesheet, SidesheetCard } from "metabase/common/components/Sidesheet";
 import { Timeline } from "metabase/common/components/Timeline";
 import { getTimelineEvents } from "metabase/common/components/Timeline/utils";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/utils/redux";
 import { getUser } from "metabase/selectors/user";
 import type { Document } from "metabase-types/api";
 

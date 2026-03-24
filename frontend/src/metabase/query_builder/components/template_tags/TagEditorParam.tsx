@@ -2,7 +2,7 @@ import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { type DispatchFn, connect } from "metabase/lib/redux";
+import { type DispatchFn, connect } from "metabase/utils/redux";
 import { TemporalUnitSettings } from "metabase/parameters/components/ParameterSettings/TemporalUnitSettings";
 import { ValuesSourceSettings } from "metabase/parameters/components/ValuesSourceSettings";
 import { isSingleOrMultiSelectable } from "metabase/parameters/utils/parameter-type";

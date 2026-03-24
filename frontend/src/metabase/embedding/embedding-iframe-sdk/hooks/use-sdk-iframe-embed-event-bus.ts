@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { match } from "ts-pattern";
 
-import { trackSchemaEvent } from "metabase/lib/analytics";
-import { isWithinIframe } from "metabase/lib/dom";
+import { trackSchemaEvent } from "metabase/utils/analytics";
+import { isWithinIframe } from "metabase/utils/dom";
 import type { EmbeddedAnalyticsJsEventSchema } from "metabase-types/analytics/embedded-analytics-js";
 
 import type {

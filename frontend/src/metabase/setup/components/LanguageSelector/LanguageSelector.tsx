@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { findWhere } from "underscore";
 
 import { useUpdateSettingsMutation } from "metabase/api";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import {
   getAvailableLocales,
   getLocale,

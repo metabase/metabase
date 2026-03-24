@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from "react";
 
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import { resetRowZoom, zoomInRow } from "metabase/query_builder/actions";
 import {
   getRowIndexToPKMap,

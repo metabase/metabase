@@ -7,8 +7,8 @@ import { Fields } from "metabase/entities/fields";
 import { Segments } from "metabase/entities/segments";
 import { Tables } from "metabase/entities/tables";
 import { isProduction } from "metabase/env";
-import { entityCompatibleQuery } from "metabase/lib/entities";
-import { createThunkAction, fetchData } from "metabase/lib/redux";
+import { entityCompatibleQuery } from "metabase/utils/entities";
+import { createThunkAction, fetchData } from "metabase/utils/redux";
 import { RevisionsApi } from "metabase/services";
 import { normalizeParameter } from "metabase-lib/v1/parameters/utils/parameter-values";
 

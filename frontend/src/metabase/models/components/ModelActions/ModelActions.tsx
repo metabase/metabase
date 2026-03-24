@@ -1,7 +1,7 @@
 import { jt, t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
-import * as Urls from "metabase/lib/urls";
+import * as Urls from "metabase/utils/urls";
 import { Group, Icon, Paper, Stack, Title } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 

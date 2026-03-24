@@ -1,7 +1,7 @@
 import { updateIn } from "icepick";
 import _ from "underscore";
 
-import { copy } from "metabase/lib/utils";
+import { copy } from "metabase/utils/utils";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import { deriveFieldOperatorFromParameter } from "metabase-lib/v1/parameters/utils/operators";

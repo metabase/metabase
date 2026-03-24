@@ -1,5 +1,5 @@
 import getInitialCollectionId from "metabase/entities/collections/getInitialCollectionId";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/utils/redux";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import type { CollectionId } from "metabase-types/api";
 

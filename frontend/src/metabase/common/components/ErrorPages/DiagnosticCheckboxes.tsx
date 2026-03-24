@@ -1,7 +1,7 @@
 import { c, t } from "ttag";
 
 import { FormCheckbox } from "metabase/forms";
-import { capitalize } from "metabase/lib/formatting";
+import { capitalize } from "metabase/utils/formatting";
 import { Stack } from "metabase/ui";
 
 import type { ErrorPayload } from "./types";

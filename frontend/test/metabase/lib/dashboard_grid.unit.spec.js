@@ -1,4 +1,4 @@
-import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
+import { getPositionForNewDashCard } from "metabase/utils/dashboard_grid";
 
 const getPos = (cards) => getPositionForNewDashCard(cards, 2, 2, 6);
 

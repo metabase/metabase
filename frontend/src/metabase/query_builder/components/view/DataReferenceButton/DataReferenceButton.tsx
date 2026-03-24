@@ -1,7 +1,7 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch } from "metabase/utils/redux";
 import { toggleDataReference } from "metabase/query_builder/actions";
 import { Box, Icon, Tooltip } from "metabase/ui";
 

@@ -5,7 +5,7 @@ import {
   browseDatabase,
   browseSchema,
   tableRowsQuery,
-} from "metabase/lib/urls";
+} from "metabase/utils/urls";
 import { SearchResultLink } from "metabase/search/components/SearchResultLink";
 import type { WrappedResult } from "metabase/search/types";
 import { Box, Icon, Text } from "metabase/ui";

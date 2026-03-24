@@ -1,4 +1,4 @@
-import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
+import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import type { DatasetColumn } from "metabase-types/api/dataset";
 
 export function displayNameForColumn(column: DatasetColumn): string {

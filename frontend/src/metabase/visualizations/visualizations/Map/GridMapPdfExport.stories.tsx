@@ -9,8 +9,8 @@ import { createWaitForResizeToStopDecorator } from "__support__/storybook";
 import { getNextId } from "__support__/utils";
 import { Api } from "metabase/api";
 import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
-import { MetabaseReduxProvider } from "metabase/lib/redux";
-import MetabaseSettings from "metabase/lib/settings";
+import { MetabaseReduxProvider } from "metabase/utils/redux";
+import MetabaseSettings from "metabase/utils/settings";
 import { PublicOrEmbeddedDashboardView } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboardView";
 import {
   MockDashboardContext,

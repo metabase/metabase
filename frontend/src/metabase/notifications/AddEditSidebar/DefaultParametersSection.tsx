@@ -3,8 +3,8 @@ import { t } from "ttag";
 
 import { Badge } from "metabase/common/components/Badge";
 import CS from "metabase/css/core/index.css";
-import { conjunct } from "metabase/lib/formatting";
-import { isNotNull } from "metabase/lib/types";
+import { conjunct } from "metabase/utils/formatting";
+import { isNotNull } from "metabase/utils/types";
 import { formatDateValue } from "metabase/parameters/utils/date-formatting";
 import { Icon, Title } from "metabase/ui";
 import type { Parameter, ParameterValueOrArray } from "metabase-types/api";

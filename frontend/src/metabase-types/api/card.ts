@@ -1,4 +1,4 @@
-import type { CurrencyStyle } from "metabase/lib/formatting";
+import type { CurrencyStyle } from "metabase/utils/formatting";
 import type {
   EmbeddingParameters,
   EmbeddingType,

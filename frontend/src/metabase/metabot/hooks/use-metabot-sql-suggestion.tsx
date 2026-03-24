@@ -2,7 +2,7 @@ import { isFulfilled, isRejected } from "@reduxjs/toolkit";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import { METABOT_PROFILE_OVERRIDES } from "metabase/metabot/constants";
 import {
   addDeveloperMessage,

@@ -7,9 +7,9 @@ import _ from "underscore";
 import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
 import { cleanIndexFlags } from "metabase/entities/model-indexes/actions";
 import { Timelines } from "metabase/entities/timelines";
-import { parseTimestamp } from "metabase/lib/time-dayjs";
-import { getSortedTimelines } from "metabase/lib/timelines";
-import { isNotNull } from "metabase/lib/types";
+import { parseTimestamp } from "metabase/utils/time-dayjs";
+import { getSortedTimelines } from "metabase/utils/timelines";
+import { isNotNull } from "metabase/utils/types";
 import {
   isQuestionDirty,
   isQuestionRunnable,

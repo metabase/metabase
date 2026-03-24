@@ -1,7 +1,7 @@
 import type { Location } from "history";
 
-import { createThunkAction } from "metabase/lib/redux";
-import { equals } from "metabase/lib/utils";
+import { createThunkAction } from "metabase/utils/redux";
+import { equals } from "metabase/utils/utils";
 import { getLocation } from "metabase/selectors/routing";
 import type { Dispatch } from "metabase-types/store";
 

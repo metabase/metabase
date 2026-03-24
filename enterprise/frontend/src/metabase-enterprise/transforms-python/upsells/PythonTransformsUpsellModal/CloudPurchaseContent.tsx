@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import { trackUpsellClicked } from "metabase/common/components/upsells/components/analytics";
 import type { BillingPeriod } from "metabase/data-studio/upsells/types";
-import * as Urls from "metabase/lib/urls";
+import * as Urls from "metabase/utils/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Button, Card, Divider, Flex, Group, Stack, Text } from "metabase/ui";
 import { usePurchaseCloudAddOnMutation } from "metabase-enterprise/api";

@@ -4,7 +4,7 @@ import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useGetAdhocQueryQuery } from "metabase/api";
-import * as Urls from "metabase/lib/urls";
+import * as Urls from "metabase/utils/urls";
 import { Button, Flex, Loader, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 

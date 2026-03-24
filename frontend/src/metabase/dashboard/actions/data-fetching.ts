@@ -26,13 +26,13 @@ import {
   getDashboardType,
   isQuestionDashCard,
   isVirtualDashCard,
-} from "metabase/lib/dashboard";
-import { entityCompatibleQuery } from "metabase/lib/entities";
-import type { Deferred } from "metabase/lib/promise";
-import { defer } from "metabase/lib/promise";
-import { createAsyncThunk, createThunkAction } from "metabase/lib/redux";
-import { equals } from "metabase/lib/utils";
-import { uuid } from "metabase/lib/uuid";
+} from "metabase/utils/dashboard";
+import { entityCompatibleQuery } from "metabase/utils/entities";
+import type { Deferred } from "metabase/utils/promise";
+import { defer } from "metabase/utils/promise";
+import { createAsyncThunk, createThunkAction } from "metabase/utils/redux";
+import { equals } from "metabase/utils/utils";
+import { uuid } from "metabase/utils/uuid";
 import { getSavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { addFields } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";

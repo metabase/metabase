@@ -12,7 +12,7 @@ import {
 import { AnsiLogs } from "metabase/common/components/AnsiLogs";
 import { Option, Select } from "metabase/common/components/Select";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
-import { openSaveDialog } from "metabase/lib/dom";
+import { openSaveDialog } from "metabase/utils/dom";
 import { Button, Flex, Icon, TextInput } from "metabase/ui";
 
 import { LogsContainer, LogsContent } from "./Logs.styled";

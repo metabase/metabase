@@ -7,7 +7,7 @@ import { getStore } from "__support__/entities-store";
 import { getNextId } from "__support__/utils";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
 import { Api } from "metabase/api";
-import { MetabaseReduxProvider } from "metabase/lib/redux/custom-context";
+import { MetabaseReduxProvider } from "metabase/utils/redux/custom-context";
 import {
   MockDashboardContext,
   type MockDashboardContextProps,

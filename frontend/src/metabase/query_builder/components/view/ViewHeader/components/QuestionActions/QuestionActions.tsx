@@ -7,7 +7,7 @@ import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { UploadInput } from "metabase/common/components/upload";
 import { DataStudioToolbarButton } from "metabase/data-studio/query-builder/components/DataStudioToolbarButton";
 import { getLibraryCollectionType } from "metabase/data-studio/utils";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch } from "metabase/utils/redux";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { QuestionMoreActionsMenu } from "metabase/query_builder/components/view/ViewHeader/components/QuestionActions/QuestionMoreActionsMenu";
 import type { QueryModalType } from "metabase/querying/constants";

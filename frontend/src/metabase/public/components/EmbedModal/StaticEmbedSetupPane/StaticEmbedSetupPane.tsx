@@ -5,8 +5,8 @@ import { t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
-import { useSelector } from "metabase/lib/redux";
-import { checkNotNull } from "metabase/lib/types";
+import { useSelector } from "metabase/utils/redux";
+import { checkNotNull } from "metabase/utils/types";
 import { getPreviewParamsBySlug } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/lib/get-preview-params-by-slug";
 import { getStaticEmbedSetupPublishHandlers } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/lib/get-static-embed-setup-publish-handlers";
 import { trackStaticEmbedCodeCopied } from "metabase/public/lib/analytics";

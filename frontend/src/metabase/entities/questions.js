@@ -15,7 +15,7 @@ import {
   createEntity,
   entityCompatibleQuery,
   undo,
-} from "metabase/lib/entities";
+} from "metabase/utils/entities";
 import {
   API_UPDATE_QUESTION,
   SOFT_RELOAD_CARD,

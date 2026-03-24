@@ -6,7 +6,7 @@ import {
   isLibraryCollection,
   isRootTrashCollection,
 } from "metabase/collections/utils";
-import * as Urls from "metabase/lib/urls/collections";
+import * as Urls from "metabase/utils/urls/collections";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type { Collection, CollectionId } from "metabase-types/api";
 import type { State } from "metabase-types/store";

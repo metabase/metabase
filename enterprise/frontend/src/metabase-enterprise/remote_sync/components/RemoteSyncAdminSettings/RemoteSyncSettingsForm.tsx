@@ -20,7 +20,7 @@ import {
   FormSwitch,
   FormTextInput,
 } from "metabase/forms";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import {

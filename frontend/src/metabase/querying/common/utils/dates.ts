@@ -2,7 +2,7 @@ import dayjs from "dayjs";
 import { match } from "ts-pattern";
 import { c, msgid, ngettext, t } from "ttag";
 
-import { DEFAULT_TIME_STYLE } from "metabase/lib/formatting/datetime-utils";
+import { DEFAULT_TIME_STYLE } from "metabase/utils/formatting/datetime-utils";
 import type {
   DateFilterDisplayOpts,
   DateFilterValue,

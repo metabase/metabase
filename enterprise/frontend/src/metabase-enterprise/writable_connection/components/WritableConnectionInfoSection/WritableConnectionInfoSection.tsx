@@ -12,7 +12,7 @@ import {
 } from "metabase/admin/databases/utils";
 import { useUpdateDatabaseMutation } from "metabase/api";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
-import * as Urls from "metabase/lib/urls";
+import * as Urls from "metabase/utils/urls";
 import type { WritableConnectionInfoSectionProps } from "metabase/plugins/oss/writable-connection";
 import { Alert, Button, Group, Icon } from "metabase/ui";
 

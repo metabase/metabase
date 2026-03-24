@@ -1,6 +1,6 @@
 import { c } from "ttag";
 
-import { isWithinIframe } from "metabase/lib/dom";
+import { isWithinIframe } from "metabase/utils/dom";
 import { setUIControls } from "metabase/query_builder/actions";
 import { MODAL_TYPES } from "metabase/querying/constants";
 import { Button, Flex } from "metabase/ui";

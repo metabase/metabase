@@ -5,7 +5,7 @@ import cx from "classnames";
 import { Children, Component, cloneElement, createRef } from "react";
 
 import CS from "metabase/css/core/index.css";
-import { isObscured } from "metabase/lib/dom";
+import { isObscured } from "metabase/utils/dom";
 import { Tooltip } from "metabase/ui";
 
 const Trigger = styled.a``;

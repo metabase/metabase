@@ -3,8 +3,8 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { useDispatch, useSelector } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import { getNewMenuItemAIExploration } from "metabase/metabot/components/NewMenuItemAIExploration";
 import { useMetabotEnabledEmbeddingAware } from "metabase/metabot/hooks";
 import { setOpenModal } from "metabase/redux/ui";

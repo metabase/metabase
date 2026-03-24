@@ -3,7 +3,7 @@ import {
   getTraceparentHeader,
   initTracing,
   rotateTraceId,
-} from "metabase/lib/otel";
+} from "metabase/utils/otel";
 
 // W3C traceparent: 00-{32 hex}-{16 hex}-01
 const TRACEPARENT_REGEX = /^00-[0-9a-f]{32}-[0-9a-f]{16}-01$/;

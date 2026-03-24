@@ -4,8 +4,8 @@ import { isEmpty } from "underscore";
 
 import { Popover } from "metabase/common/components/Popover";
 import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
-import { useSelector } from "metabase/lib/redux";
-import { isNotNull } from "metabase/lib/types";
+import { useSelector } from "metabase/utils/redux";
+import { isNotNull } from "metabase/utils/types";
 import type {
   FilterTypeKeys,
   SearchFilterComponentProps,

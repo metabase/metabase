@@ -11,7 +11,7 @@ import CS from "metabase/css/core/index.css";
 import { Search } from "metabase/entities/search";
 import { SnippetCollections } from "metabase/entities/snippet-collections";
 import { Snippets } from "metabase/entities/snippets";
-import { connect } from "metabase/lib/redux";
+import { connect } from "metabase/utils/redux";
 import {
   PLUGIN_REMOTE_SYNC,
   PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS,

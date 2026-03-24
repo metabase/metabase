@@ -7,7 +7,7 @@ import {
   PanelHeaderTitle,
 } from "metabase/data-studio/common/components/PaneHeader";
 import { useCollectionPath } from "metabase/data-studio/common/hooks/use-collection-path/useCollectionPath";
-import * as Urls from "metabase/lib/urls";
+import * as Urls from "metabase/utils/urls";
 import type { Card } from "metabase-types/api";
 
 import { MetricMoreMenu } from "./MetricMoreMenu";

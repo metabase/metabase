@@ -1,7 +1,7 @@
 import slugg from "slugg";
 
-import { serializeCardForUrl } from "metabase/lib/card";
-import MetabaseSettings from "metabase/lib/settings";
+import { serializeCardForUrl } from "metabase/utils/card";
+import MetabaseSettings from "metabase/utils/settings";
 import type { QuestionCreatorOpts } from "metabase-lib/v1/Question";
 import Question from "metabase-lib/v1/Question";
 import * as ML_Urls from "metabase-lib/v1/urls";

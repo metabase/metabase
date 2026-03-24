@@ -7,8 +7,8 @@ import {
 } from "react";
 
 import { useSetting } from "metabase/common/hooks";
-import { setLocaleHeader } from "metabase/lib/api";
-import { loadLocalization, setUserLocale } from "metabase/lib/i18n";
+import { setLocaleHeader } from "metabase/utils/api";
+import { loadLocalization, setUserLocale } from "metabase/utils/i18n";
 import { DatesProvider } from "metabase/ui/components/theme/DatesProvider/DatesProvider";
 
 interface LocaleProviderProps {

@@ -2,8 +2,8 @@ import type { Location } from "history";
 import { useCallback, useEffect, useMemo } from "react";
 import { push } from "react-router-redux";
 
-import { b64url_to_utf8, utf8_to_b64url } from "metabase/lib/encoding";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { b64url_to_utf8, utf8_to_b64url } from "metabase/utils/encoding";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import { loadMetadataForTable } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";

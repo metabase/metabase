@@ -14,7 +14,7 @@ import {
   CodeMirror,
   type CodeMirrorRef,
 } from "metabase/common/components/CodeMirror";
-import { isEventOverElement } from "metabase/lib/dom";
+import { isEventOverElement } from "metabase/utils/dom";
 import { useLlmSqlGenerationEnabled } from "metabase/metabot/hooks";
 import * as Lib from "metabase-lib";
 import type { CardId } from "metabase-types/api";

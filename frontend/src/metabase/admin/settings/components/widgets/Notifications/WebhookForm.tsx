@@ -13,8 +13,8 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { getResponseErrorMessage } from "metabase/lib/errors";
-import { useSelector } from "metabase/lib/redux";
+import { getResponseErrorMessage } from "metabase/utils/errors";
+import { useSelector } from "metabase/utils/redux";
 import { getDocsUrl } from "metabase/selectors/settings";
 import {
   Alert,

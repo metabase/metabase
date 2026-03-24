@@ -3,14 +3,14 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { Questions } from "metabase/entities/questions";
-import { isQuestionDashCard, isVirtualDashCard } from "metabase/lib/dashboard";
+import { isQuestionDashCard, isVirtualDashCard } from "metabase/utils/dashboard";
 import {
   DEFAULT_CARD_SIZE,
   GRID_WIDTH,
   getPositionForNewDashCard,
-} from "metabase/lib/dashboard_grid";
-import { createThunkAction } from "metabase/lib/redux";
-import { checkNotNull } from "metabase/lib/types";
+} from "metabase/utils/dashboard_grid";
+import { createThunkAction } from "metabase/utils/redux";
+import { checkNotNull } from "metabase/utils/types";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { addUndo } from "metabase/redux/undo";
 import { getDefaultSize } from "metabase/visualizations";

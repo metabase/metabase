@@ -6,7 +6,7 @@ import {
   isCollection,
   isEmptyStateData,
 } from "metabase/data-studio/common/utils";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/utils/redux";
 import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
 import {
   ActionIcon,

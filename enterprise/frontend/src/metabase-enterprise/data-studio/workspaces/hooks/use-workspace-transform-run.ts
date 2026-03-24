@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch } from "metabase/utils/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   useGetWorkspaceTransformQuery,

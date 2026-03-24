@@ -4,7 +4,7 @@ import { useLayoutEffect, useState } from "react";
 
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { trackDependencyDiagnosticsEntitySelected } from "metabase/data-studio/analytics";
-import type * as Urls from "metabase/lib/urls";
+import type * as Urls from "metabase/utils/urls";
 import { Center, Flex, Stack } from "metabase/ui";
 import {
   useListBreakingGraphNodesQuery,

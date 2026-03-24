@@ -13,7 +13,7 @@ import { useGetAdminSettingsDetailsQuery } from "metabase/api";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSetting, useToast } from "metabase/common/hooks";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/utils/redux";
 import { getUpgradeUrl } from "metabase/selectors/settings";
 import { Box, Divider, Flex, Stack } from "metabase/ui";
 import { useGetBillingInfoQuery } from "metabase-enterprise/api";

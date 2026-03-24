@@ -7,7 +7,7 @@ import {
   NAVIGATE_TO_NEW_CARD,
 } from "metabase/dashboard/actions";
 import { TimelineEvents } from "metabase/entities/timeline-events";
-import { copy } from "metabase/lib/utils";
+import { copy } from "metabase/utils/utils";
 
 import {
   API_CREATE_QUESTION,

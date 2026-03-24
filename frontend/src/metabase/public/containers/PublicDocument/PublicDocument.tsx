@@ -8,8 +8,8 @@ import { useAsync, useMount } from "react-use";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
-import { initializeIframeResizer } from "metabase/lib/dom";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { initializeIframeResizer } from "metabase/utils/dom";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import { EmbedFrame } from "metabase/public/components/EmbedFrame";
 import { PublicDocumentProvider } from "metabase/public/contexts/PublicDocumentContext";
 import { useEmbedFrameOptions } from "metabase/public/hooks";

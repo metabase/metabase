@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { snippetApi, useUpdateCollectionMutation } from "metabase/api";
 import { listTag } from "metabase/api/tags";
 import { isRootCollection } from "metabase/collections/utils";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import type { SnippetCollectionMenuProps } from "metabase/plugins";
 import { addUndo } from "metabase/redux/undo";
 import { getUserIsAdmin } from "metabase/selectors/user";

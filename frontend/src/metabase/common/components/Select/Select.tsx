@@ -19,7 +19,7 @@ import type { SelectButtonProps } from "metabase/common/components/SelectButton"
 import { SelectButton } from "metabase/common/components/SelectButton";
 import CS from "metabase/css/core/index.css";
 import Uncontrollable from "metabase/hoc/Uncontrollable";
-import { composeEventHandlers } from "metabase/lib/compose-event-handlers";
+import { composeEventHandlers } from "metabase/utils/compose-event-handlers";
 import type { IconName } from "metabase/ui";
 import { Icon } from "metabase/ui";
 

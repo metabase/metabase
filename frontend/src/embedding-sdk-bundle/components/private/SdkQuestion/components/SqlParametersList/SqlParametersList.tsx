@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useLatest } from "react-use";
 
 import { useSdkQuestionContext } from "embedding-sdk-bundle/components/private/SdkQuestion/context";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/utils/redux";
 import { ResponsiveParametersList } from "metabase/query_builder/components/ResponsiveParametersList";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box } from "metabase/ui";

@@ -9,7 +9,7 @@ import {
   useSearchMeasureDimensionValuesQuery,
   useSearchMetricDimensionValuesQuery,
 } from "metabase/api";
-import { parseNumber } from "metabase/lib/number";
+import { parseNumber } from "metabase/utils/number";
 import {
   FieldValuePicker,
   type UseGetFieldValuesArgs,

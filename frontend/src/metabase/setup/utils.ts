@@ -1,7 +1,7 @@
 import { getIn } from "icepick";
 import _ from "underscore";
 
-import MetabaseSettings from "metabase/lib/settings";
+import MetabaseSettings from "metabase/utils/settings";
 import { UtilApi } from "metabase/services";
 import type { LocaleData } from "metabase-types/api";
 import type { Locale } from "metabase-types/store";

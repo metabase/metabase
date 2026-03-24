@@ -23,9 +23,9 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { ResizeHandle } from "metabase/common/components/ResizeHandle";
 import { Sortable } from "metabase/common/components/Sortable";
 import { PaneHeaderInput } from "metabase/data-studio/common/components/PaneHeader";
-import { useDispatch } from "metabase/lib/redux";
-import { checkNotNull } from "metabase/lib/types";
-import * as Urls from "metabase/lib/urls";
+import { useDispatch } from "metabase/utils/redux";
+import { checkNotNull } from "metabase/utils/types";
+import * as Urls from "metabase/utils/urls";
 import { NAME_MAX_LENGTH } from "metabase/transforms/constants";
 import {
   ActionIcon,

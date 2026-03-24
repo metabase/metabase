@@ -10,7 +10,7 @@ import cx from "classnames";
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { t } from "ttag";
 
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/utils/redux";
 import type { MetabotPromptInputRef } from "metabase/metabot";
 import {
   MetabotMentionExtension,

@@ -2,7 +2,7 @@ import { push } from "react-router-redux";
 import _ from "underscore";
 
 import { setParameterValuesFromQueryParams } from "metabase/dashboard/actions/parameters";
-import { open } from "metabase/lib/dom";
+import { open } from "metabase/utils/dom";
 import type Question from "metabase-lib/v1/Question";
 import type { Dispatch } from "metabase-types/store";
 

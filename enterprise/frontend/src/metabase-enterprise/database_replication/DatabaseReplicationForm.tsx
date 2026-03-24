@@ -12,7 +12,7 @@ import {
   FormSubmitButton,
   FormTextarea,
 } from "metabase/forms";
-import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import {
   Box,
   Card,

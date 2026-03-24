@@ -1,4 +1,4 @@
-import { trackSimpleEvent } from "metabase/lib/analytics";
+import { trackSimpleEvent } from "metabase/utils/analytics";
 import type { DependencyEntitySelected } from "metabase-types/analytics";
 import type { CollectionId, ConcreteTableId } from "metabase-types/api";
 

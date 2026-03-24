@@ -1,4 +1,4 @@
-import { parseHashOptions, stringifyHashOptions } from "metabase/lib/browser";
+import { parseHashOptions, stringifyHashOptions } from "metabase/utils/browser";
 
 describe("browser", () => {
   describe("parseHashOptions", () => {

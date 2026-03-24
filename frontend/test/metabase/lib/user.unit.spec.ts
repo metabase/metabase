@@ -1,4 +1,4 @@
-import { getFullName } from "metabase/lib/user";
+import { getFullName } from "metabase/utils/user";
 import { createMockUser } from "metabase-types/api/mocks";
 
 describe("lib/user", () => {

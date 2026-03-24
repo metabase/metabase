@@ -17,7 +17,7 @@ import {
   createEntity,
   entityCompatibleQuery,
   undo,
-} from "metabase/lib/entities";
+} from "metabase/utils/entities";
 import { CollectionSchema } from "metabase/schema";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type {

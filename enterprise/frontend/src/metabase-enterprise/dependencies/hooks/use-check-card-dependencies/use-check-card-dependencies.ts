@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 
-import { useStore } from "metabase/lib/redux";
+import { useStore } from "metabase/utils/redux";
 import type {
   UseCheckDependenciesProps,
   UseCheckDependenciesResult,

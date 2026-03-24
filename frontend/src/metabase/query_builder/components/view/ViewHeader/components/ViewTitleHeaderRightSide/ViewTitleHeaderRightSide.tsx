@@ -4,9 +4,9 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import { QuestionSharingMenu } from "metabase/embedding/components/SharingMenu";
-import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
-import { useSelector } from "metabase/lib/redux";
-import MetabaseSettings from "metabase/lib/settings";
+import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
+import { useSelector } from "metabase/utils/redux";
+import MetabaseSettings from "metabase/utils/settings";
 import { AIQuestionAnalysisButton } from "metabase/metabot/components/AIQuestionAnalysisButton";
 import { canAnalyzeQuestion } from "metabase/metabot/utils/chart-analysis";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";

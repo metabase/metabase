@@ -3,7 +3,7 @@ import { c, t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
 import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import {
   getDatabase,
   getDatabaseEngine,

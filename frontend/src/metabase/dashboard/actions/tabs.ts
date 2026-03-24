@@ -8,9 +8,9 @@ import {
   INITIALIZE,
 } from "metabase/dashboard/actions/core";
 import { Dashboards } from "metabase/entities/dashboards";
-import { isVirtualDashCard } from "metabase/lib/dashboard";
-import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
-import { checkNotNull } from "metabase/lib/types";
+import { isVirtualDashCard } from "metabase/utils/dashboard";
+import { getPositionForNewDashCard } from "metabase/utils/dashboard_grid";
+import { checkNotNull } from "metabase/utils/types";
 import { addUndo } from "metabase/redux/undo";
 import type {
   DashCardId,

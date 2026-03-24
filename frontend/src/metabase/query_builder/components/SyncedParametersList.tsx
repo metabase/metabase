@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch } from "metabase/utils/redux";
 import {
   ParametersList,
   type ParametersListProps,

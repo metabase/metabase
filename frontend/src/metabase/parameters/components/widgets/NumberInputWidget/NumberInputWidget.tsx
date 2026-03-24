@@ -4,8 +4,8 @@ import _ from "underscore";
 
 import { NumericInput } from "metabase/common/components/NumericInput";
 import CS from "metabase/css/core/index.css";
-import { parseNumber } from "metabase/lib/number";
-import { isNotNull } from "metabase/lib/types";
+import { parseNumber } from "metabase/utils/number";
+import { isNotNull } from "metabase/utils/types";
 import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
 import type { NumberFilterValue } from "metabase/querying/parameters/types";
 import {

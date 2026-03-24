@@ -1,6 +1,6 @@
 import fetchMock from "fetch-mock";
 
-import api, { GET, POST, PUT } from "metabase/lib/api";
+import api, { GET, POST, PUT } from "metabase/utils/api";
 api.basename = "";
 
 describe("api", () => {

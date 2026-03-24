@@ -10,8 +10,8 @@ import {
   generateDraftCardId,
   loadMetadataForDocumentCard,
 } from "metabase/documents/documents.slice";
-import { isMac } from "metabase/lib/browser";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { isMac } from "metabase/utils/browser";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import { NativeQueryEditor } from "metabase/query_builder/components/NativeQueryEditor";
 import { createRawSeries } from "metabase/query_builder/utils";
 import { DataReference } from "metabase/querying/components/DataReference/DataReference";

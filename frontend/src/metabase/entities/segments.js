@@ -3,7 +3,7 @@ import {
   useGetSegmentQuery,
   useListSegmentsQuery,
 } from "metabase/api";
-import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
+import { createEntity, entityCompatibleQuery } from "metabase/utils/entities";
 import { SegmentSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
 import { color } from "metabase/ui/colors";

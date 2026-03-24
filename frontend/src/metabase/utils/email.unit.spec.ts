@@ -1,4 +1,4 @@
-import { isEmail } from "metabase/lib/email";
+import { isEmail } from "metabase/utils/email";
 
 describe("isEmail", () => {
   it("should work with email addresses containing ASCII special characters", () => {

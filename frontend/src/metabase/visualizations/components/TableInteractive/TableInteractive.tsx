@@ -43,9 +43,9 @@ import type {
 } from "metabase/data-grid/types";
 import { withMantineTheme } from "metabase/hoc/MantineTheme";
 import { useTranslateContent } from "metabase/i18n/hooks";
-import { getScrollBarSize } from "metabase/lib/dom";
-import { formatValue } from "metabase/lib/formatting";
-import { useDispatch } from "metabase/lib/redux";
+import { getScrollBarSize } from "metabase/utils/dom";
+import { formatValue } from "metabase/utils/formatting";
+import { useDispatch } from "metabase/utils/redux";
 import { setUIControls } from "metabase/query_builder/actions";
 import { Flex, type MantineTheme } from "metabase/ui";
 import {

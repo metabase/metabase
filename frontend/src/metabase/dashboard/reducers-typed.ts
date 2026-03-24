@@ -10,7 +10,7 @@ import {
 } from "metabase/api";
 import { Dashboards } from "metabase/entities/dashboards";
 import { Questions } from "metabase/entities/questions";
-import { handleActions } from "metabase/lib/redux";
+import { handleActions } from "metabase/utils/redux";
 import {
   NAVIGATE_BACK_TO_DASHBOARD,
   REVERT_TO_REVISION,

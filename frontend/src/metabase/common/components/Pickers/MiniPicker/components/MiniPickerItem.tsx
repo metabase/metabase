@@ -1,5 +1,5 @@
 import { Ellipsified } from "metabase/common/components/Ellipsified";
-import { getIcon } from "metabase/lib/icon";
+import { getIcon } from "metabase/utils/icon";
 import { Box, Icon, Menu, type MenuItemProps } from "metabase/ui";
 
 import type {

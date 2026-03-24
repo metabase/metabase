@@ -1,5 +1,5 @@
-import { formatValue } from "metabase/lib/formatting/value";
-import { isNumber } from "metabase/lib/types";
+import { formatValue } from "metabase/utils/formatting/value";
+import { isNumber } from "metabase/utils/types";
 import { color, colors } from "metabase/ui/colors";
 import { computeChange } from "metabase/visualizations/lib/numeric";
 import {

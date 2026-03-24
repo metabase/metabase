@@ -3,7 +3,7 @@ import { getIn } from "icepick";
 import { normalize } from "normalizr";
 import _ from "underscore";
 
-import { delay } from "metabase/lib/promise";
+import { delay } from "metabase/utils/promise";
 import {
   setRequestError,
   setRequestLoaded,

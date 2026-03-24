@@ -10,7 +10,7 @@ import { FormSubmitButton } from "metabase/common/components/FormSubmitButton";
 import { FormTextArea } from "metabase/common/components/FormTextArea";
 import type { CreateQueryActionParams } from "metabase/entities/actions";
 import { Form, FormProvider } from "metabase/forms";
-import * as Errors from "metabase/lib/errors";
+import * as Errors from "metabase/utils/errors";
 import { FormModelPicker } from "metabase/models/containers/FormModelPicker";
 
 const ACTION_SCHEMA = Yup.object({

@@ -4,7 +4,7 @@ import { usePrevious } from "react-use";
 import { t } from "ttag";
 
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
-import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import {
   Badge,

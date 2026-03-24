@@ -9,7 +9,7 @@ import {
 } from "react";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
-import * as Urls from "metabase/lib/urls";
+import * as Urls from "metabase/utils/urls";
 import { Box, Flex, Icon, Skeleton, rem } from "metabase/ui";
 
 import { TYPE_ICONS } from "../constants";

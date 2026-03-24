@@ -4,9 +4,9 @@ import { t } from "ttag";
 import { useListRecentsQuery, useSearchQuery } from "metabase/api";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { getDashboard } from "metabase/dashboard/selectors";
-import { trackSimpleEvent } from "metabase/lib/analytics";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { isNotNull } from "metabase/lib/types";
+import { trackSimpleEvent } from "metabase/utils/analytics";
+import { useDispatch, useSelector } from "metabase/utils/redux";
+import { isNotNull } from "metabase/utils/types";
 import { Box, Flex, Skeleton } from "metabase/ui";
 import { isCartesianChart } from "metabase/visualizations";
 import {

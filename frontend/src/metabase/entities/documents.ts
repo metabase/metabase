@@ -9,7 +9,7 @@ import {
   createEntity,
   entityCompatibleQuery,
   undo,
-} from "metabase/lib/entities";
+} from "metabase/utils/entities";
 import { DocumentSchema } from "metabase/schema";
 import { color } from "metabase/ui/utils/colors";
 import type {

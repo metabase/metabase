@@ -8,7 +8,7 @@ import _ from "underscore";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import SpacingS from "metabase/css/core/spacing.module.css";
-import { isNotNull } from "metabase/lib/types";
+import { isNotNull } from "metabase/utils/types";
 import type { IconName } from "metabase/ui";
 import { Icon } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";

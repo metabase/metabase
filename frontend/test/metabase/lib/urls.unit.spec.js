@@ -11,7 +11,7 @@ import {
   modelDetail,
   modelEditor,
   question,
-} from "metabase/lib/urls";
+} from "metabase/utils/urls";
 
 describe("urls", () => {
   describe("question", () => {

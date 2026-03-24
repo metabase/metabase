@@ -10,8 +10,8 @@ import CS from "metabase/css/core/index.css";
 import { updateParameterMappingsForDashcardText } from "metabase/dashboard/actions";
 import { getParameterValues } from "metabase/dashboard/selectors";
 import { useTranslateContent } from "metabase/i18n/hooks";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { isEmpty } from "metabase/lib/validate";
+import { useDispatch, useSelector } from "metabase/utils/redux";
+import { isEmpty } from "metabase/utils/validate";
 import { fillParametersInText } from "metabase/visualizations/shared/utils/parameter-substitution";
 import type { VisualizationGridSize } from "metabase/visualizations/types";
 import type {

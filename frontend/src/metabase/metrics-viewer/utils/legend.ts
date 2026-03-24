@@ -1,6 +1,6 @@
-import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
-import { formatValue } from "metabase/lib/formatting";
-import { isEmpty } from "metabase/lib/validate";
+import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { formatValue } from "metabase/utils/formatting";
+import { isEmpty } from "metabase/utils/validate";
 import * as LibMetric from "metabase-lib/metric";
 import type { MetricBreakoutValuesResponse } from "metabase-types/api";
 

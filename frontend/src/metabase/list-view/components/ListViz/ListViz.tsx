@@ -2,9 +2,9 @@ import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { displayNameForColumn } from "metabase/lib/formatting";
-import type { OptionsType } from "metabase/lib/formatting/types";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { displayNameForColumn } from "metabase/utils/formatting";
+import type { OptionsType } from "metabase/utils/formatting/types";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import { updateQuestion } from "metabase/query_builder/actions";
 import {
   getIsListViewConfigurationShown,

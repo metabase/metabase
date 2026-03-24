@@ -2,7 +2,7 @@ import {
   foreignKeyCountsByOriginTable,
   getSemanticTypeIcon,
   getSemanticTypeName,
-} from "metabase/lib/schema_metadata";
+} from "metabase/utils/schema_metadata";
 import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
 import { TYPE } from "metabase-lib/v1/types/constants";
 

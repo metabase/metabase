@@ -1,6 +1,6 @@
 import { createMockEntitiesState } from "__support__/store";
 import { render, renderWithProviders, screen } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
+import { checkNotNull } from "metabase/utils/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import { createMockDatabase, createMockSchema } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";

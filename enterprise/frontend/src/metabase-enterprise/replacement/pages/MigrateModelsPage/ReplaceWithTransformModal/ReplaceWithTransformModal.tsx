@@ -16,8 +16,8 @@ import {
   FormProvider,
   FormSubmitButton,
 } from "metabase/forms";
-import * as Errors from "metabase/lib/errors";
-import { slugify } from "metabase/lib/formatting/url";
+import * as Errors from "metabase/utils/errors";
+import { slugify } from "metabase/utils/formatting/url";
 import { SchemaFormSelect } from "metabase/transforms/components/SchemaFormSelect";
 import { TagsMultiFormSelect } from "metabase/transforms/components/TagsMultiFormSelect";
 import { TargetNameInput } from "metabase/transforms/components/TargetNameInput";

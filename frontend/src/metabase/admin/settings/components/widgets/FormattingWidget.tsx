@@ -10,7 +10,7 @@ import {
   getCurrencyStyleOptions,
   getDateStyleOptionsForUnit,
   getTimeStyleOptions,
-} from "metabase/lib/formatting";
+} from "metabase/utils/formatting";
 import { Box, Radio, Select, Stack, Switch, Text } from "metabase/ui";
 import type { FormattingSettings } from "metabase-types/api";
 

@@ -9,8 +9,8 @@ import {
 } from "metabase/dashboard/constants";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { isStorybookActive } from "metabase/env";
-import { utf8_to_b64 } from "metabase/lib/encoding";
-import { openImageBlobOnStorybook } from "metabase/lib/loki-utils";
+import { utf8_to_b64 } from "metabase/utils/encoding";
+import { openImageBlobOnStorybook } from "metabase/utils/loki-utils";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 
 import { getCardKey } from "./utils";

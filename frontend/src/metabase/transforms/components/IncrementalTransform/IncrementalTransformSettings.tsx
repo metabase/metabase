@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { useDocsUrl } from "metabase/common/hooks";
 import { FormSelect } from "metabase/forms";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/utils/redux";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { getMetadata } from "metabase/selectors/metadata";
 import { TitleSection } from "metabase/transforms/components/TitleSection";

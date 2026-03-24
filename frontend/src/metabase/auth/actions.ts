@@ -2,12 +2,12 @@ import { type UnknownAction, createAction } from "@reduxjs/toolkit";
 import { getIn } from "icepick";
 import { push } from "react-router-redux";
 
-import { deleteSession, initiateSLO } from "metabase/lib/auth";
-import { isSmallScreen, reload } from "metabase/lib/dom";
-import { loadLocalization } from "metabase/lib/i18n";
-import { createAsyncThunk } from "metabase/lib/redux";
-import MetabaseSettings from "metabase/lib/settings";
-import * as Urls from "metabase/lib/urls";
+import { deleteSession, initiateSLO } from "metabase/utils/auth";
+import { isSmallScreen, reload } from "metabase/utils/dom";
+import { loadLocalization } from "metabase/utils/i18n";
+import { createAsyncThunk } from "metabase/utils/redux";
+import MetabaseSettings from "metabase/utils/settings";
+import * as Urls from "metabase/utils/urls";
 import { openNavbar } from "metabase/redux/app";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { clearCurrentUser, refreshCurrentUser } from "metabase/redux/user";

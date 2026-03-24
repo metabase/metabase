@@ -9,7 +9,7 @@ import { t } from "ttag";
 
 import S from "metabase/common/components/List/List.module.css";
 import CS from "metabase/css/core/index.css";
-import { FIELD_SEMANTIC_TYPES_MAP } from "metabase/lib/core";
+import { FIELD_SEMANTIC_TYPES_MAP } from "metabase/utils/core";
 import {
   CurrencyPicker,
   SemanticTypePicker,

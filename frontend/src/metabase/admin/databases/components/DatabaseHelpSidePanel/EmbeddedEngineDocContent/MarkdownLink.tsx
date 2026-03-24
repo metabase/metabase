@@ -2,7 +2,7 @@ import type { ComponentProps } from "react";
 import { Link } from "react-router";
 
 import CS from "metabase/css/core/index.css";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/utils/redux";
 import { getDocsUrl } from "metabase/selectors/settings";
 import type { State } from "metabase-types/store";
 

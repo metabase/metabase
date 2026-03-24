@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { getResponseErrorMessage } from "metabase/lib/errors";
+import { getResponseErrorMessage } from "metabase/utils/errors";
 import { Alert, Box, Flex, Icon, Switch } from "metabase/ui";
 
 import { Description, Error, Label } from "../../DatabaseFeatureComponents";

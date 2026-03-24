@@ -1,7 +1,7 @@
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
-import { numberToWord } from "metabase/lib/utils";
+import { numberToWord } from "metabase/utils/utils";
 import type {
   ColorSettings,
   PasswordComplexity,

@@ -1,4 +1,4 @@
-import { isReducedMotionPreferred } from "metabase/lib/dom";
+import { isReducedMotionPreferred } from "metabase/utils/dom";
 import type { IconName } from "metabase/ui";
 import type { LongTaskStatus } from "metabase-types/api";
 

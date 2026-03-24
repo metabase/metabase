@@ -1,4 +1,4 @@
-import MetabaseSettings from "metabase/lib/settings";
+import MetabaseSettings from "metabase/utils/settings";
 import type { Document } from "metabase-types/api";
 
 export function newDocument() {

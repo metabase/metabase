@@ -8,7 +8,7 @@ import { getStore } from "__support__/entities-store";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { Api } from "metabase/api";
-import { MetabaseReduxProvider } from "metabase/lib/redux";
+import { MetabaseReduxProvider } from "metabase/utils/redux";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { publicReducers } from "metabase/reducers-public";
 import type { ScheduleSettings } from "metabase-types/api";

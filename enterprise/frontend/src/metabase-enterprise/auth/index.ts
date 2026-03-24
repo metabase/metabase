@@ -1,5 +1,5 @@
 import { LOGIN, LOGIN_GOOGLE } from "metabase/auth/actions";
-import MetabaseSettings from "metabase/lib/settings";
+import MetabaseSettings from "metabase/utils/settings";
 import {
   PLUGIN_AUTH_PROVIDERS,
   PLUGIN_IS_PASSWORD_USER,

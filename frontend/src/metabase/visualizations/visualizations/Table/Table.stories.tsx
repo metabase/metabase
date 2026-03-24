@@ -12,7 +12,7 @@ import {
 } from "__support__/storybook";
 import { Api } from "metabase/api";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
-import { MetabaseReduxProvider } from "metabase/lib/redux";
+import { MetabaseReduxProvider } from "metabase/utils/redux";
 import { commonReducers } from "metabase/reducers-common";
 import { Box } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";

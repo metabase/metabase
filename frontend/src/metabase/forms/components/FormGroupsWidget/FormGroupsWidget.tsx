@@ -6,7 +6,7 @@ import _ from "underscore";
 import { MembershipSelect } from "metabase/admin/people/components/MembershipSelect";
 import { useListPermissionsGroupsQuery } from "metabase/api";
 import { FormField } from "metabase/common/components/FormField";
-import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
+import { isAdminGroup, isDefaultGroup } from "metabase/utils/groups";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import type { GroupId, Member } from "metabase-types/api";
 

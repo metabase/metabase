@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Form, FormProvider } from "metabase/forms";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/utils/redux";
 import type { DatabaseData, EngineKey } from "metabase-types/api";
 
 import { getEngines } from "../../selectors";

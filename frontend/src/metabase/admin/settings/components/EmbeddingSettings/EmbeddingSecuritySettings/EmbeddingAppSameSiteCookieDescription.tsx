@@ -3,9 +3,9 @@ import { jt, t } from "ttag";
 import { Alert } from "metabase/common/components/Alert";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useSetting } from "metabase/common/hooks";
-import { isSameOrigin } from "metabase/lib/dom";
-import { useSelector } from "metabase/lib/redux";
-import { isEmpty } from "metabase/lib/utils";
+import { isSameOrigin } from "metabase/utils/dom";
+import { useSelector } from "metabase/utils/redux";
+import { isEmpty } from "metabase/utils/utils";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { Box, Center, Stack, Text } from "metabase/ui";
 

@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import { jt, t } from "ttag";
 
 import { useGetTableQuery } from "metabase/api";
-import * as Urls from "metabase/lib/urls";
+import * as Urls from "metabase/utils/urls";
 import { Anchor, Box, Button, Group, Icon, Stack, Text } from "metabase/ui";
 
 import {

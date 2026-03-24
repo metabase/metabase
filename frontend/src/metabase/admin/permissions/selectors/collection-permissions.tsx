@@ -20,8 +20,8 @@ import {
   getGroupSortOrder,
   getSpecialGroupType,
   isDefaultGroup,
-} from "metabase/lib/groups";
-import { isNotNull } from "metabase/lib/types";
+} from "metabase/utils/groups";
+import { isNotNull } from "metabase/utils/types";
 import { PLUGIN_COLLECTIONS, PLUGIN_TENANTS } from "metabase/plugins";
 import type {
   Collection,

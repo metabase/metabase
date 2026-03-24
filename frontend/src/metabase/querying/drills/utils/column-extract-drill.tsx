@@ -1,6 +1,6 @@
 import { c } from "ttag";
 
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch } from "metabase/utils/redux";
 import { setUIControls } from "metabase/query_builder/actions";
 import { ClickActionsView } from "metabase/visualizations/components/ClickActions";
 import type {

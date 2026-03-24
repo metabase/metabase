@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { createThunkAction } from "metabase/lib/redux";
+import { createThunkAction } from "metabase/utils/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { MetabaseApi } from "metabase/services";
 import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";

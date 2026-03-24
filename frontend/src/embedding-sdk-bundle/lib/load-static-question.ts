@@ -1,4 +1,4 @@
-import type { Deferred } from "metabase/lib/promise";
+import type { Deferred } from "metabase/utils/promise";
 import { CardApi } from "metabase/services";
 import type { Card, Dataset, ParameterQueryObject } from "metabase-types/api";
 

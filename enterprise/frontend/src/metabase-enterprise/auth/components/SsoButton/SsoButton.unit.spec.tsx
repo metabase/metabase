@@ -1,5 +1,5 @@
 import { renderWithProviders, waitFor } from "__support__/ui";
-import * as domUtils from "metabase/lib/dom";
+import * as domUtils from "metabase/utils/dom";
 import {
   createMockSettingsState,
   createMockState,

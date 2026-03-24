@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { CronExpressionInput } from "metabase/common/components/CronExpressioInput";
-import { formatCronExpressionForUI } from "metabase/lib/cron";
+import { formatCronExpressionForUI } from "metabase/utils/cron";
 import { Group, Select, Stack, Text } from "metabase/ui";
 
 interface ModelCachingScheduleWidgetProps {

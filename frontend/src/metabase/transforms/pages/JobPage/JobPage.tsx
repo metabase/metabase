@@ -8,7 +8,7 @@ import {
   useUpdateTransformJobMutation,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import * as Urls from "metabase/lib/urls";
+import * as Urls from "metabase/utils/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   canEditTransform,

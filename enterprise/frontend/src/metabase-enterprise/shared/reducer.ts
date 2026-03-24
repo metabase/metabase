@@ -1,6 +1,6 @@
 import { createSlice } from "@reduxjs/toolkit";
 
-import { createAsyncThunk } from "metabase/lib/redux";
+import { createAsyncThunk } from "metabase/utils/redux";
 import { GTAPApi } from "metabase/services";
 import type { UserAttributeKey } from "metabase-types/api";
 

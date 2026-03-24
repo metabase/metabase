@@ -8,7 +8,7 @@ import { type ComponentProps, useEffect } from "react";
 import { getStore } from "__support__/entities-store";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
-import { MetabaseReduxProvider } from "metabase/lib/redux";
+import { MetabaseReduxProvider } from "metabase/utils/redux";
 import { publicReducers } from "metabase/reducers-public";
 import { Box, Popover } from "metabase/ui";
 import type { State } from "metabase-types/store";

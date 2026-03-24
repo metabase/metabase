@@ -8,8 +8,8 @@ import type {
   DeleteBookmark,
 } from "metabase/collections/types";
 import { EventSandbox } from "metabase/common/components/EventSandbox";
-import { getIcon } from "metabase/lib/icon";
-import { modelToUrl } from "metabase/lib/urls";
+import { getIcon } from "metabase/utils/icon";
+import { modelToUrl } from "metabase/utils/urls";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Tooltip } from "metabase/ui";
 import { Flex, type IconName, Skeleton } from "metabase/ui";

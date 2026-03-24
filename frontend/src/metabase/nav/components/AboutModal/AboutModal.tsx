@@ -3,8 +3,8 @@ import _ from "underscore";
 
 import { LogoIcon } from "metabase/common/components/LogoIcon";
 import { useSetting } from "metabase/common/hooks";
-import { capitalize } from "metabase/lib/formatting";
-import { useSelector } from "metabase/lib/redux";
+import { capitalize } from "metabase/utils/formatting";
+import { useSelector } from "metabase/utils/redux";
 import {
   getApplicationName,
   getIsWhiteLabeling,

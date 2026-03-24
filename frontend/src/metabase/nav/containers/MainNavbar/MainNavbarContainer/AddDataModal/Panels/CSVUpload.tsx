@@ -19,7 +19,7 @@ import {
   type OmniPickerItem,
 } from "metabase/common/components/Pickers";
 import { UploadInput } from "metabase/common/components/upload";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch } from "metabase/utils/redux";
 import {
   MAX_UPLOAD_SIZE,
   MAX_UPLOAD_STRING,

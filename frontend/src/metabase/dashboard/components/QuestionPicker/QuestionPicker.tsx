@@ -12,10 +12,10 @@ import { useDashboardContext } from "metabase/dashboard/context";
 import { getDashboard } from "metabase/dashboard/selectors";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { Collections, ROOT_COLLECTION } from "metabase/entities/collections";
-import { getCrumbs } from "metabase/lib/collections";
-import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
-import { getIcon } from "metabase/lib/icon";
-import { connect, useDispatch, useSelector } from "metabase/lib/redux";
+import { getCrumbs } from "metabase/utils/collections";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
+import { getIcon } from "metabase/utils/icon";
+import { connect, useDispatch, useSelector } from "metabase/utils/redux";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import {
   canUserCreateNativeQueries,

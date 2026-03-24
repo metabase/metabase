@@ -10,7 +10,7 @@ import {
   SidesheetCardTitle,
 } from "metabase/common/components/Sidesheet";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import { isWithinIframe } from "metabase/lib/dom";
+import { isWithinIframe } from "metabase/utils/dom";
 import { Collapse, Divider, Group, Icon, Stack, Text } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
 

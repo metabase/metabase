@@ -9,7 +9,7 @@ import {
   useListSyncableDatabaseSchemasQuery,
 } from "metabase/api";
 import { Questions } from "metabase/entities/questions";
-import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
+import { createEntity, entityCompatibleQuery } from "metabase/utils/entities";
 import { SchemaSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
 import {

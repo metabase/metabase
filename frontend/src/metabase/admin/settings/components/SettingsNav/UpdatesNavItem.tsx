@@ -2,8 +2,8 @@ import { t } from "ttag";
 
 import { getCurrentVersion } from "metabase/admin/app/selectors";
 import { useGetVersionInfoQuery } from "metabase/api";
-import { useSelector } from "metabase/lib/redux";
-import { newVersionAvailable } from "metabase/lib/utils";
+import { useSelector } from "metabase/utils/redux";
+import { newVersionAvailable } from "metabase/utils/utils";
 import { Indicator } from "metabase/ui";
 
 import { SettingsNavItem } from "./SettingsNav";

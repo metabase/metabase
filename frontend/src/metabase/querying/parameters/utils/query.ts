@@ -1,6 +1,6 @@
 import { P, match } from "ts-pattern";
 
-import { isNotNull } from "metabase/lib/types";
+import { isNotNull } from "metabase/utils/types";
 import { getDateFilterClause } from "metabase/querying/filters/utils/dates";
 import * as Lib from "metabase-lib";
 import { isTemporalUnitParameter } from "metabase-lib/v1/parameters/utils/parameter-type";

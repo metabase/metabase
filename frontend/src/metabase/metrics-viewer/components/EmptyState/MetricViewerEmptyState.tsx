@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { getSubpathSafeUrl } from "metabase/lib/urls";
+import { getSubpathSafeUrl } from "metabase/utils/urls";
 import { Box, Center, Stack, Text, Title } from "metabase/ui";
 
 function MetricsViewerEmptyStateLayout({

@@ -1,4 +1,4 @@
-import { setLocalization } from "metabase/lib/i18n";
+import { setLocalization } from "metabase/utils/i18n";
 import type { DateFilterValue } from "metabase/querying/common/types";
 import * as Lib from "metabase-lib";
 import {

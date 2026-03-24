@@ -1,5 +1,5 @@
-import { getObjectValues } from "metabase/lib/objects";
-import { isNotNull } from "metabase/lib/types";
+import { getObjectValues } from "metabase/utils/objects";
+import { isNotNull } from "metabase/utils/types";
 import type { ShowWarning } from "metabase/visualizations/echarts/types";
 import type {
   ComputedVisualizationSettings,

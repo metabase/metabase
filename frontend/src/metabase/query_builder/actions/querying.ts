@@ -1,8 +1,8 @@
 import { createAction } from "redux-actions";
 import { t } from "ttag";
 
-import { defer } from "metabase/lib/promise";
-import { createThunkAction } from "metabase/lib/redux";
+import { defer } from "metabase/utils/promise";
+import { createThunkAction } from "metabase/utils/redux";
 import { syncVizSettingsWithSeries } from "metabase/querying/viz-settings/utils/sync-viz-settings";
 import { getWhiteLabeledLoadingMessageFactory } from "metabase/selectors/whitelabel";
 import { runQuestionQuery as apiRunQuestionQuery } from "metabase/services";

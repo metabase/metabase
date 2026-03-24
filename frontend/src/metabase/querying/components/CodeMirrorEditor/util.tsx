@@ -3,9 +3,9 @@ import { createSelector } from "@reduxjs/toolkit";
 import { shallowEqual } from "react-redux";
 import { t } from "ttag";
 
-import { METAKEY } from "metabase/lib/browser";
-import { getEngineNativeType } from "metabase/lib/engine";
-import { isNotNull } from "metabase/lib/types";
+import { METAKEY } from "metabase/utils/browser";
+import { getEngineNativeType } from "metabase/utils/engine";
+import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import type { CardId, CardType } from "metabase-types/api";
 

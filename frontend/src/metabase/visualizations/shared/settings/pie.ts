@@ -1,7 +1,7 @@
 import _ from "underscore";
 
-import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
-import { checkNotNull, checkNumber, isNumber } from "metabase/lib/types";
+import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { checkNotNull, checkNumber, isNumber } from "metabase/utils/types";
 import { getColorsForValues } from "metabase/ui/colors/charts";
 import { SLICE_THRESHOLD } from "metabase/visualizations/echarts/pie/constants";
 import { getPieColumns } from "metabase/visualizations/echarts/pie/model";

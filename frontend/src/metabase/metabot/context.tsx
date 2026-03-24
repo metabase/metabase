@@ -12,7 +12,7 @@ import {
 } from "react";
 import _ from "underscore";
 
-import { useStore } from "metabase/lib/redux";
+import { useStore } from "metabase/utils/redux";
 import {
   canUserCreateNativeQueries,
   canUserCreateQueries,

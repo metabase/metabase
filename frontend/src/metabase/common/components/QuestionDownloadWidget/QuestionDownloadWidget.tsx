@@ -10,7 +10,7 @@ import type {
   TableExportFormat,
 } from "metabase/common/types/export";
 import CS from "metabase/css/core/index.css";
-import { exportFormatPng, exportFormats } from "metabase/lib/urls";
+import { exportFormatPng, exportFormats } from "metabase/utils/urls";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import {
   Box,

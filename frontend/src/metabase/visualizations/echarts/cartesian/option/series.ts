@@ -7,8 +7,8 @@ import type {
 } from "echarts/types/src/util/types";
 import _ from "underscore";
 
-import { getObjectValues } from "metabase/lib/objects";
-import { isNotNull } from "metabase/lib/types";
+import { getObjectValues } from "metabase/utils/objects";
+import { isNotNull } from "metabase/utils/types";
 import { getTextColorForBackground } from "metabase/ui/colors/palette";
 import {
   INDEX_KEY,

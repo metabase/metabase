@@ -1,6 +1,6 @@
-import { b64hash_to_utf8, utf8_to_b64url } from "metabase/lib/encoding";
-import { stableStringify } from "metabase/lib/objects";
-import { equals } from "metabase/lib/utils";
+import { b64hash_to_utf8, utf8_to_b64url } from "metabase/utils/encoding";
+import { stableStringify } from "metabase/utils/objects";
+import { equals } from "metabase/utils/utils";
 import type { Card, ParameterValuesMap, UnsavedCard } from "metabase-types/api";
 
 export type SerializeCardOptions = {

@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { NoDataError } from "metabase/common/components/errors/NoDataError";
 import CS from "metabase/css/core/index.css";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/utils/redux";
 import { SyncedEmbedFrame } from "metabase/public/components/EmbedFrame";
 import { getErrorMessage } from "metabase/selectors/app";
 

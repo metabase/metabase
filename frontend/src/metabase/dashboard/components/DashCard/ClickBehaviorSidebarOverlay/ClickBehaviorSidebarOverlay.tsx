@@ -2,7 +2,7 @@ import cx from "classnames";
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { getClickBehaviorDescription } from "metabase/lib/click-behavior";
+import { getClickBehaviorDescription } from "metabase/utils/click-behavior";
 import { Box, Flex, Icon } from "metabase/ui";
 import type { DashboardCard, QuestionDashboardCard } from "metabase-types/api";
 

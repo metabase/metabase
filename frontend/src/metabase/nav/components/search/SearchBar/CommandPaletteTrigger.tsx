@@ -1,7 +1,7 @@
 import type React from "react";
 import { t } from "ttag";
 
-import { METAKEY } from "metabase/lib/browser";
+import { METAKEY } from "metabase/utils/browser";
 import { Button, Tooltip } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
 

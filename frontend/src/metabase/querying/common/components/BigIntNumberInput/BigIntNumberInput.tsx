@@ -1,7 +1,7 @@
 import type { ChangeEvent, FocusEvent, Ref } from "react";
 import { forwardRef, useLayoutEffect, useState } from "react";
 
-import { type NumberValue, parseNumber } from "metabase/lib/number";
+import { type NumberValue, parseNumber } from "metabase/utils/number";
 import { TextInput, type TextInputProps } from "metabase/ui";
 
 type BigIntNumberInputProps = Omit<TextInputProps, "value" | "onChange"> & {

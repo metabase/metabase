@@ -22,8 +22,8 @@ import {
   getCollectionIcon,
 } from "metabase/entities/collections";
 import { Databases } from "metabase/entities/databases";
-import { connect, useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { connect, useSelector } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import {
   getIsTenantUser,

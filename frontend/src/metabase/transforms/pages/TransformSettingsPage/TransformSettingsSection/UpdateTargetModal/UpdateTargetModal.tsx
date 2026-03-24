@@ -18,7 +18,7 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import * as Errors from "metabase/lib/errors";
+import * as Errors from "metabase/utils/errors";
 import { SchemaFormSelect } from "metabase/transforms/components/SchemaFormSelect";
 import { sourceDatabaseId } from "metabase/transforms/utils";
 import {

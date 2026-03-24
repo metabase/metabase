@@ -1,4 +1,4 @@
-import { openSaveDialog } from "metabase/lib/dom";
+import { openSaveDialog } from "metabase/utils/dom";
 
 import { Api } from "./api";
 

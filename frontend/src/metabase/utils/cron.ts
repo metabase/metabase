@@ -3,8 +3,8 @@ import cronstrue from "cronstrue";
 import { t } from "ttag";
 import { memoize } from "underscore";
 
-import MetabaseSettings from "metabase/lib/settings";
-import { has24HourModeSetting } from "metabase/lib/time-dayjs";
+import MetabaseSettings from "metabase/utils/settings";
+import { has24HourModeSetting } from "metabase/utils/time-dayjs";
 
 function translateErrorMessage(message: string) {
   const errorMessageMap: Record<string, string> = {

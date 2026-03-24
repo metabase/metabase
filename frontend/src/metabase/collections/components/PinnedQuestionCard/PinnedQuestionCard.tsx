@@ -12,8 +12,8 @@ import {
 } from "metabase/collections/utils";
 import { EventSandbox } from "metabase/common/components/EventSandbox";
 import CS from "metabase/css/core/index.css";
-import { getIcon } from "metabase/lib/icon";
-import { modelToUrl } from "metabase/lib/urls";
+import { getIcon } from "metabase/utils/icon";
+import { modelToUrl } from "metabase/utils/urls";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Box, Flex, Group, Icon, Text } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";

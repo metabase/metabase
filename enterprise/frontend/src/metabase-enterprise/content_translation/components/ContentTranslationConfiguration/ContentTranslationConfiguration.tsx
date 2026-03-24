@@ -24,7 +24,7 @@ import {
   FormSubmitButton,
   useFormContext,
 } from "metabase/forms";
-import { openSaveDialog } from "metabase/lib/dom";
+import { openSaveDialog } from "metabase/utils/dom";
 import {
   Button,
   Group,

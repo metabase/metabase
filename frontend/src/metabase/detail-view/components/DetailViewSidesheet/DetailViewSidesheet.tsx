@@ -24,8 +24,8 @@ import {
   getHeaderColumns,
   getRowName,
 } from "metabase/detail-view/utils";
-import type { OptionsType } from "metabase/lib/formatting/types";
-import { useDispatch } from "metabase/lib/redux";
+import type { OptionsType } from "metabase/utils/formatting/types";
+import { useDispatch } from "metabase/utils/redux";
 import { runQuestionQuery } from "metabase/query_builder/actions";
 import { ActionsApi } from "metabase/services";
 import {

@@ -6,7 +6,7 @@ import { t } from "ttag";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { FormMessage } from "metabase/forms";
-import { isSyncCompleted } from "metabase/lib/syncing";
+import { isSyncCompleted } from "metabase/utils/syncing";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { Button, Flex, Loader, UnstyledButton } from "metabase/ui";
 import type { Database, Engine } from "metabase-types/api";

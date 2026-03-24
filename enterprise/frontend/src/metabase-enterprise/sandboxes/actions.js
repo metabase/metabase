@@ -17,7 +17,7 @@ import {
   createThunkAction,
   handleActions,
   withRequestState,
-} from "metabase/lib/redux";
+} from "metabase/utils/redux";
 import { GTAPApi } from "metabase/services";
 
 import { getPolicyKey, getPolicyKeyFromParams } from "./utils";

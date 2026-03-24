@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
-import { measureTextWidth } from "metabase/lib/measure-text";
+import { measureTextWidth } from "metabase/utils/measure-text";
 import { extractRemappedColumns } from "metabase/visualizations";
 import {
   getCartesianChartColumns,

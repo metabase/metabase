@@ -1,10 +1,10 @@
-import { deserializeCardFromUrl, serializeCardForUrl } from "metabase/lib/card";
+import { deserializeCardFromUrl, serializeCardForUrl } from "metabase/utils/card";
 import {
   b64_to_utf8,
   b64url_to_utf8,
   utf8_to_b64,
   utf8_to_b64url,
-} from "metabase/lib/encoding";
+} from "metabase/utils/encoding";
 
 const CARD_ID = 31;
 

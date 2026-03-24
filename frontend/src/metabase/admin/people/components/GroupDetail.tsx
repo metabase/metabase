@@ -15,8 +15,8 @@ import {
   getGroupNameLocalized,
   isAdminGroup,
   isDefaultGroup,
-} from "metabase/lib/groups";
-import { useDispatch } from "metabase/lib/redux";
+} from "metabase/utils/groups";
+import { useDispatch } from "metabase/utils/redux";
 import { PLUGIN_GROUP_MANAGERS, PLUGIN_TENANTS } from "metabase/plugins";
 import { Box, Button, Text } from "metabase/ui";
 import type { Group, Member, Membership, User } from "metabase-types/api";

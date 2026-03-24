@@ -16,8 +16,8 @@ import { t } from "ttag";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import ZIndex from "metabase/css/core/z-index.module.css";
-import { capitalize, inflect } from "metabase/lib/formatting";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { capitalize, inflect } from "metabase/utils/formatting";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import {
   dismissUndo,
   pauseUndo,

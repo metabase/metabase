@@ -14,7 +14,7 @@ import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { Bookmarks } from "metabase/entities/bookmarks";
 import { Questions } from "metabase/entities/questions";
-import { connect } from "metabase/lib/redux";
+import { connect } from "metabase/utils/redux";
 import {
   rememberLastUsedDatabase,
   runOrCancelQuestionOrSelectedQuery,

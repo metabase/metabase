@@ -6,7 +6,7 @@ import {
   useGetSettingsQuery,
 } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/utils/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Button, Group, Icon, Modal } from "metabase/ui";
 import {

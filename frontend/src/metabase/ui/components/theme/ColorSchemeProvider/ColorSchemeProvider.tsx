@@ -14,7 +14,7 @@ import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import type {
   ColorScheme,
   ResolvedColorScheme,
-} from "metabase/lib/color-scheme";
+} from "metabase/utils/color-scheme";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 
 interface ColorSchemeContextType {

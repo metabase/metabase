@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
 import { isEmbedding } from "metabase/embedding/config";
-import { METAKEY } from "metabase/lib/browser";
+import { METAKEY } from "metabase/utils/browser";
 import { Icon, Popover, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 

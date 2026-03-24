@@ -10,8 +10,8 @@ import { getNextId } from "__support__/utils";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
 import { Api } from "metabase/api";
 import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
-import { stableStringify } from "metabase/lib/objects";
-import { MetabaseReduxProvider } from "metabase/lib/redux/custom-context";
+import { stableStringify } from "metabase/utils/objects";
+import { MetabaseReduxProvider } from "metabase/utils/redux/custom-context";
 import {
   MockDashboardContext,
   type MockDashboardContextProps,

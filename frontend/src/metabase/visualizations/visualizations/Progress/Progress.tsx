@@ -3,7 +3,7 @@ import { type MouseEvent, useCallback, useEffect, useRef } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { formatValue } from "metabase/lib/formatting";
+import { formatValue } from "metabase/utils/formatting";
 import { Flex, Icon } from "metabase/ui";
 import type { VisualizationProps } from "metabase/visualizations/types";
 

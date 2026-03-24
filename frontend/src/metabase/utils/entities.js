@@ -44,7 +44,7 @@
  *
  * Add the following to it:
  *
- *   import { createEntity } from "metabase/lib/entities";
+ *   import { createEntity } from "metabase/utils/entities";
 
  *   const Books = createEntity({
  *     name: "books",
@@ -75,7 +75,7 @@ import { denormalize, normalize, schema } from "normalizr";
 import createCachedSelector from "re-reselect";
 import _ from "underscore";
 
-import { DELETE, GET, POST, PUT } from "metabase/lib/api";
+import { DELETE, GET, POST, PUT } from "metabase/utils/api";
 import {
   combineReducers,
   compose,
@@ -83,7 +83,7 @@ import {
   withAction,
   withCachedDataAndRequestState,
   withRequestState,
-} from "metabase/lib/redux";
+} from "metabase/utils/redux";
 import requestsReducer, { setRequestUnloaded } from "metabase/redux/requests";
 import { addUndo } from "metabase/redux/undo";
 

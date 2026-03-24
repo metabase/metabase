@@ -21,7 +21,7 @@ import {
 } from "__support__/ui";
 import type { ModelResult } from "metabase/browse/models";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
-import * as domUtils from "metabase/lib/dom";
+import * as domUtils from "metabase/utils/dom";
 import type { Card, Dashboard, DashboardId, User } from "metabase-types/api";
 import {
   createMockCollection,

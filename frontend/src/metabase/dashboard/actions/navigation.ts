@@ -1,6 +1,6 @@
-import { isQuestionDashCard } from "metabase/lib/dashboard";
-import { createThunkAction } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { isQuestionDashCard } from "metabase/utils/dashboard";
+import { createThunkAction } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import { openUrl } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";

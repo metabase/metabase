@@ -16,7 +16,7 @@ import {
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
-import * as dom from "metabase/lib/dom";
+import * as dom from "metabase/utils/dom";
 import {
   CLOSE_NAVBAR,
   OPEN_NAVBAR,

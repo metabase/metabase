@@ -7,8 +7,8 @@ import {
   getParameterValuesBySlugMap,
   getParameters,
 } from "metabase/dashboard/selectors";
-import { getLinkTargets } from "metabase/lib/click-behavior";
-import { useStore } from "metabase/lib/redux";
+import { getLinkTargets } from "metabase/utils/click-behavior";
+import { useStore } from "metabase/utils/redux";
 import { getUserAttributes } from "metabase/selectors/user";
 import type { ClickObject } from "metabase/visualizations/types";
 import Question from "metabase-lib/v1/Question";

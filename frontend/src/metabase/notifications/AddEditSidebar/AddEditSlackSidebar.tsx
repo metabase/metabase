@@ -10,7 +10,7 @@ import { SendTestPulse } from "metabase/common/components/SendTestPulse";
 import { Sidebar } from "metabase/common/components/Sidebar";
 import { Toggle } from "metabase/common/components/Toggle";
 import CS from "metabase/css/core/index.css";
-import { dashboardPulseIsValid } from "metabase/lib/pulse";
+import { dashboardPulseIsValid } from "metabase/utils/pulse";
 import { SlackChannelField } from "metabase/notifications/channels/SlackChannelField";
 import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
 import { Icon, Title } from "metabase/ui";

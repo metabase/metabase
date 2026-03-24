@@ -1,7 +1,7 @@
 import { isFulfilled } from "@reduxjs/toolkit";
 import { useCallback } from "react";
 
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import { useMetabotContext } from "metabase/metabot";
 
 import { trackMetabotRequestSent } from "../analytics";

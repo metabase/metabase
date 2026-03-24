@@ -4,7 +4,7 @@ import {
   renderValue,
 } from "metabase/detail-view/utils";
 import { useTranslateContent } from "metabase/i18n/hooks";
-import type { OptionsType } from "metabase/lib/formatting/types";
+import type { OptionsType } from "metabase/utils/formatting/types";
 import { Flex, Group, Stack, Text, rem } from "metabase/ui";
 import type { DatasetColumn, RowValues, Table } from "metabase-types/api";
 

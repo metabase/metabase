@@ -10,9 +10,9 @@ import { Search } from "metabase/entities/search";
 import {
   DEFAULT_SEARCH_LIMIT,
   SEARCH_DEBOUNCE_DURATION,
-} from "metabase/lib/constants";
-import { useDispatch } from "metabase/lib/redux";
-import { modelToUrl } from "metabase/lib/urls";
+} from "metabase/utils/constants";
+import { useDispatch } from "metabase/utils/redux";
+import { modelToUrl } from "metabase/utils/urls";
 import {
   EmptyStateContainer,
   ResultsContainer,

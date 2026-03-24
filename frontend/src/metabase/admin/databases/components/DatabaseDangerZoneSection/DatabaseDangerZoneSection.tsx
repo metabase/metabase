@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { DeleteDatabaseModal } from "metabase/admin/databases/components/DeleteDatabaseModel/DeleteDatabaseModal";
 import { useDiscardDatabaseFieldValuesMutation } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { isSyncCompleted } from "metabase/lib/syncing";
+import { isSyncCompleted } from "metabase/utils/syncing";
 import { Button, Flex } from "metabase/ui";
 import type { Database, DatabaseId } from "metabase-types/api";
 

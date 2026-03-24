@@ -4,10 +4,10 @@ import querystring from "querystring";
 
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { isTest } from "metabase/env";
-import { isWithinIframe } from "metabase/lib/dom";
-import { IFRAMED_IN_SELF } from "metabase/lib/iframe";
-import { getTraceparentHeader } from "metabase/lib/otel";
-import { delay } from "metabase/lib/promise";
+import { isWithinIframe } from "metabase/utils/dom";
+import { IFRAMED_IN_SELF } from "metabase/utils/iframe";
+import { getTraceparentHeader } from "metabase/utils/otel";
+import { delay } from "metabase/utils/promise";
 import { PLUGIN_API, PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
 
 const ONE_SECOND = 1000;

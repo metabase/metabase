@@ -20,7 +20,7 @@ import {
   getTabs,
 } from "metabase/dashboard/selectors";
 import { findDashCardForInlineParameter } from "metabase/dashboard/utils";
-import { isQuestionDashCard } from "metabase/lib/dashboard";
+import { isQuestionDashCard } from "metabase/utils/dashboard";
 import {
   getMappingOptionByTarget,
   getParameterMappingOptions,

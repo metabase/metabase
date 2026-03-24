@@ -14,7 +14,7 @@ import {
   formatValue,
   getCurrencySymbol,
   slugify,
-} from "metabase/lib/formatting";
+} from "metabase/utils/formatting";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import { createMockColumn } from "metabase-types/api/mocks";
 

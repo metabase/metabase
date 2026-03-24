@@ -8,7 +8,7 @@ import {
   isUploadAborted,
   isUploadCompleted,
   isUploadInProgress,
-} from "metabase/lib/uploads";
+} from "metabase/utils/uploads";
 import { PLUGIN_UPLOAD_MANAGEMENT } from "metabase/plugins";
 import { Box, Stack } from "metabase/ui";
 import type Table from "metabase-lib/v1/metadata/Table";

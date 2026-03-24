@@ -2,8 +2,8 @@ import { useDraggable, useDroppable } from "@dnd-kit/core";
 import cx from "classnames";
 import { useMemo } from "react";
 
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { isNotNull } from "metabase/lib/types";
+import { useDispatch, useSelector } from "metabase/utils/redux";
+import { isNotNull } from "metabase/utils/types";
 import { Flex, type FlexProps, Text } from "metabase/ui";
 import { getDefaultDimensionFilter } from "metabase/visualizations/shared/settings/cartesian-chart";
 import { DRAGGABLE_ID, DROPPABLE_ID } from "metabase/visualizer/constants";

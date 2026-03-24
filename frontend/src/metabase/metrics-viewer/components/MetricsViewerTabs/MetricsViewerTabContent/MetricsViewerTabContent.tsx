@@ -1,8 +1,8 @@
 import { useCallback, useMemo } from "react";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { getObjectKeys, getObjectValues } from "metabase/lib/objects";
-import { isNotNull } from "metabase/lib/types";
+import { getObjectKeys, getObjectValues } from "metabase/utils/objects";
+import { isNotNull } from "metabase/utils/types";
 import { Flex, Stack } from "metabase/ui";
 import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";

@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/constants";
 import { isStorybookActive } from "metabase/env";
-import { openImageBlobOnStorybook } from "metabase/lib/loki-utils";
+import { openImageBlobOnStorybook } from "metabase/utils/loki-utils";
 import type { Dashboard } from "metabase-types/api";
 
 import {

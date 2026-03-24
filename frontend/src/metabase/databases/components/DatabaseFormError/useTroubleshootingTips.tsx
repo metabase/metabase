@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { c, t } from "ttag";
 import { identity } from "underscore";
 
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/utils/redux";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { getIsHosted } from "metabase/setup";

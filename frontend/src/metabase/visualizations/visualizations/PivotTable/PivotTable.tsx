@@ -19,9 +19,9 @@ import _ from "underscore";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
 import { useTranslateContent } from "metabase/i18n/hooks";
-import { sumArray } from "metabase/lib/arrays";
-import { getScrollBarSize } from "metabase/lib/dom";
-import { connect } from "metabase/lib/redux";
+import { sumArray } from "metabase/utils/arrays";
+import { getScrollBarSize } from "metabase/utils/dom";
+import { connect } from "metabase/utils/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { useMantineTheme } from "metabase/ui";
 import {

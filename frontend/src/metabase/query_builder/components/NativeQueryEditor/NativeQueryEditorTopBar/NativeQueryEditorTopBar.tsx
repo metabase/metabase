@@ -1,6 +1,6 @@
 import { type PropsWithChildren, forwardRef } from "react";
 
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch } from "metabase/utils/redux";
 import { updateQuestion } from "metabase/query_builder/actions/core";
 import type { QueryModalType } from "metabase/querying/constants";
 import type { SidebarFeatures } from "metabase/querying/editor/types";

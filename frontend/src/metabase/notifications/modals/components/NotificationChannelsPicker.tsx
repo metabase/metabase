@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
 import { useListChannelsQuery, useListUserRecipientsQuery } from "metabase/api";
-import { getNotificationHandlersGroupedByTypes } from "metabase/lib/notifications";
-import { useSelector } from "metabase/lib/redux";
+import { getNotificationHandlersGroupedByTypes } from "metabase/utils/notifications";
+import { useSelector } from "metabase/utils/redux";
 import { ChannelSettingsBlock } from "metabase/notifications/channels/ChannelSettingsBlock";
 import { EmailChannelEdit } from "metabase/notifications/channels/EmailChannelEdit";
 import { SlackChannelFieldNew } from "metabase/notifications/channels/SlackChannelFieldNew";

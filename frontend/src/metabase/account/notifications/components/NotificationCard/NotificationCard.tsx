@@ -16,8 +16,8 @@ import {
   formatNotificationSchedule,
   formatTitle,
   getNotificationEnabledChannelsMap,
-} from "metabase/lib/notifications";
-import * as Urls from "metabase/lib/urls";
+} from "metabase/utils/notifications";
+import * as Urls from "metabase/utils/urls";
 import { Group, Icon } from "metabase/ui";
 import type { User } from "metabase-types/api";
 

@@ -1,4 +1,4 @@
-import { regexpEscape } from "metabase/lib/string";
+import { regexpEscape } from "metabase/utils/string";
 
 describe("regexpEscape", () => {
   const testCases = [

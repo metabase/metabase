@@ -12,8 +12,8 @@ import {
   MeasurementProviders,
   createMeasurementContainer,
 } from "metabase/data-grid/utils/measure-utils";
-import { renderRoot, unmountRoot } from "metabase/lib/react-compat";
-import { isNotNull } from "metabase/lib/types";
+import { renderRoot, unmountRoot } from "metabase/utils/react-compat";
+import { isNotNull } from "metabase/utils/types";
 
 import { DataGridThemeProvider } from "./use-table-theme";
 

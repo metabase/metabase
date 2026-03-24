@@ -6,7 +6,7 @@ import {
   useLazyGetTransformQuery,
 } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { isResourceNotFoundError } from "metabase/lib/errors";
+import { isResourceNotFoundError } from "metabase/utils/errors";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { ActionIcon, Icon, Tooltip } from "metabase/ui";
 import type { Transform, TransformRunStatus } from "metabase-types/api";

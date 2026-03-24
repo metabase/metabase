@@ -5,8 +5,8 @@ import { EntityMenu } from "metabase/common/components/EntityMenu";
 import {
   getDefaultTimelineName,
   getSortedTimelines,
-} from "metabase/lib/timelines";
-import * as Urls from "metabase/lib/urls";
+} from "metabase/utils/timelines";
+import * as Urls from "metabase/utils/urls";
 import ModalHeader from "metabase/timelines/common/components/ModalHeader";
 import type { Collection, Timeline } from "metabase-types/api";
 

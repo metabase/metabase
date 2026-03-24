@@ -8,8 +8,8 @@ import _ from "underscore";
 import {
   type SerializeCardOptions,
   serializeCardForUrl,
-} from "metabase/lib/card";
-import { equals } from "metabase/lib/utils";
+} from "metabase/utils/card";
+import { equals } from "metabase/utils/utils";
 import { applyParameter } from "metabase/querying/parameters/utils/query";
 import * as Lib from "metabase-lib";
 import {

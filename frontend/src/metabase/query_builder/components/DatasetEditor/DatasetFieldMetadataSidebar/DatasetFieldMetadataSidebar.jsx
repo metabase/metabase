@@ -16,7 +16,7 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
-import { FIELD_VISIBILITY_TYPES } from "metabase/lib/core";
+import { FIELD_VISIBILITY_TYPES } from "metabase/utils/core";
 import { Box, Radio, Stack, Tabs } from "metabase/ui";
 import { color } from "metabase/ui/colors";
 import {

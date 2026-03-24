@@ -1,4 +1,4 @@
-import { formatValue } from "metabase/lib/formatting/value";
+import { formatValue } from "metabase/utils/formatting/value";
 import { Flex } from "metabase/ui";
 import type { ColumnSettings } from "metabase/visualizations/types";
 

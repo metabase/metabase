@@ -1,7 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { isActionDashCard } from "metabase/lib/dashboard";
+import { isActionDashCard } from "metabase/utils/dashboard";
 import { getIframeDomainName } from "metabase/visualizations/visualizations/IFrameViz/utils";
 import type {
   DashCardId,

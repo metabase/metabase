@@ -1,6 +1,6 @@
 import dayjs from "dayjs";
 
-import { parseTime, parseTimestamp } from "metabase/lib/time-dayjs";
+import { parseTime, parseTimestamp } from "metabase/utils/time-dayjs";
 
 describe("time", () => {
   afterEach(() => {

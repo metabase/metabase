@@ -1,11 +1,11 @@
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
-import { getEmailDomain } from "metabase/lib/email";
-import { formatDateTimeWithUnit } from "metabase/lib/formatting/date";
-import { formatTimeWithUnit } from "metabase/lib/formatting/time";
-import MetabaseSettings from "metabase/lib/settings";
-import { formatFrame } from "metabase/lib/time-dayjs";
+import { getEmailDomain } from "metabase/utils/email";
+import { formatDateTimeWithUnit } from "metabase/utils/formatting/date";
+import { formatTimeWithUnit } from "metabase/utils/formatting/time";
+import MetabaseSettings from "metabase/utils/settings";
+import { formatFrame } from "metabase/utils/time-dayjs";
 import {
   getDefaultValuePopulatedParameters,
   normalizeParameterValue,

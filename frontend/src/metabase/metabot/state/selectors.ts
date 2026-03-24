@@ -3,7 +3,7 @@ import { match } from "ts-pattern";
 import _ from "underscore";
 
 import { isEmbedding } from "metabase/embedding/config";
-import * as Urls from "metabase/lib/urls";
+import * as Urls from "metabase/utils/urls";
 import { getLocation } from "metabase/selectors/routing";
 import type { TransformId } from "metabase-types/api";
 import type { State } from "metabase-types/store";

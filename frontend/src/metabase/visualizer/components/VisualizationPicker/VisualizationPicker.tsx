@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { trackSimpleEvent } from "metabase/lib/analytics";
+import { trackSimpleEvent } from "metabase/utils/analytics";
 import { Center, Icon, SegmentedControl } from "metabase/ui";
 import visualizations from "metabase/visualizations";
 import type { VisualizationDisplay } from "metabase-types/api";

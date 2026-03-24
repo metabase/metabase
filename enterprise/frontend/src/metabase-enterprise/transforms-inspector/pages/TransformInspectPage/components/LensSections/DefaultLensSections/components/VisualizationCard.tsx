@@ -2,7 +2,7 @@ import { memo } from "react";
 
 import { useGetAdhocQueryMetadataQuery } from "metabase/api";
 import { useSnapshotSelector } from "metabase/common/hooks";
-import * as Urls from "metabase/lib/urls";
+import * as Urls from "metabase/utils/urls";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Card, Loader, Stack } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";

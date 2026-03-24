@@ -23,7 +23,7 @@ import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/Admi
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
 import { useToast } from "metabase/common/hooks";
-import { getIcon } from "metabase/lib/icon";
+import { getIcon } from "metabase/utils/icon";
 import {
   FIXED_METABOT_ENTITY_IDS,
   FIXED_METABOT_IDS,

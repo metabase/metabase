@@ -14,7 +14,7 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
+import { checkNotNull } from "metabase/utils/types";
 import { SearchBar } from "metabase/nav/components/search/SearchBar";
 import type { CollectionItem, RecentItem } from "metabase-types/api";
 import {

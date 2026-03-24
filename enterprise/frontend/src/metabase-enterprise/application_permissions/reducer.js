@@ -7,7 +7,7 @@ import {
   createAction,
   createThunkAction,
   handleActions,
-} from "metabase/lib/redux";
+} from "metabase/utils/redux";
 import { addUndo } from "metabase/redux/undo";
 
 import { ApplicationPermissionsApi } from "./api";

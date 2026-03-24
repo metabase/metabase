@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import {
   deactivateSuggestedTransform,
   getMetabotSuggestedTransform,

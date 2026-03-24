@@ -54,7 +54,7 @@ import {
   selectTab,
   undoDeleteTab,
 } from "metabase/dashboard/actions/tabs";
-import { connect } from "metabase/lib/redux";
+import { connect } from "metabase/utils/redux";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import {
   canManageSubscriptions,

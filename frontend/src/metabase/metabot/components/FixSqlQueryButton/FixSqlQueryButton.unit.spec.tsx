@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch } from "metabase/utils/redux";
 import {
   useMetabotAgent,
   useMetabotEnabledEmbeddingAware,
@@ -20,8 +20,8 @@ jest.mock("../../analytics", () => ({
   trackQueryFixClicked: jest.fn(),
 }));
 
-jest.mock("metabase/lib/redux", () => ({
-  ...jest.requireActual("metabase/lib/redux"),
+jest.mock("metabase/utils/redux", () => ({
+  ...jest.requireActual("metabase/utils/redux"),
   useDispatch: jest.fn(),
 }));
 

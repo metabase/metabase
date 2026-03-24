@@ -26,7 +26,7 @@ import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { EntityMenu } from "metabase/common/components/EntityMenu";
 import { Swapper } from "metabase/common/components/Swapper";
 import CS from "metabase/css/core/index.css";
-import * as Urls from "metabase/lib/urls";
+import * as Urls from "metabase/utils/urls";
 import type { IconName, IconProps } from "metabase/ui";
 import { Icon } from "metabase/ui";
 import type { CollectionItem } from "metabase-types/api";

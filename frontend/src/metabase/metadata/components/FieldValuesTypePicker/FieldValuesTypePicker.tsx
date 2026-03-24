@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { HAS_FIELD_VALUES_OPTIONS } from "metabase/lib/core";
+import { HAS_FIELD_VALUES_OPTIONS } from "metabase/utils/core";
 import { Select, type SelectProps } from "metabase/ui";
 import type { FieldValuesType } from "metabase-types/api";
 

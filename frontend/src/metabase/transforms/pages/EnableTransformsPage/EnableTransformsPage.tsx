@@ -4,7 +4,7 @@ import { useUpdateSettingMutation } from "metabase/api";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/utils/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   Button,

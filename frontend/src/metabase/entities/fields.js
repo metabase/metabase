@@ -13,7 +13,7 @@ import {
   createEntity,
   entityCompatibleQuery,
   notify,
-} from "metabase/lib/entities";
+} from "metabase/utils/entities";
 import {
   compose,
   createAction,
@@ -23,7 +23,7 @@ import {
   withAction,
   withCachedDataAndRequestState,
   withNormalize,
-} from "metabase/lib/redux";
+} from "metabase/utils/redux";
 import { FieldSchema } from "metabase/schema";
 import {
   getMetadata,

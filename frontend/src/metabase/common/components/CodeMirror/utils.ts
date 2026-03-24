@@ -24,8 +24,8 @@ import {
 import { getNonce } from "get-nonce";
 import { useMemo } from "react";
 
-import { isMac } from "metabase/lib/browser";
-import { isNotNull } from "metabase/lib/types";
+import { isMac } from "metabase/utils/browser";
+import { isNotNull } from "metabase/utils/types";
 import { monospaceFontFamily } from "metabase/styled-components/theme";
 import { metabaseSyntaxHighlighting } from "metabase/ui/syntax";
 

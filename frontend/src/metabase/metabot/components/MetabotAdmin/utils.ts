@@ -2,7 +2,7 @@ import type { FetchBaseQueryError } from "@reduxjs/toolkit/query";
 import type { FormikErrors } from "formik";
 import { P, isMatching } from "ts-pattern";
 
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/utils/redux";
 import { getLocation } from "metabase/selectors/routing";
 
 export function useMetabotIdPath() {

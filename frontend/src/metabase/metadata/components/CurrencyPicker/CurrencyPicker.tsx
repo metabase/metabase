@@ -1,7 +1,7 @@
 import type { FocusEvent } from "react";
 import { t } from "ttag";
 
-import { currency } from "metabase/lib/formatting";
+import { currency } from "metabase/utils/formatting";
 import {
   Combobox,
   Flex,

@@ -4,7 +4,7 @@ import _ from "underscore";
 
 import { Button } from "metabase/common/components/Button";
 import { CommunityLocalizationNotice } from "metabase/common/components/CommunityLocalizationNotice";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import { Stack } from "metabase/ui";
 import type { Locale } from "metabase-types/store";
 

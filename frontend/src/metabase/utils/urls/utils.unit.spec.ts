@@ -1,4 +1,4 @@
-import api from "metabase/lib/api";
+import api from "metabase/utils/api";
 
 import {
   getSubpathSafeUrl,

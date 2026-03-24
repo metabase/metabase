@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import type { IconName } from "metabase/embedding-sdk/types/icon";
-import { isNotNull } from "metabase/lib/types";
+import { isNotNull } from "metabase/utils/types";
 import { Combobox, Flex, Icon, Text, useCombobox } from "metabase/ui";
 import visualizations from "metabase/visualizations";
 import type { Visualization } from "metabase/visualizations/types";

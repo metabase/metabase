@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { METAKEY } from "metabase/lib/browser";
+import { METAKEY } from "metabase/utils/browser";
 import {
   useMetabotAgent,
   useMetabotEnabledEmbeddingAware,

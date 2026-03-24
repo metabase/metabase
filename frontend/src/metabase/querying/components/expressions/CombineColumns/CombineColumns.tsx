@@ -2,7 +2,7 @@ import type { FormEventHandler } from "react";
 import { useState } from "react";
 import { jt, t } from "ttag";
 
-import { isNotNull } from "metabase/lib/types";
+import { isNotNull } from "metabase/utils/types";
 import { Box, Button, Flex, Icon, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 

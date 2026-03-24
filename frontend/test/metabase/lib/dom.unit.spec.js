@@ -7,7 +7,7 @@ import {
   open,
   parseDataUri,
   shouldOpenInBlankWindow,
-} from "metabase/lib/dom";
+} from "metabase/utils/dom";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 describe("parseDataUri", () => {

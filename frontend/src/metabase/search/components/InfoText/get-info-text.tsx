@@ -3,7 +3,7 @@ import { t } from "ttag";
 import {
   collection as collectionUrl,
   dashboard as dashboardUrl,
-} from "metabase/lib/urls";
+} from "metabase/utils/urls";
 import {
   PLUGIN_COLLECTIONS,
   PLUGIN_COLLECTION_COMPONENTS,

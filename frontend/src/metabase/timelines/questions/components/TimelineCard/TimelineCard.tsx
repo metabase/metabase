@@ -4,7 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
-import { getTimelineName } from "metabase/lib/timelines";
+import { getTimelineName } from "metabase/utils/timelines";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
 import EventCard from "../EventCard";

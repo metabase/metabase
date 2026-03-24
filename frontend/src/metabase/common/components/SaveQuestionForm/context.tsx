@@ -19,8 +19,8 @@ import {
   isInstanceAnalyticsCollection,
 } from "metabase/collections/utils";
 import { FormProvider } from "metabase/forms";
-import { useSelector } from "metabase/lib/redux";
-import { isNotNull } from "metabase/lib/types";
+import { useSelector } from "metabase/utils/redux";
+import { isNotNull } from "metabase/utils/types";
 import { getUser } from "metabase/selectors/user";
 import type Question from "metabase-lib/v1/Question";
 import type { CollectionId, DashboardId } from "metabase-types/api";

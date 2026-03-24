@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { ToolbarButton } from "metabase/common/components/ToolbarButton/ToolbarButton";
 import { CountdownIcon } from "metabase/common/components/icons/CountdownIcon";
-import { isNotNull } from "metabase/lib/types";
+import { isNotNull } from "metabase/utils/types";
 import type { ActionIconProps } from "metabase/ui";
 
 type RefreshWidgetTargetProps = {

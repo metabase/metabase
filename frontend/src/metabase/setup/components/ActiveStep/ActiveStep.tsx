@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/utils/redux";
 import { getShouldShowStepNumber } from "metabase/setup";
 
 import {

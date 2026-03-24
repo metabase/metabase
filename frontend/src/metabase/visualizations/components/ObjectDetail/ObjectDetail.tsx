@@ -1,5 +1,5 @@
 import { Tables } from "metabase/entities/tables";
-import { connect } from "metabase/lib/redux";
+import { connect } from "metabase/utils/redux";
 import {
   closeObjectDetail,
   followForeignKey,

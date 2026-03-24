@@ -5,8 +5,8 @@ import { t } from "ttag";
 
 import { QuestionDownloadWidget } from "metabase/common/components/QuestionDownloadWidget";
 import { useDownloadData } from "metabase/common/components/QuestionDownloadWidget/use-download-data";
-import { useSelector } from "metabase/lib/redux";
-import { checkNotNull } from "metabase/lib/types";
+import { useSelector } from "metabase/utils/redux";
+import { checkNotNull } from "metabase/utils/types";
 import { usePublicDocumentContext } from "metabase/public/contexts/PublicDocumentContext";
 import { getMetadata } from "metabase/selectors/metadata";
 import { ActionIcon, Icon, Menu } from "metabase/ui";

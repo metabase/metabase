@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { checkNotNull } from "metabase/lib/types";
+import { useDispatch, useSelector } from "metabase/utils/redux";
+import { checkNotNull } from "metabase/utils/types";
 import { setUIControls } from "metabase/query_builder/actions";
 import { getQuestion } from "metabase/query_builder/selectors";
 import { trackColumnExtractViaPlusModal } from "metabase/querying/analytics";

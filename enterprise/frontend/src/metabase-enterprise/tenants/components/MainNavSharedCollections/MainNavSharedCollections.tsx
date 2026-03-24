@@ -10,11 +10,11 @@ import type { CreateCollectionProperties } from "metabase/collections/components
 import { Tree } from "metabase/common/components/tree";
 import { useSetting } from "metabase/common/hooks";
 import { buildCollectionTree } from "metabase/entities/collections";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/utils/redux";
 import {
   tenantSpecificCollections,
   tenantUsersPersonalCollections,
-} from "metabase/lib/urls";
+} from "metabase/utils/urls";
 import {
   PaddedSidebarLink,
   SidebarHeading,

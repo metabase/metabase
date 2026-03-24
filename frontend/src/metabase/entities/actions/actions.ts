@@ -10,8 +10,8 @@ import {
   createEntity,
   entityCompatibleQuery,
   undo,
-} from "metabase/lib/entities";
-import { createThunkAction } from "metabase/lib/redux";
+} from "metabase/utils/entities";
+import { createThunkAction } from "metabase/utils/redux";
 import { ActionSchema } from "metabase/schema";
 import type {
   CreateActionRequest,

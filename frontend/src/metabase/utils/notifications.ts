@@ -3,11 +3,11 @@ import _ from "underscore";
 
 import type { NotificationListItem } from "metabase/account/notifications/types";
 import { cronToScheduleSettings } from "metabase/common/components/Schedule/cron";
-import { getEmailDomain, isEmail } from "metabase/lib/email";
-import { formatDateTimeWithUnit } from "metabase/lib/formatting/date";
-import { formatTimeWithUnit } from "metabase/lib/formatting/time";
-import MetabaseSettings from "metabase/lib/settings";
-import { formatFrame } from "metabase/lib/time-dayjs";
+import { getEmailDomain, isEmail } from "metabase/utils/email";
+import { formatDateTimeWithUnit } from "metabase/utils/formatting/date";
+import { formatTimeWithUnit } from "metabase/utils/formatting/time";
+import MetabaseSettings from "metabase/utils/settings";
+import { formatFrame } from "metabase/utils/time-dayjs";
 import {
   ALERT_TYPE_PROGRESS_BAR_GOAL,
   ALERT_TYPE_TIMESERIES_GOAL,

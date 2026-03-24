@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from "react";
 
-import { getObjectEntries, objectFromEntries } from "metabase/lib/objects";
+import { getObjectEntries, objectFromEntries } from "metabase/utils/objects";
 import type {
   DimensionMetadata,
   MetricDefinition,

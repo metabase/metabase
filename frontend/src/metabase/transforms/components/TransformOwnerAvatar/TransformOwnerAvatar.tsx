@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
-import { getUserName } from "metabase/lib/user";
+import { getUserName } from "metabase/utils/user";
 import { Avatar, Flex, Icon } from "metabase/ui";
 import type { Transform } from "metabase-types/api";
 

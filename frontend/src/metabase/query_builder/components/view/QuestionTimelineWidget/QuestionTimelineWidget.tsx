@@ -2,8 +2,8 @@ import { t } from "ttag";
 
 import { UserHasSeen } from "metabase/common/components/UserHasSeen/UserHasSeen";
 import { ViewFooterButton } from "metabase/common/components/ViewFooterButton";
-import { trackSimpleEvent } from "metabase/lib/analytics";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { trackSimpleEvent } from "metabase/utils/analytics";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import {
   onCloseTimelines,
   onOpenTimelines,

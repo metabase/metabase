@@ -1,4 +1,4 @@
-import { trackSimpleEvent } from "metabase/lib/analytics";
+import { trackSimpleEvent } from "metabase/utils/analytics";
 import type { GsheetsConnectionClickedEvent } from "metabase-types/analytics";
 
 export function trackSheetImportClick() {

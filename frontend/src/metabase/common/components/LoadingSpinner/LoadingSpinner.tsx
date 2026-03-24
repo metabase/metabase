@@ -1,4 +1,4 @@
-import { isReducedMotionPreferred } from "metabase/lib/dom";
+import { isReducedMotionPreferred } from "metabase/utils/dom";
 import { Icon } from "metabase/ui";
 
 import { SpinnerIcon, SpinnerRoot } from "./LoadingSpinner.styled";

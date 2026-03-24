@@ -4,7 +4,7 @@ import {
   PERSONAL_COLLECTIONS,
   ROOT_COLLECTION,
 } from "metabase/entities/collections/constants";
-import * as Urls from "metabase/lib/urls";
+import * as Urls from "metabase/utils/urls";
 import type { IconName } from "metabase/ui";
 
 export const UserCollectionList = () => {

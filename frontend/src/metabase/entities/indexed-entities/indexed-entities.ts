@@ -4,7 +4,7 @@
  * to be treated as an entity (for now at least) so that it will play nicely with search
  */
 
-import { createEntity } from "metabase/lib/entities";
+import { createEntity } from "metabase/utils/entities";
 import { IndexedEntitySchema } from "metabase/schema";
 
 /**

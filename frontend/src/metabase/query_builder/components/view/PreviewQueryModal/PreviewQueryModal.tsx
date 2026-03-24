@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { useSelector } from "metabase/lib/redux";
-import { checkNotNull } from "metabase/lib/types";
+import { useSelector } from "metabase/utils/redux";
+import { checkNotNull } from "metabase/utils/types";
 import {
   getNextRunParameters,
   getQuestion,

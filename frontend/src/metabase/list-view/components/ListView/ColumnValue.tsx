@@ -5,7 +5,7 @@ import {
   formatNumber,
   formatValue,
   getCurrencySymbol,
-} from "metabase/lib/formatting";
+} from "metabase/utils/formatting";
 import { Badge, Box, Flex, Icon, Image, Stack, Text } from "metabase/ui";
 import { MiniBarCell } from "metabase/visualizations/components/TableInteractive/cells/MiniBarCell";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";

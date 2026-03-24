@@ -2,9 +2,9 @@ import dayjs from "dayjs";
 import { addLocale, useLocale } from "ttag";
 
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import api from "metabase/lib/api";
-import { DAY_OF_WEEK_OPTIONS } from "metabase/lib/date-time";
-import MetabaseSettings from "metabase/lib/settings";
+import api from "metabase/utils/api";
+import { DAY_OF_WEEK_OPTIONS } from "metabase/utils/date-time";
+import MetabaseSettings from "metabase/utils/settings";
 
 // note this won't refresh strings that are evaluated at load time
 export async function loadLocalization(locale) {

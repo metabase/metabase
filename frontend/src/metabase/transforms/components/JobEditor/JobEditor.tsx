@@ -8,7 +8,7 @@ import {
   PaneHeader,
   PaneHeaderInput,
 } from "metabase/data-studio/common/components/PaneHeader";
-import * as Urls from "metabase/lib/urls";
+import * as Urls from "metabase/utils/urls";
 import { Stack } from "metabase/ui";
 import type { ScheduleDisplayType, TransformTagId } from "metabase-types/api";
 

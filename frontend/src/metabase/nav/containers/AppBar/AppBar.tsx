@@ -6,7 +6,7 @@ import {
   getSidebarOpen,
 } from "metabase/documents/selectors";
 import { Collections } from "metabase/entities/collections";
-import { connect } from "metabase/lib/redux";
+import { connect } from "metabase/utils/redux";
 import { getMetabotVisible } from "metabase/metabot/state";
 import { closeNavbar, toggleNavbar } from "metabase/redux/app";
 import type { RouterProps } from "metabase/selectors/app";

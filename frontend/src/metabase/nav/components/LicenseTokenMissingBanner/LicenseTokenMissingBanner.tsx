@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { Banner } from "metabase/common/components/Banner";
 import { Link } from "metabase/common/components/Link";
-import { adminLicense } from "metabase/lib/urls";
+import { adminLicense } from "metabase/utils/urls";
 import { Flex, Text } from "metabase/ui";
 
 import styles from "./LicenseTokenMissingBanner.module.css";

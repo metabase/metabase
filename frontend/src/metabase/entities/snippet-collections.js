@@ -9,7 +9,7 @@ import {
   getExpandedCollectionsById,
   useListQuery as useListCollectionsQuery,
 } from "metabase/entities/collections";
-import { createEntity, undo } from "metabase/lib/entities";
+import { createEntity, undo } from "metabase/utils/entities";
 import { SnippetCollectionSchema } from "metabase/schema";
 
 /**

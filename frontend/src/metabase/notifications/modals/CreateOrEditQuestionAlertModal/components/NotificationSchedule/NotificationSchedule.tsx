@@ -7,9 +7,9 @@ import {
   cronUnitToNumber,
   isRepeatingEvery,
 } from "metabase/common/components/Schedule/cron";
-import { getScheduleExplanation } from "metabase/lib/cron";
-import { formatNotificationScheduleDescription } from "metabase/lib/notifications";
-import { useSelector } from "metabase/lib/redux";
+import { getScheduleExplanation } from "metabase/utils/cron";
+import { formatNotificationScheduleDescription } from "metabase/utils/notifications";
+import { useSelector } from "metabase/utils/redux";
 import {
   DEFAULT_ALERT_CRON_SCHEDULE,
   DEFAULT_ALERT_SCHEDULE,

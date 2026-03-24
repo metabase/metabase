@@ -6,8 +6,8 @@ import { DateTime } from "metabase/common/components/DateTime";
 import { EditableText } from "metabase/common/components/EditableText";
 import { Link } from "metabase/common/components/Link/Link";
 import { useNumberFormatter } from "metabase/common/hooks/use-number-formatter";
-import { isNullOrUndefined } from "metabase/lib/types";
-import * as Urls from "metabase/lib/urls";
+import { isNullOrUndefined } from "metabase/utils/types";
+import * as Urls from "metabase/utils/urls";
 import {
   DataSourceInput,
   EntityTypeInput,

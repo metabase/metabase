@@ -1,4 +1,4 @@
-import { connect } from "metabase/lib/redux";
+import { connect } from "metabase/utils/redux";
 import {
   getOriginalQuestion,
   getQuestion,

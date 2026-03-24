@@ -9,7 +9,7 @@ import type { ItemWithLastEditInfo } from "metabase/common/components/LastEditIn
 import {
   DEFAULT_DATE_STYLE,
   DEFAULT_TIME_STYLE,
-} from "metabase/lib/formatting/datetime-utils";
+} from "metabase/utils/formatting/datetime-utils";
 import type { IconName } from "metabase/ui";
 import type { CollectionItem } from "metabase-types/api";
 import { createMockCollection } from "metabase-types/api/mocks";

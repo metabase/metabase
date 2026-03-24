@@ -1,7 +1,7 @@
-jest.doMock("metabase/lib/dom");
+jest.doMock("metabase/utils/dom");
 
 import { createMockMetadata } from "__support__/metadata";
-import * as dom from "metabase/lib/dom";
+import * as dom from "metabase/utils/dom";
 import Question from "metabase-lib/v1/Question";
 import {
   createEmptyAdHocNativeCard,

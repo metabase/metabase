@@ -3,7 +3,7 @@ import { createMockMetadata } from "__support__/metadata";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
+import { checkNotNull } from "metabase/utils/types";
 import type { Card, Database, TokenFeatures } from "metabase-types/api";
 import {
   createMockCard,

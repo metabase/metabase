@@ -5,7 +5,7 @@ import EmptyCodeResult from "assets/img/empty-states/code.svg";
 import { AnsiLogs } from "metabase/common/components/AnsiLogs";
 import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
 import { LoadingSpinner } from "metabase/common/components/MetadataInfo/MetadataInfo.styled";
-import { isMac } from "metabase/lib/browser";
+import { isMac } from "metabase/utils/browser";
 import {
   ActionIcon,
   Box,

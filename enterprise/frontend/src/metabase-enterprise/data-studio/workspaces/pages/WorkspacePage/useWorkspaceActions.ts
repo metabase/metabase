@@ -2,8 +2,8 @@ import { useCallback, useState } from "react";
 import { replace } from "react-router-redux";
 import { t } from "ttag";
 
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { useDispatch } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   useLazyGetWorkspaceTablesQuery,

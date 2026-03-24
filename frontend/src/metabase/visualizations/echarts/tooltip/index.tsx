@@ -7,8 +7,8 @@ import {
   EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID,
   isEmbeddingSdk,
 } from "metabase/embedding-sdk/config";
-import { getObjectValues } from "metabase/lib/objects";
-import { isNotNull } from "metabase/lib/types";
+import { getObjectValues } from "metabase/utils/objects";
+import { isNotNull } from "metabase/utils/types";
 import TooltipStyles from "metabase/visualizations/components/ChartTooltip/EChartsTooltip/EChartsTooltip.module.css";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { ClickObject } from "metabase-lib";

@@ -12,16 +12,16 @@ import {
 import { ActionButton } from "metabase/common/components/ActionButton";
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { getResponseErrorMessage } from "metabase/lib/errors";
+import { getResponseErrorMessage } from "metabase/utils/errors";
 import {
   alertIsValid,
   getAlertTriggerOptions,
-} from "metabase/lib/notifications";
+} from "metabase/utils/notifications";
 import {
   getHasConfiguredAnyChannel,
   getHasConfiguredEmailOrSlackChannel,
-} from "metabase/lib/pulse";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+} from "metabase/utils/pulse";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import { getDefaultQuestionAlertRequest } from "metabase/notifications/utils";
 import { updateUrl } from "metabase/query_builder/actions/url";
 import {

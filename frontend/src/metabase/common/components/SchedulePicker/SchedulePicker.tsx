@@ -9,9 +9,9 @@ import {
   MINUTE_OPTIONS,
   MONTH_DAY_OPTIONS,
   getDayOfWeekOptions,
-} from "metabase/lib/date-time";
-import { capitalize } from "metabase/lib/formatting/strings";
-import { useSelector } from "metabase/lib/redux";
+} from "metabase/utils/date-time";
+import { capitalize } from "metabase/utils/formatting/strings";
+import { useSelector } from "metabase/utils/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
   Box,

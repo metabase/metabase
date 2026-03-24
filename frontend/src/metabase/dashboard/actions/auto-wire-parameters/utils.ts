@@ -3,7 +3,7 @@ import _ from "underscore";
 import { isActionDashCard } from "metabase/actions/utils";
 import { getExistingDashCards } from "metabase/dashboard/actions/utils";
 import { findDashCardForInlineParameter } from "metabase/dashboard/utils";
-import { isQuestionDashCard, isVirtualDashCard } from "metabase/lib/dashboard";
+import { isQuestionDashCard, isVirtualDashCard } from "metabase/utils/dashboard";
 import {
   type ParameterMappingOption,
   getMappingOptionByTarget,

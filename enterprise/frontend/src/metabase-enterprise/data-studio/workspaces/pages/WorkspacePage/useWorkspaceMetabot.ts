@@ -3,8 +3,8 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useLazyGetTransformQuery } from "metabase/api";
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { useDispatch } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import { METABOT_PROFILE_OVERRIDES } from "metabase/metabot/constants";
 import type {

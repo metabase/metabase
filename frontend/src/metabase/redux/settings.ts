@@ -1,7 +1,7 @@
 import { createAction, createReducer } from "@reduxjs/toolkit";
 
 import { sessionApi } from "metabase/api";
-import { createAsyncThunk } from "metabase/lib/redux";
+import { createAsyncThunk } from "metabase/utils/redux";
 import { SettingsApi } from "metabase/services";
 import type { Settings, UserSettings } from "metabase-types/api";
 

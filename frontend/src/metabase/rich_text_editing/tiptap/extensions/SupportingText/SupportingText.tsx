@@ -19,8 +19,8 @@ import {
   getChildTargetId,
   getCurrentDocument,
 } from "metabase/documents/selectors";
-import { isWithinIframe } from "metabase/lib/dom";
-import { useDispatch, useSelector } from "metabase/lib/redux/hooks";
+import { isWithinIframe } from "metabase/utils/dom";
+import { useDispatch, useSelector } from "metabase/utils/redux/hooks";
 import { DropZone } from "metabase/rich_text_editing/tiptap/extensions/shared/dnd/DropZone";
 import { useDndHelpers } from "metabase/rich_text_editing/tiptap/extensions/shared/dnd/use-dnd-helpers";
 import { Box } from "metabase/ui";

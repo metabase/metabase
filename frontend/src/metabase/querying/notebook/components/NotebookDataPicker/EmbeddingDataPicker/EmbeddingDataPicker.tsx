@@ -1,7 +1,7 @@
 import { useContext } from "react";
 
 import { skipToken, useGetCardQuery, useSearchQuery } from "metabase/api";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/utils/redux";
 import { PLUGIN_EMBEDDING } from "metabase/plugins";
 import { EmbeddingDataPickerContext } from "metabase/querying/notebook/components/NotebookDataPicker/EmbeddingDataPicker/context";
 import {

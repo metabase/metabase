@@ -11,8 +11,8 @@ import _ from "underscore";
 
 import { useLazyGetTransformQuery } from "metabase/api";
 import { CodeMirror } from "metabase/common/components/CodeMirror";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { useDispatch, useSelector } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import { MetabotContext } from "metabase/metabot/context";
 import {
   type MetabotAgentEditSuggestionChatMessage,

@@ -1,5 +1,5 @@
-import { connect } from "metabase/lib/redux";
-import { checkNotNull } from "metabase/lib/types";
+import { connect } from "metabase/utils/redux";
+import { checkNotNull } from "metabase/utils/types";
 import { getUser } from "metabase/selectors/user";
 import type { State } from "metabase-types/store";
 

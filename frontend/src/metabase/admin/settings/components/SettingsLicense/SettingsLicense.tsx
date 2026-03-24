@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/utils/redux";
 import { getUpgradeUrl } from "metabase/selectors/settings";
 import { Box, Button, Divider, Flex, Text } from "metabase/ui";
 import type { State } from "metabase-types/store";

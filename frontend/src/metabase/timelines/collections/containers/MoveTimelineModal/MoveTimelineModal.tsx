@@ -1,8 +1,8 @@
 import _ from "underscore";
 
 import { Timelines } from "metabase/entities/timelines";
-import { connect } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { connect } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import MoveTimelineModal from "metabase/timelines/common/components/MoveTimelineModal";
 import type { Timeline } from "metabase-types/api";
 import type { State } from "metabase-types/store";

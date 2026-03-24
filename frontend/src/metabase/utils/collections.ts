@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import type { Crumb } from "metabase/common/components/Breadcrumbs";
-import { isNotNull } from "metabase/lib/types";
+import { isNotNull } from "metabase/utils/types";
 import type { Collection, CollectionId } from "metabase-types/api";
 
 export const getCrumbs = (

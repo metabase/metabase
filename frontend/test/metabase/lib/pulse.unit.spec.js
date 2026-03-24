@@ -2,8 +2,8 @@ import {
   getActivePulseParameters,
   getPulseParameters,
   recipientIsValid,
-} from "metabase/lib/pulse";
-import MetabaseSettings from "metabase/lib/settings";
+} from "metabase/utils/pulse";
+import MetabaseSettings from "metabase/utils/settings";
 
 describe("recipientIsValid", () => {
   let originalDomains;

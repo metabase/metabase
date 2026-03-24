@@ -3,7 +3,7 @@ import { push, replace, routerActions } from "react-router-redux";
 import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
-import { MetabaseReduxContext, connect } from "metabase/lib/redux";
+import { MetabaseReduxContext, connect } from "metabase/utils/redux";
 import { getSetting } from "metabase/selectors/settings";
 import type { State } from "metabase-types/store";
 import type { AdminPath } from "metabase-types/store/admin";

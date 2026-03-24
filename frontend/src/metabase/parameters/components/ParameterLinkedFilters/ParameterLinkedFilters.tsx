@@ -10,7 +10,7 @@ import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDocsUrl, useLearnUrl } from "metabase/common/hooks";
 import { showAddParameterPopover } from "metabase/dashboard/actions";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch } from "metabase/utils/redux";
 import {
   Box,
   Button,

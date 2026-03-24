@@ -2,7 +2,7 @@
 import styled from "@emotion/styled";
 
 import { LoadingSpinner as LoadingSpinnerBase } from "metabase/common/components/LoadingSpinner";
-import { isReducedMotionPreferred } from "metabase/lib/dom";
+import { isReducedMotionPreferred } from "metabase/utils/dom";
 import { Icon } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import { color } from "metabase/ui/utils/colors";

@@ -24,8 +24,8 @@ import { EditBar } from "metabase/common/components/EditBar";
 import { LeaveConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
-import { connect, useDispatch } from "metabase/lib/redux";
-import { getSemanticTypeIcon } from "metabase/lib/schema_metadata";
+import { connect, useDispatch } from "metabase/utils/redux";
+import { getSemanticTypeIcon } from "metabase/utils/schema_metadata";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import {
   setDatasetEditorTab,

@@ -17,8 +17,8 @@ import {
   createEntity,
   entityCompatibleQuery,
   undo,
-} from "metabase/lib/entities";
-import { compose, withAction, withRequestState } from "metabase/lib/redux";
+} from "metabase/utils/entities";
+import { compose, withAction, withRequestState } from "metabase/utils/redux";
 import { addUndo } from "metabase/redux/undo";
 import { color } from "metabase/ui/colors";
 

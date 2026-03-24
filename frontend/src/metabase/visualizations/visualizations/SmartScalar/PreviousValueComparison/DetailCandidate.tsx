@@ -1,6 +1,6 @@
 import { jt } from "ttag";
 
-import { isEmpty } from "metabase/lib/validate";
+import { isEmpty } from "metabase/utils/validate";
 import { Text } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 

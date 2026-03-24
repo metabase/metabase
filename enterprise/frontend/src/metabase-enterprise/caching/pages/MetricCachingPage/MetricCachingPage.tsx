@@ -10,7 +10,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import CS from "metabase/css/core/index.css";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { useLoadCardWithMetadata } from "metabase/data-studio/common/hooks/use-load-card-with-metadata";
-import * as Urls from "metabase/lib/urls";
+import * as Urls from "metabase/utils/urls";
 import type { MetricSettingsPageProps } from "metabase/plugins/oss/caching";
 import { Card, Center } from "metabase/ui";
 import { getItemName } from "metabase-enterprise/caching/components/utils";

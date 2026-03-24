@@ -5,7 +5,7 @@ import {
 } from "@reduxjs/toolkit";
 import { compose, pick } from "underscore";
 
-import { parseSearchOptions } from "metabase/lib/browser";
+import { parseSearchOptions } from "metabase/utils/browser";
 import {
   DEFAULT_EMBEDDING_ENTITY_TYPES,
   setDataPicker,

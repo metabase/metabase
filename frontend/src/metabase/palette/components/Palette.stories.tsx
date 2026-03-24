@@ -11,7 +11,7 @@ import { getStore } from "__support__/entities-store";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { Api } from "metabase/api";
-import { MetabaseReduxProvider } from "metabase/lib/redux";
+import { MetabaseReduxProvider } from "metabase/utils/redux";
 import { commonReducers } from "metabase/reducers-common";
 import { Box, Center } from "metabase/ui";
 import { registerVisualization } from "metabase/visualizations";

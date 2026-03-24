@@ -5,7 +5,7 @@ import _ from "underscore";
 
 import { CollapseSection } from "metabase/common/components/CollapseSection";
 import CS from "metabase/css/core/index.css";
-import { getPulseParameters } from "metabase/lib/pulse";
+import { getPulseParameters } from "metabase/utils/pulse";
 import { ParametersList } from "metabase/parameters/components/ParametersList";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";

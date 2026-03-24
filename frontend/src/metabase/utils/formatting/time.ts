@@ -1,8 +1,8 @@
 import type { Dayjs } from "dayjs";
 import { msgid, ngettext } from "ttag";
 
-import type { TimeOnlyOptions } from "metabase/lib/formatting/types";
-import { parseTime, parseTimestamp } from "metabase/lib/time-dayjs";
+import type { TimeOnlyOptions } from "metabase/utils/formatting/types";
+import { parseTime, parseTimestamp } from "metabase/utils/time-dayjs";
 import type { DatetimeUnit } from "metabase-types/api/query";
 
 import {

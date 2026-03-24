@@ -1,6 +1,6 @@
 import type { ResizableBoxProps } from "react-resizable";
 
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/utils/redux";
 import { useInlineSQLPrompt } from "metabase/metabot/components/MetabotInlineSQLPrompt";
 import { NativeQueryEditor } from "metabase/query_builder/components/NativeQueryEditor";
 import { getHighlightedNativeQueryLineNumbers } from "metabase/query_builder/selectors";

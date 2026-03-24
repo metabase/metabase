@@ -1,6 +1,6 @@
 import Bowser from "bowser";
 
-import { b64url_to_utf8 } from "metabase/lib/encoding";
+import { b64url_to_utf8 } from "metabase/utils/encoding";
 import { CardApi, CollectionsApi, DashboardApi } from "metabase/services";
 
 import type { ReportableEntityName } from "./types";

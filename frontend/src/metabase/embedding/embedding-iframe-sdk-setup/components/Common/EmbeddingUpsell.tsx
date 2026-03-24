@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { UpsellCard } from "metabase/common/components/upsells/UpsellCard";
 import { UTM_LOCATION } from "metabase/embedding/embedding-iframe-sdk-setup/analytics";
 import { useSdkIframeEmbedSetupContext } from "metabase/embedding/embedding-iframe-sdk-setup/context";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/utils/redux";
 import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
 import { getUpgradeUrl } from "metabase/selectors/settings";
 

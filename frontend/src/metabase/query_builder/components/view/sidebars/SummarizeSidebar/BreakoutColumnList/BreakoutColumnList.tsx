@@ -4,8 +4,8 @@ import { t } from "ttag";
 import { Input } from "metabase/common/components/Input";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { useTranslateContent } from "metabase/i18n/hooks";
-import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
-import { isNotNull } from "metabase/lib/types";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
+import { isNotNull } from "metabase/utils/types";
 import {
   type UpdateQueryHookProps,
   useBreakoutQueryHandlers,

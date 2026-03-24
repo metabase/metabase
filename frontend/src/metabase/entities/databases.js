@@ -8,8 +8,8 @@ import {
   useGetDatabaseQuery,
   useListDatabasesQuery,
 } from "metabase/api";
-import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
-import { createThunkAction, fetchData } from "metabase/lib/redux";
+import { createEntity, entityCompatibleQuery } from "metabase/utils/entities";
+import { createThunkAction, fetchData } from "metabase/utils/redux";
 import { DatabaseSchema } from "metabase/schema";
 import {
   getMetadata,

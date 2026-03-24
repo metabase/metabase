@@ -8,9 +8,9 @@ import {
   updateSettings,
 } from "metabase/admin/settings/settings";
 import { userApi } from "metabase/api";
-import { loadLocalization } from "metabase/lib/i18n";
-import { createAsyncThunk } from "metabase/lib/redux";
-import MetabaseSettings from "metabase/lib/settings";
+import { loadLocalization } from "metabase/utils/i18n";
+import { createAsyncThunk } from "metabase/utils/redux";
+import MetabaseSettings from "metabase/utils/settings";
 import { getSetting } from "metabase/selectors/settings";
 import { SetupApi } from "metabase/services";
 import type { DatabaseData, Settings, UsageReason } from "metabase-types/api";

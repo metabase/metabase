@@ -5,7 +5,7 @@ import {
   MetabaseReduxContext,
   useDispatch,
   useStore,
-} from "metabase/lib/redux";
+} from "metabase/utils/redux";
 import * as pulse from "metabase/notifications/pulse/reducers";
 import * as qb from "metabase/query_builder/reducers";
 import { commonReducers } from "metabase/reducers-common";

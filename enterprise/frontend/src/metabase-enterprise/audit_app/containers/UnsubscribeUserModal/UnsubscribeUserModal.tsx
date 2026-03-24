@@ -5,7 +5,7 @@ import { useGetUserQuery } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks/use-toast";
-import { getResponseErrorMessage } from "metabase/lib/errors";
+import { getResponseErrorMessage } from "metabase/utils/errors";
 import { Stack, Text } from "metabase/ui";
 import { AuditApi } from "metabase-enterprise/services";
 import type { User } from "metabase-types/api";

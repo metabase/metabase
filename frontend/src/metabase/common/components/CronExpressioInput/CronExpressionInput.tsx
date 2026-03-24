@@ -5,7 +5,7 @@ import { ExternalLink } from "metabase/common/components/ExternalLink";
 import {
   getScheduleExplanation,
   validateCronExpression,
-} from "metabase/lib/cron";
+} from "metabase/utils/cron";
 import {
   Flex,
   type FlexProps,

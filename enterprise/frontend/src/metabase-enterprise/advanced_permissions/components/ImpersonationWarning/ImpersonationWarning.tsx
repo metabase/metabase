@@ -2,8 +2,8 @@ import { jt, t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
-import * as Urls from "metabase/lib/urls";
-import { isEmpty } from "metabase/lib/validate";
+import * as Urls from "metabase/utils/urls";
+import { isEmpty } from "metabase/utils/validate";
 import { Code } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 

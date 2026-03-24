@@ -3,12 +3,12 @@ import { t } from "ttag";
 
 import { cardApi } from "metabase/api";
 import { Collections } from "metabase/entities/collections";
-import { entityCompatibleQuery } from "metabase/lib/entities";
+import { entityCompatibleQuery } from "metabase/utils/entities";
 import {
   createAction,
   createThunkAction,
   handleActions,
-} from "metabase/lib/redux";
+} from "metabase/utils/redux";
 import { runQuestionQuery } from "metabase/query_builder/actions";
 import { MetabaseApi } from "metabase/services";
 import type { CardId, CollectionId, TableId } from "metabase-types/api";

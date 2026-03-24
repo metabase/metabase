@@ -8,8 +8,8 @@ import {
   getEditingParameterInlineDashcard,
   getEmbeddedParameterVisibility,
 } from "metabase/dashboard/selectors";
-import { slugify } from "metabase/lib/formatting";
-import { useSelector } from "metabase/lib/redux";
+import { slugify } from "metabase/utils/formatting";
+import { useSelector } from "metabase/utils/redux";
 import { hasMapping } from "metabase/parameters/utils/dashboards";
 import type { IconName } from "metabase/ui";
 import { Tabs } from "metabase/ui";

@@ -13,9 +13,9 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
-import * as Errors from "metabase/lib/errors";
-import { parseTimestamp } from "metabase/lib/time-dayjs";
-import { getTimelineIcons, getTimelineName } from "metabase/lib/timelines";
+import * as Errors from "metabase/utils/errors";
+import { parseTimestamp } from "metabase/utils/time-dayjs";
+import { getTimelineIcons, getTimelineName } from "metabase/utils/timelines";
 import {
   Button,
   Flex,

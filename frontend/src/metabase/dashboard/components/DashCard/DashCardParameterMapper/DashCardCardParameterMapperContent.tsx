@@ -10,8 +10,8 @@ import {
   getVirtualCardType,
   showVirtualDashCardInfoText,
 } from "metabase/dashboard/utils";
-import { isQuestionDashCard, isVirtualDashCard } from "metabase/lib/dashboard";
-import { useDispatch } from "metabase/lib/redux";
+import { isQuestionDashCard, isVirtualDashCard } from "metabase/utils/dashboard";
+import { useDispatch } from "metabase/utils/redux";
 import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
 import {
   Box,

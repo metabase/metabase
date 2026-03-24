@@ -4,8 +4,8 @@ import { t } from "ttag";
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
-import { useDispatch } from "metabase/lib/redux";
-import { adminToolsGrantAccess } from "metabase/lib/urls";
+import { useDispatch } from "metabase/utils/redux";
+import { adminToolsGrantAccess } from "metabase/utils/urls";
 import { Box, Button, Flex, LoadingOverlay, Text, Title } from "metabase/ui";
 
 import { useAccessGrantsQuery } from "../../hooks/useAccessGrantsQuery";

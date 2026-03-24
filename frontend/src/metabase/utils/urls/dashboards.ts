@@ -1,7 +1,7 @@
 import slugg from "slugg";
 
-import { stringifyHashOptions } from "metabase/lib/browser";
-import MetabaseSettings from "metabase/lib/settings";
+import { stringifyHashOptions } from "metabase/utils/browser";
+import MetabaseSettings from "metabase/utils/settings";
 import type {
   DashCardId,
   DashboardId,

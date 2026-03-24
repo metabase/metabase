@@ -1,8 +1,8 @@
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { useSelector } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Button, Icon, Menu, Tooltip } from "metabase/ui";

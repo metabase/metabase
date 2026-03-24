@@ -29,9 +29,9 @@ import { useEmbeddingEntityContext } from "metabase/embedding/context";
 import { Fields } from "metabase/entities/fields";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
-import { parseNumber } from "metabase/lib/number";
-import { connect, useDispatch } from "metabase/lib/redux";
-import { isNotNull } from "metabase/lib/types";
+import { parseNumber } from "metabase/utils/number";
+import { connect, useDispatch } from "metabase/utils/redux";
+import { isNotNull } from "metabase/utils/types";
 import {
   fetchCardParameterValues,
   fetchDashboardParameterValues,

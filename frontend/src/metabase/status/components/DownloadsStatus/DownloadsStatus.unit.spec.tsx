@@ -11,8 +11,8 @@ import { createMockState } from "metabase-types/store/mocks";
 
 import { DownloadsStatus } from "./DownloadsStatus";
 
-jest.mock("metabase/lib/dom", () => ({
-  ...jest.requireActual("metabase/lib/dom"),
+jest.mock("metabase/utils/dom", () => ({
+  ...jest.requireActual("metabase/utils/dom"),
   // For some reason, this is undefined. I think it's because we're requiring while mocking, but
   // It's unclear.
   isWithinIframe: () => false,

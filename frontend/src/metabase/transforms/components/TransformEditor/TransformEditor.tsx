@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/utils/redux";
 import { PLUGIN_REMOTE_SYNC, PLUGIN_WORKSPACES } from "metabase/plugins";
 import {
   QueryEditor,
