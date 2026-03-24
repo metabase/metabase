@@ -390,16 +390,18 @@
           (.execute ^Value (object-array [sql (json/encode replacements) dialect]))
           .asString))))
 
-(defn count-statements
-  "Count the number of SQL statements in a SQL string and return their types.
+(defn validate-impersonated-native-query
+  "Validates that an impersonated native query is a single SELECT statement.
 
-   Returns a map with :count and :types, e.g.:
-     {:count 3, :types [\"Select\" \"Select\" \"Command\"]}"
-  [sql]
+   Returns a JSON string based on the validation result:
+   Valid query: {:is-valid?: True, :sql: \"SELECT ...\"}
+   Invalid query: {:is-valid?: False, :error: ..., :count: N, :types: [...]}
+   Parse error: {:is-valid?: None, :error: ..., :count: 0, :types: []}"
+  [dialect sql]
   (-> (with-open [^Closeable ctx (python.pool/python-context)]
         (with-python-timeout ctx default-timeout-ms
-          (-> ^Value (common/eval-python ctx "sql_tools.count_statements")
-              (.execute ^Value (object-array [sql]))
+          (-> ^Value (common/eval-python ctx "sql_tools.validate_impersonated_native_query")
+              (.execute ^Value (object-array [sql dialect]))
               .asString)))
       json/decode+kw))
 

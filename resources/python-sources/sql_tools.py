@@ -6,7 +6,8 @@ import sqlglot.lineage as lineage
 import sqlglot.optimizer as optimizer
 import sqlglot.optimizer.qualify as qualify
 from sqlglot import exp
-from sqlglot.errors import ParseError, OptimizeError
+from sqlglot.errors import OptimizeError, ParseError
+
 
 def is_quoted_identifier(name: str, dialect: str = None) -> bool:
     if not isinstance(name, str):
@@ -1577,7 +1578,7 @@ def transpile_sql(sql: str, from_dialect: str = None, to_dialect: str = None):
         result['reason'] = 'missing_dialect'
     else:
         try:
-            use_identify = (from_dialect in CASE_SENSITIVE_DIALECTS 
+            use_identify = (from_dialect in CASE_SENSITIVE_DIALECTS
                             or to_dialect in CASE_SENSITIVE_DIALECTS)
 
             transpiled = sqlglot.transpile(
@@ -1600,15 +1601,21 @@ def transpile_sql(sql: str, from_dialect: str = None, to_dialect: str = None):
 
     return json.dumps(result)
 
-def count_statements(sql: str, dialect: str = None) -> str:
-    """Count the number of SQL statements in a SQL string and return their types.
+def validate_impersonated_native_query(sql: str, dialect: str = None) -> str:
+    """Validates that an impersonated native query is a single SELECT statement.
 
-    Returns JSON: {"count": N, "types": ["Select", "Command", ...]}
-    On parse error: {"count": 0, "types": [], "error": "..."}
+    Returns a JSON string based on the validation result:
+    Valid query: {"is_valid?": True, "sql": "SELECT ..."}
+    Invalid query: {"is_valid?": False, "error": "..."}
+    Parse error: {"is_valid?": None, "error": "..."}
     """
     try:
         stmts = sqlglot.parse(sql, read=dialect)
-        return json.dumps({"count": len(stmts),
-                           "types": [type(s).__name__ for s in stmts]})
+        num_stmts = len(stmts)
+        if num_stmts == 1 and isinstance(stmts[0], exp.Select):
+            reconstructed_sql = stmts[0].sql(dialect=dialect) if dialect else stmts[0].sql()
+            return json.dumps({"is_valid?": True, "sql": reconstructed_sql})
+        else:
+            return json.dumps({"is_valid?": False, "error": "Only single SELECT statements are supported."})
     except Exception as e:
-        return json.dumps({"count": 0, "types": [], "error": str(e)})
+        return json.dumps({"is_valid?": None, "error": str(e)})

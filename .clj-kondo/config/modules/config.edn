@@ -1665,7 +1665,6 @@
            query-permissions
            server
            settings
-           sql-parsing
            system
            tracing
            users
@@ -2830,6 +2829,7 @@
            models
            premium-features
            query-processor
+           sql-tools
            util
            warehouse-schema
            enterprise/sandbox}
