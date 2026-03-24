@@ -75,15 +75,20 @@ describe("TransformHeader", () => {
     it("should always render the Inspect tab", () => {
       setup();
 
-      expect(screen.getByRole("link", { name: /Inspect/ })).toBeInTheDocument();
+      expect(screen.getByText("Inspect")).toBeInTheDocument();
     });
 
     it("should show upsell gem when transforms-python is not enabled", () => {
       setup();
 
-      const inspectLink = screen.getByRole("link", { name: /Inspect/ });
-      const upsellGem = inspectLink.querySelector('[data-testid="upsell-gem"]');
-      expect(upsellGem).toBeInTheDocument();
+      const inspectLink = screen.getByText("Inspect").closest("a");
+      expect(inspectLink).toBeInTheDocument();
+
+      const upsellGems = screen.queryAllByTestId("upsell-gem");
+      const inspectUpsellGems = upsellGems.filter((gem) =>
+        inspectLink?.contains(gem),
+      );
+      expect(inspectUpsellGems.length).toBeGreaterThan(0);
     });
 
     it("should not show upsell gem when transforms-python is enabled", () => {
@@ -93,14 +98,14 @@ describe("TransformHeader", () => {
       try {
         setup();
 
-        expect(
-          screen.getByRole("link", { name: "Inspect" }),
-        ).toBeInTheDocument();
-        const inspectLink = screen.getByRole("link", { name: "Inspect" });
-        const upsellGem = inspectLink.querySelector(
-          '[data-testid="upsell-gem"]',
+        const inspectLink = screen.getByText("Inspect").closest("a");
+        expect(inspectLink).toBeInTheDocument();
+
+        const upsellGems = screen.queryAllByTestId("upsell-gem");
+        const inspectUpsellGems = upsellGems.filter((gem) =>
+          inspectLink?.contains(gem),
         );
-        expect(upsellGem).not.toBeInTheDocument();
+        expect(inspectUpsellGems).toHaveLength(0);
       } finally {
         PLUGIN_TRANSFORMS_PYTHON.isEnabled = original;
       }
