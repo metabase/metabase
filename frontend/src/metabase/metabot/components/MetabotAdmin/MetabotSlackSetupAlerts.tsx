@@ -5,6 +5,7 @@ import {
   ButtonLink,
   ExternalLink,
 } from "metabase/common/components/ExternalLink";
+import { Link } from "metabase/common/components/Link";
 import { Alert, Group, Icon, Stack, Text } from "metabase/ui";
 
 import S from "./MetabotSlackSetup.module.css";
@@ -49,6 +50,23 @@ export function MissingScopesAlert({
           </ButtonLink>
         </Group>
       </Stack>
+    </Alert>
+  );
+}
+
+export function MetabotSetupRequiredAlert() {
+  return (
+    <Alert
+      color="brand"
+      title={t`Metabot must be set up before you can use this feature`}
+      styles={{ label: { fontSize: "var(--mantine-font-size-md)" } }}
+    >
+      <Text mt="sm">
+        <Link
+          to="/admin/metabot/setup"
+          variant="brand"
+        >{t`Go to Metabot connection settings`}</Link>
+      </Text>
     </Alert>
   );
 }

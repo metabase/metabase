@@ -6,12 +6,10 @@ import {
 } from "metabase/admin/components/AdminNav";
 import { useSetting } from "metabase/common/hooks";
 import { FIXED_METABOT_IDS } from "metabase/metabot/constants";
-import { PLUGIN_METABOT } from "metabase/plugins";
 import { Flex } from "metabase/ui";
 
 export function MetabotNavPane() {
-  const isConfigured =
-    useSetting("llm-metabot-configured?") || PLUGIN_METABOT.isCloudManaged;
+  const isConfigured = useSetting("llm-metabot-configured?");
 
   return (
     <Flex direction="column" flex="0 0 auto">

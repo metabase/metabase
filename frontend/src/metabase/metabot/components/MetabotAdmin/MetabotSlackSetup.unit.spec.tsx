@@ -40,6 +40,7 @@ const MISSING_SCOPES = createMockSlackAppInfo({
 interface SetupOptions {
   isSlackTokenValid?: boolean;
   isEncryptionEnabled?: boolean;
+  isMetabotConfigured?: boolean;
   clientId?: string | null;
   clientSecret?: string | null;
   signingSecret?: string | null;
@@ -50,6 +51,7 @@ interface SetupOptions {
 const setup = async ({
   isSlackTokenValid = true,
   isEncryptionEnabled = true,
+  isMetabotConfigured = true,
   clientId = null,
   clientSecret = null,
   signingSecret = null,
@@ -59,6 +61,7 @@ const setup = async ({
   const settings = createMockSettings({
     "slack-token-valid?": isSlackTokenValid,
     "encryption-enabled": isEncryptionEnabled,
+    "llm-metabot-configured?": isMetabotConfigured,
     "slack-connect-client-id": clientId,
     "slack-connect-client-secret": clientSecret,
     "metabot-slack-signing-secret": signingSecret,
@@ -158,6 +161,24 @@ describe("MetabotSlackSetup", () => {
         "href",
         expect.stringContaining("encrypting-database-details-at-rest"),
       );
+
+      expect(screen.queryByLabelText("Client ID")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("setup required alert", () => {
+    it("shows alert with setup link and hides form when metabot is not configured", async () => {
+      await setup({ isMetabotConfigured: false });
+
+      expect(
+        await screen.findByText(
+          "Metabot must be set up before you can use this feature",
+        ),
+      ).toBeInTheDocument();
+
+      expect(
+        screen.getByText("Go to Metabot connection settings"),
+      ).toBeInTheDocument();
 
       expect(screen.queryByLabelText("Client ID")).not.toBeInTheDocument();
     });
