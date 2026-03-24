@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { push } from "react-router-redux";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -17,7 +16,6 @@ import {
 } from "metabase/api/utils";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { useSetting } from "metabase/common/hooks";
-import { useDispatch } from "metabase/lib/redux";
 import {
   Badge,
   type ComboboxItem,
@@ -51,15 +49,6 @@ type MetabotModelGroup = {
 type MetabotModelSelectData = MetabotModelOption[] | MetabotModelGroup[];
 
 export function MetabotSetup() {
-  const dispatch = useDispatch();
-  const isHosted = useSetting("is-hosted?");
-
-  useEffect(() => {
-    if (isHosted) {
-      dispatch(push("/admin/metabot/"));
-    }
-  }, [dispatch, isHosted]);
-
   const isConfigured = useSetting("llm-metabot-configured?");
   const { value: savedProviderValue, settingDetails } = useAdminSetting(
     "llm-metabot-provider",

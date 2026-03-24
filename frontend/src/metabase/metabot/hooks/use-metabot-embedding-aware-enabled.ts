@@ -8,7 +8,6 @@ import { PLUGIN_METABOT } from "metabase/plugins";
  * Use `forceEmbedding` to always check the embedding setting (e.g. in the embed wizard). */
 export const useMetabotEnabledEmbeddingAware = ({
   forceEmbedding = false,
-  requireMeteabotFeature = true,
 }: {
   forceEmbedding?: boolean;
   requireMeteabotFeature?: boolean;
@@ -17,5 +16,6 @@ export const useMetabotEnabledEmbeddingAware = ({
   const isEnabled = useSetting(
     isEmbedding ? "embedded-metabot-enabled?" : "metabot-enabled?",
   );
-  return (!requireMeteabotFeature || PLUGIN_METABOT.hasFeature) && isEnabled;
+  const isAnthropicConfigured = useSetting("llm-anthropic-api-key-configured?");
+  return PLUGIN_METABOT.isCloudManaged ? isEnabled : !!isAnthropicConfigured;
 };

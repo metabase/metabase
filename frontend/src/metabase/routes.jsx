@@ -37,13 +37,14 @@ import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { HomePage } from "metabase/home/components/HomePage";
 import { Onboarding } from "metabase/home/components/Onboarding";
 import { trackPageView } from "metabase/lib/analytics";
+import { MetabotQueryBuilder } from "metabase/metabot/components/MetabotQueryBuilder";
+import { getMetabotRoutes } from "metabase/metabot/routes";
 import { MetricsViewerPage } from "metabase/metrics-viewer";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
 import {
   PLUGIN_COLLECTIONS,
   PLUGIN_LANDING_PAGE,
-  PLUGIN_METABOT,
   PLUGIN_TABLE_EDITING,
   PLUGIN_TENANTS,
 } from "metabase/plugins";
@@ -138,7 +139,7 @@ export const getRoutes = (store) => {
 
         {/* MAIN */}
         <Route component={IsAuthenticated}>
-          {PLUGIN_METABOT.getMetabotRoutes()}
+          {getMetabotRoutes()}
 
           {/* The global all hands routes, things in here are for all the folks */}
           <Route
@@ -271,7 +272,7 @@ export const getRoutes = (store) => {
             />
             <IndexRoute component={QueryBuilder} />
             <Route path="notebook" component={QueryBuilder} />
-            {PLUGIN_METABOT.getMetabotQueryBuilderRoute()}
+            <Route path="ask" component={MetabotQueryBuilder} />
             <Route path=":slug" component={QueryBuilder} />
             <Route path=":slug/notebook" component={QueryBuilder} />
             <Route path=":slug/metabot" component={QueryBuilder} />

@@ -18,7 +18,7 @@ export const SlackSettingsPage = () => {
         }
       >
         <SlackSetup />
-        {PLUGIN_METABOT.hasFeature && <MetabotSlackSetup />}
+        {PLUGIN_METABOT.isCloudManaged && <MetabotSlackSetup />}
       </SettingsPageWrapper>
     </>
   );

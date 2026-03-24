@@ -1,32 +1,9 @@
-import type React from "react";
-
-import type {
-  UseMetabotSQLSuggestionOptions,
-  useMetabotSQLSuggestion as useMetabotSQLSuggestionType,
-} from "metabase/metabot/hooks/use-metabot-sql-suggestion-oss";
-
 export type PluginMetabotType = {
-  hasFeature: boolean;
-  useMetabotSQLSuggestion: typeof useMetabotSQLSuggestionType;
-  getAdminRoutes: (() => React.ReactElement[]) | null;
-  getMetabotRoutes: () => React.ReactElement | null;
-  getMetabotQueryBuilderRoute: () => React.ReactElement | null;
+  isCloudManaged: boolean;
 };
 
 const getDefaultPluginMetabot = (): PluginMetabotType => ({
-  hasFeature: false,
-  useMetabotSQLSuggestion: (options: UseMetabotSQLSuggestionOptions) => {
-    // lazy require to avoid loading metabase/api and its cljs dependencies at
-    // module init time. without this the jest unit tests will break.
-    const {
-      useMetabotSQLSuggestion,
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-    } = require("metabase/metabot/hooks/use-metabot-sql-suggestion-oss");
-    return useMetabotSQLSuggestion(options);
-  },
-  getAdminRoutes: null,
-  getMetabotRoutes: () => null,
-  getMetabotQueryBuilderRoute: () => null,
+  isCloudManaged: false,
 });
 
 export const PLUGIN_METABOT: PluginMetabotType = getDefaultPluginMetabot();

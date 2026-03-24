@@ -20,7 +20,7 @@ export const MetabotSettingUpModal = ({
   opened,
 }: Pick<ModalProps, "opened" | "onClose">) => {
   useTokenRefreshUntil("metabot-v3", { intervalMs: 1000, skip: !opened });
-  const isSettingUp = !PLUGIN_METABOT.hasFeature;
+  const isSettingUp = !PLUGIN_METABOT.isCloudManaged;
 
   return (
     <Modal

@@ -6,22 +6,21 @@ import {
 } from "metabase/admin/components/AdminNav";
 import { useSetting } from "metabase/common/hooks";
 import { FIXED_METABOT_IDS } from "metabase/metabot/constants";
+import { PLUGIN_METABOT } from "metabase/plugins";
 import { Flex } from "metabase/ui";
 
 export function MetabotNavPane() {
-  const isHosted = useSetting("is-hosted?");
-  const isConfigured = useSetting("llm-metabot-configured?");
+  const isConfigured =
+    useSetting("llm-metabot-configured?") || PLUGIN_METABOT.isCloudManaged;
 
   return (
     <Flex direction="column" flex="0 0 auto">
       <AdminNavWrapper>
-        {!isHosted && (
-          <AdminNavItem
-            icon="gear"
-            label={t`Connection settings`}
-            path="/admin/metabot/setup"
-          />
-        )}
+        <AdminNavItem
+          icon="gear"
+          label={t`Connection settings`}
+          path="/admin/metabot/setup"
+        />
         {isConfigured && (
           <>
             <AdminNavItem

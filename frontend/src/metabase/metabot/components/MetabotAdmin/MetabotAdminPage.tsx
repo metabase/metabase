@@ -1,16 +1,12 @@
 import { useDisclosure } from "@mantine/hooks";
 import { type ReactNode, useEffect, useMemo } from "react";
-import { IndexRoute, Redirect, Route } from "react-router";
+import { IndexRoute, Route } from "react-router";
 import { push } from "react-router-redux";
 import { P, match } from "ts-pattern";
 import { c, t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import {
-  AdminNavItem,
-  AdminNavWrapper,
-} from "metabase/admin/components/AdminNav";
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import {
@@ -31,7 +27,7 @@ import {
   FIXED_METABOT_ENTITY_IDS,
   FIXED_METABOT_IDS,
 } from "metabase/metabot/constants";
-import { PLUGIN_METABOT, PLUGIN_MODERATION } from "metabase/plugins";
+import { PLUGIN_MODERATION } from "metabase/plugins";
 import {
   Box,
   Button,
@@ -51,49 +47,15 @@ import type {
 
 import { MetabotPromptSuggestionPane } from "./MetabotAdminSuggestedPrompts";
 import { MetabotNavPane } from "./MetabotNavPane";
-import { MetabotSQLGenerationSettingsSection } from "./MetabotSQLGenerationSettingsSection";
 import { MetabotSetup } from "./MetabotSetup";
 import { useMetabotIdPath } from "./utils";
 
 export function getAdminRoutes() {
-  return (
-    PLUGIN_METABOT.getAdminRoutes?.() ?? [
-      <IndexRoute key="index" component={OssMetabotAdminPage} />,
-      <Redirect key="redirect" from="*" to="/admin/metabot" />,
-    ]
-  );
-}
-
-export function getFullAdminRoutes() {
   return [
     <IndexRoute key="index" component={MetabotAdminPage} />,
     <Route key="setup" path="setup" component={MetabotSetup} />,
     <Route key="metabot" path=":metabotId" component={MetabotAdminPage} />,
   ];
-}
-
-function OssMetabotAdminPage() {
-  return (
-    <AdminSettingsLayout sidebar={<OssNavPane />}>
-      <ErrorBoundary>
-        <MetabotSQLGenerationSettingsSection />
-      </ErrorBoundary>
-    </AdminSettingsLayout>
-  );
-}
-
-function OssNavPane() {
-  return (
-    <Flex direction="column" flex="0 0 auto">
-      <AdminNavWrapper>
-        <AdminNavItem
-          icon="sql"
-          label={t`SQL Generation`}
-          path="/admin/metabot"
-        />
-      </AdminNavWrapper>
-    </Flex>
-  );
 }
 
 export function MetabotAdminPage() {
