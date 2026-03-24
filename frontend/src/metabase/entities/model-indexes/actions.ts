@@ -125,7 +125,9 @@ function getIndexIdsToRemove(
   return indexIdsToRemove;
 }
 
-export function cleanIndexFlags(fields: (DatasetColumn | Field)[] = []) {
+export function cleanIndexFlags<T extends DatasetColumn | Field>(
+  fields: T[] = [],
+): T[] {
   const indexesToClean = fields.reduce(
     (
       indexesToClean: number[],

@@ -201,7 +201,8 @@ export const CLEAR_OBJECT_DETAIL_FK_REFERENCES =
 export const viewNextObjectDetail = () => {
   return (dispatch: Dispatch, getState: GetState) => {
     if (getCanZoomNextRow(getState())) {
-      const objectId = getNextRowPKValue(getState());
+      // TODO(romeovs): remove this cast once we have a proper type for ObjectId
+      const objectId = getNextRowPKValue(getState()) as ObjectId;
       dispatch(zoomInRow({ objectId }));
     }
   };
@@ -210,7 +211,8 @@ export const viewNextObjectDetail = () => {
 export const viewPreviousObjectDetail = () => {
   return (dispatch: Dispatch, getState: GetState) => {
     if (getCanZoomPreviousRow(getState())) {
-      const objectId = getPreviousRowPKValue(getState());
+      // TODO(romeovs): remove this cast once we have a proper type for ObjectId
+      const objectId = getPreviousRowPKValue(getState()) as ObjectId;
       dispatch(zoomInRow({ objectId }));
     }
   };

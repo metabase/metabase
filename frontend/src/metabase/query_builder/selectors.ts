@@ -39,7 +39,6 @@ import {
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import type Database from "metabase-lib/v1/metadata/Database";
 import type Table from "metabase-lib/v1/metadata/Table";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import {
@@ -266,7 +265,7 @@ export const getQueryResults = createSelector(
     }
     const { cols, results_metadata } = result.data;
 
-    function applyMetadataDiff(column: Field | DatasetColumn) {
+    function applyMetadataDiff<T extends DatasetColumn | Field>(column: T): T {
       const columnDiff = metadataDiff[column.name];
       return columnDiff ? merge(column, columnDiff) : column;
     }
@@ -400,7 +399,8 @@ export const getRowIndexToPKMap = createSelector(
     const map: Record<number, ObjectId> = {};
     rows.forEach((row, index) => {
       const PKValue = row[PKColumnIndex];
-      map[index] = PKValue;
+      // TODO(romeovs): remove this cast once we have a proper type for ObjectId
+      map[index] = PKValue as ObjectId;
     });
     return map;
   },
@@ -812,13 +812,14 @@ const getTimeseriesDataInterval = createSelector(
   },
 );
 
-type Domain = [number, number];
+type Numeric = string | number | boolean | object | dayjs.Dayjs;
+type Domain<T extends Numeric = Numeric> = [T, T];
 
 export const getTimeseriesXDomain = createSelector(
   [getIsTimeseries, getTimeseriesXValues],
   (isTimeseries, xValues) => {
     if (isTimeseries && Array.isArray(xValues) && xValues.length > 0) {
-      return d3.extent(xValues as Array<d3.Numeric>);
+      return d3.extent(xValues as Array<d3.Numeric>) as Domain<dayjs.Dayjs>;
     }
     return null;
   },
@@ -848,7 +849,10 @@ export const getTransformedTimelines = createSelector(
   },
 );
 
-function isEventWithinDomain(event: TimelineEvent, xDomain: Domain) {
+function isEventWithinDomain(
+  event: TimelineEvent,
+  xDomain: Domain<dayjs.Dayjs>,
+) {
   return dayjs(event.timestamp).isBetween(
     xDomain[0],
     xDomain[1],
@@ -857,14 +861,19 @@ function isEventWithinDomain(event: TimelineEvent, xDomain: Domain) {
   );
 }
 
-function getXDomainForTimelines(
-  xDomain: Domain | null,
+function getXDomainForTimelines<T extends Numeric>(
+  xDomain: Domain<T> | null,
   dataInterval: TimeSeriesInterval | null,
-): Domain | null {
+): Domain<T> | null {
   // When looking at, let's say, count of orders over years, last year value is Jan 1, 2024
   // If we filter timeline events up until Jan 1, 2024, we won't see any events from 2024,
   // so we need to extend xDomain by dataInterval.count * dataInterval.unit to include them
-  if (xDomain && isAbsoluteDateTimeUnit(dataInterval?.unit)) {
+  if (
+    xDomain &&
+    isAbsoluteDateTimeUnit(dataInterval?.unit) &&
+    xDomain[0] instanceof dayjs.Dayjs &&
+    xDomain[1] instanceof dayjs.Dayjs
+  ) {
     let maxValue = xDomain[1]
       .clone()
       .add(dataInterval.count, dataInterval.unit);
@@ -873,7 +882,7 @@ function getXDomainForTimelines(
       maxValue = maxValue.subtract(1, "day");
     }
 
-    return [xDomain[0], maxValue];
+    return [xDomain[0], maxValue as T];
   }
 
   return xDomain;
