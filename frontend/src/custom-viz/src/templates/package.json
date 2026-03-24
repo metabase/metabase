@@ -9,7 +9,7 @@
     "type-check": "tsc --noEmit"
   },
   "devDependencies": {
-    "@metabase/custom-viz": "^0.0.1",
+    "@metabase/custom-viz": "__CUSTOM_VIZ_VERSION__",
     "@types/react": "^19.2.14",
     "react": "^19.1.0",
     "typescript": "^5.9.3",

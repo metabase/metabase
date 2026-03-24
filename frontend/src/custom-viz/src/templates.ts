@@ -1,3 +1,5 @@
+import { version } from "../package.json";
+
 import gitignoreTemplate from "./templates/.gitignore?raw";
 import indexTsxTemplate from "./templates/index.tsx?raw";
 import packageJsonTemplate from "./templates/package.json?raw";
@@ -5,13 +7,16 @@ import tsconfigTemplate from "./templates/tsconfig.json?raw";
 import viteConfigTemplate from "./templates/vite.config.ts?raw";
 
 const NAME_PLACEHOLDER = "__CUSTOM_VIZ_NAME__";
+const VERSION_PLACEHOLDER = "__CUSTOM_VIZ_VERSION__";
 
 function replaceName(template: string, name: string): string {
   return template.split(NAME_PLACEHOLDER).join(name);
 }
 
 export function generatePackageJson(name: string): string {
-  return replaceName(packageJsonTemplate, name);
+  return replaceName(packageJsonTemplate, name)
+    .split(VERSION_PLACEHOLDER)
+    .join(version);
 }
 
 export function generateViteConfig(): string {
