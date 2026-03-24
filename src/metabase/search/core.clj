@@ -8,7 +8,6 @@
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.spec :as search.spec]
    [metabase.search.util :as search.util]
-   [metabase.util.log :as log]
    [potemkin :as p]))
 
 (set! *warn-on-reflection* true)
@@ -77,11 +76,6 @@
 (defmethod analytics/initial-value :metabase-search/engine-active
   [_ {:keys [engine]}]
   (if (search.engine/supported-engine? (keyword "search.engine" engine)) 1 0))
-
-(defn supports-index?
-  "Does this instance support a search index, of any sort?"
-  []
-  (seq (search.engine/active-engines)))
 
 (defn reset-tracking!
   "Stop tracking the current indexes. Used when resetting the appdb."

@@ -641,8 +641,8 @@
                         :labels [:type :channel]})
    (prometheus/counter :metabase-mq/topic-handler-errors
                        {:description "Errors in topic subscriber handlers."
-                        :labels [:channel]})])
-                          :buckets [100 500 1000 5000 10000 30000 60000 120000 300000 600000]})
+                        :labels [:channel]
+                        :buckets [100 500 1000 5000 10000 30000 60000 120000 300000 600000]})
 
    ;; release dashboard metrics
    (prometheus/counter :metabase-sync/failures

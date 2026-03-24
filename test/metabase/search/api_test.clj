@@ -2092,7 +2092,7 @@
         (search.tu/with-temp-index-table
           (mt/with-temp [:model/Measure _ {:name     measure-name
                                            :table_id (mt/id :venues)}]
-            (search/reindex! {:async? false :in-place? true})
+            (search.impl/sync-reindex! {:async? false :in-place? true})
             (is (=? [{:name measure-name :model "measure"}]
                     (search-request-data :crowberto :q measure-name
                                          :search_engine "appdb"
