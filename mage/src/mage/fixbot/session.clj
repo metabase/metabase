@@ -215,17 +215,23 @@
   [_parsed]
   (println (c/bold (c/green "Fixbot Sessions")))
   (println)
-  ;; Show workmux list with PR info, filtered to fixbot sessions
-  (let [{:keys [exit out]} (shell/sh* {:quiet? true} "workmux" "list" "--pr" "fixbot")]
-    (when (zero? exit)
-      (doseq [line out]
-        (println line))))
-  (println)
-  ;; Show git status info
-  (let [{:keys [exit out]} (shell/sh* {:quiet? true} "workmux" "status" "--git" "fixbot")]
-    (when (zero? exit)
-      (doseq [line out]
-        (println line)))))
+  ;; Build filter args: "fixbot" for main branch + all fixbot worktree names.
+  ;; We can't just pass "fixbot" because workmux filters on branch name, not
+  ;; worktree directory name, so fixbot worktrees with branches like
+  ;; "uxw-3155-add-keyboard-shortcut-..." would be missed.
+  (let [sessions    (all-fixbot-sessions)
+        filter-args (into ["fixbot"] sessions)]
+    ;; Show workmux list with PR info, filtered to fixbot sessions
+    (let [{:keys [exit out]} (apply shell/sh* {:quiet? true} "workmux" "list" "--pr" filter-args)]
+      (when (zero? exit)
+        (doseq [line out]
+          (println line))))
+    (println)
+    ;; Show git status info
+    (let [{:keys [exit out]} (apply shell/sh* {:quiet? true} "workmux" "status" "--git" filter-args)]
+      (when (zero? exit)
+        (doseq [line out]
+          (println line))))))
 
 (defn quit!
   "Tear down and remove a fixbot worktree session."
