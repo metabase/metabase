@@ -4,6 +4,7 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
+import type { VisualizationDefinition } from "metabase/visualizations/types";
 import type { VisualizationSettings } from "metabase-types/api";
 
 import Action from "./Action";
@@ -11,8 +12,7 @@ import Action from "./Action";
 const isForm = (object: any, computedSettings: VisualizationSettings) =>
   computedSettings.actionDisplayType === "form";
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Object.assign(Action, {
+const ActionViz: VisualizationDefinition = {
   getUiName: () => t`Action`,
   identifier: "action",
   iconName: "play",
@@ -77,4 +77,7 @@ export default Object.assign(Action, {
       }),
     },
   },
-});
+};
+
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default Object.assign(Action, ActionViz);

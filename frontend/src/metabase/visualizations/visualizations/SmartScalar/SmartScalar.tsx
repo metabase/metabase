@@ -17,6 +17,7 @@ import {
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
 import type {
+  VisualizationDefinition,
   VisualizationPassThroughProps,
   VisualizationProps,
   VisualizationSettingsDefinitions,
@@ -233,7 +234,7 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
   click_behavior: {},
 };
 
-Object.assign(SmartScalar, {
+const SmartScalarViz: VisualizationDefinition = {
   getUiName: () => t`Trend`,
   identifier: "smartscalar",
   iconName: "smartscalar",
@@ -265,4 +266,6 @@ Object.assign(SmartScalar, {
   },
 
   hasEmptyState: true,
-});
+};
+
+Object.assign(SmartScalar, SmartScalarViz);
