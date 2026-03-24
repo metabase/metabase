@@ -101,6 +101,13 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
+                  name: application_type
+                  type: varchar(50)
+                  remarks: OAuth application type (web or native), defaults to web
+                  defaultValue: web
+                  constraints:
+                    nullable: true
+              - column:
                   name: registration_access_token_hash
                   type: ${text.type}
                   remarks: Hashed RFC 7592 registration access token
@@ -240,7 +247,7 @@ databaseChangeLog:
                   name: expiry
 
   - changeSet:
-      id: v60.2026-03-11T00:00:04a
+      id: v60.2026-03-11T00:00:05
       author: epaget
       comment: Add index on oauth_authorization_code.user_id
       changes:
@@ -252,7 +259,7 @@ databaseChangeLog:
                   name: user_id
 
   - changeSet:
-      id: v60.2026-03-11T00:00:05
+      id: v60.2026-03-11T00:00:06
       author: epaget
       comment: Add FK on oauth_authorization_code.user_id
       changes:
@@ -265,7 +272,7 @@ databaseChangeLog:
 
   # oauth_access_token table
   - changeSet:
-      id: v60.2026-03-11T00:00:06
+      id: v60.2026-03-11T00:00:07
       author: epaget
       comment: Create oauth_access_token table
       changes:
@@ -332,7 +339,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v60.2026-03-11T00:00:07
+      id: v60.2026-03-11T00:00:08
       author: epaget
       comment: Add unique index on oauth_access_token.token
       changes:
@@ -342,7 +349,7 @@ databaseChangeLog:
             columnNames: token
 
   - changeSet:
-      id: v60.2026-03-11T00:00:08
+      id: v60.2026-03-11T00:00:09
       author: epaget
       comment: Add index on oauth_access_token.expiry
       changes:
@@ -354,7 +361,7 @@ databaseChangeLog:
                   name: expiry
 
   - changeSet:
-      id: v60.2026-03-11T00:00:08a
+      id: v60.2026-03-11T00:00:10
       author: epaget
       comment: Add index on oauth_access_token.user_id
       changes:
@@ -366,7 +373,7 @@ databaseChangeLog:
                   name: user_id
 
   - changeSet:
-      id: v60.2026-03-11T00:00:09
+      id: v60.2026-03-11T00:00:11
       author: epaget
       comment: Add FK on oauth_access_token.user_id
       changes:
@@ -379,7 +386,7 @@ databaseChangeLog:
 
   # oauth_refresh_token table
   - changeSet:
-      id: v60.2026-03-11T00:00:10
+      id: v60.2026-03-11T00:00:12
       author: epaget
       comment: Create oauth_refresh_token table
       changes:
@@ -446,7 +453,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v60.2026-03-11T00:00:11
+      id: v60.2026-03-11T00:00:13
       author: epaget
       comment: Add unique index on oauth_refresh_token.token
       changes:
