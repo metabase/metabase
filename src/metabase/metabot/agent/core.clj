@@ -197,6 +197,14 @@
     :else                         :stop))
 
 ;;; Call LLM
+(defn- part->invert-links-key
+  "Return the key that might contain links that need to be inverted or nil if no such key exists."
+  [part]
+  (cond
+    (and (= (:type part) :text) (string? (:text part)))
+    :text
+    (and (= (:role part) :user) (string? (:content part)))
+    :content))
 
 (defn- invert-links
   "Apply link inversion to all :text parts in a sequence of AISDK parts.
@@ -205,18 +213,10 @@
   (if (empty? registry-map)
     parts
     (mapv (fn [part]
-            (cond
-              (and (= (:type part) :text) (string? (:text part)))
-              (-> part
-                  (update :text links/invert-links registry-map)
-                  (update :text links/invert-slack-links registry-map))
-
-              (and (= (:role part) :user) (string? (:content part)))
-              (-> part
-                  (update :content links/invert-links registry-map)
-                  (update :content links/invert-slack-links registry-map))
-
-              :else part))
+            (let [links-key (part->invert-links-key part)]
+              (cond-> part
+                links-key (-> (update links-key links/invert-links registry-map)
+                              (update links-key links/invert-slack-links registry-map)))))
           parts)))
 
 (defn- call-llm
