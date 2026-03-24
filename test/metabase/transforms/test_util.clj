@@ -161,38 +161,29 @@
                           {:resp resp :status status})))))))
 
 (defn wait-for-field
-  "Wait for a field with `field-name` to appear as active on the table named `table-name`.
-   Useful after schema changes where sync runs asynchronously."
-  [table-name field-name timeout-ms]
-  (let [timer (u/start-timer)]
-    (loop []
-      (let [table  (t2/select-one :model/Table :name table-name :db_id (mt/id))
-            field  (when table
-                     (t2/select-one :model/Field :table_id (:id table) :name field-name :active true))]
-        (cond
-          field    field
-          (> (u/since-ms timer) timeout-ms)
-          (throw (ex-info (format "Field %s on table %s did not appear after %dms" field-name table-name timeout-ms)
-                          {:table-name table-name :field-name field-name :timeout-ms timeout-ms}))
-          :else    (do (Thread/sleep 200)
-                       (recur)))))))
+  "Wait for a field with `field-name` on `table-name` to reach the desired `:active` state (default true).
+   Polls every 200ms until the condition is met or `timeout-ms` is exceeded."
+  ([table-name field-name timeout-ms]
+   (wait-for-field table-name field-name timeout-ms {:active true}))
+  ([table-name field-name timeout-ms {:keys [active]}]
+   (let [timer (u/start-timer)]
+     (loop []
+       (let [table       (t2/select-one :model/Table :name table-name :db_id (mt/id))
+             field-found (when table
+                           (t2/select-one :model/Field :table_id (:id table) :name field-name :active true))
+             satisfied?  (if active (some? field-found) (nil? field-found))]
+         (cond
+           satisfied?
+           field-found
 
-(defn wait-for-field-deactivation
-  "Wait for a field with `field-name` to no longer be active on the table named `table-name`.
-   Useful after schema changes where a column was dropped but sync hasn't caught up yet."
-  [table-name field-name timeout-ms]
-  (let [timer (u/start-timer)]
-    (loop []
-      (let [table  (t2/select-one :model/Table :name table-name :db_id (mt/id))
-            field  (when table
-                     (t2/select-one :model/Field :table_id (:id table) :name field-name :active true))]
-        (cond
-          (nil? field) nil
-          (> (u/since-ms timer) timeout-ms)
-          (throw (ex-info (format "Field %s on table %s still active after %dms" field-name table-name timeout-ms)
-                          {:table-name table-name :field-name field-name :timeout-ms timeout-ms}))
-          :else        (do (Thread/sleep 200)
-                           (recur)))))))
+           (> (u/since-ms timer) timeout-ms)
+           (throw (ex-info (format "Field %s on table %s did not become %s after %dms"
+                                   field-name table-name (if active "active" "inactive") timeout-ms)
+                           {:table-name table-name :field-name field-name :timeout-ms timeout-ms}))
+
+           :else
+           (do (Thread/sleep 200)
+               (recur))))))))
 
 (defn get-test-schema
   "Get the schema from the products table in the test dataset.
