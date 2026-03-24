@@ -19,6 +19,7 @@ post_create:
   - mkdir -p .github/hooks/workmux-status
   - echo '{"version":1,"hooks":{"userPromptSubmitted":[{"type":"command","bash":"workmux set-window-status working"}],"postToolUse":[{"type":"command","bash":"workmux set-window-status working"}],"agentStop":[{"type":"command","bash":"workmux set-window-status done"}]}}' > .github/hooks/workmux-status/hooks.json
   - MB_PREMIUM_EMBEDDING_TOKEN={{MB_PREMIUM_EMBEDDING_TOKEN}} LINEAR_API_KEY={{LINEAR_API_KEY}} ./bin/mage -fixbot-dev-env --app-db {{APP_DB}}
+  - mise trust mise.local.toml
   - bun install
 
 pre_remove:

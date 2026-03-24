@@ -143,6 +143,7 @@
                  "  - MB_PREMIUM_EMBEDDING_TOKEN=" ee-token
                  " LINEAR_API_KEY=" linear-key
                  " ./bin/mage -fixbot-dev-env\n"
+                 "  - mise trust mise.local.toml\n"
                  panes-section)))
     (println (c/yellow "Wrote resume config to " yaml-path))))
 
