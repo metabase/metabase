@@ -232,12 +232,17 @@ export function useViewerState(): UseViewerStateResult {
     (id: MetricSourceId) =>
       setState((prev) => {
         const { [id]: _, ...newDefinitions } = prev.definitions;
-        const newTabs = prev.tabs
-          .map((tab) => {
-            const { [id]: __, ...rest } = tab.dimensionMapping;
-            return { ...tab, dimensionMapping: rest };
-          })
-          .filter((tab) => areTabDimensionsValid(tab));
+        const newTabs =
+          // scalar tab is always valid, but we want to remove it if there are no definitions
+          // so that adding a new definition triggers computeDefaultTabs
+          Object.keys(newDefinitions).length === 0
+            ? []
+            : prev.tabs
+                .map((tab) => {
+                  const { [id]: __, ...rest } = tab.dimensionMapping;
+                  return { ...tab, dimensionMapping: rest };
+                })
+                .filter((tab) => areTabDimensionsValid(tab));
 
         return {
           ...prev,
