@@ -57,41 +57,36 @@
              :limit    batch-size}))
 
 (defn- start-polling!
-  "Starts the single shared polling loop if not already running. Idempotent."
+  "Starts the single shared polling loop."
   []
   (mq.impl/start-worker-pool!)
-  (when (compare-and-set! background-process nil ::starting)
-    (try
-      (reset! background-process
-              (future
-                (try
-                  (loop []
-                    (when @background-process
-                      (update-lag-gauges!)
-                      (doseq [topic-name (remove mq.impl/channel-busy? (listener/topic-names))]
-                        (try
-                          (let [offset (if (contains? @offsets topic-name)
-                                         (get @offsets topic-name)
-                                         ;; Lazily initialize offset for newly registered topics
-                                         (let [o (current-max-id topic-name)]
-                                           (swap! offsets assoc topic-name o)
-                                           o))
-                                rows (poll-messages! topic-name offset)]
-                            (when (seq rows)
-                              (let [all-messages (into [] (mapcat (comp json/decode :messages)) rows)
-                                    max-id      (:id (last rows))]
-                                ;; Only advance offset if delivery was actually submitted
-                                (when (mq.impl/submit-delivery! topic-name all-messages nil nil nil)
-                                  (swap! offsets assoc topic-name max-id)))))
-                          (catch Exception e
-                            (log/errorf e "Error polling topic %s" (name topic-name)))))
-                      (Thread/sleep (long poll-interval-ms))
-                      (recur)))
-                  (catch InterruptedException _
-                    (log/info "Topic polling loop interrupted")))))
-      (catch Exception e
-        (reset! background-process nil)
-        (throw e)))))
+  (reset! background-process
+          (future
+            (try
+              (loop []
+                (when @background-process
+                  (update-lag-gauges!)
+                  (doseq [topic-name (remove mq.impl/channel-busy? (listener/topic-names))]
+                    (try
+                      (let [offset (if (contains? @offsets topic-name)
+                                     (get @offsets topic-name)
+                                     ;; Lazily initialize offset for newly registered topics
+                                     (let [o (current-max-id topic-name)]
+                                       (swap! offsets assoc topic-name o)
+                                       o))
+                            rows (poll-messages! topic-name offset)]
+                        (when (seq rows)
+                          (let [all-messages (into [] (mapcat (comp json/decode :messages)) rows)
+                                max-id      (:id (last rows))]
+                            ;; Only advance offset if delivery was actually submitted
+                            (when (mq.impl/submit-delivery! topic-name all-messages nil nil nil)
+                              (swap! offsets assoc topic-name max-id)))))
+                      (catch Exception e
+                        (log/errorf e "Error polling topic %s" (name topic-name)))))
+                  (Thread/sleep (long poll-interval-ms))
+                  (recur)))
+              (catch InterruptedException _
+                (log/info "Topic polling loop interrupted"))))))
 
 ;;; ------------------------------------------- Automatic Periodic Cleanup -------------------------------------------
 
@@ -166,7 +161,7 @@
 
 (defmethod topic.backend/start! :topic.backend/appdb [_]
   (start-polling!)
-  (mq.appdb/start-cleanup-loop-once! cleanup-future cleanup-interval-ms cleanup-old-messages! "Topic"))
+  (mq.appdb/start-cleanup-loop! cleanup-future cleanup-interval-ms cleanup-old-messages! "Topic"))
 
 (defmethod topic.backend/publish! :topic.backend/appdb
   [_ topic-name messages]
@@ -178,7 +173,6 @@
   [_ topic-name]
   (let [offset (current-max-id topic-name)]
     (swap! offsets assoc topic-name offset)
-    (start-polling!)
     (log/infof "Subscribed to topic %s (starting offset %d)" (name topic-name) offset)))
 
 (defmethod topic.backend/unsubscribe! :topic.backend/appdb

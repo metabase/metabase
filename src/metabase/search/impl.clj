@@ -524,7 +524,7 @@
             (analytics/inc! :metabase-search/index-error)
             (throw e)))))))
 
-(defn queue-init!
+(defn async-init!
   "Enqueue an init command. The actual initialization is performed by the queue listener."
   [& {:as opts}]
   (mq/with-queue :queue/search-reindex [q]
@@ -534,7 +534,7 @@
                 (:re-populate? opts) (assoc :re-populate? true)
                 (:engine opts)       (assoc :engine (:engine opts))))))
 
-(defn queue-reindex!
+(defn async-reindex!
   "Enqueue a reindex command. The actual reindexing is performed by the queue listener."
   [& {:as opts}]
   (mq/with-queue :queue/search-reindex [q]
@@ -542,7 +542,7 @@
                 (:in-place? opts) (assoc :in-place? true)
                 (:engine opts)    (assoc :engine (:engine opts))))))
 
-(defn queue-delete!
+(defn async-delete!
   "Enqueue a delete command. The actual deletion is performed by the queue listener."
   [model ids]
   (mq/with-queue :queue/search-reindex [q]

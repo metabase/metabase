@@ -287,7 +287,7 @@
           (update! documents to-delete))
         {}))))
 
-(defn queue-updates
+(defn async-updates
   "Update or create any search index entries related to the given updates.
   Enqueues updates for async processing via the persistent queue."
   [updates]

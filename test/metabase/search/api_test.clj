@@ -1821,7 +1821,7 @@
           ;; This is not necessary in the real app because of how the index updates are batched.
           ;; Another solution would be to explicitly mark this data dependency, which we explicitly chose not to do for
           ;; now (see note of the Card spec).
-          (search/queue-update! (t2/instance :model/Card {:id card-id}))
+          (search/async-update! (t2/instance :model/Card {:id card-id}))
 
           (testing "The card data also include `dashboard` info"
             (is (= {:id                dash-id
@@ -1924,7 +1924,7 @@
                                                   :dataset_query {:database db-id
                                                                   :type     :query
                                                                   :query    {:source-table table-id}}}]
-          (search/queue-reindex! {:in-place? true})
+          (search/async-reindex! {:in-place? true})
           (testing "Card should be visible in search before database deletion"
             (let [search-results (mt/user-http-request :crowberto :get 200 "search" :q card-name)]
               (is (some #(= (:id %) card-id) (:data search-results))

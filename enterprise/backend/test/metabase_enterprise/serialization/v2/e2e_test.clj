@@ -27,7 +27,7 @@
 ;; `reindex!` below is ok in a parallel test since it's not actually executing anything
 #_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (use-fixtures :each (fn [thunk]
-                      (mt/with-dynamic-fn-redefs [search/queue-reindex! (constantly nil)
+                      (mt/with-dynamic-fn-redefs [search/async-reindex! (constantly nil)
                                                   models.database/assert-not-h2! (constantly nil)]
                         (thunk))))
 

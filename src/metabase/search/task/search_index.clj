@@ -37,11 +37,11 @@
                :doc                        "Populate a new Search Index"}
   SearchIndexReindex [_ctx]
   (when (search/supports-index?)
-    (search/queue-reindex!)))
+    (search/async-reindex!)))
 
 (defmethod startup/def-startup-logic! ::SearchIndexInit [_]
   (when (search/supports-index?)
-    (search/queue-init!)))
+    (search/async-init!)))
 
 (defmethod task/init! ::SearchIndexReindex [_]
   (let [job         (jobs/build

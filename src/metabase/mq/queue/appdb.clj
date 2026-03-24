@@ -149,13 +149,6 @@
     (recover-processing-batches!
      (t2/select :queue_message_batch :status "processing" :status_heartbeat [:< threshold]))))
 
-(defn recover-all-processing-batches!
-  "Recovers ALL 'processing' batches regardless of heartbeat age. Use on startup when all
-  processing batches are known to be orphaned. Returns the number recovered."
-  []
-  (recover-processing-batches!
-   (t2/select :queue_message_batch :status "processing")))
-
 (defn- maybe-recover-stale-batches!
   "Runs stale processing recovery if enough time has passed since the last check."
   []
@@ -272,47 +265,34 @@
           false)))))
 
 (defn- start-polling!
-  "Starts the background polling process if not already running."
+  "Starts the background polling process."
   []
-  (when (compare-and-set! background-process nil ::starting)
-    (try
-      (log/info "Starting background process for appdb queue")
-      (mq.impl/start-worker-pool!)
-      (mq.appdb/start-cleanup-loop-once! cleanup-future cleanup-interval-ms cleanup-failed-batches! "Queue")
-      ;; On a fresh JVM start, ALL processing batches are orphaned — recover them
-      ;; regardless of heartbeat age (the periodic check uses the timeout for multi-node safety)
-      (try
-        (let [recovered (recover-all-processing-batches!)]
-          (when (pos? recovered)
-            (log/infof "Recovered %d orphaned processing batches on startup" recovered)))
-        (catch Exception e
-          (log/error e "Error recovering processing batches on startup")))
-      (reset! background-process
-              (future
+  (log/info "Starting background process for appdb queue")
+  (mq.impl/start-worker-pool!)
+  (mq.appdb/start-cleanup-loop! cleanup-future cleanup-interval-ms cleanup-failed-batches! "Queue")
+  (reset! background-process
+          (future
+            (try
+              (loop []
                 (try
-                  (loop []
-                    (try
-                      (maybe-recover-stale-batches!)
-                      (maybe-update-heartbeats!)
-                      (update-depth-gauges!)
-                      (if (seq (listener/queue-names))
-                        (if (process-batch!)
-                          nil                                     ;; dispatched a batch, loop immediately to fetch more
-                          (Thread/sleep 2000))
-                  ;; No queues registered — sleep longer and re-check
-                        (Thread/sleep 5000))
-                      (catch InterruptedException e (throw e))
-                      (catch Exception e
-                        (log/error e "Unexpected error in queue polling loop, backing off")
-                        (Thread/sleep (long error-backoff-ms))))
-                    (recur))
-                  (catch InterruptedException _
-                    (log/info "Background process interrupted")))
-                (log/info "Stopping background process for appdb queue")
-                (reset! background-process nil)))
-      (catch Exception e
-        (reset! background-process nil)
-        (throw e)))))
+                  (maybe-recover-stale-batches!)
+                  (maybe-update-heartbeats!)
+                  (update-depth-gauges!)
+                  (if (seq (listener/queue-names))
+                    (if (process-batch!)
+                      nil                                     ;; dispatched a batch, loop immediately to fetch more
+                      (Thread/sleep 2000))
+                    ;; No queues registered — sleep longer and re-check
+                    (Thread/sleep 5000))
+                  (catch InterruptedException e (throw e))
+                  (catch Exception e
+                    (log/error e "Unexpected error in queue polling loop, backing off")
+                    (Thread/sleep (long error-backoff-ms))))
+                (recur))
+              (catch InterruptedException _
+                (log/info "Background process interrupted")))
+            (log/info "Stopping background process for appdb queue")
+            (reset! background-process nil))))
 
 (defmethod q.backend/shutdown! :queue.backend/appdb [_]
   (mq.appdb/stop-cleanup-loop! cleanup-future "Queue")

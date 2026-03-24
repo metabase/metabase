@@ -249,7 +249,7 @@
   ;; to their target table, we should consider synchronously deleting orphaned provisional table rows
   ;; (tables that have never been physically materialized). See gc-transform-target-tables! for the batch equivalent.
   (events/publish-event! :event/delete-transform {:id (:id transform)})
-  (search.core/queue-delete! :model/Transform [(str (:id transform))])
+  (search.core/async-delete! :model/Transform [(str (:id transform))])
   transform)
 
 (defn update-transform-tags!

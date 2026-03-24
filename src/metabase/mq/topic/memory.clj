@@ -102,7 +102,6 @@
         (cp/shutdown! exec)))))
 
 (defmethod topic.backend/start! :topic.backend/memory [_]
-  (mq.impl/start-worker-pool!)
   (start-polling!))
 
 (defmethod topic.backend/publish! :topic.backend/memory

@@ -129,7 +129,7 @@
       (when init-now?
         (log/warnf "Triggering a late initialization of the %s search index." search-engine)
         (try
-          (search.impl/queue-init! :engine search-engine :force-reset? false)
+          (search.impl/async-init! :engine search-engine :force-reset? false)
           (catch Exception e
             (log/error e))))
       ;; Even if the index exists now, return an error so that we don't obscure that there was an issue.
@@ -192,7 +192,7 @@
     (if (and index-created (< 3 (t/time-between (t/instant index-created) (t/instant) :days)))
       (do
         (log/info "Forcing early reindex because existing index is old")
-        (search.impl/queue-reindex! :engine :search.engine/appdb))
+        (search.impl/async-reindex! :engine :search.engine/appdb))
 
       (let [created? (search.index/ensure-ready! opts)]
         (when (or created? re-populate?)
@@ -220,4 +220,4 @@
   [_topic event]
   (when (and (= :site-locale (-> event :details :key)) (= :postgres (mdb/db-type)))
     (log/info "Reindexing appdb index because the site locale changed.")
-    (search.impl/queue-reindex! :engine :search.engine/appdb)))
+    (search.impl/async-reindex! :engine :search.engine/appdb)))

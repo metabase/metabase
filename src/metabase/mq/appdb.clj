@@ -9,34 +9,25 @@
 
 (defn start-cleanup-loop!
   "Starts a background future that calls `cleanup-fn` every `interval-ms`.
-  Loops while `future-atom` is non-nil. Returns the future."
+  Stores the future in `future-atom`; loops while it is non-nil."
   [future-atom interval-ms cleanup-fn label]
-  (future
-    (try
-      (loop []
-        (when @future-atom
-          (try
-            (cleanup-fn)
-            (catch Exception e
-              (log/error e (str "Error during " label " cleanup"))))
-          (Thread/sleep (long interval-ms))
-          (recur)))
-      (catch InterruptedException _
-        (log/info (str label " cleanup loop interrupted"))))))
-
-(defn start-cleanup-loop-once!
-  "Idempotently starts a cleanup loop with double-checked locking.
-  Uses `future-atom` as both the guard and the storage for the future."
-  [future-atom interval-ms cleanup-fn label]
-  (when-not @future-atom
-    (locking future-atom
-      (when-not @future-atom
-        (let [f (start-cleanup-loop! future-atom interval-ms cleanup-fn label)]
-          (reset! future-atom f)
-          (log/info (str label " cleanup loop started")))))))
+  (let [f (future
+            (try
+              (loop []
+                (when @future-atom
+                  (try
+                    (cleanup-fn)
+                    (catch Exception e
+                      (log/error e (str "Error during " label " cleanup"))))
+                  (Thread/sleep (long interval-ms))
+                  (recur)))
+              (catch InterruptedException _
+                (log/info (str label " cleanup loop interrupted")))))]
+    (reset! future-atom f)
+    (log/info (str label " cleanup loop started"))))
 
 (defn stop-cleanup-loop!
-  "Stops a cleanup loop started by [[start-cleanup-loop-once!]]."
+  "Stops a cleanup loop started by [[start-cleanup-loop!]]."
   [future-atom label]
   (when-let [^Future f @future-atom]
     (reset! future-atom nil)

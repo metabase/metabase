@@ -73,7 +73,7 @@
   (api/check-superuser)
   (if (search/supports-index?)
     (do
-      (search/queue-init! :force-reset? true)
+      (search/async-init! :force-reset? true)
       {:message "re-init enqueued"})
     (throw (ex-info "Search index is not supported for this installation." {:status-code 501}))))
 
@@ -86,7 +86,7 @@
   []
   (api/check-superuser)
   (if (search/supports-index?)
-    (do (search/queue-reindex!) {:message "reindex triggered"})
+    (do (search/async-reindex!) {:message "reindex triggered"})
 
     (throw (ex-info "Search index is not supported for this installation." {:status-code 501}))))
 

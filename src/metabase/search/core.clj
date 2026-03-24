@@ -25,9 +25,9 @@
   model-set]
 
  [search.impl
-  queue-delete!
-  queue-init!
-  queue-reindex!
+  async-delete!
+  async-init!
+  async-reindex!
   search
   supports-index?
   ;; We could avoid exposing this by wrapping `query-model-set` and `search` with it.
@@ -84,7 +84,7 @@
     (doseq [e (search.engine/active-engines)]
       (search.engine/reset-tracking! e))))
 
-(defn queue-update!
+(defn async-update!
   "Given a new or updated instance, put all the corresponding search entries if needed in the queue."
   [instance & [always?]]
   (when (supports-index?)
@@ -92,4 +92,4 @@
                             (remove (comp search.util/impossible-condition? second))
                             seq)]
       ;; We need to delay execution to handle deletes, which alert us *before* updating the database.
-      (search.ingestion/queue-updates updates))))
+      (search.ingestion/async-updates updates))))
