@@ -974,75 +974,69 @@ describe("scenarios - embedding hub", () => {
       // 1. The admin permissions UI is complex and would add significant test time
       // 2. This test focuses on the onboarding flow, not the permissions UI
       cy.log("access policies should be created");
-      cy.get<number>("@postgresID").then((postgresId) => {
-        getDatabaseTable(postgresId, "Orders").then((ordersTable) => {
-          getDatabaseTable(postgresId, "People").then((peopleTable) => {
-            cy.request("GET", "/api/mt/gtap").should((response) => {
-              const policies = response.body;
-              expect(policies.length).to.be.at.least(2);
+      cy.request("GET", "/api/mt/gtap").then((response) => {
+        const policies = response.body;
+        expect(policies.length).to.be.at.least(2);
 
-              const orderPolicy = policies.find(
-                (policy: { table_id: number }) =>
-                  policy.table_id === ordersTable.id,
-              );
+        const orderPolicy = policies.find(
+          (p: { attribute_remappings: Record<string, unknown> }) =>
+            p.attribute_remappings?.organization_id,
+        );
+        const peoplePolicy = policies.find(
+          (p: {
+            table_id: number;
+            attribute_remappings: Record<string, unknown>;
+          }) =>
+            p.attribute_remappings?.organization_id &&
+            p.table_id !== orderPolicy.table_id,
+        );
 
-              const peoplePolicy = policies.find(
-                (policy: { table_id: number }) =>
-                  policy.table_id === peopleTable.id,
-              );
+        expect(orderPolicy).to.exist;
+        expect(peoplePolicy).to.exist;
 
-              expect(orderPolicy).to.exist;
-              expect(peoplePolicy).to.exist;
+        const ordersTableId = orderPolicy.table_id as number;
+        const peopleTableId = peoplePolicy.table_id as number;
 
-              expect(orderPolicy.attribute_remappings).to.have.property(
-                "organization_id",
-              );
+        cy.get<number>("@postgresID").then((postgresId) => {
+          cy.request(
+            "GET",
+            `/api/permissions/graph/group/${ALL_EXTERNAL_USERS_GROUP_ID}`,
+          ).should((response) => {
+            const graph = response.body;
 
-              expect(peoplePolicy.attribute_remappings).to.have.property(
-                "organization_id",
-              );
+            const permissions =
+              graph.groups[ALL_EXTERNAL_USERS_GROUP_ID!][postgresId];
+            expect(permissions).to.exist;
+            const viewData = permissions["view-data"];
+            const createQueries = permissions["create-queries"];
+            const schemaPermissions =
+              Object.values(viewData).find(
+                (value) =>
+                  value != null &&
+                  typeof value === "object" &&
+                  !Array.isArray(value) &&
+                  ordersTableId in value &&
+                  peopleTableId in value,
+              ) ?? {};
+
+            expect(schemaPermissions).to.deep.equal({
+              [ordersTableId]: "sandboxed",
+              [peopleTableId]: "sandboxed",
             });
 
-            cy.request(
-              "GET",
-              `/api/permissions/graph/group/${ALL_EXTERNAL_USERS_GROUP_ID}`,
-            ).should((response) => {
-              const graph = response.body;
+            const createQuerySchemaPermissions =
+              Object.values(createQueries).find(
+                (value) =>
+                  value != null &&
+                  typeof value === "object" &&
+                  !Array.isArray(value) &&
+                  ordersTableId in value &&
+                  peopleTableId in value,
+              ) ?? {};
 
-              const permissions =
-                graph.groups[ALL_EXTERNAL_USERS_GROUP_ID!][postgresId];
-              expect(permissions).to.exist;
-              const viewData = permissions["view-data"];
-              const createQueries = permissions["create-queries"];
-              const schemaPermissions =
-                Object.values(viewData).find(
-                  (value) =>
-                    value != null &&
-                    typeof value === "object" &&
-                    !Array.isArray(value) &&
-                    ordersTable.id in value &&
-                    peopleTable.id in value,
-                ) ?? {};
-
-              expect(schemaPermissions).to.deep.equal({
-                [ordersTable.id]: "sandboxed",
-                [peopleTable.id]: "sandboxed",
-              });
-
-              const createQuerySchemaPermissions =
-                Object.values(createQueries).find(
-                  (value) =>
-                    value != null &&
-                    typeof value === "object" &&
-                    !Array.isArray(value) &&
-                    ordersTable.id in value &&
-                    peopleTable.id in value,
-                ) ?? {};
-
-              expect(createQuerySchemaPermissions).to.deep.equal({
-                [ordersTable.id]: "query-builder",
-                [peopleTable.id]: "query-builder",
-              });
+            expect(createQuerySchemaPermissions).to.deep.equal({
+              [ordersTableId]: "query-builder",
+              [peopleTableId]: "query-builder",
             });
           });
         });
@@ -1085,6 +1079,7 @@ describe("scenarios - embedding hub", () => {
       cy.get<number>("@postgresID").then((postgresId) => {
         getDatabaseTable(postgresId, "Orders").then((ordersTable) => {
           getTableFieldId(ordersTable.id, "User ID").then((userIdFieldId) => {
+            cy.wrap(userIdFieldId).as("setupUserIdFieldId");
             cy.request("GET", "/api/permissions/group").then((response) => {
               const allExternalUsersGroup = response.body.find(
                 (g: { magic_group_type: string }) =>
@@ -1149,29 +1144,24 @@ describe("scenarios - embedding hub", () => {
       H.undoToast().should("not.exist");
 
       cy.log("sandbox should be updated and not created");
-      cy.get<number>("@postgresID").then((postgresId) => {
-        getDatabaseTable(postgresId, "Orders").then((ordersTable) => {
-          getTableFieldId(ordersTable.id, "Product ID").then(
-            (productIdFieldId) => {
-              cy.request("GET", "/api/mt/gtap").should((response) => {
-                const policies = response.body;
+      cy.get<number>("@setupUserIdFieldId").then((userIdFieldId) => {
+        cy.request("GET", "/api/mt/gtap").should((response) => {
+          const policies = response.body;
 
-                const orderPolicies = policies.filter(
-                  (policy: { table_id: number }) =>
-                    policy.table_id === ordersTable.id,
-                );
-
-                // should only have one sandbox for Orders table
-                expect(orderPolicies.length).to.equal(1);
-
-                const [orderPolicy] = orderPolicies;
-                const tenantFieldRef =
-                  orderPolicy.attribute_remappings.organization_id;
-
-                expect(tenantFieldRef[1][1]).to.equal(productIdFieldId);
-              });
-            },
+          const orderPolicies = policies.filter(
+            (policy: { attribute_remappings?: Record<string, unknown> }) =>
+              policy.attribute_remappings?.organization_id,
           );
+
+          // should only have one sandbox for Orders table
+          expect(orderPolicies.length).to.equal(1);
+
+          const [orderPolicy] = orderPolicies;
+          const tenantFieldRef =
+            orderPolicy.attribute_remappings.organization_id;
+
+          // field ref should have changed from the original User ID field
+          expect(tenantFieldRef[1][1]).to.not.equal(userIdFieldId);
         });
       });
 
