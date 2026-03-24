@@ -166,7 +166,7 @@ export function MetabotSetup() {
   };
 
   const needsApiKey =
-    provider &&
+    !!provider &&
     isApiKeyMetabotProvider(provider) &&
     !hasSelectedProviderApiKey &&
     !!apiKeyError;
