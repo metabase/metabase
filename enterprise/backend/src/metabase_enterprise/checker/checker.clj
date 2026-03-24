@@ -17,11 +17,14 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase-enterprise.checker.source :as source]
+   [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.models.serialization.resolve :as resolve]))
+   [metabase.models.serialization.resolve :as resolve]
+   [metabase.query-processor.compile :as qp.compile]
+   [metabase.sql-parsing.core :as sql-parsing]))
 
 (set! *warn-on-reflection* true)
 
@@ -380,6 +383,93 @@
   (->SourceMetadataProvider store))
 
 ;;; ===========================================================================
+;;; Native SQL parsing — compile via QP then extract refs with SQLGlot
+;;;
+;;; Native queries can contain template tags ({{var}}, {{snippet:}}, {{#card}},
+;;; [[optional]]) that aren't valid SQL. Rather than stripping these ourselves,
+;;; we use the real QP compile path:
+;;;   1. lib/add-parameters-for-template-tags — adds dummy param values
+;;;   2. qp.compile/compile-with-inline-parameters — full compile with inlining
+;;; This gives us clean, parseable SQL that SQLGlot can analyze.
+;;; ===========================================================================
+
+;; metabase.sql-tools.sqlglot.core/driver->dialect but don't want to bring in the dep
+(def ^:private engine->dialect
+  "Map engine names to SQLGlot dialect strings. nil means use default dialect."
+  {"postgres"           "postgres"
+   "mysql"              "mysql"
+   "snowflake"          "snowflake"
+   "bigquery"           "bigquery"
+   "bigquery-cloud-sdk" "bigquery"
+   "redshift"           "redshift"
+   "sqlserver"          "tsql"
+   "sparksql"           "spark"
+   "presto-jdbc"        "presto"})
+
+(defn- compile-query-to-sql
+  "Compile a pMBQL query to SQL.
+
+   For native-only queries: adds dummy parameter values for template tags
+   and then uses compile-with-inline-parameters to produce clean SQL with
+   {{tags}} and [[optionals]] resolved. Falls back to raw SQL extraction
+   if the full compile path isn't available (e.g. test environments without
+   driver implementations).
+
+   For MBQL queries: uses the full QP compile path with the driver to
+   generate SQL from the MBQL structure.
+
+   Returns the compiled SQL string, or nil on failure."
+  [driver query]
+  (try
+    (let [with-params (lib/add-parameters-for-template-tags query)
+          compiled    (binding [driver/*driver* driver]
+                        (qp.compile/compile-with-inline-parameters with-params))]
+      (:query compiled))
+    (catch Exception _
+      ;; Fallback for native queries: extract raw SQL from the query stage.
+      ;; This works when the full QP setup isn't available (no driver impls),
+      ;; but won't resolve template tags.
+      (when (lib/native-only-query? query)
+        (:native (lib/query-stage query -1))))))
+
+(defn- parse-sql-refs
+  "Parse SQL string with SQLGlot, resolve refs against the store.
+   Returns {:tables [...] :fields [...]}."
+  [store db-name dialect sql]
+  (let [raw-tables  (sql-parsing/referenced-tables dialect sql)
+        raw-fields  (sql-parsing/referenced-fields dialect sql)
+        table-paths (mapv (fn [[_cat schema table]]
+                            [db-name schema table])
+                          raw-tables)
+        field-paths (mapv (fn [[_cat schema table field]]
+                            [db-name schema table field])
+                          raw-fields)]
+    ;; Resolve each ref against the store so IDs get assigned
+    ;; and lenient sources track them
+    (doseq [tp table-paths]
+      (load-table! store tp))
+    (doseq [fp field-paths]
+      (load-field! store fp))
+    {:tables (mapv #(str/join "." (remove nil? %)) table-paths)
+     :fields (mapv #(str/join "." (remove nil? %)) field-paths)}))
+
+(defn- parse-native-sql-refs
+  "Extract table and field references from a native query.
+
+   Uses the full QP compile path to resolve template tags, parameters, etc.
+   into clean SQL, then parses with SQLGlot.
+
+   Resolves each discovered ref against the store so they get IDs assigned
+   and (for lenient sources) get tracked in the manifest."
+  [store db-name query]
+  (let [engine  (:engine (cached-entity store :database db-name))
+        driver  (keyword engine)
+        dialect (get engine->dialect engine)
+        sql     (compile-query-to-sql driver query)]
+    (when sql
+      (parse-sql-refs store db-name dialect sql))))
+
+;;; ===========================================================================
 ;;; Card validation
 ;;; ===========================================================================
 
@@ -436,10 +526,22 @@
                          (::unresolved-refs card-meta))
        :error      (str "Unknown database: " missing-db)}
       (try
-        (let [card     (lib.metadata/card provider card-id)
-              query    (lib/query provider (:dataset-query card))
-              refs     (extract-refs-from-query store query provider #{card-id})
-              bad-refs (lib/find-bad-refs query)]
+        (let [card      (lib.metadata/card provider card-id)
+              query     (lib/query provider (:dataset-query card))
+              refs      (extract-refs-from-query store query provider #{card-id})
+              ;; Compile native queries to SQL via QP, then parse for table/field refs
+              db-name   (get-in data [:dataset_query :database])
+              sql-refs  (when (and (get-in data [:dataset_query :native :query]) db-name)
+                          (parse-native-sql-refs store db-name query))
+              ;; Merge MBQL refs with SQL-parsed refs
+              refs      (if sql-refs
+                          (-> refs
+                              (update :tables into (:tables sql-refs))
+                              (update :fields into (:fields sql-refs))
+                              (update :tables #(vec (distinct %)))
+                              (update :fields #(vec (distinct %))))
+                          refs)
+              bad-refs  (lib/find-bad-refs query)]
           {:card-id    card-id
            :name       (:name data)
            :entity-id  entity-id
