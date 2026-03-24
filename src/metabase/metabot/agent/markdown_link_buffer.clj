@@ -45,17 +45,29 @@
                     (re-find #"\[[^\]]*\]\([^)]*$" suffix)) ; unclosed (
             last-open))))))
 
+(def ^:private slack-link-prefix
+  "The prefix that starts a Slack-format metabase:// link."
+  "<metabase://")
+
 (defn- find-potential-slack-link-start
   "Find the index of a potential incomplete Slack-format metabase:// link.
-   Only buffers on `<metabase://` prefix — regular `<` characters must NOT trigger buffering.
+   Detects both complete `<metabase://` prefixes and partial prefixes at the end
+   of text (e.g., `<meta`, `<metabase:/`) to handle streaming chunk boundaries.
    Returns nil if no potential incomplete link exists."
   [text]
-  (let [idx (str/last-index-of text "<metabase://")]
-    (when idx
+  (let [idx (str/last-index-of text slack-link-prefix)]
+    (if idx
+      ;; Found full prefix — buffer if the link is incomplete (no closing >)
       (let [suffix (subs text idx)]
-        ;; Only buffer if there's no closing > (i.e., the link is incomplete)
         (when-not (re-find links/slack-link-pattern suffix)
-          idx)))))
+          idx))
+      ;; Check if text ends with any partial prefix of "<metabase://"
+      (loop [prefix-len (min (dec (count slack-link-prefix))
+                             (count text))]
+        (when (pos? prefix-len)
+          (if (str/ends-with? text (subs slack-link-prefix 0 prefix-len))
+            (- (count text) prefix-len)
+            (recur (dec prefix-len))))))))
 
 (defn- find-potential-link-start
   "Find the index of the earliest potential incomplete link start.
