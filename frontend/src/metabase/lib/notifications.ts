@@ -3,15 +3,16 @@ import _ from "underscore";
 
 import type { NotificationListItem } from "metabase/account/notifications/types";
 import { cronToScheduleSettings } from "metabase/common/components/Schedule/cron";
+import {
+  ALERT_TYPE_PROGRESS_BAR_GOAL,
+  ALERT_TYPE_TIMESERIES_GOAL,
+  getQuestionAlertType,
+} from "metabase/lib/alert";
 import { getEmailDomain, isEmail } from "metabase/lib/email";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting/date";
 import { formatTimeWithUnit } from "metabase/lib/formatting/time";
 import MetabaseSettings from "metabase/lib/settings";
 import { formatFrame } from "metabase/lib/time-dayjs";
-import {
-  ALERT_TYPE_PROGRESS_BAR_GOAL,
-  ALERT_TYPE_TIMESERIES_GOAL,
-} from "metabase-lib/v1/Alert";
 import type Question from "metabase-lib/v1/Question";
 import type {
   ChannelApiResponse,
@@ -151,8 +152,7 @@ function hasProperGoalForAlert({
   question: Question | undefined;
   visualizationSettings: VisualizationSettings;
 }): boolean {
-  const alertType = question?.alertType(visualizationSettings);
-
+  const alertType = getQuestionAlertType(question, visualizationSettings);
   if (!alertType) {
     return false;
   }
