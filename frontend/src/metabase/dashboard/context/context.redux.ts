@@ -38,7 +38,6 @@ import {
   setParameterValueToDefault,
   setSharing,
   setSidebar,
-  showAddParameterPopover,
   toggleSidebar,
   updateDashboard,
   updateDashboardAndCards,
@@ -53,7 +52,11 @@ import {
   undoDeleteTab,
 } from "metabase/dashboard/actions/tabs";
 import { connect } from "metabase/lib/redux";
-import { initialize, reset } from "metabase/redux/dashboard";
+import {
+  initialize,
+  reset,
+  showAddParameterPopover,
+} from "metabase/redux/dashboard";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import {
   canManageSubscriptions,
