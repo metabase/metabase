@@ -106,15 +106,13 @@
        fetch-failure-cooldown-ms)))
 
 (defn- fetch-and-cache-assets!
-  "Fetch and cache static assets from the plugin repo based on the manifest."
+  "Fetch and cache static assets from the plugin repo based on the manifest whitelist."
   [conn commit-sha plugin-id parsed-manifest]
   (when parsed-manifest
-    (let [all-files    (git/list-files conn commit-sha)
-          asset-paths  (manifest/asset-paths parsed-manifest all-files)]
-      (doseq [path asset-paths]
-        (when-let [bytes (git/read-file-bytes conn commit-sha path)]
-          (swap! asset-cache assoc-in [plugin-id path] bytes)
-          (write-asset-to-disk! plugin-id path bytes))))))
+    (doseq [path (manifest/asset-paths parsed-manifest)]
+      (when-let [bytes (git/read-file-bytes conn commit-sha path)]
+        (swap! asset-cache assoc-in [plugin-id path] bytes)
+        (write-asset-to-disk! plugin-id path bytes)))))
 
 (defn fetch-and-cache!
   "Fetch index.js and manifest from the plugin's git repo, update both caches and DB record.

@@ -1,6 +1,7 @@
 {
   "name": "__CUSTOM_VIZ_NAME__",
   "icon": "dist/assets/icon.svg",
+  "assets": ["dist/assets/icon.svg"],
   "metabase": {
     "version": ">=59"
   }

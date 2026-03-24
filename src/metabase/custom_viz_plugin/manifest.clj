@@ -90,16 +90,14 @@
     (some #(str/ends-with? lower %) image-extensions)))
 
 (defn asset-paths
-  "List the static image asset paths declared in the manifest, or inferred from the dist/assets/ convention.
-   Only includes image files. Returns a sequence of paths relative to the repo root."
-  [manifest all-repo-files]
+  "List the static image asset paths whitelisted by the manifest.
+   Includes paths from the `assets` array and the `icon` path (if it's a file path).
+   Only image files are included. Returns a sequence of paths relative to the repo root."
+  [manifest]
   (let [;; assets explicitly listed in manifest (filtered to images only)
         declared  (filter image-file? (get manifest :assets []))
-        ;; include the icon if it's a path (not an icon name)
+        ;; include the icon if it's a path (contains a slash) and is an image
         icon-path (when-let [icon (:icon manifest)]
                     (when (and (re-find #"/" icon) (image-file? icon))
-                      icon))
-        ;; all image files under dist/assets/ in the repo
-        auto      (filter (every-pred #(str/starts-with? % "dist/assets/") image-file?)
-                          all-repo-files)]
-    (distinct (concat declared (when icon-path [icon-path]) auto))))
+                      icon))]
+    (distinct (concat declared (when icon-path [icon-path])))))
