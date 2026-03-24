@@ -1,29 +1,15 @@
-import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
-import { getMetadata } from "metabase/selectors/metadata";
 import type { Database } from "metabase-types/api";
 import { createMockDatabase } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
-import DatabaseStatusLarge from "./DatabaseStatusLarge";
+import { DatabaseStatusLarge } from "./DatabaseStatusLarge";
 
 interface SetupOpts {
   databases: Database[];
 }
 
 const setup = ({ databases }: SetupOpts) => {
-  const state = createMockState({
-    entities: createMockEntitiesState({ databases }),
-  });
-  const metadata = getMetadata(state);
-
-  renderWithProviders(
-    <DatabaseStatusLarge
-      databases={databases.map(({ id }) => checkNotNull(metadata.database(id)))}
-    />,
-    { storeInitialState: state },
-  );
+  renderWithProviders(<DatabaseStatusLarge databases={databases} />);
 };
 
 describe("DatabaseStatusLarge", () => {

@@ -13,7 +13,8 @@ import { t } from "ttag";
 
 import { useListCollectionsQuery, useListSnippetsQuery } from "metabase/api";
 import { useSelector } from "metabase/lib/redux";
-import { PLUGIN_METABOT, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { getMetabotVisible } from "metabase/metabot/state";
+import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { SnippetFormModal } from "metabase/query_builder/components/template_tags/SnippetFormModal";
 import { useNotebookScreenSize } from "metabase/query_builder/hooks/use-notebook-screen-size";
 import {
@@ -197,7 +198,7 @@ export const NativeQueryEditor = forwardRef<
   // do not show reference sidebar on small screens automatically
   const screenSize = useNotebookScreenSize();
   const isMetabotSidebarOpen = useSelector((state) =>
-    PLUGIN_METABOT.getMetabotVisible(state, "omnibot"),
+    getMetabotVisible(state, "omnibot"),
   );
   const shouldOpenDataReference =
     screenSize !== "small" && !isMetabotSidebarOpen;

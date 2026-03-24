@@ -7,8 +7,8 @@ import { ConnectedActionDashcardSettings } from "metabase/actions/components/Act
 import { isActionDashCard } from "metabase/actions/utils";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { FormField } from "metabase/common/components/FormField/FormField";
+import { Sidebar } from "metabase/common/components/Sidebar";
 import CS from "metabase/css/core/index.css";
-import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { Form, FormProvider, FormSelect, FormTextInput } from "metabase/forms";
 import { Box, Button, Divider, Flex, Modal, Stack, Title } from "metabase/ui";

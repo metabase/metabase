@@ -238,7 +238,8 @@
     [:transform-tag-ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
     [:start-time {:optional true} [:maybe ms/NonBlankString]]
     [:end-time {:optional true} [:maybe ms/NonBlankString]]
-    [:run-methods {:optional true} [:maybe (ms/QueryVectorOf [:enum "manual" "cron"])]]]]
+    [:run-methods {:optional true} [:maybe (ms/QueryVectorOf [:enum "manual" "cron"])]]
+    [:user-id {:optional true} [:maybe ms/PositiveInt]]]]
   (api/check-data-analyst)
   (-> (transforms.core/paged-runs (assoc query-params
                                          :offset (request/offset)

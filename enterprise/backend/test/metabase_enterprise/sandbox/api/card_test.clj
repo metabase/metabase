@@ -6,7 +6,7 @@
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.schema :as permissions.schema]
    [metabase.queries-rest.api.card-test :as api.card-test]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]))
 

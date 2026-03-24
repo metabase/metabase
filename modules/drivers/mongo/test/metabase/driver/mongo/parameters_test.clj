@@ -6,7 +6,7 @@
    [java-time.api :as t]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters :as params]
    [metabase.driver.mongo.parameters :as mongo.params]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.util.json :as json]))
 

@@ -1,7 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { isTransientId } from "metabase/dashboard/utils";
+import { isTransientId } from "metabase/lib/dashboard";
 import { stripId } from "metabase/lib/formatting";
 import type { ComboboxItem } from "metabase/ui";
 import type Field from "metabase-lib/v1/metadata/Field";
