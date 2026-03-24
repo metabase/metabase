@@ -2,6 +2,7 @@ import cx from "classnames";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { useToast } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/lib/redux";
@@ -11,7 +12,6 @@ import {
   setUIControls,
   updateQuestion,
 } from "metabase/query_builder/actions";
-import { SidebarContent } from "metabase/query_builder/components/SidebarContent";
 import {
   ChartTypeSettings,
   type GetSensibleVisualizationsProps,

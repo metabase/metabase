@@ -8,6 +8,7 @@ import {
   INITIALIZE,
 } from "metabase/dashboard/actions/core";
 import { Dashboards } from "metabase/entities/dashboards";
+import { isVirtualDashCard } from "metabase/lib/dashboard";
 import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
 import { checkNotNull } from "metabase/lib/types";
 import { addUndo } from "metabase/redux/undo";
@@ -32,7 +33,6 @@ import { getDashCardById } from "../selectors";
 import {
   calculateDashCardRowAfterUndo,
   generateTemporaryDashcardId,
-  isVirtualDashCard,
 } from "../utils";
 
 import { getDashCardMoveToTabUndoMessage, getExistingDashCards } from "./utils";

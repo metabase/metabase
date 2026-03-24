@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { getDashcardData, getParameters } from "metabase/dashboard/selectors";
-import { isQuestionDashCard } from "metabase/dashboard/utils";
+import { isQuestionDashCard } from "metabase/lib/dashboard";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
 import { loadMetadataForCard } from "metabase/questions/actions";

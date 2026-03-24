@@ -3,6 +3,7 @@
    [compojure.route :as route]
    [metabase.actions-rest.api]
    [metabase.activity-feed.api]
+   [metabase.agent-api.api]
    [metabase.analytics.api]
    [metabase.api-keys.api]
    [metabase.api.docs]
@@ -17,14 +18,15 @@
    [metabase.channel.api]
    [metabase.cloud-migration.api]
    [metabase.collections-rest.api]
-   [metabase.custom-viz-plugin.api]
    [metabase.comments.api]
    [metabase.config.core :as config]
+   [metabase.custom-viz-plugin.api]
    [metabase.dashboards-rest.api]
    [metabase.data-studio.api]
    [metabase.documents.api]
    [metabase.eid-translation.api]
    [metabase.embedding-rest.api]
+   [metabase.frontend-errors.api]
    [metabase.geojson.api]
    [metabase.glossary.api]
    [metabase.indexed-entities.api]
@@ -32,6 +34,10 @@
    [metabase.logger.api]
    [metabase.login-history.api]
    [metabase.measures.api]
+   [metabase.metabot.api]
+   [metabase.metabot.api.entity-analysis]
+   [metabase.metabot.api.sql-fixer]
+   [metabase.metabot.api.sql-generation]
    [metabase.metrics.api]
    [metabase.model-persistence.api]
    [metabase.native-query-snippets.api]
@@ -69,6 +75,7 @@
 
 (comment metabase.actions-rest.api/keep-me
          metabase.activity-feed.api/keep-me
+         metabase.agent-api.api/keep-me
          metabase.analytics.api/keep-me
          metabase.api-keys.api/keep-me
          metabase.api.util/keep-me
@@ -83,6 +90,7 @@
          metabase.data-studio.api/keep-me
          metabase.documents.api/keep-me
          metabase.eid-translation.api/keep-me
+         metabase.frontend-errors.api/keep-me
          metabase.geojson.api/keep-me
          metabase.glossary.api/keep-me
          metabase.indexed-entities.api/keep-me
@@ -149,6 +157,10 @@
 (def ^:private route-map
   {"/action"               (+auth 'metabase.actions-rest.api)
    "/activity"             (+auth 'metabase.activity-feed.api)
+   "/agent"                metabase.agent-api.api/routes
+   "/ai-entity-analysis"   metabase.metabot.api.entity-analysis/routes
+   "/ai-sql-fixer"         metabase.metabot.api.sql-fixer/routes
+   "/ai-sql-generation"    metabase.metabot.api.sql-generation/routes
    "/alert"                (+auth metabase.pulse.api/alert-routes)
    "/analytics"            (+auth 'metabase.analytics.api)
    "/api-key"              (+auth 'metabase.api-keys.api)
@@ -173,6 +185,7 @@
    "/email"                metabase.channel.api/email-routes
    "/embed"                (+message-only-exceptions metabase.embedding-rest.api/embedding-routes)
    "/field"                (+auth metabase.warehouse-schema-rest.api/field-routes)
+   "/frontend-errors"      'metabase.frontend-errors.api
    "/geojson"              'metabase.geojson.api
    "/glossary"             (+auth 'metabase.glossary.api)
    "/google"               (+auth metabase.sso.api/google-auth-routes)
@@ -181,6 +194,7 @@
    "/logger"               (+auth 'metabase.logger.api)
    "/login-history"        (+auth 'metabase.login-history.api)
    "/measure"              (+auth 'metabase.measures.api)
+   "/metabot"              metabase.metabot.api/routes
    "/metric"               (+auth 'metabase.metrics.api)
    "/model-index"          (+auth 'metabase.indexed-entities.api)
    "/native-query-snippet" (+auth 'metabase.native-query-snippets.api)

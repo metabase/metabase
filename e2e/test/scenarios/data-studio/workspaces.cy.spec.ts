@@ -1821,7 +1821,6 @@ describe("scenarios > data studio > workspaces", () => {
       cy.log("change target table");
       cy.button(/Change target/).click();
       H.modal().within(() => {
-        cy.findByLabelText("Schema").clear().type("new_schema");
         cy.findByLabelText("New table name").clear().type("epic_table");
         cy.button("Change target").click();
       });

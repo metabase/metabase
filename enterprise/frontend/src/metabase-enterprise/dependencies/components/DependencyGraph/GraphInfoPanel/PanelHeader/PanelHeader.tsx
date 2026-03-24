@@ -2,7 +2,6 @@ import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_REPLACEMENT } from "metabase/plugins";
 import {
   ActionIcon,
@@ -16,11 +15,11 @@ import {
 import type { DependencyNode } from "metabase-types/api";
 
 import {
-  getNodeDataSourceEntry,
   getNodeIcon,
   getNodeLabel,
   getNodeLink,
   getNodeLocationInfo,
+  getNodeSourceReplacementEntry,
 } from "../../../../utils";
 import { GraphBreadcrumbs } from "../../GraphBreadcrumbs";
 import { GraphExternalLink } from "../../GraphExternalLink";
@@ -35,10 +34,7 @@ type PanelHeaderProps = {
 export function PanelHeader({ node, onClose }: PanelHeaderProps) {
   const link = getNodeLink(node);
   const location = getNodeLocationInfo(node);
-  const sourceEntry = getNodeDataSourceEntry(node);
-  const canUserReplaceSources = useSelector(
-    PLUGIN_REPLACEMENT.canUserReplaceSources,
-  );
+  const sourceEntry = getNodeSourceReplacementEntry(node);
   const [
     isReplaceModalOpened,
     { open: openReplaceModal, close: closeReplaceModal },
@@ -60,15 +56,20 @@ export function PanelHeader({ node, onClose }: PanelHeaderProps) {
           {link != null && (
             <GraphExternalLink label={link.label} url={link.url} />
           )}
-          {sourceEntry != null && canUserReplaceSources && (
-            <Tooltip label={t`Find and replace`}>
-              <ActionIcon
-                aria-label={t`Replace data source`}
-                onClick={openReplaceModal}
-              >
-                <FixedSizeIcon name="find_replace" />
-              </ActionIcon>
-            </Tooltip>
+          {sourceEntry != null && (
+            <PLUGIN_REPLACEMENT.SourceReplacementButton>
+              {({ tooltip, isDisabled }) => (
+                <Tooltip label={tooltip ?? t`Find and replace`}>
+                  <ActionIcon
+                    aria-label={t`Replace data source`}
+                    disabled={isDisabled}
+                    onClick={openReplaceModal}
+                  >
+                    <FixedSizeIcon name="find_replace" />
+                  </ActionIcon>
+                </Tooltip>
+              )}
+            </PLUGIN_REPLACEMENT.SourceReplacementButton>
           )}
           <ActionIcon aria-label={t`Close`} onClick={onClose}>
             <FixedSizeIcon name="close" />
@@ -76,8 +77,8 @@ export function PanelHeader({ node, onClose }: PanelHeaderProps) {
         </Group>
       </Group>
       {sourceEntry != null && (
-        <PLUGIN_REPLACEMENT.ReplaceDataSourceModal
-          isOpened={isReplaceModalOpened}
+        <PLUGIN_REPLACEMENT.SourceReplacementModal
+          opened={isReplaceModalOpened}
           initialSource={sourceEntry}
           onClose={closeReplaceModal}
         />

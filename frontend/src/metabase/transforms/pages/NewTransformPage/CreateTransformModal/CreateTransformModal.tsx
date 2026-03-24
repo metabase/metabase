@@ -29,8 +29,8 @@ import type {
 } from "metabase-types/api";
 
 import { SchemaFormSelect } from "../../../components/SchemaFormSelect";
+import { TargetNameInput } from "../../../components/TargetNameInput";
 
-import { TargetNameInput } from "./TargetNameInput";
 import type { NewTransformValues } from "./form";
 import { useCreateTransform } from "./hooks";
 

@@ -1,4 +1,5 @@
-import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
+import { useSetting } from "metabase/common/hooks";
+import { PLUGIN_METABOT } from "metabase/plugins";
 
 import { useMetabotEnabledEmbeddingAware } from "./use-metabot-embedding-aware-enabled";
 
@@ -9,13 +10,14 @@ import { useMetabotEnabledEmbeddingAware } from "./use-metabot-embedding-aware-e
  * OSS path: not hosted AND Anthropic API key is configured
  */
 export const useLlmSqlGenerationEnabled = (): boolean => {
-  const hasMetabotV3 = useHasTokenFeature("metabot_v3");
-  const isMetabotEnabled = useMetabotEnabledEmbeddingAware();
+  const isMetabotEnabled = useMetabotEnabledEmbeddingAware({
+    requireMeteabotFeature: false,
+  });
   const isHosted = useSetting("is-hosted?");
   const isAnthropicConfigured = useSetting("llm-anthropic-api-key-configured?");
 
   // Enterprise: metabot_v3 feature + metabot enabled
-  if (hasMetabotV3) {
+  if (PLUGIN_METABOT.hasFeature) {
     return isMetabotEnabled;
   }
 
