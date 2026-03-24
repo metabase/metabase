@@ -211,6 +211,26 @@
       (testing "consuming again returns nil"
         (is (nil? (proto/consume-authorization-code acs code)))))))
 
+(deftest authorization-code-store-consume-race-test
+  (testing "concurrent consume calls: exactly one succeeds"
+    (let [acs       (store/create-authorization-code-store)
+          code      (str (random-uuid))
+          user-id   (mt/user->id :rasta)
+          client-id (str (random-uuid))
+          expiry    (+ (inst-ms (java.util.Date.)) 600000)]
+      (proto/save-authorization-code acs code user-id client-id
+                                     "https://example.com/callback"
+                                     ["openid" "profile"]
+                                     "test-nonce"
+                                     expiry
+                                     "challenge123"
+                                     "S256"
+                                     ["https://api.example.com"])
+      (let [results (->> (repeatedly 10 #(future (proto/consume-authorization-code acs code)))
+                         doall
+                         (map deref))]
+        (is (= 1 (count (filter some? results))))))))
+
 ;;; ------------------------------------------------ TokenStore --------------------------------------------------------
 
 (deftest token-store-access-token-test
