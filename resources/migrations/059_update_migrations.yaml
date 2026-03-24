@@ -3506,9 +3506,9 @@ databaseChangeLog:
               - column:
                   name: display_name
                   type: varchar(254)
-                  remarks: Admin-provided display name override (null = use manifest default)
+                  remarks: Human-readable name from the plugin manifest
                   constraints:
-                    nullable: true
+                    nullable: false
               - column:
                   name: identifier
                   type: varchar(254)
@@ -3625,7 +3625,9 @@ databaseChangeLog:
               - column:
                   name: icon
                   type: varchar(254)
-                  remarks: Icon name for the visualization type selector
+                  remarks: Icon from plugin manifest - can be an icon name or asset path
+                  constraints:
+                    nullable: false
 
   - changeSet:
       id: v59.2026-03-23T10:00:00
