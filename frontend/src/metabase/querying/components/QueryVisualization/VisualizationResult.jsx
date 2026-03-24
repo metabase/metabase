@@ -8,6 +8,7 @@ import { ErrorMessage } from "metabase/common/components/ErrorMessage";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { getQuestionAlertType } from "metabase/lib/alert";
 import { CreateOrEditQuestionAlertModalWithQuestion } from "metabase/notifications/modals/CreateOrEditQuestionAlertModal/CreateOrEditQuestionAlertModal";
 import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
@@ -73,7 +74,8 @@ export class VisualizationResult extends Component {
 
     const noResults = datasetContainsNoResults(result.data);
     if (noResults && !isRunning && !renderEmptyMessage) {
-      const supportsRowsPresentAlert = question.alertType() === ALERT_TYPE_ROWS;
+      const supportsRowsPresentAlert =
+        !isEmbeddingSdk() && getQuestionAlertType(question) === ALERT_TYPE_ROWS;
 
       const supportsBackToPreviousResult =
         !isEmbeddingSdk() || !!onNavigateBack;
