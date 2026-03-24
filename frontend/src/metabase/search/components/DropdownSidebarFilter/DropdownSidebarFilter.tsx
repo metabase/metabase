@@ -1,5 +1,5 @@
 import type { MouseEvent } from "react";
-import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { isEmpty } from "underscore";
 
 import { useCaptureEvent } from "metabase/common/hooks";
@@ -37,13 +37,6 @@ export const DropdownSidebarFilter = ({
   isOpen: isPopoverOpen,
   onOpenChange,
 }: DropdownSidebarFilterProps) => {
-  const setIsPopoverOpen = useCallback(
-    (open: boolean) => {
-      onOpenChange(open);
-    },
-    [onOpenChange],
-  );
-
   const isNavbarOpen = useSelector(getIsNavbarOpen);
   const isSmallScreen = useIsSmallScreen();
 
@@ -71,20 +64,20 @@ export const DropdownSidebarFilter = ({
 
   useLayoutEffect(() => {
     if (isNavbarOpen && isSmallScreen) {
-      setIsPopoverOpen(false);
+      onOpenChange(false);
     }
-  }, [isNavbarOpen, isSmallScreen, setIsPopoverOpen]);
+  }, [isNavbarOpen, isSmallScreen, onOpenChange]);
 
   const onApplyFilter = (value: SearchFilterPropTypes) => {
     onChange(value);
-    setIsPopoverOpen(false);
+    onOpenChange(false);
   };
 
   const onClearFilter = (e: MouseEvent) => {
     if (fieldHasValue) {
       e.stopPropagation();
       onChange(null);
-      setIsPopoverOpen(false);
+      onOpenChange(false);
     }
   };
 
@@ -101,7 +94,7 @@ export const DropdownSidebarFilter = ({
     (e) => {
       if (e.key === "Escape") {
         e.stopImmediatePropagation();
-        setIsPopoverOpen(false);
+        onOpenChange(false);
       }
     },
     { enabled: isPopoverOpen },
@@ -110,14 +103,14 @@ export const DropdownSidebarFilter = ({
   return (
     <Popover
       opened={isPopoverOpen}
-      onChange={setIsPopoverOpen}
+      onChange={onOpenChange}
       position="bottom-end"
     >
       <Popover.Target>
         <Box
           data-testid={dataTestId}
           ref={dropdownRef}
-          onClick={() => setIsPopoverOpen(!isPopoverOpen)}
+          onClick={() => onOpenChange(!isPopoverOpen)}
           w="100%"
           mt={fieldHasValue ? "0.25rem" : 0}
         >

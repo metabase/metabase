@@ -27,11 +27,15 @@ export function useCaptureEvent<T extends EventType>(
       return;
     }
 
+    const controller = new AbortController();
     const listener = (e: DocumentEventMap[T]) => {
       handlerRef.current(e);
     };
 
-    document.addEventListener(eventType, listener, true);
-    return () => document.removeEventListener(eventType, listener, true);
+    document.addEventListener(eventType, listener, {
+      capture: true,
+      signal: controller.signal,
+    });
+    return () => controller.abort();
   }, [enabled, eventType, handlerRef]);
 }

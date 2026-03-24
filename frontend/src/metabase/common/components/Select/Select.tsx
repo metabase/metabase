@@ -3,7 +3,6 @@ import cx from "classnames";
 import type {
   CSSProperties,
   Key,
-  MouseEvent,
   ReactElement,
   ReactNode,
   RefObject,
@@ -244,7 +243,7 @@ class BaseSelect<
     this.setState({ isPopoverOpen: false });
   };
 
-  togglePopover = (event: MouseEvent<HTMLAnchorElement>) => {
+  togglePopover = (event: React.MouseEvent<HTMLAnchorElement>) => {
     event.preventDefault();
     if (!this.props.disabled) {
       this.setState(({ isPopoverOpen }) => {
