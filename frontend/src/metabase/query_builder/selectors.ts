@@ -544,14 +544,14 @@ export const getZoomedObjectRowIndex = createSelector(
       return;
     }
 
+    const parsedObjectId =
+      typeof objectId === "string" ? parseInt(objectId) : objectId;
+
     if (PKRowIndexMap instanceof Map) {
-      return PKRowIndexMap.get(objectId);
+      return PKRowIndexMap.get(parsedObjectId);
     }
 
-    const index =
-      typeof objectId === "string" ? parseInt(objectId) : (objectId ?? -1);
-
-    return PKRowIndexMap[index];
+    return PKRowIndexMap[parsedObjectId];
   },
 );
 
