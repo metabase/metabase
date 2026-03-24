@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
+import { MetabotSlackSetup } from "metabase/metabot/components/MetabotAdmin/MetabotSlackSetup";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import { Icon } from "metabase/ui";
 
@@ -17,7 +18,7 @@ export const SlackSettingsPage = () => {
         }
       >
         <SlackSetup />
-        <PLUGIN_METABOT.MetabotSlackSetup />
+        {PLUGIN_METABOT.hasFeature && <MetabotSlackSetup />}
       </SettingsPageWrapper>
     </>
   );

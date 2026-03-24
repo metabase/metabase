@@ -192,6 +192,42 @@ jobs:
           ./COMMIT-ID
           ./SHA256.sum
 
+  upload-to-cloud:
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    needs: tag-uberjar-for-release
+    timeout-minutes: 15
+    steps:
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_S3_RELEASE_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_S3_RELEASE_SECRET_ACCESS_KEY }}
+        aws-region: ${{ vars.AWS_REGION }}
+    - uses: actions/checkout@v4
+      with:
+        sparse-checkout: .github
+    - name: Retrieve release ee uberjar artifact
+      uses: ./.github/actions/fetch-artifact
+      with:
+        commit: ${{ inputs.commit }}
+        edition: ee
+        release: "true"
+    - name: Determine the upload path
+      uses: actions/github-script@v7
+      id: version_path
+      with:
+        result-encoding: string
+        script: | # js
+          const version = '${{ inputs.version }}';
+          // only EE version
+          const version_path = 'release/' + version.replace(/^v0\./, "v1.");
+
+          console.log("sending to", version_path);
+          return version_path;
+    - name: Upload to S3
+      run: |
+        aws s3 cp ./metabase.jar s3://${{ secrets.AWS_S3_CLOUD_DEPLOY_BUCKET }}/${{ steps.version_path.outputs.result }}/metabase.jar
+
   run-pre-release-tests:
     name: Run pre-release tests for ${{ inputs.version }}
     needs: tag-uberjar-for-release

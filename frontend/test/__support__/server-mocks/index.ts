@@ -41,6 +41,7 @@ export * from "./premium-features";
 export * from "./public";
 export * from "./pulse";
 export * from "./remote-sync";
+export * from "./replacement";
 export * from "./revision";
 export * from "./search";
 export * from "./segment";

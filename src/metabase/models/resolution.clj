@@ -54,10 +54,10 @@
     :model/ImplicitAction                    metabase.actions.models
     :model/LoginHistory                      metabase.login-history.models.login-history
     :model/Measure                           metabase.measures.models.measure
-    :model/Metabot                           metabase-enterprise.metabot-v3.models.metabot
-    :model/MetabotConversation               metabase-enterprise.metabot-v3.models.metabot-conversation
-    :model/MetabotMessage                    metabase-enterprise.metabot-v3.models.metabot-message
-    :model/MetabotPrompt                     metabase-enterprise.metabot-v3.models.metabot-prompt
+    :model/Metabot                           metabase.metabot.models.metabot
+    :model/MetabotConversation               metabase.metabot.models.metabot-conversation
+    :model/MetabotMessage                    metabase.metabot.models.metabot-message
+    :model/MetabotPrompt                     metabase.metabot.models.metabot-prompt
     :model/ModelIndex                        metabase.indexed-entities.models.model-index
     :model/ModelIndexValue                   metabase.indexed-entities.models.model-index
     :model/ModerationReview                  metabase.content-verification.models.moderation-review
