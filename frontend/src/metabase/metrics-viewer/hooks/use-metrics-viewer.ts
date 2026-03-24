@@ -19,7 +19,7 @@ import type {
   SelectedMetric,
   SourceColorMap,
 } from "../types/viewer-state";
-import { isMetricEntry } from "../types/viewer-state";
+import { isExpressionEntry, isMetricEntry } from "../types/viewer-state";
 import {
   applyProjection,
   buildBinnedBreakoutDefinition,
@@ -252,10 +252,25 @@ export function useMetricsViewer({
     [definitionValues],
   );
 
-  const sourceOrder = useMemo(
-    () => state.formulaEntities.filter(isMetricEntry).map((entry) => entry.id),
-    [state.formulaEntities],
-  );
+  const sourceOrder = useMemo(() => {
+    const out: MetricSourceId[] = [];
+    const seen = new Set<MetricSourceId>();
+    for (const entry of state.formulaEntities) {
+      if (isMetricEntry(entry) && !seen.has(entry.id)) {
+        out.push(entry.id);
+        seen.add(entry.id);
+      }
+      if (isExpressionEntry(entry)) {
+        for (const token of entry.tokens) {
+          if (token.type === "metric" && !seen.has(token.sourceId)) {
+            out.push(token.sourceId);
+            seen.add(token.sourceId);
+          }
+        }
+      }
+    }
+    return out;
+  }, [state.formulaEntities]);
 
   const sourceDataById = useMemo((): Record<
     MetricSourceId,
