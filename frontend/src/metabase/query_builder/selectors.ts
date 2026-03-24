@@ -436,7 +436,7 @@ function areComposedEntitiesEquivalent({
   originalQuestion?: Question | null;
   lastRunQuestion?: Question | null;
   currentQuestion?: Question | null;
-  tableMetadata: Table;
+  tableMetadata?: Table | null;
 }) {
   const isQuestion = originalQuestion?.type() === "question";
   if (!originalQuestion || !lastRunQuestion || !currentQuestion || isQuestion) {

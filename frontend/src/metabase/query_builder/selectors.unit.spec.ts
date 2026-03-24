@@ -12,7 +12,11 @@ import {
 import registerVisualizations from "metabase/visualizations/register";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import type { Card } from "metabase-types/api";
+import type {
+  ConcreteFieldReference,
+  NativeQuery,
+  StructuredQuery,
+} from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
@@ -35,6 +39,7 @@ import {
 import type {
   QueryBuilderState,
   QueryBuilderUIControls,
+  Range,
 } from "metabase-types/store";
 import {
   createMockQueryBuilderState,
@@ -63,16 +68,6 @@ function getBaseState({
       }),
     }),
   });
-}
-
-function getBaseCard(opts: Partial<Card> = {}) {
-  return {
-    ...opts,
-    dataset_query: {
-      database: 1,
-      ...opts.dataset_query,
-    },
-  };
 }
 
 describe("getQuestion", () => {
@@ -120,7 +115,7 @@ describe("getQuestion", () => {
   });
 
   it("should return real dataset when dataset is open in 'dataset' QB mode", () => {
-    const card = {
+    const card = createMockCard({
       id: 5,
       type: "model",
       dataset_query: {
@@ -130,7 +125,7 @@ describe("getQuestion", () => {
           "source-table": 1,
         },
       },
-    };
+    });
 
     const question = getQuestion(
       getBaseState({
@@ -141,17 +136,22 @@ describe("getQuestion", () => {
       }),
     );
 
-    expect(question.card()).toEqual(assoc(card, "displayIsLocked", true));
+    expect(question?.card()).toEqual(assoc(card, "displayIsLocked", true));
   });
 });
 
 describe("getIsResultDirty", () => {
   describe("structured query", () => {
-    function getCard(query) {
-      return getBaseCard({ dataset_query: { type: "query", query } });
+    function getCard(query: StructuredQuery) {
+      return createMockCard({
+        dataset_query: { type: "query", database: 1, query },
+      });
     }
 
-    function getState(lastRunCardQuery, cardQuery) {
+    function getState(
+      lastRunCardQuery: StructuredQuery,
+      cardQuery: StructuredQuery,
+    ) {
       return getBaseState({
         card: getCard(cardQuery),
         lastRunCard: getCard(lastRunCardQuery),
@@ -177,34 +177,25 @@ describe("getIsResultDirty", () => {
     });
 
     it("converts clauses into plain MBQL objects", () => {
-      const aggregation = ["count"];
-      const breakout = ["field", ORDERS.CREATED_AT, null];
-      const filter = [">", ["field", ORDERS.TOTAL, null], 20];
-      const join = {
-        alias: "Products",
-        fields: "all",
-        "source-table": PRODUCTS_ID,
-        condition: [
-          "=",
-          ["field", ORDERS.PRODUCT_ID, null],
-          ["field", PRODUCTS.ID, null],
+      const query: StructuredQuery = {
+        aggregation: [["count"]],
+        breakout: [["field", ORDERS.CREATED_AT, null]],
+        filter: [">", ["field", ORDERS.TOTAL, null], 20],
+        joins: [
+          {
+            alias: "Products",
+            fields: "all",
+            "source-table": PRODUCTS_ID,
+            condition: [
+              "=",
+              ["field", ORDERS.PRODUCT_ID, null],
+              ["field", PRODUCTS.ID, null],
+            ],
+          },
         ],
       };
 
-      const state = getState(
-        {
-          aggregation: [aggregation],
-          breakout: [breakout],
-          filter,
-          joins: [join],
-        },
-        {
-          aggregation: [aggregation],
-          breakout: [breakout],
-          filter,
-          joins: [join],
-        },
-      );
+      const state = getState(query, query);
 
       expect(getIsResultDirty(state)).toBe(false);
     });
@@ -251,11 +242,9 @@ describe("getIsResultDirty", () => {
 
     it("should not be dirty if fields were just made explicit", () => {
       const orderTableFieldIds = Object.values(ORDERS);
-      const orderTableFieldRefs = orderTableFieldIds.map((id) => [
-        "field",
-        id,
-        null,
-      ]);
+      const orderTableFieldRefs = orderTableFieldIds.map(
+        (id): ConcreteFieldReference => ["field", id, null],
+      );
 
       const state = getState(
         { "source-table": ORDERS_ID },
@@ -269,13 +258,17 @@ describe("getIsResultDirty", () => {
   });
 
   describe("native query", () => {
-    function getCard(native) {
-      return getBaseCard({
-        dataset_query: { type: "native", native },
+    function getCard(native: NativeQuery) {
+      return createMockCard({
+        dataset_query: {
+          database: 1,
+          type: "native",
+          native,
+        },
       });
     }
 
-    function getState(lastRunCardQuery, cardQuery) {
+    function getState(lastRunCardQuery: NativeQuery, cardQuery: NativeQuery) {
       return getBaseState({
         card: getCard(cardQuery),
         lastRunCard: getCard(lastRunCardQuery),
@@ -283,7 +276,12 @@ describe("getIsResultDirty", () => {
     }
 
     it("should not be dirty if template-tags is empty vs an empty object", () => {
-      const state = getState({}, { "template-tags": {} });
+      const state = getState(
+        {
+          query: "SELECT 1",
+        },
+        { query: "SELECT 1", "template-tags": {} },
+      );
       expect(getIsResultDirty(state)).toBe(false);
     });
 
@@ -302,11 +300,12 @@ describe("getIsResultDirty", () => {
     });
 
     describe("native editor selection/cursor", () => {
-      function getStateWithSelectedQueryText(ranges) {
+      function getStateWithSelectedQueryText(ranges: Range[]) {
         return getBaseState({
-          card: getBaseCard({
+          card: createMockCard({
             dataset_query: {
               type: "native",
+              database: 1,
               native: { query: "1\n22\n333" },
             },
           }),
@@ -317,9 +316,9 @@ describe("getIsResultDirty", () => {
       }
 
       [
-        [{ row: 0, column: 0 }, 0],
-        [{ row: 1, column: 1 }, 3],
-        [{ row: 2, column: 3 }, 8],
+        [{ row: 0, column: 0 }, 0] as const,
+        [{ row: 1, column: 1 }, 3] as const,
+        [{ row: 2, column: 3 }, 8] as const,
       ].forEach(([position, offset]) =>
         it(`should correctly determine the cursor offset for ${JSON.stringify(
           position,
@@ -332,9 +331,9 @@ describe("getIsResultDirty", () => {
       );
 
       [
-        [{ row: 0, column: 0 }, { row: 0, column: 0 }, ""],
-        [{ row: 0, column: 0 }, { row: 2, column: 3 }, "1\n22\n333"],
-        [{ row: 1, column: 0 }, { row: 1, column: 2 }, "22"],
+        [{ row: 0, column: 0 }, { row: 0, column: 0 }, ""] as const,
+        [{ row: 0, column: 0 }, { row: 2, column: 3 }, "1\n22\n333"] as const,
+        [{ row: 1, column: 0 }, { row: 1, column: 2 }, "22"] as const,
       ].forEach(([start, end, text]) =>
         it(`should correctly get selected text from ${JSON.stringify(
           start,
@@ -355,22 +354,18 @@ describe("getIsResultDirty", () => {
   });
 
   describe("models", () => {
-    function getDataset(query) {
-      return getBaseCard({
+    function getDataset(query: StructuredQuery) {
+      return createMockCard({
         id: 1,
         type: "model",
-        dataset_query: { type: "query", query },
+        dataset_query: { type: "query", database: 1, query },
       });
-    }
-
-    function getState(state) {
-      return getBaseState(state);
     }
 
     const dataset = getDataset({ "source-table": 1 });
 
     it("should not be dirty if model is not changed", () => {
-      const state = getState({
+      const state = getBaseState({
         card: dataset,
         originalCard: dataset,
         lastRunCard: dataset,
@@ -379,7 +374,7 @@ describe("getIsResultDirty", () => {
     });
 
     it("should be dirty if model is changed", () => {
-      const state = getState({
+      const state = getBaseState({
         card: dataset,
         originalCard: dataset,
         lastRunCard: getDataset({ "source-table": 2 }),
@@ -389,7 +384,7 @@ describe("getIsResultDirty", () => {
 
     it("should not be dirty if model simple mode is active", () => {
       const adHocDatasetCard = getDataset({ "source-table": "card__1" });
-      const state = getState({
+      const state = getBaseState({
         card: adHocDatasetCard,
         originalCard: dataset,
         lastRunCard: adHocDatasetCard,
@@ -398,16 +393,17 @@ describe("getIsResultDirty", () => {
     });
 
     it("should be dirty when building a new question on a model", () => {
-      const card = getBaseCard({
+      const card = createMockCard({
         dataset_query: {
+          database: 1,
           type: "query",
           query: {
-            aggregate: [["count"]],
+            aggregation: [["count"]],
             "source-table": "card__1",
           },
         },
       });
-      const state = getState({
+      const state = getBaseState({
         card,
         originalCard: dataset,
         lastRunCard: dataset,
@@ -417,7 +413,7 @@ describe("getIsResultDirty", () => {
 
     it("should not be dirty when the last run question is the composed model and the current question is equivalent to the original", () => {
       const adHocDatasetCard = getDataset({ "source-table": "card__1" });
-      const state = getState({
+      const state = getBaseState({
         card: dataset,
         originalCard: dataset,
         lastRunCard: adHocDatasetCard,
@@ -429,13 +425,11 @@ describe("getIsResultDirty", () => {
 
 describe("getQuestionDetailsTimelineDrawerState", () => {
   it("should return a string representing the state of the question history timeline drawer", () => {
-    const state = {
-      qb: {
-        uiControls: {
-          questionDetailsTimelineDrawerState: "foo",
-        },
+    const state = getBaseState({
+      uiControls: {
+        questionDetailsTimelineDrawerState: "foo",
       },
-    };
+    });
     expect(getQuestionDetailsTimelineDrawerState(state)).toBe("foo");
   });
 });
