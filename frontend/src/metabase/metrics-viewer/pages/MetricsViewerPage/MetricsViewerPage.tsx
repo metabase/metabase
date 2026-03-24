@@ -126,6 +126,7 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
               ) : null}
             </Flex>
             <BreakoutLegend
+              formulaEntities={formulaEntities}
               definitions={definitions}
               breakoutValuesBySourceId={breakoutValuesBySourceId}
               sourceColors={sourceColors}

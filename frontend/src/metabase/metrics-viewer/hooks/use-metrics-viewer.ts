@@ -12,6 +12,7 @@ import type { Dataset, MetricBreakoutValuesResponse } from "metabase-types/api";
 import type { MetricsViewerPageProps } from "../pages/MetricsViewerPage/MetricsViewerPage";
 import type {
   ExpressionItemResult,
+  MetricDefinitionEntry,
   MetricSourceId,
   MetricsViewerDefinitionEntry,
   MetricsViewerFormulaEntity,
@@ -89,7 +90,7 @@ export interface UseMetricsViewerResult {
   removeTabDimension: (tabId: string, definitionId: MetricSourceId) => void;
   updateDefinition: (id: MetricSourceId, definition: MetricDefinition) => void;
   setBreakoutDimension: (
-    id: MetricSourceId,
+    entity: MetricDefinitionEntry,
     dimension: ProjectionClause | undefined,
   ) => void;
   setFormulaEntities: (entities: MetricsViewerFormulaEntity[]) => void;

@@ -15,6 +15,7 @@ import type { MeasureId } from "metabase-types/api";
 import type { MetricId } from "metabase-types/api/metric";
 
 import type {
+  MetricDefinitionEntry,
   MetricSourceId,
   MetricsViewerDefinitionEntry,
   MetricsViewerFormulaEntity,
@@ -157,7 +158,7 @@ export interface UseViewerStateResult {
     definitionId: MetricSourceId,
   ) => void;
   setBreakoutDimension: (
-    id: MetricSourceId,
+    entity: MetricDefinitionEntry,
     dimension: ProjectionClause | undefined,
   ) => void;
 
@@ -447,32 +448,38 @@ export function useViewerState(): UseViewerStateResult {
   );
 
   const setBreakoutDimension = useCallback(
-    (id: MetricSourceId, dimension: ProjectionClause | undefined) =>
+    (entity: MetricDefinitionEntry, dimension: ProjectionClause | undefined) =>
       setState((prev) => {
-        const entry = prev.definitions[id];
-        if (!entry || !entry.definition) {
+        const pristineEntry = prev.definitions[entity.id];
+        if (!pristineEntry?.definition) {
           return prev;
         }
 
-        let newDefinition = entry.definition;
-        const existingProjections = LibMetric.projections(newDefinition);
-        for (const proj of existingProjections) {
-          newDefinition = LibMetric.removeClause(newDefinition, proj);
+        const entityIndex = prev.formulaEntities.indexOf(entity);
+        if (entityIndex === -1) {
+          return prev;
         }
 
+        let newDefinition: MetricDefinition | null = null;
+
         if (dimension) {
-          newDefinition = buildBinnedBreakoutDefinition(
-            newDefinition,
-            dimension,
-          );
+          let baseDef = pristineEntry.definition;
+          const existingProjections = LibMetric.projections(baseDef);
+          for (const proj of existingProjections) {
+            baseDef = LibMetric.removeClause(baseDef, proj);
+          }
+          newDefinition = buildBinnedBreakoutDefinition(baseDef, dimension);
         }
+
+        const newEntities = [...prev.formulaEntities];
+        newEntities[entityIndex] = {
+          ...entity,
+          definition: newDefinition,
+        };
 
         return {
           ...prev,
-          definitions: {
-            ...prev.definitions,
-            [id]: { ...entry, definition: newDefinition },
-          },
+          formulaEntities: newEntities,
         };
       }),
     [],

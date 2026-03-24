@@ -8,6 +8,7 @@ import {
 } from "metabase-types/api/mocks/metric";
 
 import type {
+  MetricDefinitionEntry,
   MetricSourceId,
   MetricsViewerDefinitionEntry,
   SourceColorMap,
@@ -95,7 +96,13 @@ describe("buildLegendGroups", () => {
     >();
     const colors: SourceColorMap = { "metric:1": ["#509EE3"] };
 
-    expect(buildLegendGroups(definitions, breakoutValues, colors)).toEqual([]);
+    const formulaEntities: MetricDefinitionEntry[] = [
+      { id: "metric:1", type: "metric", definition: null },
+    ];
+
+    expect(
+      buildLegendGroups(formulaEntities, definitions, breakoutValues, colors),
+    ).toEqual([]);
   });
 
   it("builds legend groups for definitions with and without breakouts", () => {
@@ -111,6 +118,15 @@ describe("buildLegendGroups", () => {
       "metric:1": { id: "metric:1", definition: revenueDefinition },
       "metric:2": { id: "metric:2", definition: ordersDefinition },
     };
+
+    const formulaEntities: MetricDefinitionEntry[] = [
+      {
+        id: "metric:1",
+        type: "metric",
+        definition: revenueDefinition,
+      },
+      { id: "metric:2", type: "metric", definition: null },
+    ];
 
     const breakoutValues = new Map<
       MetricSourceId,
@@ -130,7 +146,9 @@ describe("buildLegendGroups", () => {
       "metric:2": ["#A989C5"],
     };
 
-    expect(buildLegendGroups(definitions, breakoutValues, colors)).toEqual([
+    expect(
+      buildLegendGroups(formulaEntities, definitions, breakoutValues, colors),
+    ).toEqual([
       {
         header: "Category",
         subtitle: "Revenue",

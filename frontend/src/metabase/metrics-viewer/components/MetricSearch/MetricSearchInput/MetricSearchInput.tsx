@@ -18,6 +18,7 @@ import type {
   SourceColorMap,
 } from "../../../types/viewer-state";
 import { isExpressionEntry, isMetricEntry } from "../../../types/viewer-state";
+import { getEffectiveDefinitionEntry } from "../../../utils/definition-entries";
 import {
   createMeasureSourceId,
   createMetricSourceId,
@@ -54,7 +55,7 @@ type MetricSearchInputProps = {
   onRemoveMetric: (metricId: number, sourceType: "metric" | "measure") => void;
   onSwapMetric: (oldMetric: SelectedMetric, newMetric: SelectedMetric) => void;
   onSetBreakout: (
-    id: MetricSourceId,
+    entity: MetricDefinitionEntry,
     dimension: ProjectionClause | undefined,
   ) => void;
 };
@@ -583,23 +584,22 @@ export function MetricSearchInput({
                 if (!metric) {
                   return null;
                 }
-                const defEntry = definitions[entry.id];
+                const defEntry = getEffectiveDefinitionEntry(
+                  entry,
+                  definitions,
+                );
                 return (
                   <span key={`${entry.id}-${entryIndex}`}>
                     <MetricPill
                       metric={metric}
                       colors={metricColors[entry.id]}
-                      definitionEntry={
-                        defEntry
-                          ? { ...defEntry, type: "metric" as const }
-                          : entry
-                      }
+                      definitionEntry={defEntry}
                       onSwap={onSwapMetric}
                       onRemove={(_id, _sourceType) =>
                         handleRemoveItem(entryIndex)
                       }
                       onSetBreakout={(dimension) =>
-                        onSetBreakout(entry.id, dimension)
+                        onSetBreakout(entry, dimension)
                       }
                     />
                   </span>

@@ -29,7 +29,10 @@ import {
   getModifiedDefinition,
   toJsDefinition,
 } from "../utils/definition-cache";
-import { entryHasBreakout } from "../utils/definition-entries";
+import {
+  entryHasBreakout,
+  getEffectiveDefinitionEntry,
+} from "../utils/definition-entries";
 import { getTabConfig } from "../utils/tab-config";
 
 export interface UseDefinitionQueriesResult {
@@ -262,8 +265,9 @@ function buildQueryItems(
 
   for (const entity of formulaEntities) {
     if (isMetricEntry(entity)) {
+      const effectiveEntry = getEffectiveDefinitionEntry(entity, definitions);
       const modifiedDefinition = getModifiedDefinitionForTab(
-        definitions[entity.id],
+        effectiveEntry,
         tab,
       );
 
@@ -320,21 +324,25 @@ export function useDefinitionQueries(
     );
 
   const breakoutRequests = useMemo(() => {
-    return Object.values(definitions).flatMap((entry) => {
-      if (!entry.definition || !entryHasBreakout(entry)) {
+    return formulaEntities.flatMap((entity) => {
+      if (!isMetricEntry(entity)) {
+        return [];
+      }
+      const effectiveEntry = getEffectiveDefinitionEntry(entity, definitions);
+      if (!effectiveEntry.definition || !entryHasBreakout(effectiveEntry)) {
         return [];
       }
 
-      const jsDefinition = toJsDefinition(entry.definition);
+      const jsDefinition = toJsDefinition(effectiveEntry.definition);
 
       return [
         {
-          sourceId: entry.id,
+          sourceId: entity.id,
           request: { definition: jsDefinition },
         },
       ];
     });
-  }, [definitions]);
+  }, [formulaEntities, definitions]);
 
   const modifiedDefinitions = useMemo(() => {
     const map = new Map<MetricSourceId, MetricDefinition>();

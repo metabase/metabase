@@ -68,8 +68,6 @@ export interface MetricsViewerDefinitionEntry {
 
 export type MetricDefinitionEntry = MetricsViewerDefinitionEntry & {
   type: "metric";
-
-  // TODO: remove "definition" from here
 };
 
 export type ExpressionDefinitionEntry = {

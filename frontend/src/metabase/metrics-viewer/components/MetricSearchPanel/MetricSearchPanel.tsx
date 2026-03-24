@@ -6,6 +6,7 @@ import type { MetricDefinition, ProjectionClause } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 
 import type {
+  MetricDefinitionEntry,
   MetricSourceId,
   MetricsViewerDefinitionEntry,
   MetricsViewerFormulaEntity,
@@ -29,7 +30,7 @@ type MetricSearchPanelProps = {
   onRemoveMetric: (metricId: number, sourceType: "metric" | "measure") => void;
   onSwapMetric: (oldMetric: SelectedMetric, newMetric: SelectedMetric) => void;
   onSetBreakout: (
-    id: MetricSourceId,
+    entity: MetricDefinitionEntry,
     dimension: ProjectionClause | undefined,
   ) => void;
   onUpdateDefinition: (

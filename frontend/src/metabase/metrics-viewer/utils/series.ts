@@ -39,7 +39,11 @@ import {
   getDefinitionColumnName,
   getDefinitionName,
 } from "./definition-builder";
-import { entryHasBreakout, getEntryBreakout } from "./definition-entries";
+import {
+  entryHasBreakout,
+  getEffectiveDefinitionEntry,
+  getEntryBreakout,
+} from "./definition-entries";
 import { findDimensionById } from "./dimension-lookup";
 import { nextSyntheticCardId, parseSourceId } from "./source-ids";
 import { DISPLAY_TYPE_REGISTRY } from "./tab-config";
@@ -153,18 +157,25 @@ export function computeSourceColors(
 
   for (const entity of formulaEntities) {
     if (isMetricEntry(entity)) {
-      const def = definitions[entity.id];
-      if (!def?.definition) {
+      const pristineDef = definitions[entity.id];
+      const effectiveDef = getEffectiveDefinitionEntry(entity, definitions);
+      if (!effectiveDef?.definition) {
         continue;
       }
 
-      const displayName = getDefinitionName(def.definition);
+      const displayName = getDefinitionName(
+        pristineDef?.definition ?? effectiveDef.definition,
+      );
       if (!displayName) {
         continue;
       }
 
       const response = breakoutValuesBySourceId?.get(entity.id);
-      if (entryHasBreakout(def) && response && response.values.length > 0) {
+      if (
+        entryHasBreakout(effectiveDef) &&
+        response &&
+        response.values.length > 0
+      ) {
         const keys = response.values.map((val) => {
           const formatted = String(
             formatValue(isEmpty(val) ? NULL_DISPLAY_VALUE : val, {
@@ -374,7 +385,7 @@ export function buildRawSeriesFromDefinitions(
     };
 
     let entrySeries: SingleSeries[];
-    if (!entryHasBreakout(definitions[entry.id])) {
+    if (!entryHasBreakout(getEffectiveDefinitionEntry(entry, definitions))) {
       entrySeries = [singleSeries];
     } else {
       entrySeries = splitByBreakout(

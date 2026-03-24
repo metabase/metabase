@@ -6,6 +6,7 @@ import type { MetricBreakoutValuesResponse } from "metabase-types/api";
 import type {
   MetricSourceId,
   MetricsViewerDefinitionEntry,
+  MetricsViewerFormulaEntity,
   SourceColorMap,
 } from "../../types/viewer-state";
 import { buildLegendGroups } from "../../utils/legend";
@@ -13,20 +14,27 @@ import { buildLegendGroups } from "../../utils/legend";
 import S from "./BreakoutLegend.module.css";
 
 type BreakoutLegendProps = {
+  formulaEntities: MetricsViewerFormulaEntity[];
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
   breakoutValuesBySourceId: Map<MetricSourceId, MetricBreakoutValuesResponse>;
   sourceColors: SourceColorMap;
 };
 
 export function BreakoutLegend({
+  formulaEntities,
   definitions,
   breakoutValuesBySourceId,
   sourceColors,
 }: BreakoutLegendProps) {
   const groups = useMemo(
     () =>
-      buildLegendGroups(definitions, breakoutValuesBySourceId, sourceColors),
-    [definitions, breakoutValuesBySourceId, sourceColors],
+      buildLegendGroups(
+        formulaEntities,
+        definitions,
+        breakoutValuesBySourceId,
+        sourceColors,
+      ),
+    [formulaEntities, definitions, breakoutValuesBySourceId, sourceColors],
   );
 
   if (groups.length === 0) {
