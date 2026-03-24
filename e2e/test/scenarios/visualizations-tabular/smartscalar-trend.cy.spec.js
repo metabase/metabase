@@ -2,7 +2,7 @@ import Color from "color";
 
 const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { colors } from "metabase/lib/colors";
+import { colors } from "metabase/ui/colors";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 

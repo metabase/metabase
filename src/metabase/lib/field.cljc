@@ -428,7 +428,7 @@
      :inherited-temporal-unit
      :lib/original-binning
      :lib/original-effective-type
-     :qp.pivot/pivot-grouping?])
+     :qp/native-sandbox-column.force-coercion-strategy])
    {:lib/binning          :binning
     :lib/temporal-unit    :temporal-unit
     :lib/ref-name         :name

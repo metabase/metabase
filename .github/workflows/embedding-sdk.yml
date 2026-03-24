@@ -39,7 +39,7 @@ concurrency:
 jobs:
   embedding-sdk-cli-snippets-type-check:
     if: inputs.cli-snippets-type-check && !inputs.skip
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -55,7 +55,7 @@ jobs:
 
   embedding-sdk-docs-snippets-type-check:
     if: inputs.docs-snippets-type-check && !inputs.skip
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -71,7 +71,7 @@ jobs:
 
   embedding-sdk-api-documentation-generation-validation:
     if: inputs.documentation-validation && !inputs.skip
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -131,7 +131,7 @@ jobs:
   embedding-sdk-bundle-size-check:
     if: inputs.bundle-size-check
     continue-on-error: true
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     env:
       BUNDLE_SIZE_THRESHOLD_PERCENT: 2
@@ -156,11 +156,18 @@ jobs:
       - name: Send notification to Slack via Zapier
         if: success() && steps.compare.outputs.status == 'increased'
         shell: bash
+        env:
+          ZAPIER_WEBHOOK_URL: ${{ secrets.EMBEDDING_ZAPIER_WEBHOOK_URL }}
+          SIZE_CHANGE_PERCENT: ${{ steps.compare.outputs.size_change_percent }}
+          BUNDLE_SIZE_THRESHOLD_PERCENT: ${{ env.BUNDLE_SIZE_THRESHOLD_PERCENT }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
         run: |
-          curl -s -X POST "${{ secrets.EMBEDDING_ZAPIER_WEBHOOK_URL }}" \
-            -d '⚠️ Embedding SDK bundle size increased by ${{ steps.compare.outputs.size_change_percent }}% (threshold: ${{ env.BUNDLE_SIZE_THRESHOLD_PERCENT }}%)
+          curl -s -X POST "$ZAPIER_WEBHOOK_URL" \
+            -d "⚠️ Embedding SDK bundle size increased by ${SIZE_CHANGE_PERCENT}% (threshold: ${BUNDLE_SIZE_THRESHOLD_PERCENT}%)
 
-          PR #${{ github.event.pull_request.number }} ${{ github.event.pull_request.title }} (${{ github.event.pull_request.html_url }})'
+          PR #${PR_NUMBER} ${PR_TITLE} (${PR_URL})"
 
       - name: Comment on PR if bundle size has decreased
         uses: ./.github/actions/notify-pull-request
@@ -179,7 +186,7 @@ jobs:
       - embedding-sdk-api-documentation-generation-validation
       - embedding-sdk-component-tests
     if: always() && !cancelled()
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     env:
       needs: ${{ toJson(needs) }}

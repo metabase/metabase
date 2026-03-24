@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 
 import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
 import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
-import { darken } from "metabase/lib/colors";
+import { darken } from "metabase/ui/colors";
 import { color } from "metabase/ui/utils/colors";
 
 function getPinnedForeground(disabled: boolean) {

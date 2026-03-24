@@ -151,6 +151,7 @@ describe("scenarios > visualizations > table", () => {
   it("should allow enabling row index column", () => {
     H.openOrdersTable();
     H.openVizSettingsSidebar();
+    H.sidebar().findByText("Display").click();
     H.sidebar().findByText("Show row index").click();
 
     H.openObjectDetail(5);
@@ -607,6 +608,40 @@ describe("scenarios > visualizations > table > dashboards context", () => {
     cy.get(idCellSelector).should("contain", secondPageId);
   });
 
+  it("should display pinned rows correctly with pagination", () => {
+    H.createQuestionAndDashboard({
+      questionDetails: {
+        display: "table",
+        query: { "source-table": SAMPLE_DATABASE.ORDERS_ID },
+        visualization_settings: {
+          "table.freeze_rows": true,
+          "table.freeze_rows_count": 1,
+          "table.pagination": true,
+        },
+      },
+      cardDetails: {
+        size_x: 24,
+        size_y: 12,
+      },
+    }).then(({ body: { dashboard_id } }) => {
+      H.visitDashboard(dashboard_id);
+    });
+
+    cy.findByTestId("pinned-center-quadrant")
+      .findByRole("row")
+      .find("[data-column-id=ID]")
+      .findByTestId("cell-data")
+      .should("have.text", "1");
+
+    cy.findByLabelText("Next page").click();
+
+    cy.findByTestId("pinned-center-quadrant")
+      .findByRole("row")
+      .find("[data-column-id=ID]")
+      .findByTestId("cell-data")
+      .should("have.text", "1");
+  });
+
   it("should support text wrapping setting", () => {
     H.createQuestionAndDashboard({
       questionDetails: {
@@ -795,6 +830,7 @@ describe("scenarios > visualizations > table > dashboards context", () => {
       .within(() => {
         cy.findByLabelText("Show visualization options").click();
       });
+    H.modal().findByText("Display").click();
     H.modal().findByText("Show row index").click();
 
     cy.button("Done").click();
@@ -813,6 +849,47 @@ describe("scenarios > visualizations > table > dashboards context", () => {
       .findAllByTestId("row-id-cell")
       .eq(0)
       .should("have.text", 1);
+  });
+
+  it("should sort pinned rows correctly with client-side sorting", () => {
+    H.createQuestionAndDashboard({
+      questionDetails: {
+        display: "table",
+        query: { "source-table": SAMPLE_DATABASE.ORDERS_ID },
+        visualization_settings: {
+          "table.freeze_rows": true,
+          "table.freeze_rows_count": 1,
+        },
+      },
+      cardDetails: {
+        size_x: 24,
+        size_y: 12,
+      },
+    }).then(({ body: { dashboard_id } }) => {
+      H.visitDashboard(dashboard_id);
+    });
+
+    cy.findByTestId("pinned-center-quadrant")
+      .findByRole("row")
+      .find("[data-column-id=ID]")
+      .findByTestId("cell-data")
+      .should("have.text", "1");
+
+    H.tableHeaderClick("ID");
+
+    cy.findByTestId("pinned-center-quadrant")
+      .findByRole("row")
+      .find("[data-column-id=ID]")
+      .findByTestId("cell-data")
+      .should("have.text", "2000");
+
+    H.tableHeaderClick("ID");
+
+    cy.findByTestId("pinned-center-quadrant")
+      .findByRole("row")
+      .find("[data-column-id=ID]")
+      .findByTestId("cell-data")
+      .should("have.text", "1");
   });
 
   it("should expand columns to the full width of the dashcard (metabase#57381)", () => {

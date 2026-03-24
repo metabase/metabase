@@ -7,14 +7,24 @@ import { Select } from "metabase/common/components/Select";
 import CS from "metabase/css/core/index.css";
 import {
   canEditMembership,
-  getGroupColor,
   getGroupNameLocalized,
   isAdminGroup,
   isDefaultGroup,
 } from "metabase/lib/groups";
 import { isNotNull } from "metabase/lib/types";
 import { Box, Icon, Popover } from "metabase/ui";
+import { color } from "metabase/ui/colors";
 import type { GroupInfo } from "metabase-types/api";
+
+function getGroupColor(group: Pick<GroupInfo, "magic_group_type">) {
+  if (isAdminGroup(group)) {
+    return color("filter");
+  } else if (isDefaultGroup(group)) {
+    return color("text-secondary");
+  } else {
+    return color("brand");
+  }
+}
 
 type GroupSelectProps = {
   groups: GroupInfo[];

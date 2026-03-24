@@ -1,0 +1,44 @@
+## Fix transform source-tables: unify format from map to ordered array,
+## and correct computed transform tables incorrectly marked as writable.
+##
+## These changesets were originally v59 but landed after the release branch was cut.
+## Moved to v60 so cross-version rollback works.
+
+databaseChangeLog:
+  - logicalFilePath: migrations/060_update_migrations.yaml
+
+  - changeSet:
+      id: v60.2026-03-03T12:00:00
+      author: qnkhuat
+      comment: Unify source-tables format from map to ordered array
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            changeSetExecuted:
+              id: v59.2026-03-03T12:00:00
+              author: qnkhuat
+              changeLogFile: migrations/059_update_migrations.yaml
+      changes:
+        - customChange:
+            class: "metabase.app_db.custom_migrations.UnifySourceTablesFormat"
+
+  - changeSet:
+      id: v60.2026-03-06T00:00:00
+      author: qnkhuat
+      comment: Fix computed transform tables incorrectly marked as writable
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            changeSetExecuted:
+              id: v59.2026-03-06T00:00:00
+              author: qnkhuat
+              changeLogFile: migrations/059_update_migrations.yaml
+      changes:
+        - sql:
+            sql: >
+              UPDATE metabase_table
+              SET is_writable = FALSE
+              WHERE data_authority = 'computed'
+                AND data_source = 'metabase-transform'
+                AND is_writable = TRUE;
+      rollback: # rolling back still leaves the fix in place

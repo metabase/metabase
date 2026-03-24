@@ -5,6 +5,7 @@ import {
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
+  setupUpsellEndpoints,
   setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
@@ -22,6 +23,7 @@ const setup = async ({ enabled }: { enabled: boolean }) => {
   setupPropertiesEndpoints(settings);
   setupSettingsEndpoints([]);
   setupUpdateSettingEndpoint();
+  setupUpsellEndpoints();
   setupEmbeddableEntitiesEndpoints({
     dashboards: [createMockDashboard({ name: "My cool dashboard" })],
     cards: [createMockCard({ name: "My cool card" })],

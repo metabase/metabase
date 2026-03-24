@@ -2,6 +2,7 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import { ButtonGroup } from "metabase/common/components/ButtonGroup";
+import { ViewButton } from "metabase/common/components/ViewButton";
 import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
@@ -11,7 +12,6 @@ import {
   onOpenChartSettings,
   onOpenChartType,
 } from "metabase/query_builder/actions";
-import { ViewButton } from "metabase/query_builder/components/view/ViewButton";
 import { getQuestion, getUiControls } from "metabase/query_builder/selectors";
 import { Group } from "metabase/ui";
 import type { QueryBuilderUIControls } from "metabase-types/store";

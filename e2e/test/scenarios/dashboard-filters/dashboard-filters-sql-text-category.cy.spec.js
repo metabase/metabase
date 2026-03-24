@@ -213,22 +213,31 @@ GROUP BY PRODUCTS.CATEGORY`;
   });
 
   it("should show all available category options for combined dataset (metabase#68998)", () => {
-    H.createNativeQuestion({
-      name: "SQL- Postgres",
-      native: {
-        query: sqlQueryDetails,
-        "template-tags": {
-          field: {
-            "widget-type": "string/=",
-            name: "field",
-            "display-name": "Field",
-            id: "3db026c4-5ec6-4568-9a40-eb704bac2bde",
-            type: "dimension",
-            dimension: ["field", 1552, null], // 1552 - Products.Category
+    H.getTableId({
+      name: "products",
+    }).then((tableId) => {
+      return H.getFieldId({
+        tableId,
+        name: "category",
+      }).then((fieldId) => {
+        return H.createNativeQuestion({
+          name: "SQL- Postgres",
+          native: {
+            query: sqlQueryDetails,
+            "template-tags": {
+              field: {
+                "widget-type": "string/=",
+                name: "field",
+                "display-name": "Field",
+                id: "3db026c4-5ec6-4568-9a40-eb704bac2bde",
+                type: "dimension",
+                dimension: ["field", fieldId, null], // fieldId - Products.Category in Postgres DB
+              },
+            },
           },
-        },
-      },
-      database: PG_DB_ID,
+          database: PG_DB_ID,
+        });
+      });
     });
 
     H.createNativeQuestionAndDashboard({

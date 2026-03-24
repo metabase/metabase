@@ -13,8 +13,8 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
    [metabase.plugins.jdbc-proxy :as jdbc-proxy]
-   [metabase.query-processor :as qp]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
    [metabase.sync.util :as sync-util]
    [metabase.system.core :as system]
@@ -354,9 +354,13 @@
              qual-tbl-nm
              qual-mview-nm)
             (binding [redshift.tx/*override-describe-database-to-filter-by-db-name?* false]
-              (is (contains?
-                   (set (map :name (:tables (driver/describe-database :redshift database))))
-                   mview-nm)))))))))
+              (u/auto-retry 3
+                (let [table-names (set (map :name (:tables (driver/describe-database :redshift database))))]
+                  (when-not (contains? table-names mview-nm)
+                    (Thread/sleep 1000)
+                    (throw (ex-info "Materialized view not yet visible in describe-database results"
+                                    {:expected mview-nm :actual table-names})))
+                  (is (contains? table-names mview-nm)))))))))))
 
 (mt/defdataset unix-timestamps
   [["timestamps"

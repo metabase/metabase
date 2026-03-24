@@ -184,6 +184,7 @@ class TagEditorParamInner extends Component<
         default: undefined,
         dimension: undefined,
         alias: undefined,
+        "emit-alias": type === "table" ? true : undefined,
         "widget-type": type === "dimension" ? "none" : undefined,
         "table-id": undefined,
       });
@@ -299,6 +300,13 @@ class TagEditorParamInner extends Component<
     }
   };
 
+  setEmitAlias = (emitAlias: boolean) => {
+    const { tag, setTemplateTag } = this.props;
+    if (tag["emit-alias"] !== emitAlias) {
+      setTemplateTag({ ...tag, "emit-alias": emitAlias });
+    }
+  };
+
   setAlias = (alias: string | undefined) => {
     const { tag, setTemplateTag } = this.props;
     if (tag.alias !== alias) {
@@ -371,6 +379,7 @@ class TagEditorParamInner extends Component<
             database={database}
             databases={databases}
             onChange={this.setTableId}
+            onChangeEmitAlias={this.setEmitAlias}
           />
         )}
 

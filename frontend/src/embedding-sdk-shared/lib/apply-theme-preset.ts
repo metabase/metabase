@@ -7,7 +7,7 @@ import {
   type MappableSdkColor,
   SDK_TO_MAIN_APP_COLORS_MAPPING,
 } from "metabase/embedding-sdk/theme/embedding-color-palette";
-import { deriveFullMetabaseTheme } from "metabase/lib/colors";
+import { deriveFullMetabaseTheme } from "metabase/ui/colors";
 
 const PRESET_SDK_COLORS: MappableSdkColor[] = [
   "background",

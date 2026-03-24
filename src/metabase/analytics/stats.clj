@@ -673,17 +673,13 @@
      :values (mapv (fn [[k v]] {:group k :value v}) eid-translations-24h)
      :tags ["embedding"]}]))
 
-(defn- ee-transform-metrics'
-  "OSS fallback for transform metrics. Returns zeros since transforms are an enterprise feature."
-  []
-  {:transforms               0
-   :transform_runs_last_24h  0})
-
-(defenterprise ee-transform-metrics
+(defn- transform-metrics
   "Returns transform usage metrics for the Snowplow stats ping."
-  metabase-enterprise.analytics.stats
   []
-  (ee-transform-metrics'))
+  (let [one-day-ago (->one-day-ago)]
+    {:transforms               (t2/count :model/Transform)
+     :transform_runs_last_24h  (t2/count :model/TransformRun
+                                         :start_time [:>= one-day-ago])}))
 
 (defn- ->snowplow-metric-info
   "Collects Snowplow metrics data that is not in the legacy stats format. Also clears entity id translation count."
@@ -705,7 +701,7 @@
       :scim_users_last_24h             (t2/count :model/User :sso_source :scim
                                                  :is_active true
                                                  :date_joined [:>= one-day-ago])}
-     (ee-transform-metrics))))
+     (transform-metrics))))
 
 (mu/defn- snowplow-metrics
   [stats metric-info :- [:map
@@ -912,15 +908,6 @@
    {:name      :metabot-v3
     :available (premium-features/enable-metabot-v3?)
     :enabled   (premium-features/enable-metabot-v3?)}
-   {:name      :ai-entity-analysis
-    :available (premium-features/enable-ai-entity-analysis?)
-    :enabled   (premium-features/enable-ai-entity-analysis?)}
-   {:name      :ai-sql-fixer
-    :available (premium-features/enable-ai-sql-fixer?)
-    :enabled   (premium-features/enable-ai-sql-fixer?)}
-   {:name      :ai-sql-generation
-    :available (premium-features/enable-ai-sql-generation?)
-    :enabled   (premium-features/enable-ai-sql-generation?)}
    {:name      :remote-sync
     :available (premium-features/enable-remote-sync?)
     :enabled   (premium-features/enable-remote-sync?)}

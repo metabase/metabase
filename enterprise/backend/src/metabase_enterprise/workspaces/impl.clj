@@ -12,6 +12,7 @@
    [metabase.driver.sql :as driver.sql]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2]))
 
 (defn- query-ungranted-external-inputs
@@ -566,16 +567,17 @@
   (when-not (t2/exists? :model/WorkspaceOutputExternal :workspace_id workspace-id :graph_version [:>= graph-version])
     (let [external-tx-ids (extract-external-transform-ids entities)]
       (when (seq external-tx-ids)
+        ;; There are 4N + 3 queries for N transforms, we may want to optimize...
+        ;;    1 exists
+        ;;  + 1 select
+        ;;  + N × 2 upsert-transform-target-table! (2 queries each)
+        ;;  + 1 batch insert
+        ;; Worst case 8N + 3 on concurrent upsert conflicts.
         (let [transforms (t2/select [:model/Transform :id :target] :id [:in external-tx-ids])
               rows       (for [{tx-id :id, {:keys [database schema name]} :target} transforms]
                            (let [isolated-table    (ws.u/isolated-table-name schema name)
-                                 ;; TODO (Chris 2026-01-26) -- 2N + 1 is really not great here...
-                                 global-table-id   (t2/select-one-fn :id [:model/Table :id]
-                                                                     :db_id database :schema schema :name name)
-                                 isolated-table-id (t2/select-one-fn :id [:model/Table :id]
-                                                                     :db_id database
-                                                                     :schema isolated-schema
-                                                                     :name isolated-table)]
+                                 global-table-id   (table/upsert-transform-target-table! database schema name)
+                                 isolated-table-id (table/upsert-transform-target-table! database isolated-schema isolated-table)]
                              {:workspace_id      workspace-id
                               :transform_id      tx-id
                               :graph_version     graph-version

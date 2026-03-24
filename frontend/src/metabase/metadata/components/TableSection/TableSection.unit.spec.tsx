@@ -2,7 +2,7 @@ import { Route } from "react-router";
 
 import { renderWithProviders, screen } from "__support__/ui";
 import type { FieldId, Table } from "metabase-types/api";
-import { createMockTable } from "metabase-types/api/mocks";
+import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 
 import { TableSection } from "./TableSection";
 
@@ -44,5 +44,12 @@ describe("TableSection", () => {
       "href",
       `/question#?db=${table.db_id}&table=${table.id}`,
     );
+  });
+
+  it("should not render the sync options button when the database is hosted", () => {
+    const database = createMockDatabase({ is_attached_dwh: true });
+    const table = createMockTable({ db: database });
+    setup({ table });
+    expect(screen.queryByText("Sync options")).not.toBeInTheDocument();
   });
 });

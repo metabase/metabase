@@ -16,7 +16,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.core :as qp]
    ;; legacy usage -- don't do things like this going forward
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]}
    [metabase.query-processor.store :as qp.store]
@@ -73,7 +73,7 @@
   - `can-write=true` - filter to only tables the user can edit metadata for"
   [_
    {:keys [term visibility-type data-layer data-source owner-user-id owner-email orphan-only unused-only
-           can-query can-write]}
+           can-query can-write include-transform-targets]}
    :- [:map
        [:term {:optional true} :string]
        [:visibility-type {:optional true} :string]
@@ -84,7 +84,8 @@
        [:orphan-only {:optional true} [:maybe ms/BooleanValue]]
        [:unused-only {:optional true} [:maybe ms/BooleanValue]]
        [:can-query {:optional true} [:maybe ms/BooleanValue]]
-       [:can-write {:optional true} [:maybe ms/BooleanValue]]]]
+       [:can-write {:optional true} [:maybe ms/BooleanValue]]
+       [:include-transform-targets {:optional true} [:maybe ms/BooleanValue]]]]
   (let [like       (fn [field pattern]
                      (case (app-db/db-type)
                        (:h2 :postgres) [:ilike field pattern]
@@ -95,7 +96,9 @@
                            (str/replace "%" "\\%")
                            (str/replace "*" "%")
                            (cond-> (not (str/ends-with? term "%")) (str "%")))
-        where      (cond-> [:and [:= :active true]]
+        where      (cond-> [:and (if include-transform-targets
+                                   [:or [:= :active true] [:= :transform_target true]]
+                                   [:= :active true])]
                      (not (str/blank? term)) (conj [:or
                                                     (like :name pattern)
                                                     (like :display_name pattern)

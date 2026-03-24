@@ -25,7 +25,6 @@ import type {
   DataKey,
   DateRange,
   DimensionModel,
-  Extent,
   NumericAxisScaleTransforms,
   NumericXAxisModel,
   SeriesExtents,
@@ -49,6 +48,7 @@ import { getLineAreaBarComparisonSettings } from "metabase/visualizations/lib/se
 import type {
   ColumnSettings,
   ComputedVisualizationSettings,
+  Extent,
   VisualizationGridSize,
 } from "metabase/visualizations/types";
 import type {
@@ -80,7 +80,7 @@ export function shouldAutoSplitYAxis(
   seriesModels: SeriesModel[],
   seriesExtents: SeriesExtents,
 ) {
-  if (!settings["graph.y_axis.auto_split"]) {
+  if (!settings["graph.y_axis.auto_split"] || settings["graph.split_panels"]) {
     return false;
   }
 
@@ -244,6 +244,13 @@ const getYAxisSplit = (
   settings: ComputedVisualizationSettings,
   isAutoSplitSupported: boolean,
 ) => {
+  if (settings["graph.split_panels"]) {
+    const allKeys = new Set(
+      seriesModels.map((seriesModel) => seriesModel.dataKey),
+    );
+    return [allKeys, new Set<DataKey>()];
+  }
+
   const stackedKeys = new Set(
     stackModels.flatMap((stackModel) => stackModel.seriesKeys),
   );
@@ -384,7 +391,7 @@ function calculateNonStackedExtent(
 
 const NORMALIZED_RANGE: Extent = [0, 1];
 
-const getYAxisFormatter = (
+export const getYAxisFormatter = (
   column: DatasetColumn,
   settings: ComputedVisualizationSettings,
   stackType: StackType,
@@ -501,6 +508,7 @@ interface YAxisModelOptions {
   stackType?: StackType;
   formattingOptions?: OptionsType;
   gridSize?: VisualizationGridSize;
+  showLabel?: boolean;
 }
 
 export function getYAxisModel(
@@ -516,6 +524,7 @@ export function getYAxisModel(
     stackType = null,
     formattingOptions,
     gridSize,
+    showLabel = true,
   } = options;
 
   if (seriesKeys.length === 0) {
@@ -529,7 +538,7 @@ export function getYAxisModel(
     stackType,
   );
   const column = columnByDataKey[seriesKeys[0]];
-  const label = getYAxisLabel(seriesNames, settings);
+  const label = showLabel ? getYAxisLabel(seriesNames, settings) : undefined;
   const formatter = getYAxisFormatter(
     column,
     settings,
@@ -607,36 +616,61 @@ export function getYAxesModels(
     (stackModel) => stackModel.axis === "left",
   );
 
+  const leftAxisModel = getYAxisModel(
+    leftAxisSeriesKeys,
+    leftAxisSeriesNames,
+    transformedDataset,
+    settings,
+    columnByDataKey,
+    {
+      stackModels: leftStackModels,
+      stackType: settings["stackable.stack_type"] ?? null,
+      formattingOptions: { compact: isCompactFormatting },
+      gridSize,
+    },
+  );
+
+  const rightAxisModel = getYAxisModel(
+    rightAxisSeriesKeys,
+    rightAxisSeriesNames,
+    transformedDataset,
+    settings,
+    columnByDataKey,
+    {
+      stackModels: rightStackModels,
+      stackType:
+        settings["stackable.stack_type"] === "normalized"
+          ? null
+          : (settings["stackable.stack_type"] ?? null),
+      formattingOptions: { compact: isCompactFormatting },
+      gridSize,
+    },
+  );
+
+  const splitPanelYAxisModels = settings["graph.split_panels"]
+    ? seriesModels
+        .filter((seriesModel) => seriesModel.visible)
+        .map((seriesModel) =>
+          getYAxisModel(
+            [seriesModel.dataKey],
+            [seriesModel.name],
+            transformedDataset,
+            settings,
+            columnByDataKey,
+            {
+              formattingOptions: { compact: isCompactFormatting },
+              gridSize,
+              showLabel: false,
+            },
+          ),
+        )
+        .filter(isNotNull)
+    : undefined;
+
   return {
-    leftAxisModel: getYAxisModel(
-      leftAxisSeriesKeys,
-      leftAxisSeriesNames,
-      transformedDataset,
-      settings,
-      columnByDataKey,
-      {
-        stackModels: leftStackModels,
-        stackType: settings["stackable.stack_type"] ?? null,
-        formattingOptions: { compact: isCompactFormatting },
-        gridSize,
-      },
-    ),
-    rightAxisModel: getYAxisModel(
-      rightAxisSeriesKeys,
-      rightAxisSeriesNames,
-      transformedDataset,
-      settings,
-      columnByDataKey,
-      {
-        stackModels: rightStackModels,
-        stackType:
-          settings["stackable.stack_type"] === "normalized"
-            ? null
-            : (settings["stackable.stack_type"] ?? null),
-        formattingOptions: { compact: isCompactFormatting },
-        gridSize,
-      },
-    ),
+    leftAxisModel,
+    rightAxisModel,
+    splitPanelYAxisModels,
   };
 }
 

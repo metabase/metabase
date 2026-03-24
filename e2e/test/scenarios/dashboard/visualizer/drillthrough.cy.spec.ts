@@ -217,13 +217,13 @@ describe("scenarios > dashboard > visualizer > drillthrough", () => {
         "have.length",
         2,
       );
-      applyBrush(200, 300);
+      H.applyBrush(200, 300);
       cy.get("@dataset.all").should("have.length", 0);
     });
 
     H.getDashboardCard(3).within(() => {
       cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("exist");
-      applyBrush(200, 300);
+      H.applyBrush(200, 300);
       cy.wait("@dataset");
     });
 
@@ -239,10 +239,3 @@ describe("scenarios > dashboard > visualizer > drillthrough", () => {
     });
   });
 });
-
-function applyBrush(left: number, right: number) {
-  H.echartsContainer()
-    .trigger("mousedown", left, 100)
-    .trigger("mousemove", left, 100)
-    .trigger("mouseup", right, 100);
-}

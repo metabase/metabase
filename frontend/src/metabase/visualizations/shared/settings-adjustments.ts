@@ -5,16 +5,17 @@ const HIDE_X_AXIS_LABEL_HEIGHT_THRESHOLD = 200;
 const HIDE_Y_AXIS_HEIGHT_THRESHOLD = 150;
 const INTERPOLATE_LINE_THRESHOLD = 150;
 
-export const getDashboardAdjustedSettings = (
-  settings: ComputedVisualizationSettings,
-  isDashboard: boolean,
-  width: number,
-  height: number,
-): ComputedVisualizationSettings => {
-  if (!isDashboard) {
-    return settings;
-  }
+type getAdjustedSettingsProps = {
+  settings: ComputedVisualizationSettings;
+  width: number;
+  height: number;
+};
 
+export const getDashboardAdjustedSettings = ({
+  settings,
+  width,
+  height,
+}: getAdjustedSettingsProps): ComputedVisualizationSettings => {
   const adjusted = { ...settings };
 
   if (

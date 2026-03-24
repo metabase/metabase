@@ -6,7 +6,7 @@
      :replacement-snippet     \"= ?\"
      ;; ; any prepared statement args (values for `?` placeholders) needed for the replacement snippet
      :prepared-statement-args [#t \"2017-01-01\"]}"
-  (:refer-clojure :exclude [not-empty])
+  (:refer-clojure :exclude [not-empty mapv])
   (:require
    [clojure.string :as str]
    [metabase.driver :as driver]
@@ -17,9 +17,10 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [not-empty]])
+   [metabase.util.performance :refer [mapv not-empty]])
   (:import
    (clojure.lang IPersistentVector Keyword)
    (java.time.temporal Temporal)
@@ -411,11 +412,30 @@
     (replace-alias driver field alias replacement-snippet-info)))
 
 (defmethod ->replacement-snippet-info [:sql ReferencedTableQuery]
-  [driver {:keys [table-id]}]
-  (let [mp (driver-api/metadata-provider)
-        alias (->> (driver-api/table mp table-id)
-                   (sql.qp/->honeysql driver)
-                   (sql.qp/format-honeysql driver)
-                   first)]
-    {:prepared-statement-args []
-     :replacement-snippet alias}))
+  [driver {:keys [table-id source-filters alias]}]
+  (let [mp         (driver-api/metadata-provider)
+        table-hsql (sql.qp/->honeysql driver (driver-api/table mp table-id))
+        add-alias  (fn [result]
+                     (if alias
+                       (let [alias-sql (first (sql.qp/format-honeysql driver (h2x/identifier :table-alias alias)))]
+                         (update result :replacement-snippet str " AS " alias-sql))
+                       result))]
+    (if (seq source-filters)
+      (let [prepared     (mapv (fn [{:keys [field-id op value]}]
+                                 (let [field (driver-api/field mp field-id)]
+                                   {:col (h2x/identifier :field (:name field))
+                                    :op  op
+                                    :sub (->prepared-substitution driver value)}))
+                               source-filters)
+            where-clause (into [:and]
+                               (map (fn [{:keys [col op sub]}]
+                                      [op col [:raw (:sql-string sub)]]))
+                               prepared)
+            hsql         {:select [:*] :from [[table-hsql]] :where where-clause}
+            [sql]        (sql.qp/format-honeysql driver hsql)
+            args         (into [] (mapcat (comp :param-values :sub)) prepared)]
+        (add-alias {:replacement-snippet     (str "(" sql ")")
+                    :prepared-statement-args args}))
+      (let [[sql] (sql.qp/format-honeysql driver table-hsql)]
+        (add-alias {:prepared-statement-args []
+                    :replacement-snippet     sql})))))

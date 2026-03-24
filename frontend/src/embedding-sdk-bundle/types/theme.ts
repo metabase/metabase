@@ -8,4 +8,4 @@ export type {
   ChartColorV2,
   MetabaseColorKey,
   ProtectedColorKey,
-} from "metabase/lib/colors";
+} from "metabase/ui/colors";

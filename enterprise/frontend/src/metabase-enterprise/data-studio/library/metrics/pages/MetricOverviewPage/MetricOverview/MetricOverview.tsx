@@ -1,11 +1,9 @@
-import { EntityCreationInfo } from "metabase/common/components/EntityCreationInfo";
 import { OverviewVisualization } from "metabase/data-studio/common/components/OverviewVisualization";
 import { Flex, Stack } from "metabase/ui";
 import type { Card } from "metabase-types/api";
 
 import { DescriptionSection } from "./DescriptionSection";
 import S from "./MetricOverview.module.css";
-import { QuerySourceSection } from "./QuerySourceSection";
 
 type MetricOverviewProps = {
   card: Card;
@@ -17,15 +15,8 @@ export function MetricOverview({ card }: MetricOverviewProps) {
       <Flex direction="column" flex={1} mah={700}>
         <OverviewVisualization card={card} />
       </Flex>
-      <Stack w={300} ml="lg" gap="lg" className={S.sidebar}>
+      <Stack flex="0 0 360px" className={S.descriptionSection} mah={700}>
         <DescriptionSection card={card} />
-        <QuerySourceSection card={card} />
-        <EntityCreationInfo
-          createdAt={card.created_at}
-          creator={card.creator}
-          lastEditedAt={card["last-edit-info"]?.timestamp}
-          lastEditor={card["last-edit-info"]}
-        />
       </Stack>
     </Flex>
   );

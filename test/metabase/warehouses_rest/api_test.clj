@@ -823,16 +823,17 @@
                         :tables)]
         (is (= () tables))))))
 
-(deftest ^:parallel fetch-database-metadata-skip-fields-test
-  (mt/with-temp [:model/Database {db-id :id} {}
-                 :model/Table    table       {:db_id db-id}
-                 :model/Field    _           {:table_id (u/the-id table)}]
-    (testing "GET /api/database/:id/metadata?skip_fields=true"
-      (let [fields (->> (mt/user-http-request :rasta :get 200 (format "database/%d/metadata?skip_fields=true" db-id))
-                        :tables
-                        first
-                        :fields)]
-        (is (= () fields))))))
+(deftest fetch-database-metadata-skip-fields-test
+  (mt/with-empty-h2-app-db!
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table table {:db_id db-id}
+                   :model/Field _ {:table_id (u/the-id table)}]
+      (testing "GET /api/database/:id/metadata?skip_fields=true"
+        (let [fields (->> (mt/user-http-request :rasta :get 200 (format "database/%d/metadata?skip_fields=true" db-id))
+                          :tables
+                          first
+                          :fields)]
+          (is (= () fields)))))))
 
 (deftest ^:parallel autocomplete-suggestions-test
   (let [prefix-fn (fn [db-id prefix]
@@ -1035,20 +1036,21 @@
                     :total 0}
                    (get-all :rasta "database?include_only_uploadable=true" old-ids)))))))))
 
-(deftest ^:parallel databases-list-can-upload-test
-  (testing "GET /api/database"
-    (let [old-ids (t2/select-pks-set :model/Database)]
-      (doseq [uploads-enabled? [true false]]
-        (testing (format "The database with uploads enabled for the public schema has can_upload=%s" uploads-enabled?)
-          (mt/with-temp [:model/Database _ {:engine          :postgres
-                                            :name            "The Chosen One"
-                                            :uploads_enabled uploads-enabled?
-                                            :uploads_schema_name "public"}]
-            (let [result (get-all :crowberto "database" old-ids)]
-              (is (= 1
-                     (:total result)))
-              (is (= uploads-enabled?
-                     (-> result :data first :can_upload))))))))))
+(deftest databases-list-can-upload-test
+  (mt/with-empty-h2-app-db!
+    (testing "GET /api/database"
+      (let [old-ids (t2/select-pks-set :model/Database)]
+        (doseq [uploads-enabled? [true false]]
+          (testing (format "The database with uploads enabled for the public schema has can_upload=%s" uploads-enabled?)
+            (mt/with-temp [:model/Database _ {:engine              :postgres
+                                              :name                "The Chosen One"
+                                              :uploads_enabled     uploads-enabled?
+                                              :uploads_schema_name "public"}]
+              (let [result (get-all :crowberto "database" old-ids)]
+                (is (= 1
+                       (:total result)))
+                (is (= uploads-enabled?
+                       (-> result :data first :can_upload)))))))))))
 
 (deftest ^:parallel databases-list-include-saved-questions-test
   (testing "GET /api/database?saved=true"
@@ -1187,22 +1189,22 @@
           (check-tables-included response (virtual-table-for-card ok-card))
           (check-tables-not-included response (virtual-table-for-card cambiguous-card)))))))
 
-(deftest ^:parallel databases-list-include-saved-questions-tables-test-5
+(deftest databases-list-include-saved-questions-tables-test-5
   (testing "GET /api/database?saved=true&include=tables"
     (testing "should remove Cards that belong to a driver that doesn't support nested queries"
-      (mt/with-temp [:model/Database bad-db   {:engine ::no-nested-query-support, :details {}}
-                     :model/Card     bad-card {:name            "Bad Card"
-                                               :dataset_query   {:database (u/the-id bad-db)
-                                                                 :type     :native
-                                                                 :native   {:query "[QUERY GOES HERE]"}}
-                                               :result_metadata [{:name         "sparrows"
-                                                                  :display_name "Sparrows"
-                                                                  :base_type    :type/Integer}]
-                                               :database_id     (u/the-id bad-db)}
-                     :model/Card     ok-card  (assoc (card-with-native-query "OK Card")
-                                                     :result_metadata [{:name         "finches"
-                                                                        :display_name "Finches"
-                                                                        :base_type    :type/Integer}])]
+      (mt/with-temp [:model/Database bad-db {:engine ::no-nested-query-support, :details {}}
+                     :model/Card bad-card {:name            "Bad Card"
+                                           :dataset_query   {:database (u/the-id bad-db)
+                                                             :type     :native
+                                                             :native   {:query "[QUERY GOES HERE]"}}
+                                           :result_metadata [{:name         "sparrows"
+                                                              :display_name "Sparrows"
+                                                              :base_type    :type/Integer}]
+                                           :database_id     (u/the-id bad-db)}
+                     :model/Card ok-card (assoc (card-with-native-query "OK Card")
+                                                :result_metadata [{:name         "finches"
+                                                                   :display_name "Finches"
+                                                                   :base_type    :type/Integer}])]
         (let [response (fetch-virtual-database)]
           (is (malli= SavedQuestionsDB
                       response))

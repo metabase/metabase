@@ -42,5 +42,6 @@
   ([transform opts]
    (let [result (transforms-base.i/execute-base! transform opts)]
      (when (= :succeeded (:status result))
-       (transforms-base.u/complete-execution! transform opts))
+       (transforms-base.u/complete-execution! transform
+                                              (assoc opts :source-range-params (:source-range-params result))))
      result)))

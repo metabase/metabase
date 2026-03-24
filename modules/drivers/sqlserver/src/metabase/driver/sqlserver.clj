@@ -603,9 +603,19 @@
         ;; Tell [[sql.qp/as]] to insert a cast to :bit for boolean expressions. This ensures the :type/Boolean is
         ;; preserved in results metadata, so downstream questions and query stages can use the column in contexts
         ;; where a boolean is required; otherwise, SQL Server returns a value of type int for `SELECT 1 AS MyBool`.
-        maybe-add-cast #(cond-> %
+        ;; For comparison expressions (e.g. [:> field1 field2]), tell [[sql.qp/as]] to wrap it in a case statement
+        ;; and then cast it to a :bit. See #53805 for more details.
+        maybe-add-cast #(cond
+                          (sql.qp.boolean-to-comparison/predicate-expression-clause? %)
+                          (-> %
+                              (driver-api/assoc-field-options ::sql.qp/wrap-in-case true)
+                              (driver-api/assoc-field-options ::sql.qp/add-cast :bit))
+
                           (sql.qp.boolean-to-comparison/boolean-expression-clause? %)
-                          (driver-api/assoc-field-options ::sql.qp/add-cast :bit))]
+                          (driver-api/assoc-field-options % ::sql.qp/add-cast :bit)
+
+                          :else
+                          %)]
     (->> (update query :fields #(mapv maybe-add-cast %))
          (parent-method driver :fields honeysql-form))))
 
@@ -808,6 +818,12 @@
 (defmethod sql.qp/->honeysql [:sqlserver ::sql.qp/cast-to-text]
   [driver [_ expr]]
   (sql.qp/->honeysql driver [::sql.qp/cast expr "varchar(256)"]))
+
+;; This is used to wrap comparison expressions (e.g. [:> field1 field2]) in a case statement as
+;; SQL server does not have a boolean data type. See #53805 for more details.
+(defmethod sql.qp/->honeysql [:sqlserver ::sql.qp/wrap-in-case]
+  [driver [_tag expr]]
+  [:case (sql.qp/->honeysql driver expr) [:inline 1] :else [:inline 0]])
 
 (defmethod driver/db-default-timezone :sqlserver
   [driver database]
@@ -1156,9 +1172,12 @@
       (throw (ex-info "Workspace isolation is not properly initialized - missing read user name"
                       {:workspace-id (:id workspace) :step :grant})))
     ;; Grant SELECT on each specific table only - no schema-level grants
-    (doseq [table tables]
-      (jdbc/execute! conn-spec [(format "GRANT SELECT ON [%s].[%s] TO [%s]"
-                                        (:schema table) (:name table) username)]))))
+    (let [qu (sql.u/quote-name :sqlserver :field username)]
+      (doseq [table tables]
+        (jdbc/execute! conn-spec [(format "GRANT SELECT ON %s.%s TO %s"
+                                          (sql.u/quote-name :sqlserver :schema (:schema table))
+                                          (sql.u/quote-name :sqlserver :table (:name table))
+                                          qu)])))))
 
 (defmethod driver/llm-sql-dialect-resource :sqlserver [_]
   "llm/prompts/dialects/sqlserver.md")

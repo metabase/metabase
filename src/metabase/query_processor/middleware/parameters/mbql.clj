@@ -55,8 +55,9 @@
    param-value
    a-ref       :- [:or :mbql.clause/field :mbql.clause/expression]]
   (cond
-    ;; for `id` or `category` type params look up the base-type of the Field and see if it's a number or not.
-    ;; If it *is* a number then recursively call this function and parse the param value as a number as appropriate.
+    ;; LEGACY: :id and :category are widget-types misused as parameter types.
+    ;; New code uses explicit types, but stored parameters may still have these.
+    ;; Infer numeric vs string from the target field. See QUE2-326.
     (and (#{:id :category} param-type)
          (let [base-type (or (field-type query stage-path a-ref)
                              (expression-type query a-ref))]

@@ -54,10 +54,10 @@
     :model/ImplicitAction                    metabase.actions.models
     :model/LoginHistory                      metabase.login-history.models.login-history
     :model/Measure                           metabase.measures.models.measure
-    :model/Metabot                           metabase-enterprise.metabot-v3.models.metabot
-    :model/MetabotConversation               metabase-enterprise.metabot-v3.models.metabot-conversation
-    :model/MetabotMessage                    metabase-enterprise.metabot-v3.models.metabot-message
-    :model/MetabotPrompt                     metabase-enterprise.metabot-v3.models.metabot-prompt
+    :model/Metabot                           metabase.metabot.models.metabot
+    :model/MetabotConversation               metabase.metabot.models.metabot-conversation
+    :model/MetabotMessage                    metabase.metabot.models.metabot-message
+    :model/MetabotPrompt                     metabase.metabot.models.metabot-prompt
     :model/ModelIndex                        metabase.indexed-entities.models.model-index
     :model/ModelIndexValue                   metabase.indexed-entities.models.model-index
     :model/ModerationReview                  metabase.content-verification.models.moderation-review
@@ -88,6 +88,7 @@
     :model/RecentViews                       metabase.activity-feed.models.recent-views
     :model/RemoteSyncObject                  metabase-enterprise.remote-sync.models.remote-sync-object
     :model/RemoteSyncTask                    metabase-enterprise.remote-sync.models.remote-sync-task
+    :model/ReplacementRun                    metabase-enterprise.replacement.models.replacement-run
     :model/Revision                          metabase.revisions.models.revision
     :model/SearchIndexMetadata               metabase.search.models.search-index-metadata
     :model/Secret                            metabase.secrets.models.secret

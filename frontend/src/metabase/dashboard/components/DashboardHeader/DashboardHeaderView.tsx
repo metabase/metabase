@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { EditBar } from "metabase/common/components/EditBar";
 import { LastEditInfoLabel } from "metabase/common/components/LastEditInfoLabel";
+import { SIDEBAR_WIDTH } from "metabase/common/components/Sidebar";
 import CS from "metabase/css/core/index.css";
 import {
   applyDraftParameterValues,
@@ -31,7 +32,6 @@ import type { Collection, Dashboard as IDashboard } from "metabase-types/api";
 
 import { Dashboard } from "../Dashboard";
 import { FixedWidthContainer } from "../Dashboard/DashboardComponents";
-import { SIDEBAR_WIDTH } from "../Sidebar";
 
 import S from "./DashboardHeaderView.module.css";
 
@@ -133,6 +133,7 @@ export function DashboardHeaderView({
               {titled && (
                 <Box
                   role="heading"
+                  aria-level={1}
                   className={cx(S.HeaderContent, {
                     [S.showSubHeader]: showSubHeader,
                   })}

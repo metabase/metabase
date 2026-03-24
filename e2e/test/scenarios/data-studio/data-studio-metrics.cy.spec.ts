@@ -70,11 +70,18 @@ describe("scenarios > data studio > library > metrics", () => {
       cy.findByText("Sum of all order totals across the store").should(
         "be.visible",
       );
+    });
+
+    H.DataStudio.Metrics.overviewPageDescriptionSidebar().within(() => {
+      cy.findByText("Last edited by Bobby Tables").should("be.visible");
+
       cy.findByText("Sample Database").should("be.visible");
-      cy.findByText("PUBLIC").should("be.visible");
+
       cy.findByText("Orders").should("be.visible");
-      cy.findByText("Creator and last editor").should("be.visible");
-      cy.findAllByText(/by Bobby Tables/).should("be.visible");
+      cy.findByText("Source table").should("be.visible");
+
+      cy.findByText("Dependencies").should("be.visible");
+      cy.findByText("Dependents").should("be.visible");
     });
 
     cy.log("Ensure chart is visible");
@@ -234,6 +241,9 @@ describe("scenarios > data studio > library > metrics", () => {
 
     cy.log("Restore the metric");
     cy.findByRole("table").findByText("Trusted Orders Metric").click();
+
+    H.MetricsViewer.openMetricHomePage("Trusted Orders Metric");
+
     cy.findByTestId("archive-banner").should("be.visible");
     cy.findByTestId("archive-banner").findByText("Restore").click();
     cy.wait("@updateCard");
@@ -266,7 +276,7 @@ describe("scenarios > data studio > library > metrics", () => {
       .closest("a")
       .should("have.attr", "target", "_blank")
       .should("have.attr", "href")
-      .and("match", /\/metric\/\d+/);
+      .and("match", /\/explore\?metricId=\d+/);
   });
 
   it("should duplicate metric via more menu", () => {

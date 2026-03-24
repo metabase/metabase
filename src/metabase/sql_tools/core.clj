@@ -7,6 +7,7 @@
    Note: Implementation namespaces (macaw.core, sqlglot.core) are loaded via
    metabase.sql-tools.init to avoid circular dependencies."
   (:require
+   [metabase.sql-tools.common :as common]
    [metabase.sql-tools.interface :as interface]
    [metabase.sql-tools.metrics :as metrics]
    [metabase.sql-tools.settings :as sql-tools.settings]
@@ -182,3 +183,30 @@
   (let [parser (sql-tools.settings/current-parser-backend)]
     (metrics/with-operation-timing [parser "add-into-clause"]
       (interface/add-into-clause-impl parser driver sql table-name))))
+
+(defn find-table-or-transform
+  "Given a table and schema parsed from a native query, find the matching table or transform.
+  Returns {:table table-id} or {:transform transform-id}, or nil."
+  [driver tables transforms spec]
+  (common/find-table-or-transform driver tables transforms spec))
+
+(defn resolve-field
+  "Resolve a field reference to one or more actual database fields.
+  See [[metabase.sql-tools.common/resolve-field]] for details."
+  [driver mp col-spec]
+  (common/resolve-field driver mp col-spec))
+
+(def ^:private TranspilationResult
+  [:map
+   [:status [:enum :success :error :skipped]]
+   [:reason {:optional true} [:enum :contains-templates :missing-dialect]]
+   [:error-message {:optional true} :string]
+   [:transpiled-sql {:optional true} :string]])
+
+(mu/defn transpile-sql :- TranspilationResult
+  "Transpile sql from one dialect to another. Returns a map as per `TranspilationResult`."
+  [sql :- :string
+   from-dialect :- [:maybe :string]
+   to-dialect :- [:maybe :string]]
+  (interface/transpile-sql-impl (sql-tools.settings/sql-tools-parser-backend)
+                                sql from-dialect to-dialect))

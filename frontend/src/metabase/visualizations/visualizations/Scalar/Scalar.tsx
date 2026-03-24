@@ -96,10 +96,13 @@ export class Scalar extends Component<
       },
       widget: ChartSettingSegmentsEditor,
       persistDefault: true,
-      noPadding: true,
-      props: {
+      getWrapperStyle: () => ({
+        marginLeft: 0,
+        marginRight: 0,
+      }),
+      getProps: () => ({
         canRemoveAll: true,
-      },
+      }),
     },
     ...columnSettings({
       getColumns: (
@@ -118,15 +121,15 @@ export class Scalar extends Component<
     "scalar.locale": {
       // title: t`Separator style`,
       // widget: "select",
-      // props: {
+      // getProps: () => ({
       //   options: [
       //     { name: "100000.00", value: null },
       //     { name: "100,000.00", value: "en" },
       //     { name: "100 000,00", value: "fr" },
       //     { name: "100.000,00", value: "de" },
       //   ],
-      // },
-      // default: "en",
+      // }),
+      // getDefault:() => "en",
     },
     "scalar.decimals": {
       // title: t`Number of decimal places`,

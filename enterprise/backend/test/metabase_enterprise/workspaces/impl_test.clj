@@ -654,7 +654,7 @@
           (let [workspace (t2/select-one :model/Workspace workspace-id)
                 graph     (ws.impl/get-or-calculate-graph! workspace)
                 result    (ws.impl/run-stale-ancestors! workspace graph t7-ref)
-                succeeded (:succeeded result)]
+                succeeded ^java.util.List (:succeeded result)]
             (testing "x1, x2 (transitively stale), and x4 run; x3, x5, x6 do not"
               (is (= (set [t1-ref t2-ref t4-ref]) (set succeeded)))
               (is (= [] (:failed result)))
@@ -742,7 +742,7 @@
           (let [workspace (t2/select-one :model/Workspace workspace-id)
                 graph     (ws.impl/get-or-calculate-graph! workspace)
                 result    (ws.impl/run-stale-ancestors! workspace graph x3-ref)
-                succeeded (:succeeded result)]
+                succeeded ^java.util.List (:succeeded result)]
             (testing "both workspace transform x1 and external transform x2 are run"
               (is (= #{x1-ref x2-global} (set succeeded)))
               (is (= [] (:failed result)))

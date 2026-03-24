@@ -6,7 +6,9 @@
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u])
+  (:import
+   (java.io Closeable)))
 
 (use-fixtures :once #'semantic.tu/once-fixture)
 
@@ -31,17 +33,17 @@
                          (semantic.index-metadata/create-tables-if-not-exists! %1 %2)
                          (fn [_] (semantic.index-metadata/drop-tables-if-exists! %1 %2)))]
     (testing "creates metadata and control tables when they don't exist"
-      (with-open [_ (sut pgvector index-metadata)]
+      (with-open [^Closeable _ (sut pgvector index-metadata)]
         (is (semantic.tu/table-exists-in-db? (:metadata-table-name index-metadata)))
         (is (semantic.tu/table-exists-in-db? (:control-table-name index-metadata)))
         (is (semantic.tu/table-exists-in-db? (:gate-table-name index-metadata)))))
     (testing "is idempotent when tables already exist"
-      (with-open [_ (sut pgvector index-metadata)]
+      (with-open [^Closeable _ (sut pgvector index-metadata)]
         (let [table-names-snap (semantic.tu/get-table-names pgvector)
               _                (sut pgvector index-metadata)]
           (is (= table-names-snap (semantic.tu/get-table-names pgvector))))))))
 
-(defn- open-tables! [pgvector index-metadata]
+(defn- open-tables! ^Closeable [pgvector index-metadata]
   (semantic.tu/closeable
    (semantic.index-metadata/create-tables-if-not-exists! pgvector index-metadata)
    (fn [_] (semantic.tu/cleanup-index-metadata! pgvector index-metadata))))

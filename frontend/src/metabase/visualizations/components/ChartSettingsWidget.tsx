@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type { ComponentType } from "react";
+import type { CSSProperties, ComponentType } from "react";
 
 import FormS from "metabase/css/components/form.module.css";
 import { Box, Group, Icon, Text, Tooltip } from "metabase/ui";
@@ -11,16 +11,13 @@ type Props = {
   description?: string;
   hint?: string;
   hidden?: boolean;
-  disabled?: boolean;
   widget?: string | ComponentType<{ id: string }>;
   inline?: boolean;
-  marginBottom?: string;
   props?: Record<string, unknown>;
-  noPadding?: boolean;
   variant?: "default" | "form-field";
-  borderBottom?: boolean;
   dataTestId?: string;
   id: string;
+  style?: CSSProperties;
 };
 
 const ChartSettingsWidget = ({
@@ -28,16 +25,12 @@ const ChartSettingsWidget = ({
   description,
   hint,
   hidden,
-  disabled,
   variant = "default",
   inline = false,
-  marginBottom = undefined,
   widget: Widget,
   dataTestId,
   props,
-  // disables X padding for certain widgets so divider line extends to edge
-  noPadding,
-  borderBottom,
+  style,
   // NOTE: pass along special props to support:
   // * adding additional fields
   // * substituting widgets
@@ -47,16 +40,13 @@ const ChartSettingsWidget = ({
   return (
     <Root
       hidden={hidden}
-      noPadding={noPadding}
-      disabled={disabled}
       className={cx({
         [FormS.FormField]: isFormField,
       })}
       inline={inline}
-      marginBottom={marginBottom}
       data-testid={dataTestId ?? `chart-settings-widget-${extraWidgetProps.id}`}
       data-field-title={title}
-      borderBottom={borderBottom}
+      style={style}
     >
       {title && (
         <Group align="center" gap="xs" mb={inline && !hidden ? 0 : "sm"}>

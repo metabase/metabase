@@ -29,11 +29,7 @@ import type {
   RawGroupRouteParams,
   SpecialGroupType,
 } from "../../types";
-import {
-  DataPermission,
-  DataPermissionValue,
-  parseGroupRouteParams,
-} from "../../types";
+import { DataPermission, DataPermissionValue } from "../../types";
 import {
   getDatabaseEntityId,
   getSchemaEntityId,
@@ -88,17 +84,18 @@ type RouteParamsSelectorParameters = {
   params: DataRouteParams;
 };
 
-const getRouteParams = (
-  _state: State,
-  props: RouteParamsSelectorParameters,
-) => {
-  const { databaseId, schemaName, tableId } = props.params;
-  return {
+const getRouteParams = createSelector(
+  (_state: State, props: RouteParamsSelectorParameters) =>
+    props.params.databaseId,
+  (_state: State, props: RouteParamsSelectorParameters) =>
+    props.params.schemaName,
+  (_state: State, props: RouteParamsSelectorParameters) => props.params.tableId,
+  (databaseId, schemaName, tableId) => ({
     databaseId,
     schemaName,
     tableId,
-  };
-};
+  }),
+);
 
 export const getDataPermissions = (state: State) =>
   state.admin.permissions.dataPermissions;
@@ -106,12 +103,19 @@ export const getDataPermissions = (state: State) =>
 const getOriginalDataPermissions = (state: State) =>
   state.admin.permissions.originalDataPermissions;
 
-const getGroupRouteParams = (
-  _state: State,
-  props: { params: RawGroupRouteParams },
-) => {
-  return parseGroupRouteParams(props.params);
-};
+const getGroupRouteParams = createSelector(
+  (_state: State, props: { params: RawGroupRouteParams }) =>
+    props.params.groupId,
+  (_state: State, props: { params: RawGroupRouteParams }) =>
+    props.params.databaseId,
+  (_state: State, props: { params: RawGroupRouteParams }) =>
+    props.params.schemaName,
+  (groupId, databaseId, schemaName) => ({
+    groupId: groupId != null ? parseInt(groupId) : undefined,
+    databaseId: databaseId != null ? parseInt(databaseId) : undefined,
+    schemaName,
+  }),
+);
 
 const getEditorEntityName = (
   { databaseId, schemaName }: DataRouteParams,

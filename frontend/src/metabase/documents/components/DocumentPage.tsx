@@ -26,7 +26,6 @@ import {
   useDeleteBookmarkMutation,
   useGetDocumentQuery,
   useListBookmarksQuery,
-  useListCommentsQuery,
   useUpdateDocumentMutation,
 } from "metabase/api";
 import { canonicalCollectionId } from "metabase/collections/utils";
@@ -77,7 +76,6 @@ import {
   getSelectedEmbedIndex,
   getSelectedQuestionId,
 } from "../selectors";
-import { getListCommentsQuery } from "../utils/api";
 
 import { DocumentArchivedEntityBanner } from "./DocumentArchivedEntityBanner";
 import { DocumentHeader } from "./DocumentHeader";
@@ -152,12 +150,6 @@ export const DocumentPage = ({
   if (documentId !== documentData?.id) {
     documentData = undefined;
   }
-
-  const { data: commentsData } = useListCommentsQuery(
-    getListCommentsQuery(documentData),
-  );
-  const hasComments =
-    !!commentsData?.comments && commentsData.comments.length > 0;
 
   const canWrite =
     !documentData?.archived && (isNewDocument || documentData?.can_write);
@@ -505,7 +497,6 @@ export const DocumentPage = ({
               onToggleBookmark={handleToggleBookmark}
               onArchive={() => handleUpdate({ archived: true })}
               onShowHistory={handleShowHistory}
-              hasComments={hasComments}
             />
             <Editor
               onEditorReady={setEditorInstance}

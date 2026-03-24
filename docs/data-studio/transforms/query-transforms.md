@@ -105,34 +105,50 @@ For a transform to run incrementally, you'll need to pick a column ("checkpoint"
 
 ### Make a query transform incremental
 
+#### Use table variables for incremental SQL transforms
+
+If you built your transform in the graphical query builder, you can skip right to [marking the transform as incremental](#mark-transform-as-incremental).
+
+If you are writing your incremental transform in raw SQL, you'll need to add a [table variable](../../questions/native-editor/table-variables.md) into your SQL code, with the table variable replacing the table with the checkpoint column.
+
+For example, let's say you have a transform that retrieves order id, total and product title:
+
+```sql
+SELECT
+  orders.id,
+  orders.total,
+  products.title
+FROM
+   orders JOIN products on orders.product_id = products.id
+```
+
+To make this transform incrementally load the data based on new values of `orders.id` column, you need to:
+
+1. Add a table variable, for example `{{orders_var}}` replacing `orders` in the `FROM` statement;
+2. In the table variable settings, connect the table variable to the `orders` table;
+3. Replace other references to the table in your query with either:
+    - The name of the table variable (if you have "Emit table alias" toggled on in variable's setting).
+    - Your own handcrafted alias for the variable.
+
+So your query will look like this:
+
+```sql
+SELECT
+  orders_var.id,
+  orders_var.total,
+  products.title
+FROM
+   {{orders_var}} JOIN products on orders_var.product_id = products.id
+```
+
+In this query,`orders_var` is connected to the `orders` table in variable settings, and "Emit table aliases" toggled on in the variables sidebar.
+
+Once your query has table aliases, you can mark the transform as incremental using the `orders.id` column in the transform's settings.
+
+#### Mark transform as incremental
+
 To make a query transform incremental:
 
 1. Go to the transform's page in **Data studio > Transforms**.
 2. Switch to **Settings** tab.
-3. In **Column to check for new values**, select the column that Metabase should check to determine which values are new. See [Prerequisites for incremental transforms](./transforms-overview.md#prerequisites-for-incremental-transforms) for more information on the requirements for that column.
-
-   You have to select the column from the list of the columns of the _output_ tables. Note: this is different from [Python transforms](python-transforms.md), where you select an _input_ column as column to check for new values.
-
-   If you're using SQL, Metabase might tell you that your query is too complicated to automatically make the transform incremental. In this case, you need to add the filter for new values manually. For example, let's say you have a transform query:
-
-   ```sql
-   SELECT id, total FROM orders;
-   ```
-
-   (This query is actually simple enough for Metabase to handle it automatically, we're just using it as an example)
-
-   If you want use the `id` column to check for new values, i.e. only write back the records with `id` greater than already existing `id`, you can add a manual filter like this:
-
-   ```sql
-   SELECT id, total FROM orders
-   {%raw%}[[WHERE id > {{checkpoint}}]]{% endraw %}
-   ```
-
-   and then select `id` as the **Column to check for new values** in the incremental transform settings.
-
-   If you're using a timestamp column as a checkpoint, you'll need to explicitly cast it to timestamp:
-
-   ```sql
-   SELECT created_at, total FROM orders
-   {%raw%}[[WHERE created_at > {{checkpoint}}::timestamp]]{% endraw %}
-   ```
+3. In **Column to check for new values**, select the column in one of the source tables that Metabase should check to determine which values are new. Only some columns are eligible. See [prerequisites for incremental transforms](./transforms-overview.md#prerequisites-for-incremental-transforms).

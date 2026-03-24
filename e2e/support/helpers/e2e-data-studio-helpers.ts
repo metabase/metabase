@@ -111,6 +111,8 @@ export const DataStudio = {
     dependenciesTab: () =>
       DataStudio.Metrics.header().findByText("Dependencies"),
     cachingTab: () => DataStudio.Metrics.header().findByText("Caching"),
+    overviewPageDescriptionSidebar: () =>
+      metricOverviewPage().findByTestId("metric-description-sidebar"),
   },
   Tables: {
     overviewPage: () => cy.findByTestId("table-overview-page"),
@@ -150,6 +152,8 @@ export const DataStudio = {
         .click(),
 
     Overview: {
+      descriptionSidebar: () => cy.findByTestId("table-description-sidebar"),
+
       descriptionText: () =>
         cy
           .findByTestId("table-description-section")

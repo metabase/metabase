@@ -326,7 +326,7 @@
                                                          "x-metabase-client-version" "2"}}})
       (is (=? {:embedding_client "client-B", :embedding_version "2"}
               ;; The query metadata is handled asynchronously, so we need to poll until it's available:
-              (tu/poll-until 500
+              (tu/poll-until 2000
                              (t2/select-one [:model/QueryExecution :embedding_client :embedding_version]
                                             :card_id (u/the-id card-1))))))))
 
@@ -3521,6 +3521,40 @@
             (is (set/subset? #{["Barney's Beanery"] ["bigmista's barbecue"]}
                              (-> response :values set)))
             (is (not ((into #{} (mapcat identity) (:values response)) "The Virgil")))))))))
+
+(deftest field-filter-values-without-create-queries-permission-test
+  (testing "Users with view-data but without create-queries permission can still get field filter values (#70767)"
+    (let [param-key "name_param_id"]
+      (mt/with-temp [:model/Card field-filter-card
+                     {:dataset_query {:database (mt/id)
+                                      :type     :native
+                                      :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE {{NAME}}"
+                                                 :template-tags {"NAME" {:id           param-key
+                                                                         :name         "NAME"
+                                                                         :display_name "Name"
+                                                                         :type         :dimension
+                                                                         :dimension    [:field (mt/id :venues :name) nil]
+                                                                         :required     true}}}}
+                      :name       "native card with field filter"
+                      :parameters [{:id     param-key
+                                    :type   :string/=
+                                    :target [:dimension [:template-tag "NAME"]]
+                                    :name   "Name"
+                                    :slug   "NAME"}]}]
+        (mt/with-no-data-perms-for-all-users!
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
+          (testing "GET /api/card/:card-id/params/:param-key/values"
+            (let [response (mt/user-http-request :rasta :get 200
+                                                 (param-values-url field-filter-card param-key))]
+              (is (false? (:has_more_values response)))
+              (is (set/subset? #{["20th Century Cafe"] ["33 Taps"]}
+                               (-> response :values set)))))
+          (testing "GET /api/card/:card-id/params/:param-key/search/:query"
+            (let [response (mt/user-http-request :rasta :get 200
+                                                 (param-values-url field-filter-card param-key "bar"))]
+              (is (set/subset? #{["Barney's Beanery"] ["bigmista's barbecue"]}
+                               (-> response :values set))))))))))
 
 (deftest parameters-with-field-to-field-remapping-test
   (let [param-key "id/param"]

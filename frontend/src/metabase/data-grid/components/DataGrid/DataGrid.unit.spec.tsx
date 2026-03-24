@@ -6,7 +6,6 @@ import {
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
-  within,
 } from "__support__/ui";
 import {
   type ColumnOptions,
@@ -54,6 +53,8 @@ interface TestDataGridProps {
   sortableColumns?: boolean;
   wrapableColumns?: string[];
   enableSelection?: boolean;
+  pinnedTopRowsCount?: number;
+  pinnedLeftColumnsCount?: number;
 }
 
 const TestDataGrid = ({
@@ -68,6 +69,8 @@ const TestDataGrid = ({
   sortableColumns = false,
   wrapableColumns = [],
   enableSelection = false,
+  pinnedTopRowsCount,
+  pinnedLeftColumnsCount,
 }: TestDataGridProps) => {
   const columns: ColumnOptions<SampleDataType>[] = useMemo(
     () => [
@@ -138,6 +141,8 @@ const TestDataGrid = ({
     onColumnResize,
     rowId,
     enableSelection,
+    pinnedTopRowsCount,
+    pinnedLeftColumnsCount,
   });
 
   return (
@@ -226,18 +231,14 @@ describe("DataGrid", () => {
       jest.runAllTimers();
     });
 
-    const rows = screen.getAllByRole("row").slice(1); // Skip header row
+    const body = screen.getByTestId("table-body");
+    const rowIdCells = body.querySelectorAll('[data-testid="row-id-cell"]');
 
-    expect(rows.length).toBeGreaterThan(0);
+    expect(rowIdCells).toHaveLength(sampleData.length);
 
-    rows.forEach((row, index) => {
-      const cells = within(row).getAllByRole("gridcell");
-      expect(cells[0]).toHaveTextContent(String(index + 2));
+    rowIdCells.forEach((cell, index) => {
+      expect(cell).toHaveTextContent(String(index + 1));
     });
-
-    const firstRow = rows[0];
-    const cellsInRow = within(firstRow).getAllByRole("gridcell");
-    expect(cellsInRow.length).toBe(4); // 3 data columns + 1 row ID column
   });
 
   it("displays proper sort indicators for sortable columns", () => {
@@ -265,6 +266,127 @@ describe("DataGrid", () => {
 
     expect(idSortIcon).toBeDefined();
     expect(nameSortIcon).toBeDefined();
+  });
+
+  it("renders pinned rows in a separate sticky section", () => {
+    const pinnedTopRowsCount = 2;
+    renderWithProviders(
+      <TestDataGrid pinnedTopRowsCount={pinnedTopRowsCount} />,
+    );
+    act(() => {
+      jest.runAllTimers();
+    });
+
+    const pinnedPinnedQuadrant = screen.queryByTestId("pinned-pinned-quadrant");
+    expect(pinnedPinnedQuadrant).not.toBeInTheDocument();
+
+    const pinnedCenterQuadrant = screen.getByTestId("pinned-center-quadrant");
+    const pinnedRows = pinnedCenterQuadrant.querySelectorAll('[role="row"]');
+    expect(pinnedRows).toHaveLength(pinnedTopRowsCount);
+
+    const centerCenterQuadrant = screen.getByTestId("center-center-quadrant");
+    const centerRows = centerCenterQuadrant.querySelectorAll('[role="row"]');
+    expect(centerRows).toHaveLength(sampleData.length - pinnedTopRowsCount);
+  });
+
+  it("renders pinned columns in a separate sticky section", () => {
+    renderWithProviders(<TestDataGrid pinnedLeftColumnsCount={1} />);
+    act(() => {
+      jest.runAllTimers();
+    });
+
+    const headerPinnedQuadrant = screen.getByTestId("header-pinned-quadrant");
+    const pinnedHeaderCells = headerPinnedQuadrant.querySelectorAll(
+      '[data-testid="header-cell"]',
+    );
+    expect(pinnedHeaderCells).toHaveLength(1);
+    expect(pinnedHeaderCells[0]).toHaveTextContent("ID");
+
+    const headerCenterQuadrant = screen.getByTestId("header-center-quadrant");
+    const centerHeaderCells = headerCenterQuadrant.querySelectorAll(
+      '[data-testid="header-cell"]',
+    );
+    expect(centerHeaderCells).toHaveLength(3);
+
+    const centerPinnedQuadrant = screen.getByTestId("center-pinned-quadrant");
+    const pinnedBodyCells =
+      centerPinnedQuadrant.querySelectorAll('[role="gridcell"]');
+    expect(pinnedBodyCells.length).toBeGreaterThan(0);
+  });
+
+  it("renders both pinned rows and pinned columns together", () => {
+    renderWithProviders(
+      <TestDataGrid pinnedTopRowsCount={1} pinnedLeftColumnsCount={1} />,
+    );
+    act(() => {
+      jest.runAllTimers();
+    });
+
+    const pinnedPinnedQuadrant = screen.getByTestId("pinned-pinned-quadrant");
+    const pinnedPinnedCells =
+      pinnedPinnedQuadrant.querySelectorAll('[role="gridcell"]');
+    expect(pinnedPinnedCells).toHaveLength(1);
+
+    const pinnedCenterQuadrant = screen.getByTestId("pinned-center-quadrant");
+    const pinnedCenterCells =
+      pinnedCenterQuadrant.querySelectorAll('[role="gridcell"]');
+    expect(pinnedCenterCells).toHaveLength(3);
+
+    const centerPinnedQuadrant = screen.getByTestId("center-pinned-quadrant");
+    const centerPinnedRows =
+      centerPinnedQuadrant.querySelectorAll('[role="row"]');
+    expect(centerPinnedRows).toHaveLength(sampleData.length - 1);
+
+    const centerCenterQuadrant = screen.getByTestId("center-center-quadrant");
+    const centerCenterRows =
+      centerCenterQuadrant.querySelectorAll('[role="row"]');
+    expect(centerCenterRows).toHaveLength(sampleData.length - 1);
+  });
+
+  it("unpins columns that exceed 90% of container width", () => {
+    renderWithProviders(<TestDataGrid pinnedLeftColumnsCount={2} />);
+    act(() => {
+      jest.runAllTimers();
+    });
+
+    const headerPinnedQuadrant = screen.getByTestId("header-pinned-quadrant");
+    const pinnedHeaderCells = headerPinnedQuadrant.querySelectorAll(
+      '[data-testid="header-cell"]',
+    );
+    expect(pinnedHeaderCells).toHaveLength(1);
+    expect(pinnedHeaderCells[0]).toHaveTextContent("ID");
+  });
+
+  it("unpins rows that exceed 80% of container height", () => {
+    renderWithProviders(<TestDataGrid pinnedTopRowsCount={5} />);
+    act(() => {
+      jest.runAllTimers();
+    });
+
+    const pinnedCenterQuadrant = screen.getByTestId("pinned-center-quadrant");
+    const pinnedRows = pinnedCenterQuadrant.querySelectorAll('[role="row"]');
+    expect(pinnedRows.length).toBeLessThan(5);
+    expect(pinnedRows.length).toBe(3);
+
+    const centerCenterQuadrant = screen.getByTestId("center-center-quadrant");
+    const centerRows = centerCenterQuadrant.querySelectorAll('[role="row"]');
+    expect(centerRows).toHaveLength(sampleData.length - 3);
+  });
+
+  it("renders center section rows when all columns are pinned", () => {
+    renderWithProviders(<TestDataGrid pinnedLeftColumnsCount={4} />);
+    act(() => {
+      jest.runAllTimers();
+    });
+
+    const centerCenterQuadrant = screen.getByTestId("center-center-quadrant");
+    const centerRows = centerCenterQuadrant.querySelectorAll('[role="row"]');
+
+    expect(centerRows.length).toBeGreaterThan(0);
+
+    centerRows.forEach((row) => {
+      expect(row).toHaveAttribute("data-index");
+    });
   });
 
   it("can copy selected cells with headers included", async () => {

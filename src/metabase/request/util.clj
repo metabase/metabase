@@ -25,6 +25,11 @@
   [{:keys [^String uri]}]
   (str/starts-with? uri "/api"))
 
+(defn auth-call?
+  "Is this ring request an auth call (does path start with `/auth`)?"
+  [{:keys [^String uri]}]
+  (str/starts-with? uri "/auth"))
+
 (defn public?
   "Is this ring request one that will serve `public.html`?"
   [{:keys [uri]}]

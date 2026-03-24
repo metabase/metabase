@@ -3,6 +3,7 @@
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.models.analysis-finding-error :as deps.analysis-finding-error]
    [metabase.models.interface :as mi]
+   [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -24,15 +25,17 @@
   - 3: Initial version
   - 4: Disable naive sql validation
   - 5: Added source entity tracking in analysis_finding_error table
-  - 6: Removed validate prefix from error_type in analysis_finding_error"
-  6)
+  - 6: Removed validate prefix from error_type in analysis_finding_error
+  - 7: Only mark inactive (not missing) field refs in :fields as soft (GHY-3157)"
+  7)
 
 (defn- error->finding-error-row
   "Convert an error from lib/find-bad-refs-with-source to a row for analysis_finding_error table.
    We use `:message` for the error detail if there was an `validation-exception-error`."
   [error]
   {:error-type          (:type error)
-   :error-detail        (or (:name error) (:message error))
+   ;; error-detail cannot be longer than 254
+   :error-detail        (some-> (or (:name error) (:message error)) (u/truncate 254))
    :source-entity-type  (:source-entity-type error)
    :source-entity-id    (:source-entity-id error)})
 

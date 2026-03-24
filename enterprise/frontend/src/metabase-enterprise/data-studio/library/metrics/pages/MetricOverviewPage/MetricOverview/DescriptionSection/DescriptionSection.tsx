@@ -1,19 +1,48 @@
 import { t } from "ttag";
 
-import { useUpdateCardMutation } from "metabase/api";
+import {
+  useGetDatabaseQuery,
+  useGetTableQuery,
+  useUpdateCardMutation,
+} from "metabase/api";
+import { DateTime } from "metabase/common/components/DateTime";
 import { EditableText } from "metabase/common/components/EditableText";
+import { Link } from "metabase/common/components/Link/Link";
 import { Markdown } from "metabase/common/components/Markdown";
+import * as Urls from "metabase/lib/urls";
+import { getUserName } from "metabase/lib/user";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Box } from "metabase/ui";
-import type { Card, CardType } from "metabase-types/api";
+import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { Box, Card, Flex, Group, Icon, Stack, Text, rem } from "metabase/ui";
+import type { Card as CardApiType, CardType } from "metabase-types/api";
+
+import S from "./DescriptionSection.module.css";
 
 type DescriptionSectionProps = {
-  card: Card;
+  card: CardApiType;
 };
 
 export function DescriptionSection({ card }: DescriptionSectionProps) {
   const [updateCard] = useUpdateCardMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
+
+  const isDependenciesEnabled = PLUGIN_DEPENDENCIES.isEnabled;
+
+  const { data: database } = useGetDatabaseQuery(
+    { id: card.database_id! },
+    { skip: !card.database_id },
+  );
+
+  const { data: table } = useGetTableQuery(
+    { id: card.table_id! },
+    { skip: !card.table_id },
+  );
+
+  const { dependentsCount, dependenciesCount } =
+    PLUGIN_DEPENDENCIES.useGetDependenciesCount({
+      id: Number(card.id),
+      type: "card",
+    });
 
   const handleChange = async (newValue: string) => {
     const newDescription = newValue.trim();
@@ -28,25 +57,123 @@ export function DescriptionSection({ card }: DescriptionSectionProps) {
     }
   };
 
-  if (card.can_write) {
-    return (
-      <Box>
-        <EditableText
-          initialValue={card.description ?? ""}
-          placeholder={t`No description`}
-          isMarkdown
-          onChange={handleChange}
-          px={0}
-        />
+  return (
+    <Stack gap={0} align="stretch" data-testid="metric-description-sidebar">
+      {/* Description */}
+      <Box data-testid="metric-description-section" p={rem(20)}>
+        {card.can_write ? (
+          <EditableText
+            initialValue={card.description ?? ""}
+            placeholder={t`No description`}
+            isMarkdown
+            isOptional
+            isMultiline
+            onChange={handleChange}
+            px={0}
+          />
+        ) : (
+          <Markdown>{card.description || t`No description`}</Markdown>
+        )}
       </Box>
-    );
-  }
 
-  if (card.description) {
-    return <Markdown>{card.description}</Markdown>;
-  }
+      {/* Metadata Sections */}
+      <Card mx="lg" bg="background-secondary" shadow="none" radius="1rem">
+        <Card.Section withBorder p="md">
+          <Group gap="sm" mb={4}>
+            <Icon name="pencil" c="brand" />
+            <Text size="md" fw={600} lh="1rem">
+              <DateTime value={card.updated_at} />
+            </Text>
+          </Group>
+          <Text size="sm" c="text-secondary" lh="1rem" ml="1.5rem">
+            {card["last-edit-info"]
+              ? t`Last edited by ${getUserName(card["last-edit-info"])}`
+              : t`Last edited at`}
+          </Text>
+        </Card.Section>
+        <Card.Section withBorder p="md">
+          <Group gap="sm" mb={4}>
+            <Icon name="database" c="brand" />
 
-  return <Box c="text-secondary" lh="h4">{t`No description`}</Box>;
+            {database ? (
+              <Link to={Urls.dataStudioData({ databaseId: database.id })}>
+                <Text size="md" fw={600} lh="1rem">
+                  {database.name}
+                </Text>
+              </Link>
+            ) : (
+              <Text size="md" fw={600} lh="1rem">
+                —
+              </Text>
+            )}
+          </Group>
+          <Text size="sm" c="text-secondary" lh="1rem" ml="1.5rem">
+            {t`Database`}
+          </Text>
+        </Card.Section>
+        <Card.Section withBorder p="md">
+          <Group gap="sm" mb={4}>
+            <Icon name="table" c={table ? "brand" : "icon-secondary"} />
+            <Text size="md" fw={600} lh="1rem">
+              {table?.display_name || table?.name || "—"}
+            </Text>
+          </Group>
+          <Text size="sm" c="text-secondary" lh="1rem" ml="1.5rem">
+            {t`Source table`}
+          </Text>
+        </Card.Section>
+      </Card>
+
+      {/* Statistics */}
+      {isDependenciesEnabled && (
+        <Card mx="lg" my="lg" shadow="none">
+          <Card.Section withBorder py={rem(12)} px="md">
+            <Flex justify="space-between" align="center">
+              <Text size="md" c="text-secondary">
+                {t`Dependencies`}
+              </Text>
+              {dependenciesCount > 0 ? (
+                <Link
+                  to={Urls.dataStudioMetricDependencies(card.id)}
+                  className={S.metricLink}
+                >
+                  <Text size="xl" fw={600}>
+                    {dependenciesCount}
+                  </Text>
+                </Link>
+              ) : (
+                <Text size="xl" fw={600}>
+                  {dependenciesCount}
+                </Text>
+              )}
+            </Flex>
+          </Card.Section>
+          <Card.Section withBorder py={rem(12)} px="md">
+            <Flex justify="space-between" align="center">
+              <Text size="md" c="text-secondary">
+                {t`Dependents`}
+              </Text>
+
+              {dependentsCount > 0 ? (
+                <Link
+                  to={Urls.dataStudioMetricDependencies(card.id)}
+                  className={S.metricLink}
+                >
+                  <Text size="xl" fw={600}>
+                    {dependentsCount}
+                  </Text>
+                </Link>
+              ) : (
+                <Text size="xl" fw={600}>
+                  {dependentsCount}
+                </Text>
+              )}
+            </Flex>
+          </Card.Section>
+        </Card>
+      )}
+    </Stack>
+  );
 }
 
 function getSuccessMessage(cardType: CardType) {

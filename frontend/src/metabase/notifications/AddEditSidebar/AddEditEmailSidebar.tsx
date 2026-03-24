@@ -3,23 +3,22 @@ import { useEffect } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { DataPermissionValue } from "metabase/admin/permissions/types";
 import {
   type ScheduleChangeProp,
   SchedulePicker,
 } from "metabase/common/components/SchedulePicker";
 import { SendTestPulse } from "metabase/common/components/SendTestPulse";
+import { Sidebar } from "metabase/common/components/Sidebar";
 import { Toggle } from "metabase/common/components/Toggle";
 import CS from "metabase/css/core/index.css";
-import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { dashboardPulseIsValid } from "metabase/lib/pulse";
 import { useSelector } from "metabase/lib/redux";
 import { EmailAttachmentPicker } from "metabase/notifications/EmailAttachmentPicker";
 import { RecipientPicker } from "metabase/notifications/channels/RecipientPicker";
 import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
-import { canAccessSettings } from "metabase/selectors/user";
+import { canAccessSettings, getUser } from "metabase/selectors/user";
 import { Icon, Title } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
@@ -83,7 +82,7 @@ export const AddEditEmailSidebar = ({
 }: AddEditEmailSidebarProps) => {
   const isValid = dashboardPulseIsValid(pulse, formInput.channels);
   const userCanAccessSettings = useSelector(canAccessSettings);
-  const currentUser = useSelector(getCurrentUser);
+  const currentUser = useSelector(getUser);
 
   // Return true if the results of all cards can be downloaded
   const allowDownload = pulse.cards?.every(

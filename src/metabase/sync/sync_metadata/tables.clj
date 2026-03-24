@@ -222,7 +222,12 @@
                                    (some? (:visibility_type old-table))
                                    ;; noop
                                    (= (:visibility_type new-table) (:visibility_type old-table)))
-                                  (dissoc changes :visibility_type))]
+                                  (dissoc changes :visibility_type)
+
+                                  ;; don't mark computed tables as writable — they are derived
+                                  ;; and should never be editable, regardless of what the driver reports
+                                  (= :computed (:data_authority metabase-table))
+                                  (dissoc changes :is_writable))]
     (doseq [[k v] changes]
       (log/infof "%s of %s changed from %s to %s"
                  k
@@ -259,7 +264,7 @@
    & filters]
   (set (apply
         t2/select
-        (into [:model/Table :id :name :schema] keys-to-update)
+        (into [:model/Table :id :name :schema :data_authority] keys-to-update)
         :db_id (u/the-id database)
         filters)))
 
@@ -302,7 +307,8 @@
 
 (defn- archive-tables!
   "Mark tables that have been deactivated for longer than the configured threshold as archived
-  and suffixes their names."
+  and suffixes their names. Skips tables with `transform_target = true` (provisional transform
+  output entries) since transforms still reference them by their original name."
   [database]
   (let [;; we use UTC offset time for suffix, may not match db time but
         ;; it doesn't matter much, the source of time truth is `archived_at`,
@@ -315,6 +321,7 @@
                                      :db_id (u/the-id database)
                                      :active false
                                      :archived_at nil
+                                     :transform_target false
                                      :deactivated_at [:< threshold-expr])
         archived (atom 0)]
     (doseq [table tables-to-archive
