@@ -273,7 +273,7 @@ To create tenant attributes from JWT SSO, include a claim `@tenant.attributes`:
   "@tenant": "meowdern_solutions",
   "@tenant.attributes": {
     "id": "13371337",
-    "name": "Meowdern Solutions"
+    "name": "Mammoth Solutions"
   },
   "email": "mittens@example.com",
   "first_name": "Mister",
