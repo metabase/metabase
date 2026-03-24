@@ -50,7 +50,13 @@ function ensureVizApi() {
 /**
  * Build a URL for a plugin's static asset.
  */
-export function getPluginAssetUrl(pluginId: number, assetPath: string): string {
+export function getPluginAssetUrl(
+  pluginId: number,
+  assetPath: string | null,
+): string | undefined {
+  if (!assetPath) {
+    return undefined;
+  }
   return `/api/custom-viz-plugin/${pluginId}/asset?path=${encodeURIComponent(assetPath)}`;
 }
 

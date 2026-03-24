@@ -40,6 +40,7 @@ import { getPluginAssetUrl } from "metabase/visualizations/custom-viz-plugins";
 import type { CustomVizPlugin } from "metabase-types/api";
 
 function PluginIconPreview({ plugin }: { plugin: CustomVizPlugin }) {
+  const iconUrl = getPluginAssetUrl(plugin.id, plugin.icon);
   return (
     <ActionIcon
       w="3.125rem"
@@ -48,12 +49,16 @@ function PluginIconPreview({ plugin }: { plugin: CustomVizPlugin }) {
       variant="outline"
       style={{ border: "1px solid var(--mb-color-border)" }}
     >
-      <img
-        src={getPluginAssetUrl(plugin.id, plugin.icon)}
-        alt={plugin.display_name}
-        width={20}
-        height={20}
-      />
+      {iconUrl ? (
+        <img
+          src={iconUrl}
+          alt={plugin.display_name}
+          width={20}
+          height={20}
+        />
+      ) : (
+        <Icon name="unknown" size={20} />
+      )}
     </ActionIcon>
   );
 }

@@ -28,7 +28,7 @@
    [:identifier      ms/NonBlankString]
    [:status          [:enum "pending" "active" "error"]]
    [:enabled         :boolean]
-   [:icon            ms/NonBlankString]
+   [:icon            {:optional true} [:maybe :string]]
    [:error_message   {:optional true} [:maybe :string]]
    [:pinned_version  {:optional true} [:maybe :string]]
    [:resolved_commit {:optional true} [:maybe :string]]
@@ -43,7 +43,7 @@
    [:id              ms/PositiveInt]
    [:identifier      ms/NonBlankString]
    [:display_name    ms/NonBlankString]
-   [:icon            ms/NonBlankString]
+   [:icon            {:optional true} [:maybe :string]]
    [:bundle_url      ms/NonBlankString]
    [:resolved_commit {:optional true} [:maybe :string]]
    [:dev_bundle_url  {:optional true} [:maybe :string]]
@@ -105,7 +105,6 @@
                                                           :access_token    access_token
                                                           :display_name    identifier
                                                           :identifier      identifier
-                                                          :icon            "area"
                                                           :status          :pending
                                                           :pinned_version  pinned_version))]
     ;; fetch bundle synchronously — validates the repo is accessible

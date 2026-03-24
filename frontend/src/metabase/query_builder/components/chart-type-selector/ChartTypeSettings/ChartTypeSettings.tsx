@@ -55,12 +55,16 @@ function CustomVizOption({
             ChartTypeOptionS.VisualizationButton,
           )}
         >
-          <img
-            src={iconUrl}
-            alt={plugin.display_name}
-            width={20}
-            height={20}
-          />
+          {iconUrl ? (
+            <img
+              src={iconUrl}
+              alt={plugin.display_name}
+              width={20}
+              height={20}
+            />
+          ) : (
+            <Icon name="unknown" size={20} />
+          )}
         </ActionIcon>
         <Text lh="unset" ta="center" fw="bold" fz="sm" c="text-secondary">
           {plugin.display_name}

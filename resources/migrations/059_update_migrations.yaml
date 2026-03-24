@@ -3625,9 +3625,9 @@ databaseChangeLog:
               - column:
                   name: icon
                   type: varchar(254)
-                  remarks: Icon from plugin manifest - can be an icon name or asset path
+                  remarks: Icon from plugin manifest - asset path resolved to a URL
                   constraints:
-                    nullable: false
+                    nullable: true
 
   - changeSet:
       id: v59.2026-03-23T10:00:00

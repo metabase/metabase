@@ -14,7 +14,7 @@ export interface CustomVizPlugin {
   identifier: string;
   status: "pending" | "active" | "error";
   enabled: boolean;
-  icon: string;
+  icon: string | null;
   error_message: string | null;
   pinned_version: string | null;
   resolved_commit: string | null;
@@ -29,7 +29,7 @@ export interface CustomVizPluginRuntime {
   id: number;
   identifier: string;
   display_name: string;
-  icon: string;
+  icon: string | null;
   bundle_url: string;
   resolved_commit: string | null;
   dev_bundle_url?: string | null;
