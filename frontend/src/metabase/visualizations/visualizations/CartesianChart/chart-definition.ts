@@ -44,9 +44,7 @@ const transformCartesianSeries = (series: Series): TransformedSeries => {
 };
 
 export const getCartesianChartDefinition = (
-  props: Partial<
-    Omit<VisualizationDefinition, "isSensible" | "checkRenderable">
-  >,
+  props: Partial<VisualizationDefinition>,
 ): Partial<Visualization> => {
   return {
     noHeader: true,
