@@ -178,7 +178,9 @@ jobs:
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
       - name: Compile CLJS
-        run: ${{ needs.test-mode-config.outputs.package_manager }} run build-pure:cljs
+        uses: ./.github/actions/build-cljs
+        with:
+          package-manager: ${{ needs.test-mode-config.outputs.package_manager }}
       - name: Prepare Cypress environment
         id: cypress-prep
         uses: ./.github/actions/prepare-cypress

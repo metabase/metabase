@@ -46,7 +46,7 @@ jobs:
           key: ${{ steps.get-cache-keys.outputs.eslint-cache-key }}
 
       - name: Compile CLJS
-        run: bun run build-pure:cljs
+        uses: ./.github/actions/build-cljs
       - name: Find CSS variables that are used but never defined
         run: bun run find-never-defined-css-variables
       - name: Run Prettier formatting linter
@@ -66,8 +66,8 @@ jobs:
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-      - run: bun run build-pure:cljs
-        name: Compile CLJS
+      - name: Compile CLJS
+        uses: ./.github/actions/build-cljs
       - run: bun run type-check-pure
         name: Check types
 

@@ -1,0 +1,47 @@
+name: Build CLJS
+description: "Compile ClojureScript with content-hash caching to avoid redundant builds"
+inputs:
+  mode:
+    description: "Build mode: 'dev' (default) or 'release'"
+    required: false
+    default: "dev"
+  node-env:
+    description: "NODE_ENV value to set during build (e.g. 'development')"
+    required: false
+    default: ""
+  package-manager:
+    description: "Package manager to use (bun or yarn)"
+    required: false
+    default: "bun"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Hash CLJS sources
+      id: cljs-hash
+      shell: bash
+      run: |
+        SOURCES_HASH=${{ hashFiles('src/**/*.cljs', 'src/**/*.cljc', 'shadow-cljs.edn', 'deps.edn') }}
+        echo "key=cljs-${{ inputs.mode }}-${{ inputs.node-env || 'default' }}-${{ runner.os }}-${SOURCES_HASH}" >> $GITHUB_OUTPUT
+
+    - name: Restore CLJS build cache
+      id: cljs-cache
+      uses: actions/cache@v4
+      with:
+        path: |
+          target/cljs_release
+          target/cljs_dev
+        key: ${{ steps.cljs-hash.outputs.key }}
+
+    - name: Compile CLJS
+      if: steps.cljs-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        if [ -n "${{ inputs.node-env }}" ]; then
+          export NODE_ENV="${{ inputs.node-env }}"
+        fi
+        if [ "${{ inputs.mode }}" == "release" ]; then
+          ${{ inputs.package-manager }} run build-release:cljs
+        else
+          ${{ inputs.package-manager }} run build-pure:cljs
+        fi
