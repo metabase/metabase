@@ -4,7 +4,9 @@
    [cheshire.core :as json]
    [clojure.string :as str]
    [metabase.config.core :as config]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log])
+  (:import
+   (org.semver4j Semver SemverException)))
 
 (set! *warn-on-reflection* true)
 
@@ -26,56 +28,22 @@
 
 ;;; ------------------------------------------------ Version ------------------------------------------------
 
-(defn- parse-semver
-  "Parse a major version integer from a semver-ish string like \"59\", \"v59\", \"0.59\", \"v0.59.3\".
-   Returns the major version integer or nil."
-  [^String s]
-  (when s
-    (some-> (re-find #"(\d+)(?:\.\d+)*" (str/replace s #"^v" ""))
-            second
-            parse-long)))
-
-(defn- parse-version-range
-  "Parse a version range string using npm/package.json-style syntax.
-   Supports: \">=59\", \"<=60\", \">59 <61\", \">=59 <=61\", \"59\" (exact).
-   Returns {:min int-or-nil, :max int-or-nil}."
-  [^String range-str]
-  (when (and range-str (not (str/blank? range-str)))
-    (let [parts  (str/split (str/trim range-str) #"\s+")
-          result (reduce
-                  (fn [acc part]
-                    (cond
-                      (str/starts-with? part ">=")
-                      (assoc acc :min (parse-semver (subs part 2)))
-
-                      (str/starts-with? part ">")
-                      (assoc acc :min (some-> (parse-semver (subs part 1)) inc))
-
-                      (str/starts-with? part "<=")
-                      (assoc acc :max (parse-semver (subs part 2)))
-
-                      (str/starts-with? part "<")
-                      (assoc acc :max (some-> (parse-semver (subs part 1)) dec))
-
-                      :else
-                      (let [v (parse-semver part)]
-                        (assoc acc :min v :max v))))
-                  {}
-                  parts)]
-      result)))
-
 (defn compatible?
   "Check whether a plugin with the given metabase_version range string is compatible with the
-   current Metabase version. Returns true if no range is specified, or if the current version
-   falls within the range. In dev mode (no version info), always returns true."
+   current Metabase version. Uses npm/node-semver range syntax (e.g. \">=59\", \"^59\", \">=59 <61\").
+   Returns true if no range is specified, or if the current version satisfies the range.
+   In dev mode (no version info), always returns true."
   [{:keys [metabase_version]}]
-  (let [current-major (config/current-major-version)]
-    (if (or config/is-dev? (nil? current-major))
+  (let [major (config/current-major-version)
+        minor (config/current-minor-version)]
+    (if (or config/is-dev? (nil? major) (str/blank? metabase_version))
       true
-      (if-let [{:keys [min max]} (parse-version-range metabase_version)]
-        (and (or (nil? min) (<= min current-major))
-             (or (nil? max) (<= current-major max)))
-        true))))
+      (try
+        (let [current (Semver/coerce (str major "." (or minor 0) ".0"))]
+          (.satisfies current metabase_version))
+        (catch SemverException e
+          (log/warnf "Invalid version range in manifest: %s — %s" metabase_version (ex-message e))
+          false)))))
 
 ;;; ------------------------------------------------ Assets ------------------------------------------------
 
