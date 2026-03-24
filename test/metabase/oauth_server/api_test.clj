@@ -555,8 +555,8 @@
                                               :grant_types   ["authorization_code" "client_credentials"]})]
           (is (= ["authorization_code"] (:grant_types response))))))))
 
-(deftest token-invalid-client-credentials-test
-  (testing "Invalid client credentials -- returns 401"
+(deftest token-wrong-client-secret-test
+  (testing "Token request with wrong client secret returns 400"
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (let [test-client (create-test-client!)
@@ -769,3 +769,76 @@
                                            ".well-known/openid-configuration")]
         (is (= "http://localhost:3000/oauth/revoke"
                (:revocation_endpoint response)))))))
+
+;;; ----------------------------------------- Bearer Token Parsing ---------------------------------------------------
+
+(deftest extract-bearer-token-test
+  (testing "standard Bearer token"
+    (is (= "abc123" (oauth-server/extract-bearer-token {:headers {"authorization" "Bearer abc123"}}))))
+  (testing "case-insensitive prefix"
+    (is (= "TOKEN" (oauth-server/extract-bearer-token {:headers {"authorization" "bearer TOKEN"}}))))
+  (testing "trims whitespace after prefix"
+    (is (= "TOKEN" (oauth-server/extract-bearer-token {:headers {"authorization" "Bearer  TOKEN"}}))))
+  (testing "Bearer with no token returns empty string"
+    (is (= "" (oauth-server/extract-bearer-token {:headers {"authorization" "Bearer "}}))))
+  (testing "missing header returns nil"
+    (is (nil? (oauth-server/extract-bearer-token {:headers {}}))))
+  (testing "empty header returns nil"
+    (is (nil? (oauth-server/extract-bearer-token {:headers {"authorization" ""}}))))
+  (testing "non-Bearer scheme returns nil"
+    (is (nil? (oauth-server/extract-bearer-token {:headers {"authorization" "Basic abc123"}})))))
+
+;;; ----------------------------------------- State Round-Trip -------------------------------------------------------
+
+(deftest authorize-state-special-characters-test
+  (testing "OAuth state with special characters survives the authorize round-trip"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [state        "abc+/=&foo=bar baz"
+              client       (create-test-client!)
+              client-id    (:client_id client)
+              consent-resp (mt/user-http-request-full-response
+                            :crowberto :get 200 "oauth/authorize"
+                            :client_id     client-id
+                            :redirect_uri  "https://example.com/callback"
+                            :response_type "code"
+                            :scope         "openid profile"
+                            :state         state)
+              csrf-token   (extract-csrf-token-from-consent (:body consent-resp))
+              csrf-cookie  (extract-csrf-cookie consent-resp)
+              response     (form-post-decision!
+                            :crowberto
+                            {:approved      "true"
+                             :csrf_token    csrf-token
+                             :client_id     client-id
+                             :redirect_uri  "https://example.com/callback"
+                             :response_type "code"
+                             :scope         "openid profile"
+                             :state         state}
+                            302
+                            :csrf-cookie csrf-cookie)
+              location     (get-in response [:headers "Location"])]
+          (is (str/includes? location "state="))
+          (is (str/includes? location (java.net.URLEncoder/encode state "UTF-8"))))))))
+
+;;; ----------------------------------------- Consent Page Security --------------------------------------------------
+
+(deftest consent-page-xss-client-name-test
+  (testing "Client name with HTML/script tags is escaped in the consent page"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [xss-name  "<script>alert('xss')</script>"
+              client    (create-test-client! {:client_name xss-name})
+              client-id (:client_id client)
+              response  (mt/user-http-request-full-response
+                         :crowberto :get 200 "oauth/authorize"
+                         :client_id     client-id
+                         :redirect_uri  "https://example.com/callback"
+                         :response_type "code"
+                         :scope         "openid profile"
+                         :state         "test-state")
+              body      (:body response)]
+          (is (not (str/includes? body "<script>alert('xss')</script>"))
+              "Raw script tags must not appear in the consent page")
+          (is (str/includes? body "&lt;script&gt;")
+              "Script tags should be HTML-escaped"))))))
