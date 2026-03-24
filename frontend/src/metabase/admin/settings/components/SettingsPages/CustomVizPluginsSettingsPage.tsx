@@ -29,7 +29,6 @@ import {
   Flex,
   Group,
   Icon,
-  type IconName,
   Loader,
   Menu,
   Stack,
@@ -37,43 +36,24 @@ import {
   Text,
   TextInput,
 } from "metabase/ui";
+import { getPluginAssetUrl } from "metabase/visualizations/custom-viz-plugins";
 import type { CustomVizPlugin } from "metabase-types/api";
 
-const DEFAULT_ICON: IconName = "area";
-
 function PluginIconPreview({ plugin }: { plugin: CustomVizPlugin }) {
-  const icon = plugin.icon;
-  const isAssetPath = icon != null && icon.includes("/");
-
-  if (isAssetPath) {
-    return (
-      <ActionIcon
-        w="3.125rem"
-        h="3.125rem"
-        radius="xl"
-        variant="outline"
-        style={{ border: "1px solid var(--mb-color-border)" }}
-      >
-        <img
-          src={`/api/custom-viz-plugin/${plugin.id}/asset?path=${encodeURIComponent(icon)}`}
-          alt={plugin.display_name}
-          width={20}
-          height={20}
-        />
-      </ActionIcon>
-    );
-  }
-
   return (
     <ActionIcon
       w="3.125rem"
       h="3.125rem"
       radius="xl"
-      color="brand"
       variant="outline"
       style={{ border: "1px solid var(--mb-color-border)" }}
     >
-      <Icon name={(icon as IconName) ?? DEFAULT_ICON} c="brand" size={20} />
+      <img
+        src={getPluginAssetUrl(plugin.id, plugin.icon)}
+        alt={plugin.display_name}
+        width={20}
+        height={20}
+      />
     </ActionIcon>
   );
 }

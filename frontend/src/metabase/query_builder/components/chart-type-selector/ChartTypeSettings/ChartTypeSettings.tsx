@@ -7,12 +7,12 @@ import {
   Center,
   Grid,
   Icon,
-  type IconName,
   Space,
   Stack,
   type StackProps,
   Text,
 } from "metabase/ui";
+import { getPluginAssetUrl } from "metabase/visualizations/custom-viz-plugins";
 import type { CustomVizPluginRuntime } from "metabase-types/api";
 
 import { ChartTypeList, type ChartTypeListProps } from "../ChartTypeList";
@@ -38,14 +38,7 @@ function CustomVizOption({
   plugin: CustomVizPluginRuntime;
   onSelect: (plugin: CustomVizPluginRuntime) => void;
 }) {
-  const rawIcon = plugin.icon;
-  const isAssetIcon = rawIcon != null && rawIcon.includes("/");
-  const iconName: IconName = isAssetIcon
-    ? "area"
-    : ((rawIcon as IconName) ?? "area");
-  const iconUrl = isAssetIcon
-    ? `/api/custom-viz-plugin/${plugin.id}/asset?path=${encodeURIComponent(rawIcon)}`
-    : undefined;
+  const iconUrl = getPluginAssetUrl(plugin.id, plugin.icon);
 
   return (
     <Center data-testid="chart-type-option">
@@ -62,16 +55,12 @@ function CustomVizOption({
             ChartTypeOptionS.VisualizationButton,
           )}
         >
-          {iconUrl ? (
-            <img
-              src={iconUrl}
-              alt={plugin.display_name}
-              width={20}
-              height={20}
-            />
-          ) : (
-            <Icon name={iconName} c="brand" size={20} />
-          )}
+          <img
+            src={iconUrl}
+            alt={plugin.display_name}
+            width={20}
+            height={20}
+          />
         </ActionIcon>
         <Text lh="unset" ta="center" fw="bold" fz="sm" c="text-secondary">
           {plugin.display_name}
