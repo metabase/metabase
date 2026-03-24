@@ -65,22 +65,18 @@
      :scopes-supported               (all-agent-scopes)
      :claims-provider                (store/create-claims-provider)}))
 
-(defn create-provider!
-  "Create and store the OIDC provider instance."
+(defn- create-provider
+  "Create a new OIDC provider instance."
   []
   (let [signing-key (get-or-generate-signing-key!)
-        config      (build-provider-config signing-key)
-        p           (oidc/create-provider config)]
-    (reset! provider p)
-    p))
+        config      (build-provider-config signing-key)]
+    (oidc/create-provider config)))
 
 (defn get-provider
   "Returns the current provider instance, creating it lazily if needed."
   []
   (or @provider
-      (locking provider
-        (or @provider
-            (create-provider!)))))
+      (swap! provider (fn [p] (or p (create-provider))))))
 
 (defn reset-provider!
   "Reset the provider atom to nil. Useful for testing."
