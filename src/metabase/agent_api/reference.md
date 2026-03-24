@@ -7,8 +7,6 @@ to the authenticated user's permissions.
 
 Base path: /api/agent
 
-Requires: Metabase Pro/Enterprise with the `agent-api` feature enabled.
-
 ## Key concepts
 
 - **Tables**: Database tables visible to the user.
