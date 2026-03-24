@@ -77,17 +77,29 @@
              (or (nil? max) (<= current-major max)))
         true))))
 
+;;; ------------------------------------------------ Assets ------------------------------------------------
+
+(def ^:private image-extensions
+  "File extensions considered to be images for static asset serving."
+  #{".svg" ".png" ".jpg" ".jpeg" ".gif" ".webp" ".ico" ".avif"})
+
+(defn- image-file?
+  "Returns true if the file path has a recognized image extension."
+  [^String path]
+  (let [lower (str/lower-case path)]
+    (some #(str/ends-with? lower %) image-extensions)))
 
 (defn asset-paths
-  "List the static asset paths declared in the manifest, or inferred from the dist/assets/ convention.
-   Returns a sequence of paths relative to the repo root (e.g. [\"dist/assets/icon.svg\"])."
+  "List the static image asset paths declared in the manifest, or inferred from the dist/assets/ convention.
+   Only includes image files. Returns a sequence of paths relative to the repo root."
   [manifest all-repo-files]
-  (let [;; assets explicitly listed in manifest
-        declared  (get manifest :assets [])
-        ;; also include the icon if it's a path (not an icon name)
+  (let [;; assets explicitly listed in manifest (filtered to images only)
+        declared  (filter image-file? (get manifest :assets []))
+        ;; include the icon if it's a path (not an icon name)
         icon-path (when-let [icon (:icon manifest)]
-                    (when (re-find #"/" icon)
+                    (when (and (re-find #"/" icon) (image-file? icon))
                       icon))
-        ;; all files under dist/assets/ in the repo
-        auto      (filter #(str/starts-with? % "dist/assets/") all-repo-files)]
+        ;; all image files under dist/assets/ in the repo
+        auto      (filter (every-pred #(str/starts-with? % "dist/assets/") image-file?)
+                          all-repo-files)]
     (distinct (concat declared (when icon-path [icon-path]) auto))))
