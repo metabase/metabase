@@ -2,11 +2,11 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.dependencies.events]
-   [metabase-enterprise.dependencies.models.analysis-finding :as deps.analysis-finding]
    [metabase-enterprise.dependencies.task.backfill :as deps.backfill]
    [metabase-enterprise.dependencies.task.entity-check :as deps.entity-check]
    [metabase.lib-be.core :as lib-be]
    [metabase.sync.sync :as sync]
+   [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -59,14 +59,15 @@
           (t2/update! :model/Table table-id {:active false})
 
           (try
-            (sync/sync-database! (mt/db))
+            #_(sync/sync-database! (mt/db))
+            (sync-metadata/sync-db-metadata! (mt/db))
             ;; 4. Mark the card's analysis as stale so the background job will re-analyze it.
             ;;    In the real flow, this should happen via an event when the table is deactivated
-            (deps.analysis-finding/mark-stale! :card [card-id])
+            #_(deps.analysis-finding/mark-stale! :card [card-id])
 
             ;; 5. Run the entity check job to re-analyze the card
-            (lib-be/with-metadata-provider-cache
-              (#'deps.entity-check/check-entities!))
+            #_(lib-be/with-metadata-provider-cache
+                (#'deps.entity-check/check-entities!))
 
             ;; 6. Assert that the card is now broken
             (testing "card analysis should fail after table deactivation"
