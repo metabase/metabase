@@ -563,8 +563,9 @@ describe(
 
     it("should be possible to filter by Mongo _id column (metabase#40770, metabase#42010)", () => {
       H.tableInteractiveBody()
+        .findByTestId("center-center-quadrant")
         .findAllByRole("gridcell")
-        .eq(1)
+        .first()
         .then(($cell) => {
           // Ids are non-deterministic so we have to obtain the id from the cell, and store its value.
           const id = $cell.text();
