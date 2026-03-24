@@ -55,9 +55,11 @@ jobs:
     steps:
     - uses: actions/checkout@v4
       with:
-        fetch-depth: 0
+        fetch-depth: 1
       # we want the dockerfile from the commit we're building
-    - run: git checkout ${{ inputs.commit }} -- bin/docker
+    - run: |
+        git fetch --depth=1 origin ${{ inputs.commit }}
+        git checkout ${{ inputs.commit }} -- bin/docker
     - name: Retrieve uberjar artifact
       uses: ./.github/actions/fetch-artifact
       with:
