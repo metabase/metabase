@@ -1,6 +1,7 @@
 (ns metabase.oauth-server.consent-page
   "Server-side rendered consent page for the OAuth authorization flow."
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [hiccup2.core :as h]
    [metabase.appearance.core :as appearance]
@@ -39,18 +40,30 @@
            "@font-face { font-family: '" css-font-name "'; font-weight: 700; font-style: normal; font-display: swap;"
            " src: url('/app/fonts/" dir-name "/" file-stem "-Bold.woff2') format('woff2'); }\n"))))
 
+(def ^:private default-logo-url "app/assets/img/logo.svg")
+
+(def ^:private default-logo-svg
+  (delay (some-> (io/resource "frontend_client/app/assets/img/logo.svg") slurp)))
+
+(defn- branded-logo-svg
+  "Return the default Metabase logo SVG with `currentColor` replaced by the brand color."
+  [brand-color]
+  (some-> @default-logo-svg (str/replace "currentColor" brand-color)))
+
 (defn- appearance-settings
   "Return a map of appearance settings for the consent page."
   []
-  (let [colors (appearance/application-colors)]
-    {:font-family  (appearance/application-font)
-     :logo-url     (absolute-url (appearance/application-logo-url))
-     :brand-color  (get colors "brand" "#509ee3")}))
+  (let [colors   (appearance/application-colors)
+        logo-url (appearance/application-logo-url)]
+    {:font-family    (appearance/application-font)
+     :logo-url       (absolute-url logo-url)
+     :default-logo?  (= logo-url default-logo-url)
+     :brand-color    (get colors "brand" "#509ee3")}))
 
 (defn render-consent-page
   "Render a server-side HTML consent page for the OAuth authorization flow."
   [{:keys [client-name oauth-params nonce csrf-token]}]
-  (let [{:keys [font-family logo-url brand-color]} (appearance-settings)
+  (let [{:keys [font-family logo-url default-logo? brand-color]} (appearance-settings)
         css-font-family (css-escape-font-name font-family)]
     (str
      "<!DOCTYPE html>"
@@ -84,8 +97,11 @@
                    .deny:hover  { background: #f9fbfc; border-color: #ccc; }"))]]
        [:body
         [:div.consent
-         [:div.logo [:img {:src logo-url :alt "Logo" :height "32"}]]
-         [:h1 "Authorize " client-name]
+         [:div.logo
+         (if-let [svg (when default-logo? (branded-logo-svg brand-color))]
+           (h/raw svg)
+           [:img {:src logo-url :alt "Logo" :height "32"}])]
+         [:h1 "Authorize " client-name "?"]
          [:p.subtitle "This MCP client is requesting to be authorized. If you approve, it will be able to access resources from "
           [:strong (appearance/application-name)] " on your behalf."]
          [:form {:method "POST" :action "/oauth/authorize/decision"}
@@ -95,5 +111,5 @@
                 v (if (sequential? v) v [v])]
             [:input {:type "hidden" :name (name k) :value v}])
           [:div.actions
-           [:button.deny {:type "submit" :name "approved" :value "false"} "Deny"]
-           [:button.allow {:type "submit" :name "approved" :value "true"} "Allow"]]]]]]))))
+           [:button.deny {:type "submit" :name "approved" :value "false"} "Cancel"]
+           [:button.allow {:type "submit" :name "approved" :value "true"} "Authorize"]]]]]]))))
