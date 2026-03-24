@@ -10,7 +10,6 @@ import "./commands";
 
 const isCI = Cypress.expose("CI");
 const isNetworkThrottlingEnabled = Cypress.expose("ENABLE_NETWORK_THROTTLING");
-const isFailFastEnabled = Cypress.env("FAIL_FAST");
 
 // remove default html output on test failure
 configure({
@@ -157,12 +156,6 @@ if (isCI) {
   // Ensure that after plugin installation is after the afterEach handling the integration.
   require("cypress-terminal-report/src/installLogsCollector")(options);
 }
-
-afterEach(function () {
-  if (isFailFastEnabled && this.currentTest.state === "failed") {
-    Cypress.runner.stop();
-  }
-});
 
 beforeEach(function () {
   const isCurrentTesOss =
