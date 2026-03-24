@@ -279,6 +279,7 @@
                                                                  :from :metabase_table
                                                                  :where [:and
                                                                          [:= :is_published true]
+                                                                         [:= :active true]
                                                                          [:= :archived_at nil]]})
                                                       (map :collection_id)
                                                       (into #{}))}))
@@ -780,6 +781,7 @@
      :from   [[:metabase_table :t]]
      :where  [:and
               [:= :t.is_published true]
+              [:= :t.active true]
               (poison-when-pinned-clause pinned-state)
               (collection/visible-collection-filter-clause :t.collection_id {:cte-name :visible_collection_ids})
               queryable-clause
@@ -822,6 +824,7 @@
                             :from :metabase_table
                             :where [:and
                                     [:= :is_published true]
+                                    [:= :active true]
                                     [:= :archived_at nil]
                                     [:in :collection_id descendant-collection-ids]]}))
                (map :collection_id)
