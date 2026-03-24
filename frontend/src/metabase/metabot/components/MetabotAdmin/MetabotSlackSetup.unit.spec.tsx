@@ -171,14 +171,10 @@ describe("MetabotSlackSetup", () => {
       await setup({ isMetabotConfigured: false });
 
       expect(
-        await screen.findByText(
-          "Metabot must be set up before you can use this feature",
-        ),
+        await screen.findByText("This feature requires an AI model"),
       ).toBeInTheDocument();
 
-      expect(
-        screen.getByText("Go to Metabot connection settings"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Connect to a provider")).toBeInTheDocument();
 
       expect(screen.queryByLabelText("Client ID")).not.toBeInTheDocument();
     });

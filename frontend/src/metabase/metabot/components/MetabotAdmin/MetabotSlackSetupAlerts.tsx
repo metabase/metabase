@@ -58,14 +58,14 @@ export function MetabotSetupRequiredAlert() {
   return (
     <Alert
       color="brand"
-      title={t`Metabot must be set up before you can use this feature`}
+      title={t`This feature requires an AI model`}
       styles={{ label: { fontSize: "var(--mantine-font-size-md)" } }}
     >
       <Text mt="sm">
         <Link
           to="/admin/metabot/setup"
           variant="brand"
-        >{t`Go to Metabot connection settings`}</Link>
+        >{t`Connect to a provider`}</Link>
       </Text>
     </Alert>
   );
