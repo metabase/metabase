@@ -1,5 +1,6 @@
 import { IndexRoute, Route } from "react-router";
 
+import { TransformInspectorUpsellPage } from "metabase/data-studio/upsells/pages";
 import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_REPLACEMENT,
@@ -40,7 +41,20 @@ export function getDataStudioTransformRoutes() {
         <Route path=":transformId/edit" component={TransformQueryPage} />
         <Route path=":transformId/run" component={TransformRunPage} />
         <Route path=":transformId/settings" component={TransformSettingsPage} />
-        {PLUGIN_TRANSFORMS_PYTHON.getInspectorRoutes()}
+        {PLUGIN_TRANSFORMS_PYTHON.isEnabled ? (
+          PLUGIN_TRANSFORMS_PYTHON.getInspectorRoutes()
+        ) : (
+          <>
+            <Route
+              path=":transformId/inspect"
+              component={TransformInspectorUpsellPage}
+            />
+            <Route
+              path=":transformId/inspect/:lensId"
+              component={TransformInspectorUpsellPage}
+            />
+          </>
+        )}
         {PLUGIN_DEPENDENCIES.isEnabled && (
           <Route
             path=":transformId/dependencies"

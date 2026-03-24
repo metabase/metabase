@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import {
   type PaneHeaderTab,
   PaneHeaderTabs,
@@ -35,15 +36,15 @@ function getTabs(id: TransformId): PaneHeaderTab[] {
       label: t`Settings`,
       to: Urls.transformSettings(id),
     },
-  ];
-
-  if (PLUGIN_TRANSFORMS_PYTHON.isEnabled) {
-    tabs.push({
+    {
       label: t`Inspect`,
       to: inspectUrl,
+      rightSection: !PLUGIN_TRANSFORMS_PYTHON.isEnabled ? (
+        <UpsellGem.New size={14} />
+      ) : undefined,
       isSelected: (pathname: string) => pathname.startsWith(inspectUrl),
-    });
-  }
+    },
+  ];
 
   if (PLUGIN_DEPENDENCIES.isEnabled) {
     tabs.push({
