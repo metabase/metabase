@@ -62,6 +62,7 @@
    [metabase.tiles.api]
    [metabase.timeline.api]
    [metabase.transforms-rest.api.transform]
+   [metabase.transforms-rest.api.transform-import]
    [metabase.transforms-rest.api.transform-job]
    [metabase.transforms-rest.api.transform-tag]
    [metabase.upload.api]
@@ -110,6 +111,7 @@
          metabase.testing-api.api/keep-me
          metabase.tiles.api/keep-me
          metabase.transforms-rest.api.transform/keep-me
+         metabase.transforms-rest.api.transform-import/keep-me
          metabase.transforms-rest.api.transform-job/keep-me
          metabase.transforms-rest.api.transform-tag/keep-me
          metabase.upload.api/keep-me
@@ -218,6 +220,7 @@
    "/timeline"             (+auth metabase.timeline.api/timeline-routes)
    "/timeline-event"       (+auth metabase.timeline.api/timeline-event-routes)
    "/transform"            (+auth metabase.transforms-rest.api.transform/routes)
+   "/transform-import"     (+auth metabase.transforms-rest.api.transform/transform-import-routes)
    "/transform-job"        (+auth metabase.transforms-rest.api.transform/transform-job-routes)
    "/transform-tag"        (+auth metabase.transforms-rest.api.transform/transform-tag-routes)
    "/upload"               (+auth 'metabase.upload.api)
@@ -238,11 +241,11 @@
   ;; EE routes defined in [[metabase-enterprise.api-routes.routes/routes]] always get the first chance to handle a
   ;; request, if they exist. If they don't exist, this handler returns `nil` which means we will try the next handler.
   (handlers/routes
-   (if (and config/ee-available? (not *compile-files*))
-     (requiring-resolve 'metabase-enterprise.api-routes.routes/routes)
-     pass-thru-handler)
-   (handlers/route-map-handler route-map)
-   (if (and config/dev-available? (not *compile-files*))
-     (requiring-resolve 'dev.api.routes/routes)
-     pass-thru-handler)
-   not-found-handler))
+    (if (and config/ee-available? (not *compile-files*))
+      (requiring-resolve 'metabase-enterprise.api-routes.routes/routes)
+      pass-thru-handler)
+    (handlers/route-map-handler route-map)
+    (if (and config/dev-available? (not *compile-files*))
+      (requiring-resolve 'dev.api.routes/routes)
+      pass-thru-handler)
+    not-found-handler))

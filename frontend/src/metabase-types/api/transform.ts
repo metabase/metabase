@@ -98,6 +98,16 @@ export type QueryTransformSource = {
   "source-incremental-strategy"?: SourceIncrementalStrategy;
 };
 
+export type ImportDbtTransformsRequest = {
+  config: {
+    dbt: {
+      target: string;
+    };
+    metabase: { database_id: number };
+  };
+  manifest: Record<any, any>;
+};
+
 export type TransformSource = QueryTransformSource | PythonTransformSource;
 
 export type TransformTargetAppendStrategy = {

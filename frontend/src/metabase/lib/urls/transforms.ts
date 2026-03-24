@@ -37,6 +37,10 @@ export function transformList({ collectionId }: TransformListParams = {}) {
     : TRANSFORMS_ROOT_URL;
 }
 
+export function importDbtTransforms() {
+  return `${TRANSFORMS_ROOT_URL}/import/dbt`;
+}
+
 export function newQueryTransform() {
   return `${TRANSFORMS_ROOT_URL}/new/query`;
 }
