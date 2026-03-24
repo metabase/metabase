@@ -1,4 +1,8 @@
 import { renderWithProviders, screen } from "__support__/ui";
+import type {
+  ClickObject,
+  RegularClickAction,
+} from "metabase/visualizations/types";
 
 import { ClickActionsPopover } from "./ClickActionsPopover";
 
@@ -10,27 +14,27 @@ function setup() {
     element: anchor,
     column: { display_name: "Total" },
     value: 42,
-  };
+  } as unknown as ClickObject;
 
   const clickActions = [
     {
       name: "test-action",
       title: "Test Action",
-      icon: "filter" as const,
-      section: "filter" as const,
-      buttonType: "horizontal" as const,
+      icon: "filter",
+      section: "filter",
+      buttonType: "horizontal",
       question: () => undefined,
       default: true,
     },
-  ];
+  ] as unknown as RegularClickAction[];
 
   return renderWithProviders(
     <ClickActionsPopover
       clicked={clicked}
       clickActions={clickActions}
       series={null}
-      dispatch={jest.fn()}
-      onChangeCardAndRun={jest.fn()}
+      dispatch={jest.fn() as any}
+      onChangeCardAndRun={jest.fn() as any}
       onUpdateVisualizationSettings={jest.fn()}
     />,
   );
