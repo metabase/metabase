@@ -3,7 +3,7 @@
   (:require
    [clojure.string :as str]
    [metabase.settings.core :as setting :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru tru]]))
+   [metabase.util.i18n :refer [deferred-tru]]))
 
 (defn- trimmed-string
   [value]
@@ -11,10 +11,10 @@
     (not-empty (str/trim value))))
 
 (defn- set-prefixed-api-key!
-  [setting-key prefix invalid-message new-value]
+  [setting-key prefix deferred-message new-value]
   (let [trimmed (trimmed-string new-value)]
     (when (and trimmed (not (str/starts-with? trimmed prefix)))
-      (throw (ex-info invalid-message {:status-code 400})))
+      (throw (ex-info (str deferred-message) {:status-code 400})))
     (setting/set-value-of-type! :string setting-key trimmed)))
 
 ;;; ------------------------------------------------- Anthropic -------------------------------------------------
@@ -28,7 +28,7 @@
   :setter           (partial set-prefixed-api-key!
                              :llm-anthropic-api-key
                              "sk-ant-"
-                             (tru "Invalid Anthropic API key format. Key must start with ''sk-ant-''."))
+                             (deferred-tru "Invalid Anthropic API key format. Key must start with ''sk-ant-''."))
   :doc false)
 
 (defsetting llm-anthropic-api-key-configured?
@@ -94,7 +94,7 @@
   :setter           (partial set-prefixed-api-key!
                              :llm-openai-api-key
                              "sk-"
-                             (tru "Invalid OpenAI API key format. Key must start with ''sk-''."))
+                             (deferred-tru "Invalid OpenAI API key format. Key must start with ''sk-''."))
   :doc              false)
 
 ;;; ------------------------------------------------- OpenRouter ------------------------------------------------
@@ -117,7 +117,7 @@
   :setter           (partial set-prefixed-api-key!
                              :llm-openrouter-api-key
                              "sk-or-v1-"
-                             (tru "Invalid OpenRouter API key format. Key must start with ''sk-or-v1-''."))
+                             (deferred-tru "Invalid OpenRouter API key format. Key must start with ''sk-or-v1-''."))
   :doc              false)
 
 ;;; -------------------------------------------------- General --------------------------------------------------
