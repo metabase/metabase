@@ -82,10 +82,12 @@
 (defn get-transform
   "Get a specific transform."
   [id]
-  (let [{:keys [target] :as transform} (api/read-check :model/Transform id)
+  (let [{:keys [target] :as transform}
+        (t2/with-transaction [_ {:isolation :repeatable-read}]
+          (-> (api/read-check :model/Transform id)
+              (t2/hydrate :last_run :transform_tag_ids :creator :owner)))
         target-table (transforms-base.u/target-table (transforms-base.i/target-db-id transform) target :active true)]
     (-> transform
-        (t2/hydrate :last_run :transform_tag_ids :creator :owner)
         (u/update-some :last_run transforms-base.u/localize-run-timestamps)
         (assoc :table target-table)
         transforms.u/add-source-readable)))

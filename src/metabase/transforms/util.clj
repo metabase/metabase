@@ -123,9 +123,8 @@
             ret (binding [qp.pipeline/*canceled-chan* cancel-chan]
                   (canceling/chan-start-run! run-id cancel-chan)
                   (run-transform! cancel-chan source-range-params))]
-        (t2/with-transaction [_]
-          (transforms-base.u/save-watermark! (:id transform) source-range-params)
-          (transform-run/succeed-started-run! run-id))
+        (transforms-base.u/save-watermark! (:id transform) source-range-params)
+        (transform-run/succeed-started-run! run-id)
         ret))
     (catch Throwable t
       (if (:timeout (ex-data t))
