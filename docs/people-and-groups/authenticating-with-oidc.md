@@ -152,7 +152,7 @@ You can also configure OIDC via environment variables instead of the admin UI:
 | **group-sync.group-attribute** | No       | `"groups"`                       |
 | **group-sync.group-mappings**  | No       | `{}`                             |
 
-The `group-sync` fields are nested inside each provider object. There's no standalone `MB_OIDC_GROUP_SYNC` environment variable. In `group-mappings`, keys are IdP group names and values are arrays of Metabase group IDs. You can find group IDs under **Admin** > **People** > **Groups**, or via the `GET /api/permissions/group` API endpoint.
+The `group-sync` fields are nested inside each provider object. In `group-mappings`, keys are IdP group names and values are arrays of Metabase group IDs. You can find group IDs under **Admin** > **People** > **Groups**, or via the `GET /api/permissions/group` API endpoint.
 
 See [Environment variables](../configuring-metabase/environment-variables.md).
 
