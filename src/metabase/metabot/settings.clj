@@ -105,7 +105,7 @@
   (deferred-tru "The AI provider and model for Metabot. Format: provider/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-4.1-mini`, `openrouter/anthropic/claude-haiku-4-5`.")
   :type             :string
   :encryption       :no
-  :default          "openrouter/anthropic/claude-haiku-4-5"
+  :default          "anthropic/claude-sonnet-4-6"
   :visibility       :settings-manager
   :export?          false
   :deprecated-name  :ee-ai-metabot-provider
@@ -119,7 +119,7 @@
   (deferred-tru "The AI provider and model for lightweight Metabot tasks (e.g. user intent classification).")
   :type             :string
   :encryption       :no
-  :default          "openrouter/openai/gpt-oss-20b"
+  :default          "anthropic/claude-haiku-4-5"
   :visibility       :settings-manager
   :export?          false
   :deprecated-name  :ee-ai-metabot-provider-lite

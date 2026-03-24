@@ -200,16 +200,28 @@ export function MetabotSetup() {
             data={Object.values(PROVIDER_OPTIONS).map(({ label, value }) => ({
               label,
               value,
+              disabled: value !== "anthropic",
             }))}
             value={provider}
             onChange={handleProviderChange}
             disabled={isEnvSetting}
             renderOption={({ option }) => (
-              <Group gap="xs" p="sm">
-                <Text lh="1rem">{option.label}</Text>
-                {option.value === "anthropic" ? (
-                  <Text c="text-secondary" lh="1rem">
-                    - {t`Recommended`}
+              <Group
+                gap="xs"
+                p="sm"
+                justify="space-between"
+                wrap="nowrap"
+                w="100%"
+              >
+                <Text
+                  lh="1rem"
+                  c={option.disabled ? "text-tertiary" : undefined}
+                >
+                  {option.label}
+                </Text>
+                {option.value !== "anthropic" ? (
+                  <Text c="text-tertiary" lh="1rem" size="sm">
+                    {t`Coming soon`}
                   </Text>
                 ) : null}
               </Group>

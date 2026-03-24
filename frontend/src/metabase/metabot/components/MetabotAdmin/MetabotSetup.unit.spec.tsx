@@ -174,13 +174,6 @@ async function setup({
   return { history };
 }
 
-async function selectProvider(providerLabel: string) {
-  await userEvent.click(screen.getByLabelText("Provider"));
-  await userEvent.click(
-    await screen.findByRole("option", { name: providerLabel }),
-  );
-}
-
 async function openModelSelector() {
   await userEvent.click(screen.getByLabelText("Model"));
   await userEvent.keyboard("{ArrowDown}");
@@ -220,13 +213,34 @@ describe("MetabotSetup", () => {
     expect(await screen.findByLabelText("Model")).toBeDisabled();
   });
 
-  it("shows Anthropic as the recommended provider in the dropdown", async () => {
+  it("shows Anthropic as selectable in the provider dropdown", async () => {
     await setup();
 
     await userEvent.click(screen.getByLabelText("Provider"));
 
-    expect(await screen.findByText("Anthropic")).toBeInTheDocument();
-    expect(await screen.findByText("- Recommended")).toBeInTheDocument();
+    const anthropicOption = await screen.findByRole("option", {
+      name: "Anthropic",
+    });
+    expect(anthropicOption).toBeInTheDocument();
+    expect(anthropicOption).not.toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("shows Coming soon for non-Anthropic providers and disables them", async () => {
+    await setup();
+
+    await userEvent.click(screen.getByLabelText("Provider"));
+
+    const openaiOption = await screen.findByRole("option", {
+      name: /OpenAI/,
+    });
+    expect(openaiOption).toHaveAttribute("data-combobox-disabled");
+
+    const openrouterOption = await screen.findByRole("option", {
+      name: /OpenRouter/,
+    });
+    expect(openrouterOption).toHaveAttribute("data-combobox-disabled");
+
+    expect(screen.getAllByText("Coming soon")).toHaveLength(2);
   });
 
   it("shows the connected badge with the saved provider and model", async () => {
@@ -245,68 +259,71 @@ describe("MetabotSetup", () => {
     expect(screen.queryByText("Connected")).not.toBeInTheDocument();
   });
 
-  it("shows the model loader when switching providers", async () => {
-    const openAIRequest = { resolve: null as null | (() => void) };
-
-    await setup({
-      apiKeyValues: { anthropic: "**********45", openai: "**********54" },
-      responses: {
-        openai: async () => {
-          await new Promise<void>((resolve) => {
-            openAIRequest.resolve = resolve;
-          });
-
-          return DEFAULT_RESPONSES.openai;
-        },
-      },
-    });
-
-    await selectProvider("OpenAI");
-
-    await waitFor(() => {
-      expect(screen.getByLabelText("Model")).toHaveAttribute(
-        "placeholder",
-        "Loading models...",
-      );
-    });
-
-    if (openAIRequest.resolve) {
-      openAIRequest.resolve();
-    }
-  });
-
-  it("shows the new model list and resets the selected model when switching providers", async () => {
-    await setup({
-      apiKeyValues: { anthropic: "**********45", openai: "**********54" },
-    });
-    await screen.findByLabelText("Model");
-
-    await selectProvider("OpenAI");
-
-    await waitFor(() => {
-      expect(screen.getByLabelText("Model")).toHaveValue("");
-    });
-
-    await waitFor(() => {
-      expect(screen.getByLabelText("Model")).toHaveAttribute(
-        "placeholder",
-        "Select a model",
-      );
-    });
-
-    await waitFor(() => {
-      expect(
-        fetchMock.callHistory.called(
-          "path:/api/metabot/settings?provider=openai",
-        ),
-      ).toBe(true);
-    });
-
-    expect(screen.getByLabelText("Model")).toHaveAttribute(
-      "placeholder",
-      "Select a model",
-    );
-  });
+  // TODO: Add these tests back once we allow configuring the model provider from the UI.
+  // eslint-disable-next-line jest/no-commented-out-tests
+  // it("shows the model loader when switching providers", async () => {
+  //   const openAIRequest = { resolve: null as null | (() => void) };
+  //
+  //   await setup({
+  //     apiKeyValues: { anthropic: "**********45", openai: "**********54" },
+  //     responses: {
+  //       openai: async () => {
+  //         await new Promise<void>((resolve) => {
+  //           openAIRequest.resolve = resolve;
+  //         });
+  //
+  //         return DEFAULT_RESPONSES.openai;
+  //       },
+  //     },
+  //   });
+  //
+  //   await selectProvider("OpenAI");
+  //
+  //   await waitFor(() => {
+  //     expect(screen.getByLabelText("Model")).toHaveAttribute(
+  //       "placeholder",
+  //       "Loading models...",
+  //     );
+  //   });
+  //
+  //   if (openAIRequest.resolve) {
+  //     openAIRequest.resolve();
+  //   }
+  // });
+  //
+  // eslint-disable-next-line jest/no-commented-out-tests
+  // it("shows the new model list and resets the selected model when switching providers", async () => {
+  //   await setup({
+  //     apiKeyValues: { anthropic: "**********45", openai: "**********54" },
+  //   });
+  //   await screen.findByLabelText("Model");
+  //
+  //   await selectProvider("OpenAI");
+  //
+  //   await waitFor(() => {
+  //     expect(screen.getByLabelText("Model")).toHaveValue("");
+  //   });
+  //
+  //   await waitFor(() => {
+  //     expect(screen.getByLabelText("Model")).toHaveAttribute(
+  //       "placeholder",
+  //       "Select a model",
+  //     );
+  //   });
+  //
+  //   await waitFor(() => {
+  //     expect(
+  //       fetchMock.callHistory.called(
+  //         "path:/api/metabot/settings?provider=openai",
+  //       ),
+  //     ).toBe(true);
+  //   });
+  //
+  //   expect(screen.getByLabelText("Model")).toHaveAttribute(
+  //     "placeholder",
+  //     "Select a model",
+  //   );
+  // });
 
   it("shows model groups from the backend in the model picker", async () => {
     await setup();

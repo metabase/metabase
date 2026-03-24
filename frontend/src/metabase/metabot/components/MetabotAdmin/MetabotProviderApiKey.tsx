@@ -5,7 +5,7 @@ import { SetByEnvVar } from "metabase/admin/settings/components/widgets/AdminSet
 import { useUpdateMetabotSettingsMutation } from "metabase/api";
 import { getErrorMessage, useAdminSetting } from "metabase/api/utils";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
-import { Box, Button, Stack, TextInput } from "metabase/ui";
+import { Box, Button, Flex, TextInput } from "metabase/ui";
 import type { MetabotProvider } from "metabase-types/api";
 
 import { API_KEY_SETTING_BY_PROVIDER, PROVIDER_OPTIONS } from "./utils";
@@ -66,7 +66,7 @@ export function MetabotProviderApiKey({
 
   return (
     <Box>
-      <Stack gap="md">
+      <Flex gap="md" align="flex-end">
         <TextInput
           key={selectedApiKeySetting}
           label={t`API key`}
@@ -87,17 +87,20 @@ export function MetabotProviderApiKey({
           onChange={handleChange}
           error={displayError}
           disabled={isEnvSetting}
+          w="100%"
         />
-        {!isEnvSetting ? (
+        {!isEnvSetting && (
           <Button
             onClick={handleConnect}
             disabled={!canConnect}
             loading={updateMetabotSettingsResult.isLoading}
+            flex="1 0 auto"
+            mb={displayError ? "1.35rem" : ""}
           >
             {t`Connect`}
           </Button>
-        ) : null}
-      </Stack>
+        )}
+      </Flex>
       {isEnvSetting && settingDetails?.env_name ? (
         <SetByEnvVar varName={settingDetails.env_name} />
       ) : null}
