@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import { getObjectEntries } from "metabase/lib/objects";
 import type { IconName } from "metabase/ui";
 import type {
@@ -19,7 +21,7 @@ import { GEO_SUBTYPE_PRIORITY } from "./geo-dimensions";
 import type { TabTypeDefinition } from "./tab-config";
 import { TAB_TYPE_REGISTRY, getTabConfig } from "./tab-config";
 
-export const RESULTS_TAB_DIMENSION_ID = "\0_results";
+export const SCALAR_TAB_DIMENSION_ID = "\0_scalar";
 
 // ── Dimension classification ──
 
@@ -442,7 +444,10 @@ export function computeDefaultTabs(
       tabs.push({
         id: config.fixedId,
         type: config.type,
-        label: resolveCommonTabLabel(names, config.fixedLabel),
+        label:
+          config.type === "scalar"
+            ? getScalarTabLabel()
+            : resolveCommonTabLabel(names, config.fixedLabel),
         display: config.defaultDisplayType,
         dimensionMapping: mapping,
         projectionConfig: {},
@@ -500,8 +505,8 @@ export function createTabFromDimension(
   definitionsBySourceId: Record<MetricSourceId, MetricDefinition | null>,
   sourceOrder: MetricSourceId[],
 ): MetricsViewerTabState | null {
-  if (dimensionId === RESULTS_TAB_DIMENSION_ID) {
-    return createResultsTab();
+  if (dimensionId === SCALAR_TAB_DIMENSION_ID) {
+    return createScalarTab();
   }
 
   const mapping: Record<MetricSourceId, string> = {};
@@ -540,7 +545,7 @@ export function createTabFromDimension(
   };
 }
 
-export function createResultsTab(): MetricsViewerTabState | null {
+export function createScalarTab(): MetricsViewerTabState | null {
   const config = getTabConfig("scalar");
   if (config.matchMode !== "aggregate") {
     return null;
@@ -548,11 +553,15 @@ export function createResultsTab(): MetricsViewerTabState | null {
   return {
     id: config.fixedId,
     type: config.type,
-    label: config.fixedLabel,
+    label: getScalarTabLabel(),
     display: config.defaultDisplayType,
     dimensionMapping: {},
     projectionConfig: {},
   };
+}
+
+export function getScalarTabLabel() {
+  return t`Totals`;
 }
 
 // ── Tab dimension matching ──

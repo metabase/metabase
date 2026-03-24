@@ -12,7 +12,10 @@ import type {
   SourceDisplayInfo,
 } from "../../../utils/dimension-picker";
 import { buildDimensionPickerSections } from "../../../utils/dimension-picker";
-import { RESULTS_TAB_DIMENSION_ID } from "../../../utils/tabs";
+import {
+  SCALAR_TAB_DIMENSION_ID,
+  getScalarTabLabel,
+} from "../../../utils/tabs";
 
 import S from "./AddDimensionPopover.module.css";
 
@@ -22,7 +25,7 @@ type AddDimensionPopoverProps = {
   sourceDataById: Record<MetricSourceId, SourceDisplayInfo>;
   hasMultipleSources: boolean;
   onAddTab: (dimensionId: string) => void;
-  canAddResultsTab: boolean;
+  canAddScalarTab: boolean;
 };
 
 export function AddDimensionPopover({
@@ -31,7 +34,7 @@ export function AddDimensionPopover({
   sourceDataById,
   hasMultipleSources,
   onAddTab,
-  canAddResultsTab,
+  canAddScalarTab,
 }: AddDimensionPopoverProps) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -60,16 +63,16 @@ export function AddDimensionPopover({
   );
 
   let finalSections: DimensionPickerSection[] = sections;
-  if (canAddResultsTab) {
+  if (canAddScalarTab) {
     finalSections = [
       {
         items: [
           {
-            name: "Totals",
-            label: "Totals",
+            name: getScalarTabLabel(),
+            label: getScalarTabLabel(),
             tabType: "scalar",
             icon: "number",
-            dimensionId: RESULTS_TAB_DIMENSION_ID,
+            dimensionId: SCALAR_TAB_DIMENSION_ID,
             sourceIds: [],
           },
         ],
