@@ -39,15 +39,16 @@ function getTabs(
       label: t`About`,
       to: urls.about(card.id),
     },
-    {
-      label: t`Overview`,
-      to: urls.overview(card.id),
-    },
   ];
 
   const query = Lib.fromJsQueryAndMetadata(metadata, card.dataset_query);
   const queryInfo = Lib.queryDisplayInfo(query);
+
   if (queryInfo.isEditable) {
+    tabs.push({
+      label: t`Overview`,
+      to: urls.overview(card.id),
+    });
     tabs.push({
       label: t`Definition`,
       to: urls.query(card.id),
