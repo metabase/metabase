@@ -1,11 +1,11 @@
 import { useMemo } from "react";
 
-import { useEmbeddingEntityContext } from "metabase/embedding/context";
-import { QuestionDownloadWidget } from "metabase/query_builder/components/QuestionDownloadWidget";
 import {
+  QuestionDownloadWidget,
   type UseDownloadDataParams,
   useDownloadData,
-} from "metabase/query_builder/components/QuestionDownloadWidget/use-download-data";
+} from "metabase/common/components/QuestionDownloadWidget";
+import { useEmbeddingEntityContext } from "metabase/embedding/context";
 import type { StackProps } from "metabase/ui";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 

@@ -50,3 +50,5 @@ export * from "./transform-tag";
 export * from "./user-key-value";
 export * from "./user";
 export * from "./analytics";
+export * from "./metabot";
+export * from "./ai-entity-analysis";

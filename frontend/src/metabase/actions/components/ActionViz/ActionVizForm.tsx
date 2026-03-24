@@ -8,7 +8,7 @@ import ActionParametersInputForm, {
 import { useActionInitialValues } from "metabase/actions/hooks/use-action-initial-values";
 import { getFormTitle, isImplicitUpdateAction } from "metabase/actions/utils";
 import { Modal } from "metabase/common/components/Modal";
-import { getDashboardType } from "metabase/dashboard/utils";
+import { getDashboardType } from "metabase/lib/dashboard";
 import { ActionsApi, PublicApi } from "metabase/services";
 import type {
   ActionDashboardCard,

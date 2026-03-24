@@ -9,9 +9,9 @@ import {
   SchedulePicker,
 } from "metabase/common/components/SchedulePicker";
 import { SendTestPulse } from "metabase/common/components/SendTestPulse";
+import { Sidebar } from "metabase/common/components/Sidebar";
 import { Toggle } from "metabase/common/components/Toggle";
 import CS from "metabase/css/core/index.css";
-import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { dashboardPulseIsValid } from "metabase/lib/pulse";
 import { useSelector } from "metabase/lib/redux";

@@ -18,6 +18,7 @@ import {
 } from "metabase/api";
 import { DateTime } from "metabase/common/components/DateTime";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
+import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { useHasTokenFeature } from "metabase/common/hooks";
@@ -28,10 +29,8 @@ import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { type NamedUser, getUserName } from "metabase/lib/user";
-import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
+import { PLUGIN_REPLACEMENT, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getMetadata } from "metabase/selectors/metadata";
-import { CreateTransformMenu } from "metabase/transforms/components/CreateTransformMenu";
-import { ListEmptyState } from "metabase/transforms/components/ListEmptyState";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { getShouldShowPythonTransformsUpsell } from "metabase/transforms/selectors";
 import {
@@ -50,6 +49,7 @@ import {
 import type { ColorName } from "metabase/ui/colors/types";
 
 import { CollectionRowMenu } from "./CollectionRowMenu";
+import { CreateTransformMenu } from "./CreateTransformMenu";
 import S from "./TransformListPage.module.css";
 import { type TreeNode, getCollectionNodeId, isCollectionNode } from "./types";
 import {
@@ -351,7 +351,12 @@ export const TransformListPage = ({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
-          {transformsDatabases.length > 0 && <CreateTransformMenu />}
+          {transformsDatabases.length > 0 && (
+            <>
+              <CreateTransformMenu />
+              <PLUGIN_REPLACEMENT.TransformToolsMenu />
+            </>
+          )}
         </Flex>
 
         <Card withBorder p={0}>

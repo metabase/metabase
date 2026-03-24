@@ -2,8 +2,8 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { Button } from "metabase/common/components/Button";
-import { DataReference } from "metabase/query_builder/components/dataref/DataReference";
-import type { DataReferenceItem } from "metabase/query_builder/components/dataref/types";
+import { DataReference } from "metabase/querying/components/DataReference/DataReference";
+import type { DataReferenceItem } from "metabase/querying/components/DataReference/types";
 import { Tooltip } from "metabase/ui";
 
 export const DataReferenceInline = ({

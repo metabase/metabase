@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { canDownloadResults } from "metabase/dashboard/components/DashCard/DashCardMenu/utils";
+import { QuestionDownloadWidget } from "metabase/common/components/QuestionDownloadWidget";
 import { isWithinIframe } from "metabase/lib/dom";
-import { QuestionDownloadWidget } from "metabase/query_builder/components/QuestionDownloadWidget";
+import { canDownloadResults } from "metabase/lib/downloads";
 import { Icon, Menu } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset } from "metabase-types/api";
