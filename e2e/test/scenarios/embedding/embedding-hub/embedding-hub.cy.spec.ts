@@ -1557,6 +1557,20 @@ describe("scenarios - embedding hub", () => {
       cy.log("no steps should be completed initially");
       H.main().icon("check").should("not.exist");
 
+      cy.log("steps 2 and 3 should stay locked until JWT is configured");
+      H.main()
+        .findByRole("listitem", { name: "Add a new endpoint to your app" })
+        .should("have.attr", "data-locked", "true")
+        .click();
+      H.main()
+        .findByLabelText(/JWT Identity Provider URI/i)
+        .should("be.visible");
+      H.main()
+        .findByRole("listitem", {
+          name: "Test that JWT authentication is working correctly",
+        })
+        .should("have.attr", "data-locked", "true");
+
       cy.log("step 1: enable JWT");
       H.main().within(() => {
         cy.findByLabelText(/JWT Identity Provider URI/i)
