@@ -794,9 +794,8 @@
                              {:fields      [[:expression "expr"]]
                               :expressions {"expr" expr}
                               :order-by    [[:desc $price]]})]
-                 (mt/with-native-query-testing-context query
-                   (is (= expected
-                          (mt/rows (qp/process-query query))))))))))))))
+                 (is (= expected
+                        (mt/rows (qp/process-query query)))))))))))))
 
 (defn- enums-test-db-details [] (mt/dbdef->connection-details :postgres :db {:database-name "enums_test"}))
 
