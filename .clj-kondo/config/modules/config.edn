@@ -2506,7 +2506,7 @@
            warehouse-schema
            warehouses
            enterprise/advanced-permissions}
-   :model-imports #{:model/Card :model/Collection :model/Database :model/Field :model/Table}}
+   :model-imports #{:model/Card :model/Collection :model/Database :model/Field :model/Table :model/Transform}}
 
   workspaces
   {:team "Metabot"

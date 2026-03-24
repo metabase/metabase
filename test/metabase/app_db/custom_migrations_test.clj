@@ -2865,13 +2865,13 @@
             insert-transform!
             (fn [source]
               (t2/insert-returning-pk!
-               :transform {:name               (mt/random-name)
-                           :source             source
-                           :target             target
-                           :source_type        "mbql"
-                           :source_database_id db-id
-                           :created_at         :%now
-                           :updated_at         :%now}))
+               :transform {:name          (mt/random-name)
+                           :source        source
+                           :target        target
+                           :source_type   "mbql"
+                           :source_db_id  db-id
+                           :created_at    :%now
+                           :updated_at    :%now}))
             ;; Transform with resolvable legacy checkpoint strategy
             resolvable-source
             (json/encode {:type  "query"
@@ -3035,7 +3035,7 @@
                                    :source             source
                                    :target             (json/encode {:type "table" :schema "public" :name "new_target_table"})
                                    :source_type        "mbql"
-                                   :source_database_id db-id
+                                   :source_db_id       db-id
                                    :target_db_id       db-id
                                    :created_at         :%now
                                    :updated_at         :%now})
