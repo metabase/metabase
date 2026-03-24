@@ -89,9 +89,11 @@ jobs:
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
+      - name: Compile CLJS
+        uses: ./.github/actions/build-cljs
       - name: Run frontend unit tests
         id: fe-tests
-        run: bun run test-unit --silent --shard=${{ matrix.shard }}/${{ env.SHARDS }}
+        run: bun run test-unit-pure --silent --shard=${{ matrix.shard }}/${{ env.SHARDS }}
         # Trunk Quarantine controls the final state of the run in the CI!
         # Even if this step fails we let it pass, and then `trunk-io/analytics-uploader` determines
         # whether to fail or to pass the whole job, based on the quarantine list.
