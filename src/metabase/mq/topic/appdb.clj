@@ -78,12 +78,11 @@
                                            o))
                                 rows (poll-messages! topic-name offset)]
                             (when (seq rows)
-                              ;; Collect all messages and advance offset before submitting,
-                              ;; so the next poll won't re-fetch these rows
                               (let [all-messages (into [] (mapcat (comp json/decode :messages)) rows)
                                     max-id      (:id (last rows))]
-                                (swap! offsets assoc topic-name max-id)
-                                (mq.impl/submit-delivery! topic-name all-messages nil nil nil))))
+                                ;; Only advance offset if delivery was actually submitted
+                                (when (mq.impl/submit-delivery! topic-name all-messages nil nil nil)
+                                  (swap! offsets assoc topic-name max-id)))))
                           (catch Exception e
                             (log/errorf e "Error polling topic %s" (name topic-name)))))
                       (Thread/sleep (long poll-interval-ms))

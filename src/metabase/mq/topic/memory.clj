@@ -68,8 +68,9 @@
         (when (seq new-rows)
           (let [all-messages (into [] (mapcat :messages) new-rows)
                 max-id      (:id (last new-rows))]
-            (swap! *offsets* assoc topic-name max-id)
-            (mq.impl/submit-delivery! topic-name all-messages nil nil nil))))
+            ;; Only advance offset if delivery was actually submitted
+            (when (mq.impl/submit-delivery! topic-name all-messages nil nil nil)
+              (swap! *offsets* assoc topic-name max-id)))))
       (catch Exception e
         (log/errorf e "Error polling memory topic %s" (name topic-name))))))
 

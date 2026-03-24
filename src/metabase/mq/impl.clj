@@ -126,24 +126,37 @@
    Returns true if submitted, false if the channel already has an active handler.
    `metadata` is an opaque map stored alongside the future — backends can use it for
    backend-specific tracking (e.g. queues store {:bundle-id id} for heartbeat updates).
-   Uses bound-fn to convey dynamic bindings to the worker thread."
+   Uses bound-fn to convey dynamic bindings to the worker thread.
+   The busy-check and registration are atomic via a single swap!."
   [channel messages bundle-id backend metadata]
-  (if (channel-busy? channel)
-    false
-    (let [f (.submit ^ExecutorService @worker-pool
-                     ^Callable (bound-fn []
-                                 (try
-                                   (deliver! channel messages bundle-id backend)
-                                   (finally
-                                     (swap! active-handlers dissoc channel)))))]
-      (swap! active-handlers assoc channel {:future f :metadata metadata})
-      true)))
+  (let [claimed? (atom false)]
+    (swap! active-handlers
+           (fn [handlers]
+             (if (contains? handlers channel)
+               handlers
+               (do (reset! claimed? true)
+                   ;; Reserve the slot with a placeholder; real future set below
+                   (assoc handlers channel {:future nil :metadata metadata})))))
+    (if-not @claimed?
+      false
+      (let [f (.submit ^ExecutorService @worker-pool
+                       ^Callable (bound-fn []
+                                   (try
+                                     (deliver! channel messages bundle-id backend)
+                                     (finally
+                                       (swap! active-handlers dissoc channel)))))]
+        ;; Update the placeholder with the real future
+        (swap! active-handlers assoc-in [channel :future] f)
+        true))))
 
 (defn start-worker-pool!
-  "Starts the shared worker pool for non-blocking message delivery."
+  "Starts the shared worker pool for non-blocking message delivery. Idempotent."
   []
   (when-not @worker-pool
-    (reset! worker-pool (Executors/newCachedThreadPool))))
+    (let [pool (Executors/newCachedThreadPool)]
+      (when-not (compare-and-set! worker-pool nil pool)
+        ;; Another thread won the race — shut down our pool
+        (.shutdown ^ExecutorService pool)))))
 
 (defn shutdown-worker-pool!
   "Cancels all active handler futures and shuts down the worker pool."
