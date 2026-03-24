@@ -12,8 +12,8 @@ export function TransformInspectorUpsellPage() {
       campaign="data-studio-transform-inspector"
       location="data-studio-transform-inspector-page"
       header={t`Transform inspector`}
-      title={t`Inspect transform inputs and outputs at every step`}
-      description={t`See what data flows through each stage of a transform, so you can debug issues and understand results without guesswork.`}
+      title={t`Get a diagnostic view of how your transforms process data`}
+      description={t`Inspect input and output shapes, join behavior, and column distributions to catch data quality issues before they cause problems downstream.`}
     />
   );
 }
