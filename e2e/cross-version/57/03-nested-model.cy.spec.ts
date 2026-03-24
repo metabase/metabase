@@ -15,13 +15,22 @@ describe("Cross-version questions - nested model", () => {
 
       cy.log("Create a model from a previous question");
       H.newButton("Question").click();
-      H.popover().contains("Our analytics").click();
-      H.popover().contains(Q2_JOINS_NAME).click();
+      H.modal().within(() => {
+        cy.findAllByRole("tab")
+          .should("be.visible")
+          .filter(":contains(Collections)")
+          .click();
+      });
+      cy.findAllByTestId("picker-item")
+        .filter(`:contains(${Q2_JOINS_NAME})`)
+        .click();
       H.addSummaryField({ metric: "Sum of ..." });
       H.popover().contains("Average of Discount").click();
       H.visualize();
       cy.findByTestId("scalar-value").should("have.text", "$20.80");
       saveSimpleQuestion(Q3_NESTED_NAME);
+      H.modal().findByText("Not now").click();
+      H.modal().should("not.exist");
       H.openQuestionActions();
       H.popover().findByText("Turn into a model").click();
       H.modal().button("Turn this into a model").click();
@@ -29,7 +38,7 @@ describe("Cross-version questions - nested model", () => {
 
       H.openQuestionActions();
       H.popover().findByText("Edit metadata").click();
-      cy.location("pathname").should("include", "columns");
+      cy.location("pathname").should("include", "metadata");
 
       H.rightSidebar().within(() => {
         cy.findByDisplayValue("Sum of Average of Discount")
@@ -38,20 +47,15 @@ describe("Cross-version questions - nested model", () => {
           .clear()
           .type("Total Discount")
           .blur();
+
+        cy.findByRole("tab", { name: "Formatting" }).click();
+        cy.findByDisplayValue("US Dollar").click();
       });
-
-      cy.log("Verify that the column name got updated in the table");
-      cy.findByTestId("model-column-header-content").should(
-        "contain",
-        "Total Discount",
-      );
-
-      H.rightSidebar().findByDisplayValue("US Dollar").click();
       H.popover().contains("Euro").click();
       H.rightSidebar().findByDisplayValue("Euro").should("be.visible");
 
       H.saveMetadataChanges();
-      cy.location("pathname").should("not.include", "columns");
+      cy.location("pathname").should("not.include", "metadata");
 
       cy.findByTestId("scalar-value").should("have.text", "€20.80");
     },
@@ -75,10 +79,7 @@ describe("Cross-version questions - nested model", () => {
         "Showing 1 row",
       );
       cy.findByTestId("scalar-value").should("have.text", "€20.80");
-      H.queryBuilderFooterDisplayToggle()
-        .findAllByRole("radio")
-        .filter("[value=data]")
-        .click({ force: true });
+      cy.findByLabelText("Switch to data").click();
 
       cy.findByTestId("scalar-value").should("not.exist");
       cy.findByTestId("header-cell").should("contain", "Total Discount (€)");
