@@ -3649,40 +3649,21 @@ databaseChangeLog:
   - changeSet:
       id: v59.2026-03-23T10:00:01
       author: bronsa
-      comment: Add min_metabase_version column to custom_viz_plugin table
+      comment: Add metabase_version column to custom_viz_plugin table
       preConditions:
         - onFail: MARK_RAN
         - not:
             - columnExists:
                 tableName: custom_viz_plugin
-                columnName: min_metabase_version
+                columnName: metabase_version
       changes:
         - addColumn:
             tableName: custom_viz_plugin
             columns:
               - column:
-                  name: min_metabase_version
-                  type: int
-                  remarks: Minimum Metabase major version required by the plugin
-
-  - changeSet:
-      id: v59.2026-03-23T10:00:02
-      author: bronsa
-      comment: Add max_metabase_version column to custom_viz_plugin table
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - columnExists:
-                tableName: custom_viz_plugin
-                columnName: max_metabase_version
-      changes:
-        - addColumn:
-            tableName: custom_viz_plugin
-            columns:
-              - column:
-                  name: max_metabase_version
-                  type: int
-                  remarks: Maximum Metabase major version supported by the plugin
+                  name: metabase_version
+                  type: varchar(254)
+                  remarks: Metabase version range requirement from manifest (e.g. ">=59 <62")
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

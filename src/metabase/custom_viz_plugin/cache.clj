@@ -138,15 +138,15 @@
              ;; read manifest (optional)
              manifest-str  (git/read-file conn commit-sha (manifest/manifest-path))
              parsed        (when manifest-str (manifest/parse-manifest manifest-str))
-             version-bounds (when parsed (manifest/extract-version-bounds parsed))
+             version-str   (get-in parsed [:metabase :version])
              ;; check version compatibility
-             _             (when (and parsed (not (manifest/compatible? version-bounds)))
+             _             (when (and version-str
+                                      (not (manifest/compatible? {:metabase_version version-str})))
                              (throw (ex-info
                                      (format "Plugin requires Metabase version %s but current version is %s"
-                                             (pr-str (:metabase parsed))
+                                             version-str
                                              (str "v" (config/current-major-version)))
-                                     {:min (:min_metabase_version version-bounds)
-                                      :max (:max_metabase_version version-bounds)})))
+                                     {:metabase_version version-str})))
              hash          (content-hash content)
              cache-entry   {:content content :hash hash :commit commit-sha}]
          ;; update caches

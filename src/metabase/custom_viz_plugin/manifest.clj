@@ -24,30 +24,59 @@
       (log/warnf "Failed to parse %s: %s" manifest-filename (ex-message e))
       nil)))
 
-(defn- extract-version
-  "Extract a version number from the manifest's :metabase map. Returns nil if not present or not an integer."
-  [manifest key]
-  (let [v (get-in manifest [:metabase key])]
-    (when (integer? v) v)))
+;;; ------------------------------------------------ Version ------------------------------------------------
 
-(defn extract-version-bounds
-  "Extract min and max Metabase version bounds from a parsed manifest.
-   Returns {:min_metabase_version int-or-nil, :max_metabase_version int-or-nil}."
-  [manifest]
-  {:min_metabase_version (extract-version manifest :min_version)
-   :max_metabase_version (extract-version manifest :max_version)})
+(defn- parse-semver
+  "Parse a major version integer from a semver-ish string like \"59\", \"v59\", \"0.59\", \"v0.59.3\".
+   Returns the major version integer or nil."
+  [^String s]
+  (when s
+    (some-> (re-find #"(\d+)(?:\.\d+)*" (str/replace s #"^v" ""))
+            second
+            parse-long)))
+
+(defn- parse-version-range
+  "Parse a version range string using npm/package.json-style syntax.
+   Supports: \">=59\", \"<=60\", \">59 <61\", \">=59 <=61\", \"59\" (exact).
+   Returns {:min int-or-nil, :max int-or-nil}."
+  [^String range-str]
+  (when (and range-str (not (str/blank? range-str)))
+    (let [parts  (str/split (str/trim range-str) #"\s+")
+          result (reduce
+                  (fn [acc part]
+                    (cond
+                      (str/starts-with? part ">=")
+                      (assoc acc :min (parse-semver (subs part 2)))
+
+                      (str/starts-with? part ">")
+                      (assoc acc :min (some-> (parse-semver (subs part 1)) inc))
+
+                      (str/starts-with? part "<=")
+                      (assoc acc :max (parse-semver (subs part 2)))
+
+                      (str/starts-with? part "<")
+                      (assoc acc :max (some-> (parse-semver (subs part 1)) dec))
+
+                      :else
+                      (let [v (parse-semver part)]
+                        (assoc acc :min v :max v))))
+                  {}
+                  parts)]
+      result)))
 
 (defn compatible?
-  "Check whether a plugin with the given version bounds is compatible with the current Metabase version.
-   Returns true if no bounds are specified, or if the current version falls within bounds.
-   In dev mode (no version info), always returns true."
-  [{:keys [min_metabase_version max_metabase_version]}]
+  "Check whether a plugin with the given metabase_version range string is compatible with the
+   current Metabase version. Returns true if no range is specified, or if the current version
+   falls within the range. In dev mode (no version info), always returns true."
+  [{:keys [metabase_version]}]
   (let [current-major (config/current-major-version)]
     (if (or config/is-dev? (nil? current-major))
-      ;; In dev mode always compatible
       true
-      (and (or (nil? min_metabase_version) (<= min_metabase_version current-major))
-           (or (nil? max_metabase_version) (<= current-major max_metabase_version))))))
+      (if-let [{:keys [min max]} (parse-version-range metabase_version)]
+        (and (or (nil? min) (<= min current-major))
+             (or (nil? max) (<= current-major max)))
+        true))))
+
 
 (defn asset-paths
   "List the static asset paths declared in the manifest, or inferred from the dist/assets/ convention.

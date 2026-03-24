@@ -2,6 +2,6 @@
   "name": "__CUSTOM_VIZ_NAME__",
   "icon": "calendar",
   "metabase": {
-    "min_version": 59
+    "version": ">=59"
   }
 }

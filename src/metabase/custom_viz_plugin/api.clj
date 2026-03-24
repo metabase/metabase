@@ -22,22 +22,21 @@
 
 (def ^:private CustomVizPluginResponse
   [:map
-   [:id            ms/PositiveInt]
-   [:repo_url      ms/NonBlankString]
-   [:display_name  ms/NonBlankString]
-   [:identifier    ms/NonBlankString]
-   [:status        [:enum "pending" "active" "error"]]
-   [:enabled       :boolean]
-   [:icon          {:optional true} [:maybe :string]]
-   [:error_message {:optional true} [:maybe :string]]
+   [:id              ms/PositiveInt]
+   [:repo_url        ms/NonBlankString]
+   [:display_name    ms/NonBlankString]
+   [:identifier      ms/NonBlankString]
+   [:status          [:enum "pending" "active" "error"]]
+   [:enabled         :boolean]
+   [:icon            {:optional true} [:maybe :string]]
+   [:error_message   {:optional true} [:maybe :string]]
    [:pinned_version  {:optional true} [:maybe :string]]
    [:resolved_commit {:optional true} [:maybe :string]]
    [:dev_bundle_url  {:optional true} [:maybe :string]]
    [:manifest        {:optional true} [:maybe :any]]
-   [:min_metabase_version {:optional true} [:maybe :int]]
-   [:max_metabase_version {:optional true} [:maybe :int]]
-   [:created_at    :any]
-   [:updated_at    :any]])
+   [:metabase_version {:optional true} [:maybe :string]]
+   [:created_at      :any]
+   [:updated_at      :any]])
 
 (def ^:private CustomVizPluginRuntimeResponse
   [:map
@@ -145,7 +144,7 @@
   []
   (let [plugins (t2/select [:model/CustomVizPlugin
                             :id :identifier :display_name :icon :resolved_commit
-                            :manifest :min_metabase_version :max_metabase_version]
+                            :manifest :metabase_version]
                            :status :active
                            :enabled true
                            {:order-by [[:display_name :asc]]})]
