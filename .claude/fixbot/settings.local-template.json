@@ -18,6 +18,7 @@
       "Edit",
       "Write",
       "Skill",
+      "Grep",
       "WebFetch(domain:linear.app)",
       "WebFetch(domain:metabase.com)"
     ]
