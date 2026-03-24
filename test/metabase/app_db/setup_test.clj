@@ -159,7 +159,7 @@
   (mt/test-drivers #{:h2 :mysql :postgres}
     (mt/with-temp-empty-app-db [conn driver/*driver*]
       ;; Run all real migrations first so the changelog table exists
-      (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) true false)
+      (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) true)
       (liquibase/with-liquibase [liquibase conn]
         (let [table    (liquibase/changelog-table-name liquibase)
               db-conn  {:connection conn}

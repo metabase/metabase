@@ -1810,7 +1810,12 @@
    :uses #{config
            models
            settings
-           util}}
+           util}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/Database
+                    :model/Document}}
 
   sample-data
   {:team "UX West"
