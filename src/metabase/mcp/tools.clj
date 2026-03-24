@@ -68,12 +68,13 @@
 
 (defn- scope-matches?
   "Does `token-scopes` grant access to a tool with the given `tool-scope`?
-   - nil/empty token-scopes or ::scope/unrestricted → always matches
+   - nil token-scopes → always matches (internal callers)
+   - ::scope/unrestricted in token-scopes → always matches
    - nil tool-scope → always matches (tool has no scope restriction)
+   - empty token-scopes #{} → only matches tools with nil tool-scope
    - wildcard scopes like \"agent:*\" match any tool scope starting with \"agent:\""
   [token-scopes tool-scope]
   (or (nil? token-scopes)
-      (empty? token-scopes)
       (contains? token-scopes ::scope/unrestricted)
       (nil? tool-scope)
       (contains? token-scopes tool-scope)

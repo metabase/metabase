@@ -441,7 +441,12 @@
 
   (testing "tools/list with nil scopes returns all tools"
     (let [tools (mcp.tools/list-tools nil)]
-      (is (= 7 (count tools))))))
+      (is (= 7 (count tools)))))
+
+  (testing "tools/list with empty scopes does not return all tools"
+    (let [tools (mcp.tools/list-tools #{})]
+      (is (zero? (count tools))
+          "Empty scopes should not grant access to scoped tools"))))
 
 (defn- insert-expired-oauth-token!
   "Insert an OAuth access token into the DB with an expiry in the past.
@@ -484,4 +489,10 @@
     (mt/with-premium-features #{:agent-api}
       (let [result (mt/with-current-user (mt/user->id :crowberto)
                      (mcp.tools/call-tool #{"agent:table:read"} "get_table" {:id (mt/id :orders)}))]
-        (is (not (:isError result)))))))
+        (is (not (:isError result))))))
+  (testing "tool call with empty scopes is rejected for scoped tools"
+    (let [result (mt/with-current-user (mt/user->id :crowberto)
+                   (mcp.tools/call-tool #{} "get_table" {:id (mt/id :orders)}))]
+      (is (=? {:isError true} result))
+      (is (str/includes? (-> result :content first :text) "scope")
+          "Error should mention scope"))))
