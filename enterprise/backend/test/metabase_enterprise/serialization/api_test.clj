@@ -11,6 +11,7 @@
    [metabase.test :as mt]
    [metabase.util.compress :as u.compress]
    [metabase.util.random :as u.random]
+   [metabase.warehouses.models.database :as models.database]
    [toucan2.core :as t2])
   (:import
    (java.io File)
@@ -18,6 +19,10 @@
    (org.apache.commons.compress.compressors.gzip GzipCompressorInputStream)))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :each (fn [thunk]
+                      (mt/with-dynamic-fn-redefs [models.database/assert-not-h2! (constantly nil)]
+                        (thunk))))
 
 (defn- open-tar ^TarArchiveInputStream [f]
   (-> (io/input-stream f)
