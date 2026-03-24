@@ -213,7 +213,8 @@
   "Serve a static image asset from the plugin's cached assets.
    The asset path is passed as a `path` query parameter (e.g. `?path=icon.svg`)
    and must match an entry in the manifest's `assets` whitelist.
-   Only image files are served."
+   Only image files are served.
+   In dev mode, proxies from the dev base URL if set."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    {:keys [path]} :- [:map [:path ms/NonBlankString]]
    _body
@@ -225,12 +226,14 @@
           content-type (image-content-type asset-path)]
       (when-not content-type
         (throw (ex-info "Only image assets are served" {:status-code 404})))
-      (let [plugin (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))
-            bytes  (cache/get-asset (:id plugin) asset-path)]
+      (let [_plugin (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))
+            dev?    (contains? @dev-bundle-urls id)
+            bytes   (cache/resolve-asset id asset-path)]
         (if bytes
           (respond {:status  200
-                    :headers {"Content-Type"  content-type
-                              "Cache-Control" "public, max-age=31536000, immutable"}
+                    :headers (cond-> {"Content-Type" content-type}
+                               dev?       (assoc "Cache-Control" "no-store")
+                               (not dev?) (assoc "Cache-Control" "public, max-age=31536000, immutable"))
                     :body    (java.io.ByteArrayInputStream. bytes)})
           (respond {:status  404
                     :headers {"Content-Type" "application/json"}
@@ -239,7 +242,8 @@
       (raise e))))
 
 (api.macros/defendpoint :put "/:id/dev-url"
-  "Set or clear the in-memory dev bundle URL for a plugin.
+  "Set or clear the in-memory dev base URL for a plugin (e.g. `http://localhost:5174`).
+   The bundle is fetched from `{base}/index.js` and assets from `{base}/assets/{name}`.
    This is transient — cleared on server restart."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params

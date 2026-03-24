@@ -5,6 +5,7 @@
    [buddy.core.codecs :as codecs]
    [buddy.core.hash :as buddy-hash]
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [metabase.config.core :as config]
    [metabase.custom-viz-plugin.git :as git]
    [metabase.custom-viz-plugin.manifest :as manifest]
@@ -193,16 +194,35 @@
 
 ;;; ------------------------------------------------ Dev Bundle ------------------------------------------------
 
+(defn- dev-base-url
+  "Ensure the base URL ends with a slash for proper path joining."
+  ^String [^String url]
+  (if (str/ends-with? url "/") url (str url "/")))
+
 (defn fetch-dev-bundle
-  "Fetch a JS bundle from a dev URL. Returns {:content str :hash str} or nil."
-  [^String url]
-  (try
-    (let [content (slurp (java.net.URI. url))]
-      {:content content
-       :hash    (str (hash content))})
-    (catch Exception e
-      (throw (ex-info (str "Failed to fetch dev bundle from " url ": " (.getMessage e))
-                      {:status-code 502})))))
+  "Fetch a JS bundle from a dev base URL (appends /index.js).
+   Returns {:content str :hash str} or nil."
+  [^String base-url]
+  (let [url (str (dev-base-url base-url) "index.js")]
+    (try
+      (let [content (slurp (java.net.URI. url))]
+        {:content content
+         :hash    (str (hash content))})
+      (catch Exception e
+        (throw (ex-info (str "Failed to fetch dev bundle from " url ": " (.getMessage e))
+                        {:status-code 502}))))))
+
+(defn fetch-dev-asset
+  "Fetch a static asset from a dev base URL (appends /assets/<path>).
+   Returns the bytes or nil on failure."
+  ^bytes [^String base-url ^String asset-path]
+  (let [url (str (dev-base-url base-url) "assets/" asset-path)]
+    (try
+      (with-open [in (.openStream (.toURL (java.net.URI. url)))]
+        (.readAllBytes in))
+      (catch Exception e
+        (throw (ex-info (str "Failed to fetch dev asset from " url ": " (.getMessage e))
+                        {:status-code 502}))))))
 
 (defn resolve-bundle
   "Resolve the JS bundle for a plugin, respecting dev bundle URL if set.
@@ -214,3 +234,11 @@
       (fetch-dev-bundle dev-url)
       (or (get-bundle id)
           (fetch-and-cache! plugin)))))
+
+(defn resolve-asset
+  "Resolve a static asset for a plugin, respecting dev base URL if set.
+   Returns a byte array or nil."
+  ^bytes [plugin-id ^String asset-path]
+  (if-let [dev-url (get @dev-bundle-urls plugin-id)]
+    (fetch-dev-asset dev-url asset-path)
+    (get-asset plugin-id asset-path)))
