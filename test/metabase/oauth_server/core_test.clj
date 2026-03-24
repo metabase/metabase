@@ -5,12 +5,11 @@
    [metabase.oauth-server.settings :as oauth-settings]
    [metabase.test :as mt]))
 
-;; TODO (Chris 2026-03-24) —- remove kondo ignores once linter respects the thread-safe list in use-fixutres
+;; TODO (Chris 2026-03-24) — remove kondo ignore once linter respects the thread-safe list in use-fixtures
+#_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (use-fixtures :each (fn [thunk]
-                      #_:clj-kondo/ignore [:metabase/validate-deftest]
                       (oauth-server/reset-provider!)
                       (thunk)
-                      #_:clj-kondo/ignore [:metabase/validate-deftest]
                       (oauth-server/reset-provider!)))
 
 (deftest get-provider-test
