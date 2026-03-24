@@ -7,7 +7,6 @@ import type {
   MetricSourceId,
   MetricsViewerDefinitionEntry,
   MetricsViewerFormulaEntity,
-  SelectedMetric,
 } from "../../types/viewer-state";
 import { isExpressionEntry, isMetricEntry } from "../../types/viewer-state";
 import { getDefinitionName } from "../../utils/definition-builder";
@@ -318,26 +317,6 @@ export function parseFullText(
   }
 
   return result;
-}
-
-export function getSelectedMetricIds(
-  selectedMetrics: SelectedMetric[],
-): Set<number> {
-  return new Set(
-    selectedMetrics
-      .filter((metric) => metric.sourceType === "metric")
-      .map((metric) => metric.id),
-  );
-}
-
-export function getSelectedMeasureIds(
-  selectedMetrics: SelectedMetric[],
-): Set<number> {
-  return new Set(
-    selectedMetrics
-      .filter((metric) => metric.sourceType === "measure")
-      .map((metric) => metric.id),
-  );
 }
 
 /**

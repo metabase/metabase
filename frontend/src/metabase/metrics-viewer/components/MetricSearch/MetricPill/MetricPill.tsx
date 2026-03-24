@@ -31,8 +31,6 @@ type MetricPillProps = {
   metric: SelectedMetric;
   colors?: string[];
   definitionEntry: MetricsViewerDefinitionEntry;
-  selectedMetricIds: Set<number>;
-  selectedMeasureIds: Set<number>;
   onSwap: (oldMetric: SelectedMetric, newMetric: SelectedMetric) => void;
   onRemove: (metricId: number, sourceType: "metric" | "measure") => void;
   onSetBreakout: (dimension: ProjectionClause | undefined) => void;
@@ -43,8 +41,6 @@ export function MetricPill({
   metric,
   colors,
   definitionEntry,
-  selectedMetricIds,
-  selectedMeasureIds,
   onSwap,
   onRemove,
   onSetBreakout,
@@ -52,6 +48,26 @@ export function MetricPill({
 }: MetricPillProps) {
   const [popoverState, setPopoverState] = useState<PillPopoverState>("closed");
   const hasDataStudioAccess = useSelector(canAccessDataStudio);
+
+  const { selectedMetricIds, selectedMeasureIds } = useMemo(() => {
+    if (metric.sourceType === "metric") {
+      return {
+        selectedMetricIds: new Set<number>([metric.id]),
+        selectedMeasureIds: new Set<number>(),
+      };
+    }
+    if (metric.sourceType === "measure") {
+      return {
+        selectedMetricIds: new Set<number>(),
+        selectedMeasureIds: new Set<number>([metric.id]),
+      };
+    }
+
+    return {
+      selectedMetricIds: new Set<number>(),
+      selectedMeasureIds: new Set<number>(),
+    };
+  }, [metric.id, metric.sourceType]);
 
   const dimensions = useMemo(
     () =>

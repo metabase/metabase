@@ -30,8 +30,6 @@ import {
   buildFullText,
   cleanupParens,
   findInvalidRanges,
-  getSelectedMeasureIds,
-  getSelectedMetricIds,
   getWordAtCursor,
   parseFullText,
   removeUnmatchedParens,
@@ -147,16 +145,6 @@ export function MetricSearchInput({
       onFormulaEntitiesChange(cleaned);
     }
   }, [isFocused, formulaEntities, onFormulaEntitiesChange]);
-
-  const selectedMetricIds = useMemo(
-    () => getSelectedMetricIds(selectedMetrics),
-    [selectedMetrics],
-  );
-
-  const selectedMeasureIds = useMemo(
-    () => getSelectedMeasureIds(selectedMetrics),
-    [selectedMetrics],
-  );
 
   // Focus the editor after transitioning from collapsed → expanded mode
   useEffect(() => {
@@ -606,8 +594,6 @@ export function MetricSearchInput({
                           ? { ...defEntry, type: "metric" as const }
                           : entry
                       }
-                      selectedMetricIds={selectedMetricIds}
-                      selectedMeasureIds={selectedMeasureIds}
                       onSwap={onSwapMetric}
                       onRemove={(_id, _sourceType) =>
                         handleRemoveItem(entryIndex)

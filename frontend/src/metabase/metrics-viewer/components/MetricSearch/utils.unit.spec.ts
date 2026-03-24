@@ -2,7 +2,6 @@ import type {
   ExpressionSubToken,
   MetricDefinitionEntry,
   MetricSourceId,
-  SelectedMetric,
 } from "../../types/viewer-state";
 
 import {
@@ -10,8 +9,6 @@ import {
   cleanupParens,
   filterSearchResults,
   findInvalidRanges,
-  getSelectedMeasureIds,
-  getSelectedMetricIds,
   getWordAtCursor,
   parseFullText,
 } from "./utils";
@@ -19,13 +16,6 @@ import {
 jest.mock("../../utils/definition-builder", () => ({
   getDefinitionName: (def: any) => def?.["display-name"] ?? null,
 }));
-
-function makeSelectedMetric(
-  overrides: Partial<SelectedMetric> &
-    Pick<SelectedMetric, "id" | "sourceType">,
-): SelectedMetric {
-  return { name: "Test", ...overrides };
-}
 
 function makeSearchResult(id: number, model: "metric" | "measure") {
   return { id, model, name: `Result ${id}` };
@@ -51,52 +41,6 @@ function makeMetricEntry(
     definition: fakeDefinition,
   };
 }
-
-describe("getSelectedMetricIds", () => {
-  it("returns Set of IDs for metrics only", () => {
-    const selected: SelectedMetric[] = [
-      makeSelectedMetric({ id: 1, sourceType: "metric" }),
-      makeSelectedMetric({ id: 2, sourceType: "measure" }),
-      makeSelectedMetric({ id: 3, sourceType: "metric" }),
-    ];
-    const result = getSelectedMetricIds(selected);
-    expect(result).toEqual(new Set([1, 3]));
-  });
-
-  it("returns empty Set for empty array", () => {
-    expect(getSelectedMetricIds([])).toEqual(new Set());
-  });
-
-  it("returns empty Set when no metrics exist", () => {
-    const selected: SelectedMetric[] = [
-      makeSelectedMetric({ id: 1, sourceType: "measure" }),
-    ];
-    expect(getSelectedMetricIds(selected)).toEqual(new Set());
-  });
-});
-
-describe("getSelectedMeasureIds", () => {
-  it("returns Set of IDs for measures only", () => {
-    const selected: SelectedMetric[] = [
-      makeSelectedMetric({ id: 1, sourceType: "metric" }),
-      makeSelectedMetric({ id: 2, sourceType: "measure" }),
-      makeSelectedMetric({ id: 5, sourceType: "measure" }),
-    ];
-    const result = getSelectedMeasureIds(selected);
-    expect(result).toEqual(new Set([2, 5]));
-  });
-
-  it("returns empty Set for empty array", () => {
-    expect(getSelectedMeasureIds([])).toEqual(new Set());
-  });
-
-  it("returns empty Set when no measures exist", () => {
-    const selected: SelectedMetric[] = [
-      makeSelectedMetric({ id: 1, sourceType: "metric" }),
-    ];
-    expect(getSelectedMeasureIds(selected)).toEqual(new Set());
-  });
-});
 
 describe("filterSearchResults", () => {
   const results = [
