@@ -92,6 +92,9 @@ export const SetupPermissionsAndTenantsPage = () => {
 
   const lockedSteps = useMemo(() => {
     return {
+      // The shared tenant collection is created when tenants are enabled,
+      // so the move-dashboard step can't work until that's done.
+      "move-dashboard": !isTenantsEnabled,
       // Unlock once we know the strategy — either from in-session confirmation
       // or from the backend on reload.
       "select-data": activeStrategy === null,
