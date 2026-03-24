@@ -1,0 +1,59 @@
+.CardContainer {
+  border: 1px solid var(--mb-color-border);
+  border-radius: 0.5rem;
+  background: var(--mb-color-background-primary);
+  overflow: hidden;
+}
+
+.Table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.HeaderCell {
+  background: var(--mb-color-background-primary);
+  border-bottom: 1px solid var(--mb-color-border);
+  box-sizing: border-box;
+  color: var(--mb-color-text-secondary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.5rem 1rem;
+  text-align: center;
+  vertical-align: middle;
+  white-space: nowrap;
+
+  &:first-child,
+  &:last-child {
+    text-align: left;
+  }
+}
+
+.Cell {
+  vertical-align: middle;
+  background: var(--mb-color-background-primary);
+  box-sizing: border-box;
+  padding: 0.5rem 1rem;
+  text-align: center;
+
+  &:first-child,
+  &:last-child {
+    text-align: left;
+  }
+}
+
+.Row {
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--mb-color-border), transparent 30%);
+}
+
+.Row:last-child {
+  border-bottom: none;
+}
+
+.ModelSelect {
+  width: 7rem;
+}
+
+.inputBody {
+  justify-content: center;
+}
