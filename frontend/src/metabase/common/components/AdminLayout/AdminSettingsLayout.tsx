@@ -58,7 +58,7 @@ const ScrollToTopAdminInner = ({
 }) => {
   useEffect(() => {
     contentRef.current?.scrollTo(0, 0);
-  }, [location.pathname, contentRef]);
+  }, [location?.pathname, contentRef]);
   return null;
 };
 const ScrollToTopAdmin = withRouter(ScrollToTopAdminInner);
