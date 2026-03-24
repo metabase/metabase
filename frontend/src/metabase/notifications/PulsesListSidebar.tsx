@@ -2,10 +2,10 @@ import cx from "classnames";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
+import { Sidebar } from "metabase/common/components/Sidebar";
 import { Label } from "metabase/common/components/type/Label";
 import { Subhead } from "metabase/common/components/type/Subhead";
 import CS from "metabase/css/core/index.css";
-import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { getParameters } from "metabase/dashboard/selectors";
 import {
   conjunct,

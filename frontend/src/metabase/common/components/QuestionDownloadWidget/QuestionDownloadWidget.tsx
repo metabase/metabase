@@ -27,7 +27,10 @@ import { canSavePng } from "metabase/visualizations";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset } from "metabase-types/api";
 
-import type { FormatPreference } from "../QuestionDownloadPopover/QuestionDownloadPopover";
+export type FormatPreference = {
+  last_download_format: ExportFormat;
+  last_table_download_format: TableExportFormat;
+};
 
 type QuestionDownloadWidgetProps = {
   question: Question;

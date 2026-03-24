@@ -6,6 +6,7 @@ import { c, t } from "ttag";
 
 import EmptyCodeResult from "assets/img/empty-states/code.svg";
 import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
+import { Warnings } from "metabase/common/components/Warnings";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { isMac } from "metabase/lib/browser";
@@ -19,7 +20,6 @@ import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 import { RunButtonWithTooltip } from "./RunButtonWithTooltip";
 import { VisualizationError } from "./VisualizationError";
 import { VisualizationResult } from "./VisualizationResult";
-import { Warnings } from "./Warnings";
 
 const SLOW_MESSAGE_TIMEOUT = 4000;
 

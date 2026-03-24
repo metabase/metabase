@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { Warnings } from "metabase/querying/components/QueryVisualization/Warnings";
+import { Warnings } from "metabase/common/components/Warnings";
 import { color } from "metabase/ui/colors";
 
 export const SectionWarnings = styled(Warnings)`

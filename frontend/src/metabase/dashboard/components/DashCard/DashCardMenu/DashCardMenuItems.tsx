@@ -7,6 +7,7 @@ import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { transformSdkQuestion } from "metabase/embedding-sdk/lib/transform-question";
 import type { DashboardCardCustomMenuItem } from "metabase/embedding-sdk/types/plugins";
+import { canDownloadResults } from "metabase/lib/downloads";
 import { useDispatch } from "metabase/lib/redux";
 import { useMetabotEnabledEmbeddingAware } from "metabase/metabot/hooks";
 import { canAnalyzeQuestion } from "metabase/metabot/utils/chart-analysis";
@@ -15,7 +16,7 @@ import type Question from "metabase-lib/v1/Question";
 import type { DashCardId, Dataset } from "metabase-types/api";
 
 import type { DashCardMenuItem } from "./dashcard-menu";
-import { canDownloadResults, canEditQuestion } from "./utils";
+import { canEditQuestion } from "./utils";
 
 type DashCardMenuItemsProps = {
   question: Question;
