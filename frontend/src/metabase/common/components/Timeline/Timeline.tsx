@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -8,6 +9,8 @@ import type { RevisionOrModerationEvent } from "metabase/plugins";
 import { Icon, Tooltip } from "metabase/ui";
 import type { Revision } from "metabase-types/api";
 
+import { RevisionDiffModal } from "./RevisionDiffModal";
+import S from "./Timeline.module.css";
 import {
   Border,
   EventBody,
@@ -35,47 +38,70 @@ export function Timeline({
   className,
   entity,
 }: TimelineProps) {
-  return (
-    <TimelineContainer className={className} data-testid={dataTestId}>
-      {events.map((event, index) => {
-        const { icon, title, description, timestamp, revision } = event;
-        const isNotLastEvent = index !== events.length - 1;
-        const isNotFirstEvent = index !== 0;
+  const [diffRevision, setDiffRevision] = useState<Revision | null>(null);
 
-        return (
-          <TimelineEvent key={revision?.id ?? `${title}-${timestamp}`}>
-            {isNotLastEvent && <Border />}
-            <EventIcon icon={icon} />
-            <EventBody>
-              <EventHeader>
-                <span>{title}</span>
-                {revision && canWrite && isNotFirstEvent && (
-                  <Tooltip label={t`Revert to this version`}>
-                    <Button
-                      icon="revert"
-                      onlyIcon
-                      borderless
-                      onClick={() => {
-                        trackVersionRevertClicked(entity);
-                        revert(revision);
-                      }}
-                      data-testid="question-revert-button"
-                      aria-label={t`revert to ${title}`}
-                    />
+  return (
+    <>
+      <TimelineContainer className={className} data-testid={dataTestId}>
+        {events.map((event, index) => {
+          const { icon, title, description, timestamp, revision } = event;
+          const isNotLastEvent = index !== events.length - 1;
+          const isNotFirstEvent = index !== 0;
+
+          return (
+            <TimelineEvent key={revision?.id ?? `${title}-${timestamp}`}>
+              {isNotLastEvent && <Border />}
+              <EventIcon icon={icon} />
+              <EventBody>
+                <EventHeader>
+                  <span>{title}</span>
+                  {revision && canWrite && isNotFirstEvent && (
+                    <Tooltip label={t`Revert to this version`}>
+                      <Button
+                        icon="revert"
+                        onlyIcon
+                        borderless
+                        onClick={() => {
+                          trackVersionRevertClicked(entity);
+                          revert(revision);
+                        }}
+                        data-testid="question-revert-button"
+                        aria-label={t`revert to ${title}`}
+                      />
+                    </Tooltip>
+                  )}
+                </EventHeader>
+                <div className={S.timestampRow}>
+                  <Tooltip
+                    position="bottom"
+                    label={getFormattedTime(timestamp)}
+                  >
+                    <Timestamp dateTime={timestamp}>
+                      {getRelativeTime(timestamp)}
+                    </Timestamp>
                   </Tooltip>
-                )}
-              </EventHeader>
-              <Tooltip position="bottom" label={getFormattedTime(timestamp)}>
-                <Timestamp dateTime={timestamp}>
-                  {getRelativeTime(timestamp)}
-                </Timestamp>
-              </Tooltip>
-              {revision?.has_multiple_changes && <div>{description}</div>}
-            </EventBody>
-          </TimelineEvent>
-        );
-      })}
-    </TimelineContainer>
+                  {revision?.diff && !revision.is_creation && (
+                    <button
+                      className={S.viewDiffButton}
+                      onClick={() => setDiffRevision(revision)}
+                    >
+                      {t`View diff`}
+                    </button>
+                  )}
+                </div>
+                {revision?.has_multiple_changes && <div>{description}</div>}
+              </EventBody>
+            </TimelineEvent>
+          );
+        })}
+      </TimelineContainer>
+      {diffRevision && (
+        <RevisionDiffModal
+          revision={diffRevision}
+          onClose={() => setDiffRevision(null)}
+        />
+      )}
+    </>
   );
 }
 
