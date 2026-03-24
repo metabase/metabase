@@ -147,6 +147,7 @@
    :friends #{enterprise/agent-api}
    :uses    #{api
               auth-identity
+              lib
               metabot
               query-processor
               request

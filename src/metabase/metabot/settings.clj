@@ -4,15 +4,6 @@
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]))
 
-(defsetting site-uuid-for-metabot-tools
-  "UUID that we use for encrypting JWT tokens given to the AI service to make callbacks with."
-  :encryption :when-encryption-key-set
-  :visibility :internal
-  :sensitive? true
-  :doc        false
-  :export?    false
-  :base       setting/uuid-nonce-base)
-
 (defsetting metabot-id
   (deferred-tru "Override Metabot ID for agent streaming requests.")
   :type       :string

@@ -11,9 +11,9 @@
    [metabase.metabot.agent.messages :as messages]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.agent.streaming :as streaming]
-   [metabase.metabot.agent.tools :as agent-tools]
    [metabase.metabot.self :as self]
    [metabase.metabot.settings :as metabot.settings]
+   [metabase.metabot.tools :as tools]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -376,7 +376,7 @@
                          (memory/load-todos-from-state seeded)
                          (memory/load-link-registry-from-state seeded))
         memory-atom  (atom memory)
-        tools        (agent-tools/wrap-tools-with-state base-tools memory-atom metabot-id)]
+        tools        (tools/wrap-tools-with-state base-tools memory-atom metabot-id)]
     (log/info "Starting agent" {:profile  profile-id
                                 :tools    (count tools)
                                 :max-iter (:max-iterations profile)

@@ -1,4 +1,5 @@
-(ns metabase.metabot.tools.create-dashboard-subscription
+(ns metabase.metabot.tools.subscriptions
+  "Dashboard subscription tool wrapper."
   (:require
    [clojure.set :as set]
    [metabase.api.common :as api]
@@ -10,6 +11,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (defn- make-slack-channel
   "Build a pulse channel for Slack delivery."
@@ -116,4 +119,44 @@ If any required information is missing, ask the user for it rather than assuming
           {:output (or (:output result) "Dashboard subscription created successfully.")}))
       (catch Exception e
         (log/error e "Failed to create dashboard subscription")
+        {:output (str "Failed to create dashboard subscription: " (or (ex-message e) "Unknown error"))}))))
+
+(def ^:private subscription-schema
+  [:map {:closed true}
+   [:dashboard_id :int]
+   [:email {:optional true} [:maybe :string]]
+   [:slack_channel {:optional true} [:maybe :string]]
+   [:schedule [:map
+               [:frequency [:enum "hourly" "daily" "weekly" "monthly"]]
+               [:hour {:optional true} [:maybe :int]]
+               [:day_of_week {:optional true} [:maybe :string]]
+               [:day_of_month {:optional true} [:maybe :string]]]]])
+
+(mu/defn ^{:tool-name "create_dashboard_subscription"}
+  create-dashboard-subscription-tool
+  "Create a dashboard subscription to send regular updates via email or Slack.
+
+  Use when a user wants to receive or send regular updates on a dashboard's contents.
+  Requires a valid dashboard ID, either an email address or a Slack channel name, and a schedule.
+
+  Do NOT infer email addresses from usernames or other information.
+  If the email address is incomplete or missing a part like the TLD,
+  ask the user for clarification before proceeding."
+  [{:keys [dashboard_id email slack_channel schedule]} :- subscription-schema]
+  (try
+    (create-dashboard-subscription
+     {:dashboard-id  dashboard_id
+      :email         email
+      :slack-channel slack_channel
+      :schedule      (-> schedule
+                         (update :frequency keyword)
+                         (cond->
+                          (:day_of_week schedule)  (-> (assoc :day-of-week (keyword (:day_of_week schedule)))
+                                                       (dissoc :day_of_week))
+                          (:day_of_month schedule) (-> (assoc :day-of-month (keyword (:day_of_month schedule)))
+                                                       (dissoc :day_of_month))))})
+    (catch Exception e
+      (log/error e "Error creating dashboard subscription")
+      (if (:agent-error? (ex-data e))
+        {:output (ex-message e)}
         {:output (str "Failed to create dashboard subscription: " (or (ex-message e) "Unknown error"))}))))
