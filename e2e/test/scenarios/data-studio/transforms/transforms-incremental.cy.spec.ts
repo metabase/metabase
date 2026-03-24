@@ -33,6 +33,14 @@ describe("scenarios > admin > transforms incremental", () => {
   });
 
   afterEach(() => {
+    cy.window().then((win: any) => {
+      if (win.__dbgLogs?.length) {
+        cy.writeFile(
+          "cypress/logs/dbg-transform-polling.log",
+          win.__dbgLogs.join("\n"),
+        );
+      }
+    });
     H.expectNoBadSnowplowEvents();
   });
 

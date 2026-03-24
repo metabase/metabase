@@ -69,6 +69,16 @@ export const transformApi = Api.injectEndpoints({
           listTag("transform-run"),
         ]),
       onQueryStarted: async (id, { dispatch, queryFulfilled }) => {
+        const dbg = (msg: string) => {
+          const win =
+            typeof window !== "undefined" ? (window as any) : undefined;
+          if (win?.Cypress) {
+            win.__dbgLogs ??= [];
+            win.__dbgLogs.push(`${Date.now()} [mutation] ${msg}`);
+          }
+        };
+
+        dbg("optimistic update: status=started");
         const patchResult = dispatch(
           transformApi.util.updateQueryData("getTransform", id, (draft) => {
             draft.last_run = {
@@ -84,6 +94,7 @@ export const transformApi = Api.injectEndpoints({
 
         try {
           const { data } = await queryFulfilled;
+          dbg(`queryFulfilled: run_id=${data.run_id}`);
 
           dispatch(
             transformApi.util.updateQueryData("getTransform", id, (draft) => {
@@ -93,7 +104,9 @@ export const transformApi = Api.injectEndpoints({
               draft.last_run.id = data.run_id;
             }),
           );
+          dbg("invalidatesTags will fire now");
         } catch {
+          dbg("error: undoing optimistic update");
           patchResult.undo();
         }
       },
