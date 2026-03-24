@@ -58,7 +58,7 @@ export function useViewerUrl(
       const metricId = params.get("metricId");
       if (metricId) {
         serializedState = {
-          sources: [{ type: "metric", id: parseInt(metricId, 10) }],
+          sources: [{ type: "metric", id: parseInt(metricId, 10), index: 0 }],
           tabs: [],
           selectedTabId: null,
           expressions: [],

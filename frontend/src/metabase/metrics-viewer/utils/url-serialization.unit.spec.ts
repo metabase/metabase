@@ -19,8 +19,8 @@ describe("url-serialization", () => {
     it("round-trips a state with sources and tabs", () => {
       const state: SerializedMetricsViewerPageState = {
         sources: [
-          { type: "metric", id: 1, breakout: "dim-1" },
-          { type: "measure", id: 42 },
+          { type: "metric", id: 1, breakout: "dim-1", index: 0 },
+          { type: "measure", id: 42, index: 1 },
         ],
         tabs: [
           {
@@ -53,6 +53,7 @@ describe("url-serialization", () => {
             id: 1,
             breakout: "created_at",
             breakoutTemporalUnit: "year",
+            index: 0,
           },
         ],
         tabs: [],
@@ -73,6 +74,7 @@ describe("url-serialization", () => {
             id: 2,
             breakout: "total",
             breakoutBinning: "50 bins",
+            index: 0,
           },
         ],
         tabs: [],
@@ -94,6 +96,7 @@ describe("url-serialization", () => {
             breakout: "dim-1",
             breakoutTemporalUnit: "quarter",
             breakoutBinning: "Auto bin",
+            index: 0,
           },
         ],
         tabs: [],
@@ -136,6 +139,7 @@ describe("url-serialization", () => {
                 },
               },
             ],
+            index: 0,
           },
         ],
         tabs: [],
@@ -151,8 +155,8 @@ describe("url-serialization", () => {
     it("round-trips a non-empty expressions list", () => {
       const state: SerializedMetricsViewerPageState = {
         sources: [
-          { type: "metric", id: 1 },
-          { type: "metric", id: 2 },
+          { type: "metric", id: 1, index: 0 },
+          { type: "metric", id: 2, index: 1 },
         ],
         tabs: [],
         selectedTabId: null,
@@ -165,6 +169,7 @@ describe("url-serialization", () => {
               { type: "operator", op: "+" },
               { type: "metric", sourceId: "metric:2" },
             ],
+            index: 2,
           },
         ],
       };
@@ -177,9 +182,9 @@ describe("url-serialization", () => {
     it("round-trips an expression with parentheses", () => {
       const state: SerializedMetricsViewerPageState = {
         sources: [
-          { type: "metric", id: 1 },
-          { type: "metric", id: 2 },
-          { type: "metric", id: 3 },
+          { type: "metric", id: 1, index: 0 },
+          { type: "metric", id: 2, index: 1 },
+          { type: "metric", id: 3, index: 2 },
         ],
         tabs: [],
         selectedTabId: null,
@@ -196,6 +201,7 @@ describe("url-serialization", () => {
               { type: "operator", op: "*" },
               { type: "metric", sourceId: "metric:3" },
             ],
+            index: 3,
           },
         ],
       };
@@ -245,7 +251,7 @@ describe("url-serialization", () => {
   describe("Unicode round-trip", () => {
     it("survives non-ASCII metric labels in tabs", () => {
       const state: SerializedMetricsViewerPageState = {
-        sources: [{ type: "metric", id: 1 }],
+        sources: [{ type: "metric", id: 1, index: 0 }],
         tabs: [
           {
             id: "tab-1",
@@ -266,7 +272,7 @@ describe("url-serialization", () => {
 
     it("survives CJK characters", () => {
       const state: SerializedMetricsViewerPageState = {
-        sources: [{ type: "metric", id: 1 }],
+        sources: [{ type: "metric", id: 1, index: 0 }],
         tabs: [
           {
             id: "tab-1",
@@ -287,7 +293,7 @@ describe("url-serialization", () => {
 
     it("survives emoji characters", () => {
       const state: SerializedMetricsViewerPageState = {
-        sources: [{ type: "metric", id: 1 }],
+        sources: [{ type: "metric", id: 1, index: 0 }],
         tabs: [
           {
             id: "tab-1",
@@ -315,6 +321,7 @@ describe("url-serialization", () => {
             type: "metric",
             id: 1,
             filters: [{ dimensionId: "created_at", value: filter }],
+            index: 0,
           },
         ],
         tabs: [],
@@ -387,6 +394,7 @@ describe("url-serialization", () => {
             type: "metric",
             id: 1,
             filters: [{ dimensionId: "price", value: filter }],
+            index: 0,
           },
         ],
         tabs: [],
@@ -430,8 +438,8 @@ describe("url-serialization", () => {
       const result = deserializeFormulaEntities(
         emptyState({
           sources: [
-            { type: "metric", id: 1 },
-            { type: "measure", id: 42 },
+            { type: "metric", id: 1, index: 0 },
+            { type: "measure", id: 42, index: 1 },
           ],
         }),
       );
@@ -445,8 +453,8 @@ describe("url-serialization", () => {
       const result = deserializeFormulaEntities(
         emptyState({
           sources: [
-            { type: "metric", id: 1 },
-            { type: "metric", id: 2 },
+            { type: "metric", id: 1, index: 0 },
+            { type: "metric", id: 2, index: 1 },
           ],
           expressions: [
             {
@@ -457,6 +465,7 @@ describe("url-serialization", () => {
                 { type: "operator", op: "+" },
                 { type: "metric", sourceId: "metric:2" },
               ],
+              index: 2,
             },
           ],
         }),
@@ -485,6 +494,7 @@ describe("url-serialization", () => {
               id: "expression:test",
               name: "test",
               tokens: [{ type: "open-paren" }, { type: "close-paren" }],
+              index: 0,
             },
           ],
         }),
@@ -504,6 +514,7 @@ describe("url-serialization", () => {
               id: "expression:test",
               name: "test",
               tokens: [{ type: "metric" } as any],
+              index: 0,
             },
           ],
         }),
@@ -520,12 +531,79 @@ describe("url-serialization", () => {
               id: "expression:test",
               name: "test",
               tokens: [{ type: "operator" } as any],
+              index: 0,
             },
           ],
         }),
       );
       const expressions = result.filter((e) => e.type === "expression");
       expect(expressions[0]).toMatchObject({ tokens: [] });
+    });
+
+    it("preserves order when expression comes before metric", () => {
+      const result = deserializeFormulaEntities(
+        emptyState({
+          sources: [{ type: "metric", id: 1, index: 1 }],
+          expressions: [
+            {
+              id: "expression:Total",
+              name: "Total",
+              tokens: [
+                { type: "metric", sourceId: "metric:1" },
+                { type: "operator", op: "+" },
+                { type: "constant", value: 10 },
+              ],
+              index: 0,
+            },
+          ],
+        }),
+      );
+      expect(result).toEqual([
+        {
+          id: "expression:Total",
+          type: "expression",
+          name: "Total",
+          tokens: [
+            { type: "metric", sourceId: "metric:1" },
+            { type: "operator", op: "+" },
+            { type: "constant", value: 10 },
+          ],
+        },
+        { id: "metric:1", type: "metric", definition: null },
+      ]);
+    });
+
+    it("preserves order when metric comes before expression", () => {
+      const result = deserializeFormulaEntities(
+        emptyState({
+          sources: [{ type: "metric", id: 1, index: 0 }],
+          expressions: [
+            {
+              id: "expression:Total",
+              name: "Total",
+              tokens: [
+                { type: "metric", sourceId: "metric:1" },
+                { type: "operator", op: "*" },
+                { type: "constant", value: 2 },
+              ],
+              index: 1,
+            },
+          ],
+        }),
+      );
+      expect(result).toEqual([
+        { id: "metric:1", type: "metric", definition: null },
+        {
+          id: "expression:Total",
+          type: "expression",
+          name: "Total",
+          tokens: [
+            { type: "metric", sourceId: "metric:1" },
+            { type: "operator", op: "*" },
+            { type: "constant", value: 2 },
+          ],
+        },
+      ]);
     });
   });
 });

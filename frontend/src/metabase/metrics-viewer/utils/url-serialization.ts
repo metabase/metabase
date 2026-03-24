@@ -55,6 +55,7 @@ interface SerializedExpressionEntry {
   id: string;
   name: string;
   tokens: SerializedExpressionSubToken[];
+  index: number;
 }
 
 interface SerializedUrlFilter {
@@ -69,6 +70,7 @@ interface SerializedSource {
   breakoutTemporalUnit?: TemporalUnit;
   breakoutBinning?: string;
   filters?: SerializedUrlFilter[];
+  index: number;
 }
 
 interface SerializedTabDef {
@@ -144,7 +146,7 @@ function deserializeSubToken(
 export function deserializeFormulaEntities(
   serializedState: SerializedMetricsViewerPageState,
 ): MetricsViewerFormulaEntity[] {
-  const entities: MetricsViewerFormulaEntity[] = [];
+  const entities: (MetricsViewerFormulaEntity & { index: number })[] = [];
 
   // Metric sources become metric formula entities
   for (const source of serializedState.sources) {
@@ -154,6 +156,7 @@ export function deserializeFormulaEntities(
       id: sourceId,
       type: "metric" as const,
       definition: null,
+      index: source.index,
     });
   }
 
@@ -166,22 +169,28 @@ export function deserializeFormulaEntities(
       tokens: entry.tokens
         .map(deserializeSubToken)
         .filter((t): t is ExpressionSubToken => t !== null),
+      index: entry.index,
     });
   }
 
-  return entities;
+  entities.sort((a, b) => a.index - b.index);
+
+  return entities.map(({ index, ...entity }) => entity);
 }
 
 // ── Conversion functions ──
 
-function definitionToSource(def: MetricDefinition): SerializedSource | null {
+function definitionToSource(
+  def: MetricDefinition,
+  index: number,
+): SerializedSource | null {
   const metricId = LibMetric.sourceMetricId(def);
   if (metricId != null) {
-    return { type: "metric", id: metricId };
+    return { type: "metric", id: metricId, index };
   }
   const measureId = LibMetric.sourceMeasureId(def);
   if (measureId != null) {
-    return { type: "measure", id: measureId };
+    return { type: "measure", id: measureId, index };
   }
   return null;
 }
@@ -306,13 +315,13 @@ export function stateToSerializedState(
   const expressions: SerializedExpressionEntry[] = [];
 
   // Iterate formulaEntities to build sources and expressions
-  for (const entity of state.formulaEntities) {
+  for (const [index, entity] of state.formulaEntities.entries()) {
     if (isMetricEntry(entity)) {
       const entry = state.definitions[entity.id];
       if (!entry?.definition) {
         continue;
       }
-      const source = definitionToSource(entry.definition);
+      const source = definitionToSource(entry.definition, index);
       if (!source) {
         continue;
       }
@@ -322,6 +331,7 @@ export function stateToSerializedState(
         id: entity.id,
         name: entity.name,
         tokens: entity.tokens.map(serializeSubToken),
+        index,
       });
     }
   }
@@ -348,6 +358,7 @@ const expressionEntrySchema = defineCompactSchema<SerializedExpressionEntry>({
   id: "i",
   name: "n",
   tokens: { key: "t", schema: expressionSubTokenSchema, default: [] },
+  index: "x",
 });
 
 const sourceFilterSchema = defineCompactSchema<SerializedUrlFilter>({
@@ -362,6 +373,7 @@ const sourceSchema = defineCompactSchema<SerializedSource>({
   breakoutTemporalUnit: { key: "u", optional: true },
   breakoutBinning: { key: "B", optional: true },
   filters: { key: "F", schema: sourceFilterSchema, optional: true },
+  index: "x",
 });
 
 const tabDefSchema = defineCompactSchema<SerializedTabDef>({
