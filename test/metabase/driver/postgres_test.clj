@@ -740,21 +740,23 @@
       (mt/with-db db
         (thunk)))))
 
+(deftest ^:parallel money-columns-in-results-test
+  (mt/test-driver :postgres
+    (testing "It should be possible to return money column results (#3754)"
+      (sql-jdbc.execute/do-with-connection-with-options
+       :postgres
+       (mt/db)
+       nil
+       (fn [conn]
+         (with-open [stmt (sql-jdbc.execute/prepared-statement :postgres conn "SELECT 1000::money AS \"money\";" nil)
+                     rs   (sql-jdbc.execute/execute-prepared-statement! :postgres stmt)]
+           (let [row-thunk (sql-jdbc.execute/row-thunk :postgres rs (.getMetaData rs))]
+             (is (= [1000.00M]
+                    (row-thunk))))))))))
+
 (deftest money-columns-test
   (mt/test-driver :postgres
     (testing "We should support the Postgres MONEY type"
-      (testing "It should be possible to return money column results (#3754)"
-        (sql-jdbc.execute/do-with-connection-with-options
-         :postgres
-         (mt/db)
-         nil
-         (fn [conn]
-           (with-open [stmt (sql-jdbc.execute/prepared-statement :postgres conn "SELECT 1000::money AS \"money\";" nil)
-                       rs   (sql-jdbc.execute/execute-prepared-statement! :postgres stmt)]
-             (let [row-thunk (sql-jdbc.execute/row-thunk :postgres rs (.getMetaData rs))]
-               (is (= [1000.00M]
-                      (row-thunk))))))))
-
       (do-with-money-test-db!
        (fn []
          (testing "We should be able to select avg() of a money column (#11498)"
@@ -766,7 +768,6 @@
                   (mt/rows
                    (mt/run-mbql-query bird_prices
                      {:aggregation [[:avg $price]]})))))
-
          (testing "Should be able to filter on a money column"
            (is (= [["Katie Parakeet" 23.99M]]
                   (mt/rows
@@ -776,13 +777,26 @@
                   (mt/rows
                    (mt/run-mbql-query bird_prices
                      {:filter [:!= $price $price]})))))
-
          (testing "Should be able to sort by price"
            (is (= [["Katie Parakeet" 23.99M]
                    ["Lucky Pigeon" 6.00M]]
                   (mt/rows
                    (mt/run-mbql-query bird_prices
-                     {:order-by [[:desc $price]]}))))))))))
+                     {:order-by [[:desc $price]]})))))
+         (testing "Should support floor/ceil/round (#32068)"
+           (doseq [[expr expected] (mt/$ids bird_prices
+                                     {[:ceil $price]                      [[24M] [6M]]
+                                      [:floor $price]                     [[23M] [6M]]
+                                      [:round $price]                     [[24M] [6M]]
+                                      [:* [:floor [:/ $price 10.0]] 10.0] [[20.0] [1.0]]})]
+             (testing (pr-str expr)
+               (let [query (mt/mbql-query bird_prices
+                             {:fields      [[:expression "expr"]]
+                              :expressions {"expr" expr}
+                              :order-by    [[:desc $price]]})]
+                 (mt/with-native-query-testing-context query
+                   (is (= expected
+                          (mt/rows (qp/process-query query))))))))))))))
 
 (defn- enums-test-db-details [] (mt/dbdef->connection-details :postgres :db {:database-name "enums_test"}))
 
