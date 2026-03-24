@@ -76,6 +76,10 @@
               (generate-workmux-config issue-id issue-url app-db))
 
         (try
+          ;; Fetch latest refs so origin/master (the default base) is up to date
+          (println (c/yellow "Fetching latest from remote..."))
+          (shell/sh "git" "fetch")
+
           ;; Launch workmux
           (println)
           (println (c/bold (c/green "Launching workmux session: ") (c/cyan session-name)))
