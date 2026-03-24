@@ -561,7 +561,7 @@
                 ;; Sync runs after succeed-started-run! and activates new fields
                 ;; before retiring old ones (non-transactional). Waiting for "age"
                 ;; to be deactivated guarantees "friend" is already active too.
-                (transforms.tu/wait-for-field table-name "age" 10000 {:active false})
+                (transforms.tu/wait-for-field-inactive table-name "age" 10000)
                 (let [updated-rows (transforms.tu/table-rows table-name)]
                   (is (= [["Alice" "Bob"] ["Bob" "Alice"]] updated-rows)
                       "Updated data should show Alice/Bob with friends instead of ages"))))))))))
