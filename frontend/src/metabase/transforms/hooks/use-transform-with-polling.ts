@@ -23,21 +23,12 @@ export const useTransformWithPolling = (transformId: number | undefined) => {
     data: transform,
     isLoading,
     error,
-    isFetching,
   } = useGetTransformQuery(transformId ?? skipToken, {
     pollingInterval: isPolling ? POLLING_INTERVAL : undefined,
   });
 
   if (isPolling !== isPollingNeeded(transform)) {
     setIsPolling(isPollingNeeded(transform));
-  }
-
-  const win = typeof window !== "undefined" ? (window as any) : undefined;
-  if (win?.Cypress) {
-    win.__dbgLogs ??= [];
-    win.__dbgLogs.push(
-      `${Date.now()} [hook] checkpoint=${transform?.last_checkpoint_value} status=${transform?.last_run?.status} polling=${isPolling} fetching=${isFetching} loading=${isLoading} path=${win.location.pathname}`,
-    );
   }
 
   return { transform, isLoading, error };
