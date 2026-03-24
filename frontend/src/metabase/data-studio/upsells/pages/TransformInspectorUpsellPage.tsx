@@ -12,7 +12,7 @@ export function TransformInspectorUpsellPage() {
       campaign="data-studio-transform-inspector"
       location="data-studio-transform-inspector-page"
       header={t`Transform inspector`}
-      title={t`Get a diagnostic view of how your transforms process data`}
+      title={t`See what's happening inside your transforms`}
       description={t`Inspect input and output shapes, join behavior, and column distributions to catch data quality issues before they cause problems downstream.`}
     />
   );
