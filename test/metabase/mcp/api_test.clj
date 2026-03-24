@@ -3,7 +3,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.macros.scope :as scope]
-   [metabase.mcp.api :as mcp.api]
    [metabase.mcp.tools :as mcp.tools]
    [metabase.oauth-server.core :as oauth-server]
    [metabase.search.test-util :as search.tu]
@@ -145,46 +144,23 @@
   (testing "requests without a session ID return 400"
     (let [response (mcp-request (jsonrpc-request "tools/list"))]
       (is (= 400 (:status response)))
-      (is (= -32600 (get-in response [:body :error :code])))))
+      (is (= -32600 (get-in response [:body :error :code]))))))
 
-  (testing "requests with an invalid session ID return 404"
+(deftest degenerate-session-id-test
+  (testing "requests with any nonblank session ID are accepted"
     (let [response (mcp-request (jsonrpc-request "tools/list")
                                 {"mcp-session-id" "bogus-session-id"})]
-      (is (= 404 (:status response)))
-      (is (= -32600 (get-in response [:body :error :code]))))))
-
-(deftest session-user-binding-test
-  (testing "sessions cannot be reused by a different authenticated user"
-    (let [;; Initialize a session as crowberto
-          [session-id _] (initialize!)
-          ;; Try to use that session as rasta — returns 404 because the session
-          ;; doesn't match the requesting user
-          response (mcp-request-as :rasta
-                                   (jsonrpc-request "tools/list")
-                                   {"mcp-session-id" session-id})]
-      (is (= 404 (:status response)))
-      (is (= -32600 (get-in response [:body :error :code]))))))
+      (is (= 200 (:status response)))
+      (is (some? (get-in response [:body :result :tools]))))))
 
 (deftest session-delete-test
-  (testing "DELETE removes the session"
+  (testing "DELETE succeeds but does not invalidate a degenerate session ID"
     (let [[session-id _] (initialize!)
           delete-response (mcp-delete {"mcp-session-id" session-id})
-          ;; Now try to use the deleted session — returns 404
           post-response (mcp-request (jsonrpc-request "tools/list")
                                      {"mcp-session-id" session-id})]
       (is (= 200 (:status delete-response)))
-      (is (= 404 (:status post-response))))))
-
-(deftest session-ttl-test
-  (testing "expired sessions return 404"
-    (let [[session-id _] (initialize!)]
-      ;; Manually expire the session by backdating the timer (nanos) to 2 hours ago
-      (swap! @#'mcp.api/sessions update session-id assoc
-             :timer (- (System/nanoTime) (long (* 2 60 60 1000 1e6))))
-      (let [response (mcp-request (jsonrpc-request "tools/list")
-                                  {"mcp-session-id" session-id})]
-        (is (= 404 (:status response)))
-        (is (= -32600 (get-in response [:body :error :code])))))))
+      (is (= 200 (:status post-response))))))
 
 (deftest tools-list-test
   (testing "tools/list returns the 7 agent tools"
@@ -329,29 +305,20 @@
         (is (= "table" (:type table-data)))
         (is (seq (:fields table-data)))))))
 
-(deftest initialized-enforcement-test
-  (testing "requests before notifications/initialized are rejected"
-    (let [;; Only do initialize, not the full handshake
-          response   (mcp-request (jsonrpc-request "initialize"))
-          session-id (get-in response [:headers "Mcp-Session-Id"])
-          ;; Try tools/list without sending notifications/initialized
-          list-response (mcp-request (jsonrpc-request "tools/list")
-                                     {"mcp-session-id" session-id})]
-      (is (= 200 (:status list-response)))
-      (is (= -32600 (get-in list-response [:body :error :code])))
-      (is (str/includes? (get-in list-response [:body :error :message]) "not initialized"))))
-
-  (testing "requests after notifications/initialized succeed"
+(deftest initialized-notification-compatibility-test
+  (testing "requests succeed without notifications/initialized"
     (let [response   (mcp-request (jsonrpc-request "initialize"))
           session-id (get-in response [:headers "Mcp-Session-Id"])]
-      ;; Send notifications/initialized
-      (mcp-request (jsonrpc-notification "notifications/initialized")
-                   {"mcp-session-id" session-id})
-      ;; Now tools/list should work
       (let [list-response (mcp-request (jsonrpc-request "tools/list")
                                        {"mcp-session-id" session-id})]
         (is (= 200 (:status list-response)))
-        (is (some? (get-in list-response [:body :result :tools])))))))
+        (is (some? (get-in list-response [:body :result :tools]))))))
+
+  (testing "notifications/initialized remains accepted for compatibility"
+    (let [response   (mcp-request (jsonrpc-request "initialize"))
+          session-id (get-in response [:headers "Mcp-Session-Id"])]
+      (is (= 202 (:status (mcp-request (jsonrpc-notification "notifications/initialized")
+                                       {"mcp-session-id" session-id})))))))
 
 (deftest full-handshake-test
   (testing "complete MCP handshake flow"

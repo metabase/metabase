@@ -14,7 +14,6 @@
    [metabase.request.core :as request]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.system.core :as system]
-   [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [oidc-provider.protocol :as proto])
@@ -28,49 +27,13 @@
 
 ;;; --------------------------------------------------- Sessions ----------------------------------------------------
 
-(defonce ^:private sessions
-  (atom {}))
-
-(def ^:private session-ttl-ms
-  "Sessions expire after 1 hour."
-  (* 60 60 1000))
-
-(defn- sweep-expired-sessions!
-  "Remove all sessions whose TTL has elapsed. Called on session creation to
-   prevent abandoned sessions from accumulating in memory."
-  []
-  (swap! sessions (fn [m]
-                    (into {} (remove (fn [[_ {:keys [timer]}]]
-                                       (>= (u/since-ms timer) session-ttl-ms)))
-                          m))))
-
 (defn- create-session!
-  [user-id]
-  (sweep-expired-sessions!)
-  (let [session-id (str (UUID/randomUUID))]
-    (swap! sessions assoc session-id {:timer        (u/start-timer)
-                                      :initialized? false
-                                      :user-id      user-id})
-    session-id))
-
-(defn- delete-session! [session-id]
-  (swap! sessions dissoc session-id))
-
-(defn- session-for-user
-  "Return session state when the session exists, is unexpired, and belongs to
-   `user-id`; otherwise return nil."
-  [session-id user-id]
-  (when-let [session (get @sessions session-id)]
-    (if (>= (u/since-ms (:timer session)) session-ttl-ms)
-      (do (delete-session! session-id) nil)
-      (when (= user-id (:user-id session))
-        session))))
-
-(defn- session-initialized? [session-id]
-  (get-in @sessions [session-id :initialized?]))
-
-(defn- mark-session-initialized! [session-id]
-  (swap! sessions assoc-in [session-id :initialized?] true))
+  "Generate an MCP session ID for protocol compatibility.
+   The server currently treats MCP sessions as degenerate: callers must still
+   send a session ID after `initialize`, but the ID is not otherwise required
+   for auth, initialization state, or server-side validation."
+  [_user-id]
+  (str (UUID/randomUUID)))
 
 ;;; -------------------------------------------------- Auth --------------------------------------------------------
 
@@ -123,13 +86,6 @@
 (defn- handle-ping [id _params]
   (jsonrpc-response id {}))
 
-(defmacro ^:private when-initialized
-  "Return a JSON-RPC error if the session is not yet initialized, otherwise evaluate `body`."
-  [id session-id & body]
-  `(if (session-initialized? ~session-id)
-     (do ~@body)
-     (jsonrpc-error ~id -32600 "Session not initialized: send notifications/initialized first")))
-
 (defn- dispatch-request
   "Dispatch a single JSON-RPC request. Returns a response map or nil for notifications."
   [msg session-id token-scopes]
@@ -138,10 +94,10 @@
         params (:params msg)]
     (try
       (case method
-        "notifications/initialized" (do (mark-session-initialized! session-id) nil)
-        "tools/list"                (when-initialized id session-id (handle-tools-list id params token-scopes))
-        "tools/call"                (when-initialized id session-id (handle-tools-call id params token-scopes))
-        "ping"                      (when-initialized id session-id (handle-ping id params))
+        "notifications/initialized" nil
+        "tools/list"                (handle-tools-list id params token-scopes)
+        "tools/call"                (handle-tools-call id params token-scopes)
+        "ping"                      (handle-ping id params)
         (if id
           (jsonrpc-error id -32601 (str "Method not found: " method))
           nil))
@@ -200,15 +156,11 @@
         (json-response 403 (jsonrpc-error nil -32600 "Origin not allowed"))))))
 
 (defn- session-error-response
-  "Return an HTTP error response when the session is invalid, or nil if valid.
-   Returns 400 for a missing session header, 404 for an invalid/expired session (MCP spec)."
-  [session-id user-id]
-  (cond
-    (str/blank? session-id)
-    (json-response 400 (jsonrpc-error nil -32600 "Missing Mcp-Session-Id header"))
-
-    (nil? (session-for-user session-id user-id))
-    (json-response 404 (jsonrpc-error nil -32600 "Session not found or expired"))))
+  "Return an HTTP error response when the MCP session header is missing, or nil if present.
+   The session ID is compatibility-only and is not validated server-side."
+  [session-id]
+  (when (str/blank? session-id)
+    (json-response 400 (jsonrpc-error nil -32600 "Missing Mcp-Session-Id header"))))
 
 ;;; -------------------------------------------------- Handlers ---------------------------------------------------
 
@@ -218,7 +170,7 @@
   (let [body        (:body request)
         session-id  (get-in request [:headers "mcp-session-id"])
         batch?      (sequential? body)
-        session-err (delay (session-error-response session-id user-id))]
+        session-err (delay (session-error-response session-id))]
     (cond
       (nil? body)
       (json-response 400 (jsonrpc-error nil -32700 "Parse error: empty body"))
@@ -264,15 +216,12 @@
 
 (defn- handle-get
   "Handle a GET request for SSE stream (keepalive for server-initiated notifications)."
-  [user-id request respond raise]
+  [_user-id request respond raise]
   (let [session-id (get-in request [:headers "mcp-session-id"])
-        session-err (session-error-response session-id user-id)]
+        session-err (session-error-response session-id)]
     (cond
       (some? session-err)
       (respond session-err)
-
-      (not (session-initialized? session-id))
-      (respond (json-response 400 (jsonrpc-error nil -32600 "Session not initialized")))
 
       :else
       (let [resp (streaming-response/streaming-response
@@ -291,12 +240,11 @@
 
 (defn- handle-delete
   "Handle a DELETE request to tear down a session."
-  [user-id request]
+  [_user-id request]
   (let [session-id (get-in request [:headers "mcp-session-id"])
-        session-err (session-error-response session-id user-id)]
+        session-err (session-error-response session-id)]
     (or session-err
-        (do (delete-session! session-id)
-            {:status 200 :headers {"Content-Type" "application/json"} :body ""}))))
+        {:status 200 :headers {"Content-Type" "application/json"} :body ""})))
 
 ;;; ---------------------------------------------------- Handler ---------------------------------------------------
 
