@@ -165,7 +165,7 @@ function buildArithmeticRequest(
     }
   | { error: string }
   | null {
-  const { tokens, name } = entity;
+  const { tokens } = entity;
 
   // Build leaf refs and projections for each metric occurrence in the expression.
   // Each occurrence gets its own unique UUID keyed by token position so the same
@@ -186,10 +186,10 @@ function buildArithmeticRequest(
     const definition = definitions[token.sourceId];
     const modifiedDefinition = getModifiedDefinitionForTab(definition, tab);
     if (!modifiedDefinition) {
-      if (!definition) {
+      if (!definition.definition) {
         return null; // still loading the metric, not an error
       }
-      return { error: `No compatible dimensions for ${name}` };
+      return { error: `No compatible dimensions` };
     }
 
     modifiedDefinitions[token.sourceId] = modifiedDefinition;
