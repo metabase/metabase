@@ -12,6 +12,7 @@ import {
 import registerVisualizations from "metabase/visualizations/register";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
+import type { Card } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
@@ -31,6 +32,10 @@ import {
   SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+import type {
+  QueryBuilderState,
+  QueryBuilderUIControls,
+} from "metabase-types/store";
 import {
   createMockQueryBuilderState,
   createMockQueryBuilderUIControlsState,
@@ -39,7 +44,12 @@ import {
 
 registerVisualizations();
 
-function getBaseState({ uiControls = {}, ...state } = {}) {
+function getBaseState({
+  uiControls = {},
+  ...state
+}: Partial<Omit<QueryBuilderState, "uiControls">> & {
+  uiControls?: Partial<QueryBuilderUIControls>;
+} = {}) {
   return createMockState({
     entities: createMockEntitiesState({
       databases: [createSampleDatabase()],
@@ -55,7 +65,7 @@ function getBaseState({ uiControls = {}, ...state } = {}) {
   });
 }
 
-function getBaseCard(opts) {
+function getBaseCard(opts: Partial<Card> = {}) {
   return {
     ...opts,
     dataset_query: {
