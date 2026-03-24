@@ -62,8 +62,12 @@ export const transformApi = Api.injectEndpoints({
         method: "POST",
         url: `/api/transform/${id}/run`,
       }),
-      invalidatesTags: (_, error) =>
-        invalidateTags(error, [tag("table"), listTag("transform-run")]),
+      invalidatesTags: (_, error, id) =>
+        invalidateTags(error, [
+          idTag("transform", id),
+          tag("table"),
+          listTag("transform-run"),
+        ]),
       onQueryStarted: async (id, { dispatch, queryFulfilled }) => {
         const patchResult = dispatch(
           transformApi.util.updateQueryData("getTransform", id, (draft) => {
