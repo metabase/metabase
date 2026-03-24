@@ -84,7 +84,7 @@
           (println (c/yellow "Prompt: ") prompt-file)
           (println)
 
-          (let [effective-base (or base-branch "master")
+          (let [effective-base (or base-branch "origin/master")
                 base-args ["--base" effective-base]
                 workmux-cmd (str "workmux add " branch-name
                                  " --name " session-name

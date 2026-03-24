@@ -196,15 +196,9 @@ Use nREPL for:
 
 ### Server Logs
 
-Read server output via tmux pane capture (preferred) or log files (fallback):
-
-**Preferred — tmux pane capture** (live output, most recent):
-- **Backend**: `workmux capture --pane 1`
-- **Frontend**: `workmux capture --pane 2`
-
-**Fallback — log files** (full history, timestamped):
-- **Backend**: `ls -t .fixbot/backend-*.log | head -1` to find the latest
-- **Frontend**: `ls -t .fixbot/frontend-*.log | head -1` to find the latest
+Read server output from log files in `.fixbot/`:
+- **Backend**: `ls -t .fixbot/backend-*.log | head -1` to find the latest, then `tail -200 <file>`
+- **Frontend**: `ls -t .fixbot/frontend-*.log | head -1` to find the latest, then `tail -200 <file>`
 
 Check these when:
 - Debugging startup failures (check if backend/frontend started successfully)
