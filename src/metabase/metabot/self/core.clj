@@ -2,6 +2,9 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [malli.core :as mc]
+   [malli.error :as me]
+   [metabase.metabot.self.schema :as schema]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -394,6 +397,30 @@
   [tool]
   (:fn tool))
 
+(defn- tool-params-schema
+  "Extract the input params schema from a tool's function schema.
+  Tool schemas are `[:=> [:cat params-schema] output-schema]`."
+  [tool]
+  (when-let [fn-schema (:schema tool)]
+    (let [[_:=> [_:cat params-schema] _output] fn-schema]
+      params-schema)))
+
+(defn- validate-tool-args
+  "Validate tool arguments against the feature-filtered params schema.
+  Throws an exception with `:agent-error? true` if validation fails.
+  This ensures required feature-gated fields are present when their feature is available."
+  [tool arguments]
+  (when-let [params-schema (tool-params-schema tool)]
+    (let [filtered-schema (schema/filter-schema-by-features params-schema)]
+      (when-not (mc/validate filtered-schema arguments)
+        (let [explanation (mc/explain filtered-schema arguments)
+              humanized   (me/humanize explanation)]
+          (throw (ex-info (str "Tool argument validation failed: " (pr-str humanized))
+                          {:agent-error? true
+                           :errors       humanized
+                           :schema       filtered-schema
+                           :arguments    arguments})))))))
+
 (defn- run-tool
   "Execute a tool and return output chunks. Handles errors gracefully.
 
@@ -416,6 +443,7 @@
                            arguments (coerce-stringified-json arguments)
                            decode    (tool-decode-fn tool)
                            arguments (cond-> arguments decode decode)]
+                       (validate-tool-args tool arguments)
                        (log/debug "Executing tool" {:tool-name tool-name :arguments arguments})
                        (let [tool-fn (tool-call-fn tool)
                              result  (tool-fn arguments)]

@@ -11,7 +11,12 @@
   "Filter map schema entries, keeping only those whose :feature is available.
 
    Each map entry is [key props child-schema]. If props contains :feature,
-   check availability. Strip :feature from output props (internal metadata)."
+   check availability. Strip :feature from output props (internal metadata).
+
+   When keeping a feature-gated entry, :optional is also removed to make the
+   field required. This allows the original schema to mark feature-gated fields
+   as optional (so mu/defn validation passes when the field is absent), while
+   the filtered schema enforces the field as required when the feature is available."
   [schema]
   (let [props    (mc/properties schema)
         children (mc/children schema)]
@@ -21,7 +26,7 @@
                 :when (or (nil? feature)
                           (features/feature-available? feature))]
             (if feature
-              [k (dissoc entry-props :feature) child-schema]
+              [k (dissoc entry-props :feature :optional) child-schema]
               entry)))))
 
 (defn filter-schema-by-features

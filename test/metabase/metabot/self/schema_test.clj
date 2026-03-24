@@ -82,7 +82,7 @@
         (is (= :enum (mc/type (schema/filter-schema-by-features enum-schema))))))))
 
 (deftest ^:synchronized filter-schema-by-features-optional-and-feature-test
-  (testing "entry with both :optional and :feature handles both properties"
+  (testing "entry with both :optional and :feature removes both props when feature is available"
     (with-redefs [features/feature-available? (constantly true)]
       (let [input    [:map [:field {:optional true :feature :some-feature} :string]]
             result   (schema/filter-schema-by-features input)
@@ -90,7 +90,11 @@
             entry    (first children)
             props    (second entry)]
         (is (= 1 (count children)))
-        (is (true? (:optional props)))
+        ;; :optional is removed to make the field required when the feature is available
+        ;; This allows the original schema to mark feature-gated fields as optional (so mu/defn
+        ;; validation passes when the field is absent), while the filtered schema enforces
+        ;; the field as required when the feature is available.
+        (is (not (contains? props :optional)))
         (is (not (contains? props :feature)))))))
 
 (deftest ^:synchronized filter-schema-by-features-all-entries-filtered-test
@@ -132,3 +136,25 @@
         (is (contains? inner-keys :name))
         (is (contains? inner-keys :visible))
         (is (not (contains? inner-keys :secret)))))))
+
+(deftest ^:synchronized filter-schema-feature-gated-field-validation-test
+  (testing "feature-gated optional field becomes required when feature is available"
+    ;; This tests the key use case: schemas can define feature-gated fields as optional
+    ;; (so mu/defn validation passes when the field is absent), while the filtered schema
+    ;; makes the field required when the feature is available.
+    (let [schema [:map {:closed true}
+                  [:always_required :string]
+                  [:feature_gated {:optional true :feature :semantic-search} [:sequential :string]]]]
+      (testing "when feature is available, field is required in filtered schema"
+        (with-redefs [features/feature-available? (constantly true)]
+          (let [filtered (schema/filter-schema-by-features schema)]
+            ;; field should be present and required (no :optional)
+            (is (mc/validate filtered {:always_required "x" :feature_gated ["y"]}))
+            (is (not (mc/validate filtered {:always_required "x"})))))) ; missing required field
+      (testing "when feature is unavailable, field is removed from filtered schema"
+        (with-redefs [features/feature-available? (constantly false)]
+          (let [filtered (schema/filter-schema-by-features schema)]
+            ;; field should not be in schema at all
+            (is (mc/validate filtered {:always_required "x"}))
+            ;; extra keys fail on closed map
+            (is (not (mc/validate filtered {:always_required "x" :feature_gated ["y"]})))))))))
