@@ -331,6 +331,37 @@
           state
           (:user_is_viewing context)))
 
+(defn chart-config->chart
+  "Create chart structure from chart-config"
+  [{:keys [query timeline_events image_base_64] :as chart-config}]
+  {:chart_id (str (random-uuid))
+   :queries [query]
+   :image_base_64 image_base_64
+   :timeline_events (or timeline_events [])
+   ;; TODO: VIZ SETTINGS -- what is that needed for?
+   :visualization_settings nil
+   :chart_config chart-config})
+
+(defn seed-charts
+  "Reduce the chart-configs from context into charts."
+  [state context]
+  (reduce
+   ;; This logic is flawed for items with more than 1 chart config. It expects at most 1 chart config per viewing item.
+   ;; TODO (lbrdnk 2026-03-24): Figure out what is reasonable solution here. (ie no overwriting single config)
+   (fn [acc {:keys [id chart_configs] :as _item}]
+     ;; TODO (lbrdnk 2026-03-24): This is developed against adhoc queries. Ensure other cases work too!
+     (if-not (seq chart_configs)
+       acc
+       (update acc :charts merge
+               (into {}
+                     (map (comp
+                           (juxt :chart_id identity)
+                           #(assoc % :chart_id id)
+                           chart-config->chart))
+                     chart_configs))))
+   state
+   (:user_is_viewing context)))
+
 ;;; Main loop
 
 (defn- init-agent
@@ -343,7 +374,8 @@
         base-tools   (profiles/get-tools-for-profile profile-id capabilities)
         seeded       (-> (or state {})
                          (seed-state context)
-                         (seed-chart-configs context))
+                         (seed-chart-configs context)
+                         (seed-charts context))
         memory       (-> (memory/initialize messages seeded context)
                          (memory/load-queries-from-state seeded)
                          (memory/load-charts-from-state seeded)
