@@ -1076,15 +1076,13 @@
   [_driver [_ _name opts]]
   (driver-api/qp.util.transformations.nest-breakouts.externally-remapped-field opts))
 
-(defmulti finest-temporal-breakout-idx
-  "Wrapper around `driver-api/finest-temporal-breakout-index`."
+(defmulti breakout-options-index
+  "Returns the index of options in a breakout clause."
   {:added "0.60.0", :arglists '([driver breakouts])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defmethod finest-temporal-breakout-idx :sql
-  [_driver breakouts]
-  (driver-api/finest-temporal-breakout-index breakouts 2))
+(defmethod breakout-options-index :sql [_driver] 2)
 
 (defn- window-aggregation-over-expr-for-query-with-breakouts
   "Order by the first breakout, then partition by all the other ones. See #42003 and
@@ -1095,7 +1093,8 @@
                                     (partial remapped-breakout? driver))
                                    (:breakout inner-query))
         group-bys            (:group-by (apply-top-level-clause driver :breakout {} inner-query))
-        finest-temp-breakout (finest-temporal-breakout-idx driver breakouts)
+        opts-idx             (breakout-options-index driver)
+        finest-temp-breakout (driver-api/finest-temporal-breakout-index breakouts opts-idx)
         partition-exprs      (when (> (count breakouts) 1)
                                (if finest-temp-breakout
                                  (m/remove-nth finest-temp-breakout group-bys)
@@ -1711,7 +1710,7 @@
   [:escape like-rhs-honeysql [:inline "\\"]])
 
 (defmulti clause-value-idx
-  "Returns the index of the value in a clause."
+  "Returns the index of the value in a value clause."
   {:added "0.60.0" :arglists '([driver])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)

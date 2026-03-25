@@ -162,8 +162,7 @@
 
 (defmethod sql.qp/expression-by-name :sql-mbql5
   [_driver inner-query expression-name]
-  (m/find-first (comp #{expression-name} lib.util/expression-name)
-                (:expressions inner-query)))
+  (m/find-first #(= expression-name (lib.util/expression-name %)) (:expressions inner-query)))
 
 (defmethod sql.qp/remapped-order-by? :sql-mbql5
   [_driver [_dir _opts [_ opts _name]]]
@@ -173,6 +172,4 @@
   [_driver [_ opts _name]]
   (driver-api/qp.util.transformations.nest-breakouts.externally-remapped-field opts))
 
-(defmethod sql.qp/finest-temporal-breakout-idx :sql-mbql5
-  [_driver breakouts]
-  (driver-api/finest-temporal-breakout-index breakouts 1))
+(defmethod sql.qp/breakout-options-index :sql-mbql5 [_driver] 1)

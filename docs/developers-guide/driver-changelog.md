@@ -9,12 +9,12 @@ title: Driver interface changelog
 - Added the following driver multimethods to support MBQL5 compilation migration:
   - `compile-mbql` - Compiles an MBQL inner query to HoneySQL.
   - `mbql-clause-with-opts` - Returns an MBQL clause in the desired MBQL format of the driver.
-  - `over-order-by->honeysql` - Returns the HoneySQL for an order by clause in the over clause of a window function.
-  - `clause-value-idx` - Returns the index of the value in a clause.
   - `expression-by-name` - Gets an expression from a query or stage (`*inner-query`) by name.
+  - `over-order-by->honeysql` - Returns the HoneySQL for an order by clause in the over clause of a window function.
+  - `clause-value-idx` - Returns the index of the value in a value clause.
+  - `breakout-options-index` - Returns the index of options in a breakout clause.
   - `remapped-order-by?` - Looks for the `externally-remapped-field` key in the order by field options.
   - `remapped-breakout?` - Looks for the `externally-remapped-field` key in the breakout options.
-  - `finest-temporal-breakout-idx` - Wrapper around `driver-api/finest-temporal-breakout-index`.
   These methods have implementations for the `:sql` and `:sql-mbql5` drivers. Concrete drivers should not need to
   implement these methods. Drivers can opt-in to MBQL5 compilation by adding the `:sql-mbql5` driver as a parent.
   See the `:h2` driver for an example. These methods will eventually be deprecated in favour of the `:sql-mbql5`
