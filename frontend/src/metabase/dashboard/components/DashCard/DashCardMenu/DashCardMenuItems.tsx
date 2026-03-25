@@ -2,16 +2,16 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { useSdkDashboardContext } from "embedding-sdk-bundle/components/public/dashboard/context";
+import { canDownloadResults } from "metabase/common/utils/dataset";
 import { editQuestion, setSidebar } from "metabase/dashboard/actions";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { transformSdkQuestion } from "metabase/embedding-sdk/lib/transform-question";
 import type { DashboardCardCustomMenuItem } from "metabase/embedding-sdk/types/plugins";
-import { canDownloadResults } from "metabase/utils/downloads";
-import { useDispatch } from "metabase/utils/redux";
 import { useMetabotEnabledEmbeddingAware } from "metabase/metabot/hooks";
 import { canAnalyzeQuestion } from "metabase/metabot/utils/chart-analysis";
 import { Icon, Menu } from "metabase/ui";
+import { useDispatch } from "metabase/utils/redux";
 import type Question from "metabase-lib/v1/Question";
 import type { DashCardId, Dataset } from "metabase-types/api";
 

@@ -2,9 +2,9 @@ import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { QuestionDownloadWidget } from "metabase/common/components/QuestionDownloadWidget";
-import { isWithinIframe } from "metabase/utils/dom";
-import { canDownloadResults } from "metabase/utils/downloads";
+import { canDownloadResults } from "metabase/common/utils/dataset";
 import { Icon, Menu } from "metabase/ui";
+import { isWithinIframe } from "metabase/utils/dom";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset } from "metabase-types/api";
 
