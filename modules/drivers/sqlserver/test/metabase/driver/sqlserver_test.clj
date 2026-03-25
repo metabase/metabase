@@ -124,7 +124,7 @@
     (testing (str "SQL Server doesn't let you use ORDER BY in nested SELECTs unless you also specify a TOP (their "
                   "equivalent of LIMIT). Make sure we add a max-results LIMIT to the nested query")
       (is (= {:query ["SELECT"
-                      "  TOP(1048575) \"source\".\"name\" AS \"name\""
+                      "  TOP(1048575) \"__mb_source\".\"name\" AS \"name\""
                       "FROM"
                       "  ("
                       "    SELECT"
@@ -133,7 +133,7 @@
                       "      \"dbo\".\"venues\""
                       "    ORDER BY"
                       "      \"dbo\".\"venues\".\"id\" ASC"
-                      "  ) AS \"source\""]
+                      "  ) AS \"__mb_source\""]
               :params nil}
              (-> (mt/mbql-query venues
                    {:source-query {:source-table $$venues
@@ -147,7 +147,7 @@
     (testing (str "make sure when adding TOP clauses to make ORDER BY work we don't stomp over any explicit TOP "
                   "clauses that may have been set in the query")
       (is (= {:query  ["SELECT"
-                       "  TOP(10) \"source\".\"name\" AS \"name\""
+                       "  TOP(10) \"__mb_source\".\"name\" AS \"name\""
                        "FROM"
                        "  ("
                        "    SELECT"
@@ -156,7 +156,7 @@
                        "      \"dbo\".\"venues\""
                        "    ORDER BY"
                        "      \"dbo\".\"venues\".\"id\" ASC"
-                       "  ) AS \"source\""]
+                       "  ) AS \"__mb_source\""]
               :params nil}
              (-> (qp.compile/compile
                   (mt/mbql-query venues
@@ -182,7 +182,7 @@
                            (lib/limit nil))]
       (mt/with-metadata-provider (mt/id)
         (is (= {:query  ["SELECT"
-                         "  \"source\".\"name\" AS \"name\""
+                         "  \"__mb_source\".\"name\" AS \"name\""
                          "FROM"
                          "  ("
                          "    SELECT"
@@ -191,9 +191,9 @@
                          "      \"dbo\".\"venues\""
                          "    ORDER BY"
                          "      \"dbo\".\"venues\".\"id\" ASC"
-                         "  ) AS \"source\""
+                         "  ) AS \"__mb_source\""
                          "ORDER BY"
-                         "  \"source\".\"id\" ASC"]
+                         "  \"__mb_source\".\"id\" ASC"]
                 :params nil}
                (-> (driver/mbql->native :sqlserver preprocessed)
                    (update :query (fn [sql]
