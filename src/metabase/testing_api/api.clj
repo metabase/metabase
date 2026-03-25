@@ -139,7 +139,7 @@
   (alter-var-root #'java-time.clock/*clock* (constantly nil))
   (.clear ^Queue @#'search.ingestion/queue)
   (restore-snapshot! snapshot-name)
-  (search/reindex! {:async? false})
+  (search/sync-from-restored-db!)
   nil)
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
