@@ -10,7 +10,7 @@ import "./commands";
 
 const isCI = Cypress.expose("CI");
 const isNetworkThrottlingEnabled = Cypress.expose("ENABLE_NETWORK_THROTTLING");
-const isBailEnabled = Cypress.env("BAIL");
+const isBailEnabled = Cypress.expose("BAIL");
 
 // remove default html output on test failure
 configure({
