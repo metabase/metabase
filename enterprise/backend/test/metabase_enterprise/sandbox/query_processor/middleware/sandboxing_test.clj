@@ -55,9 +55,12 @@
      (qp.store/with-metadata-provider (mt/id)
        (sql.qp/->honeysql
         (or driver/*driver* :h2)
-        [:field field-id {::add/source-table (mt/id table-key)
-                          ::add/source-alias field-name
-                          ::add/desired-alias field-name}])))))
+        (sql.qp/mbql-clause-with-opts driver/*driver*
+                                      :field
+                                      {::add/source-table (mt/id table-key)
+                                       ::add/source-alias field-name
+                                       ::add/desired-alias field-name}
+                                      field-id))))))
 
 (defn- venues-category-mbql-gtap-def []
   {:query (mt/mbql-query venues)
