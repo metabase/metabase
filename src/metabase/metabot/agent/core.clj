@@ -435,14 +435,14 @@
           parts-atom         (atom [])
           link-registry-atom (atom (get-in memory [:state :link-registry] {}))
           llm-call           (call-llm memory context profile tools iteration tracking-opts link-registry-atom)
-          xf         (comp (accumulate-usage-xf usage-atom)
-                           (u/tee-xf parts-atom))
+          xf                 (comp (accumulate-usage-xf usage-atom)
+                                   (u/tee-xf parts-atom))
           ;; We use `reduce` instead of `transduce` because rf is the outer reducing
           ;; function (e.g. aisdk-line-xf wrapping streaming-writer-rf) whose completion
           ;; arity emits a finish message — that must only fire once, at the end of the
           ;; entire agent loop, not after every iteration.
-          result'    (reduce (xf rf) result llm-call)
-          parts      @parts-atom]
+          result'            (reduce (xf rf) result llm-call)
+          parts              @parts-atom]
       ;; Sync link registry back to memory after streaming completes
       (swap! memory-atom assoc-in [:state :link-registry] @link-registry-atom)
       ;; Capture response for debug log

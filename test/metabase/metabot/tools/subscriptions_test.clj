@@ -3,7 +3,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.channel.settings :as channel.settings]
-   [metabase.metabot.tools.create-dashboard-subscription :as subscription-tools]
    [metabase.metabot.tools.subscriptions :as agent-subscriptions]
    [metabase.test :as mt]))
 
@@ -23,7 +22,7 @@
 (deftest create-dashboard-subscription-happy-path-test
   (testing "valid dashboard, valid user email, valid schedule → success"
     (let [captured-args (atom nil)]
-      (with-redefs [subscription-tools/create-dashboard-subscription
+      (with-redefs [agent-subscriptions/create-dashboard-subscription
                     (fn [args] (reset! captured-args args) {:output "success"})]
         (mt/with-current-user (mt/user->id :crowberto)
           (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Test Dashboard"}]
@@ -37,23 +36,18 @@
               (is (= dash-id (:dashboard-id @captured-args))))))))))
 
 (deftest create-dashboard-subscription-invalid-dashboard-id-test
-  (testing "non-integer dashboard_id → 'invalid dashboard_id'"
+  (testing "nonexistent dashboard_id → error about missing dashboard"
     (mt/with-current-user (mt/user->id :crowberto)
-      (with-redefs [subscription-tools/create-dashboard-subscription
-                    (fn [{:keys [dashboard-id]}]
-                      (if (int? dashboard-id)
-                        {:output "success"}
-                        {:output "invalid dashboard_id"}))]
-        (let [result (agent-subscriptions/create-dashboard-subscription-tool
-                      {:dashboard_id 0
-                       :email        "nobody@example.com"
-                       :schedule     {:frequency "daily"}})]
-          ;; dashboard_id 0 is int but won't match any dashboard
-          (is (string? (:output result))))))))
+      (let [result (agent-subscriptions/create-dashboard-subscription-tool
+                    {:dashboard_id 0
+                     :email        "nobody@example.com"
+                     :schedule     {:frequency "daily"}})]
+        ;; dashboard_id 0 is int but won't match any dashboard
+        (is (string? (:error result)))))))
 
 (deftest create-dashboard-subscription-unknown-email-test
   (testing "unknown email → 'no user with this email found'"
-    (with-redefs [subscription-tools/create-dashboard-subscription
+    (with-redefs [agent-subscriptions/create-dashboard-subscription
                   (fn [{:keys [email]}]
                     (if (= email "nonexistent-user@example.com")
                       {:output "no user with this email found"}
@@ -68,7 +62,7 @@
 
 (deftest create-dashboard-subscription-nonexistent-dashboard-test
   (testing "nonexistent dashboard → 404 or error message"
-    (with-redefs [subscription-tools/create-dashboard-subscription
+    (with-redefs [agent-subscriptions/create-dashboard-subscription
                   (fn [{:keys [dashboard-id]}]
                     (if (= dashboard-id 999999)
                       {:output "no dashboard with this dashboard_id found"}
@@ -83,7 +77,7 @@
 (deftest create-dashboard-subscription-schedule-keywords-test
   (testing "schedule keywords are converted from snake_case to kebab-case"
     (let [captured-args (atom nil)]
-      (with-redefs [subscription-tools/create-dashboard-subscription
+      (with-redefs [agent-subscriptions/create-dashboard-subscription
                     (fn [args] (reset! captured-args args) {:output "success"})]
         (mt/with-current-user (mt/user->id :crowberto)
           (agent-subscriptions/create-dashboard-subscription-tool

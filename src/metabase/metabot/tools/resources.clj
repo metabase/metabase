@@ -157,11 +157,8 @@
   (when sub-resource
     (throw (ex-info (str "Transforms do not support sub-resources. Got: " sub-resource)
                     {:resource-id resource-id :sub-resource sub-resource})))
-  (try
-    {:structured-output (-> (transforms/get-transform resource-id)
-                            (assoc :result-type :entity :type :transform))}
-    (catch Exception _e
-      nil)))
+  {:structured-output (-> (transforms/get-transform (parse-long resource-id))
+                          (assoc :result-type :entity :type :transform))})
 
 (defn- fetch-dashboard-resource
   "Fetch dashboard resource."
