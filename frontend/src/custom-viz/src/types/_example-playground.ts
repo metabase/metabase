@@ -15,7 +15,7 @@ type CustomWidgetProps = {
   options: boolean[];
 };
 
-export const createMyViz: CreateCustomVisualization<MyVizSettings> = () => {
+const createMyViz: CreateCustomVisualization<MyVizSettings> = () => {
   return {
     id: "my-custom-viz",
     getName: () => "My custom viz",
@@ -65,7 +65,9 @@ export const createMyViz: CreateCustomVisualization<MyVizSettings> = () => {
         id: "2",
         widget: CustomWidget,
         getProps() {
-          return {};
+          return {
+            options: [true],
+          };
         },
       },
       threshold: {
@@ -88,4 +90,5 @@ const CustomWidget = (_props: CustomWidgetProps) => {
   return null;
 };
 
-window.registerCustomViz(createMyViz);
+// eslint-disable-next-line import/no-default-export
+export default createMyViz;
