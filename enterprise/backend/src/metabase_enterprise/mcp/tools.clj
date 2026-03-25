@@ -3,7 +3,7 @@
    when the :agent-api premium feature is available."
   (:require
    [clojure.core.async :as a]
-   [metabase-enterprise.agent-api.api :as agent-api]
+   [metabase.agent-api.api :as agent-api]
    [metabase.api.common :as api]
    [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -44,4 +44,4 @@
   :feature :agent-api
   []
   (tools-manifest/generate-tools-manifest
-   {'metabase-enterprise.agent-api.api "/api/agent"}))
+   {'metabase.agent-api.api "/api/agent"}))
