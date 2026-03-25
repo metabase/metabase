@@ -2224,4 +2224,7 @@
         (when table-id
           (t2/query {:update :transform
                      :set    {:target_table_id table-id}
-                     :where  [:= :id id]}))))))
+                     :where  [:= :id id]})))))
+  ;; Invalidate workspace graph caches so they recalculate with target_table_id
+  (t2/query {:update :workspace
+             :set    {:graph_version [:+ :graph_version 1]}}))
