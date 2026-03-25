@@ -53,7 +53,7 @@
   "Block until the background search index initialization has completed.
    No-op if init has not been started (e.g. in unit tests)."
   []
-  (some deref @init-promise))
+  (some-> @init-promise deref))
 
 (defmethod startup/def-startup-logic! ::SearchIndexInit [_]
   (let [p (promise)]
