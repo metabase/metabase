@@ -2192,16 +2192,26 @@
   ;; For each transform with a non-null target_db_id, extract the table_id from the target JSON column.
   ;; If table_id is present in the JSON, use it directly.
   ;; If table_id is missing but name is present, look up the table by (db_id, schema, name).
+  ;; Uses case-insensitive matching with exact-case preference for both schema and name.
   (let [find-table-id (fn [db-id schema table-name]
-                        (:id (first (t2/query {:select [:id]
-                                               :from   [:metabase_table]
-                                               :where  [:and
-                                                        [:= :db_id db-id]
-                                                        (if (some? schema)
-                                                          [:= :schema schema]
-                                                          [:is :schema nil])
-                                                        [:= :name table-name]]
-                                               :limit  1}))))]
+                        (:id (first (t2/query {:select   [:id]
+                                               :from     [:metabase_table]
+                                               :where    [:and
+                                                          [:= :db_id db-id]
+                                                          (if (some? schema)
+                                                            [:= [:lower :schema] [:lower schema]]
+                                                            [:is :schema nil])
+                                                          [:= [:lower :name] [:lower table-name]]]
+                                               :order-by [[[:case
+                                                            [:and
+                                                             [:= :name table-name]
+                                                             (if (some? schema)
+                                                               [:= :schema schema]
+                                                               [:is :schema nil])]
+                                                            0
+                                                            :else 1]
+                                                           :asc]]
+                                               :limit    1}))))]
     (doseq [{:keys [id target target_db_id]} (t2/query {:select [:id :target :target_db_id]
                                                         :from   [:transform]
                                                         :where  [:and
