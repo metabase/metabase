@@ -168,11 +168,15 @@ function useTouchBrush({
 
     disableBrush();
 
-    // Prevent selection highlight and callout on long-press (touch only).
-    // Applied as inline styles so desktop text selection is unaffected.
+    // Prevent selection highlight, callout, and tap highlight on long-press.
+    // Applied as inline styles so only brushable charts on touch are affected.
     // Save originals to restore on cleanup.
-    const savedStyles = {
-      userSelect: containerEl.style.userSelect,
+    const svg = containerEl.querySelector("svg");
+
+    const savedContainerStyles = {
+      webkitUserSelect: containerEl.style.getPropertyValue(
+        "-webkit-user-select",
+      ),
       webkitTouchCallout: containerEl.style.getPropertyValue(
         "-webkit-touch-callout",
       ),
@@ -180,9 +184,23 @@ function useTouchBrush({
         "-webkit-tap-highlight-color",
       ),
     };
-    containerEl.style.userSelect = "none";
+    const savedSvgStyles = svg
+      ? {
+          webkitUserSelect: svg.style.getPropertyValue("-webkit-user-select"),
+          webkitTouchCallout: svg.style.getPropertyValue(
+            "-webkit-touch-callout",
+          ),
+        }
+      : null;
+
+    containerEl.style.setProperty("-webkit-user-select", "none");
     containerEl.style.setProperty("-webkit-touch-callout", "none");
     containerEl.style.setProperty("-webkit-tap-highlight-color", "transparent");
+
+    if (svg) {
+      svg.style.setProperty("-webkit-user-select", "none");
+      svg.style.setProperty("-webkit-touch-callout", "none");
+    }
 
     const cancel = () => {
       clearTimeout(timerRef.current);
@@ -266,15 +284,29 @@ function useTouchBrush({
       removeListeners();
       containerEl.removeEventListener("contextmenu", onContextMenu);
       containerEl.removeEventListener("touchmove", onTouchMove);
-      containerEl.style.userSelect = savedStyles.userSelect;
+      containerEl.style.setProperty(
+        "-webkit-user-select",
+        savedContainerStyles.webkitUserSelect,
+      );
       containerEl.style.setProperty(
         "-webkit-touch-callout",
-        savedStyles.webkitTouchCallout,
+        savedContainerStyles.webkitTouchCallout,
       );
       containerEl.style.setProperty(
         "-webkit-tap-highlight-color",
-        savedStyles.webkitTapHighlightColor,
+        savedContainerStyles.webkitTapHighlightColor,
       );
+
+      if (svg && savedSvgStyles) {
+        svg.style.setProperty(
+          "-webkit-user-select",
+          savedSvgStyles.webkitUserSelect,
+        );
+        svg.style.setProperty(
+          "-webkit-touch-callout",
+          savedSvgStyles.webkitTouchCallout,
+        );
+      }
     };
   }, [
     containerEl,
