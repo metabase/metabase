@@ -1684,7 +1684,6 @@ describe("scenarios - embedding hub", () => {
         expect(body["jwt-identity-provider-uri"]).to.equal(
           "https://jwt.example.com/auth",
         );
-        expect(body["jwt-shared-secret"]).to.be.a("string");
         expect(body["jwt-group-sync"]).to.equal(true);
       });
 

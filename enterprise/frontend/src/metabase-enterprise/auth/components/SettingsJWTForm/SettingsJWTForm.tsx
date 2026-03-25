@@ -41,8 +41,11 @@ export type JWTFormValues = Pick<
 >;
 
 export const SettingsJWTForm = () => {
-  const { data: settingDetails, isLoading: isLoadingDetails } =
-    useGetAdminSettingsDetailsQuery();
+  const {
+    data: settingDetails,
+    isLoading: isLoadingDetails,
+    refetch: refetchSettingDetails,
+  } = useGetAdminSettingsDetailsQuery();
   const { data: settingValues, isLoading: isLoadingValues } =
     useGetSettingsQuery();
   const { value: jwtEnabled, updateSettings } = useAdminSetting("jwt-enabled");
@@ -59,6 +62,8 @@ export const SettingsJWTForm = () => {
       "jwt-enabled": true,
       toast: false,
     });
+    // Make sure the shared token obfuscated value is fetched from the backend.
+    refetchSettingDetails();
 
     if (result.error) {
       throw new Error(t`Error saving JWT Settings`);
@@ -223,4 +228,4 @@ const getFormValues = (
 };
 
 const isObfuscatedValue = (value: string | null | undefined): boolean =>
-  value != null && value.startsWith("**");
+  !!value && value.startsWith("**");
