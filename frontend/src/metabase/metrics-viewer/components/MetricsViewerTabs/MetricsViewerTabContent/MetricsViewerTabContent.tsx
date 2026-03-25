@@ -3,9 +3,10 @@ import { useCallback, useMemo } from "react";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { getObjectKeys, getObjectValues } from "metabase/lib/objects";
 import { isNotNull } from "metabase/lib/types";
-import { Flex, Stack } from "metabase/ui";
+import { Center, Flex, Stack } from "metabase/ui";
 import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
+import { isMetric } from "metabase-lib/v1/types/utils/isa";
 import type { Dataset, TemporalUnit } from "metabase-types/api";
 
 import type {
@@ -126,6 +127,12 @@ export function MetricsViewerTabContent({
   }, [expressionItems, isExecuting, metricSourceIds]);
 
   const firstError = useMemo(() => {
+    for (const series of rawSeries) {
+      const cols = series.data.cols;
+      if (!cols.some((col) => isMetric(col))) {
+        return "Non-numeric metrics are not supported";
+      }
+    }
     for (const id of metricSourceIds) {
       const err = errorsByDefinitionId.get(id);
       if (err) {
@@ -149,7 +156,7 @@ export function MetricsViewerTabContent({
     metricSourceIds,
     errorsByDefinitionId,
     isLoading,
-    rawSeries.length,
+    rawSeries,
   ]);
 
   const dimensionFilter = getTabConfig(tab.type).dimensionPredicate;
@@ -261,7 +268,11 @@ export function MetricsViewerTabContent({
     mappedDimensionCount > 1 ? onDimensionRemove : undefined;
 
   if (isLoading || firstError) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={firstError} />;
+    return (
+      <Center h="100%">
+        <LoadingAndErrorWrapper loading={isLoading} error={firstError} />
+      </Center>
+    );
   }
 
   if (rawSeries.length === 0) {
