@@ -501,6 +501,15 @@
          :label    {:type "plain_text" :text "What kind of issue are you reporting?"}}
         freeform-block]))})
 
+(defn- get-conversation-messages
+  "Retrieve all messages for a conversation from the database."
+  [conversation-id]
+  (when conversation-id
+    (t2/select :model/MetabotMessage
+               :conversation_id conversation-id
+               :deleted_at nil
+               {:order-by [[:created_at :asc]]})))
+
 (defn- build-base-feedback
   "Build the common feedback payload fields."
   [user-id conversation-id positive]
@@ -508,7 +517,7 @@
    :feedback          {:positive          positive
                        :message_id        conversation-id
                        :freeform_feedback ""}
-   :conversation_data {}
+   :conversation_data {:messages (get-conversation-messages conversation-id)}
    :version           config/mb-version-info
    :submission_time   (str (java.time.OffsetDateTime/now))
    :is_admin          (boolean (t2/select-one-fn :is_superuser :model/User :id user-id))
