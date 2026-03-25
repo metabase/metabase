@@ -43,6 +43,7 @@ export function RevisionHistoryTimeline({
             <Box
               key={revision?.id ?? `${title}-${timestamp}`}
               className={S.event}
+              data-testid="revision-history-event"
             >
               <EventIconCircle icon={icon} />
               <Flex flex="1">

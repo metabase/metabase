@@ -1,5 +1,6 @@
 import { SimpleGrid } from "metabase/ui";
 import type { DimensionMetadata } from "metabase-lib/metric";
+import type { VisualizationSettings } from "metabase-types/api";
 
 import type {
   MetricSourceId,
@@ -13,13 +14,15 @@ type MetricsViewerCardsGridProps = {
   definitions: MetricsViewerDefinitionEntry[];
   tabs: MetricsViewerTabState[];
   updateTab: (tabId: string, updates: Partial<MetricsViewerTabState>) => void;
-  onDimensionChange: (
+  onDimensionChange?: (
     tabId: string,
     definitionId: MetricSourceId,
     dimension: DimensionMetadata,
   ) => void;
-  onDimensionRemove: (tabId: string, definitionId: MetricSourceId) => void;
+  onDimensionRemove?: (tabId: string, definitionId: MetricSourceId) => void;
   sourceColors: SourceColorMap;
+  mode?: "interactive" | "readonly";
+  settingsOverrides?: VisualizationSettings;
 };
 
 export function MetricsViewerCardsGrid({
@@ -29,6 +32,8 @@ export function MetricsViewerCardsGrid({
   onDimensionChange,
   onDimensionRemove,
   sourceColors,
+  mode,
+  settingsOverrides,
 }: MetricsViewerCardsGridProps) {
   return (
     <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
@@ -38,11 +43,20 @@ export function MetricsViewerCardsGrid({
           definitions={definitions}
           tab={tab}
           onTabUpdate={(updates) => updateTab(tab.id, updates)}
-          onDimensionChange={(defId, dimension) =>
-            onDimensionChange(tab.id, defId, dimension)
+          onDimensionChange={
+            onDimensionChange
+              ? (defId, dimension) =>
+                  onDimensionChange(tab.id, defId, dimension)
+              : undefined
           }
-          onDimensionRemove={(defId) => onDimensionRemove(tab.id, defId)}
+          onDimensionRemove={
+            onDimensionRemove
+              ? (defId) => onDimensionRemove(tab.id, defId)
+              : undefined
+          }
           sourceColors={sourceColors}
+          mode={mode}
+          settingsOverrides={settingsOverrides}
         />
       ))}
     </SimpleGrid>

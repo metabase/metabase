@@ -2,6 +2,7 @@ import { IndexRoute, Route } from "react-router";
 
 import { PLUGIN_CACHING, PLUGIN_DEPENDENCIES } from "metabase/plugins";
 
+import { DataStudioMetricAboutPage } from "./pages/DataStudioMetricAboutPage";
 import { DataStudioMetricCachingPage } from "./pages/DataStudioMetricCachingPage";
 import { DataStudioMetricDependenciesPage } from "./pages/DataStudioMetricDependenciesPage";
 import { DataStudioMetricHistoryPage } from "./pages/DataStudioMetricHistoryPage";
@@ -13,7 +14,8 @@ export function getDataStudioMetricRoutes() {
   return (
     <Route path="metrics">
       <Route path="new" component={DataStudioNewMetricPage} />
-      <Route path=":cardId" component={DataStudioMetricOverviewPage} />
+      <Route path=":cardId" component={DataStudioMetricAboutPage} />
+      <Route path=":cardId/overview" component={DataStudioMetricOverviewPage} />
       <Route path=":cardId/query" component={DataStudioMetricQueryPage} />
       {PLUGIN_DEPENDENCIES.isEnabled && (
         <Route
