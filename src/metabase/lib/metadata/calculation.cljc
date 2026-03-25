@@ -712,7 +712,7 @@
                                   (remove #(contains? existing-table-ids (:table-id %))))
                             fk-fields)
         id->table (m/index-by :id (lib.metadata/bulk-metadata
-                                   query :metadata/table (into #{} (map :table-id) target-fields)))]
+                                   query :metadata/table (into #{} (keep :table-id) target-fields)))]
     (into []
           (mapcat (fn [{:keys [table-id], ::keys [fk-field-id fk-field-name fk-join-alias fk-column-key]}]
                     (let [table (id->table table-id)]

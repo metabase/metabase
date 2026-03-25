@@ -1839,13 +1839,17 @@
                                                  [:field {:lib/uuid (str (random-uuid))} 12345]))))))
 
 (deftest ^:parallel column-key-test-1-plain-field-by-id
-  (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))]
-    (doseq [table-key (meta/tables)
-            field-key (meta/fields table-key)
-            :let [id (meta/id table-key field-key)]]
-      (is (=? {:id             id
-               :lib/column-key {:lib/type :column/key, :column.field/id id}}
-              (lib/metadata query (lib/ref (meta/field-metadata table-key field-key))))))))
+  (doseq [table-key (meta/tables)
+          :let [query (lib/query meta/metadata-provider (meta/table-metadata table-key))]
+          field-key (meta/fields table-key)
+          :let [id (meta/id table-key field-key)]]
+    (is (=? {:id             id
+             :lib/column-key {:lib/type :column/key, :column.field/id id}}
+            (lib/metadata query (lib/ref (meta/field-metadata table-key field-key)))))))
+
+(comment
+  (lib/metadata (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                (lib/ref (meta/field-metadata :orders :subtotal))))
 
 (deftest ^:parallel column-key-test-2a-expression-same-stage
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
