@@ -277,9 +277,7 @@
             ::compiling-field-filter?      true}
            other-opts)]))
 
-(mu/defn- field->field-filter-clause :- [:or
-                                         [:ref :mbql.clause/field]     ;; mbql4
-                                         driver-api/mbql.schema.field] ;; mbql5
+(mu/defn- field->field-filter-clause :- driver-api/mbql.schema.field
   [driver     :- :keyword
    field      :- driver-api/schema.metadata.column
    param-type :- driver-api/schema.parameter.type

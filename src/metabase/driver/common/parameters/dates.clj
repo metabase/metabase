@@ -8,14 +8,12 @@
   in [[metabase.query-processor.parameters.dates]], we should remove the version here to encourage migration to that
   namespace."
   {:deprecated "0.57.0"}
-  (:refer-clojure :exclude [every? get-in])
+  (:refer-clojure :exclude [every? some get-in])
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.lib.core :as lib]
-   [metabase.lib.options :as lib.options]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.parameters.dates :as qp.parameters.dates]
@@ -44,10 +42,8 @@
   [clause unit]
   ;; legacy usages -- use Lib in new code going forward
   #_{:clj-kondo/ignore [:deprecated-var]}
-  (cond
-    (not (mbql.u/is-clause? :field clause)) clause
-    (lib.options/uuid clause) (lib/with-temporal-bucket clause unit)
-    :else (mbql.u/with-temporal-unit clause unit)))
+  (cond-> clause
+    (mbql.u/is-clause? :field clause) (mbql.u/with-temporal-unit unit)))
 
 (def ^:private relative-date-string-decoders
   [{:parser #(= % "today")
