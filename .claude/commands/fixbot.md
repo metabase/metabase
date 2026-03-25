@@ -77,6 +77,7 @@ The prompt should include:
 - All the workflow instructions from the reference template (Phase 1-5, important rules)
 - Red/green TDD requirement for both backend (Clojure with `./bin/test-agent`) and frontend (Jest/Cypress) changes
 - Self-review requirement: after fixing, use `/clojure-review` and `/typescript-review` to review changes, fix findings, and re-review if significant changes were made — repeat until clean before asking user to verify
+- Before asking the user to verify, use `clj-nrepl-eval` to reload any modified backend namespaces
 - Tell the agent that when the user is ready to ship, it should commit, push, create the PR with `gh pr create`, and run `/fixbot-ci` to monitor CI
 - Enterprise Edition: the dev environment always runs EE. If the fix requires OSS-only behavior, the agent should stop and tell the user.
 
