@@ -336,16 +336,6 @@ export function getUrlTarget(
   return url == null || isSameOrSiteUrlOrigin(url) ? "_self" : "_blank";
 }
 
-export function removeAllChildren(element: HTMLElement | null): void {
-  if (!element) {
-    return;
-  }
-
-  while (element.firstChild) {
-    element.removeChild(element.firstChild);
-  }
-}
-
 interface ParsedDataUri {
   mimeType: string | undefined;
   charset: string | undefined;
