@@ -75,6 +75,14 @@
    :scope
    :state])
 
+(defn- truncate
+  "Truncate a string to `max-len` characters, appending \"...\" if truncated."
+  [s max-len]
+  {:pre [(> max-len 3)]}
+  (if (> (count s) max-len)
+    (str (subs s 0 (- max-len 3)) "...")
+    s))
+
 (defn- redirect-authorization-decision
   "Issue a 302 redirect for an approved or denied authorization decision, clearing the CSRF cookie."
   [provider parsed approved request]
@@ -175,16 +183,15 @@
      :body    ""}
     (or (when-let [provider (oauth-server/get-provider)]
           (try
-            (let [parsed      (oidc/parse-authorization-request provider query-params)
-                  client      (proto/get-client (:client-store provider) (:client_id parsed))
-                  csrf-token  (generate-csrf-token)
+            (let [parsed       (oidc/parse-authorization-request provider query-params)
+                  client       (proto/get-client (:client-store provider) (:client_id parsed))
+                  csrf-token   (generate-csrf-token)
                   oauth-params (select-keys parsed oauth-param-keys)
-                  params-sig  (sign-oauth-params csrf-token oauth-params)]
+                  params-sig   (sign-oauth-params csrf-token oauth-params)]
               (-> {:status  200
                    :headers {"Content-Type" "text/html; charset=utf-8"}
                    :body    (consent-page/render-consent-page
-                             {:client-name  (some-> (:client-name client)
-                                                    (as-> n (if (> (count n) 64) (str (subs n 0 61) "...") n)))
+                             {:client-name  (some-> (:client-name client) (truncate 64))
                               :client-id    (:client_id parsed)
                               :nonce        (:nonce request)
                               :csrf-token   csrf-token
