@@ -44,7 +44,7 @@ describe("Cross-version questions - pivot", () => {
     });
 
     H.vizTypeSidebar().should("not.exist");
-    X.assertRowCount(155);
+    X.assertRowCount("155");
 
     X.saveQuestion(Q1_NAME);
   });
@@ -59,7 +59,7 @@ describe("Cross-version questions - pivot", () => {
       .filter(`:contains(${Q1_NAME})`)
       .click();
 
-    X.assertRowCount(155);
+    X.assertRowCount("155");
 
     cy.findAllByTestId("pivot-table-cell")
       .should("contain", "State")

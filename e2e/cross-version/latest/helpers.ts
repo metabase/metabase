@@ -18,7 +18,7 @@ export function saveQuestion(name: string) {
   });
 }
 
-export function assertRowCount(count: number) {
+export function assertRowCount(count: string) {
   cy.findByTestId("question-row-count").should(
     "have.text",
     `Showing ${count} rows`,

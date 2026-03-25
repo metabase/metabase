@@ -44,7 +44,7 @@ describe("Cross-version questions - joins", () => {
     X.selectFromPopover("Average of Discount");
 
     H.visualize();
-    X.assertRowCount(4);
+    X.assertRowCount("4");
 
     X.saveQuestion(Q2_NAME);
   });
@@ -57,7 +57,7 @@ describe("Cross-version questions - joins", () => {
       .filter(`:contains(${Q2_NAME})`)
       .click();
 
-    X.assertRowCount(4);
+    X.assertRowCount("4");
 
     cy.log("-- Assert that there are four bars --");
     H.chartPathWithFillColor("#A989C5").should("have.length", 4);
