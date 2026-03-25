@@ -1,3 +1,5 @@
+const { H } = cy;
+
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { createQuestion } from "e2e/support/helpers";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
@@ -102,6 +104,39 @@ describe("scenarios > embedding-sdk > touch-brush", () => {
 
       getSdkRoot().within(() => {
         cy.findByText("Count by Product ID").should("be.visible");
+      });
+    });
+  });
+
+  describe("tap on data point", () => {
+    describe("touch device", () => {
+      beforeEach(() => {
+        cy.viewport("iphone-x");
+        enableTouchEmulation();
+      });
+
+      afterEach(() => {
+        disableTouchEmulation();
+      });
+
+      it("should open drill popover on regular tap (not long press)", () => {
+        mountInteractiveQuestion();
+        waitForChart();
+
+        H.cartesianChartCircle().first().click({ force: true });
+
+        H.popover().should("be.visible");
+      });
+    });
+
+    describe("desktop (non-touch)", () => {
+      it("should open drill popover on click", () => {
+        mountInteractiveQuestion();
+        waitForChart();
+
+        H.cartesianChartCircle().first().click({ force: true });
+
+        H.popover().should("be.visible");
       });
     });
   });
