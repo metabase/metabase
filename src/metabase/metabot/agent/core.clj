@@ -534,8 +534,12 @@
                           :msg-count  (count (:messages opts))}
           (prometheus/inc! :metabase-metabot/agent-requests labels)
           (let [start-ms (u/start-timer)]
-            (binding [*debug-log*                (when debug? (atom []))
-                      scope/*current-user-scope* scope/unrestricted]
+            (binding [*debug-log*                              (when debug? (atom []))
+                      scope/*current-user-scope*               scope/unrestricted
+                      scope/*current-user-metabot-permissions* {:permission/metabot-sql-generation :yes
+                                                                :permission/metabot-nql            :yes
+                                                                :permission/metabot-other-tools    :yes
+                                                                :permission/metabot-model          :large}]
               (try
                 (let [agent              (init-agent opts)
                       _                  (when track-user-intent?

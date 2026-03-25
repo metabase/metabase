@@ -43,6 +43,13 @@
                                       (subs scope 0 (dec (count scope))))))
              granted-scopes))))
 
+(def ^:dynamic *current-user-metabot-permissions*
+  "Map of metabot permission type to value for the current user.
+  e.g. `{:permission/metabot-sql-generation :yes, :permission/metabot-nql :no, ...}`.
+  Bind in the request path alongside `*current-user-scope*`. When nil,
+  consumers should fall back to `metabot-permissions/perm-type-defaults`."
+  nil)
+
 (defn user-metabot-perms->scopes
   "Convert a user's metabot permissions into a set of scope strings.
   Stub — returns `#{}` until the permissions data model lands in phase 2."

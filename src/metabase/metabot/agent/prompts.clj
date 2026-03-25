@@ -9,6 +9,8 @@
   - Template caching for performance"
   (:require
    [clojure.java.io :as io]
+   [metabase.metabot.models.metabot-permissions :as metabot-permissions]
+   [metabase.metabot.scope :as scope]
    [metabase.util.log :as log]
    [selmer.parser :as selmer]))
 
@@ -214,6 +216,10 @@
                                      (get context :viewing-context))
             recent-views         (or (get context :recent_views)
                                      (get context :recent-views))
+            perms                (or scope/*current-user-metabot-permissions*
+                                     metabot-permissions/perm-type-defaults)
+            has-sql?             (= :yes (:permission/metabot-sql-generation perms))
+            has-nql?             (= :yes (:permission/metabot-nql perms))
             template-context     {:current_time             current-time
                                   :current_user_info        current-user-info
                                   :first_day_of_week        first-day-of-week
@@ -221,7 +227,11 @@
                                   :sql_dialect_instructions dialect-instructions
                                   :tool_instructions        tool-instructions
                                   :viewing_context          viewing-context
-                                  :recent_views             recent-views}]
+                                  :recent_views             recent-views
+                                  :has_sql_generation       has-sql?
+                                  :has_nql                  has-nql?
+                                  :has_query_tools          (or has-sql? has-nql?)
+                                  :has_other_tools          (= :yes (:permission/metabot-other-tools perms))}]
         (render-system-prompt template template-context))
       ;; Fallback if template not found
       (do
