@@ -263,7 +263,9 @@
     (metabase.driver-api.core/replace-lite)
     (metabase.query-processor.middleware.cache-backend.interface/with-cached-results)
     (metabase.util.regex/rx [opt])
-    (metabase.util/prog1 [<>])]}
+    (metabase.util/prog1 [<>])
+    (taoensso.nippy/extend-freeze)
+    (taoensso.nippy/extend-thaw)]}
 
   ;; TODO (Cam 8/22/25) -- what's the point of marking stuff deprecated if we don't have Kondo enforce it? We should
   ;; remove all of these and add individual ignores as needed.
