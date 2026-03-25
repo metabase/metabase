@@ -5,7 +5,7 @@ import { formatDateTimeRangeWithUnit } from "metabase/lib/formatting/date";
 import type { PreviousPeriodChange } from "metabase/visualizations/lib/trend-helpers";
 import {
   computePreviousPeriodChange,
-  findLastNonEmptyRowIndex,
+  findPreviousNonEmptyRowIndex,
 } from "metabase/visualizations/lib/trend-helpers";
 import type { Dataset, DatasetColumn } from "metabase-types/api";
 import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
@@ -46,10 +46,11 @@ function computeTrendData(
     return null;
   }
 
-  const latestRowIndex = findLastNonEmptyRowIndex(
+  const latestRowIndex = findPreviousNonEmptyRowIndex(
     rows,
     dateColumnIndex,
     metricColumnIndex,
+    rows.length,
   );
   if (latestRowIndex === -1) {
     return null;

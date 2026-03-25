@@ -38,9 +38,12 @@ export function TrendInfo({ value, dateLabel, change }: TrendInfoProps) {
           </Flex>
         )}
         {change != null && change.percent === 0 && (
-          <Text c="text-tertiary" fw={700}>
-            {t`No change`}
-          </Text>
+          <Flex align="center" gap={4}>
+            <Text c="text-tertiary" fw={700}>
+              {t`No change`}
+            </Text>
+            <Text c="text-secondary">{change.description}</Text>
+          </Flex>
         )}
       </Flex>
     </div>

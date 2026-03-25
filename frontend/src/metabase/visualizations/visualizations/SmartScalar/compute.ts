@@ -8,10 +8,7 @@ import { isNumber } from "metabase/lib/types";
 import { isEmpty } from "metabase/lib/validate";
 import type { ColorGetter } from "metabase/ui/colors/types";
 import { computeChange } from "metabase/visualizations/lib/numeric";
-import {
-  findLastNonEmptyRowIndex,
-  findPreviousNonEmptyRowIndex,
-} from "metabase/visualizations/lib/trend-helpers";
+import { findPreviousNonEmptyRowIndex } from "metabase/visualizations/lib/trend-helpers";
 import type { ColumnSettings } from "metabase/visualizations/types";
 import { COMPARISON_TYPES } from "metabase/visualizations/visualizations/SmartScalar/constants";
 import {
@@ -275,10 +272,11 @@ function getCurrentMetricData({
   }
 
   // get latest value and date
-  const latestRowIndex = findLastNonEmptyRowIndex(
+  const latestRowIndex = findPreviousNonEmptyRowIndex(
     rows,
     dimensionColIndex,
     metricColIndex,
+    rows.length,
   );
   if (latestRowIndex === -1) {
     throw Error("No rows contain a valid value.");
