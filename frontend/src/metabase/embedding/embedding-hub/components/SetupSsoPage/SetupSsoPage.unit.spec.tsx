@@ -26,6 +26,7 @@ const defaultChecklist: EmbeddingHubChecklist = {
   "data-permissions-and-enable-tenants": false,
   "embed-production": false,
   "enable-tenants": false,
+  "move-dashboard-to-shared": false,
   "setup-data-segregation-strategy": false,
   "sso-auth-manual-tested": false,
   "sso-configured": false,
