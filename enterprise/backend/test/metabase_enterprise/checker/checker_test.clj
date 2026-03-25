@@ -259,6 +259,108 @@
       (is (= 1 (:issues summary))))))
 
 ;;; ===========================================================================
+;;; Format-error Tests (LLM-friendly error output)
+;;; ===========================================================================
+
+(deftest format-error-returns-nil-for-ok-test
+  (testing "format-error returns nil for OK results"
+    (is (nil? (checker/format-error ["card-1" {}])))
+    (is (nil? (checker/format-error ["card-1" {:refs {:tables ["t"]}}])))))
+
+(deftest format-error-includes-card-identity-test
+  (testing "format-error includes card name and entity-id"
+    (let [output (checker/format-error ["abc123" {:name "My Card" :error "boom"}])]
+      (is (some? output))
+      (is (re-find #"My Card" output))
+      (is (re-find #"abc123" output)))))
+
+(deftest format-error-includes-unresolved-refs-test
+  (testing "format-error includes unresolved field/table refs"
+    (let [output (checker/format-error
+                  ["eid" {:name "Bad Card"
+                          :unresolved [{:type :field :path ["db" "public" "t" "bad_col"]}
+                                       {:type :table :path ["db" "public" "missing"]}]}])]
+      (is (re-find #"unresolved field" output))
+      (is (re-find #"bad_col" output))
+      (is (re-find #"unresolved table" output))
+      (is (re-find #"missing" output)))))
+
+(deftest format-error-includes-bad-refs-test
+  (testing "format-error includes bad-refs"
+    (let [output (checker/format-error
+                  ["eid" {:name "Issue Card"
+                          :bad-refs [{:type :missing-column :name "gone"}]}])]
+      (is (re-find #"bad ref" output))
+      (is (re-find #"missing-column" output)))))
+
+(deftest format-error-includes-error-message-test
+  (testing "format-error includes the error message"
+    (let [output (checker/format-error
+                  ["eid" {:name "Error Card" :error "Unknown database: foo"}])]
+      (is (re-find #"error: Unknown database: foo" output)))))
+
+;;; ===========================================================================
+;;; Sentinel ID Tests — unresolved refs get IDs so queries can be constructed
+;;; ===========================================================================
+
+(deftest sentinel-id-for-unresolved-field-test
+  (testing "Card with unresolved field gets sentinel ID — query builds, field flagged"
+    (let [entities {:databases {"Test DB" {:name "Test DB" :engine "h2"}}
+                    :tables {["Test DB" "PUBLIC" "ORDERS"] {:name "ORDERS" :schema "PUBLIC"}}
+                    :fields {["Test DB" "PUBLIC" "ORDERS" "ID"] {:name "ID"
+                                                                  :base_type "type/BigInteger"
+                                                                  :database_type "BIGINT"
+                                                                  :table_id ["Test DB" "PUBLIC" "ORDERS"]}}
+                    ;; Card references NONEXISTENT_FIELD which doesn't exist
+                    :cards {"bad-field" {:name "Bad Field Card"
+                                         :entity_id "bad-field"
+                                         :type "question"
+                                         :dataset_query {:database "Test DB"
+                                                         :type "query"
+                                                         :query {:source-table ["Test DB" "PUBLIC" "ORDERS"]
+                                                                 :breakout [[:field
+                                                                             ["Test DB" "PUBLIC" "ORDERS" "NONEXISTENT_FIELD"]
+                                                                             {:base-type :type/Text}]]}}}}}
+          source (make-memory-source entities)
+          enumerators (make-memory-enumerators entities)
+          results (checker/check-cards source enumerators ["bad-field"])
+          result (get results "bad-field")]
+      (is (some? result))
+      ;; Should NOT have an :error (query should build successfully with sentinel)
+      (is (nil? (:error result)) (str "Should not blow up: " (:error result)))
+      ;; Should have unresolved refs tracking the bad field
+      (is (seq (:unresolved result)) "Should track unresolved field")
+      (is (some #(= :field (:type %)) (:unresolved result))
+          "Should have unresolved field ref"))))
+
+(deftest sentinel-id-for-unresolved-table-in-join-test
+  (testing "Card with unresolved table in join gets sentinel ID — query builds"
+    (let [entities {:databases {"DB" {:name "DB" :engine "h2"}}
+                    :tables {["DB" "PUBLIC" "ORDERS"] {:name "ORDERS" :schema "PUBLIC"}}
+                    :fields {}
+                    ;; Card joins to a nonexistent table
+                    :cards {"bad-join" {:name "Bad Join Card"
+                                        :entity_id "bad-join"
+                                        :type "question"
+                                        :dataset_query {:database "DB"
+                                                        :type "query"
+                                                        :query {:source-table ["DB" "PUBLIC" "ORDERS"]
+                                                                :joins [{:source-table ["DB" "PUBLIC" "NONEXISTENT"]
+                                                                         :alias "n"
+                                                                         :condition [:= 1 1]}]}}}}}
+          source (make-memory-source entities)
+          enumerators (make-memory-enumerators entities)
+          results (checker/check-cards source enumerators ["bad-join"])
+          result (get results "bad-join")]
+      (is (some? result))
+      ;; Should NOT have an :error (query should build with sentinel)
+      (is (nil? (:error result)) (str "Should not blow up: " (:error result)))
+      ;; Should track the unresolved table
+      (is (seq (:unresolved result)) "Should track unresolved table")
+      (is (some #(= :table (:type %)) (:unresolved result))
+          "Should have unresolved table ref"))))
+
+;;; ===========================================================================
 ;;; REPL Helpers
 ;;; ===========================================================================
 

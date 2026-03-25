@@ -194,6 +194,32 @@
             {}
             entries)))
 
+(def ^:private databases-dir-layout
+  "Layout descriptor for a directory that IS the databases directory.
+   Unlike `database-layout`, this does not expect a `databases/` subdirectory —
+   the directory itself contains database subdirectories directly."
+  [:each                                             ; <db-name>/
+   [:entity :database]                               ;   <db-name>.yaml
+   [:maybe                                           ;   with schemas:
+    [:dir "schemas"
+     [:each                                          ;     <schema>/
+      [:dir "tables" table-layout]]]]
+   [:maybe                                           ;   without schemas (schema-less):
+    [:dir "tables"
+     [:insert nil table-layout]]]])
+
+(defn build-database-dir-index
+  "Build index of database/table/field entities from a directory that IS the
+   databases directory (contains db subdirectories directly, no `databases/` prefix).
+
+   Returns `{kind {ref file-path}}` with :database, :table, :field entries."
+  [databases-dir]
+  (let [entries (walk-layout (io/file databases-dir) [] databases-dir-layout)]
+    (reduce (fn [idx {:keys [kind ref file]}]
+              (assoc-in idx [kind ref] file))
+            {}
+            entries)))
+
 (defn index-stats
   "Get statistics about a file index."
   [index]
@@ -233,6 +259,13 @@
   "Create a MetadataSource for a serdes export directory."
   [export-dir]
   (->SerdesSource export-dir (build-file-index export-dir)))
+
+(defn make-database-source
+  "Create a MetadataSource for a directory that IS the databases directory.
+   The directory should contain database subdirectories directly (e.g., `Sample Database/`).
+   This source only resolves databases, tables, and fields — not cards."
+  [databases-dir]
+  (->SerdesSource databases-dir (build-database-dir-index databases-dir)))
 
 (defn source-index
   "Get the file index from a SerdesSource."

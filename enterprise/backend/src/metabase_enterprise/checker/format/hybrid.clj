@@ -43,29 +43,42 @@
 ;;; Format Detection
 ;;; ===========================================================================
 
+(defn- detect-dir-format
+  "Detect what format a directory contains.
+
+   Returns:
+   - :concise if dir contains .yaml files directly
+   - :serdes if dir contains subdirectories
+   - nil if dir doesn't exist or is empty"
+  [^File dir]
+  (when (.exists dir)
+    (let [children (.listFiles dir)]
+      (cond
+        (some #(and (.isFile ^File %)
+                    (.endsWith (.getName ^File %) ".yaml"))
+              children)
+        :concise
+
+        (some #(.isDirectory ^File %) children)
+        :serdes
+
+        :else nil))))
+
 (defn detect-database-format
   "Detect the format of the databases directory.
 
    Returns:
    - :concise if databases/ contains .yaml files directly
    - :serdes if databases/ contains subdirectories
-   - nil if databases/ doesn't exist or is empty"
-  [export-dir]
-  (let [^File db-dir (io/file export-dir "databases")]
-    (when (.exists db-dir)
-      (let [children (.listFiles db-dir)]
-        (cond
-          ;; Check for .yaml files directly in databases/
-          (some #(and (.isFile ^File %)
-                      (.endsWith (.getName ^File %) ".yaml"))
-                children)
-          :concise
+   - nil if databases/ doesn't exist or is empty
 
-          ;; Check for subdirectories (serdes format)
-          (some #(.isDirectory ^File %) children)
-          :serdes
-
-          :else nil)))))
+   `schema-dir` overrides where to look for database schemas.
+   When provided, it IS the databases directory (contains db entries directly).
+   When nil, looks for `databases/` under `export-dir`."
+  [export-dir & {:keys [schema-dir]}]
+  (if schema-dir
+    (detect-dir-format (io/file schema-dir))
+    (detect-dir-format (io/file export-dir "databases"))))
 
 (defn detect-format
   "Detect the overall format of an export directory.
@@ -74,9 +87,10 @@
    {:databases :concise|:serdes|nil
     :cards :serdes|nil}
 
-   Cards are always in serdes format (in collections/ directory)."
-  [export-dir]
-  {:databases (detect-database-format export-dir)
+   Cards are always in serdes format (in collections/ directory).
+   `schema-dir` overrides where to look for database schemas."
+  [export-dir & {:keys [schema-dir]}]
+  {:databases (detect-database-format export-dir :schema-dir schema-dir)
    :cards (when (.exists (io/file export-dir "collections")) :serdes)})
 
 ;;; ===========================================================================
@@ -100,30 +114,35 @@
     (source/resolve-card serdes-source entity-id)))
 
 (defn- make-concise-db-source
-  "Create a concise source for just the databases (no cards)."
-  [export-dir]
-  (concise/make-source-from-data
-   ;; Load database YAML files
-   (let [^File db-dir (io/file export-dir "databases")]
+  "Create a concise source for just the databases (no cards).
+   `schema-dir` overrides where to find the databases.
+   When provided, schema-dir IS the databases directory (contains .yaml files directly).
+   When nil, looks for `databases/` under `export-dir`."
+  [export-dir & {:keys [schema-dir]}]
+  (let [^File db-dir (if schema-dir
+                       (io/file schema-dir)
+                       (io/file export-dir "databases"))]
+    (concise/make-source-from-data
      (when (.exists db-dir)
        (for [^File file (.listFiles db-dir)
              :when (.isFile file)
              :when (.endsWith (.getName file) ".yaml")]
-         (concise/load-yaml (.getPath file)))))
-   ;; No cards from concise source
-   []))
+         (concise/load-yaml (.getPath file))))
+     [])))
 
 (defn make-hybrid-source
   "Create a hybrid source: concise format for DBs, serdes format for cards.
 
    export-dir should have:
+     collections/
+       ...       (serdes format cards)
+
+   Database schemas come from `schema-dir` (if provided) or `export-dir`:
      databases/
        db1.yaml  (concise format)
-       db2.yaml
-     collections/
-       ...       (serdes format cards)"
-  [export-dir]
-  (let [concise-src (make-concise-db-source export-dir)
+       db2.yaml"
+  [export-dir & {:keys [schema-dir]}]
+  (let [concise-src (make-concise-db-source export-dir :schema-dir schema-dir)
         serdes-src (serdes/make-source export-dir)]
     (->HybridSource concise-src serdes-src)))
 
@@ -173,6 +192,9 @@
      :format format
      :type   :lenient}))
 
+;; Note: lenient mode ignores schema files entirely (fabricates metadata),
+;; so it doesn't need a schema-dir parameter.
+
 (defn make-source
   "Create a MetadataSource from an export directory, auto-detecting format.
 
@@ -183,39 +205,74 @@
    - Lenient format (no databases on disk, fabricate metadata on demand)
 
    Pass :lenient? true to force lenient mode regardless of what's on disk.
+   Pass :schema-dir to load database schemas from a separate directory.
 
    Returns the source and format info."
-  [export-dir & {:keys [lenient?]}]
-  (let [format (detect-format export-dir)]
+  [export-dir & {:keys [lenient? schema-dir]}]
+  (let [format (detect-format export-dir :schema-dir schema-dir)]
     (if lenient?
       (make-lenient-source export-dir format)
       (case (:databases format)
         :serdes
-        {:source (serdes/make-source export-dir)
-         :format format
-         :type :serdes}
+        (if schema-dir
+          ;; Schema in separate dir: schema-dir IS the databases directory
+          (let [db-source   (serdes/make-database-source schema-dir)
+                card-source (serdes/make-source export-dir)]
+            {:source    (->HybridSource db-source card-source)
+             :db-source db-source
+             :format    format
+             :type      :serdes-hybrid})
+          {:source (serdes/make-source export-dir)
+           :format format
+           :type :serdes})
 
         :concise
         (if (= :serdes (:cards format))
           ;; Hybrid: concise DBs + serdes cards
-          {:source (make-hybrid-source export-dir)
+          {:source (make-hybrid-source export-dir :schema-dir schema-dir)
            :format format
            :type :hybrid}
           ;; Pure concise (cards in cards/ directory)
-          {:source (concise/make-source export-dir)
-           :format format
-           :type :concise})
+          (if schema-dir
+            ;; Concise DBs from schema-dir, concise cards from export-dir
+            (let [db-source   (make-concise-db-source export-dir :schema-dir schema-dir)
+                  card-source (concise/make-source export-dir)]
+              {:source    (->HybridSource db-source card-source)
+               :db-source db-source
+               :format    format
+               :type      :concise-hybrid})
+            {:source (concise/make-source export-dir)
+             :format format
+             :type :concise}))
 
-        ;; No databases found — use lenient source that fabricates metadata
-        (make-lenient-source export-dir format)))))
+        ;; No databases found
+        (throw (ex-info (str "No database schemas found. "
+                             (if schema-dir
+                               (str "Schema directory '" schema-dir "' contains no database entries.")
+                               (str "No databases/ directory in '" export-dir "'. "
+                                    "Use --schema-dir to specify a separate schema directory, "
+                                    "or --lenient to fabricate metadata on demand.")))
+                        {:export-dir export-dir :schema-dir schema-dir}))))))
 
 (defn make-enumerators
   "Create enumerators for any source type returned by make-source."
-  [{:keys [source type]}]
+  [{:keys [source type db-source] :as src-info}]
   (case type
     :serdes  (serdes/make-enumerators source)
     :concise (concise/make-enumerators source)
     :hybrid  (make-hybrid-enumerators source)
+    :serdes-hybrid
+    (let [card-source (.-serdes-source ^HybridSource source)]
+      {:databases #(serdes/all-database-names db-source)
+       :tables    #(serdes/all-table-paths db-source)
+       :fields    #(serdes/all-field-paths db-source)
+       :cards     #(serdes/all-card-ids card-source)})
+    :concise-hybrid
+    (let [card-source (.-serdes-source ^HybridSource source)]
+      {:databases #(concise/all-database-names db-source)
+       :tables    #(concise/all-table-paths db-source)
+       :fields    #(concise/all-field-paths db-source)
+       :cards     #(concise/all-card-ids card-source)})
     :lenient (let [delegate (lenient/card-source source)]
                (lenient/make-enumerators
                 source
@@ -231,11 +288,12 @@
       :source   the MetadataSource used}
 
    Pass :lenient? true to force lenient mode.
+   Pass :schema-dir to load database schemas from a separate directory.
 
    When the source is :lenient, callers can use
    `lenient/build-manifest` and `lenient/write-manifest!` on the source."
-  [export-dir & {:keys [lenient?]}]
-  (let [{:keys [source type] :as src-info} (make-source export-dir :lenient? lenient?)
+  [export-dir & {:keys [lenient? schema-dir]}]
+  (let [{:keys [source type] :as src-info} (make-source export-dir :lenient? lenient? :schema-dir schema-dir)
         enums    (make-enumerators src-info)
         card-ids ((:cards enums))
         checker  (requiring-resolve 'metabase-enterprise.checker.checker/check-cards)]

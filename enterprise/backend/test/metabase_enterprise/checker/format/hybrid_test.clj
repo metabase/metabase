@@ -124,6 +124,72 @@
         (is (= :serdes (:databases format)))))))
 
 ;;; ===========================================================================
+;;; Schema-dir Tests
+;;; ===========================================================================
+
+(deftest detect-database-format-with-schema-dir-test
+  (testing "schema-dir is treated as the databases directory itself (contains db entries directly)"
+    ;; Create a serdes-style schema dir: schema-dir/<db-name>/<db-name>.yaml
+    (let [schema-dir (io/file *temp-dir* "schemas")
+          db-subdir (io/file schema-dir "my_db")]
+      (.mkdirs db-subdir)
+      (spit (io/file db-subdir "my_db.yaml") "name: my_db\nengine: sqlite")
+      (is (= :serdes (hybrid/detect-database-format *temp-dir*
+                                                     :schema-dir (.getPath schema-dir)))))))
+
+(deftest detect-database-format-with-concise-schema-dir-test
+  (testing "schema-dir with concise format (contains .yaml files directly)"
+    (let [schema-dir (io/file *temp-dir* "schemas")]
+      (.mkdirs schema-dir)
+      (spit (io/file schema-dir "my_db.yaml") "name: my_db\nengine: sqlite\ntables: {}")
+      (is (= :concise (hybrid/detect-database-format *temp-dir*
+                                                      :schema-dir (.getPath schema-dir)))))))
+
+(deftest make-source-with-serdes-schema-dir-test
+  (testing "make-source with separate serdes schema-dir creates serdes-hybrid"
+    ;; schema-dir has serdes databases
+    (let [schema-dir (io/file *temp-dir* "schemas")
+          db-subdir (io/file schema-dir "test_db")]
+      (.mkdirs db-subdir)
+      (spit (io/file db-subdir "test_db.yaml") "name: test_db\nengine: h2")
+      ;; export-dir has collections
+      (let [export-dir (io/file *temp-dir* "export")]
+        (.mkdirs (io/file export-dir "collections"))
+        (let [{:keys [type source]} (hybrid/make-source (.getPath export-dir)
+                                                         :schema-dir (.getPath schema-dir))]
+          (is (= :serdes-hybrid type))
+          ;; Database resolves from schema-dir
+          (is (some? (source/resolve-database source "test_db"))))))))
+
+(deftest make-source-with-concise-schema-dir-test
+  (testing "make-source with separate concise schema-dir and serdes cards creates hybrid"
+    (let [schema-dir (io/file *temp-dir* "schemas")]
+      (.mkdirs schema-dir)
+      (spit (io/file schema-dir "test_db.yaml")
+            "name: test_db\nengine: sqlite\ntables:\n  users:\n    fields: [id, name]")
+      ;; export-dir has collections
+      (let [export-dir (io/file *temp-dir* "export")]
+        (.mkdirs (io/file export-dir "collections"))
+        (let [{:keys [type source]} (hybrid/make-source (.getPath export-dir)
+                                                         :schema-dir (.getPath schema-dir))]
+          (is (= :hybrid type))
+          ;; Database resolves from schema-dir
+          (is (some? (source/resolve-database source "test_db")))
+          (is (some? (source/resolve-table source ["test_db" nil "users"])))
+          (is (some? (source/resolve-field source ["test_db" nil "users" "id"]))))))))
+
+(deftest make-source-with-empty-schema-dir-throws-test
+  (testing "make-source throws when schema-dir has no database entries"
+    (let [schema-dir (io/file *temp-dir* "empty-schemas")
+          export-dir (io/file *temp-dir* "export")]
+      (.mkdirs schema-dir)
+      (.mkdirs export-dir)
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"No database schemas found"
+                            (hybrid/make-source (.getPath export-dir)
+                                                :schema-dir (.getPath schema-dir)))))))
+
+;;; ===========================================================================
 ;;; REPL Helpers
 ;;; ===========================================================================
 

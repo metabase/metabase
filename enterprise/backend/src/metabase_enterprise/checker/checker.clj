@@ -137,8 +137,13 @@
 
 (defn- resolve-ref
   "Try to resolve `ref` of `kind`. Returns integer ID or nil.
-   On failure, appends to `unresolved` atom (if provided)."
-  [store kind ref unresolved failure-info]
+   On failure, appends to `unresolved` atom (if provided).
+
+   When `sentinel?` is true, assigns a sentinel ID for unresolved refs instead
+   of returning nil. This allows query construction to proceed so that
+   lib/find-bad-refs can report the issue. The sentinel ID has no backing
+   metadata in the provider, so lib will flag it."
+  [store kind ref unresolved failure-info & {:keys [sentinel?]}]
   (when ref
     (or (ref->id store kind ref)
         (let [resolve-fn (case kind
@@ -149,13 +154,22 @@
           (when (resolve-fn (store-source store) ref)
             (get-or-assign! store kind ref)))
         (do (when unresolved (swap! unresolved conj failure-info))
-            nil))))
+            (when sentinel?
+              ;; Assign an ID so the query can be constructed, but no metadata
+              ;; will exist for this ID — lib/find-bad-refs will catch it.
+              (get-or-assign! store kind ref))))))
 
-(defn- resolve-field-path [store unresolved field-path]
-  (resolve-ref store :field field-path unresolved {:type :field :path field-path}))
+(defn- resolve-field-path
+  ([store unresolved field-path]
+   (resolve-ref store :field field-path unresolved {:type :field :path field-path}))
+  ([store unresolved field-path sentinel?]
+   (resolve-ref store :field field-path unresolved {:type :field :path field-path} :sentinel? sentinel?)))
 
-(defn- resolve-table-path [store unresolved table-path]
-  (resolve-ref store :table table-path unresolved {:type :table :path table-path}))
+(defn- resolve-table-path
+  ([store unresolved table-path]
+   (resolve-ref store :table table-path unresolved {:type :table :path table-path}))
+  ([store unresolved table-path sentinel?]
+   (resolve-ref store :table table-path unresolved {:type :table :path table-path} :sentinel? sentinel?)))
 
 (defn- resolve-db-name [store unresolved db-name]
   (resolve-ref store :database db-name unresolved {:type :database :name db-name}))
@@ -169,8 +183,11 @@
 
 (defn- make-import-resolver
   "Build a `SerdesImportResolver` that resolves against `store`,
-   collecting failures in `unresolved` (an atom, or nil to discard)."
-  [store unresolved]
+   collecting failures in `unresolved` (an atom, or nil to discard).
+
+   When `sentinel?` is true, unresolved field/table refs get sentinel IDs
+   instead of nil, allowing query construction to proceed."
+  [store unresolved & {:keys [sentinel?]}]
   (reify resolve/SerdesImportResolver
     (import-fk [_ eid model]
       (case model
@@ -185,8 +202,8 @@
               (swap! unresolved conj {:type :keyed-lookup :model model :field field :value portable}))
             nil)))
     (import-user [_ _email] nil)
-    (import-table-fk [_ path] (resolve-table-path store unresolved path))
-    (import-field-fk [_ path] (resolve-field-path store unresolved path))))
+    (import-table-fk [_ path] (resolve-table-path store unresolved path sentinel?))
+    (import-field-fk [_ path] (resolve-field-path store unresolved path sentinel?))))
 
 ;;; ===========================================================================
 ;;; Data conversion — entity maps from source → lib metadata maps
@@ -253,13 +270,15 @@
                 (if (field-ref-has-nil? ref) (dissoc c :field_ref) (assoc c :field_ref ref)))))))
 
 (defn- convert-dataset-query
-  "Convert a dataset query from serdes format, resolving paths to IDs."
+  "Convert a dataset query from serdes format, resolving paths to IDs.
+   Uses sentinel IDs for unresolved refs so the query can be constructed
+   even when some fields/tables don't exist in the schema."
   [store unresolved query]
   (when query
     (let [db-name (:database query)
           db-id   (when (string? db-name) (resolve-db-name store unresolved db-name))
           query   (if db-id (assoc query :database db-id) query)
-          resolver (make-import-resolver store unresolved)]
+          resolver (make-import-resolver store unresolved :sentinel? true)]
       (binding [resolve/*import-resolver* resolver]
         (resolve/import-mbql query)))))
 
@@ -619,6 +638,24 @@
                    :ok         "  Status: OK"))
     (str/join "\n" (persistent! lines))))
 
+(defn format-error
+  "Format a single card error concisely for LLM consumption.
+   Returns nil for :ok results. Only includes actionable error information."
+  [[entity-id result]]
+  (let [status (result-status result)]
+    (when (not= :ok status)
+      (let [lines (atom [(str "card: " (:name result) " (entity_id: " entity-id ")")])]
+        (when-let [unresolved (seq (:unresolved result))]
+          (doseq [{:keys [type path entity-id name]} unresolved]
+            (swap! lines conj (str "  unresolved " (clojure.core/name type) ": "
+                                   (or (some->> path (str/join ".")) entity-id name)))))
+        (when (seq (:bad-refs result))
+          (doseq [ref (:bad-refs result)]
+            (swap! lines conj (str "  bad ref: " (pr-str ref)))))
+        (when (:error result)
+          (swap! lines conj (str "  error: " (:error result))))
+        (str/join "\n" @lines)))))
+
 (defn write-results!
   "Write results to a file in human-readable format."
   [results output-file]
@@ -633,7 +670,9 @@
    With just an export dir, checks all cards.
    With entity-ids, checks only those cards.
 
-   Options: :lenient? true to force lenient mode.
+   Options:
+     :lenient?   true to force lenient mode.
+     :schema-dir load database schemas from a separate directory.
 
    Returns a map with :results, :type, and :source (see hybrid/check)."
   ([export-dir]
@@ -641,10 +680,10 @@
      (hybrid-check export-dir)))
   ([export-dir entity-ids]
    (check export-dir entity-ids {}))
-  ([export-dir entity-ids {:keys [lenient?]}]
+  ([export-dir entity-ids {:keys [lenient? schema-dir]}]
    (let [make-source*      (requiring-resolve 'metabase-enterprise.checker.format.hybrid/make-source)
          make-enumerators* (requiring-resolve 'metabase-enterprise.checker.format.hybrid/make-enumerators)
-         {:keys [source type] :as src-info} (make-source* export-dir :lenient? lenient?)
+         {:keys [source type] :as src-info} (make-source* export-dir :lenient? lenient? :schema-dir schema-dir)
          enums (make-enumerators* src-info)]
      {:results (check-cards source enums entity-ids)
       :type    type

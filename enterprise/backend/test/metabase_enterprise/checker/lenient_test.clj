@@ -129,15 +129,16 @@
 ;;; ===========================================================================
 
 (deftest hybrid-detects-lenient-when-no-databases-test
-  (testing "make-source returns :lenient when no databases/ directory exists"
+  (testing "make-source throws when no databases/ directory exists and lenient not requested"
     (let [dir (java.io.File/createTempFile "export" "")]
       (.delete dir)
       (.mkdirs dir)
       (try
         ;; Create only a collections/ dir (no databases/)
         (.mkdirs (io/file dir "collections"))
-        (let [{:keys [type]} (hybrid/make-source (.getPath dir))]
-          (is (= :lenient type)))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"No database schemas found"
+                              (hybrid/make-source (.getPath dir))))
         (finally
           ;; Cleanup
           (doseq [f (reverse (file-seq dir))]
