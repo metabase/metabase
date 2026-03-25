@@ -297,11 +297,11 @@
    For non-date Fields, this is just a quoted identifier; for dates, the SQL includes appropriately bucketing based on
    the `param-type`."
   [driver field param-type value]
-  ;; TODO(rileythomp, 2026-03): Convert to mbql5 based on driver before ->honeysql
-  (->> (field->field-filter-clause driver field param-type value)
-       (sql.qp/->honeysql driver)
-       (honeysql->replacement-snippet-info driver)
-       :replacement-snippet))
+  (let [[tag id-or-name opts] (field->field-filter-clause driver field param-type value)]
+    (->> (sql.qp/mbql-clause-with-opts driver tag opts id-or-name)
+         (sql.qp/->honeysql driver)
+         (honeysql->replacement-snippet-info driver)
+         :replacement-snippet)))
 
 (defn- field-filter->replacement-snippet-for-datetime-field
   "Generate replacement snippet for field filter on datetime field. For details on how range is generated see
