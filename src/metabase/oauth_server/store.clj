@@ -11,15 +11,21 @@
 
 (defn- parse-user-id
   "Parse a user-id string to an integer, returning nil if not a valid integer.
-   The oidc-provider library passes user-id as a string. For authorization_code and
-   refresh_token grants this is a stringified Metabase user ID. For client_credentials
-   grants the library passes the client-id string, which is not a valid integer."
+   The oidc-provider library passes user-id as a string. For most grants this is a
+   stringified Metabase user ID. We don't support client_credentials yet, but when we
+   do the library will pass the client-id (a UUID) which is not a valid integer — the
+   lenient nil return keeps this path open."
   [user-id]
-  (when user-id
-    (try
-      (Integer/parseInt (str user-id))
-      (catch NumberFormatException _
-        nil))))
+  (when (some->> user-id str (re-matches #"[1-9]\d*"))
+    (Integer/parseInt (str user-id))))
+
+(defn- parse-user-id-or-throw
+  "Like [[parse-user-id]] but throws if the user-id is missing or not a valid integer.
+   Use this in flows (e.g. authorization_code) where a real user must be present."
+  [user-id]
+  (or (parse-user-id user-id)
+      (throw (ex-info "Expected a valid user ID, but it was not a positive integer"
+                      {:user-id user-id}))))
 
 (def ^:private client-db-columns
   "DB columns to select/project for OAuthClient rows."
@@ -139,7 +145,7 @@
   (save-authorization-code [_ code user-id client-id redirect-uri scope nonce expiry code-challenge code-challenge-method resource]
     (t2/insert! :model/OAuthAuthorizationCode
                 (cond-> {:code         code
-                         :user_id      (parse-user-id user-id)
+                         :user_id      (parse-user-id-or-throw user-id)
                          :client_id    client-id
                          :redirect_uri redirect-uri
                          :scope        (vec scope)
