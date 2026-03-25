@@ -82,24 +82,23 @@
              (log/info "Executing transform" id "with target" (pr-str target)
                        (when (driver.conn/write-connection-requested?)
                          " using write connection"))
-             (let [exec-result
-                   (transforms.instrumentation/with-stage-timing [run-id [:computation :mbql-query]]
-                     (transforms.util/run-cancelable-transform!
-                      run-id transform driver transform-details
-                      (fn [_cancel-chan source-range-params]
-                        (let [effective-transform-type (if (and (= :table-incremental (keyword (:type target)))
-                                                                (nil? (:last_checkpoint_value transform)))
-                                                         :table
-                                                         (keyword (:type target)))
-                              details (assoc transform-details
-                                             :transform-type effective-transform-type
-                                             :query (transforms.util/compile-source transform source-range-params))
-                              opts    (transform-opts details)]
-                          (driver/run-transform! driver details opts)))))]
-               (transforms.util/handle-transform-complete!
-                :run-id run-id
-                :transform transform
-                :db database))))))
+             (transforms.instrumentation/with-stage-timing [run-id [:computation :mbql-query]]
+               (transforms.util/run-cancelable-transform!
+                run-id transform driver transform-details
+                (fn [_cancel-chan source-range-params]
+                  (let [effective-transform-type (if (and (= :table-incremental (keyword (:type target)))
+                                                          (nil? (:last_checkpoint_value transform)))
+                                                   :table
+                                                   (keyword (:type target)))
+                        details (assoc transform-details
+                                       :transform-type effective-transform-type
+                                       :query (transforms.util/compile-source transform source-range-params))
+                        opts    (transform-opts details)]
+                    (driver/run-transform! driver details opts)))))
+             (transforms.util/handle-transform-complete!
+              :run-id run-id
+              :transform transform
+              :db database))))))
      (catch Throwable t
        (log/error t "Error executing transform")
        (when start-promise
