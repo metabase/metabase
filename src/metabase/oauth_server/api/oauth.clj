@@ -168,7 +168,9 @@
               (-> {:status  200
                    :headers {"Content-Type" "text/html; charset=utf-8"}
                    :body    (consent-page/render-consent-page
-                             {:client-name  (or (:client-name client) "Unknown Application")
+                             {:client-name  (some-> (:client-name client)
+                                                    (as-> n (if (> (count n) 64) (str (subs n 0 61) "...") n)))
+                              :client-id    (:client_id parsed)
                               :nonce        (:nonce request)
                               :csrf-token   csrf-token
                               :params-sig   params-sig
