@@ -10,7 +10,7 @@
 ;;; ------------------------------------------------- Helpers ----------------------------------------------------------
 
 (defn- parse-user-id
-  "Parse a user-id string to an integer, returning nil if not a valid integer.
+  "Parse a user-id string to a long, returning nil if not a valid positive integer.
    The oidc-provider library passes user-id as a string. For most grants this is a
    stringified Metabase user ID. We don't support client_credentials yet, but when we
    do the library will pass the client-id (a UUID) which is not a valid integer — the
@@ -18,10 +18,10 @@
   [user-id]
   (let [s (str user-id)]
     (when (re-matches #"[1-9]\d*" s)
-      (Integer/parseInt s))))
+      (Long/parseLong s))))
 
 (defn- parse-user-id-or-throw
-  "Like [[parse-user-id]] but throws if the user-id is missing or not a valid integer.
+  "Like [[parse-user-id]] but throws if the user-id is missing or not a valid positive integer.
    Use this in flows (e.g. authorization_code) where a real user must be present."
   [user-id]
   (or (parse-user-id user-id)
