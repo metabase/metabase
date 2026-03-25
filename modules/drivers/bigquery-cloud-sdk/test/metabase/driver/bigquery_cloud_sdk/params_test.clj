@@ -1,7 +1,7 @@
 (ns ^:mb/driver-tests metabase.driver.bigquery-cloud-sdk.params-test
   (:require
    [clojure.test :refer :all]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)

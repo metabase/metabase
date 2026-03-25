@@ -76,7 +76,6 @@ describe("scenarios > question > view", () => {
       H.visitQuestion("@questionId");
 
       // Filter by category and vendor
-      // TODO: this should show values and allow searching
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("This question is written in SQL.");
       cy.findAllByText("VENDOR").first().click();
@@ -106,26 +105,21 @@ describe("scenarios > question > view", () => {
       cy.findByText("Question").click();
 
       // Filter by category and vendor
-      // TODO: this should show values and allow searching
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("This question is written in SQL.");
       cy.findAllByText("VENDOR").first().click();
       H.popover().within(() => {
-        cy.findByPlaceholderText("Enter some text")
-          .focus()
-          .clear()
-          .type("Balistreri-Muller");
+        cy.findByPlaceholderText("Search the list").type("Balistreri-Muller");
+        cy.findByText("Balistreri-Muller").click();
         cy.findByText("Add filter").click();
       });
-      cy.findAllByTestId("run-button").first().click();
       cy.findAllByText("CATEGORY").first().click();
       H.popover().within(() => {
-        cy.findByPlaceholderText("Enter some text")
-          .click()
-          .clear()
-          .type("Widget");
+        cy.findByPlaceholderText("Search the list").type("Widget");
+        cy.findByText("Widget").click();
         cy.findByText("Add filter").click();
       });
+
       // eslint-disable-next-line metabase/no-unsafe-element-filtering
       cy.findAllByTestId("run-button").last().click();
 

@@ -185,7 +185,7 @@
         implicit-join-field-opt? #(and (:source-field %) (not (:join-alias %)))
         walk-clause (fn [clause]
                       (lib.util.match/match-lite clause
-                        [:field (opts :guard implicit-join-field-opt?) id]
+                        [:field (opts :guard implicit-join-field-opt?) (id :guard pos-int?)]
                         (vswap! joined-field-ids conj! id)
 
                         _ nil)

@@ -630,48 +630,56 @@
 
 (declare resolve-from-previous-stage-or-source)
 
+(def ^:private ^:dynamic *in-deduplicated-column-resolution?* false)
+
 (defn- resolve-nonexistent-deduplicated-column-name
-  "Resolve a ref like `CATEGORY_2` to `CATEGORY` if the query only has the latter."
+  "Resolve a ref like `CATEGORY_2` to `CATEGORY` if the query only has the latter.
+  Uses a dynamic guard to prevent mutual recursion with [[resolve-from-previous-stage-or-source]]
+  which could cause a StackOverflowError for large suffixes (e.g. `name_5000`)."
   [query stage-number id-or-name]
-  (when (string? id-or-name)
+  (when (and (string? id-or-name)
+             (not *in-deduplicated-column-resolution?*))
     (when-let [[_match original-name suffix] (re-matches #"^(\w+)_([1-9]\d*)$" id-or-name)]
-      (let [suffix     (parse-long suffix)
-            new-suffix (dec suffix)
-            ;; e.g. `CATEGORY_3` becomes `CATEGORY_2`; `CATEGORY_2` becomes `CATEGORY`
-            new-name   (if (<= new-suffix 1)
-                         original-name
-                         (str original-name \_ new-suffix))]
-        (log/debugf "Failed to resolve %s, trying to resolve Field %s instead..." (pr-str id-or-name) (pr-str new-name))
-        (let [resolved (resolve-from-previous-stage-or-source query stage-number new-name)]
-          (if (::fallback-metadata? resolved)
-            (do
-              (log/debugf "Failed to resolve %s as %s" (pr-str id-or-name) (pr-str new-name))
-              nil)
-            (do
-              (log/debugf "Successfully resolved %s as %s" (pr-str id-or-name) (pr-str new-name))
-              resolved)))))))
+      (binding [*in-deduplicated-column-resolution?* true]
+        (loop [current-suffix (dec (parse-long suffix))]
+          (let [new-name (if (<= current-suffix 1)
+                           original-name
+                           (str original-name \_ current-suffix))]
+            (log/debugf "Failed to resolve %s, trying to resolve Field %s instead..." (pr-str id-or-name) (pr-str new-name))
+            (let [resolved (resolve-from-previous-stage-or-source query stage-number new-name)]
+              (if (::fallback-metadata? resolved)
+                (do
+                  (log/debugf "Failed to resolve %s as %s" (pr-str id-or-name) (pr-str new-name))
+                  (when (> current-suffix 1)
+                    (recur (dec current-suffix))))
+                (do
+                  (log/debugf "Successfully resolved %s as %s" (pr-str id-or-name) (pr-str new-name))
+                  resolved)))))))))
 
 (mu/defn- resolve-from-previous-stage-or-source :- ::lib.metadata.calculation/visible-column
   [query        :- ::lib.schema/query
    stage-number :- :int
    id-or-name   :- ::id-or-name]
   (log/debugf "Resolving %s from previous stage, source table, or source card" (pr-str id-or-name))
-  (let [col (or (resolve-from-previous-stage-or-source* query stage-number id-or-name)
-                (do
-                  (log/debugf "Failed to resolve Field %s in stage %s. Trying other methods..." (pr-str id-or-name) (pr-str stage-number))
-                  (resolve-ref-missing-join-alias query stage-number id-or-name))
-                ;; if we haven't found a match yet try getting metadata from the metadata provider if this is a
-                ;; Field ID ref. It's likely a ref that makes little or no sense (e.g. wrong table) but we can
-                ;; let QP code worry about that.
-                (fallback-metadata-for-field query stage-number id-or-name)
-                ;; try looking in the expressions in this stage to see if someone incorrectly used a field ref for an
-                ;; expression.
-                (maybe-resolve-expression-in-current-stage query stage-number id-or-name)
+  (let [col (or ;; Allow nested dedup resolution for other columns encountered through card resolution,
+                ;; join resolution, etc. Only the direct dedup call below should be blocked by the guard.
+             (binding [*in-deduplicated-column-resolution?* false]
+               (or (resolve-from-previous-stage-or-source* query stage-number id-or-name)
+                   (do
+                     (log/debugf "Failed to resolve Field %s in stage %s. Trying other methods..." (pr-str id-or-name) (pr-str stage-number))
+                     (resolve-ref-missing-join-alias query stage-number id-or-name))
+                      ;; if we haven't found a match yet try getting metadata from the metadata provider if this is a
+                      ;; Field ID ref. It's likely a ref that makes little or no sense (e.g. wrong table) but we can
+                      ;; let QP code worry about that.
+                   (fallback-metadata-for-field query stage-number id-or-name)
+                      ;; try looking in the expressions in this stage to see if someone incorrectly used a field ref for an
+                      ;; expression.
+                   (maybe-resolve-expression-in-current-stage query stage-number id-or-name)))
                 ;; if that fails and this is a deduplicated name like `CATEGORY_2` then try looking for `CATEGORY` and
-                ;; so forth
-                (resolve-nonexistent-deduplicated-column-name query stage-number id-or-name)
+                ;; so forth. The *in-deduplicated-column-resolution?* guard prevents re-entry here.
+             (resolve-nonexistent-deduplicated-column-name query stage-number id-or-name)
                 ;; if we STILL can't find a match, return made-up fallback metadata.
-                (fallback-metadata id-or-name))]
+             (fallback-metadata id-or-name))]
     (when col
       (merge-metadata [col (additional-metadata-from-source-card query stage-number col)]))))
 

@@ -6,9 +6,13 @@ summary: The Agent API is a REST API for building headless, agentic BI applicati
 
 # Agent API
 
-{% include plans-blockquote.html feature="Metabase agent API" %}
-
 The Agent API is a REST API for building headless, agentic BI applications on top of Metabase's semantic layer, scoped to an authenticated user's permissions.
+
+## Example application
+
+![Metabase Agent chat answering a product rating question](./images/agent-api-demo.png)
+
+Check out the [Metabase Agent API demo](https://github.com/metabase/metabase-agent-api-demo) for a working example of an agentic BI app built on the Agent API.
 
 ## Why use the Agent API
 
@@ -27,13 +31,15 @@ The Agent API supports:
 - Inspecting their fields
 - Constructing and executing queries
 
-Base path:[/api/agent](../api.html#tag/apiagent)
+## Agent API endpoints and reference
+
+Check out the API endpoints: [/api/agent](../api.html#tag/apiagent).
+
+You can also point your AI to the [Agent API reference](https://github.com/metabase/metabase/blob/master/src/metabase/agent_api/reference.md) to bootstrap your agent.
 
 ## Authentication
 
-The Agent API supports two authentication modes, both requiring JWT to be configured in Metabase admin settings (**Admin** > **Settings** > **Authentication** > **JWT**):
-
-### 1. Stateless JWT (recommended for agents)
+The Agent API uses stateless JWT authentication. JWT must be configured in Metabase admin settings (**Admin** > **Settings** > **Authentication** > **JWT**).
 
 Pass a signed JWT directly in each request:
 
@@ -60,9 +66,9 @@ Example JWT payload:
 }
 ```
 
-### 2. Session-based
+### Session-based authentication
 
-Exchange a JWT at `POST /auth/sso` to get a session token, then pass the session token via:
+Exchange a JWT at `POST /auth/sso/to_session` to get a session token, then pass it via:
 
 ```
 X-Metabase-Session: <session-token>
@@ -70,5 +76,7 @@ X-Metabase-Session: <session-token>
 
 ## Further reading
 
+- [Agent API complete reference](https://github.com/metabase/metabase/blob/master/src/metabase/agent_api/reference.md)
+- [Metabase Agent API demo](https://github.com/metabase/metabase-agent-api-demo)
 - [Metabase API docs](../api.html)
 - [JWT authentication](../people-and-groups/authenticating-with-jwt.md)

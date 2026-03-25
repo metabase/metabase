@@ -28,11 +28,7 @@
                               :embedding-simple
                               :embedding-hub
                               :hosting
-                              :llm-autodescription
                               :metabot-v3
-                              :ai-entity-analysis
-                              :ai-sql-fixer
-                              :ai-sql-generation
                               :no-upsell
                               :official-collections
                               :query-reference-validation
@@ -79,11 +75,7 @@
             :embedding_sdk                  true
             :embedding_simple               true
             :hosting                        true
-            :llm_autodescription            true
             :metabot_v3                     true
-            :ai_entity_analysis             true
-            :ai_sql_fixer                   true
-            :ai_sql_generation              true
             :official_collections           true
             :query_reference_validation     true
             :remote_sync                    true

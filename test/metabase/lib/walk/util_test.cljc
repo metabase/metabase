@@ -165,7 +165,12 @@
                {:source-table $$venues
                 :joins [{:source-table $$users
                          :alias "U"
-                         :condition [:= [:field $categories.name {:source-field %venues.category-id}] &U.users.name]}]})))))))
+                         :condition [:= [:field $categories.name {:source-field %venues.category-id}] &U.users.name]}]}))))))
+  (testing "Ignores string field names (should only collect integer field IDs) - GHY-3085"
+    (mu/disable-enforcement
+      (is (= #{}
+             (lib.walk.util/all-implicitly-joined-field-ids
+              [:field {:source-field 1} "CITY"]))))))
 
 (deftest ^:parallel all-implicitly-joined-table-ids-test
   (testing "Returns table IDs from implicit joins by resolving FK relationships"

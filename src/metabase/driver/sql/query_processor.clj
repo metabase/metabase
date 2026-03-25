@@ -30,9 +30,9 @@
 (def source-query-alias
   "Alias to use for source queries, e.g.:
 
-    SELECT source.*
-    FROM ( SELECT * FROM some_table ) source"
-  "source")
+    SELECT __mb_source.*
+    FROM ( SELECT * FROM some_table ) __mb_source"
+  "__mb_source")
 
 (def ^:dynamic *inner-query*
   "The INNER query currently being processed, for situations where we need to refer back to it."
@@ -902,15 +902,24 @@
           ;; https://linear.app/metabase-inc/issue/ENG-8766/[epic]-field-refs-overhaul
           field-metadata       (when (integer? id-or-name)
                                  (driver-api/field (driver-api/metadata-provider) id-or-name))
-          allow-casting?       (and field-metadata
-                                    (or (pos-int? (driver-api/qp.add.source-table options))
-                                        (:qp/allow-coercion-for-columns-without-integer-qp.add.source-table options))
+          allow-casting?       (and (or (:qp/native-sandbox-column.force-coercion-strategy options)
+                                        (and field-metadata
+                                             (or (pos-int? (driver-api/qp.add.source-table options))
+                                                 (:qp/allow-coercion-for-columns-without-integer-qp.add.source-table options))))
                                     (not (:qp/ignore-coercion options)))
           ;; preserve metadata attached to the original field clause, for example BigQuery temporal type information.
           identifier           (-> (apply h2x/identifier :field
                                           (concat source-table-aliases (->honeysql driver [::nfc-path source-nfc-path]) [source-alias]))
                                    (with-meta (meta field-clause)))
           identifier           (->honeysql driver identifier)
+          ;; If no field-metadata is available, but a coercion strategy must be applied, synthesize enough
+          ;; `field-metadata` to be able to cast it correctly.
+          field-metadata       (or field-metadata
+                                   (when allow-casting?
+                                     (-> options
+                                         (select-keys [:base-type :effetive-type])
+                                         (assoc :coercion-strategy
+                                                (:qp/native-sandbox-column.force-coercion-strategy options)))))
           casted-field         (cast-field-if-needed driver field-metadata identifier)
           database-type        (or (h2x/database-type casted-field)
                                    (:database-type field-metadata))
@@ -2023,7 +2032,7 @@
 (defn- apply-source-query
   "Handle a `:source-query` clause by adding a recursive `SELECT` or native query. If the source query has ambiguous
   column names, use a `WITH` statement to rename the source columns. At the time of this writing, all source queries
-  are aliased as `source`."
+  are aliased as `__mb_source`."
   [driver honeysql-form {{:keys [native params] persisted :persisted-info/native :as source-query} :source-query
                          source-metadata :source-metadata}]
   (let [table-alias (->honeysql driver (h2x/identifier :table-alias source-query-alias))
@@ -2048,7 +2057,7 @@
     (merge
      honeysql-form
      (if needs-columns?
-        ;; HoneySQL cannot expand [::h2x/identifier :table "source"] in the with alias.
+        ;; HoneySQL cannot expand [::h2x/identifier :table "__mb_source"] in the with alias.
         ;; This is ok since we control the alias.
        {:with [[[source-query-alias {:columns (mapv #(h2x/identifier :field %) desired-aliases)}]
                 source-clause]]

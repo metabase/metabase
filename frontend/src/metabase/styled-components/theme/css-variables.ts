@@ -1,3 +1,6 @@
+// WARNING: This file is referenced by CssVarsDeclarationPlugin.
+// If you move or rename it, update the path in css-vars-declaration-plugin.js.
+
 // eslint-disable-next-line no-restricted-imports
 import { css } from "@emotion/react";
 import { getIn } from "icepick";

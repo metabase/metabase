@@ -342,14 +342,8 @@ export const SelectableRows: Story = () => {
     [],
   );
 
-  const tableProps = useDataGridInstance({
-    data: sampleData,
-    columnsOptions: columns,
-    columnPinning: { left: ["row_selection"] },
-    enableRowSelection: true,
-    rowSelection,
-    onRowSelectionChange: setRowSelection,
-    columnRowSelectOptions: {
+  const columnRowSelectOptions = useMemo<ColumnOptions<SampleDataType>>(
+    () => ({
       id: "row_selection",
       name: "Row Selection",
       accessorFn: (row) => row.id,
@@ -375,7 +369,17 @@ export const SelectableRows: Story = () => {
           </Flex>
         </BaseCell>
       ),
-    },
+    }),
+    [],
+  );
+
+  const tableProps = useDataGridInstance({
+    data: sampleData,
+    columnsOptions: columns,
+    enableRowSelection: true,
+    rowSelection,
+    onRowSelectionChange: setRowSelection,
+    columnRowSelectOptions,
   });
 
   return <DataGrid {...tableProps} />;

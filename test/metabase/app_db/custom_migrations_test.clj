@@ -3015,3 +3015,124 @@
             (is (map? st))
             (is (= 42 (get st "orders")))
             (is (= 99 (get st "products")))))))))
+
+(deftest backfill-transform-target-tables-test
+  (testing "v60.2026-03-07T00:00:04 : backfill transform target tables and workspace FK columns"
+    (impl/test-migrations ["v60.2026-03-07T00:00:04"] [migrate!]
+      (let [user-id   (:id (new-instance-with-default :core_user))
+            db-id     (:id (new-instance-with-default :metabase_database))
+            ws-id     (:id (t2/insert-returning-instance!
+                            :workspace {:name       "test-ws"
+                                        :creator_id user-id
+                                        :created_at :%now
+                                        :updated_at :%now}))
+            ref-id    (str (random-uuid))
+            source    (json/encode {:type "query" :query {:database db-id}})
+            target    (json/encode {:type "table" :schema "public" :name "orders"})
+            ;; -- 1. Transform with a target that has no existing metabase_table → should create provisional row --
+            tx-id     (t2/insert-returning-pk!
+                       :transform {:name               "create-output"
+                                   :source             source
+                                   :target             (json/encode {:type "table" :schema "public" :name "new_target_table"})
+                                   :source_type        "mbql"
+                                   :source_database_id db-id
+                                   :target_db_id       db-id
+                                   :created_at         :%now
+                                   :updated_at         :%now})
+            ;; -- An existing metabase_table that inputs and outputs should resolve to --
+            table-id  (:id (t2/insert-returning-instance!
+                            :metabase_table {:db_id      db-id
+                                             :name       "orders"
+                                             :schema     "public"
+                                             :active     true
+                                             :created_at :%now
+                                             :updated_at :%now}))
+            ;; -- workspace_transform needed for workspace_output FK --
+            _         (t2/insert! :workspace_transform
+                                  {:ref_id       ref-id
+                                   :workspace_id ws-id
+                                   :name         "ws-tx"
+                                   :source       source
+                                   :target       target
+                                   :created_at   :%now
+                                   :updated_at   :%now})
+            ;; -- 2-3. workspace_output with null table FKs --
+            wo-id     (:id (t2/insert-returning-instance!
+                            :workspace_output {:workspace_id    ws-id
+                                               :ref_id          ref-id
+                                               :db_id           db-id
+                                               :global_schema   "public"
+                                               :global_table    "orders"
+                                               :isolated_schema "public"
+                                               :isolated_table  "orders"
+                                               :created_at      :%now
+                                               :updated_at      :%now}))
+            ;; -- 4-5. workspace_output_external with null table FKs --
+            woe-id    (:id (t2/insert-returning-instance!
+                            :workspace_output_external {:workspace_id    ws-id
+                                                        :transform_id    tx-id
+                                                        :db_id           db-id
+                                                        :global_schema   "public"
+                                                        :global_table    "orders"
+                                                        :isolated_schema "public"
+                                                        :isolated_table  "orders"
+                                                        :created_at      :%now
+                                                        :updated_at      :%now}))
+            ;; -- 6. workspace_input with null table_id --
+            wi-id     (:id (t2/insert-returning-instance!
+                            :workspace_input {:workspace_id ws-id
+                                              :db_id        db-id
+                                              :schema       "public"
+                                              :table        "orders"
+                                              :created_at   :%now
+                                              :updated_at   :%now}))
+            ;; -- 7. workspace_input_external with null table_id --
+            wie-id    (:id (t2/insert-returning-instance!
+                            :workspace_input_external {:workspace_id ws-id
+                                                       :db_id        db-id
+                                                       :schema       "public"
+                                                       :table        "orders"
+                                                       :created_at   :%now
+                                                       :updated_at   :%now}))
+            ;; -- workspace_input_external with no matching table — should stay nil --
+            wie-no-match-id (:id (t2/insert-returning-instance!
+                                  :workspace_input_external {:workspace_id ws-id
+                                                             :db_id        db-id
+                                                             :schema       "public"
+                                                             :table        "no_such_table"
+                                                             :created_at   :%now
+                                                             :updated_at   :%now}))]
+        (testing "Before backfill, all FKs are nil"
+          (is (nil? (t2/select-one-fn :global_table_id :workspace_output :id wo-id)))
+          (is (nil? (t2/select-one-fn :isolated_table_id :workspace_output :id wo-id)))
+          (is (nil? (t2/select-one-fn :global_table_id :workspace_output_external :id woe-id)))
+          (is (nil? (t2/select-one-fn :isolated_table_id :workspace_output_external :id woe-id)))
+          (is (nil? (t2/select-one-fn :table_id :workspace_input :id wi-id)))
+          (is (nil? (t2/select-one-fn :table_id :workspace_input_external :id wie-id)))
+          (is (nil? (t2/select-one-fn :table_id :workspace_input_external :id wie-no-match-id))))
+        (migrate!)
+        (testing "Provisional metabase_table created for transform target"
+          (let [provisional (first (t2/query {:select [:active :transform_target :data_source :data_authority :display_name]
+                                              :from   [:metabase_table]
+                                              :where  [:and
+                                                       [:= :db_id db-id]
+                                                       [:= :name "new_target_table"]
+                                                       [:= :schema "public"]]}))]
+            (is (some? provisional))
+            (is (false? (:active provisional)))
+            (is (true? (:transform_target provisional)))
+            (is (= "metabase-transform" (:data_source provisional)))
+            (is (= "computed" (:data_authority provisional)))
+            (is (= "New Target Table" (:display_name provisional)))))
+        (testing "workspace_output FKs backfilled"
+          (is (= table-id (t2/select-one-fn :global_table_id :workspace_output :id wo-id)))
+          (is (= table-id (t2/select-one-fn :isolated_table_id :workspace_output :id wo-id))))
+        (testing "workspace_output_external FKs backfilled"
+          (is (= table-id (t2/select-one-fn :global_table_id :workspace_output_external :id woe-id)))
+          (is (= table-id (t2/select-one-fn :isolated_table_id :workspace_output_external :id woe-id))))
+        (testing "workspace_input table_id backfilled"
+          (is (= table-id (t2/select-one-fn :table_id :workspace_input :id wi-id))))
+        (testing "workspace_input_external table_id backfilled"
+          (is (= table-id (t2/select-one-fn :table_id :workspace_input_external :id wie-id))))
+        (testing "Non-matching input stays nil"
+          (is (nil? (t2/select-one-fn :table_id :workspace_input_external :id wie-no-match-id))))))))

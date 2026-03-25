@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import type { Editor } from "@tiptap/core";
 import { useState } from "react";
 
+import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
@@ -439,14 +440,7 @@ describe("CommandSuggestion", () => {
 
     describe("when metabot is disabled", () => {
       it("should show all available commands except Metabot", async () => {
-        const settings = mockSettings({
-          "metabot-enabled?": false,
-          "token-features": createMockTokenFeatures({
-            metabot_v3: false,
-          }),
-        });
-
-        setup({ settings });
+        setup({ settings: mockSettings({ "metabot-enabled?": false }) });
 
         expect(screen.queryByText("Ask Metabot")).not.toBeInTheDocument();
         await expectStandardCommandsToBePresent();
@@ -454,15 +448,15 @@ describe("CommandSuggestion", () => {
     });
 
     describe("when metabot is enabled", () => {
-      it("should show all available commands including Metabot", async () => {
-        const settings = mockSettings({
-          "metabot-enabled?": true,
-          "token-features": createMockTokenFeatures({
-            metabot_v3: true,
-          }),
+      beforeEach(() => {
+        mockSettings({
+          "token-features": createMockTokenFeatures({ metabot_v3: true }),
         });
+        setupEnterprisePlugins();
+      });
 
-        setup({ settings });
+      it("should show all available commands including Metabot", async () => {
+        setup({ settings: mockSettings({ "metabot-enabled?": true }) });
 
         expect(screen.getByText("Ask Metabot")).toBeInTheDocument();
         await expectStandardCommandsToBePresent();

@@ -388,12 +388,12 @@
               (for [field-name ["ID" "USER_ID" "PRODUCT_ID" "SUBTOTAL" "TAX"
                                 "TOTAL" "DISCOUNT" "CREATED_AT" "QUANTITY"]]
                 {:name field-name
-                 :lib/desired-column-alias (str "Orders__" field-name)
+                 :lib/desired-column-alias (str "Orders_2__" field-name)
                  :lib/source :source/joins})}
              (implicit product-cols "PRODUCTS__via__PRODUCT_ID__")
              (implicit user-cols    "PEOPLE__via__USER_ID__")
-             (implicit product-cols "PRODUCTS__via__PRODUCT_ID__via__Orders__")
-             (implicit user-cols    "PEOPLE__via__USER_ID__via__Orders__")]
+             (implicit product-cols "PRODUCTS__via__PRODUCT_ID__via__Orders_2__")
+             (implicit user-cols    "PEOPLE__via__USER_ID__via__Orders_2__")]
             (lib/group-columns marked)))))
 
 (deftest ^:parallel self-joined-cards-duplicate-implicit-columns-test
@@ -422,10 +422,10 @@
                 :is-from-join false,
                 :is-implicitly-joinable true}
                ;; we always use LONG display names when the column comes from a previous stage.
-               {:display-name "Mock orders card → Product"
+               {:display-name "Mock orders card_2 → Product"
                 :is-from-join false,
                 :is-implicitly-joinable true}
-               {:display-name "Mock orders card → User"
+               {:display-name "Mock orders card_2 → User"
                 :is-from-join false,
                 :is-implicitly-joinable true}]
               (map #(lib/display-info query %) groups)))
@@ -443,19 +443,19 @@
                {:lib/desired-column-alias "PEOPLE__via__USER_ID__LATITUDE"}
                {:lib/desired-column-alias "PEOPLE__via__USER_ID__CREATED_AT"}]
               (::lib.column-group/columns product-1)))
-      (is (=? [{:lib/desired-column-alias "PEOPLE__via__USER_ID__via__Mock orders card__ID", :fk-join-alias "Mock orders card"}
-               {:lib/desired-column-alias "PEOPLE__via__USER_ID__via__Mock orders card__ADDRESS", :fk-join-alias "Mock orders card"}
-               {:lib/desired-column-alias "PEOPLE__via__USER_ID__via__Mock orders card__EMAIL", :fk-join-alias "Mock orders card"}
-               {:lib/desired-column-alias "PEOPLE__via__USER_ID__via__Mock orders card__PASSWORD", :fk-join-alias "Mock orders card"}
-               {:lib/desired-column-alias "PEOPLE__via__USER_ID__via__Mock orders card__NAME", :fk-join-alias "Mock orders card"}
-               {:lib/desired-column-alias "PEOPLE__via__USER_ID__via__Mock orders card__CITY", :fk-join-alias "Mock orders card"}
-               {:lib/desired-column-alias "PEOPLE__via__USER_ID__via__Mock orders card__LONGITUDE", :fk-join-alias "Mock orders card"}
-               {:lib/desired-column-alias "PEOPLE__via__USER_ID__via__Mock orders card__STATE", :fk-join-alias "Mock orders card"}
-               {:lib/desired-column-alias "PEOPLE__via__USER_ID__via__Mock orders card__SOURCE", :fk-join-alias "Mock orders card"}
-               {:lib/desired-column-alias "PEOPLE__via__USER_ID__via__Mock orders card__BIRTH_DATE", :fk-join-alias "Mock orders card"}
-               {:lib/desired-column-alias "PEOPLE__via__USER_ID__via__Mock orders card__ZIP", :fk-join-alias "Mock orders card"}
-               {:lib/desired-column-alias "PEOPLE__via__USER_ID__via__Mock orders card__LATITUDE", :fk-join-alias "Mock orders card"}
-               {:lib/desired-column-alias "PEOPLE__via__USER_ID__via__Mock orders card__CREATED_AT", :fk-join-alias "Mock orders card"}]
+      (is (=? [{:lib/desired-column-alias "PEOPLE__via__USER_ID__via__Mock orders card_2__ID", :fk-join-alias "Mock orders card_2"}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__via__Mock orders card_2__ADDRESS", :fk-join-alias "Mock orders card_2"}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__via__Mock orders card_2__EMAIL", :fk-join-alias "Mock orders card_2"}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__via__Mock orders card_2__PASSWORD", :fk-join-alias "Mock orders card_2"}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__via__Mock orders card_2__NAME", :fk-join-alias "Mock orders card_2"}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__via__Mock orders card_2__CITY", :fk-join-alias "Mock orders card_2"}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__via__Mock orders card_2__LONGITUDE", :fk-join-alias "Mock orders card_2"}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__via__Mock orders card_2__STATE", :fk-join-alias "Mock orders card_2"}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__via__Mock orders card_2__SOURCE", :fk-join-alias "Mock orders card_2"}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__via__Mock orders card_2__BIRTH_DATE", :fk-join-alias "Mock orders card_2"}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__via__Mock orders card_2__ZIP", :fk-join-alias "Mock orders card_2"}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__via__Mock orders card_2__LATITUDE", :fk-join-alias "Mock orders card_2"}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__via__Mock orders card_2__CREATED_AT", :fk-join-alias "Mock orders card_2"}]
               (::lib.column-group/columns product-2))))))
 
 (deftest ^:parallel column-group-order-test
@@ -473,7 +473,7 @@
       (is (=? [{::lib.column-group/group-type :group-type/main}
                ;; Explicit joins, ordered by join alias.
                {::lib.column-group/group-type :group-type/join.explicit
-                :join-alias                   "Orders"}
+                :join-alias                   "Orders_2"}
                {::lib.column-group/group-type :group-type/join.explicit
                 :join-alias                   "Reviews - Product"}
                ;; Implicit joins, ordered by the join alias and then the FK column name:
@@ -489,10 +489,10 @@
                 :fk-join-alias                nil
                 :fk-field-id                  (meta/id :orders :user-id)}
                {::lib.column-group/group-type :group-type/join.implicit
-                :fk-join-alias                "Orders"
+                :fk-join-alias                "Orders_2"
                 :fk-field-id                  (meta/id :orders :product-id)}
                {::lib.column-group/group-type :group-type/join.implicit
-                :fk-join-alias                "Orders"
+                :fk-join-alias                "Orders_2"
                 :fk-field-id                  (meta/id :orders :user-id)}
                {::lib.column-group/group-type :group-type/join.implicit
                 :fk-join-alias                "Reviews - Product"

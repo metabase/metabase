@@ -21,7 +21,8 @@
 .tab {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  justify-content: center;
+  width: 100%;
 
   &:hover {
     background-color: var(--mb-color-background-hover);
@@ -82,7 +83,7 @@
 
   &:hover {
     background-color: var(--mb-color-background-secondary);
-    border-color: var(--mb-color-border-strong);
+    border-color: var(--mb-color-border-stronger);
   }
 
   &:hover .workspaceMenuButton {

@@ -22,6 +22,7 @@
   transform-timeout]
  [metabase.transforms-base.util
   native-query-transform?
+  output-table
   python-transform?
   query-transform?
   transform-source-database

@@ -31,6 +31,23 @@
                      col))
                  cols))))
 
+(defn- field-id-ref
+  "Build a field ref using the column's integer ID rather than its name.
+   Source-card columns have integer :id but `lib/ref` produces name-based refs;
+   dimension mappings need integer field IDs for the AST.
+
+   For source-card columns that are FK-remapped (e.g. PRODUCTS.TITLE appearing as
+   display value for ORDERS.PRODUCT_ID), `:lib/original-fk-field-id` captures the FK
+   column. We include it as `:source-field` so the compiled query gets the implicit join."
+  [column]
+  (let [ref (lib/ref column)]
+    (if (and (pos-int? (:id column))
+             (not (pos-int? (nth ref 2 nil))))
+      (cond-> (assoc ref 2 (:id column))
+        (:lib/original-fk-field-id column)
+        (assoc-in [1 :source-field] (:lib/original-fk-field-id column)))
+      ref)))
+
 (defn- column->computed-pair
   "Convert a column to a dimension/mapping pair. IDs are nil until reconciliation.
    The table-id is extracted from the column's metadata.
@@ -38,7 +55,7 @@
   ([column]
    (column->computed-pair column nil))
   ([column group]
-   (let [target (lib/ref column)
+   (let [target (field-id-ref column)
          has-field-values (lib/infer-has-field-values column)]
      {:dimension (cond-> {:id             nil
                           :name           (:name column)
@@ -62,11 +79,17 @@
   "When the metadata provider is a MetricContextMetadataProvider, return the
    database-specific provider for the query's source table. The DB provider can
    resolve column-by-ID lookups that the metric context provider cannot, which
-   is required for FK / implicitly-joinable column resolution."
+   is required for FK / implicitly-joinable column resolution.
+
+   For source-card queries (metrics based on models or saved questions), resolves
+   the card's table_id and uses that to find the database provider."
   [mp query-with-mp]
   (when (satisfies? lib-metric.provider/MetricMetadataProvider mp)
-    (when-let [table-id (lib.util/source-table-id query-with-mp)]
-      (lib-metric.provider/database-provider-for-table mp table-id))))
+    (or (when-let [table-id (lib.util/source-table-id query-with-mp)]
+          (lib-metric.provider/database-provider-for-table mp table-id))
+        (when-let [card-id (lib.util/source-card-id query-with-mp)]
+          (when-let [table-id (t2/select-one-fn :table_id :model/Card card-id)]
+            (lib-metric.provider/database-provider-for-table mp table-id))))))
 
 (defn- group-type->type
   "Convert a column group's group-type to a dimension group type string."

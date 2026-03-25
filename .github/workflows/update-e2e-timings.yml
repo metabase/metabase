@@ -18,7 +18,7 @@ on:
 
 jobs:
   collect-and-average-timings:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     env:
       DAYS_BACK: ${{ inputs.days_back || 7 }}

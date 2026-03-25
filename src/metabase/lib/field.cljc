@@ -427,7 +427,8 @@
     [:base-type
      :inherited-temporal-unit
      :lib/original-binning
-     :lib/original-effective-type])
+     :lib/original-effective-type
+     :qp/native-sandbox-column.force-coercion-strategy])
    {:lib/binning          :binning
     :lib/temporal-unit    :temporal-unit
     :lib/ref-name         :name

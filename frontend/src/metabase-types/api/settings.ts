@@ -346,10 +346,10 @@ export const tokenFeatures = [
   "upload_management",
   "collection_cleanup",
   "cache_preemptive",
-  "metabot_v3",
   "ai_sql_fixer",
   "ai_sql_generation",
   "ai_entity_analysis",
+  "metabot_v3",
   "database_routing",
   "development_mode",
   "etl_connections",
@@ -509,7 +509,7 @@ interface AdminSettings {
 }
 interface SettingsManagerSettings {
   "bcc-enabled?": boolean;
-  "ee-openai-api-key"?: string;
+  "llm-openai-api-key"?: string;
   "openai-api-key": string | null;
   "openai-available-models"?: OpenAiModel[];
   "openai-model": string | null;
@@ -541,7 +541,6 @@ interface PublicSettings {
   "custom-homepage": boolean;
   "custom-homepage-dashboard": DashboardId | null;
   "development-mode?": boolean;
-  "ee-ai-features-enabled"?: boolean;
   "email-configured?": boolean;
   "embedding-app-origin": string | null;
   "embedding-app-origins-sdk": string | null;
@@ -710,9 +709,8 @@ export interface EnterpriseSettings extends Settings {
   "no-object-illustration"?: IllustrationSettingValue;
   "no-object-illustration-custom"?: string;
   "landing-page"?: string;
-  "ee-ai-features-enabled"?: boolean;
-  "ee-openai-api-key"?: string;
-  "ee-openai-model"?: string;
+  "llm-openai-api-key"?: string;
+  "llm-openai-model"?: string;
   "session-timeout": TimeoutValue | null;
   "search-engine": SearchEngineSettingValue | null;
   "scim-enabled"?: boolean | null;

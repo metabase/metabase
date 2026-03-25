@@ -298,6 +298,9 @@ export type VisualizationSettings = {
   // Trend
   "graph.show_trendline"?: boolean;
 
+  // Split panels
+  "graph.split_panels"?: boolean;
+
   // Series
   "graph.dimensions"?: string[];
   "graph.metrics"?: string[];
