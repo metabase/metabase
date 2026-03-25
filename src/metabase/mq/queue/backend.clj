@@ -11,21 +11,13 @@
 
 (def ^:dynamic *backend*
   "Dynamic var specifying which queue backend to use.
-  Default is `:queue.backend/appdb` for production database-backed queues.
-  Can be bound to `:queue.backend/memory` for testing."
+  Default is `:queue.backend/appdb` for production database-backed queues."
   :queue.backend/appdb)
 
 (defmulti publish!
   "Publishes messages to the given queue. `messages` is always a vector of messages."
   {:arglists '([backend queue-name messages])}
   (fn [backend _queue-name _messages]
-    backend))
-
-(defmulti queue-length
-  "The number of unprocessed *bundles* waiting in the queue.
-  Does not include bundles currently being handled by a listener"
-  {:arglists '([backend queue-name])}
-  (fn [backend _queue-name]
     backend))
 
 (defmulti bundle-successful!

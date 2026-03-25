@@ -74,14 +74,12 @@
   unlisten!]
 
  [mq.publish
-  put
-  dedup-distinct]
+  put]
 
  [mq.impl
   shutdown!]
 
  [q.impl
-  queue-length
   with-queue]
 
  [topic.impl

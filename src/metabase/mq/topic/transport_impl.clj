@@ -7,10 +7,6 @@
 
 (set! *warn-on-reflection* true)
 
-(def keep-me
-  "Referenced from [[metabase.mq.core]] to ensure this namespace is loaded."
-  true)
-
 (defmethod transport/on-listen! :topic [channel _opts]
   (topic.backend/subscribe! topic.backend/*backend* channel)
   {})
@@ -20,3 +16,9 @@
 
 (defmethod transport/wrap-listener :topic [channel listener]
   (listener/make-instrumented-listener channel listener))
+
+(defmethod transport/start! :topic [_]
+  (topic.backend/start! topic.backend/*backend*))
+
+(defmethod transport/shutdown! :topic [_]
+  (topic.backend/shutdown! topic.backend/*backend*))

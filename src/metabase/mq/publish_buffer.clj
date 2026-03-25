@@ -2,6 +2,7 @@
   "Publish buffering: batches rapid-fire publishes into time-windowed groups
    and flushes them on a background scheduled thread."
   (:require
+   [metabase.mq.analytics :as mq.analytics]
    [metabase.mq.transport :as transport]
    [metabase.util.log :as log])
   (:import
@@ -38,19 +39,13 @@
                              (update :messages into messages)
                              (assoc :deadline-ms (+ now *publish-buffer-ms*))))))))))
 
-(defn- analytics-set! [& args]
-  (apply (requiring-resolve 'metabase.analytics.prometheus/set!) args))
-
-(defn- analytics-inc! [& args]
-  (apply (requiring-resolve 'metabase.analytics.prometheus/inc!) args))
-
 (defn flush-publish-buffer!
   "Drains publish buffer entries past their deadline."
   []
   (doseq [[channel entry] @*publish-buffer*]
-    (analytics-set! :metabase-mq/publish-buffer-depth
-                    {:channel (name channel)}
-                    (count (:messages entry))))
+    (mq.analytics/set! :metabase-mq/publish-buffer-depth
+                       {:channel (name channel)}
+                       (count (:messages entry))))
   (doseq [channel (keys @*publish-buffer*)]
     (let [drained (atom nil)]
       (swap! *publish-buffer*
@@ -66,7 +61,7 @@
         (try (transport/publish! channel messages)
              (catch Exception e
                (log/error e "Error flushing publish buffer, re-buffering" {:channel channel})
-               (analytics-inc! :metabase-mq/publish-buffer-flush-errors {:channel (name channel)})
+               (mq.analytics/inc! :metabase-mq/publish-buffer-flush-errors {:channel (name channel)})
                ;; Put messages back into the buffer for retry on next flush cycle
                (swap! *publish-buffer*
                       (fn [buf]

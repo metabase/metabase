@@ -1,6 +1,5 @@
 (ns metabase.mq.transport
-  "Multimethods dispatched by transport type (:queue or :topic).
-   Sits at the bottom of the mq dependency tree — no mq requires.")
+  "Multimethods dispatched by transport type (:queue or :topic).")
 
 (defn transport-type
   "Returns :queue or :topic for a namespaced channel keyword."
@@ -24,3 +23,13 @@
    Queues return the listener as-is; topics add instrumentation."
   {:arglists '([channel listener])}
   (fn [channel _listener] (transport-type channel)))
+
+(defmulti start!
+  "Starts the backend for the given transport type."
+  {:arglists '([transport-type])}
+  identity)
+
+(defmulti shutdown!
+  "Shuts down the backend for the given transport type."
+  {:arglists '([transport-type])}
+  identity)

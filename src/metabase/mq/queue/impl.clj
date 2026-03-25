@@ -3,7 +3,6 @@
   (:require
    [metabase.mq.listener :as listener]
    [metabase.mq.publish :as publish]
-   [metabase.mq.queue.backend :as q.backend]
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
@@ -24,19 +23,6 @@
         (comp (filter (fn [[_k v]] (:exclusive v)))
               (map (fn [[k _v]] (name k))))
         @listener/*listeners*))
-
-(defn start!
-  "Starts the background message-manager thread and triggers backend processing
-  for all registered queues."
-  []
-  (q.backend/start! q.backend/*backend*))
-
-(defn queue-length
-  "The number of message *bundles* in the queue."
-  [queue-name]
-  (q.backend/queue-length q.backend/*backend* queue-name))
-
-;;; ------------------------------------------- with-queue -------------------------------------------
 
 (defmacro with-queue
   "Runs the body with the ability to add messages to the given queue.

@@ -33,4 +33,5 @@
     (log/infof "Topic backend set to %s" topic-be)
     (listener/register-listeners!)
     (publish-buffer/start-publish-buffer-flush!)
-    (mq.impl/start-all-backends!)))
+    (mq.impl/start-worker-pool!)
+    (mq.impl/start-transports)))

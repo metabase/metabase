@@ -1,6 +1,7 @@
 (ns metabase.mq.listener
   "Listener registry: registration, lookup, instrumentation, and the `def-listener!` macro."
   (:require
+   [metabase.mq.analytics :as mq.analytics]
    [metabase.mq.transport :as transport]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]))
@@ -39,21 +40,18 @@
       (throw (ex-info (str "Listener already registered for " (namespace channel) " " (name channel))
                       {:channel channel})))))
 
-(defn- analytics-inc! [& args]
-  (apply (requiring-resolve 'metabase.analytics.prometheus/inc!) args))
-
 (defn make-instrumented-listener
   "Wraps a listener with Prometheus metrics instrumentation."
   [channel listener]
-  (let [labels    {:type (namespace channel) :channel (name channel)}
+  (let [labels    {:transport (namespace channel) :channel (name channel)}
         received  :metabase-mq/topic-messages-received
         errors    :metabase-mq/topic-handler-errors]
     (fn [msg]
       (try
         (listener msg)
-        (analytics-inc! received labels)
+        (mq.analytics/inc! received labels)
         (catch Exception e
-          (analytics-inc! errors labels)
+          (mq.analytics/inc! errors labels)
           (throw e))))))
 
 (defn listen!

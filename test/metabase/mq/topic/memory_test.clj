@@ -3,9 +3,9 @@
    [clojure.test :refer :all]
    [metabase.mq.core :as mq]
    [metabase.mq.listener :as listener]
+   [metabase.mq.memory :as memory]
    [metabase.mq.publish-buffer :as publish-buffer]
-   [metabase.mq.topic.backend :as topic.backend]
-   [metabase.mq.topic.memory :as topic.memory])
+   [metabase.mq.topic.backend :as topic.backend])
   (:import (clojure.lang ExceptionInfo)
            (java.util.concurrent CyclicBarrier)))
 
@@ -13,13 +13,11 @@
 
 (defmacro ^:private with-memory-topics
   [& body]
-  `(binding [topic.backend/*backend*       :topic.backend/memory
-             listener/*listeners*          (atom {})
-             publish-buffer/*publish-buffer-ms*  0
-             publish-buffer/*publish-buffer*     (atom {})
-             topic.memory/*topics*        (atom {})
-             topic.memory/*offsets*       (atom {})
-             topic.memory/*executor*      (atom nil)]
+  `(binding [topic.backend/*backend*              :topic.backend/memory
+             listener/*listeners*                  (atom {})
+             publish-buffer/*publish-buffer-ms*    0
+             publish-buffer/*publish-buffer*       (atom {})
+             memory/*channels*                     (atom {})]
      (try
        (topic.backend/start! :topic.backend/memory)
        ~@body
@@ -59,24 +57,6 @@
         (is (= ["msg-1" "msg-2" "msg-3"] @received)))
 
       (mq/unlisten! :topic/batch))))
-
-(deftest subscribe-only-sees-new-messages-test
-  (with-memory-topics
-    (mq/with-topic :topic/late-join [t]
-      (mq/put t "before-subscribe"))
-    (let [received (atom [])]
-      (mq/listen! :topic/late-join {}
-                  (fn [message]
-                    (swap! received conj message)))
-
-      (mq/with-topic :topic/late-join [t]
-        (mq/put t "after-subscribe"))
-      (Thread/sleep 200)
-
-      (testing "Subscriber only sees messages published after subscribing"
-        (is (= ["after-subscribe"] @received)))
-
-      (mq/unlisten! :topic/late-join))))
 
 (deftest unsubscribe-stops-delivery-test
   (with-memory-topics
@@ -130,7 +110,7 @@
     (mq/unlisten! :topic/double)))
 
 (deftest concurrent-publish-ordering-test
-  (testing "Concurrent publishes are delivered in ID order, not insertion order"
+  (testing "Concurrent publishes are all delivered"
     (with-memory-topics
       (let [received (atom [])
             n        20

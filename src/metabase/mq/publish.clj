@@ -2,6 +2,7 @@
   "Publishing pipeline: buffering, transaction support, and the `with-buffer` macro."
   (:require
    [metabase.app-db.core :as mdb]
+   [metabase.mq.analytics :as mq.analytics]
    [metabase.mq.listener :as listener]
    [metabase.mq.publish-buffer :as publish-buffer]
    [metabase.util.log :as log]))
@@ -13,9 +14,6 @@
   (put [this msg]
     "Put a message on the buffer."))
 
-(defn- analytics-inc! [& args]
-  (apply (requiring-resolve 'metabase.analytics.prometheus/inc!) args))
-
 (defn publish!
   "Publishes messages to a channel. Applies dedup-fn if registered, buffers,
    publishes to the appropriate backend, and records analytics."
@@ -24,14 +22,14 @@
         before-count (count messages)
         messages     (if dedup-fn (dedup-fn messages) messages)]
     (when (and dedup-fn (< (count messages) before-count))
-      (analytics-inc! :metabase-mq/dedup-messages-dropped
-                      {:channel (name channel)}
-                      (- before-count (count messages))))
+      (mq.analytics/inc! :metabase-mq/dedup-messages-dropped
+                         {:channel (name channel)}
+                         (- before-count (count messages))))
     (when (seq messages)
       (publish-buffer/buffered-publish! channel messages)
-      (analytics-inc! :metabase-mq/messages-published
-                      {:type (namespace channel) :channel (name channel)}
-                      (count messages)))))
+      (mq.analytics/inc! :metabase-mq/messages-published
+                         {:transport (namespace channel) :channel (name channel)}
+                         (count messages)))))
 
 (defn flush-deferred-messages!
   "Flushes all deferred messages accumulated during a transaction.
@@ -87,8 +85,3 @@
     ~channel
     (str "Error in " (namespace ~channel) " processing")
     (fn [~binding] ~@body)))
-
-(defn dedup-distinct
-  "Standard dedup function for queue messages. Removes exact duplicates while preserving order."
-  [messages]
-  (into [] (distinct) messages))

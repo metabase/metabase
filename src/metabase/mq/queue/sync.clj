@@ -9,22 +9,13 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:dynamic *undelivered*
-  "Atom tracking undelivered message counts per queue (for queues with no listener)."
-  (atom {}))
-
 (defmethod q.backend/publish! :queue.backend/sync [_ queue-name messages]
   (let [bundle-id (str (random-uuid))]
     (if (listener/get-listener queue-name)
       ;; Call handle! directly to bypass accumulation — the sync backend must
       ;; deliver immediately so that tests observe side-effects inline.
       (mq.impl/handle! queue-name {bundle-id :queue.backend/sync} messages)
-      ;; No listener registered — track as undelivered bundle
-      (do (log/warnf "No listener registered for queue %s, dropping %d message(s)" queue-name (count messages))
-          (swap! *undelivered* update queue-name (fnil inc 0))))))
-
-(defmethod q.backend/queue-length :queue.backend/sync [_ queue-name]
-  (get @*undelivered* queue-name 0))
+      (log/warnf "No listener registered for queue %s, dropping %d message(s)" queue-name (count messages)))))
 
 (defmethod q.backend/bundle-successful! :queue.backend/sync [_ _queue-name _bundle-id]
   nil)

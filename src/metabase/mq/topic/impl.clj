@@ -2,7 +2,6 @@
   "Topic-specific implementation: on-listen! hook and topic schemas."
   (:require
    [metabase.mq.publish :as publish]
-   [metabase.mq.topic.backend :as topic.backend]
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
@@ -10,12 +9,6 @@
 (mr/def :metabase.mq.topic/topic-name
   [:and :keyword [:fn {:error/message "Topic name must be namespaced to 'topic'"}
                   #(= "topic" (namespace %))]])
-
-(defn start!
-  "Starts the backend polling loop. Call this after the backend has been set.
-  The backend dynamically discovers topics from `*listeners*`."
-  []
-  (topic.backend/start! topic.backend/*backend*))
 
 (defmacro with-topic
   "Runs the body with the ability to add messages to the given topic.

@@ -5,7 +5,6 @@
    [metabase.mq.core :as mq]
    [metabase.mq.publish :as mq.publish]
    [metabase.mq.publish-buffer :as publish-buffer]
-   [metabase.mq.queue.impl :as q.impl]
    [metabase.mq.test-util :as mq.tu])
   (:import (clojure.lang ExceptionInfo)
            (java.util.concurrent CyclicBarrier)))
@@ -24,36 +23,36 @@
 
 (deftest publish-to-unlistened-queue-test
   (mq.tu/with-sync-mq
-    (testing "with-queue on a queue with no listener still succeeds (messages buffer)"
+    (testing "with-queue on a queue with no listener still succeeds"
       (mq/with-queue :queue/nonexistent [q]
-        (mq/put q "msg"))
-      (is (= 1 (q.impl/queue-length :queue/nonexistent))))))
+        (mq/put q "msg")))))
 
 (deftest with-queue-success-test
-  (mq.tu/with-sync-mq {:queue/test (fn [_msg] nil)}
-    (testing "with-queue publishes buffered messages on success"
-      (let [result (mq/with-queue :queue/test [q]
-                     (mq/put q "a")
-                     (mq/put q "b")
-                     :done)]
-        (is (= :done result))
-        (is (= 0 (q.impl/queue-length :queue/test)))))))
+  (let [heard (atom [])]
+    (mq.tu/with-sync-mq {:queue/test (fn [msg] (swap! heard conj msg))}
+      (testing "with-queue publishes buffered messages on success"
+        (let [result (mq/with-queue :queue/test [q]
+                       (mq/put q "a")
+                       (mq/put q "b")
+                       :done)]
+          (is (= :done result))
+          (is (= ["a" "b"] @heard)))))))
 
 (deftest with-queue-exception-discards-test
-  (mq.tu/with-sync-mq {:queue/test (fn [_] nil)}
-    (testing "with-queue discards buffered messages on exception"
-      (is (thrown? Exception
-                   (mq/with-queue :queue/test [q]
-                     (mq/put q "should-be-discarded")
-                     (throw (ex-info "boom" {})))))
-      (is (= 0 (q.impl/queue-length :queue/test))))))
+  (let [heard (atom [])]
+    (mq.tu/with-sync-mq {:queue/test (fn [msg] (swap! heard conj msg))}
+      (testing "with-queue discards buffered messages on exception"
+        (is (thrown? Exception
+                     (mq/with-queue :queue/test [q]
+                       (mq/put q "should-be-discarded")
+                       (throw (ex-info "boom" {})))))
+        (is (empty? @heard))))))
 
 (deftest with-queue-no-listener-test
   (mq.tu/with-sync-mq
-    (testing "with-queue on queue with no listener buffers messages"
+    (testing "with-queue on queue with no listener still succeeds"
       (mq/with-queue :queue/nonexistent [q]
-        (mq/put q "msg"))
-      (is (= 1 (q.impl/queue-length :queue/nonexistent))))))
+        (mq/put q "msg")))))
 
 (deftest double-listen-throws-test
   (mq.tu/with-sync-mq {:queue/test (fn [_] nil)}
@@ -144,13 +143,13 @@
             "No messages should be in transaction state after exception")))))
 
 (deftest outside-transaction-publishes-immediately-test
-  (mq.tu/with-sync-mq {:queue/test (fn [_] nil)}
-    (testing "Outside a transaction, messages are published immediately"
-      (is (nil? app-db.conn/*transaction-state*))
-      (mq/with-queue :queue/test [q]
-        (mq/put q "msg1"))
-      (is (= 0 (q.impl/queue-length :queue/test))
-          "Messages should have been published and processed already"))))
+  (let [heard (atom [])]
+    (mq.tu/with-sync-mq {:queue/test (fn [msg] (swap! heard conj msg))}
+      (testing "Outside a transaction, messages are published immediately"
+        (is (nil? app-db.conn/*transaction-state*))
+        (mq/with-queue :queue/test [q]
+          (mq/put q "msg1"))
+        (is (= ["msg1"] @heard))))))
 
 (deftest multiple-queues-in-transaction-test
   (let [heard-a (atom [])

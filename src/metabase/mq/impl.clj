@@ -1,30 +1,15 @@
 (ns metabase.mq.impl
   "Backend coordination: message delivery, analytics helpers, and lifecycle management."
   (:require
+   [metabase.mq.analytics :as mq.analytics]
    [metabase.mq.listener :as listener]
    [metabase.mq.publish-buffer :as publish-buffer]
    [metabase.mq.queue.backend :as q.backend]
-   [metabase.mq.topic.backend :as topic.backend]
    [metabase.util.log :as log])
   (:import
    (java.util.concurrent Callable ExecutorService Executors Future)))
 
 (set! *warn-on-reflection* true)
-
-(defn analytics-inc!
-  "Version of `metabase.analytics.prometheus/inc!` that can be used without a direct dependency on the namespace, since directly using it introduces a cycle."
-  [& args]
-  (apply (requiring-resolve 'metabase.analytics.prometheus/inc!) args))
-
-(defn analytics-set!
-  "Version of `metabase.analytics.prometheus/set!` that can be used without a direct dependency on the namespace, since directly using it introduces a cycle."
-  [& args]
-  (apply (requiring-resolve 'metabase.analytics.prometheus/set!) args))
-
-(defn- analytics-observe! [& args]
-  (apply (requiring-resolve 'metabase.analytics.prometheus/observe!) args))
-
-;;; ------------------------------------------- Active Handler Tracking -------------------------------------------
 
 (def ^:private active-handlers
   "channel keyword → {:future Future, :metadata map}
@@ -57,24 +42,24 @@
   and records metrics. Calls `on-success` / `on-error` for system-specific
   side effects (e.g. queue ACK/NACK)."
   [{:keys [channel listener-fn invoke-fn on-success on-error]}]
-  (let [system-name (namespace channel)
+  (let [transport (namespace channel)
         listener    (listener-fn)
-        labels      {:type system-name :channel (name channel)}
+        labels      {:transport transport :channel (name channel)}
         start       (System/nanoTime)]
     (try
       (if-not listener
-        (log/debugf "No listener registered for %s %s, skipping message" system-name (name channel))
+        (log/debugf "No listener registered for %s %s, skipping message" transport (name channel))
         (do
           (invoke-fn listener)
           (when on-success (on-success))
-          (analytics-inc! :metabase-mq/batches-handled (assoc labels :status "success"))))
+          (mq.analytics/inc! :metabase-mq/batches-handled (assoc labels :status "success"))))
       (catch Exception e
-        (log/error e (str "Error handling " system-name " message") labels)
+        (log/error e (str "Error handling " transport " message") labels)
         (when on-error (on-error e))
-        (analytics-inc! :metabase-mq/batches-handled (assoc labels :status "error")))
+        (mq.analytics/inc! :metabase-mq/batches-handled (assoc labels :status "error")))
       (finally
-        (analytics-observe! :metabase-mq/handle-duration-ms labels
-                            (/ (double (- (System/nanoTime) start)) 1e6))))))
+        (mq.analytics/observe! :metabase-mq/handle-duration-ms labels
+                               (/ (double (- (System/nanoTime) start)) 1e6))))))
 
 (defn handle!
   "Handles accumulated messages for a channel by invoking the registered listener.
@@ -84,9 +69,9 @@
    processed messages may be re-delivered. Queue listeners MUST be idempotent.
    The :dedup-fn option on listeners helps mitigate duplicate processing on retry."
   [channel message-bundles messages]
-  (analytics-inc! :metabase-mq/messages-received
-                  {:type (namespace channel) :channel (name channel)}
-                  (count messages))
+  (mq.analytics/inc! :metabase-mq/messages-received
+                     {:transport (namespace channel) :channel (name channel)}
+                     (count messages))
   (let [{:keys [max-batch-messages]} (listener/get-listener channel)]
     (invoke-listener!
      {:channel      channel
@@ -180,27 +165,24 @@
     (.shutdownNow pool)
     (reset! worker-pool nil)))
 
-(defn start-all-backends!
-  "Starts the shared worker pool and all queue/topic backends."
+(defn start-transports
+  "Starts the queue/topic backends."
   []
-  (start-worker-pool!)
-  (doseq [be [:queue.backend/appdb :queue.backend/memory]]
-    (q.backend/start! be))
-  (doseq [be [:topic.backend/appdb :topic.backend/memory]]
-    (topic.backend/start! be)))
+  (let [transport-start! (requiring-resolve 'metabase.mq.transport/start!)]
+    (transport-start! :queue)
+    (transport-start! :topic)))
 
-(defn shutdown-all-backends!
+(defn shutdown-transports
   "Shuts down all queue/topic backends."
   []
-  (doseq [be [:queue.backend/appdb :queue.backend/memory]]
-    (q.backend/shutdown! be))
-  (doseq [be [:topic.backend/appdb :topic.backend/memory]]
-    (topic.backend/shutdown! be)))
+  (let [transport-shutdown! (requiring-resolve 'metabase.mq.transport/shutdown!)]
+    (transport-shutdown! :queue)
+    (transport-shutdown! :topic)))
 
 (defn shutdown!
   "Shuts down all mq infrastructure: publish buffer, worker pool, backends, and listener state."
   []
   (publish-buffer/stop-publish-buffer-flush!)
-  (shutdown-all-backends!)
+  (shutdown-transports)
   (shutdown-worker-pool!)
   (reset! listener/*listeners* {}))
