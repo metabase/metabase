@@ -336,36 +336,6 @@ export function getUrlTarget(
   return url == null || isSameOrSiteUrlOrigin(url) ? "_self" : "_blank";
 }
 
-interface ParsedDataUri {
-  mimeType: string | undefined;
-  charset: string | undefined;
-  data: string;
-  base64: string;
-}
-
-export function parseDataUri(
-  url: string | null | undefined,
-): ParsedDataUri | null {
-  // https://regexr.com/8e8gt
-  const match =
-    url &&
-    url.match(/^data:(?:([^;]+)(?:;([^;]+))?)?(;base64)?,((?:(?!\1|,).)*)$/);
-  if (match) {
-    let [, mimeType, charset, base64, data]: (string | undefined)[] = match;
-    if (charset === "base64" && !base64) {
-      base64 = charset;
-      charset = undefined;
-    }
-    return {
-      mimeType,
-      charset,
-      data: base64 ? atob(data) : data,
-      base64: base64 ? data : btoa(data),
-    };
-  }
-  return null;
-}
-
 /**
  * @returns the clip-path CSS property referencing the clip path in the current document, taking into account the <base> tag.
  */
