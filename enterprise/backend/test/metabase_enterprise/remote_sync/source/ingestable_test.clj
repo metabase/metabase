@@ -16,7 +16,7 @@
 (deftest ingestable-snapshot-test
   (testing "IngestableSnapshot wraps a snapshot and provides Ingestable interface"
     (let [mock-source (test-helpers/create-mock-source)
-          ingestable (ingestable/->IngestableSnapshot (source.p/snapshot mock-source) (atom nil))]
+          ingestable (ingestable/->IngestableSnapshot (source.p/snapshot mock-source) (atom nil) (atom []))]
 
       (testing "ingest-list returns list of serdes paths"
         (let [paths (serialization/ingest-list ingestable)]
@@ -32,7 +32,7 @@
           (is (contains? entity :serdes/meta) "Should have serdes/meta key")))
 
       (testing "cache is populated after first ingest-list call"
-        (let [ingestable (ingestable/->IngestableSnapshot (source.p/snapshot mock-source) (atom nil))]
+        (let [ingestable (ingestable/->IngestableSnapshot (source.p/snapshot mock-source) (atom nil) (atom []))]
           (is (nil? @(:cache ingestable)) "Cache should be empty initially")
           (serialization/ingest-list ingestable)
           (is (map? @(:cache ingestable)) "Cache should be populated after ingest-list")
@@ -41,7 +41,7 @@
 (deftest callback-ingestable-test
   (testing "CallbackIngestable wraps an ingestable and calls callback on ingest-one"
     (let [mock-source (test-helpers/create-mock-source)
-          base-ingestable (ingestable/->IngestableSnapshot (source.p/snapshot mock-source) (atom nil))
+          base-ingestable (ingestable/->IngestableSnapshot (source.p/snapshot mock-source) (atom nil) (atom []))
           calls (atom [])
           callback (fn [_ path] (swap! calls conj path))
           wrapped (ingestable/->CallbackIngestable base-ingestable callback)]
@@ -79,7 +79,7 @@
                                                                                :initiated_by (:id user)}))
             task-id (:id task)
             mock-source (test-helpers/create-mock-source)
-            base-ingestable (ingestable/->IngestableSnapshot (source.p/snapshot mock-source) (atom nil))
+            base-ingestable (ingestable/->IngestableSnapshot (source.p/snapshot mock-source) (atom nil) (atom []))
             normalize 100]
 
         (testing "creates a CallbackIngestable"
@@ -124,7 +124,7 @@
 (deftest root-dependency-ingestable-test
   (testing "RootDependencyIngestable filters items based on root dependencies"
     (let [mock-source (test-helpers/create-mock-source)
-          base-ingestable (ingestable/->IngestableSnapshot (source.p/snapshot mock-source) (atom nil))]
+          base-ingestable (ingestable/->IngestableSnapshot (source.p/snapshot mock-source) (atom nil) (atom []))]
 
       (testing "with no root dependencies, returns empty list"
         (let [wrapped (ingestable/wrap-root-dep-ingestable [] base-ingestable)
