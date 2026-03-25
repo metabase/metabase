@@ -87,12 +87,16 @@ run_e2e() {
     done
     if [[ -n "$closest" ]]; then
       specs_dir="${closest%/}"
+      log "No exact specs for v${major} — using closest: ${specs_dir##*/}/"
     else
       specs_dir="$REPO_ROOT/e2e/cross-version/latest"
+      log "No exact specs for v${major} — falling back to latest/"
     fi
+  else
+    log "Found exact specs for v${major}"
   fi
 
-  log "Using specs from ${specs_dir}"
+  log "Running @${phase} e2e tests for ${version} from: e2e/cross-version/${specs_dir##*/}/"
   CYPRESS_SPEC_PATTERN="${specs_dir}/**/*.cy.spec.ts" \
     "$REPO_ROOT/e2e/cross-version/run.sh" --phase "$phase"
 }
