@@ -1056,25 +1056,17 @@
                   (over-order-by->honeysql driver aggregations order-by)))
           order-bys)))
 
-(defmulti remapped-order-by?
-  "Looks for the `externally-remapped-field` key in the order by field options."
-  {:added "0.60.0", :arglists '([driver order-by])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
+(defn- remapped-order-by? [order-by]
+  (driver-api/qp.util.transformations.nest-breakouts.externally-remapped-field
+   (driver-api/match-lite order-by
+     [_dir (_opts :guard :lib/uuid) [_ (opts :guard :lib/uuid) _name]] opts ;; mbql5
+     [_dir [_ _name opts]] opts)))
 
-(defmethod remapped-order-by? :sql
-  [_driver [_dir [_ _name opts]]]
-  (driver-api/qp.util.transformations.nest-breakouts.externally-remapped-field opts))
-
-(defmulti remapped-breakout?
-  "Looks for the `externally-remapped-field` key in the breakout options."
-  {:added "0.60.0", :arglists '([driver breakout])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defmethod remapped-breakout? :sql
-  [_driver [_ _name opts]]
-  (driver-api/qp.util.transformations.nest-breakouts.externally-remapped-field opts))
+(defn- remapped-breakout? [breakout]
+  (driver-api/qp.util.transformations.nest-breakouts.externally-remapped-field
+   (driver-api/match-lite breakout
+     [_ (opts :guard :lib/uuid) _name] opts ;; mbql5
+     [_ _name opts] opts)))
 
 (defmulti breakout-options-index
   "Returns the index of options in a breakout clause."
@@ -1088,10 +1080,7 @@
   "Order by the first breakout, then partition by all the other ones. See #42003 and
   https://metaboat.slack.com/archives/C05MPF0TM3L/p1714084449574689 for more info."
   [driver inner-query]
-  (let [breakouts            (into []
-                                   (remove
-                                    (partial remapped-breakout? driver))
-                                   (:breakout inner-query))
+  (let [breakouts            (into [] (remove remapped-breakout?) (:breakout inner-query))
         group-bys            (:group-by (apply-top-level-clause driver :breakout {} inner-query))
         opts-idx             (breakout-options-index driver)
         finest-temp-breakout (driver-api/finest-temporal-breakout-index breakouts opts-idx)
@@ -1099,9 +1088,7 @@
                                (if finest-temp-breakout
                                  (m/remove-nth finest-temp-breakout group-bys)
                                  (butlast group-bys)))
-        order-bys            (remove
-                              (partial remapped-order-by? driver)
-                              (:order-by inner-query))
+        order-bys            (remove remapped-order-by? (:order-by inner-query))
         order-bys            (over-order-bys driver
                                              (:aggregation inner-query)
                                              order-bys)]
@@ -1189,7 +1176,6 @@
     (->honeysql driver (mbql-clause driver :count expr-or-nil))
     (cumulative-aggregation-over-rows
      driver
-     ;; Don't call `mbql-clause` on this because this is honeysql, not MBQL
      [:sum (if expr-or-nil
              [:count (->honeysql driver expr-or-nil)]
              [:count :*])])))
@@ -1212,7 +1198,6 @@
     (->honeysql driver (mbql-clause driver :sum expr))
     (cumulative-aggregation-over-rows
      driver
-     ;; Don't call `mbql-clause` on this because this is honeysql, not MBQL
      [:sum [:sum (->honeysql driver expr)]])))
 
 (defmethod ->honeysql [:sql :offset]
@@ -1600,7 +1585,7 @@
      [:field (opts :guard :lib/uuid) id-or-name] ;; mbql5
      [:field (force-using-column-alias-opts opts is-breakout) id-or-name]
 
-     [:field id-or-name opts] ;; mbql4
+     [:field id-or-name opts]
      [:field id-or-name (force-using-column-alias-opts opts is-breakout)])))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1666,7 +1651,6 @@
 
 (def ^:private StringValueOrFieldOrExpression
   [:or
-   ;; mbql4
    [:and driver-api/mbql.schema.value
     [:fn {:error/message "string value"} #(string? (second %))]]
    driver-api/mbql.schema.FieldOrExpressionDef
@@ -1738,7 +1722,7 @@
   [x]
   (let [[opts field-id] (driver-api/match-lite x
                           [:field (opts :guard :lib/uuid) field-id] [opts field-id]  ;; mbql5
-                          [:field field-id opts] [opts field-id])] ;; mbql4
+                          [:field field-id opts] [opts field-id])]
     (and (driver-api/mbql-clause? x)
          (isa? (or (:effective-type opts)
                    (when (pos-int? field-id)

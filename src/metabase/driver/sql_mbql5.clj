@@ -158,18 +158,10 @@
   [_driver tag opts & args]
   (into [tag (lib.schema.common/normalize-options-map opts)] args))
 
-(defmethod sql.qp/clause-value-idx :sql-mbql5 [_driver] 2)
-
 (defmethod sql.qp/expression-by-name :sql-mbql5
   [_driver inner-query expression-name]
   (m/find-first #(= expression-name (lib.util/expression-name %)) (:expressions inner-query)))
 
-(defmethod sql.qp/remapped-order-by? :sql-mbql5
-  [_driver [_dir _opts [_ opts _name]]]
-  (driver-api/qp.util.transformations.nest-breakouts.externally-remapped-field opts))
-
-(defmethod sql.qp/remapped-breakout? :sql-mbql5
-  [_driver [_ opts _name]]
-  (driver-api/qp.util.transformations.nest-breakouts.externally-remapped-field opts))
+(defmethod sql.qp/clause-value-idx :sql-mbql5 [_driver] 2)
 
 (defmethod sql.qp/breakout-options-index :sql-mbql5 [_driver] 1)
