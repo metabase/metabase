@@ -59,6 +59,33 @@
   :export?    true
   :doc        false)
 
+(defsetting metabot-name
+  (deferred-tru "The display name for Metabot.")
+  :type       :string
+  :default    "Metabot"
+  :visibility :public
+  :encryption :no
+  :export?    true
+  :doc        false)
+
+(defsetting metabot-icon
+  (deferred-tru "The icon for Metabot.")
+  :type       :string
+  :default    "metabot"
+  :visibility :public
+  :encryption :no
+  :export?    true
+  :doc        false)
+
+(defsetting metabot-tone
+  (deferred-tru "The tone for Metabot responses.")
+  :type       :string
+  :default    ""
+  :visibility :admin
+  :encryption :no
+  :export?    true
+  :doc        false)
+
 (defsetting embedded-metabot-enabled?
   (deferred-tru "Whether Metabot is enabled for embedding.")
   :type       :boolean

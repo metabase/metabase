@@ -12,6 +12,7 @@
    [metabase.metabot.api.describe]
    [metabase.metabot.api.document]
    [metabase.metabot.api.metabot]
+   [metabase.metabot.api.permissions]
    [metabase.metabot.client :as metabot.client]
    [metabase.metabot.client.schema :as metabot.client.schema]
    [metabase.metabot.config :as metabot.config]
@@ -33,6 +34,7 @@
 
 (comment
   metabase.metabot.api.describe/keep-me
+  metabase.metabot.api.permissions/keep-me
   metabase.metabot.tools.api/keep-me)
 
 (set! *warn-on-reflection* true)
@@ -282,8 +284,9 @@
   "`/api/metabot` routes."
   (handlers/routes
    (handlers/route-map-handler
-    {"/metabot"  metabase.metabot.api.metabot/routes
-     "/document" metabase.metabot.api.document/routes
+    {"/metabot"      metabase.metabot.api.metabot/routes
+     "/permissions" metabase.metabot.api.permissions/routes
+     "/document"    metabase.metabot.api.document/routes
      ;; premium check happens in the route so we still ack events to prevent slack retrying
      "/slack"    metabase.slackbot.api/routes
      "/tools"    (api.macros/ns-handler 'metabase.metabot.tools.api +auth)})
