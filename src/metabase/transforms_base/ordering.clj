@@ -7,11 +7,9 @@
    [clojure.string :as str]
    [flatland.ordered.set :refer [ordered-set]]
    [metabase.driver :as driver]
-   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.util :as transforms-base.u]
@@ -70,27 +68,12 @@
         transforms))
 
 (mu/defn- output-table-map
-  [mp :- ::lib.schema.metadata/metadata-provider transforms]
-  (let [;; Direct mapping for transforms with target_table_id
-        direct-map (into {}
-                         (keep (fn [{:keys [target_table_id id]}]
-                                 (when target_table_id
-                                   [target_table_id id])))
-                         transforms)
-        ;; Fall back to metadata provider for transforms without target_table_id
-        transforms-without-id (remove :target_table_id transforms)]
-    (if (seq transforms-without-id)
-      (let [table-map (into {}
-                            (map (fn [{:keys [schema name id]}]
-                                   [[schema name] id]))
-                            (lib.metadata/tables mp))]
-        (into direct-map
-              (keep (fn [transform]
-                      (when-let [output-table (table-map [(get-in transform [:target :schema])
-                                                          (get-in transform [:target :name])])]
-                        [output-table (:id transform)])))
-              transforms-without-id))
-      direct-map)))
+  [transforms]
+  (into {}
+        (keep (fn [{:keys [target_table_id id]}]
+                (when target_table_id
+                  [target_table_id id])))
+        transforms))
 
 (defn- target-ref-map
   "Build maps for resolving dependencies to transform ids.
@@ -111,12 +94,12 @@
   "Resolve a single dependency to a transform id, or nil if not resolvable.
   Used to map table/transform/table-ref dependencies to actual transform ids."
   [{dep-table :table dep-transform :transform :keys [table-ref]} output-tables transform-ids target-refs]
-  (or (output-tables dep-table)
-      ((:by-table-id target-refs) dep-table)
-      (transform-ids dep-transform)
+  (or (get output-tables dep-table)
+      (get (:by-table-id target-refs) dep-table)
+      (get transform-ids dep-transform)
       (when table-ref
         (let [{:keys [database_id schema table]} table-ref]
-          ((:by-triple target-refs) [database_id schema table])))))
+          (get (:by-triple target-refs) [database_id schema table])))))
 
 (defn transform-ordering
   "Computes an 'ordering' of a given list of transforms.
@@ -135,12 +118,11 @@
         target-refs      (target-ref-map transforms)
         {:keys [output-tables
                 dependencies]} (->> transforms-by-db
-                                    (map (mu/fn [[db-id db-transforms] :- [:tuple
-                                                                           [:maybe ::lib.schema.id/database]
-                                                                           [:maybe [:sequential :any]]]]
-                                           (let [mp (lib-be/application-database-metadata-provider db-id)]
-                                             {:output-tables (output-table-map mp db-transforms)
-                                              :dependencies  (dependency-map db-transforms)})))
+                                    (map (mu/fn [[_db-id db-transforms] :- [:tuple
+                                                                            [:maybe ::lib.schema.id/database]
+                                                                            [:maybe [:sequential :any]]]]
+                                           {:output-tables (output-table-map db-transforms)
+                                            :dependencies  (dependency-map db-transforms)}))
                                     (apply merge-with merge))]
     ;; Transforms without a target database are invalid and shouldn't form part of the dependency graph.
     ;; Give them empty dependency sets so they don't interfere with ordering.
@@ -195,9 +177,8 @@
                                (map (juxt :id identity))
                                transforms)
         db-id            (get-in to-check [:source :query :database])
-        mp               (lib-be/application-database-metadata-provider db-id)
         db-transforms    (filter #(= (get-in % [:source :query :database]) db-id) transforms)
-        output-tables    (output-table-map mp db-transforms)
+        output-tables    (output-table-map db-transforms)
         transform-ids    (into #{} (map :id) db-transforms)
         target-refs      (target-ref-map transforms)
         node->children   #(->> % transforms-by-id transforms-base.i/table-dependencies
