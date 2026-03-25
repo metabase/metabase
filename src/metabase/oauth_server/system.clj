@@ -1,7 +1,6 @@
 (ns metabase.oauth-server.system
   (:require
    [integrant.core :as ig]
-   [metabase.oauth-server.core :as oauth-server]
    [metabase.oauth-server.settings :as oauth-settings]
    [metabase.oauth-server.store :as store]
    [metabase.system.core :as system]
@@ -42,7 +41,7 @@
       :client-store                   client-store
       :code-store                     code-store
       :token-store                    token-store
-      :scopes-supported               (oauth-server/all-agent-scopes)})))
+      :scopes-supported               ((requiring-resolve 'metabase.oauth-server.core/all-agent-scopes))})))
 
 (defmethod ig/halt-key! ::provider [_ _]
   nil)
@@ -62,3 +61,13 @@
   (when-let [sys @system-atom]
     (ig/halt! sys)
     (reset! system-atom nil)))
+
+(defn get-provider
+  "Returns the provider from the running integrant system, starting it if needed."
+  []
+  (::provider (start!)))
+
+(defn reset-system!
+  "Stop the integrant system so it will be recreated on next access. For use in tests."
+  []
+  (stop!))
