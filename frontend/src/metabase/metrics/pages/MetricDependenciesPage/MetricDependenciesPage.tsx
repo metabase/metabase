@@ -21,6 +21,7 @@ export function MetricDependenciesPage({
   urls = defaultUrls,
   renderBreadcrumbs,
   showAppSwitcher,
+  showDataStudioLink = true,
 }: MetricDependenciesPageProps) {
   const cardId = Urls.extractEntityId(params.cardId);
   const { card, isLoading, error } = useLoadCardWithMetadata(cardId);
@@ -40,6 +41,7 @@ export function MetricDependenciesPage({
         urls={urls}
         renderBreadcrumbs={renderBreadcrumbs}
         showAppSwitcher={showAppSwitcher}
+        showDataStudioLink={showDataStudioLink}
       />
       <PLUGIN_DEPENDENCIES.DependencyGraphPageContext.Provider
         value={{

@@ -37,6 +37,7 @@ export function MetricQueryPage({
   urls = defaultUrls,
   renderBreadcrumbs,
   showAppSwitcher,
+  showDataStudioLink = true,
 }: MetricQueryPageProps) {
   const cardId = Urls.extractEntityId(params.cardId);
   const { card, isLoading, error } = useLoadCardWithMetadata(cardId);
@@ -56,6 +57,7 @@ export function MetricQueryPage({
       urls={urls}
       renderBreadcrumbs={renderBreadcrumbs}
       showAppSwitcher={showAppSwitcher}
+      showDataStudioLink={showDataStudioLink}
     />
   );
 }
@@ -72,6 +74,7 @@ function MetricQueryPageBody({
   urls,
   renderBreadcrumbs,
   showAppSwitcher,
+  showDataStudioLink,
 }: MetricQueryPageBodyProps) {
   const metadata = useSelector(getMetadata);
   const [datasetQuery, setDatasetQuery] = useState(card.dataset_query);
@@ -154,6 +157,7 @@ function MetricQueryPageBody({
           urls={urls}
           renderBreadcrumbs={renderBreadcrumbs}
           showAppSwitcher={showAppSwitcher}
+          showDataStudioLink={showDataStudioLink}
           actions={
             <PaneHeaderActions
               errorMessage={validationResult.errorMessage}

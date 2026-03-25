@@ -26,6 +26,7 @@ export function MetricCachingPage({
   urls = defaultUrls,
   renderBreadcrumbs,
   showAppSwitcher,
+  showDataStudioLink = true,
 }: MetricSettingsPageProps) {
   const cardId = Urls.extractEntityId(params.cardId);
   const {
@@ -73,6 +74,7 @@ export function MetricCachingPage({
         urls={urls}
         renderBreadcrumbs={renderBreadcrumbs}
         showAppSwitcher={showAppSwitcher}
+        showDataStudioLink={showDataStudioLink}
       />
       {question ? (
         <Card withBorder flex={1} p={0}>

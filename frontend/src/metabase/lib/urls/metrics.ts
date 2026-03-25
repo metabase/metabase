@@ -32,6 +32,10 @@ export function metricCaching(cardId: CardId): string {
   return `/metric/${cardId}/caching`;
 }
 
+export function metricHistory(cardId: CardId): string {
+  return `/metric/${cardId}/history`;
+}
+
 export function newMetric(
   params: { collectionId?: CollectionId } = {},
 ): string {

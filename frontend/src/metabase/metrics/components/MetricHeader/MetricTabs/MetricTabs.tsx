@@ -68,5 +68,10 @@ function getTabs(
     });
   }
 
+  tabs.push({
+    label: t`History`,
+    to: urls.history(card.id),
+  });
+
   return tabs;
 }

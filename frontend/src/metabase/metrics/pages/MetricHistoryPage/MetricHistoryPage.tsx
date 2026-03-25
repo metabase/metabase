@@ -2,15 +2,16 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { useLoadCardWithMetadata } from "metabase/data-studio/common/hooks/use-load-card-with-metadata";
 import * as Urls from "metabase/lib/urls";
-import { Center } from "metabase/ui";
+import { Box, Card, Center } from "metabase/ui";
 
+import { MetricActivityTimeline } from "../../components/MetricActivityTimeline";
 import { MetricPageShell } from "../../components/MetricPageShell";
 import type { MetricPageProps } from "../../types";
 import { metricUrls as defaultUrls } from "../../urls";
 
-import { MetricOverview } from "./MetricOverview";
+import S from "./MetricHistoryPage.module.css";
 
-export function MetricOverviewPage({
+export function MetricHistoryPage({
   params,
   urls = defaultUrls,
   renderBreadcrumbs,
@@ -29,7 +30,7 @@ export function MetricOverviewPage({
   }
 
   return (
-    <PageContainer data-testid="metric-overview-page" gap="xl">
+    <PageContainer>
       <MetricPageShell
         card={card}
         urls={urls}
@@ -37,7 +38,11 @@ export function MetricOverviewPage({
         showAppSwitcher={showAppSwitcher}
         showDataStudioLink={showDataStudioLink}
       />
-      <MetricOverview card={card} urls={urls} />
+      <Card withBorder p="md" flex={1} className={S.card}>
+        <Box maw={800} pt="md" px="md">
+          <MetricActivityTimeline card={card} />
+        </Box>
+      </Card>
     </PageContainer>
   );
 }

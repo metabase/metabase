@@ -7,4 +7,5 @@ export const metricUrls: MetricUrls = {
   query: Urls.metricQuery,
   dependencies: Urls.metricDependencies,
   caching: Urls.metricCaching,
+  history: Urls.metricHistory,
 };

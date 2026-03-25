@@ -16,6 +16,7 @@ export function DataStudioMetricOverviewPage({
       params={params}
       urls={dataStudioMetricUrls}
       showAppSwitcher
+      showDataStudioLink={false}
       renderBreadcrumbs={(card) => <DataStudioMetricBreadcrumbs card={card} />}
     />
   );
