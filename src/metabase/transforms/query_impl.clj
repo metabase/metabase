@@ -99,7 +99,6 @@
                (transforms.util/handle-transform-complete!
                 :run-id run-id
                 :transform transform
-                :source-range-params (:source-range-params exec-result)
                 :db database))))))
      (catch Throwable t
        (log/error t "Error executing transform")
