@@ -156,7 +156,9 @@ export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
     },
     isValid: ({ unit }, settings) => {
       const options = getDateStyleOptionsForUnit(unit ?? "default");
-      return !!_.findWhere(options, { value: settings.date_style });
+      return !!_.findWhere(options, {
+        value: settings.date_style ?? undefined,
+      });
     },
     getProps: ({ unit }, settings) => ({
       options: getDateStyleOptionsForUnit(
@@ -202,7 +204,7 @@ export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
     inline: true,
     getHidden: ({ unit }, settings) => {
       const format = getDateFormatFromStyle(
-        settings.date_style,
+        settings.date_style ?? undefined,
         unit ?? "default",
       );
       return !format || !format.match(/MMMM|dddd/);
