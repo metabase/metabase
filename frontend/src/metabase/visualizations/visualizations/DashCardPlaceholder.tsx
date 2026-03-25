@@ -75,31 +75,38 @@ function DashCardPlaceholderInner({
           >
             <Button
               onClick={() => setQuestionPickerOpen(true)}
-              onMouseDown={preventDragging}
               style={{ pointerEvents }}
+              onMouseDown={preventDragging}
+              onPointerDown={preventDragging}
             >{t`Select question`}</Button>
           </Flex>
         )}
       </Flex>
       {isQuestionPickerOpen && (
-        <QuestionPickerModal
-          title={t`Pick what you want to replace this with`}
-          value={
-            dashboard.collection_id
-              ? {
-                  id: dashboard.collection_id,
-                  model: "collection",
-                }
-              : undefined
-          }
-          options={{ hasConfirmButtons: false }}
-          // TODO: account for restrictions on adding personal
-          // questions to public dashboards
-          models={["card", "dataset", "metric", "dashboard"]}
-          onChange={handleSelectQuestion}
-          onClose={() => setQuestionPickerOpen(false)}
-          isDisabledItem={shouldDisableItem}
-        />
+        <div
+          style={{ display: "contents" }}
+          onMouseDown={preventDragging}
+          onPointerDown={preventDragging}
+        >
+          <QuestionPickerModal
+            title={t`Pick what you want to replace this with`}
+            value={
+              dashboard.collection_id
+                ? {
+                    id: dashboard.collection_id,
+                    model: "collection",
+                  }
+                : undefined
+            }
+            options={{ hasConfirmButtons: false }}
+            // TODO: account for restrictions on adding personal
+            // questions to public dashboards
+            models={["card", "dataset", "metric", "dashboard"]}
+            onChange={handleSelectQuestion}
+            onClose={() => setQuestionPickerOpen(false)}
+            isDisabledItem={shouldDisableItem}
+          />
+        </div>
       )}
     </>
   );
@@ -107,7 +114,17 @@ function DashCardPlaceholderInner({
 
 DashCardPlaceholderInner.displayName = "DashCardPlaceholder";
 
-function preventDragging(e: React.MouseEvent<HTMLButtonElement>) {
+/**
+ * Prevents React portal event bubbling from triggering grid item drags.
+ *
+ * React portals (used by modals) bubble synthetic events through the React
+ * component tree, not the DOM tree. This means clicks inside a modal rendered
+ * by this component would bubble up to DraggableCore on the grid item and
+ * initiate a drag. We stop both mousedown and pointerdown because Cypress
+ * (and browsers) dispatch both events, and React processes them as separate
+ * synthetic event dispatches — stopPropagation on one doesn't affect the other.
+ */
+function preventDragging(e: React.SyntheticEvent) {
   e.stopPropagation();
 }
 
