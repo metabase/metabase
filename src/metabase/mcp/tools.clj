@@ -70,8 +70,7 @@
   "Does `token-scopes` grant access to a tool with the given `tool-scope`?
    - nil token-scopes → always matches (internal callers)
    - ::scope/unrestricted in token-scopes → always matches
-   - nil tool-scope → only matches nil or unrestricted token-scopes (consistent with
-     ensure-scopes-checked middleware which blocks scoped tokens from unscopped endpoints)
+   - nil tool-scope → only matches nil or unrestricted token-scopes
    - wildcard scopes like \"agent:*\" match any tool scope starting with \"agent:\""
   [token-scopes tool-scope]
   (or (nil? token-scopes)
