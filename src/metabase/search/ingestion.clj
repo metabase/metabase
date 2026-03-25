@@ -346,7 +346,7 @@
 
           (pos? remaining-ns)
           (do (when-not @empty-since (reset! empty-since now-ns))
-              (Thread/sleep (max poll-ms (quot remaining-ns 1000000)))
+              (Thread/sleep (long (max poll-ms (quot remaining-ns 1000000))))
               (recur)))))))
 
 (defn start-listener!
