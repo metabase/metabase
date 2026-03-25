@@ -11,9 +11,7 @@
                                        embedded-metabot-enabled? false]
       (mt/dataset test-data
         (mt/with-temp [:model/Card card {:name          "Orders"
-                                         :dataset_query {:database (mt/id)
-                                                         :type     :query
-                                                         :query    {:source-table (mt/id :orders)}}}
+                                         :dataset_query (mt/mbql-query orders)}
                        :model/Dashboard {dash-id :id} {:name "Dashboard"}]
           (is (= "Metabot is not enabled."
                  (mt/user-http-request :rasta :post 403 "metabot/describe/card" card)))
@@ -23,11 +21,8 @@
 (deftest summarize-card-test
   (testing "POST /api/metabot/describe/card"
     (mt/dataset test-data
-      (mt/with-temp [:model/Card card {:name "Orders"
-                                       :dataset_query
-                                       {:database (mt/id)
-                                        :type     :query
-                                        :query    {:source-table (mt/id :orders)}}}]
+      (mt/with-temp [:model/Card card {:name          "Orders"
+                                       :dataset_query (mt/mbql-query orders)}]
         (let [fake-response {:title "Title" :description "Description"}
               json-response (json/encode fake-response)
               expected {:summary fake-response}]
@@ -61,11 +56,8 @@
 (deftest summarize-dashboard-test
   (testing "POST /api/metabot/describe/dashboard/:id"
     (mt/dataset test-data
-      (mt/with-temp [:model/Card {card-id :id} {:name "Orders"
-                                                :dataset_query
-                                                {:database (mt/id)
-                                                 :type     :query
-                                                 :query    {:source-table (mt/id :orders)}}}
+      (mt/with-temp [:model/Card {card-id :id} {:name          "Orders"
+                                                :dataset_query (mt/mbql-query orders)}
                      :model/Dashboard {dash-id :id} {:name "Dashboard"}
                      :model/DashboardCard {_ :id} {:dashboard_id dash-id
                                                    :card_id      card-id}]
