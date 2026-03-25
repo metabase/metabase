@@ -1942,7 +1942,7 @@
     :else
     (->honeysql driver (driver-api/table (driver-api/metadata-provider) source-table))))
 
-(def ^:private HoneySQLJoin
+(def HoneySQLJoin
   "Schema for HoneySQL for a single JOIN. Used to validate that our join-handling code generates correct clauses."
   [:tuple
    ;;join source and alias

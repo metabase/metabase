@@ -75,9 +75,8 @@
   [driver {:keys [stages]}]
   (stages->honeysql driver stages))
 
-;; TODO(rileythomp, 2026-03): Add schemas like in the :sql impl
-(mu/defmethod sql.qp/join->honeysql :sql-mbql5
-  [driver {:keys [conditions] :as join}]
+(mu/defmethod sql.qp/join->honeysql :sql-mbql5 :- sql.qp/HoneySQLJoin
+  [driver {:keys [conditions] :as join} :- [:ref :metabase.lib.schema.join/join]]
   (let [join-alias ((some-fn driver-api/qp.add.alias :alias) join)]
     (assert (string? join-alias))
     [[(sql.qp/join-source driver join)
@@ -143,14 +142,13 @@
   (m/find-first (comp #{expression-name} lib.util/expression-name)
                 (:expressions inner-query)))
 
-;; TODO(rileythomp, 2026-03-19): Check if we actually need to dissoc here and below
 (defmethod sql.qp/remapped-order-by? :sql-mbql5
   [_driver [_dir _opts [_ opts _name]]]
-  (driver-api/qp.util.transformations.nest-breakouts.externally-remapped-field (dissoc opts :lib/uuid)))
+  (driver-api/qp.util.transformations.nest-breakouts.externally-remapped-field opts))
 
 (defmethod sql.qp/remapped-breakout? :sql-mbql5
   [_driver [_ opts _name]]
-  (driver-api/qp.util.transformations.nest-breakouts.externally-remapped-field (dissoc opts :lib/uuid)))
+  (driver-api/qp.util.transformations.nest-breakouts.externally-remapped-field opts))
 
 (defmethod sql.qp/finest-temporal-breakout-idx :sql-mbql5
   [_driver breakouts]
