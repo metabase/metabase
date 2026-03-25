@@ -24,53 +24,56 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private test-provider "openrouter/anthropic/claude-haiku-4-5")
+
 (deftest native-agent-streaming-test
-  (with-redefs [config/is-dev? true]
-    (let [conversation-id    (str (random-uuid))
-          question           {:role "user" :content "Test native streaming"}
-          historical-message {:role "user" :content "previous message"}]
-      (with-redefs [openrouter/openrouter (fn [_]
-                                            (mut/mock-llm-response
-                                             [{:type :start :id "msg-1"}
-                                              {:type :text :text "Hello from native agent!"}
-                                              {:type  :usage       :usage {:promptTokens 10 :completionTokens 5}
-                                               :model "test-model" :id    "msg-1"}]))]
-        (testing "Native agent streaming request"
-          (mt/with-model-cleanup [:model/MetabotMessage
-                                  [:model/MetabotConversation :created_at]]
-            (let [response (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
-                                                 {:message         (:content question)
-                                                  :context         {}
-                                                  :conversation_id conversation-id
-                                                  :history         [historical-message]
-                                                  :state           {}})
-                  lines    (str/split-lines response)
-                  conv     (t2/select-one :model/MetabotConversation :id conversation-id)
-                  messages (t2/select :model/MetabotMessage :conversation_id conversation-id)]
+  (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider test-provider]
+    (with-redefs [config/is-dev? true]
+      (let [conversation-id    (str (random-uuid))
+            question           {:role "user" :content "Test native streaming"}
+            historical-message {:role "user" :content "previous message"}]
+        (with-redefs [openrouter/openrouter (fn [_]
+                                              (mut/mock-llm-response
+                                               [{:type :start :id "msg-1"}
+                                                {:type :text :text "Hello from native agent!"}
+                                                {:type  :usage       :usage {:promptTokens 10 :completionTokens 5}
+                                                 :model "test-model" :id    "msg-1"}]))]
+          (testing "Native agent streaming request"
+            (mt/with-model-cleanup [:model/MetabotMessage
+                                    [:model/MetabotConversation :created_at]]
+              (let [response (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                   {:message         (:content question)
+                                                    :context         {}
+                                                    :conversation_id conversation-id
+                                                    :history         [historical-message]
+                                                    :state           {}})
+                    lines    (str/split-lines response)
+                    conv     (t2/select-one :model/MetabotConversation :id conversation-id)
+                    messages (t2/select :model/MetabotMessage :conversation_id conversation-id)]
               ;; Native agent emits AI SDK v4 line protocol directly
-              (testing "response contains expected line types"
+                (testing "response contains expected line types"
                 ;; f:{start}, 0:"text" chunks, 2:{state data}, d:{finish with usage}
-                (is (=? [#"f:.*"
-                         #"0:.*"
-                         #"2:.*"
-                         #"d:.*"]
-                        (m/distinct-by #(subs % 0 2) lines)))
+                  (is (=? [#"f:.*"
+                           #"0:.*"
+                           #"2:.*"
+                           #"d:.*"]
+                          (m/distinct-by #(subs % 0 2) lines)))
                 ;; Text chunks reassemble to full message
-                (let [text-lines (filter #(str/starts-with? % "0:") lines)]
-                  (is (= "Hello from native agent!"
-                         (apply str (map #(json/decode (subs % 2)) text-lines)))))
+                  (let [text-lines (filter #(str/starts-with? % "0:") lines)]
+                    (is (= "Hello from native agent!"
+                           (apply str (map #(json/decode (subs % 2)) text-lines)))))
                 ;; Finish line includes usage
-                (is (str/includes? (last lines) "promptTokens")))
-              (is (=? {:user_id (mt/user->id :rasta)}
-                      conv))
+                  (is (str/includes? (last lines) "promptTokens")))
+                (is (=? {:user_id (mt/user->id :rasta)}
+                        conv))
               ;; Native agent stores parts in raw format
-              (is (=? [{:total_tokens 0
-                        :role         :user
-                        :data         [{:role "user" :content (:content question)}]}
-                       {:total_tokens pos-int?
-                        :role         :assistant
-                        :data         [{:type "text" :text "Hello from native agent!"}]}]
-                      messages)))))))))
+                (is (=? [{:total_tokens 0
+                          :role         :user
+                          :data         [{:role "user" :content (:content question)}]}
+                         {:total_tokens pos-int?
+                          :role         :assistant
+                          :data         [{:type "text" :text "Hello from native agent!"}]}]
+                        messages))))))))))
 
 (defn ^:private sse-event
   "Format an SSE event as a string for a mock LLM server."
@@ -375,67 +378,68 @@
                           {:feedback {}})))))))
 
 (deftest metabot-enabled-setting-test
-  (mt/with-premium-features #{:metabot-v3}
-    (let [base-request {:message         "Test"
-                        :context         {}
-                        :conversation_id (str (random-uuid))
-                        :history         []
-                        :state           {}}]
-      (with-redefs [openrouter/openrouter (fn [_]
-                                            (mut/mock-llm-response
-                                             [{:type :start :id "msg-1"}
-                                              {:type :text :text "Hello"}
-                                              {:type  :usage       :usage {:promptTokens 1 :completionTokens 1}
-                                               :model "test-model" :id    "msg-1"}]))]
-        (testing "Regular metabot is blocked when metabot-enabled is false"
-          (mt/with-temporary-setting-values [metabot-enabled? false]
-            (mt/with-model-cleanup [:model/MetabotMessage
-                                    [:model/MetabotConversation :created_at]]
-              (mt/user-http-request :rasta :post 403 "metabot/agent-streaming"
-                                    base-request))))
+  (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider test-provider]
+    (mt/with-premium-features #{:metabot-v3}
+      (let [base-request {:message         "Test"
+                          :context         {}
+                          :conversation_id (str (random-uuid))
+                          :history         []
+                          :state           {}}]
+        (with-redefs [openrouter/openrouter (fn [_]
+                                              (mut/mock-llm-response
+                                               [{:type :start :id "msg-1"}
+                                                {:type :text :text "Hello"}
+                                                {:type  :usage       :usage {:promptTokens 1 :completionTokens 1}
+                                                 :model "test-model" :id    "msg-1"}]))]
+          (testing "Regular metabot is blocked when metabot-enabled is false"
+            (mt/with-temporary-setting-values [metabot-enabled? false]
+              (mt/with-model-cleanup [:model/MetabotMessage
+                                      [:model/MetabotConversation :created_at]]
+                (mt/user-http-request :rasta :post 403 "metabot/agent-streaming"
+                                      base-request))))
 
-        (testing "Regular metabot works when metabot-enabled is true"
-          (mt/with-temporary-setting-values [metabot-enabled? true]
-            (mt/with-model-cleanup [:model/MetabotMessage
-                                    [:model/MetabotConversation :created_at]]
-              (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
-                                    (assoc base-request :conversation_id (str (random-uuid)))))))
+          (testing "Regular metabot works when metabot-enabled is true"
+            (mt/with-temporary-setting-values [metabot-enabled? true]
+              (mt/with-model-cleanup [:model/MetabotMessage
+                                      [:model/MetabotConversation :created_at]]
+                (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                      (assoc base-request :conversation_id (str (random-uuid)))))))
 
-        (testing "Embedded metabot is blocked when embedded-metabot-enabled? is false"
-          (mt/with-temporary-setting-values [embedded-metabot-enabled? false]
-            (mt/with-model-cleanup [:model/MetabotMessage
-                                    [:model/MetabotConversation :created_at]]
-              (mt/user-http-request :rasta :post 403 "metabot/agent-streaming"
-                                    (assoc base-request
-                                           :metabot_id metabot.config/embedded-metabot-id
-                                           :conversation_id (str (random-uuid)))))))
+          (testing "Embedded metabot is blocked when embedded-metabot-enabled? is false"
+            (mt/with-temporary-setting-values [embedded-metabot-enabled? false]
+              (mt/with-model-cleanup [:model/MetabotMessage
+                                      [:model/MetabotConversation :created_at]]
+                (mt/user-http-request :rasta :post 403 "metabot/agent-streaming"
+                                      (assoc base-request
+                                             :metabot_id metabot.config/embedded-metabot-id
+                                             :conversation_id (str (random-uuid)))))))
 
-        (testing "Embedded metabot works when embedded-metabot-enabled? is true"
-          (mt/with-temporary-setting-values [embedded-metabot-enabled? true]
-            (mt/with-model-cleanup [:model/MetabotMessage
-                                    [:model/MetabotConversation :created_at]]
-              (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
-                                    (assoc base-request
-                                           :metabot_id metabot.config/embedded-metabot-id
-                                           :conversation_id (str (random-uuid)))))))
+          (testing "Embedded metabot works when embedded-metabot-enabled? is true"
+            (mt/with-temporary-setting-values [embedded-metabot-enabled? true]
+              (mt/with-model-cleanup [:model/MetabotMessage
+                                      [:model/MetabotConversation :created_at]]
+                (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                      (assoc base-request
+                                             :metabot_id metabot.config/embedded-metabot-id
+                                             :conversation_id (str (random-uuid)))))))
 
-        (testing "Regular metabot still works when only embedded is disabled"
-          (mt/with-temporary-setting-values [metabot-enabled?          true
-                                             embedded-metabot-enabled? false]
-            (mt/with-model-cleanup [:model/MetabotMessage
-                                    [:model/MetabotConversation :created_at]]
-              (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
-                                    (assoc base-request :conversation_id (str (random-uuid)))))))
+          (testing "Regular metabot still works when only embedded is disabled"
+            (mt/with-temporary-setting-values [metabot-enabled?          true
+                                               embedded-metabot-enabled? false]
+              (mt/with-model-cleanup [:model/MetabotMessage
+                                      [:model/MetabotConversation :created_at]]
+                (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                      (assoc base-request :conversation_id (str (random-uuid)))))))
 
-        (testing "Embedded metabot still works when only regular is disabled"
-          (mt/with-temporary-setting-values [metabot-enabled?          false
-                                             embedded-metabot-enabled? true]
-            (mt/with-model-cleanup [:model/MetabotMessage
-                                    [:model/MetabotConversation :created_at]]
-              (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
-                                    (assoc base-request
-                                           :metabot_id metabot.config/embedded-metabot-id
-                                           :conversation_id (str (random-uuid)))))))))))
+          (testing "Embedded metabot still works when only regular is disabled"
+            (mt/with-temporary-setting-values [metabot-enabled?          false
+                                               embedded-metabot-enabled? true]
+              (mt/with-model-cleanup [:model/MetabotMessage
+                                      [:model/MetabotConversation :created_at]]
+                (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                      (assoc base-request
+                                             :metabot_id metabot.config/embedded-metabot-id
+                                             :conversation_id (str (random-uuid))))))))))))
 
 (deftest extract-usage-test
   (testing "takes last cumulative usage per model"
