@@ -48,13 +48,6 @@
 (defmethod search.engine/reset-tracking! :search.engine/appdb [_]
   (reset! *indexes* nil))
 
-(defn sync-from-restored-db!
-  "Re-sync tracking atoms with the current database state.
-   Used after snapshot restore where the index tables are already present."
-  []
-  (reset! next-sync-at nil)
-  (sync-tracking-atoms!))
-
 (declare exists?)
 
 (defn- sync-tracking-atoms!
@@ -70,6 +63,13 @@
                             [(keyword (name status) "not-found") (keyword table-name)])))]
       (log/debugf "Sync tracking atoms: %s" indexes)
       (reset! *indexes* indexes))))
+
+(defn sync-from-restored-db!
+  "Re-sync tracking atoms with the current database state.
+   Used after snapshot restore where the index tables are already present."
+  []
+  (reset! next-sync-at nil)
+  (sync-tracking-atoms!))
 
 ;; This exists only to be mocked.
 (defn- now [] (System/nanoTime))
