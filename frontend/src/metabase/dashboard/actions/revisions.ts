@@ -8,7 +8,6 @@ import { createThunkAction } from "metabase/lib/redux";
 import { REVERT_TO_REVISION } from "metabase/redux/dashboard";
 import type { DashboardId, Revision } from "metabase-types/api";
 
-export { REVERT_TO_REVISION };
 export const revertToRevision = createThunkAction(
   REVERT_TO_REVISION,
   (dashboardId: DashboardId, revision: Revision) => {

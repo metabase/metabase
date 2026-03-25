@@ -26,8 +26,6 @@ import {
   trackAddedIFrameDashcards,
 } from "./utils";
 
-export { UPDATE_DASHBOARD_AND_CARDS };
-
 export const UPDATE_DASHBOARD = "metabase/dashboard/UPDATE_DASHBOARD";
 
 export const updateDashboardAndCards = createThunkAction(

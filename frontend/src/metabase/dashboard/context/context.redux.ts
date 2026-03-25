@@ -48,13 +48,13 @@ import {
   duplicateTab,
   moveTab,
   renameTab,
-  selectTab,
   undoDeleteTab,
 } from "metabase/dashboard/actions/tabs";
 import { connect } from "metabase/lib/redux";
 import {
   initialize,
   reset,
+  selectTab,
   showAddParameterPopover,
 } from "metabase/redux/dashboard";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";

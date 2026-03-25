@@ -57,7 +57,6 @@ type MoveTabPayload = {
   sourceTabId: DashboardTabId;
   destinationTabId: DashboardTabId;
 };
-// SelectTabPayload moved to metabase/redux/dashboard
 type MoveDashCardToTabPayload = {
   dashCardId: DashCardId;
   destinationTabId: DashboardTabId;
@@ -146,8 +145,6 @@ export function duplicateTab(sourceTabId: DashboardTabId | null) {
 
   return duplicateTabAction({ sourceTabId, newTabId });
 }
-
-export { selectTab };
 
 function _selectTab({
   state,

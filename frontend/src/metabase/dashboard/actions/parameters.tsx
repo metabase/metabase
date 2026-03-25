@@ -22,7 +22,7 @@ import {
   setParameterName as setParamName,
   setParameterType as setParamType,
 } from "metabase/parameters/utils/dashboards";
-import { setParameterValues } from "metabase/redux/dashboard";
+import { selectTab, setParameterValues } from "metabase/redux/dashboard";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Text } from "metabase/ui";
@@ -90,7 +90,6 @@ import {
   setDashboardAttributes,
   setMultipleDashCardAttributes,
 } from "./core";
-import { selectTab } from "./tabs";
 import { closeSidebar, setSidebar } from "./ui";
 
 type SingleParamUpdater = (p: Parameter) => Parameter;

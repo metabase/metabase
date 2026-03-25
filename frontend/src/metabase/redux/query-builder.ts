@@ -1,19 +1,9 @@
-/**
- * Shared QB action type constants and simple action creators.
- *
- * These are extracted from query_builder/actions/* so that shared-tier modules
- * (querying, visualizations, parameters, entities, etc.) can import them
- * without depending on the feature-tier query_builder module.
- */
-
 import { createAction } from "redux-actions";
 
 import { createThunkAction } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import { UserApi } from "metabase/services";
 import type { ParameterId, ParameterValueOrArray } from "metabase-types/api";
-
-// ── from actions/ui.ts ─────────────────────────────────────────────────
 
 export const SET_UI_CONTROLS = "metabase/qb/SET_UI_CONTROLS";
 export const setUIControls = createAction(SET_UI_CONTROLS);
@@ -84,8 +74,6 @@ export const onCloseChartType = createAction(CLOSE_CHART_TYPE);
 export const CLOSE_SIDEBARS = "metabase/qb/CLOSE_SIDEBARS";
 export const onCloseSidebars = createAction(CLOSE_SIDEBARS);
 
-// ── from actions/querying.ts ───────────────────────────────────────────
-
 export const CLEAR_QUERY_RESULT = "metabase/query_builder/CLEAR_QUERY_RESULT";
 export const clearQueryResult = createAction(CLEAR_QUERY_RESULT);
 
@@ -100,12 +88,8 @@ export const QUERY_COMPLETED = "metabase/qb/QUERY_COMPLETED";
 export const QUERY_ERRORED = "metabase/qb/QUERY_ERRORED";
 export const CANCEL_QUERY = "metabase/qb/CANCEL_QUERY";
 
-// ── from actions/core/types.ts ─────────────────────────────────────────
-
 export const SOFT_RELOAD_CARD = "metabase/qb/SOFT_RELOAD_CARD";
 export const API_UPDATE_QUESTION = "metabase/qb/API_UPDATE_QUESTION";
-
-// ── from actions/core/core.ts ──────────────────────────────────────────
 
 export const RESET_QB = "metabase/qb/RESET_QB";
 export const resetQB = createAction(RESET_QB);
@@ -132,16 +116,10 @@ function normalizeValue(
   return value;
 }
 
-// ── from actions/core/initializeQB.ts ──────────────────────────────────
-
 export const INITIALIZE_QB = "metabase/qb/INITIALIZE_QB";
-
-// ── from actions/zoom.ts ────────────────────────────────────────────────
 
 export const ZOOM_IN_ROW = "metabase/qb/ZOOM_IN_ROW";
 export const RESET_ROW_ZOOM = "metabase/qb/RESET_ROW_ZOOM";
-
-// ── from actions/modal.ts ──────────────────────────────────────────────
 
 export const CLOSE_QB_NEWB_MODAL = "metabase/qb/CLOSE_QB_NEWB_MODAL";
 export const closeQbNewbModal = createThunkAction(CLOSE_QB_NEWB_MODAL, () => {

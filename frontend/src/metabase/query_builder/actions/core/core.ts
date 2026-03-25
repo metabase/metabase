@@ -57,7 +57,6 @@ import { loadCard } from "./card";
 import { updateQuestion } from "./updateQuestion";
 
 // refreshes the card without triggering a run of the card's query
-export { SOFT_RELOAD_CARD };
 export const softReloadCard = createThunkAction(SOFT_RELOAD_CARD, () => {
   return async (dispatch, getState) => {
     const outdatedCard = getCard(getState());

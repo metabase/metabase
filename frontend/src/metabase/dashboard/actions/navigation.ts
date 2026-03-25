@@ -11,8 +11,6 @@ import type { Dispatch, GetState } from "metabase-types/store";
 
 import { getNewCardUrl } from "./getNewCardUrl";
 
-export { EDIT_QUESTION, NAVIGATE_TO_NEW_CARD };
-
 export const editQuestion = createThunkAction(
   EDIT_QUESTION,
   (question: Question, mode: "view" | "notebook" | "query" = "notebook") =>
