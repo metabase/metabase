@@ -11,6 +11,7 @@
    [metabase.metabot.agent.messages :as messages]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as self]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.tools :as tools]
@@ -533,7 +534,8 @@
                           :msg-count  (count (:messages opts))}
           (prometheus/inc! :metabase-metabot/agent-requests labels)
           (let [start-ms (u/start-timer)]
-            (binding [*debug-log* (when debug? (atom []))]
+            (binding [*debug-log*                (when debug? (atom []))
+                      scope/*current-user-scope* scope/unrestricted]
               (try
                 (let [agent              (init-agent opts)
                       _                  (when track-user-intent?

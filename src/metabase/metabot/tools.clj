@@ -6,7 +6,9 @@
   `:capabilities`, `:prompt`, `:decode`, and `:system-instructions`. The var itself
   is a function that takes the tool arguments and returns a result map."
   (:require
+   [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.analyze-chart :as tools.analyze-chart]
+   [metabase.util.log :as log]
    [metabase.metabot.tools.autogen-dashboard :as tools.autogen-dashboard]
    [metabase.metabot.tools.charts :as tools.charts]
    [metabase.metabot.tools.clarification :as tools.clarification]
@@ -120,14 +122,23 @@
                      :system-instructions  (:system-instructions m)
                      :capabilities         (:capabilities m)
                      :scope                (:scope m)
-                     :fn                   (if (contains? state-dependent-tools tool-name)
-                                             (fn [args]
-                                               (binding [shared/*memory-atom* memory-atom
-                                                         shared/*metabot-id*  metabot-id]
-                                                 (tool-var args)))
-                                             (fn [args]
-                                               (binding [shared/*metabot-id* metabot-id]
-                                                 (tool-var args))))}]
+                     :fn                   (let [base-fn (if (contains? state-dependent-tools tool-name)
+                                                          (fn [args]
+                                                            (binding [shared/*memory-atom* memory-atom
+                                                                      shared/*metabot-id*  metabot-id]
+                                                              (tool-var args)))
+                                                          (fn [args]
+                                                            (binding [shared/*metabot-id* metabot-id]
+                                                              (tool-var args))))
+                                                  tool-scope (:scope m)]
+                                              (if tool-scope
+                                                (fn [args]
+                                                  (if (scope/scope-matches? scope/*current-user-scope* tool-scope)
+                                                    (base-fn args)
+                                                    (do (log/warnf "Scope check failed for tool %s — required: %s, granted: %s"
+                                                                   tool-name tool-scope scope/*current-user-scope*)
+                                                        {:output "You do not have permission to use this tool."})))
+                                                base-fn))}]
        (assoc acc tool-name tool-def)))
    {}
    tools))
