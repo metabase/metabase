@@ -12,6 +12,8 @@
    (java.io ByteArrayOutputStream)
    (metabase.server.streaming_response StreamingResponse)))
 
+(set! *warn-on-reflection* true)
+
 (defn- materialize-streaming-response
   "Execute a StreamingResponse in-process and return a plain Ring response with parsed JSON body.
    Agent API query endpoints stream for HTTP clients, but MCP tool responses need to be

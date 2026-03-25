@@ -1180,16 +1180,17 @@
    :model-exports #{:model/LoginHistory}}
 
   mcp
-  {:team "Metabot"
-   :api  #{metabase.mcp.api}
-   :uses #{agent-api
-           api
-           config
-           oauth-server
-           request
-           server
-           system
-           util}}
+  {:team    "Metabot"
+   :api     #{metabase.mcp.api}
+   :friends #{enterprise/mcp}
+   :uses    #{agent-api
+              api
+              config
+              oauth-server
+              request
+              server
+              system
+              util}}
 
   measures
   {:team "Graphy"
@@ -2977,6 +2978,14 @@
               enterprise/transforms-python}
    :model-imports #{:model/Card :model/Transform}}
 
+  enterprise/mcp
+  {:team    "Metabot"
+   :api     #{metabase-enterprise.mcp.tools}
+   :friends #{mcp}
+   :uses    #{agent-api
+              api
+              premium-features
+              util}}
 
   enterprise/permission-debug
   {:team "UX West"
