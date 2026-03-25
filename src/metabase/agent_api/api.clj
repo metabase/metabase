@@ -446,20 +446,30 @@
            (update :info merge info))
        rff))))
 
-;;; -------------------------------------------------- Upload CSV ---------------------------------------------------
+;;; -------------------------------------------------- CSV Upload Commands ------------------------------------------
+;;
+;; MCP tools cannot handle multipart file uploads, so these endpoints return
+;; ready-to-execute curl commands that the caller runs in a shell.
 
-(mr/def ::upload-csv-command-response
-  "Response containing a curl command to upload a CSV file."
+(mr/def ::csv-command-response
+  "Response containing a curl command for a CSV upload operation."
   [:map
    [:command :string]
    [:instructions :string]])
 
-(api.macros/defendpoint :post "/v1/upload-csv-command" :- ::upload-csv-command-response
-  "Generate a curl command to upload a CSV file to Metabase.
+(defn- auth-curl-arg
+  "Build the auth header flag for a curl command from the current request headers."
+  [session-header auth-header]
+  (cond
+    session-header (format "-H 'X-Metabase-Session: %s'" session-header)
+    auth-header    (format "-H 'Authorization: %s'" auth-header)
+    :else          "-H 'X-Metabase-Session: <YOUR_SESSION_TOKEN>'"))
+
+(api.macros/defendpoint :post "/v1/upload-csv-command" :- ::csv-command-response
+  "Generate a curl command to upload a CSV file and create a new table and model.
 
   MCP tools cannot handle multipart file uploads, so this endpoint returns a
-  ready-to-execute curl command that the caller should run in a shell. The command
-  targets the `/api/upload/csv` endpoint using the current user's auth credentials."
+  ready-to-execute curl command. The command targets `/api/upload/csv`."
   {:scope "agent:upload:csv"
    :tool  {:name        "upload_csv"
            :description "Upload a CSV file to create a Metabase table and model. This tool returns a curl command that must be executed in a shell (MCP cannot handle multipart file uploads). Run the returned command and check the HTTP response."
@@ -477,20 +487,73 @@
     :as _request}]
   (let [base-url           (or (system/site-url) "http://localhost:3000")
         upload-url         (str base-url "/api/upload/csv")
-        auth-curl-arg      (cond
-                             session-header (format "-H 'X-Metabase-Session: %s'" session-header)
-                             auth-header    (format "-H 'Authorization: %s'" auth-header)
-                             :else          "-H 'X-Metabase-Session: <YOUR_SESSION_TOKEN>'")
         collection-id-part (if collection_id
                              (format "-F 'collection_id=%d'" collection_id)
                              "-F 'collection_id=root'")
         command            (str/join " " ["curl -X POST"
                                           (format "'%s'" upload-url)
-                                          auth-curl-arg
+                                          (auth-curl-arg session-header auth-header)
                                           (format "-F 'file=@%s'" file_path)
                                           collection-id-part])]
     {:command      command
      :instructions "Execute this curl command in your shell. On success it returns the model ID (HTTP 200). The response header 'metabase-table-id' contains the created table ID."}))
+
+(api.macros/defendpoint :post "/v1/append-csv-command" :- ::csv-command-response
+  "Generate a curl command to append rows from a CSV file to an existing upload table.
+
+  MCP tools cannot handle multipart file uploads, so this endpoint returns a
+  ready-to-execute curl command. The command targets `/api/table/:id/append-csv`."
+  {:scope "agent:upload:csv"
+   :tool  {:name        "append_csv"
+           :description "Append rows from a CSV file to an existing Metabase table (must have been created via CSV upload). This tool returns a curl command that must be executed in a shell. Run the returned command and check the HTTP response."
+           :annotations {:read-only? false}}}
+  [_route-params
+   _query-params
+   {:keys [file_path table_id]} :- [:map
+                                    [:file_path {:description "Absolute path to the CSV file on the local filesystem."}
+                                     ms/NonBlankString]
+                                    [:table_id {:description "ID of the table to append rows to. Must be a table created via CSV upload."}
+                                     ms/PositiveInt]]
+   {{session-header "x-metabase-session"
+     auth-header    "authorization"} :headers
+    :as _request}]
+  (let [base-url   (or (system/site-url) "http://localhost:3000")
+        append-url (str base-url "/api/table/" table_id "/append-csv")
+        command    (str/join " " ["curl -X POST"
+                                  (format "'%s'" append-url)
+                                  (auth-curl-arg session-header auth-header)
+                                  (format "-F 'file=@%s'" file_path)])]
+    {:command      command
+     :instructions "Execute this curl command in your shell. On success it returns the updated table ID (HTTP 200)."}))
+
+(api.macros/defendpoint :post "/v1/replace-csv-command" :- ::csv-command-response
+  "Generate a curl command to replace the contents of an upload table with a CSV file.
+
+  MCP tools cannot handle multipart file uploads, so this endpoint returns a
+  ready-to-execute curl command. The command targets `/api/table/:id/replace-csv`."
+  {:scope "agent:upload:csv"
+   :tool  {:name        "replace_csv"
+           :description "Replace all rows in an existing Metabase table with the contents of a CSV file (must have been created via CSV upload). This tool returns a curl command that must be executed in a shell. Run the returned command and check the HTTP response."
+           :annotations {:read-only? false
+                         :destructive? true}}}
+  [_route-params
+   _query-params
+   {:keys [file_path table_id]} :- [:map
+                                    [:file_path {:description "Absolute path to the CSV file on the local filesystem."}
+                                     ms/NonBlankString]
+                                    [:table_id {:description "ID of the table to replace contents of. Must be a table created via CSV upload."}
+                                     ms/PositiveInt]]
+   {{session-header "x-metabase-session"
+     auth-header    "authorization"} :headers
+    :as _request}]
+  (let [base-url    (or (system/site-url) "http://localhost:3000")
+        replace-url (str base-url "/api/table/" table_id "/replace-csv")
+        command     (str/join " " ["curl -X POST"
+                                   (format "'%s'" replace-url)
+                                   (auth-curl-arg session-header auth-header)
+                                   (format "-F 'file=@%s'" file_path)])]
+    {:command      command
+     :instructions "Execute this curl command in your shell. On success it returns the updated table ID (HTTP 200). WARNING: this replaces ALL existing data in the table."}))
 
 ;;; ------------------------------------------------- Authentication -------------------------------------------------
 ;;
