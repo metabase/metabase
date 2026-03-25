@@ -204,9 +204,8 @@
         db-row->refresh-token))
 
   (revoke-token [_ token]
-    (let [now (java.time.OffsetDateTime/now)]
-      (t2/update! :model/OAuthAccessToken {:token token} {:revoked_at now})
-      (t2/update! :model/OAuthRefreshToken {:token token} {:revoked_at now}))
+    (t2/update! :model/OAuthAccessToken {:token token} {:revoked_at :%now})
+    (t2/update! :model/OAuthRefreshToken {:token token} {:revoked_at :%now})
     true))
 
 ;;; ------------------------------------------------ Constructors ------------------------------------------------------
