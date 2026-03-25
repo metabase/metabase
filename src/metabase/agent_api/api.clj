@@ -798,11 +798,15 @@
    - **Stateless JWT**: Uses `Authorization: Bearer <jwt>` header. The JWT is validated
      using the same auth-identity system as the /auth/sso endpoint."
   [handler]
-  (fn [{:keys [headers metabase-user-id] :as request} respond raise]
+  (fn [{:keys [headers metabase-user-id token-scopes] :as request} respond raise]
     (cond
-      ;; Already authenticated via X-Metabase-Session (standard middleware handled it)
+      ;; Already authenticated via X-Metabase-Session (standard middleware handled it).
+      ;; Preserve any pre-existing :token-scopes (e.g., forwarded from internal MCP calls);
+      ;; default to unrestricted for normal session-authenticated browser requests.
       metabase-user-id
-      (handler (assoc request :token-scopes #{::scope/unrestricted}) respond raise)
+      (handler (cond-> request
+                 (not token-scopes) (assoc :token-scopes #{::scope/unrestricted}))
+               respond raise)
 
       ;; Not authenticated via session - check for Bearer JWT
       :else

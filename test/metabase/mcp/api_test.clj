@@ -481,3 +481,23 @@
       (is (= "Insufficient scope to call tool: get_table"
              (-> result :content first :text))
           "Error must not leak the required scope name"))))
+
+(deftest agent-api-preserves-token-scopes-test
+  (testing "scoped token restrictions are enforced by the Agent API layer (defense-in-depth)"
+    (testing "restricted scopes that don't match the endpoint are rejected by Agent API"
+      (let [result (mt/with-current-user (mt/user->id :crowberto)
+                     ;; Bypass the MCP scope check by calling invoke-agent-api directly
+                     ;; with scopes that don't match the endpoint's required scope (agent:table:read)
+                     (#'mcp.tools/invoke-agent-api :get (str "/v1/table/" (mt/id :orders)) #{"agent:search"}))]
+        (is (=? {:isError true} result)
+            "Agent API should reject when token scopes don't include the required scope")))
+    (testing "matching scopes are accepted by Agent API"
+      (let [result (mt/with-current-user (mt/user->id :crowberto)
+                     (#'mcp.tools/invoke-agent-api :get (str "/v1/table/" (mt/id :orders)) #{"agent:table:read"}))]
+        (is (not (:isError result))
+            "Agent API should accept when token scopes include the required scope")))
+    (testing "unrestricted scopes are accepted by Agent API"
+      (let [result (mt/with-current-user (mt/user->id :crowberto)
+                     (#'mcp.tools/invoke-agent-api :get (str "/v1/table/" (mt/id :orders)) #{::scope/unrestricted}))]
+        (is (not (:isError result))
+            "Agent API should accept unrestricted scopes")))))
