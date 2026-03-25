@@ -1,4 +1,7 @@
-import { deserializeCardFromUrl, serializeCardForUrl } from "metabase/utils/card";
+import {
+  deserializeCardFromUrl,
+  serializeCardForUrl,
+} from "metabase/utils/card";
 import {
   b64_to_utf8,
   b64url_to_utf8,
