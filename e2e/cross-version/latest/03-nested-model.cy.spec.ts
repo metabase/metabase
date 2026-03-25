@@ -38,23 +38,14 @@ describe("Cross-version questions - nested model", () => {
       cy.log("-- Edit model metadata --");
       H.openQuestionActions();
       X.selectFromPopover("Edit metadata");
+      H.waitForLoaderToBeRemoved();
       cy.location("pathname").should("include", "columns");
 
-      H.rightSidebar().within(() => {
-        cy.findByDisplayValue("Sum of Average of Discount")
-          .should("be.visible")
-          .clear()
-          .type("Total Discount")
-          .blur();
+      H.renameColumn("Sum of Average of Discount", "Total Discount");
 
-        cy.findByDisplayValue("Sum of Average of Discount").should("not.exist");
-        cy.findByDisplayValue("Total Discount").should("be.visible");
-
-        cy.findByRole("tab", { name: "Formatting" }).click();
-        cy.get("#currency").should("have.value", "US Dollar").click();
-      });
+      H.rightSidebar().findByDisplayValue("US Dollar").click();
       X.selectFromPopover("Euro");
-      cy.get("#currency").should("have.value", "Euro").click();
+      H.rightSidebar().findByDisplayValue("Euro").should("be.visible");
 
       H.saveMetadataChanges();
       cy.location("pathname").should("not.include", "columns");
