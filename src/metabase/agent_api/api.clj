@@ -23,6 +23,7 @@
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]
+   [metabase.system.core :as system]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -444,6 +445,52 @@
            qp/userland-query-with-default-constraints
            (update :info merge info))
        rff))))
+
+;;; -------------------------------------------------- Upload CSV ---------------------------------------------------
+
+(mr/def ::upload-csv-command-response
+  "Response containing a curl command to upload a CSV file."
+  [:map
+   [:command :string]
+   [:instructions :string]])
+
+(api.macros/defendpoint :post "/v1/upload-csv-command" :- ::upload-csv-command-response
+  "Generate a curl command to upload a CSV file to Metabase.
+
+  MCP tools cannot handle multipart file uploads, so this endpoint returns a
+  ready-to-execute curl command that the caller should run in a shell. The command
+  targets the `/api/upload/csv` endpoint using the current user's auth credentials."
+  {:scope "agent:upload:csv"
+   :tool  {:name        "upload_csv"
+           :description "Upload a CSV file to create a Metabase table and model. This tool returns a curl command that must be executed in a shell (MCP cannot handle multipart file uploads). Run the returned command and check the HTTP response."
+           :annotations {:read-only? false}}}
+  [_route-params
+   _query-params
+   {:keys [file_path collection_id]} :- [:map
+                                         [:file_path {:description "Absolute path to the CSV file on the local filesystem."}
+                                          ms/NonBlankString]
+                                         [:collection_id {:optional true
+                                                          :description "Collection ID to place the new model in. Omit for the root collection."}
+                                          [:maybe ms/PositiveInt]]]
+   {{session-header "x-metabase-session"
+     auth-header    "authorization"} :headers
+    :as _request}]
+  (let [base-url           (or (system/site-url) "http://localhost:3000")
+        upload-url         (str base-url "/api/upload/csv")
+        auth-curl-arg      (cond
+                             session-header (format "-H 'X-Metabase-Session: %s'" session-header)
+                             auth-header    (format "-H 'Authorization: %s'" auth-header)
+                             :else          "-H 'X-Metabase-Session: <YOUR_SESSION_TOKEN>'")
+        collection-id-part (if collection_id
+                             (format "-F 'collection_id=%d'" collection_id)
+                             "-F 'collection_id=root'")
+        command            (str/join " " ["curl -X POST"
+                                          (format "'%s'" upload-url)
+                                          auth-curl-arg
+                                          (format "-F 'file=@%s'" file_path)
+                                          collection-id-part])]
+    {:command      command
+     :instructions "Execute this curl command in your shell. On success it returns the model ID (HTTP 200). The response header 'metabase-table-id' contains the created table ID."}))
 
 ;;; ------------------------------------------------- Authentication -------------------------------------------------
 ;;
