@@ -1435,6 +1435,10 @@
            system
            util}}
 
+  sql-parsing
+  {:team "DevEx"
+   :uses #{util}}
+
   sso
   {:team "UX West"
    :api  #{metabase.sso.api
@@ -1448,11 +1452,6 @@
            settings
            system
            util}}
-
-  sql-parsing
-  {:team "DevEx"
-   :api #{metabase.sql-parsing.core}
-   :uses #{util}}
 
   startup
   {:team "DevEx"
