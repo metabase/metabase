@@ -63,6 +63,13 @@
       (log/debugf "Sync tracking atoms: %s" indexes)
       (reset! *indexes* indexes))))
 
+(defn sync-from-restored-db!
+  "Re-sync tracking atoms with the current database state.
+   Used after snapshot restore where the index tables are already present."
+  []
+  (reset! next-sync-at nil)
+  (sync-tracking-atoms!))
+
 ;; This exists only to be mocked.
 (defn- now [] (System/nanoTime))
 
