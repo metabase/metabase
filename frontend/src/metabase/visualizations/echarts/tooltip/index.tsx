@@ -7,6 +7,7 @@ import {
   EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID,
   isEmbeddingSdk,
 } from "metabase/embedding-sdk/config";
+import { getCspNonce } from "metabase/utils/csp";
 import { getObjectValues } from "metabase/utils/objects";
 import { isNotNull } from "metabase/utils/types";
 import TooltipStyles from "metabase/visualizations/components/ChartTooltip/EChartsTooltip/EChartsTooltip.module.css";
@@ -134,7 +135,7 @@ export const useInjectSeriesColorsClasses = (hexColors: string[]) => {
   const style = useMemo(
     () =>
       cssString !== null ? (
-        <style nonce={window.MetabaseNonce}>{cssString}</style>
+        <style nonce={getCspNonce()}>{cssString}</style>
       ) : null,
     [cssString],
   );

@@ -17,6 +17,9 @@ import {
   isStaticEmbedding,
 } from "metabase/embedding/config";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import type { DisplayTheme } from "metabase/public/lib/types";
+import { mutateColors } from "metabase/ui/colors/colors";
+import type { ColorName } from "metabase/ui/colors/types";
 import { PUT } from "metabase/utils/api";
 import { parseHashOptions } from "metabase/utils/browser";
 import type {
@@ -28,10 +31,8 @@ import {
   isValidColorScheme,
   setUserColorSchemeAfterUpdate,
 } from "metabase/utils/color-scheme";
+import { getCspNonce } from "metabase/utils/csp";
 import MetabaseSettings from "metabase/utils/settings";
-import type { DisplayTheme } from "metabase/public/lib/types";
-import { mutateColors } from "metabase/ui/colors/colors";
-import type { ColorName } from "metabase/ui/colors/types";
 
 import { getThemeOverrides } from "../../../theme";
 import { ColorSchemeProvider, useColorScheme } from "../ColorSchemeProvider";
@@ -98,7 +99,7 @@ const ThemeProviderInner = (props: ThemeProviderProps) => {
     <MantineProvider
       theme={theme}
       forceColorScheme={resolvedColorScheme}
-      getStyleNonce={() => window.MetabaseNonce ?? "metabase"}
+      getStyleNonce={getCspNonce}
       classNamesPrefix="mb-mantine"
       cssVariablesSelector={isEmbeddingSdk() ? ".mb-wrapper" : undefined}
       // This slows down unit tests like crazy
