@@ -1,5 +1,5 @@
 import {
-  DIMENSION_TYPE_REGISTRY,
+  DIMENSION_PREDICATES,
   getGeoSubtype,
 } from "metabase/metrics/common/utils/dimension-types";
 import type { IconName } from "metabase/ui";
@@ -69,25 +69,10 @@ const NUMERIC_CHART_TYPES: ChartTypeOption[] = [
 
 // ── Tab type registry ──
 
-const dimensionPredicateByType = new Map(
-  DIMENSION_TYPE_REGISTRY.map((entry) => [
-    entry.type,
-    entry.dimensionPredicate,
-  ]),
-);
-
-function predicate(type: MetricsViewerTabType) {
-  const result = dimensionPredicateByType.get(type);
-  if (!result) {
-    throw new Error(`Missing dimension predicate for type: ${type}`);
-  }
-  return result;
-}
-
 export const TAB_TYPE_REGISTRY: TabTypeDefinition[] = [
   {
     type: "time",
-    dimensionPredicate: predicate("time"),
+    dimensionPredicate: DIMENSION_PREDICATES.time,
     autoCreate: true,
     matchMode: "aggregate",
     fixedId: "time",
@@ -96,7 +81,7 @@ export const TAB_TYPE_REGISTRY: TabTypeDefinition[] = [
   },
   {
     type: "geo",
-    dimensionPredicate: predicate("geo"),
+    dimensionPredicate: DIMENSION_PREDICATES.geo,
     autoCreate: true,
     matchMode: "aggregate",
     fixedId: "geo",
@@ -106,7 +91,7 @@ export const TAB_TYPE_REGISTRY: TabTypeDefinition[] = [
   },
   {
     type: "category",
-    dimensionPredicate: predicate("category"),
+    dimensionPredicate: DIMENSION_PREDICATES.category,
     autoCreate: true,
     matchMode: "exact-column",
     defaultDisplayType: "bar",
@@ -114,7 +99,7 @@ export const TAB_TYPE_REGISTRY: TabTypeDefinition[] = [
   },
   {
     type: "boolean",
-    dimensionPredicate: predicate("boolean"),
+    dimensionPredicate: DIMENSION_PREDICATES.boolean,
     autoCreate: true,
     matchMode: "exact-column",
     defaultDisplayType: "bar",
@@ -122,7 +107,7 @@ export const TAB_TYPE_REGISTRY: TabTypeDefinition[] = [
   },
   {
     type: "numeric",
-    dimensionPredicate: predicate("numeric"),
+    dimensionPredicate: DIMENSION_PREDICATES.numeric,
     autoCreate: false,
     matchMode: "exact-column",
     defaultDisplayType: "bar",

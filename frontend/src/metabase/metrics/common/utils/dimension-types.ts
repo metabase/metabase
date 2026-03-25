@@ -45,30 +45,40 @@ export function getGeoSubtype(dimension: DimensionMetadata): GeoSubtype | null {
   return null;
 }
 
+export type DimensionPredicate = (dimension: DimensionMetadata) => boolean;
+
+export const DIMENSION_PREDICATES: Record<DimensionType, DimensionPredicate> = {
+  time: LibMetric.isDateOrDateTime,
+  geo: isGeoDimension,
+  category: (dimension) =>
+    LibMetric.isCategory(dimension) &&
+    !isGeoDimension(dimension) &&
+    !LibMetric.isBoolean(dimension),
+  boolean: LibMetric.isBoolean,
+  numeric: (dimension) =>
+    LibMetric.isNumeric(dimension) &&
+    !LibMetric.isID(dimension) &&
+    !LibMetric.isCoordinate(dimension),
+};
+
 export interface DimensionTypeEntry {
   type: DimensionType;
-  dimensionPredicate: (dimension: DimensionMetadata) => boolean;
+  dimensionPredicate: DimensionPredicate;
 }
 
-export const DIMENSION_TYPE_REGISTRY: DimensionTypeEntry[] = [
-  { type: "time", dimensionPredicate: LibMetric.isDateOrDateTime },
-  { type: "geo", dimensionPredicate: isGeoDimension },
-  {
-    type: "category",
-    dimensionPredicate: (dimension) =>
-      LibMetric.isCategory(dimension) &&
-      !isGeoDimension(dimension) &&
-      !LibMetric.isBoolean(dimension),
-  },
-  { type: "boolean", dimensionPredicate: LibMetric.isBoolean },
-  {
-    type: "numeric",
-    dimensionPredicate: (dimension) =>
-      LibMetric.isNumeric(dimension) &&
-      !LibMetric.isID(dimension) &&
-      !LibMetric.isCoordinate(dimension),
-  },
+const DIMENSION_TYPE_ORDER: readonly DimensionType[] = [
+  "time",
+  "geo",
+  "category",
+  "boolean",
+  "numeric",
 ];
+
+export const DIMENSION_TYPE_REGISTRY: DimensionTypeEntry[] =
+  DIMENSION_TYPE_ORDER.map((type) => ({
+    type,
+    dimensionPredicate: DIMENSION_PREDICATES[type],
+  }));
 
 export function getDimensionType(
   dimension: DimensionMetadata,

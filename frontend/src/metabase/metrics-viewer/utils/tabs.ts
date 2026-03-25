@@ -60,14 +60,14 @@ const viewerDimensionsCache = new WeakMap<
 >();
 
 export function getDimensionsByType(
-  def: MetricDefinition,
+  definition: MetricDefinition,
 ): Map<string, ViewerDimensionDescriptor> {
-  const cached = viewerDimensionsCache.get(def);
+  const cached = viewerDimensionsCache.get(definition);
   if (cached) {
     return cached;
   }
 
-  const descriptors = getDimensionDescriptors(def);
+  const descriptors = getDimensionDescriptors(definition);
   const result = new Map<string, ViewerDimensionDescriptor>();
 
   for (const [id, dimension] of descriptors) {
@@ -77,7 +77,7 @@ export function getDimensionsByType(
     });
   }
 
-  viewerDimensionsCache.set(def, result);
+  viewerDimensionsCache.set(definition, result);
   return result;
 }
 

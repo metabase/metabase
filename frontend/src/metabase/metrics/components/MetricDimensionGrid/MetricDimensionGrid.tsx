@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -132,7 +133,7 @@ function MetricDimensionCard({
               rawSeries={rawSeries}
               isQueryBuilder={false}
               hideLegend
-              onChangeCardAndRun={() => {}}
+              onChangeCardAndRun={_.noop}
             />
           ) : (
             <ChartSkeleton display={displayType} className={S.visualization} />

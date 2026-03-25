@@ -11,19 +11,19 @@ import { useCardQueryData } from "../../hooks/use-card-query-data";
 
 import S from "./OverviewVisualization.module.css";
 
-type CardVisualizationProps = {
+type MetricCardVisualizationProps = {
   card: Card;
   data: Dataset | undefined;
   isLoading: boolean;
   className?: string;
 };
 
-export function CardVisualization({
+export function MetricCardVisualization({
   card,
   data,
   isLoading,
   className,
-}: CardVisualizationProps) {
+}: MetricCardVisualizationProps) {
   const metadata = useSelector(getMetadata);
   const question = useMemo(
     () => new Question(card, metadata),
@@ -59,5 +59,7 @@ type OverviewVisualizationProps = {
 export function OverviewVisualization({ card }: OverviewVisualizationProps) {
   const { data, isLoading } = useCardQueryData(card);
 
-  return <CardVisualization card={card} data={data} isLoading={isLoading} />;
+  return (
+    <MetricCardVisualization card={card} data={data} isLoading={isLoading} />
+  );
 }

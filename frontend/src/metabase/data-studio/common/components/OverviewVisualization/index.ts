@@ -1,4 +1,4 @@
 export {
   OverviewVisualization,
-  CardVisualization,
+  MetricCardVisualization,
 } from "./OverviewVisualization";

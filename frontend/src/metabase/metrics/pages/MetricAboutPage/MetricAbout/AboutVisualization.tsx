@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { CardVisualization } from "metabase/data-studio/common/components/OverviewVisualization";
+import { MetricCardVisualization } from "metabase/data-studio/common/components/OverviewVisualization";
 import { useCardQueryData } from "metabase/data-studio/common/hooks/use-card-query-data";
 import { Box, Stack } from "metabase/ui";
 import {
@@ -34,7 +34,7 @@ export function AboutVisualization({ card }: AboutVisualizationProps) {
           <TrendInfo {...trendData} />
         </Box>
       )}
-      <CardVisualization
+      <MetricCardVisualization
         card={lineCard}
         data={data}
         isLoading={isLoading}
