@@ -150,7 +150,7 @@ jobs:
         env:
           GREP: ${{ github.event.inputs.grep }}
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
-          BAIL: ${{ inputs.bail }}
+          CYPRESS_BAIL: ${{ inputs.bail }}
         run: |
           node e2e/runner/run_cypress_ci.js ${{ needs.determine-test-type.outputs.type }} \
           --spec '${{ github.event.inputs.spec }}' \
