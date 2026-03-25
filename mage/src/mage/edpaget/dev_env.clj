@@ -173,6 +173,7 @@
                          (str "# Re-run `./bin/mage -edpaget-dev-env` to regenerate.")
                          ""
                          "[env]"
+                         "_.source = [\".envrc\"]"
                          (str "MB_JETTY_PORT = \"" (port-for :jetty slot) "\"")
                          (str "MB_FRONTEND_DEV_PORT = \"" (port-for :frontend-dev slot) "\"")
                          (str "NREPL_PORT = \"" (port-for :nrepl slot) "\"")
