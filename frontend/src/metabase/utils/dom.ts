@@ -55,7 +55,7 @@ export const getScrollBarSize = _.memoize((): number => {
 
 // check if we have access to localStorage to avoid handling "access denied"
 // exceptions
-export const HAS_LOCAL_STORAGE = (function () {
+export function localStorageIsSupported() {
   try {
     // eslint-disable-next-line @typescript-eslint/no-unused-expressions
     window.localStorage; // This will trigger an exception if access is denied.
@@ -64,7 +64,7 @@ export const HAS_LOCAL_STORAGE = (function () {
     console.warn("localStorage not available:", e);
     return false;
   }
-})();
+}
 
 export function isObscured(
   element: HTMLElement,
@@ -85,38 +85,6 @@ export function isObscured(
   };
   const elem = document.elementFromPoint(position.left, position.top);
   return !element.contains(elem);
-}
-
-// based on http://stackoverflow.com/a/38039019/113
-export function elementIsInView(
-  element: HTMLElement,
-  percentX: number = 1,
-  percentY: number = 1,
-): boolean {
-  const tolerance = 0.01; //needed because the rects returned by getBoundingClientRect provide the position up to 10 decimals
-
-  const elementRect = element.getBoundingClientRect();
-  const parentRects = [];
-
-  while (element.parentElement != null) {
-    parentRects.push(element.parentElement.getBoundingClientRect());
-    element = element.parentElement;
-  }
-
-  return parentRects.every((parentRect) => {
-    const visiblePixelX =
-      Math.min(elementRect.right, parentRect.right) -
-      Math.max(elementRect.left, parentRect.left);
-    const visiblePixelY =
-      Math.min(elementRect.bottom, parentRect.bottom) -
-      Math.max(elementRect.top, parentRect.top);
-    const visiblePercentageX = visiblePixelX / elementRect.width;
-    const visiblePercentageY = visiblePixelY / elementRect.height;
-    return (
-      visiblePercentageX + tolerance > percentX &&
-      visiblePercentageY + tolerance > percentY
-    );
-  });
 }
 
 export function getSitePath(): string {

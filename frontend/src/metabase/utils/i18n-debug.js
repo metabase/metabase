@@ -1,4 +1,4 @@
-import { HAS_LOCAL_STORAGE } from "metabase/utils/dom";
+import { localStorageIsSupported } from "metabase/utils/dom";
 
 // If enabled this monkeypatches `t` and `jt` to return blacked out
 // strings/elements to assist in finding untranslated strings.
@@ -61,6 +61,6 @@ export function enableTranslatedStringReplacement() {
   };
 }
 
-if (HAS_LOCAL_STORAGE && window.localStorage["metabase-i18n-debug"]) {
+if (localStorageIsSupported() && window.localStorage["metabase-i18n-debug"]) {
   enableTranslatedStringReplacement();
 }
