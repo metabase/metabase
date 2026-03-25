@@ -147,6 +147,7 @@
    :friends #{enterprise/agent-api}
    :uses    #{api
               auth-identity
+              lib
               metabot
               query-processor
               request
@@ -1210,8 +1211,6 @@
   {:team    "Metabot"
    :api     #{metabase.metabot.api
               metabase.metabot.api.entity-analysis
-              metabase.metabot.api.sql-fixer
-              metabase.metabot.api.sql-generation
               metabase.metabot.init}
    :friends #{agent-api
               enterprise/metabot
@@ -1228,7 +1227,6 @@
               documents
               driver
               internal-stats
-              legacy-mbql
               lib
               lib-be
               llm

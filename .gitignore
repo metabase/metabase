@@ -96,7 +96,7 @@ coverage-summary.json
 junit.xml
 pom.xml
 pom.xml.asc
-profiles.clj
+/profiles.clj
 target/checksum.txt
 xcshareddata
 xcuserdata

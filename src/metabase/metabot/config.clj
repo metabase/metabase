@@ -56,6 +56,5 @@
    (resolve-dynamic-profile-id profile-id (resolve-dynamic-metabot-id nil)))
   ([profile-id metabot-id]
    (or profile-id
-       (metabot.settings/ai-service-profile-id)
        (metabot-id->profile-id metabot-id)
        "embedding_next")))

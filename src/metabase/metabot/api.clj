@@ -12,16 +12,13 @@
    [metabase.metabot.api.describe]
    [metabase.metabot.api.document]
    [metabase.metabot.api.metabot]
-   [metabase.metabot.client :as metabot.client]
-   [metabase.metabot.client.schema :as metabot.client.schema]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.context :as metabot.context]
    [metabase.metabot.envelope :as metabot.envelope]
    [metabase.metabot.feedback :as metabot.feedback]
+   [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.settings :as metabot.settings]
-   [metabase.metabot.tools.api]
-   [metabase.metabot.util :as metabot.u]
    [metabase.server.streaming-response :as sr]
    [metabase.slackbot.api]
    [metabase.util :as u]
@@ -32,8 +29,7 @@
    (java.io OutputStream)))
 
 (comment
-  metabase.metabot.api.describe/keep-me
-  metabase.metabot.tools.api/keep-me)
+  metabase.metabot.api.describe/keep-me)
 
 (set! *warn-on-reflection* true)
 
@@ -210,36 +206,15 @@
         debug?     (and config/is-dev? (boolean debug))]
     (store-aiservice-messages! conversation_id profile-id [message])
 
-    (if (metabot.settings/use-native-agent)
-      ;; Use native Clojure agent
-      (do
-        (log/info "Using native Clojure agent" {:profile-id profile-id :debug? debug?})
-        (native-agent-streaming-request
-         {:metabot-id      metabot-id
-          :profile-id      profile-id
-          :message         message
-          :context         context
-          :history         history
-          :conversation-id conversation_id
-          :state           state
-          :debug?          debug?}))
-
-      ;; Fallback to Python AI Service
-      (let [session-id (metabot.client/get-ai-service-token api/*current-user-id* metabot-id)]
-        (log/info "Using Python AI Service" {:profile-id profile-id :debug? debug?})
-        (metabot.client/streaming-request
-         {:context         (metabot.context/create-context context)
-          :metabot-id      metabot-id
-          :profile-id      profile-id
-          :session-id      session-id
-          :conversation-id conversation_id
-          :message         message
-          :history         history
-          :state           state
-          :debug?          debug?
-          :on-complete     (fn [lines]
-                             (store-aiservice-messages! conversation_id profile-id (metabot.u/aisdk->messages :assistant lines))
-                             :store-in-db)})))))
+    (log/info "Using native Clojure agent" {:profile-id profile-id :debug? debug?})
+    (native-agent-streaming-request
+     {:profile-id      profile-id
+      :message         message
+      :context         context
+      :history         history
+      :conversation-id conversation_id
+      :state           state
+      :debug?          debug?})))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -255,7 +230,7 @@
             [:message ms/NonBlankString]
             [:context ::metabot.context/context]
             [:conversation_id ms/UUIDString]
-            [:history [:maybe ::metabot.client.schema/messages]]
+            [:history [:maybe ::metabot.schema/messages]]
             [:state :map]
             [:debug {:optional true} [:maybe :boolean]]]]
   (metabot.context/log body :llm.log/fe->be)
@@ -285,7 +260,6 @@
     {"/metabot"  metabase.metabot.api.metabot/routes
      "/document" metabase.metabot.api.document/routes
      ;; premium check happens in the route so we still ack events to prevent slack retrying
-     "/slack"    metabase.slackbot.api/routes
-     "/tools"    (api.macros/ns-handler 'metabase.metabot.tools.api +auth)})
+     "/slack"    metabase.slackbot.api/routes})
    (api.macros/ns-handler 'metabase.metabot.api.describe +auth)
    (api.macros/ns-handler *ns* +auth)))

@@ -36,8 +36,6 @@
    [metabase.measures.api]
    [metabase.metabot.api]
    [metabase.metabot.api.entity-analysis]
-   [metabase.metabot.api.sql-fixer]
-   [metabase.metabot.api.sql-generation]
    [metabase.metrics.api]
    [metabase.model-persistence.api]
    [metabase.native-query-snippets.api]
@@ -159,8 +157,6 @@
    "/activity"             (+auth 'metabase.activity-feed.api)
    "/agent"                metabase.agent-api.api/routes
    "/ai-entity-analysis"   metabase.metabot.api.entity-analysis/routes
-   "/ai-sql-fixer"         metabase.metabot.api.sql-fixer/routes
-   "/ai-sql-generation"    metabase.metabot.api.sql-generation/routes
    "/alert"                (+auth metabase.pulse.api/alert-routes)
    "/analytics"            (+auth 'metabase.analytics.api)
    "/api-key"              (+auth 'metabase.api-keys.api)
