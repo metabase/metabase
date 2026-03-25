@@ -27,6 +27,7 @@ const appMiscFilePaths = [
 ];
 
 const elements = [
+  { type: "shared/store-types", pattern: "frontend/src/metabase-types/store/**" },
   { type: "lib/types", pattern: "frontend/src/metabase-types/*/**" },
   {
     type: "lib/schema",
