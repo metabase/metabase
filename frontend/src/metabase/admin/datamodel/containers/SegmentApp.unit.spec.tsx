@@ -40,8 +40,10 @@ const setup = ({ initialRoute = FORM_URL }: SetupOpts = {}) => {
   setupDatabasesEndpoints([createSampleDatabase()]);
   setupSearchEndpoints([]);
   setupCardDataset({
-    data: {
-      rows: [[1, 2, 3]],
+    dataset: {
+      data: {
+        rows: [[1, 2, 3]],
+      },
     },
   });
   setupRecentViewsAndSelectionsEndpoints([], ["selections"]);

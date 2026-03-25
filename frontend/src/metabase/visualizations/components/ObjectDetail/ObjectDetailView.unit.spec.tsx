@@ -294,19 +294,21 @@ describe("ObjectDetailView", () => {
 
   it("fetches a missing row", async () => {
     setupCardDataset({
-      data: {
-        rows: [
-          [
-            "101",
-            "1807963902339",
-            "Extremely Hungry Toucan",
-            "Gizmo",
-            "Larson, Pfeffer and Klocko",
-            31.78621880685793,
-            4.3,
-            "2017-01-09T09:51:20.352-07:00",
+      dataset: {
+        data: {
+          rows: [
+            [
+              "101",
+              "1807963902339",
+              "Extremely Hungry Toucan",
+              "Gizmo",
+              "Larson, Pfeffer and Klocko",
+              31.78621880685793,
+              4.3,
+              "2017-01-09T09:51:20.352-07:00",
+            ],
           ],
-        ],
+        },
       },
     });
 
@@ -336,7 +338,7 @@ describe("ObjectDetailView", () => {
   });
 
   it("shows not found if it can't find a missing row", async () => {
-    setupCardDataset({ data: { rows: [] } });
+    setupCardDataset({ dataset: { data: { rows: [] } } });
 
     // because this row is not in the test dataset, it should trigger a fetch
     setup({ question: mockQuestion, zoomedRowID: "102", zoomedRow: undefined });
