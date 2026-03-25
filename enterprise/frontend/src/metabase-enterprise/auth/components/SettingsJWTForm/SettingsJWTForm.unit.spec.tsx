@@ -72,10 +72,6 @@ describe("SettingsJWTForm", () => {
     );
     await userEvent.click(await screen.findByRole("button", { name: /Done/ }));
     await userEvent.type(
-      await screen.findByLabelText(/String used by the JWT signing key/),
-      ATTRS["jwt-shared-secret"],
-    );
-    await userEvent.type(
       await screen.findByRole("textbox", { name: /Email attribute/ }),
       ATTRS["jwt-attribute-email"],
     );
@@ -120,10 +116,6 @@ describe("SettingsJWTForm", () => {
     await userEvent.type(
       await screen.findByRole("textbox", { name: /JWT Identity Provider URI/ }),
       ATTRS["jwt-identity-provider-uri"],
-    );
-    await userEvent.type(
-      await screen.findByLabelText(/String used by the JWT signing key/),
-      ATTRS["jwt-shared-secret"],
     );
 
     await userEvent.type(

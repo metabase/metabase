@@ -221,12 +221,11 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
   (deferred-tru (str "String used to seed the private key used to validate JWT messages."
                      " "
                      "A hexadecimal-encoded 256-bit key (i.e., a 64-character string) is strongly recommended."))
-  :sensitive?  true
-  :obfuscated? true
-  :encryption  :when-encryption-key-set
-  :type        :string
-  :feature     :sso-jwt
-  :audit       :no-value)
+  :sensitive? true
+  :encryption :when-encryption-key-set
+  :type       :string
+  :feature    :sso-jwt
+  :audit      :no-value)
 
 (defsetting jwt-attribute-email
   (deferred-tru "Key to retrieve the JWT user''s email address")
