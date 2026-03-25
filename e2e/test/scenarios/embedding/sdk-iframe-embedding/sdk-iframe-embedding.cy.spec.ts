@@ -110,15 +110,20 @@ describe("scenarios > embedding > modular embedding", () => {
       cy.wait("@getCardQuery");
 
       frame.within(() => {
-        // clientWidth excludes the scrollbar gutter, giving us the actual content area
+        // clientWidth excludes the scrollbar gutter, giving us the actual content area.
+        // Use .should() instead of .then() so Cypress retries until the
+        // async column-expansion cycle has finished painting.
         H.tableInteractive()
           .findByTestId("table-scroll-container")
-          .then(($scrollContainer) => {
+          .should(($scrollContainer) => {
             const contentWidth = $scrollContainer[0].clientWidth;
+            expect(contentWidth).to.be.greaterThan(0);
 
             const $headerCells = $scrollContainer.find(
               '[data-testid="header-cell"]',
             );
+            expect($headerCells.length).to.be.greaterThan(0);
+
             let totalHeaderWidth = 0;
             $headerCells.each((_, el) => {
               totalHeaderWidth += el.getBoundingClientRect().width;
