@@ -1,26 +1,29 @@
 (ns metabase.llm.settings
-  "Settings for OSS LLM integration."
+  "Settings for LLM integration (API keys, model defaults, provider configuration)."
   (:require
    [clojure.string :as str]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]))
 
+;;; ------------------------------------------------- Anthropic -------------------------------------------------
+
 (defsetting llm-anthropic-api-key
-  (deferred-tru "Anthropic API key for AI-assisted SQL generation.")
-  :sensitive? true
-  :visibility :settings-manager
-  :export? false
-  :setter     (fn [new-value]
-                (let [trimmed (when (string? new-value)
-                                (not-empty (str/trim new-value)))]
-                  (when (and trimmed (not (str/starts-with? trimmed "sk-ant-")))
-                    (throw (ex-info (tru "Invalid Anthropic API key format. Key must start with ''sk-ant-''.")
-                                    {:status-code 400})))
-                  (setting/set-value-of-type! :string :llm-anthropic-api-key trimmed)))
+  (deferred-tru "The Anthropic API Key.")
+  :sensitive?       true
+  :visibility       :settings-manager
+  :export?          false
+  :deprecated-name  :ee-anthropic-api-key
+  :setter           (fn [new-value]
+                      (let [trimmed (when (string? new-value)
+                                      (not-empty (str/trim new-value)))]
+                        (when (and trimmed (not (str/starts-with? trimmed "sk-ant-")))
+                          (throw (ex-info (tru "Invalid Anthropic API key format. Key must start with ''sk-ant-''.")
+                                          {:status-code 400})))
+                        (setting/set-value-of-type! :string :llm-anthropic-api-key trimmed)))
   :doc false)
 
 (defsetting llm-anthropic-api-key-configured?
-  "Whether an Anthropic API key has been configured for AI-assisted SQL generation."
+  "Whether an Anthropic API key has been configured."
   :type       :boolean
   :visibility :public
   :setter     :none
@@ -29,28 +32,78 @@
   :doc        false)
 
 (defsetting llm-anthropic-model
-  (deferred-tru "Anthropic model for AI-assisted SQL generation.")
+  (deferred-tru "The Anthropic model to use.")
   :encryption :no
   :visibility :settings-manager
   :default "claude-opus-4-5-20251101"
   :export? false
   :doc false)
 
-(defsetting llm-anthropic-api-url
-  (deferred-tru "Anthropic Base API URL for AI-assisted SQL generation.")
-  :encryption :no
-  :visibility :internal
-  :default "https://api.anthropic.com"
-  :export? false
-  :doc false)
+(defsetting llm-anthropic-api-base-url
+  (deferred-tru "The Anthropic API base URL.")
+  :encryption       :no
+  :visibility       :settings-manager
+  :default          "https://api.anthropic.com"
+  :export?          false
+  :deprecated-name  :ee-anthropic-api-base-url
+  :doc              false)
 
 (defsetting llm-anthropic-api-version
-  (deferred-tru "Anthropic API version for AI-assisted SQL generation.")
+  (deferred-tru "The Anthropic API version.")
   :encryption :no
   :visibility :internal
   :default "2023-06-01"
   :export? false
   :doc false)
+
+;;; -------------------------------------------------- OpenAI ---------------------------------------------------
+
+(defsetting llm-openai-model
+  (deferred-tru "The OpenAI Model (e.g. ''gpt-4'', ''gpt-3.5-turbo'')")
+  :encryption       :no
+  :visibility       :settings-manager
+  :default          "gpt-4.1-mini"
+  :export?          false
+  :deprecated-name  :ee-openai-model
+  :doc              false)
+
+(defsetting llm-openai-api-base-url
+  (deferred-tru "The OpenAI API base URL.")
+  :encryption       :no
+  :visibility       :settings-manager
+  :default          "https://api.openai.com"
+  :export?          false
+  :deprecated-name  :ee-openai-api-base-url
+  :doc              false)
+
+(defsetting llm-openai-api-key
+  (deferred-tru "The OpenAI API Key.")
+  :sensitive?       true
+  :visibility       :settings-manager
+  :export?          false
+  :deprecated-name  :ee-openai-api-key
+  :doc              false)
+
+;;; ------------------------------------------------- OpenRouter ------------------------------------------------
+
+(defsetting llm-openrouter-api-base-url
+  (deferred-tru "The OpenRouter API base URL used for Chat Completions.")
+  :encryption       :no
+  :visibility       :settings-manager
+  :default          "https://openrouter.ai/api"
+  :export?          false
+  :deprecated-name  :ee-openrouter-api-base-url
+  :doc              false)
+
+(defsetting llm-openrouter-api-key
+  (deferred-tru "The OpenRouter API Key.")
+  :sensitive?       true
+  :visibility       :settings-manager
+  :export?          false
+  :deprecated-name  :ee-openrouter-api-key
+  :doc              false)
+
+;;; -------------------------------------------------- General --------------------------------------------------
 
 (defsetting llm-max-tokens
   (deferred-tru "Maximum tokens for LLM responses.")

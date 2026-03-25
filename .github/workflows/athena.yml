@@ -11,7 +11,7 @@ on:
 jobs:
   deploy:
     name: Publish Athena JDBC Driver
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     steps:
       - name: Check out the code

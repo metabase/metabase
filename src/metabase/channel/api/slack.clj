@@ -8,20 +8,16 @@
    [metabase.channel.slack :as slack]
    [metabase.config.core :as config]
    [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :refer [defenterprise defenterprise-schema]]
    [metabase.settings.core :as setting]
+   [metabase.slackbot.api :as slackbot]
+   [metabase.slackbot.config :as slackbot.config]
+   [metabase.system.core :as system]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
-
-(defenterprise clear-slack-bot-settings!
-  "Clears enterprise slackbot settings when the Slack token is cleared.
-   OSS implementation is a no-op."
-  metabase-enterprise.slackbot.api
-  [])
 
 (defn- truncate-url
   "Cut length of long URLs to avoid spamming the Slack channel"
@@ -112,7 +108,7 @@
                               :slack-app-token          nil
                               :slack-bug-report-channel nil})
           (slack/clear-channel-cache!)
-          (clear-slack-bot-settings!))
+          (slackbot/clear-slack-bot-settings!))
         ;; Set new token
         (do
           (when (and (not config/is-test?)
@@ -174,22 +170,13 @@
                                 [:socket_mode_enabled :boolean]
                                 [:token_rotation_enabled :boolean]]]])
 
-(defenterprise-schema get-slack-manifest :- SlackManifest
-  "Returns the Slack app manifest. OSS returns basic manifest; EE with metabot-v3 returns full MetaBot manifest."
-  metabase-enterprise.slackbot.api
+(defn get-slack-manifest
+  "Returns the Slack manifest for bootstrapping new Slack apps."
   []
-  {:display_information {:name "Metabot"
-                         :description "Bringing the power of Metabase to your Slack #channels!"
-                         :background_color "#509EE3"}
-   :features {:bot_user {:display_name "Metabot"}}
-   :oauth_config {:scopes {:bot ["users:read"
-                                 "channels:read"
-                                 "channels:join"
-                                 "files:write"
-                                 "chat:write"
-                                 "chat:write.customize"
-                                 "chat:write.public"
-                                 "groups:read"]}}})
+  (let [base-url (system/site-url)]
+    (when-not base-url
+      (throw (ex-info (tru "You must configure a site-url for Slack integration to work.") {:status-code 503})))
+    (slackbot.config/build-slack-manifest base-url)))
 
 (api.macros/defendpoint :get "/manifest" :- SlackManifest
   "Returns the JSON manifest file that should be used to bootstrap new Slack apps"

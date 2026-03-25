@@ -203,6 +203,7 @@ config:
     login-page-illustration: default
     login-page-illustration-custom: null
     map-tile-server-url: https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
+    metabot-slack-signing-secret: null
     native-query-autocomplete-match-style: substring
     nested-field-columns-value-length-limit: 50000
     no-data-illustration: default
@@ -277,7 +278,7 @@ config:
     slack-app-token: null
     slack-bug-report-channel: metabase-bugs
     slack-connect-attribute-team-id: https://slack.com/team_id
-    slack-connect-authentication-mode: sso
+    slack-connect-authentication-mode: link-only
     slack-connect-client-id: null
     slack-connect-client-secret: null
     slack-connect-enabled: false

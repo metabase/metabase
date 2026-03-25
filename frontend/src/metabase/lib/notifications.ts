@@ -2,7 +2,7 @@ import { c, msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
 import type { NotificationListItem } from "metabase/account/notifications/types";
-import { cronToScheduleSettings } from "metabase/admin/performance/utils";
+import { cronToScheduleSettings } from "metabase/common/components/Schedule/cron";
 import { getEmailDomain, isEmail } from "metabase/lib/email";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting/date";
 import { formatTimeWithUnit } from "metabase/lib/formatting/time";

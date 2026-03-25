@@ -283,4 +283,29 @@ describe("DashCardMenu", () => {
     expect(await screen.findByText("Download results")).toBeInTheDocument();
     expect(screen.queryByText("Edit visualization")).not.toBeInTheDocument();
   });
+
+  it("should support keyboard navigation in download popover", async () => {
+    setup();
+
+    await userEvent.click(getIcon("ellipsis"));
+    await userEvent.click(await screen.findByText("Download results"));
+
+    // Verify format options are keyboard accessible (as radio buttons)
+    const csvButton = screen.getByRole("radio", { name: ".csv" });
+    expect(csvButton).toBeInTheDocument();
+
+    // Verify that format options can receive focus
+    csvButton.focus();
+    expect(csvButton).toHaveFocus();
+
+    // Test navigation between format options using arrow keys
+    await userEvent.keyboard("{ArrowRight}");
+    // After arrow right, a format option should still have focus (exact option may vary)
+    const xlsxButton = screen.getByRole("radio", { name: ".png" });
+    expect(xlsxButton).toHaveFocus();
+
+    // Esc should close the popover
+    await userEvent.keyboard("{Esc}");
+    expect(screen.queryByText("Download results")).not.toBeInTheDocument();
+  });
 });

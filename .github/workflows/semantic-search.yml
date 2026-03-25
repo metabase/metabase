@@ -14,7 +14,7 @@ concurrency:
 jobs:
   semantic-search-tests-h2:
     if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
       fail-fast: false
@@ -69,7 +69,7 @@ jobs:
 
   semantic-search-tests-mariadb:
     if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
       fail-fast: false
@@ -143,7 +143,7 @@ jobs:
 
   semantic-search-tests-mysql:
     if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
       fail-fast: false
@@ -217,7 +217,7 @@ jobs:
 
   semantic-search-tests-postgres:
     if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
       fail-fast: false
@@ -296,7 +296,7 @@ jobs:
       - semantic-search-tests-mariadb
       - semantic-search-tests-mysql
       - semantic-search-tests-postgres
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     name: semantic-search-tests-result
     if: always() && !cancelled()

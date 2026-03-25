@@ -213,6 +213,31 @@
           (is (= "active_table" (:name active-table)))
           (is (true? (:active active-table))))))))
 
+(deftest archive-tables-skips-transform-targets-test
+  (testing "Tables with transform_target=true should never be archived, even if old enough"
+    (mt/with-temp [:model/Database db {}
+                   :model/Table provisional {:name             "transform_output"
+                                             :db_id            (u/the-id db)
+                                             :active           false
+                                             :transform_target true
+                                             :deactivated_at   (t/minus (t/offset-date-time) (t/days 30))}
+                   :model/Table normal     {:name             "old_table"
+                                            :db_id            (u/the-id db)
+                                            :active           false
+                                            :transform_target false
+                                            :deactivated_at   (t/minus (t/offset-date-time) (t/days 30))}]
+      (#'sync-tables/archive-tables! db)
+
+      (testing "Transform target table is not archived or renamed"
+        (let [table (t2/select-one :model/Table (:id provisional))]
+          (is (nil? (:archived_at table)))
+          (is (= "transform_output" (:name table)))))
+
+      (testing "Normal table is archived as usual"
+        (let [table (t2/select-one :model/Table (:id normal))]
+          (is (some? (:archived_at table)))
+          (is (str/starts-with? (:name table) "old_table__mbarchiv__")))))))
+
 (deftest archive-tables-already-archived-test
   (testing "Already archived tables should not be processed again"
     (mt/with-temp [:model/Database db {}

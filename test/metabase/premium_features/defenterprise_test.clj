@@ -53,6 +53,13 @@
           (is (= "Hi rasta, you're an EE customer but not extra special."
                  (special-greeting-or-custom :rasta))))))))
 
+(defenterprise ^{:tool-name "greeting_with_meta" :custom-key :custom-value}
+  greeting-with-user-metadata
+  "Returns a greeting; used to test that user-provided symbol metadata is preserved."
+  metabase-enterprise.util-test
+  [username]
+  (format "Hi %s, metadata preserved!" (name username)))
+
 (defenterprise-schema greeting-with-schema :- :string
   "Returns a greeting for a user."
   metabase-enterprise.util-test
@@ -76,6 +83,12 @@
   metabase-enterprise.util-test
   [username]
   (format "Hi %s, you're an OSS customer!" username))
+
+(deftest defenterprise-preserves-user-metadata-test
+  (testing "User-provided metadata on the defenterprise symbol is preserved on the resulting var"
+    (is (= "greeting_with_meta" (:tool-name (meta #'greeting-with-user-metadata))))
+    (is (= :custom-value (:custom-key (meta #'greeting-with-user-metadata))))
+    (is (= '([& args]) (:arglists (meta #'greeting-with-user-metadata))))))
 
 (deftest defenterprise-schema-test
   (when-not config/ee-available?

@@ -36,6 +36,7 @@ import type {
   MiniPickerSchemaItem,
   MiniPickerTableItem,
 } from "../types";
+import { getOurAnalytics } from "../utils";
 
 import { MiniPickerItem } from "./MiniPickerItem";
 import styles from "./MiniPickerItem.module.css";
@@ -132,20 +133,22 @@ function RootItemList() {
           }}
         />
       )) ?? <MiniPickerListLoader />}
-      <MiniPickerItem
-        name={rootCollectionError ? t`Collections` : t`Our analytics`}
-        model="collection"
-        isFolder
-        onClick={() => {
-          setPath([
-            {
-              model: "collection",
-              id: "root" as any, // cmon typescript, trust me
-              name: rootCollectionError ? t`Collections` : t`Our analytics`,
-            },
-          ]);
-        }}
-      />
+      {!isHidden(getOurAnalytics()) && (
+        <MiniPickerItem
+          name={rootCollectionError ? t`Collections` : t`Our analytics`}
+          model="collection"
+          isFolder
+          onClick={() => {
+            setPath([
+              {
+                model: "collection",
+                id: "root" as any, // cmon typescript, trust me
+                name: rootCollectionError ? t`Collections` : t`Our analytics`,
+              },
+            ]);
+          }}
+        />
+      )}
     </ItemList>
   );
 }

@@ -100,10 +100,12 @@
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.aggregation :as lib.schema.aggregation]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.schema.util]
    [metabase.lib.segment :as lib.segment]
    [metabase.lib.serialize]
@@ -386,21 +388,146 @@
   integer
   float])
 
-;;; # IGNORE ME!
-;;; <img src="https://i.redd.it/1b9z1mv805e61.jpg" />
-;;; *These are the leftovers which are not properly wrapped in user documentation yet.*
+;;; ## Aggregations
+;;; Aggregations are either "canned" aggregate functions like `Count`, `Sum` and `Max`, or a custom expression written
+;;; by the user in the same expression editor as is used for expressions. The only columns in scope for custom
+;;; aggregations are the breakouts and any aggregations to the left.
+;;;
+;;; Aggregations define new columns, which can be referenced by any custom aggregations to its right, in an Order By, or
+;;; in later stages of the query.
+;;;
+;;; The canned aggregations come in four varieties:
+;;;
+;;; - No args: `count` and `distinct`
+;;; - Single column: `sum`, `avg`, `max`, etc.
+;;; - Single filter: `count-where` and `distinct-where`
+;;; - Column and filter: `sum-where`
+;;;
+;;; ### Measures and Metrics
+;;; Measures are effectively *saved aggregations*, defined outside of a query. They can be referenced as an aggregation
+;;; on a query which has a source compatible with the measure's source.
+;;;
+;;; Semantically, referencing a measure is identical to pasting its definition into the query.
+;;;
+;;; The (deprecated?) Metrics v2 can be used similarly, though they allow several things that measures don't, such as
+;;; embedding a filter.
+
+(mu/defn aggregate :- ::lib.schema/query
+  "Adds the given `aggregable` to the target stage of `a-query` as its rightmost aggregation.
+
+  Valid `aggregable`s are:
+
+  - Canned aggregation clauses like [[count]]
+  - A `::lib.schema.common/external-op` AST from the custom aggregation editor
+  - A measure
+  - A (v2) metric
+
+  **Code Health:** Healthy. This is a core API."
+  ([a-query aggregable]
+   (aggregate a-query -1 aggregable))
+  ([a-query      :- ::lib.schema/query
+    stage-number :- :int
+    aggregable   :- ::lib.aggregation/aggregable]
+   (lib.aggregation/aggregate a-query stage-number aggregable)))
+
+(mu/defn aggregations :- [:maybe [:sequential ::lib.schema.aggregation/aggregation]]
+  "Returns the list of aggregation definitions on the target stage of `a-query`, or nil if there are none."
+  ([a-query] (aggregations a-query -1))
+  ([a-query      :- ::lib.schema/query
+    stage-number :- :int]
+   (lib.aggregation/aggregations a-query stage-number)))
+
+(mu/defn aggregable-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
+  "Returns the columns which are in scope for a custom aggregation expression.
+
+  Takes `aggregation-position`, which is the index of the \"current\" aggregation while editing an existing aggregation,
+  and nil when adding a new one.
+
+  The columns in scope for an aggregation expression are:
+
+  1. Any breakouts on this stage
+  2. Any aggregations on this stage whose position is less than `aggregation-position`; all of them if it's nil.
+  3. Any pre-aggregation columns (from the source, joins, or expressions)
+     - **But** these are only legal when wrapped in an aggregation like `sum([Some Column])`.
+
+  To illustrate, a custom expression can do top-level arithmetic on other aggregations like
+
+      Unit Price = [Sum of Subtotal] / [Sum of Quantity]
+
+  or directly aggregate pre-aggregation columns like
+
+      Unit Price = sum([Subtotal]) / sum([Quantity])
+
+  **Code Health:** Single use. This mainly exists for the custom editor in the UI.
+  Prefer [[available-aggregation-operators]] and [[aggregation-operator-columns]] for more \"structured\" usages."
+  ([a-query aggregation-position]
+   (aggregable-columns a-query -1 aggregation-position))
+  ([a-query              :- ::lib.schema/query
+    stage-number         :- :int
+    aggregation-position :- [:maybe nat-int?]]
+   (lib.aggregation/aggregable-columns a-query stage-number aggregation-position)))
+
+(mu/defn aggregation-operator-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
+  "Given an `aggregation-operator` map from [[available-aggregation-operators]], this returns the metadata of all
+  available columns to which that operator can legally be applied.
+
+  For aggregations which don't take an input column, like `:count`, this returns nil.
+
+  **Code Health:** Healthy."
+  [aggregation-operator :- ::lib.aggregation/operator-with-columns]
+  (lib.aggregation/aggregation-operator-columns aggregation-operator))
+
+(mu/defn available-aggregation-operators :- [:maybe [:sequential ::lib.aggregation/operator-with-columns]]
+  "Returns a map for each aggregation operator (`:count`, `:sum`, etc.) which can plausibly be applied to the target
+  stage of `a-query`. This takes into account the operators the database engine can support, and omits any operators
+  that require an input column when no suitable inputs are available.
+
+  **Code Health:** Healthy. This is the correct way to determine the valid set of aggregation operators."
+  ([a-query] (available-aggregation-operators a-query -1))
+  ([a-query      :- ::lib.schema/query
+    stage-number :- :int]
+   (lib.aggregation/available-aggregation-operators a-query stage-number)))
+
+(mu/defn remove-all-aggregations :- ::lib.schema/query
+  "Removes all aggregations from the target stage of `a-query`.
+
+  **Code Health:** Healthy, though it's an unusual thing to do."
+  ([a-query] (remove-all-aggregations a-query -1))
+  ([a-query :- ::lib.schema/query
+    stage-number :- :int]
+   (lib.aggregation/remove-all-aggregations a-query stage-number)))
+
+(mu/defn selected-aggregation-operators :- [:maybe [:sequential ::lib.aggregation/selected-operator-with-columns]]
+  "Given the aggregation operator maps from [[available-aggregation-operators]], and a particular `agg-clause`, mark
+  both the operator map and the selected column (if applicable) with `:selected? true`.
+
+  This is useful when editing an aggregation to indicate its current settings.
+
+  **Code Health:** Healthy. Mostly exists to support the UI, but it would be legitimate to add new calls."
+  [agg-operators :- [:maybe [:sequential ::lib.aggregation/operator-with-columns]]
+   agg-clause :- ::lib.schema.aggregation/aggregation]
+  (lib.aggregation/selected-aggregation-operators agg-operators agg-clause))
+
+(mu/defn aggregation-ref :- :mbql.clause/aggregation
+  "Given the index of an aggregation in the [[aggregations]] of the target stage, return an `:aggregation` reference
+  for use **within that stage**.
+
+  This is useful for adding an [[order-by]] clause, since [[aggregations]] returns aggregation *definitions*, but
+  [[order-by]] needs aggregation references."
+  ([a-query agg-index]
+   (aggregation-ref a-query -1 agg-index))
+  ([a-query      :- ::lib.schema/query
+    stage-number :- :int
+    agg-index    :- nat-int?]
+   (lib.aggregation/aggregation-ref a-query stage-number agg-index)))
+
+;;; These functions all directly construct an aggregation clause suitable for passing to [[aggregate]], taking
+;;; input column and/or filter clauses as arguments, depending on the operator.
+;;;
+;;; **Code Health:** Healthy. Mainly used in tests, but any case where a known query is being constructed
+;;; programatically is valid. UIs should generally be using [[available-aggregation-operators]] instead.
 (shared.ns/import-fns
  [lib.aggregation
-  aggregable-columns
-  aggregate
-  aggregation-clause
-  aggregation-ref
-  aggregation-operator-columns
-  aggregations
-  aggregations-metadata
-  available-aggregation-operators
-  remove-all-aggregations
-  selected-aggregation-operators
   count
   avg
   count-where
@@ -416,18 +543,232 @@
   sum-where
   var
   cum-count
-  cum-sum]
+  cum-sum])
+
+;;; **Code Health:** Leak. These helpers are only used in tests and should be avoided. To be unexported soon.
+(shared.ns/import-fns
+ [lib.aggregation
+  aggregation-clause
+  aggregations-metadata])
+
+;;; ## Breakouts
+;;; Breakouts (equivalent to SQL `GROUP BY`) divide the rows into 1 or more subsets of rows, where each set has the
+;;; same values for all the breakouts.
+;;;
+;;; Each breakout implicitly adds an Order By (ascending), in the same order as the breakouts. However, if the user
+;;; explicitly adds an Order By for the breakout column(s), then the order and direction (asc/desc) is preserved.
+;;;
+;;; Breakouts must be unique within the stage. That means there can be at most 1 breakout per input column, with one
+;;; exception: a temporal column can have multiple breakouts with different units.
+;;;
+;;; Finally, note that it's legal (though unusual) to create a query with breakouts but no aggregations. The results
+;;; are equivalent to `SELECT DISTINCT breakouts... FROM ... ORDER BY breakouts...`, ie. sorting and de-duplicating
+;;; by the breakouts.
+
+(mu/defn breakout :- ::lib.schema/query
+  "Add a breakout on the provided column to the target stage of `a-query`.
+
+  Silently does nothing if the requested breakout already exists. Multiple breakouts of a temporal column are allowed
+  provided they all set different `:temporal-unit`s.
+
+  **Code Health:** Healthy. This is a core API."
+  ([a-query expr] (breakout a-query -1 expr))
+  ([a-query      :- ::lib.schema/query
+    stage-number :- :int
+    expr         :- some?]
+   (lib.breakout/breakout a-query stage-number expr)))
+
+(mu/defn breakouts :- [:maybe [:sequential ::lib.schema.expression/expression]]
+  "Returns the list of breakouts on the target stage of `a-query`, or nil if there are none.
+
+  **Code Health:** Healthy. This is a core API."
+  ([a-query] (breakouts a-query -1))
+  ([a-query      :- ::lib.schema/query
+    stage-number :- :int]
+   (lib.breakout/breakouts a-query stage-number)))
+
+(mu/defn breakout-column :- ::lib.schema.metadata/column
+  "Given `a-query` and a breakout `clause` as returned by [[breakouts]], returns the column metadata for this
+  breakout column.
+
+  Strictly speaking a breakout column should be distinct from its input column; in practice their metadata is identical
+  except that the breakout column has the `:temporal-unit` or `:binning` specified from the breakout clause.
+
+  **Code Health:** Healthy."
+  ([a-query breakout-clause] (breakout-column a-query -1 breakout-clause))
+  ([a-query         :- ::lib.schema/query
+    stage-number    :- :int
+    breakout-clause :- ::lib.schema.ref/ref]
+   (lib.breakout/breakout-column a-query stage-number breakout-clause)))
+
+(mu/defn breakoutable-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
+  "Returns column metadata for all the columns on the target stage of `a-query` which could be used for a breakout.
+
+  The columns can be used for a breakout are, in this order:
+
+  1. Columns from the *source* - a table, card or previous stage.
+  2. *Expressions* in this stage of the query are allowed.
+  3. Columns from explicit joins on this stage.
+  4. All columns which are *implicitly joinable* via any FKs in the above.
+
+  **Code Health:** Healthy. This is a core API."
+  ([a-query :- ::lib.schema/query] (breakoutable-columns a-query -1))
+  ([a-query      :- ::lib.schema/query
+    stage-number :- :int]
+   (lib.breakout/breakoutable-columns a-query stage-number)))
+
+(mu/defn remove-all-breakouts :- ::lib.schema/query
+  "Removes all breakouts (if any) from the target stage of `a-query`.
+
+  The removal is done properly per [[remove-clause]], so any references to the deleted breakouts will also be deleted.
+
+  **Code Health:** Healthy."
+  ([a-query] (remove-all-breakouts a-query -1))
+  ([a-query      :- ::lib.schema/query
+    stage-number :- :int]
+   (lib.breakout/remove-all-breakouts a-query stage-number)))
+
+;;; **Code Health:** Leak. These functions are only used in friends and tests, and should be avoided. To be unexported.
+(shared.ns/import-fns
+ [lib.breakout
+  breakouts-metadata])
+
+;;; ## Filters
+;;; Filters are boolean expressions based on a row of a query. A stage of a query only returns (or aggregates) those
+;;; rows for which the filters are `true`. They correspond to a SQL `WHERE` clause, of course.
+;;;
+;;; MBQL has a list of filter expressions, and they are implicitly `AND`ed together. The order of filters does not
+;;; matter.
+;;;
+;;; Note that filters are *pre-aggregation* within their stage. If you want to filter based on the results of an
+;;; aggregation, such a showing only those months with 1000+ orders, you need to [[append-stage]] and add the filter
+;;; to the stage *after* the aggregations. (SQL has the `HAVING` clause for this, but there's no equivalent in MBQL.)
+
+(mu/defn filter :- ::lib.schema/query
+  "Adds the given `boolean-expression` to the target stage of `a-query`.
+
+  If `boolean-expression` is an exact duplicate of an existing filter, this silently does nothing.
+
+  **Code Health:** Healthy. This is a core API."
+  ([a-query boolean-expression] (filter a-query -1 boolean-expression))
+  ([a-query            :- ::lib.schema/query
+    stage-number       :- :int
+    boolean-expression :- some?]
+   (lib.filter/filter a-query stage-number boolean-expression)))
+
+(mu/defn filters :- [:maybe [:ref ::lib.schema/filters]]
+  "Returns the list of filters on the target stage of `a-query`, or nil if there are none.
+
+  **Code Health:** Healthy. This is a core API."
+  ([a-query] (filters a-query -1))
+  ([a-query      :- ::lib.schema/query
+    stage-number :- :int]
+   (lib.filter/filters a-query stage-number)))
+
+(mu/defn filterable-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
+  "Returns column metadata for all the columns that could be used for filtering on the target stage of `a-query`.
+
+  The columns which can be used for filters are, in this order:
+
+  1. Columns from the *source* - a table, a card or the previous stage.
+  2. *Expressions* on this stage of the query.
+  3. Columns from explicit joins on this stage.
+  4. Columns which can be *implicitly joined* via any FKs in the above columns.
+
+  Supports an optional third argument `options`, which can have these options:
+
+  - `:include-sensitive-fields? true` will return fields with `:visibility-type :sensitive`. (Default false.)"
+  ([a-query] (filterable-columns a-query -1))
+  ([a-query stage-number] (filterable-columns a-query stage-number nil))
+  ([a-query      :- ::lib.schema/query
+    stage-number :- :int
+    options      :- [:maybe [:map [:include-sensitive-fields? :boolean]]]]
+   (lib.filter/filterable-columns a-query stage-number options)))
+
+;;; ### Building filters in code
+;;; These functions build filter clauses in code. They're mainly used in tests, but they are a legitimate public API
+;;; to use from production code too.
+;;;
+;;; **Code Health:** Healthy. However, UIs should generally be using [[filter-parts]] and [[string-filter-clause]]
+;;; instead of calling these.
+(shared.ns/import-fns
+ [lib.filter
+  and
+  or
+  not
+  = !=
+  < <=
+  > >=
+  in not-in
+  between
+  inside
+  is-null not-null
+  is-empty not-empty
+  starts-with ends-with
+  contains does-not-contain
+  relative-time-interval
+  time-interval
+  segment]) ; TODO: Move segment to sit with the `lib.segment` functions.
+
+;;; # Working with Expressions as an AST
+;;; Several parts of the FE want to work with clauses in a "white box" way, so it can render the details of the
+;;; expression in a structured way, or convert the AST of the expression parser into an expression, aggregation or
+;;; filter.
+;;;
+;;; That requirement is **directly opposed to one of Lib's primary objectives:** to encapsulate the details of MBQL
+;;; queries and clauses.
+;;;
+;;; The solution to the dilemma is for Lib to publish a separate, non-MBQL syntax for expression ASTs, and to convert
+;;; between that and MBQL clauses. That is the purpose of the [[expression-parts]] and [[filter-parts]] systems.
+;;;
+;;; [[expression-parts]] turns an MBQL expression (or aggregation) clause into an AST built out of nested maps. The
+;;; only MBQL inside the AST is that MBQL *refs* are treated as opaque leaf nodes. See [[lib.fe-util/ExpressionParts]]
+;;; for details on the schema.
+;;;
+;;; [[expression-clause]] is the reverse direction: turning an `ExpressionParts` AST into an MBQL clause suitable to
+;;; pass to [[expression]] or [[aggregate]].
+
+;;; ## Filter Parts
+;;; In a similar vein to [[expression-parts]], [[filter-parts]] breaks down a filter expression to make it consumable
+;;; without exposing MBQL internals. Filters are simpler than expressions, since they are never nested and have at most
+;;; one column. See [[lib.filter/FilterParts]] for the output format.
+
+(mu/defn filter-parts :- ::lib.filter/filter-parts
+  "Exports an opaque MBQL filter clause as a transparent `::lib.filter/filter-parts` map.
+
+  `a-query` and the target stage are required for context, since the output contains complete column metadata.
+
+  See [[describe-filter-operator]] to get a human-readable, translated description of the filter operator keywords.
+
+  **Code Health:** Healthy. This is deliberately public, including the output format."
+  ([a-query a-filter-clause] (filter-parts a-query -1 a-filter-clause))
+  ([a-query         :- ::lib.schema/query
+    stage-number    :- :int
+    a-filter-clause :- ::lib.schema.expression/boolean]
+   (lib.filter/filter-parts a-query stage-number a-filter-clause)))
+
+(mu/defn describe-filter-operator :- :string
+  "Returns a human-readable, translated display name for a filter operation based on the `operator` keyword.
+  (For example, the `:operator` field of a [[filter-parts]] map.)
+
+  `variant` is optional, and controls how a few operators are displayed. Valid variants:
+
+  - `:default` (the default, naturally) uses \"Is (not)\", \"Greater than\" and \"Less than\"
+  - `:number` uses \"Equal to\" and \"Not equal to\"
+  - `:temporal` uses \"After\" and \"Before\" for `:>` and `:<`"
+  ([operator] (describe-filter-operator operator :default))
+  ([operator :- :keyword ; TODO: (bshepherdson 2026-03-06) This could be more specific, if the list were in a schema.
+    variant  :- [:enum :default :number :temporal]]
+   (lib.filter/describe-filter-operator operator variant)))
+
+;;; # IGNORE ME!
+;;; <img src="https://i.redd.it/1b9z1mv805e61.jpg" />
+;;; *These are the leftovers which are not properly wrapped in user documentation yet.*
+(shared.ns/import-fns
  [lib.binning
   available-binning-strategies
   binning
   with-binning]
- [lib.breakout
-  breakout
-  breakout-column
-  breakoutable-columns
-  breakouts
-  breakouts-metadata
-  remove-all-breakouts]
  [metabase.lib.card
   card->underlying-query
   model-preserved-keys]
@@ -500,29 +841,7 @@
   with-fields]
  [metabase.lib.field.util
   update-keys-for-col-from-previous-stage]
- [lib.filter
-  add-filter-to-stage
-  filter
-  filters
-  filterable-columns
-  filter-parts
-  describe-filter-operator
-  and
-  or
-  not
-  = !=
-  < <=
-  > >=
-  in not-in
-  between
-  inside
-  is-null not-null
-  is-empty not-empty
-  starts-with ends-with
-  contains does-not-contain
-  relative-time-interval
-  time-interval
-  segment]
+
  [metabase.lib.filter.desugar
   desugar-filter-clause]
  [metabase.lib.filter.negate

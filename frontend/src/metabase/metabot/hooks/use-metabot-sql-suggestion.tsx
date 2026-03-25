@@ -1,13 +1,19 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { isFulfilled, isRejected } from "@reduxjs/toolkit";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { useGenerateSqlMutation } from "metabase/api";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import { METABOT_PROFILE_OVERRIDES } from "metabase/metabot/constants";
+import {
+  addDeveloperMessage,
+  getMetabotSuggestedCodeEdit,
+  removeSuggestedCodeEdit,
+  resetConversation,
+} from "metabase/metabot/state";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
-import type {
-  DatabaseId,
-  GenerateSqlResponse,
-  ReferencedEntity,
-} from "metabase-types/api";
+import type { DatabaseId, GenerateSqlResponse } from "metabase-types/api";
+
+import { useMetabotAgent } from "./use-metabot-agent";
 
 export interface UseMetabotSQLSuggestionOptions {
   databaseId: DatabaseId | null;
@@ -15,86 +21,91 @@ export interface UseMetabotSQLSuggestionOptions {
   onGenerated?: (result?: GenerateSqlResponse) => void;
 }
 
+type SubmitInputResult = Awaited<
+  ReturnType<ReturnType<typeof useMetabotAgent>["submitInput"]>
+>;
+
+const responseHasCodeEdit = (action: SubmitInputResult) => {
+  return (
+    isFulfilled(action) &&
+    action.payload.data?.processedResponse.data.some(
+      (dp) =>
+        typeof dp === "object" &&
+        dp !== null &&
+        "type" in dp &&
+        (dp as { type: string }).type === "code_edit",
+    )
+  );
+};
+
 export function useMetabotSQLSuggestion({
-  databaseId,
+  bufferId,
   onGenerated,
 }: UseMetabotSQLSuggestionOptions) {
-  const [source, setSource] = useState<string | undefined>(undefined);
-  const [error, setError] = useState<string | undefined>(undefined);
-  const [generateSql, { isLoading }] = useGenerateSqlMutation();
-  const requestRef = useRef<ReturnType<typeof generateSql> | null>(null);
+  const { isDoingScience, submitInput, cancelRequest } = useMetabotAgent("sql");
+
+  const [hasError, setHasError] = useState(false);
+
+  const dispatch = useDispatch();
+  const source = useSelector((state) =>
+    getMetabotSuggestedCodeEdit(state, bufferId),
+  )?.value;
 
   const generate = useCallback(
     async ({
       prompt,
-      sourceSql,
-      referencedEntities,
     }: {
       prompt: string;
       sourceSql?: string;
-      referencedEntities?: ReferencedEntity[];
+      referencedEntities?: unknown;
     }) => {
-      if (!databaseId) {
-        const errText = t`No database selected.`;
-        setError(errText);
-        throw new Error(errText);
-      }
-      setError(undefined);
-      try {
-        const request = generateSql({
-          prompt,
-          database_id: databaseId,
-          source_sql: sourceSql,
-          referenced_entities: referencedEntities,
-        });
-        requestRef.current = request;
-        const result = await request.unwrap();
-        requestRef.current = null;
-
-        if (result.sql) {
-          setSource(result.sql);
-          onGenerated?.(result);
-        } else {
-          throw new Error(t`Something went wrong. Please try again.`);
-        }
-      } catch (err) {
-        const error = err as { status?: number; data?: unknown };
-        let errText = t`Something went wrong. Please try again.`;
-        if (error.status === 400 && typeof error.data === "string") {
-          errText = error.data;
-        }
-        setError(errText);
-        throw new Error(errText);
+      setHasError(false);
+      const action = await submitInput(prompt, {
+        profile: METABOT_PROFILE_OVERRIDES.SQL,
+        preventOpenSidebar: true,
+      });
+      if (
+        isRejected(action) ||
+        (isFulfilled(action) && !action.payload?.success) ||
+        !responseHasCodeEdit(action)
+      ) {
+        setHasError(true);
+        throw new Error(t`Something went wrong. Please try again.`);
+      } else {
+        onGenerated?.();
       }
     },
-    [generateSql, databaseId, onGenerated],
+    [submitInput, onGenerated],
   );
 
-  const cancelRequest = useCallback(() => {
-    requestRef.current?.abort();
-    requestRef.current = null;
-  }, []);
+  const reject = useCallback(() => {
+    dispatch(
+      addDeveloperMessage({
+        agentId: "sql",
+        message: `User rejected the following suggestion:\n\n${source}`,
+      }),
+    );
+  }, [dispatch, source]);
 
   const clear = useCallback(() => {
-    setSource(undefined);
-  }, []);
+    dispatch(removeSuggestedCodeEdit(bufferId));
+  }, [dispatch, bufferId]);
 
   const reset = useCallback(() => {
-    clear();
-    setError(undefined);
-  }, [clear]);
+    dispatch(removeSuggestedCodeEdit(bufferId));
+    dispatch(resetConversation({ agentId: "sql" }));
+  }, [dispatch, bufferId]);
 
-  const reject = useCallback(() => {
-    // no-op for OSS - upgrade to enterprise if you want the agent to be smarter after rejecting an edit!
-  }, []);
-
-  const suggestionModels: SuggestionModel[] = useMemo(() => ["table"], []);
+  const suggestionModels: SuggestionModel[] = useMemo(
+    () => ["dataset", "table"],
+    [],
+  );
 
   return {
     source,
-    isLoading,
+    isLoading: isDoingScience,
     generate,
-    error,
+    error: hasError ? t`Something went wrong. Please try again.` : undefined,
     cancelRequest,
     clear,
     reject,

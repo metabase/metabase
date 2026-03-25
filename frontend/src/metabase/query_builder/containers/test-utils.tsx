@@ -246,7 +246,7 @@ export const setup = async ({
   }`,
 }: SetupOpts) => {
   setupDatabasesEndpoints([TEST_DB]);
-  setupCardDataset(dataset);
+  setupCardDataset({ dataset });
   setupSearchEndpoints([]);
   setupPropertiesEndpoints(createMockSettings());
   setupCollectionsEndpoints({ collections: [] });

@@ -19,9 +19,11 @@ import {
 } from "./DataSegregationStrategyPicker";
 import { DatabaseRoutingStepContent } from "./DatabaseRoutingStepContent";
 import { EnableTenantsStepContent } from "./EnableTenantsStepContent";
+import { MoveDashboardStepContent } from "./MoveDashboardStepContent";
 import type { RlsSelectionResult } from "./RlsDataSelector";
 import { RlsDataSelector } from "./RlsDataSelector";
 import S from "./SetupPermissionsAndTenantsPage.module.css";
+import { useLastXrayDashboard } from "./hooks/use-xray-dashboards";
 
 const SETUP_GUIDE_PATH = "/admin/embedding/setup-guide";
 
@@ -48,6 +50,11 @@ export const SetupPermissionsAndTenantsPage = () => {
     columnName: null,
   });
 
+  const isMoveDashboardDone = checklist?.["move-dashboard-to-shared"] ?? false;
+
+  const { lastDashboard, isLoading: isLoadingXray } = useLastXrayDashboard();
+  const hasXrayDashboard = !isLoadingXray && lastDashboard != null;
+
   // Prefer in-session UI state; fall back to backend detection for reloads
   const activeStrategy =
     selectedStrategy ?? checklistResponse?.["data-isolation-strategy"] ?? null;
@@ -67,6 +74,7 @@ export const SetupPermissionsAndTenantsPage = () => {
   const completedSteps = useMemo(() => {
     return {
       "enable-tenants": isTenantsEnabled,
+      "move-dashboard": isMoveDashboardDone,
       "data-segregation": isPickDataStrategyDone,
       "select-data": isDataSegregationSetupDone,
       "create-tenants": isTenantsCreated,
@@ -76,6 +84,7 @@ export const SetupPermissionsAndTenantsPage = () => {
     };
   }, [
     isTenantsEnabled,
+    isMoveDashboardDone,
     isPickDataStrategyDone,
     isDataSegregationSetupDone,
     isTenantsCreated,
@@ -83,6 +92,9 @@ export const SetupPermissionsAndTenantsPage = () => {
 
   const lockedSteps = useMemo(() => {
     return {
+      // The shared tenant collection is created when tenants are enabled,
+      // so the move-dashboard step can't work until that's done.
+      "move-dashboard": !isTenantsEnabled,
       // Unlock once we know the strategy — either from in-session confirmation
       // or from the backend on reload.
       "select-data": activeStrategy === null,
@@ -125,6 +137,22 @@ export const SetupPermissionsAndTenantsPage = () => {
           title={t`Enable multi-tenant user strategy`}
         >
           <EnableTenantsStepContent isTenantsEnabled={isTenantsEnabled} />
+        </OnboardingStepper.Step>
+
+        <OnboardingStepper.Step
+          stepId="move-dashboard"
+          title={
+            hasXrayDashboard
+              ? t`Move a dashboard to the shared collection`
+              : t`Create a dashboard in the shared collection`
+          }
+        >
+          <MoveDashboardStepContent
+            isMoveDashboardDone={isMoveDashboardDone}
+            hasXrayDashboard={hasXrayDashboard}
+            lastDashboard={lastDashboard}
+            onCompleted={() => stepperRef.current?.goToNextStep()}
+          />
         </OnboardingStepper.Step>
 
         <OnboardingStepper.Step
