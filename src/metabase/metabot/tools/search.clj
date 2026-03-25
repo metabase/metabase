@@ -252,19 +252,6 @@
          enrich-with-database-engines
          remove-unreadable-transforms)))
 
-(defn search-tool
-  "Handler for the /search and /search_v2 tool endpoints.
-  Wraps [[search]] with error handling and response formatting."
-  [args]
-  (try
-    (let [results (search args)]
-      {:structured_output {:result-type :search
-                           :data        results
-                           :total_count (count results)}})
-    (catch Exception e
-      (log/error e "Error in search")
-      {:output (str "Search failed: " (or (ex-message e) "Unknown error"))})))
-
 (defn- format-search-output
   "Format search results as an LLM-ready string."
   [results]
