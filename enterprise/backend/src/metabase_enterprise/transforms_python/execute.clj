@@ -365,7 +365,6 @@
           (transforms.util/handle-transform-complete!
            :run-id run-id
            :transform transform
-           :source-range-params (:source-range-params result)
            :db db)
           {:run_id run-id
            :result result})))

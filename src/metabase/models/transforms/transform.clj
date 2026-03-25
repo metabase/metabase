@@ -169,7 +169,17 @@
     transforms
     (let [transform-ids (into #{} (map :id) transforms)
           last-runs (m/index-by :transform_id (transform-run/latest-runs transform-ids))]
-      (for [transform transforms] (assoc transform :last_run (get last-runs (:id transform)))))))
+      (for [{transform-id :id :as transform} transforms]
+        (let [{:keys [status checkpoint_hi_value] :as last-run} (get last-runs transform-id)
+              transform (assoc transform :last_run last-run)]
+          (if (and (= status :succeeded) checkpoint_hi_value)
+            ;; ensure consistency of last_checkpoint_value with last_run
+            (if (:last_checkpoint_value transform)
+              (assoc transform :last_checkpoint_value checkpoint_hi_value)
+              ;; latest transform value wins, could be reset
+              (assoc transform :last_checkpoint_value
+                     (t2/select-one-fn :last_checkpoint_value [:model/Transform :last_checkpoint_value] transform-id)))
+            transform))))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Transform :transform_tag_ids]
   "Add tag_ids to a transform, preserving the order defined by position"
