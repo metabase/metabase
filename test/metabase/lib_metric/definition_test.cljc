@@ -367,7 +367,6 @@
           result     (lib-metric.definition/unprojected-sources definition)]
       (is (empty? result)))))
 
-
 ;;; -------------------------------------------------- Schema Validation --------------------------------------------------
 
 (deftest ^:parallel metric-definition-schema-test
