@@ -5,9 +5,11 @@ import type {
   MetabotGenerateContentResponse,
   MetabotId,
   MetabotInfo,
+  MetabotPermissionsResponse,
   MetabotSlackSettings,
   SuggestedMetabotPromptsRequest,
   SuggestedMetabotPromptsResponse,
+  UpdateMetabotPermissionsRequest,
 } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -107,6 +109,23 @@ export const metabotApi = Api.injectEndpoints({
       }),
       invalidatesTags: ["session-properties"],
     }),
+    getMetabotPermissions: builder.query<MetabotPermissionsResponse, void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/metabot/permissions",
+      }),
+      providesTags: () => [listTag("metabot-permissions")],
+    }),
+    updateMetabotPermissions: builder.mutation<
+      void,
+      UpdateMetabotPermissionsRequest
+    >({
+      query: (body) => ({
+        method: "PUT",
+        url: "/api/metabot/permissions",
+        body,
+      }),
+    }),
   }),
 });
 
@@ -119,4 +138,6 @@ export const {
   useLazyMetabotGenerateContentQuery,
   useSubmitMetabotFeedbackMutation,
   useUpdateMetabotSlackSettingsMutation,
+  useGetMetabotPermissionsQuery,
+  useUpdateMetabotPermissionsMutation,
 } = metabotApi;

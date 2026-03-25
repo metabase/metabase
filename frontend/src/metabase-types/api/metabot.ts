@@ -291,3 +291,28 @@ export type MetabotSlackSettings =
       "slack-connect-client-secret": null;
       "metabot-slack-signing-secret": null;
     };
+
+/* Metabot v3 - Group Permissions */
+
+export enum AIToolKey {
+  Metabot = "permission/metabot",
+  Model = "permission/metabot-model",
+  NLQ = "permission/metabot-nql",
+  SemanticSearch = "permission/metabot-semantic-search",
+  SQLGeneration = "permission/metabot-sql-generation",
+  OtherTools = "permission/metabot-other-tools",
+}
+
+export type MetabotGroupPermission = {
+  group_id: number;
+  perm_type: AIToolKey;
+  perm_value: "yes" | "no";
+};
+
+export type MetabotPermissionsResponse = {
+  permissions: MetabotGroupPermission[];
+} & PaginationResponse;
+
+export type UpdateMetabotPermissionsRequest = {
+  permissions: MetabotGroupPermission[];
+};

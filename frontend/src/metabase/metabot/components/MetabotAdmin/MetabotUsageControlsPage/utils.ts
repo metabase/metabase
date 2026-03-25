@@ -1,68 +1,88 @@
-import { useState } from "react";
+import { useDebouncedCallback } from "@mantine/hooks";
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import type { GroupInfo } from "metabase-types/api";
+import {
+  useGetMetabotPermissionsQuery,
+  useUpdateMetabotPermissionsMutation,
+} from "metabase/api";
+import { useMetadataToasts } from "metabase/metadata/hooks";
+import { AIToolKey, type MetabotGroupPermission } from "metabase-types/api";
 
-export type AIToolKey =
-  | "metabot"
-  | "semantic-search"
-  | "sql-generation"
-  | "nlq"
-  | "other-tools";
-
-// TODO: retrieve from the backend
-export const useModelOptions = () => {
+export const getModelOptions = () => {
   return [
     { value: "default", label: t`Default` },
-    { value: "gpt-4o", label: "GPT-4o" },
-    { value: "claude-3.5-sonnet", label: "Claude 3.5 Sonnet" },
+    { value: "small", label: t`Small` },
+    { value: "medium", label: t`Medium` },
+    { value: "large", label: t`Large` },
   ];
 };
 
 export const getAIToolItems = (): Array<{ key: AIToolKey; label: string }> => {
   return [
-    { key: "metabot", label: t`Metabot` },
-    { key: "semantic-search", label: t`Semantic search` },
-    { key: "sql-generation", label: t`SQL generation` },
-    { key: "nlq", label: t`NLQ` },
-    { key: "other-tools", label: t`Other tools` },
+    { key: AIToolKey.Metabot, label: t`Metabot` },
+    { key: AIToolKey.SemanticSearch, label: t`Semantic search` },
+    { key: AIToolKey.SQLGeneration, label: t`SQL generation` },
+    { key: AIToolKey.NLQ, label: t`NLQ` },
+    { key: AIToolKey.OtherTools, label: t`Other tools` },
   ];
 };
 
-// TODO: retrieve from the backend
-export const useGroupToolsAccessMap = (groups: GroupInfo[]) => {
-  const initialState = groups.reduce(
-    (map, group) => {
-      return {
-        ...map,
-        [group.id]: {
-          metabot: true,
-          "semantic-search": true,
-          "sql-generation": true,
-          nlq: true,
-          "other-tools": true,
-        },
-      };
+const PERMISSIONS_SAVE_DEBOUNCE = 500;
+
+export const useMetabotGroupPermissions = () => {
+  const { data: permissionsQueryData } = useGetMetabotPermissionsQuery();
+  const [updateMetabotPermissions] = useUpdateMetabotPermissionsMutation();
+  const [groupPermissions, setGroupPermissions] = useState<
+    MetabotGroupPermission[]
+  >([]);
+  const { sendErrorToast } = useMetadataToasts();
+
+  useEffect(() => {
+    const { permissions } = permissionsQueryData || {};
+    if (permissions?.length) {
+      setGroupPermissions(permissions);
+    }
+  }, [permissionsQueryData]);
+
+  const debouncedUpdatePermissions = useDebouncedCallback(
+    async (updatedPermissions: MetabotGroupPermission[]) => {
+      try {
+        await updateMetabotPermissions({
+          permissions: updatedPermissions,
+        }).unwrap();
+      } catch {
+        sendErrorToast(t`Failed to save Metabot permissions`);
+      }
     },
-    {} as Record<number, Record<AIToolKey, boolean>>,
+    PERMISSIONS_SAVE_DEBOUNCE,
   );
-  const [groupToolsAccessMap, setGroupToolsAccessMap] = useState(initialState);
-  const onToolAccessChange = (
+
+  const onPermissionChange = (
     groupId: number,
     tool: AIToolKey,
     enabled: boolean,
   ) => {
-    setGroupToolsAccessMap((prev) => ({
-      ...prev,
-      [groupId]: {
-        ...prev[groupId],
-        [tool]: enabled,
-      },
-    }));
+    setGroupPermissions((prevPermissions) => {
+      const updatedPermissions = prevPermissions.map((permission) => {
+        if (permission.group_id === groupId && permission.perm_type === tool) {
+          return {
+            ...permission,
+            perm_value: enabled ? "yes" : "no",
+          } as MetabotGroupPermission;
+        }
+
+        return permission;
+      });
+
+      debouncedUpdatePermissions(updatedPermissions);
+
+      return updatedPermissions;
+    });
   };
 
   return {
-    groupToolsAccessMap,
-    onToolAccessChange,
+    groupPermissions,
+    onPermissionChange,
   };
 };

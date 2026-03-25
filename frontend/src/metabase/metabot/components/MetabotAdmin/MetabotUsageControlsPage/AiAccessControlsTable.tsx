@@ -1,14 +1,16 @@
-import type { ChangeEvent } from "react";
+import { type ChangeEvent, useMemo } from "react";
 import { c, t } from "ttag";
+import _ from "underscore";
 
 import { Checkbox, Select, Text } from "metabase/ui";
-import type { GroupInfo } from "metabase-types/api";
+import type { GroupInfo, MetabotGroupPermission } from "metabase-types/api";
 
 import S from "./AiAccessControlsTable.module.css";
 import {
+  type AIToolKey,
   getAIToolItems,
-  useGroupToolsAccessMap,
-  useModelOptions,
+  getModelOptions,
+  useMetabotGroupPermissions,
 } from "./utils";
 
 export type AiAccessControlsTableProps = {
@@ -17,10 +19,12 @@ export type AiAccessControlsTableProps = {
 
 export function AiAccessControlsTable(props: AiAccessControlsTableProps) {
   const { groups } = props;
-  const modelOptions = useModelOptions();
   const toolItems = getAIToolItems();
-  const { groupToolsAccessMap, onToolAccessChange } =
-    useGroupToolsAccessMap(groups);
+  const { groupPermissions, onPermissionChange } = useMetabotGroupPermissions();
+  const permissionsByGroup = useMemo(
+    () => _.groupBy(groupPermissions, "group_id"),
+    [groupPermissions],
+  );
 
   return (
     <div className={S.CardContainer} data-testid="ai-access-controls-table">
@@ -37,52 +41,72 @@ export function AiAccessControlsTable(props: AiAccessControlsTableProps) {
           </tr>
         </thead>
         <tbody>
-          {groups.map((group) => {
-            const groupPerms = groupToolsAccessMap[group.id];
-            return (
-              <tr
-                aria-label={c("{0} is the user group name")
-                  .t`${group.name} permissions`}
-                className={S.Row}
-                key={group.id}
-              >
-                <td className={S.Cell}>
-                  <Text>{group.name}</Text>
-                </td>
-                {toolItems.map(({ key, label }) => (
-                  <td key={key} className={S.Cell}>
-                    <Checkbox
-                      aria-label={t`Allow ${group.name} user group to access ${label} AI tool.`}
-                      size="sm"
-                      checked={groupPerms[key] ?? false}
-                      onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                        onToolAccessChange(
-                          group.id,
-                          key,
-                          e.currentTarget.checked,
-                        )
-                      }
-                      classNames={{
-                        body: S.inputBody,
-                      }}
-                    />
-                  </td>
-                ))}
-                <td className={S.Cell}>
-                  <Select
-                    aria-label={group.name}
-                    className={S.ModelSelect}
-                    data={modelOptions}
-                    defaultValue="default"
-                    miw="10rem"
-                    size="sm"
-                  />
-                </td>
-              </tr>
-            );
-          })}
+          {groups.map((group) => (
+            <GroupPermissionRow
+              group={group}
+              groupPermissions={permissionsByGroup[group.id] || []}
+              key={group.id}
+              onPermissionChange={onPermissionChange}
+            />
+          ))}
         </tbody>
       </table>
     </div>
+  );
+}
+
+type GroupPermissionRowProps = {
+  group: GroupInfo;
+  groupPermissions: MetabotGroupPermission[];
+  onPermissionChange: (
+    groupId: number,
+    toolKey: AIToolKey,
+    enabled: boolean,
+  ) => void;
+};
+
+function GroupPermissionRow(props: GroupPermissionRowProps) {
+  const { onPermissionChange, groupPermissions, group } = props;
+  const modelOptions = getModelOptions();
+
+  const permissionMap = useMemo(() => {
+    return _.indexBy(groupPermissions, "perm_type");
+  }, [groupPermissions]);
+
+  return (
+    <tr
+      aria-label={c("{0} is the user group name").t`${group.name} permissions`}
+      className={S.Row}
+      key={group.id}
+    >
+      <td className={S.Cell}>
+        <Text>{group.name}</Text>
+      </td>
+      {getAIToolItems().map(({ key, label }) => (
+        <td key={key} className={S.Cell}>
+          <Checkbox
+            aria-label={t`Allow ${group.name} user group to access ${label} AI tool.`}
+            size="sm"
+            checked={permissionMap[key]?.perm_value === "yes"}
+            onChange={(e: ChangeEvent<HTMLInputElement>) =>
+              onPermissionChange(group.id, key, e.target.checked)
+            }
+            classNames={{
+              body: S.inputBody,
+            }}
+          />
+        </td>
+      ))}
+      <td className={S.Cell}>
+        <Select
+          aria-label={group.name}
+          className={S.ModelSelect}
+          data={modelOptions}
+          defaultValue="default"
+          miw="10rem"
+          size="sm"
+        />
+      </td>
+    </tr>
   );
 }
