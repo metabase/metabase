@@ -64,7 +64,7 @@ export function formatTimeWithUnit(
 }
 
 export function formatTime(
-  time: Dayjs,
+  time: Dayjs | string,
   unit: DatetimeUnit = "default",
   options: TimeOnlyOptions = {},
 ) {

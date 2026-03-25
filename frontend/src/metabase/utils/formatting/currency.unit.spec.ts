@@ -1,4 +1,4 @@
-import { getCurrencyStyleOptions } from "./currency";
+import { getCurrencyStyleOptions, getCurrencySymbol } from "./currency";
 
 describe("getCurrencyStyleOptions", () => {
   it("should get currency options - USD", () => {
@@ -36,5 +36,27 @@ describe("getCurrencyStyleOptions", () => {
       { name: "Code (USD)", value: "code" },
       { name: "Name (US dollars)", value: "name" },
     ]);
+  });
+});
+
+describe("getCurrencySymbol", () => {
+  const currencySymbols = [
+    ["USD", "$"],
+    ["EUR", "€"],
+    ["GBP", "£"],
+    ["JPY", "¥"],
+    ["CNY", "CN¥"],
+    ["CAD", "CA$"],
+    ["AUD", "AU$"],
+    ["NZD", "NZ$"],
+    ["HKD", "HK$"],
+    ["BTC", "₿"],
+    ["OOPS", "OOPS"],
+  ];
+
+  currencySymbols.forEach(([currency, symbol]) => {
+    it(`should get a ${symbol} for ${currency}`, () => {
+      expect(getCurrencySymbol(currency)).toEqual(symbol);
+    });
   });
 });

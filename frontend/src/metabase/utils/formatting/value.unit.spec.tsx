@@ -1,9 +1,17 @@
+import type { ReactElement } from "react";
+import { isElementOfType } from "react-dom/test-utils";
+
 import { mockSettings } from "__support__/settings";
 import { render, screen } from "__support__/ui";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { Link } from "metabase/common/components/Link";
+import { TYPE } from "metabase-lib/v1/types/constants";
 import { createMockColumn } from "metabase-types/api/mocks";
 
 import type { OptionsType } from "./types";
 import { formatValue } from "./value";
+
+const SITE_URL = "http://localhost:3000";
 
 describe("formatValue", () => {
   const setup = (value: any, overrides: Partial<OptionsType> = {}) => {
@@ -307,5 +315,216 @@ describe("formatValue", () => {
         "Text with newlines",
       );
     });
+  });
+
+  it("should return null on nullish values by default", () => {
+    expect(formatValue(null)).toEqual(null);
+    expect(formatValue(undefined)).toEqual(null);
+  });
+
+  it("should format null as (empty) when stringifyNull option is true", () => {
+    expect(formatValue(null, { stringifyNull: true })).toEqual("(empty)");
+    expect(formatValue(undefined, { stringifyNull: true })).toEqual("(empty)");
+  });
+
+  it("should format numbers with null column", () => {
+    expect(formatValue(12345)).toEqual("12345");
+  });
+
+  it("should format numbers with commas", () => {
+    expect(
+      formatValue(12345, {
+        column: { base_type: TYPE.Number, semantic_type: TYPE.Number },
+      }),
+    ).toEqual("12,345");
+  });
+
+  it("should format big integers", () => {
+    const options = {
+      column: { base_type: TYPE.Number, semantic_type: TYPE.Number },
+    };
+
+    expect(formatValue(9223372036854775807n, options)).toEqual(
+      "9,223,372,036,854,775,807",
+    );
+    expect(formatValue("9223372036854775807", options)).toEqual(
+      "9,223,372,036,854,775,807",
+    );
+  });
+
+  it("should format zip codes without commas", () => {
+    expect(
+      formatValue(12345, {
+        column: { base_type: TYPE.Number, semantic_type: TYPE.ZipCode },
+      }),
+    ).toEqual("12345");
+  });
+
+  it("should format latitude and longitude columns correctly", () => {
+    expect(
+      formatValue(37.7749, {
+        column: { base_type: TYPE.Number, semantic_type: TYPE.Latitude },
+      }),
+    ).toEqual("37.77490000° N");
+    expect(
+      formatValue(-122.4194, {
+        column: { base_type: TYPE.Number, semantic_type: TYPE.Longitude },
+      }),
+    ).toEqual("122.41940000° W");
+  });
+
+  it("should return the component for external links in jsx + rich mode", () => {
+    expect(
+      isElementOfType(
+        formatValue("http://metabase.com/", {
+          jsx: true,
+          rich: true,
+        }) as ReactElement,
+        ExternalLink,
+      ),
+    ).toEqual(true);
+  });
+
+  it("should return a component for internal links in jsx + rich mode", () => {
+    expect(
+      isElementOfType(
+        formatValue(SITE_URL, { jsx: true, rich: true }) as ReactElement,
+        Link,
+      ),
+    ).toBe(true);
+  });
+
+  it("should return a component for relative links in jsx + rich mode", () => {
+    const column = createMockColumn({
+      name: "column_name",
+      base_type: "type/Text",
+      effective_type: "type/Text",
+      semantic_type: "type/URL",
+    });
+    expect(
+      isElementOfType(
+        formatValue("/question/12", {
+          jsx: true,
+          rich: true,
+          view_as: "link",
+          link_url: "{{column_name}}",
+          clicked: {
+            value: "/question/12",
+            column: column,
+            data: [{ value: "question/12", col: column }],
+          },
+        }) as ReactElement,
+        Link,
+      ),
+    ).toEqual(true);
+  });
+
+  it("should not return an ExternalLink for links in jsx + rich mode if there's click behavior", () => {
+    const formatted = formatValue("http://metabase.com/", {
+      jsx: true,
+      rich: true,
+      click_behavior: {
+        linkTemplate: "foo",
+        linkTextTemplate: "foo",
+        linkType: "url",
+        type: "link",
+      },
+      clicked: {},
+    }) as ReactElement;
+    // it's not actually a link
+    expect(isElementOfType(formatted, ExternalLink)).toEqual(false);
+    // expect the text to be in a div (which has link formatting) rather than ExternalLink
+    expect(formatted.props["data-testid"]).toEqual("link-formatted-text");
+  });
+
+  it("should render image", () => {
+    const formatted = formatValue("http://metabase.com/logo.png", {
+      jsx: true,
+      rich: true,
+      view_as: "image",
+      column: { semantic_type: "type/ImageURL" },
+    }) as ReactElement;
+    expect(formatted.type).toEqual("img");
+    expect(formatted.props.src).toEqual("http://metabase.com/logo.png");
+  });
+
+  it("should render image with a click behavior in jsx + rich mode (metabase#17161)", () => {
+    const formatted = formatValue("http://metabase.com/logo.png", {
+      jsx: true,
+      rich: true,
+      view_as: "image",
+      click_behavior: {
+        linkTemplate: "foo",
+        linkType: "url",
+        type: "link",
+      },
+      clicked: {},
+    }) as ReactElement;
+    expect(formatted.type).toEqual("img");
+    expect(formatted.props.src).toEqual("http://metabase.com/logo.png");
+  });
+
+  it("should return a component for email addresses in jsx + rich mode", () => {
+    expect(
+      isElementOfType(
+        formatValue("tom@metabase.test", {
+          jsx: true,
+          rich: true,
+        }) as ReactElement,
+        ExternalLink,
+      ),
+    ).toEqual(true);
+  });
+
+  it("should not add mailto prefix if there's a different semantic type", () => {
+    expect(
+      formatValue("foobar@example.test", {
+        jsx: true,
+        rich: true,
+        column: { semantic_type: "type/PK" },
+      }),
+    ).toEqual("foobar@example.test");
+  });
+
+  it("should display hour-of-day with 12 hour clock", () => {
+    expect(
+      formatValue(24, {
+        date_style: null,
+        time_enabled: "minutes",
+        time_style: "h:mm A",
+        column: {
+          base_type: "type/DateTime",
+          unit: "hour-of-day",
+        },
+      }),
+    ).toEqual("12:00 AM");
+  });
+
+  it("should display hour-of-day with 24 hour clock", () => {
+    expect(
+      formatValue(24, {
+        date_style: null,
+        time_enabled: "minutes",
+        time_style: "HH:mm",
+        column: {
+          base_type: "type/DateTime",
+          unit: "hour-of-day",
+        },
+      }),
+    ).toEqual("00:00");
+  });
+
+  it("should not include time for type/Date type (metabase#7494)", () => {
+    expect(
+      formatValue("2019-07-07T00:00:00.000Z", {
+        date_style: "M/D/YYYY",
+        time_enabled: "minutes",
+        time_style: "HH:mm",
+        column: {
+          base_type: "type/Date",
+          unit: "hour-of-day",
+        },
+      }),
+    ).toEqual("7/7/2019");
   });
 });
