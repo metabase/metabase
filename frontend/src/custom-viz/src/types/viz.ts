@@ -244,7 +244,7 @@ export type CustomVisualizationProps<CustomVisualizationSettings> = {
 
   settings: CustomVisualizationSettings;
 
-  onClick: (
+  onVisualizationClick: (
     clickObject: ClickObject<CustomVisualizationSettings> | null,
   ) => void;
 
