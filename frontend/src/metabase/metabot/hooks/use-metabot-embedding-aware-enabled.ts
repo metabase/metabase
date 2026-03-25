@@ -9,7 +9,6 @@ export const useMetabotEnabledEmbeddingAware = ({
   forceEmbedding = false,
 }: {
   forceEmbedding?: boolean;
-  requireMeteabotFeature?: boolean;
 } = {}): boolean => {
   const isEmbedding = forceEmbedding || isWithinIframe() || isEmbeddingSdk();
   const isEnabled = useSetting(
