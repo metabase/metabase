@@ -15,7 +15,8 @@
   (testing "initializes with default state when nil"
     (let [messages [{:role :user :content "Hello"}]
           mem (memory/initialize messages nil)]
-      (is (= {:queries {} :charts {} :todos [] :transforms {}} (:state mem))))))
+      (is (= {:queries {} :charts {} :todos [] :transforms {} :link-registry {}}
+             (:state mem))))))
 
 (deftest add-step-test
   (testing "adds step to memory"

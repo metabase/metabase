@@ -364,6 +364,19 @@
           (is (re-find #"Retention Cohorts" result))
           (is (re-find #"Shows retention by cohort" result))))))
 
+  (testing "question includes display_type in formatted output"
+    (mt/with-test-user :rasta
+      (mt/with-temp [:model/Card {card-id :id} {:name          "Revenue Pie Chart"
+                                                :type          "question"
+                                                :display       :pie
+                                                :database_id   (mt/id)
+                                                :dataset_query {:database (mt/id)
+                                                                :type     :query
+                                                                :query    {:source-table (mt/id :orders)}}}]
+        (let [result (user-context/format-viewing-context
+                      {:user_is_viewing [{:type "question" :id card-id}]})]
+          (is (re-find #"display_type=\"pie\"" result))))))
+
   (testing "dashboard with only type+id fetches name and description from DB"
     (mt/with-test-user :rasta
       (mt/with-temp [:model/Dashboard {dash-id :id} {:name        "Executive Dashboard"
