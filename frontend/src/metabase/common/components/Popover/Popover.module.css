@@ -1,0 +1,54 @@
+/* TODO: Remove this file when tippy.js dependency is removed */
+
+/* Global classes from tippy.js */
+:global(.tippy-box),
+:global(.tippy-content) {
+  max-height: inherit;
+  transition:
+    transform 0s,
+    visibility 0.3s,
+    opacity 0.3s;
+}
+
+:global(.tippy-box[data-theme~="tooltip"]) {
+  color: var(--mb-color-tooltip-text);
+  font-weight: bold;
+  background-color: var(--mb-color-tooltip-background);
+  border: none;
+  pointer-events: none;
+  line-height: 1.26;
+  font-size: 12px;
+  border-radius: 6px;
+  box-shadow: 0 4px 10px var(--mb-color-shadow);
+  overflow-wrap: break-word;
+}
+
+:global(.tippy-box[data-theme~="tooltip"] .tippy-content) {
+  padding: 10px 12px;
+}
+
+:global(.tippy-box[data-theme~="no-padding"] .tippy-content) {
+  padding: 0;
+}
+
+:global(.tippy-box[data-theme~="popover"]) {
+  font-size: inherit;
+  border: 1px solid var(--mb-color-border);
+  box-shadow: 0 4px 10px var(--mb-color-shadow);
+  background-color: var(--mb-color-background-primary);
+  border-radius: 6px;
+  overflow: auto;
+}
+
+:global(.tippy-box[data-theme~="popover"] .tippy-content) {
+  padding: 0;
+}
+
+/* Global id for an element used for positioning tooltips.
+ * Check usage in metabase/lib/dom.ts when removing this component. */
+:global(#popover-event-target) {
+  position: fixed;
+  width: 6px;
+  height: 6px;
+  pointer-events: none;
+}
