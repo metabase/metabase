@@ -282,7 +282,23 @@
        (thrown-with-msg?
         clojure.lang.ExceptionInfo
         #"Change set IDs are in the wrong file"
-        (validate-id "v57.2024-01-01T10:30:00" "056_update_migrations.yaml"))))))
+        (validate-id "v57.2024-01-01T10:30:00" "056_update_migrations.yaml"))))
+    (testing "directory-based feature files"
+      (let [file "060/20260310_test.yaml"]
+        (is (= :ok
+               (validate-id "v60.1" file)))
+        (is (= :ok
+               (validate-id "v60.2026-03-10T00:00:00" file)))
+        (is
+         (thrown-with-msg?
+          clojure.lang.ExceptionInfo
+          #"Change set IDs are in the wrong file"
+          (validate-id "v49.2024-01-01T10:30:00" file)))
+        (is
+         (thrown-with-msg?
+          clojure.lang.ExceptionInfo
+          #"Change set IDs are in the wrong file"
+          (validate-id "v61.1" file)))))))
 
 (deftest prevent-text-types-test
   (testing "should allow \"${text.type}\" columns from being added"
