@@ -1,4 +1,4 @@
-import { defineSettings } from "../lib";
+import { defineSetting } from "../lib";
 
 import type {
   CreateCustomVisualization,
@@ -53,31 +53,31 @@ const createMyViz: CreateCustomVisualization<MyVizSettings> = () => {
         throw new Error("Threshold setting is not set");
       }
     },
-    settings: defineSettings({
-      apiKey: {
+    settings: {
+      apiKey: defineSetting({
         id: "api-key-setting",
         widget: "input",
         getProps() {
           return {};
         },
-      },
-      custom: {
+      }),
+      custom: defineSetting({
         id: "2",
         widget: CustomWidget,
         getProps() {
           return {
-            options: [true],
+            options: [],
           };
         },
-      },
-      threshold: {
+      }),
+      threshold: defineSetting({
         id: "1",
         widget: "number",
         getProps(_series, _settings) {
           return {};
         },
-      },
-    }),
+      }),
+    },
     VisualizationComponent: MyVizComponent,
   };
 };

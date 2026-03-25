@@ -11,45 +11,37 @@ type PropsFromWidget<W> = W extends WidgetName
     ? P
     : never;
 
-export function defineSettings<
+export function defineSetting<
   CustomVisualizationSettings extends Record<string, unknown>,
   TValue,
-  W extends Record<string, WidgetName | ((props: any) => any)>,
->(settings: {
-  [K in keyof W]: {
-    id: string;
-    section?: string;
-    title?: string;
-    group?: string;
-    index?: number;
-    inline?: boolean;
+  W extends WidgetName | ((props: any) => any),
+>(settingDefinition: {
+  id: string;
+  section?: string;
+  title?: string;
+  group?: string;
+  index?: number;
+  inline?: boolean;
 
-    persistDefault?: boolean;
-    set?: boolean;
+  persistDefault?: boolean;
+  set?: boolean;
 
-    readDependencies?: string[];
-    writeDependencies?: string[];
-    eraseDependencies?: string[];
+  readDependencies?: string[];
+  writeDependencies?: string[];
+  eraseDependencies?: string[];
 
-    widget: W[K];
+  widget: W;
 
-    isValid?: (
-      series: Series,
-      settings: CustomVisualizationSettings,
-    ) => boolean;
-    getDefault?: (
-      series: Series,
-      settings: CustomVisualizationSettings,
-    ) => TValue;
-    getProps(
-      object: Series,
-      vizSettings: CustomVisualizationSettings,
-    ): PropsFromWidget<W[K]>;
-    getValue?: (
-      series: Series,
-      settings: CustomVisualizationSettings,
-    ) => TValue;
-  };
+  isValid?: (series: Series, settings: CustomVisualizationSettings) => boolean;
+  getDefault?: (
+    series: Series,
+    settings: CustomVisualizationSettings,
+  ) => TValue;
+  getProps(
+    object: Series,
+    vizSettings: CustomVisualizationSettings,
+  ): PropsFromWidget<W>;
+  getValue?: (series: Series, settings: CustomVisualizationSettings) => TValue;
 }): CustomVisualizationSettingsDefinitions<CustomVisualizationSettings> {
-  return settings;
+  return settingDefinition;
 }
