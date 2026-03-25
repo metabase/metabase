@@ -97,6 +97,7 @@
                 (not (str/blank? token)))))
 
 (defn configured-provider-api-key
+  "Returns the configured API key for the given provider, or nil if unrecognized."
   [provider]
   (case provider
     "anthropic"  (llm.settings/llm-anthropic-api-key)
