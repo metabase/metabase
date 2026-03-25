@@ -26,7 +26,6 @@
  [qp.params.ops
   operator?])
 
-;; TODO(rileythomp, 2026-03-18): For mbql5, options should always be at the front
 (defn- operator-options-fn
   [param-type]
   (get-in lib.schema.parameter/types [param-type :options-fn]

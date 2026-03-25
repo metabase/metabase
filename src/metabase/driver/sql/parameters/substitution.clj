@@ -324,9 +324,7 @@
             (update x :replacement-snippet
                     (partial str (field->identifier driver field param-type value) " ")))
           (->honeysql [form]
-            (->> form
-                 (maybe->pMBQL driver)
-                 (sql.qp/->honeysql driver)))]
+            (sql.qp/->honeysql driver (maybe->pMBQL driver form)))]
     (cond
       (params.ops/operator? param-type)
       #_{:clj-kondo/ignore [:deprecated-var]}
