@@ -2,6 +2,7 @@
   "`/api/metabot/` routes"
   (:require
    [clojure.core.async :as a]
+   [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -17,8 +18,12 @@
    [metabase.metabot.envelope :as metabot.envelope]
    [metabase.metabot.feedback :as metabot.feedback]
    [metabase.metabot.schema :as metabot.schema]
+   [metabase.metabot.self :as metabot.self]
    [metabase.metabot.self.core :as self.core]
+   [metabase.metabot.settings :as metabot.settings]
+   [metabase.permissions.core :as perms]
    [metabase.server.streaming-response :as sr]
+   [metabase.settings.core :as setting]
    [metabase.slackbot.api]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -243,6 +248,179 @@
     (catch Exception e
       (log/error e "Failed to submit feedback to Harbormaster")
       (throw e))))
+
+(def ^:private metabot-provider-schema
+  [:enum "anthropic" "openai" "openrouter"])
+
+(def ^:private llm-model-response-schema
+  [:map
+   [:id :string]
+   [:display_name :string]
+   [:group {:optional true} [:maybe :string]]])
+
+(def ^:private metabot-settings-response-schema
+  [:map
+   [:value [:maybe :string]]
+   [:api-key-error {:optional true} [:maybe :string]]
+   [:models [:sequential llm-model-response-schema]]])
+
+(def ^:private metabot-settings-request-schema
+  [:map
+   [:provider metabot-provider-schema]
+   [:model {:optional true} ms/NonBlankString]
+   [:api-key {:optional true} [:maybe :string]]])
+
+(defn- provider-api-key-setting-key
+  [provider]
+  (case provider
+    "anthropic"  :llm-anthropic-api-key
+    "openai"     :llm-openai-api-key
+    "openrouter" :llm-openrouter-api-key))
+
+(defn- non-blank-string
+  [value]
+  (when (string? value)
+    (let [trimmed (str/trim value)]
+      (when-not (str/blank? trimmed)
+        trimmed))))
+
+(def ^:private invalid-api-key-statuses
+  #{401 403})
+
+(defn- invalid-api-key-error?
+  [error]
+  (let [status (or (:status (ex-data error))
+                   (:status-code (ex-data error)))]
+    (and (:api-error (ex-data error))
+         (contains? invalid-api-key-statuses status))))
+
+(defn- title-case-token
+  [token]
+  (case token
+    "openai" "OpenAI"
+    "claude" "Claude"
+    (str/capitalize token)))
+
+(defn- anthropic-model-group
+  [{:keys [id]}]
+  (let [tokens (str/split id #"-")]
+    (or (some->> tokens
+                 (filter #{"haiku" "sonnet" "opus"})
+                 first
+                 title-case-token)
+        (some->> tokens
+                 (take 2)
+                 seq
+                 (map title-case-token)
+                 (str/join " ")))))
+
+(defn- openrouter-model-group
+  [{:keys [display_name id]}]
+  (or (some-> display_name
+              (str/split #": " 2)
+              first)
+      (some-> id
+              (str/split #"/" 2)
+              first
+              title-case-token)))
+
+(defn- decorate-provider-model
+  [provider model]
+  (case provider
+    "anthropic"  (assoc model :group (anthropic-model-group model))
+    "openrouter" (assoc model :group (openrouter-model-group model))
+    model))
+
+(defn- decorate-provider-models
+  [provider models]
+  (let [decorated-models (map #(decorate-provider-model provider %) models)]
+    (if (contains? #{"anthropic" "openrouter"} provider)
+      (let [grouped-models (group-by :group decorated-models)]
+        (->> grouped-models
+             keys
+             sort
+             (mapcat #(get grouped-models %))
+             vec))
+      (vec decorated-models))))
+
+(defn- provider-models-response
+  ([provider]
+   (provider-models-response provider nil))
+  ([provider api-key-override]
+   (let [effective-api-key (or (non-blank-string api-key-override)
+                               (non-blank-string
+                                (metabot.settings/configured-provider-api-key provider)))]
+     (if (and provider effective-api-key)
+       (try
+         {:models (decorate-provider-models
+                   provider
+                   (:models (metabot.self/list-models provider {:api-key effective-api-key})))}
+         (catch clojure.lang.ExceptionInfo e
+           (if (invalid-api-key-error? e)
+             {:models []
+              :api-key-error (.getMessage e)}
+             (throw e))))
+       {:models []}))))
+
+(defn- settings-response
+  ([provider]
+   (settings-response provider nil))
+  ([provider api-key-override]
+   (merge
+    {:value (metabot.settings/llm-metabot-provider)}
+    (provider-models-response provider api-key-override))))
+
+(defn- current-provider
+  []
+  (some-> (metabot.settings/llm-metabot-provider)
+          (str/split #"/" 2)
+          first))
+
+(defn- api-error->status-code
+  [error]
+  (or (:status (ex-data error))
+      (:status-code (ex-data error))
+      400))
+
+(defn- verify-api-key!
+  [provider api-key]
+  (when-let [trimmed-api-key (non-blank-string api-key)]
+    (when-let [api-key-error (:api-key-error (provider-models-response provider trimmed-api-key))]
+      (throw (ex-info api-key-error
+                      {:status-code 400
+                       :api-error true}))))
+  nil)
+
+(api.macros/defendpoint :get "/settings"
+  :- metabot-settings-response-schema
+  "Return available models for a provider using its configured API key."
+  [_route-params
+   {:keys [provider]} :- [:map
+                          [:provider {:optional true} metabot-provider-schema]]]
+  (perms/check-has-application-permission :setting)
+  (settings-response (or provider (current-provider))))
+
+(api.macros/defendpoint :put "/settings"
+  :- metabot-settings-response-schema
+  "Update the Metabot provider API key and/or model setting and return the refreshed settings payload."
+  [_route-params
+   _query-params
+   body :- metabot-settings-request-schema]
+  (perms/check-has-application-permission :setting)
+  (let [{:keys [provider model api-key]} body]
+    (verify-api-key! provider api-key)
+    (when (contains? body :api-key)
+      (setting/set! (provider-api-key-setting-key provider) (non-blank-string api-key)))
+    (when model
+      (setting/set! :llm-metabot-provider (str provider "/" model)))
+    (try
+      (settings-response provider)
+      (catch clojure.lang.ExceptionInfo e
+        (if (:api-error (ex-data e))
+          (throw (ex-info (.getMessage e)
+                          (assoc (ex-data e) :status-code (api-error->status-code e))
+                          e))
+          (throw e))))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/metabot` routes."

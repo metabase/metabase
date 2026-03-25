@@ -157,6 +157,35 @@
      :description doc
      :parameters  (mjs/transform params {:additionalProperties false})}))
 
+(defn list-models
+  "List available OpenAI models using the configured API key."
+  ([]
+   (list-models (llm/llm-openai-api-key)))
+  ([api-key]
+   (when (str/blank? api-key)
+     (throw (ex-info "No OpenAI API key is set" {:api-error true})))
+   (try
+     (let [res (http/get (str (llm/llm-openai-api-base-url) "/v1/models")
+                         {:as      :json
+                          :headers {"Authorization" (str "Bearer " api-key)
+                                    "Content-Type"  "application/json"}})]
+       {:models (mapv (fn [model]
+                        {:id           (:id model)
+                         :display_name (:id model)})
+                      (reverse (sort-by :created (get-in res [:body :data]))))})
+     (catch Exception e
+       (if-let [res (some-> (ex-data e) json/decode-body)]
+         (let [status (:status res)
+               msg    (case (int status)
+                        401 "OpenAI API key expired or invalid"
+                        403 "OpenAI API key has insufficient permissions"
+                        404 "OpenAI API endpoint or model listing is unavailable"
+                        429 "OpenAI API has rate limited us"
+                        500 "OpenAI API is not working but not saying why"
+                        "Unhandled error accessing OpenAI API")]
+           (throw (ex-info msg (assoc res :api-error true) e)))
+         (throw e))))))
+
 (mu/defn openai-raw
   "Perform a streaming request to OpenAI Responses API."
   [{:keys [model system input tools schema tool_choice temperature max-tokens]
