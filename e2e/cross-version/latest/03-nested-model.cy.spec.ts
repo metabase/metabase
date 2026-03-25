@@ -1,4 +1,4 @@
-import { Q2_JOINS_NAME, Q3_NESTED_NAME } from "../constants";
+import { Q2_NAME, Q3_NAME } from "../constants";
 
 import * as X from "./helpers";
 
@@ -18,7 +18,7 @@ describe("Cross-version questions - nested model", () => {
       H.newButton("Question").click();
 
       X.selectFromPopover("Our analytics");
-      X.selectFromPopover(Q2_JOINS_NAME);
+      X.selectFromPopover(Q2_NAME);
 
       cy.log("-- Add aggregation --");
       H.addSummaryField({ metric: "Sum of ..." });
@@ -27,7 +27,7 @@ describe("Cross-version questions - nested model", () => {
       H.visualize();
       cy.findByTestId("scalar-value").should("have.text", "$20.80");
 
-      X.saveQuestion(Q3_NESTED_NAME);
+      X.saveQuestion(Q3_NAME);
 
       cy.log("-- Turn question into a model --");
       H.openQuestionActions();
@@ -73,7 +73,7 @@ describe("Cross-version questions - nested model", () => {
 
       H.getPinnedSection()
         .findByRole("link")
-        .should("contain", Q3_NESTED_NAME)
+        .should("contain", Q3_NAME)
         .click();
 
       cy.findByTestId("question-row-count").should(

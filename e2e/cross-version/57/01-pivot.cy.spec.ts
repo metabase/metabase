@@ -1,4 +1,4 @@
-import { Q1_PIVOT_NAME } from "../constants";
+import { Q1_NAME } from "../constants";
 
 import * as X from "./helpers";
 
@@ -46,7 +46,7 @@ describe("Cross-version questions - pivot", () => {
     H.vizTypeSidebar().should("not.exist");
     X.assertRowCount(155);
 
-    X.saveQuestion(Q1_PIVOT_NAME);
+    X.saveQuestion(Q1_NAME);
   });
 
   it("verify: pivot table is preserved", { tags: ["@target"] }, () => {
@@ -54,11 +54,9 @@ describe("Cross-version questions - pivot", () => {
 
     cy.visit("/collection/root");
 
-    cy.log(
-      `-- ${Q1_PIVOT_NAME}: Assert that the pivot table viz is preserved --`,
-    );
+    cy.log(`-- ${Q1_NAME}: Assert that the pivot table viz is preserved --`);
     cy.findAllByTestId("collection-entry-name")
-      .filter(`:contains(${Q1_PIVOT_NAME})`)
+      .filter(`:contains(${Q1_NAME})`)
       .click();
 
     X.assertRowCount(155);

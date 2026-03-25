@@ -1,4 +1,4 @@
-import { Q2_JOINS_NAME } from "../constants";
+import { Q2_NAME } from "../constants";
 
 import * as X from "./helpers";
 
@@ -46,7 +46,7 @@ describe("Cross-version questions - joins", () => {
     H.visualize();
     X.assertRowCount(4);
 
-    X.saveQuestion(Q2_JOINS_NAME);
+    X.saveQuestion(Q2_NAME);
   });
 
   it("verify: bar chart is preserved", { tags: ["@target"] }, () => {
@@ -54,7 +54,7 @@ describe("Cross-version questions - joins", () => {
 
     cy.visit("/collection/root");
     cy.findAllByTestId("collection-entry-name")
-      .filter(`:contains(${Q2_JOINS_NAME})`)
+      .filter(`:contains(${Q2_NAME})`)
       .click();
 
     X.assertRowCount(4);
