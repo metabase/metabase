@@ -23,7 +23,11 @@ export async function loadCard(
       throw result.error;
     }
 
-    return result.data as Card;
+    if (!result.data) {
+      throw new Error("Card not found");
+    }
+
+    return result.data;
   } catch (error) {
     console.error("error loading card", error);
     throw error;

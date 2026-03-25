@@ -150,7 +150,7 @@ async function fetchAndPrepareSavedQuestionCards(
 
   // for showing the "started from" lineage correctly when adding filters/breakouts and when going back and forth
   // in browser history, the original_card_id has to be set for the current card (simply the id of card itself for now)
-  return { card: { ...card, original_card_id: card.id } as Card, originalCard };
+  return { card: { ...card, original_card_id: card.id }, originalCard };
 }
 
 async function fetchAndPrepareAdHocQuestionCards(
@@ -175,7 +175,7 @@ async function fetchAndPrepareAdHocQuestionCards(
 
   if (cardIsEquivalent(deserializedCard, originalCard)) {
     return {
-      card: { ...originalCard } as Card,
+      card: { ...originalCard },
       originalCard: originalCard,
     };
   }
