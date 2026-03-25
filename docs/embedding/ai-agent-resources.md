@@ -19,7 +19,7 @@ We've developed some [agent skills](https://github.com/metabase/agent-skills) to
 | [Full app → modular embedding](https://skillsmp.com/skills/metabase-agent-skills-skills-metabase-full-app-to-modular-embedding-upgrade-skill-md) | Migrate from full app embedding to modular embedding. |
 | [Modular embedding → SDK (React)](https://skillsmp.com/skills/metabase-agent-skills-skills-metabase-modular-embedding-to-modular-embedding-sdk-upgrade-skill-md) | Migrate from script-based modular embedding to the React SDK. |
 | [Static → guest embeds](https://skillsmp.com/skills/metabase-agent-skills-skills-metabase-static-embedding-to-guest-embedding-upgrade-skill-md) | Migrate from static (signed) embeds to guest embeds. |
-| [SSO for embeds](https://skillsmp.com/skills/metabase-agent-skills-skills-metabase-embedding-sso-implementation-skill-md) | Set up SSO authentication for embedded Metabase. _(In development.)_ |
+| [SSO for embeds](https://skillsmp.com/skills/metabase-agent-skills-skills-metabase-embedding-sso-implementation-skill-md) | Set up SSO authentication for embedded Metabase.|
 
 Browse all skills on the [agent skills repo](https://github.com/metabase/agent-skills).
 
