@@ -12,6 +12,7 @@
    [metabase.metabot.context :as metabot.context]
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.self.openrouter :as openrouter]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.test-util :as mut]
    [metabase.search.test-util :as search.tu]
    [metabase.server.instance :as server.instance]
