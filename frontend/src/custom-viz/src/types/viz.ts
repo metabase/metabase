@@ -31,8 +31,12 @@ export type CreateCustomVisualizationProps = {
    */
 };
 
+declare const SettingDefinitionSymbol: unique symbol;
+
 export type CustomVisualizationSettingDefinition<_CustomVisualizationSettings> =
-  unknown;
+  {
+    readonly [SettingDefinitionSymbol]: never;
+  };
 
 export type CustomVisualization<CustomVisualizationSettings> = {
   /**
