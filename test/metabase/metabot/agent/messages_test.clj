@@ -2,8 +2,10 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
    [metabase.metabot.agent.memory :as memory]
-   [metabase.metabot.agent.messages :as messages]))
+   [metabase.metabot.agent.messages :as messages]
+   [metabase.test :as mt]))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; input-message->parts
@@ -234,15 +236,10 @@
 
 (deftest ^:parallel context-injection-viewing-native-query-test
   (testing "includes SQL and schema when user is viewing a native query"
-    (let [context {:user_is_viewing [{:type "adhoc",
+    (let [mp (mt/metadata-provider)
+          context {:user_is_viewing [{:type "adhoc",
                                       :query
-                                      {:lib/type "mbql/query"
-                                       :database 1234567
-                                       :stages
-                                       [{:native
-                                         "SELECT * FROM orders WHERE status = 'paid'"
-                                         :lib/type "mbql.stage/native"
-                                         :template-tags {}}]}
+                                      (lib/native-query mp "SELECT * FROM orders WHERE status = 'paid'")
                                       :sql_engine "postgres"
                                       :used_tables
                                       [{:description nil,
