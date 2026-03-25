@@ -1,10 +1,11 @@
+import type { Engine } from "metabase-types/api";
+
 import {
   formatNativeQuery,
   getEngineNativeType,
   getNativeQueryLanguage,
   isDeprecatedEngine,
-} from "metabase/utils/engine";
-import type { Engine } from "metabase-types/api";
+} from "./engine";
 
 describe("getEngineNativeType", () => {
   it("should be sql when engine is undefined", () => {
