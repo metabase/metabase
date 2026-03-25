@@ -65,14 +65,13 @@ function wrappedFormatValue(
 }
 
 function ensureVizApi() {
-  if (!window.__METABASE_VIZ_API__) {
-    window.__METABASE_VIZ_API__ = {
-      React,
-      jsxRuntime,
-      columnTypes: isa,
-      formatValue: wrappedFormatValue,
-    };
-  }
+  window.__METABASE_VIZ_API__ = {
+    ...window.__METABASE_VIZ_API__,
+    React,
+    jsxRuntime,
+    columnTypes: isa,
+    formatValue: wrappedFormatValue,
+  };
 }
 
 /**
