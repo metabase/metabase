@@ -1,5 +1,6 @@
 import { Q2_JOINS_NAME } from "../constants";
-import { saveSimpleQuestion } from "../cross-version-helpers";
+
+import * as X from "./helpers";
 
 const { H } = cy;
 
@@ -8,28 +9,14 @@ describe("Cross-version questions - joins", () => {
     H.restoreCrossVersionDev("01-complete");
     cy.signIn("admin", { skipCache: true });
 
+    cy.log("-- Create a joined question --");
+
     cy.visit("/");
-
-    cy.log("Create a joined question");
     H.newButton("Question").click();
-    H.modal().within(() => {
-      cy.findAllByRole("tab")
-        .should("be.visible")
-        .filter(":contains(Tables)")
-        .click();
-      cy.findAllByTestId("picker-item").filter(":contains(Orders)").click();
-    });
 
-    H.join();
-    H.modal().within(() => {
-      cy.findAllByRole("tab")
-        .should("be.visible")
-        .filter(":contains(Tables)")
-        .click();
-      cy.findAllByTestId("picker-item").filter(":contains(Products)").click();
-    });
+    X.joinTables("Orders", "Products");
 
-    cy.log("Filter on the joined table");
+    cy.log("-- Filter on the joined table --");
     H.getNotebookStep("filter")
       .findByText("Add filters to narrow your answer")
       .click();
@@ -45,18 +32,21 @@ describe("Cross-version questions - joins", () => {
       cy.button("Add filter").click();
     });
 
-    cy.log("Add aggregation");
+    cy.log("-- Add aggregation --");
     H.addSummaryField({ metric: "Average of ..." });
-    H.popover().contains("Discount").click();
-    cy.log("Add breakouts");
+    X.selectFromPopover("Discount");
+
+    cy.log("-- Add breakouts --");
     H.addSummaryGroupingField({ table: "Products", field: "Category" });
+
+    cy.log("-- Sort the columns --");
     cy.findByLabelText("Sort").click();
-    H.popover().contains("Average of Discount").click();
+    X.selectFromPopover("Average of Discount");
 
     H.visualize();
-    cy.findByTestId("question-row-count").should("have.text", "Showing 4 rows");
+    X.assertRowCount(4);
 
-    saveSimpleQuestion(Q2_JOINS_NAME);
+    X.saveQuestion(Q2_JOINS_NAME);
   });
 
   it("verify: bar chart is preserved", { tags: ["@target"] }, () => {
@@ -67,9 +57,9 @@ describe("Cross-version questions - joins", () => {
       .filter(`:contains(${Q2_JOINS_NAME})`)
       .click();
 
-    cy.findByTestId("question-row-count").should("have.text", "Showing 4 rows");
+    X.assertRowCount(4);
 
-    cy.log("Assert that there are four bars");
+    cy.log("-- Assert that there are four bars --");
     H.chartPathWithFillColor("#A989C5").should("have.length", 4);
     H.echartsContainer()
       .find("text")
