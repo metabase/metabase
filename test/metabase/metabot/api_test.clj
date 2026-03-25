@@ -222,7 +222,7 @@
                        {:id "claude-sonnet-4-5"
                         :display_name "Claude Sonnet 4.5"
                         :group "Sonnet"}]}
-             (mt/user-http-request :crowberto :get 200 "metabot/settings" {:provider "anthropic"}))))))
+             (mt/user-http-request :crowberto :get 200 "metabot/settings" :provider "anthropic"))))))
 
 (deftest settings-get-normalizes-legacy-anthropic-ids-test
   (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-valid"]
@@ -240,25 +240,25 @@
                         :display_name "Claude Haiku 4.5"
                         :group "Haiku"}]}
              (mt/user-http-request :crowberto :get 200 "metabot/settings"
-                                   {:provider "anthropic"}))))))
+                                   :provider "anthropic"))))))
 
 (deftest settings-get-groups-openrouter-models-test
   (mt/with-temporary-setting-values [llm.settings/llm-openrouter-api-key "sk-or-v1-valid"]
     (with-redefs [metabot.self/list-models (fn [_provider {:keys [api-key]}]
                                              (is (= "sk-or-v1-valid" api-key))
                                              {:models [{:id "openai/gpt-4.1-mini"
-                                                        :display_name "GPT-4.1 mini"}
+                                                        :display_name "OpenAI: GPT-4.1 mini"}
                                                        {:id "anthropic/claude-sonnet-4.5"
-                                                        :display_name "Claude Sonnet 4.5"}]})]
+                                                        :display_name "Anthropic: Claude Sonnet 4.5"}]})]
       (is (= {:value  (metabot.settings/llm-metabot-provider)
               :models [{:id "anthropic/claude-sonnet-4.5"
-                        :display_name "Claude Sonnet 4.5"
+                        :display_name "Anthropic: Claude Sonnet 4.5"
                         :group "Anthropic"}
                        {:id "openai/gpt-4.1-mini"
-                        :display_name "GPT-4.1 mini"
+                        :display_name "OpenAI: GPT-4.1 mini"
                         :group "OpenAI"}]}
              (mt/user-http-request :crowberto :get 200 "metabot/settings"
-                                   {:provider "openrouter"}))))))
+                                   :provider "openrouter"))))))
 
 (deftest settings-put-updates-provider-test
   (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "anthropic/claude-haiku-4-5"
@@ -353,10 +353,10 @@
               :api-key-error "OpenAI API key expired or invalid"
               :models        []}
              (mt/user-http-request :crowberto :get 200 "metabot/settings"
-                                   {:provider "openai"}))))))
+                                   :provider "openai"))))))
 
 (deftest settings-permissions-test
-  (mt/user-http-request :rasta :get 403 "metabot/settings" {:provider "anthropic"})
+  (mt/user-http-request :rasta :get 403 "metabot/settings" :provider "anthropic")
   (mt/user-http-request :rasta :put 403 "metabot/settings"
                         {:provider "anthropic"
                          :model    "claude-haiku-4-5"}))

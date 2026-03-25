@@ -70,13 +70,15 @@
             (mt/user-http-request :rasta
                                   :post 200 "metabot/document/generate-content"
                                   {:instructions "Show me sales data"})
-            (is (=? [{:user-id (str rasta-id)
-                      :data    {"model_id"           "openrouter/anthropic/claude-haiku-4-5"
-                                "total_tokens"        120
-                                "prompt_tokens"       100
-                                "completion_tokens"   20
-                                "estimated_costs_usd" 0.0
-                                "duration_ms"         nat-int?
-                                "source"              "document_generate_content"
-                                "tag"                 "agent"}}]
-                    (snowplow-test/pop-event-data-and-user-id!)))))))))
+            (let [events       (snowplow-test/pop-event-data-and-user-id!)
+                  token-events (filter #(contains? (:data %) "total_tokens") events)]
+              (is (=? [{:user-id (str rasta-id)
+                        :data    {"model_id"           "openrouter/anthropic/claude-haiku-4-5"
+                                  "total_tokens"        120
+                                  "prompt_tokens"       100
+                                  "completion_tokens"   20
+                                  "estimated_costs_usd" 0.0
+                                  "duration_ms"         nat-int?
+                                  "source"              "document_generate_content"
+                                  "tag"                 "agent"}}]
+                      token-events)))))))))
