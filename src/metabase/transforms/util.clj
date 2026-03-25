@@ -42,7 +42,7 @@
 
 (set! *warn-on-reflection* true)
 
-(declare get-source-range-params save-run-checkpoint-range!)
+(declare get-source-range-params save-run-checkpoint-range! save-watermark!)
 
 (defn qualified-table-name
   "Return the name of the target table of a transform as a possibly qualified symbol."
