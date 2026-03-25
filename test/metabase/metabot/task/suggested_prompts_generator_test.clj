@@ -4,10 +4,9 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.metabot.client :as metabot.client]
    [metabase.metabot.config :as metabot.config]
-   [metabase.metabot.task.suggested-prompts-generator
-    :as metabot.task.suggested-prompts-generator]
+   [metabase.metabot.example-question-generator :as metabot.example-question-generator]
+   [metabase.metabot.task.suggested-prompts-generator :as metabot.task.suggested-prompts-generator]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -27,7 +26,7 @@
              {card-id :id}
              {:type :model
               :dataset_query query}]
-            (with-redefs [metabot.client/generate-example-questions
+            (with-redefs [metabot.example-question-generator/generate-example-questions
                           (fn [input]
                             ;; Return fake prompts if we have cards, empty otherwise
                             (if (or (seq (:metrics input)) (seq (:tables input)))
