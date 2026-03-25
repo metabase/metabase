@@ -1,4 +1,15 @@
 (ns metabase.oauth-server.system
+  "Integrant-based lifecycle for the OAuth server.
+
+   Integrant keys (all in this namespace):
+     ::client-store  — DbClientStore instance
+     ::code-store    — DbAuthorizationCodeStore instance
+     ::token-store   — DbTokenStore instance
+     ::provider      — oidc-provider Provider (depends on the three stores above)
+
+   Use `start!` / `stop!` for lifecycle management. `get-provider` starts lazily.
+   In tests, use `metabase.oauth-server.test-util/with-oauth-system` to run with
+   a fresh system and optional config overrides."
   (:require
    [integrant.core :as ig]
    [metabase.oauth-server.settings :as oauth-settings]

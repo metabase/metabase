@@ -11,7 +11,7 @@
    (java.security MessageDigest)
    (java.util Base64)))
 
-;; reset-provider! is safe here — it resets a local atom, no global side effects.
+;; reset-provider! stops the integrant system so each test gets a fresh provider.
 ;; kondo flags it because of the `!` suffix in a fixture.
 #_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (use-fixtures :each (fn [thunk]
