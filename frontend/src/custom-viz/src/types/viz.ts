@@ -2,7 +2,6 @@ import type { ComponentType } from "react";
 
 import type { Column, DatasetData, RowValue, Series } from "./data";
 import type { TextHeightMeasurer, TextWidthMeasurer } from "./measure-text";
-import type { WidgetName, Widgets } from "./viz-settings";
 
 /**
  * Export this function to define a custom visualization.
@@ -31,6 +30,10 @@ export type CreateCustomVisualizationProps = {
    * https://linear.app/metabase/issue/GDGT-1923/convert-isajs-to-typescript
    */
 };
+
+export type CustomVisualizationSettingsDefinitions<
+  _CustomVisualizationSettings,
+> = unknown;
 
 export type CustomVisualization<CustomVisualizationSettings> = {
   /**
@@ -97,106 +100,12 @@ export type CustomVisualization<CustomVisualizationSettings> = {
   >;
 };
 
-export type CustomVisualizationSettingsDefinitions<
-  CustomVisualizationSettings,
-  K extends keyof CustomVisualizationSettings =
-    keyof CustomVisualizationSettings,
-> = {
-  [Key in K]-?: VisualizationSettingDefinition<
-    CustomVisualizationSettings[Key],
-    Record<string, unknown>,
-    CustomVisualizationSettings
-  >;
-};
-
 export type BaseWidgetProps<TValue, CustomVisualizationSettings> = {
   id: string;
   value: TValue | undefined;
   onChange: (value?: TValue | null) => void;
   onChangeSettings: (settings: Partial<CustomVisualizationSettings>) => void;
 };
-
-type VisualizationSettingDefinitionBase<TValue, CustomVisualizationSettings> = {
-  id: string;
-  section?: string;
-  title?: string;
-  group?: string;
-  index?: number;
-  inline?: boolean;
-
-  default?: TValue;
-  persistDefault?: boolean;
-  set?: boolean;
-  value?: TValue;
-
-  readDependencies?: string[];
-  writeDependencies?: string[];
-  eraseDependencies?: string[];
-
-  isValid?: (series: Series, settings: CustomVisualizationSettings) => boolean;
-  getDefault?: (
-    series: Series,
-    settings: CustomVisualizationSettings,
-  ) => TValue;
-  getValue?: (series: Series, settings: CustomVisualizationSettings) => TValue;
-};
-
-type VisualizationSettingDefinitionWithBuiltInWidget<
-  TValue,
-  CustomVisualizationSettings,
-> = {
-  [Key in WidgetName]: VisualizationSettingDefinitionBase<
-    TValue,
-    CustomVisualizationSettings
-  > & {
-    widget: Key;
-    getProps?: (
-      object: Series,
-      vizSettings: CustomVisualizationSettings,
-    ) => Widgets[Key];
-  };
-}[WidgetName];
-
-type VisualizationSettingDefinitionWithCustomWidget<
-  TValue,
-  TProps,
-  CustomVisualizationSettings,
-> = VisualizationSettingDefinitionBase<TValue, CustomVisualizationSettings> & {
-  widget: ComponentType<
-    TProps & BaseWidgetProps<TValue, CustomVisualizationSettings>
-  >;
-  getProps?: (
-    object: Series,
-    vizSettings: CustomVisualizationSettings,
-  ) => TProps;
-};
-
-type VisualizationSettingDefinitionWithoutWidget<
-  TValue,
-  CustomVisualizationSettings,
-> = VisualizationSettingDefinitionBase<TValue, CustomVisualizationSettings> & {
-  widget?: never;
-  getProps?: never;
-};
-
-export type VisualizationSettingDefinition<
-  TValue,
-  TProps,
-  CustomVisualizationSettings,
-> =
-  | VisualizationSettingDefinitionWithBuiltInWidget<
-      TValue,
-      CustomVisualizationSettings
-    >
-  | VisualizationSettingDefinitionWithCustomWidget<
-      TValue,
-      TProps,
-      CustomVisualizationSettings
-    >
-  | VisualizationSettingDefinitionWithoutWidget<
-      TValue,
-      CustomVisualizationSettings
-    >;
 
 export type VisualizationGridSize = {
   /**
@@ -244,8 +153,6 @@ export type CustomStaticVisualizationProps<CustomVisualizationSettings> = {
   settings: CustomVisualizationSettings;
   hasDevWatermark?: boolean;
 };
-
-export type CustomVisualizationSettingsProps = {};
 
 export type ClickObject<CustomVisualizationSettings> = {
   value?: RowValue;

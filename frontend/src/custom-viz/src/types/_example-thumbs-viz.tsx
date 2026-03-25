@@ -1,3 +1,5 @@
+import { defineSettings } from "../lib";
+
 import type {
   CreateCustomVisualization,
   CustomStaticVisualizationProps,
@@ -48,7 +50,7 @@ const createThumbsViz: CreateCustomVisualization<ThumbsVizSettings> = ({
         throw new Error("Threshold setting is not set");
       }
     },
-    settings: {
+    settings: defineSettings({
       threshold: {
         id: "threshold",
         title: "Threshold",
@@ -66,7 +68,7 @@ const createThumbsViz: CreateCustomVisualization<ThumbsVizSettings> = ({
           };
         },
       },
-    },
+    }),
     VisualizationComponent: ThumbsVizComponent,
     StaticVisualizationComponent: ThumbsStaticVizComponent,
   };

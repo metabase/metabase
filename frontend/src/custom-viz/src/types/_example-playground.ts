@@ -1,3 +1,5 @@
+import { defineSettings } from "../lib";
+
 import type {
   CreateCustomVisualization,
   CustomVisualizationProps,
@@ -13,7 +15,7 @@ type CustomWidgetProps = {
   options: boolean[];
 };
 
-export const createMyViz: CreateCustomVisualization<MyVizSettings> = ({}) => {
+export const createMyViz: CreateCustomVisualization<MyVizSettings> = () => {
   return {
     id: "my-custom-viz",
     getName: () => "My custom viz",
@@ -51,7 +53,7 @@ export const createMyViz: CreateCustomVisualization<MyVizSettings> = ({}) => {
         throw new Error("Threshold setting is not set");
       }
     },
-    settings: {
+    settings: defineSettings({
       apiKey: {
         id: "api-key-setting",
         widget: "input",
@@ -69,20 +71,20 @@ export const createMyViz: CreateCustomVisualization<MyVizSettings> = ({}) => {
       threshold: {
         id: "1",
         widget: "number",
-        getProps(_, settings) {
+        getProps(_series, _settings) {
           return {};
         },
       },
-    },
+    }),
     VisualizationComponent: MyVizComponent,
   };
 };
 
-const MyVizComponent = (props: CustomVisualizationProps<MyVizSettings>) => {
+const MyVizComponent = (_props: CustomVisualizationProps<MyVizSettings>) => {
   return null;
 };
 
-const CustomWidget = (props: CustomWidgetProps) => {
+const CustomWidget = (_props: CustomWidgetProps) => {
   return null;
 };
 
