@@ -1,9 +1,9 @@
-## AI controls - metabot_permissions and metabot_custom_prompt tables
+## AI controls
 
 databaseChangeLog:
   - logicalFilePath: migrations/061_update_migrations.yaml
   - changeSet:
-      id: v61.2026-03-24T00:00:00
+      id: v61.gasgewas
       author: nvoxland
       comment: Create metabot_permissions table for AI feature permissions per group
       changes:
@@ -43,7 +43,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v61.2026-03-24T00:00:01
+      id: v61.rr32dasd
       author: nvoxland
       comment: Add index on metabot_permissions.group_id
       changes:
@@ -55,7 +55,7 @@ databaseChangeLog:
                   name: group_id
 
   - changeSet:
-      id: v61.2026-03-24T00:00:02
+      id: v61.g24da211
       author: nvoxland
       comment: Add unique constraint on metabot_permissions group_id and perm_type
       changes:
@@ -65,7 +65,7 @@ databaseChangeLog:
             constraintName: unique_metabot_permissions_group_id_perm_type
 
   - changeSet:
-      id: v61.2026-03-24T00:00:03
+      id: v61.esa342
       author: nvoxland
       comment: Create metabot_custom_prompt table for instance, group, and user-level prompts
       changes:
@@ -109,7 +109,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v61.2026-03-24T00:00:04
+      id: v61.5523dw
       author: nvoxland
       comment: Add index on metabot_custom_prompt.group_id
       changes:
@@ -121,7 +121,7 @@ databaseChangeLog:
                   name: group_id
 
   - changeSet:
-      id: v61.2026-03-24T00:00:05
+      id: v61.8t8seas
       author: nvoxland
       comment: Add index on metabot_custom_prompt.user_id
       changes:
