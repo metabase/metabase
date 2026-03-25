@@ -98,7 +98,7 @@
              (transforms.util/handle-transform-complete!
               :run-id run-id
               :transform transform
-              :db database))))))
+              :db database)))))
      (catch Throwable t
        (log/error t "Error executing transform")
        (when start-promise
