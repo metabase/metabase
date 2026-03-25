@@ -276,15 +276,15 @@
           :state         "test-state"
           (mapcat identity extra-params))))
 
-(defn- extract-csrf-token-from-consent
-  "Extract the CSRF token from the consent page HTML body."
-  [body]
-  (second (re-find #"name=\"csrf_token\"[^>]*value=\"([a-f0-9]+)\"" body)))
+(defn- hidden-field-extractor
+  "Returns a function that extracts a hidden form field's hex value from HTML."
+  [field-name]
+  (let [pattern (re-pattern (str "name=\"" field-name "\"[^>]*value=\"([a-f0-9]+)\""))]
+    (fn [body] (second (re-find pattern body)))))
 
-(defn- extract-params-sig-from-consent
-  "Extract the params_sig from the consent page HTML body."
-  [body]
-  (second (re-find #"name=\"params_sig\"[^>]*value=\"([a-f0-9]+)\"" body)))
+(def ^:private extract-csrf-token-from-consent (hidden-field-extractor "csrf_token"))
+
+(def ^:private extract-params-sig-from-consent (hidden-field-extractor "params_sig"))
 
 (defn- extract-csrf-cookie
   "Extract the CSRF cookie value from the response.
