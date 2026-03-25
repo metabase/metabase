@@ -86,8 +86,6 @@
         target-table (transforms-base.u/target-table (transforms-base.i/target-db-id transform) target :active true)]
     (-> transform
         (t2/hydrate :last_run :transform_tag_ids :creator :owner)
-        (assoc :last_checkpoint_value
-               (:last_checkpoint_value (t2/select-one :model/Transform :id id)))
         (u/update-some :last_run transforms-base.u/localize-run-timestamps)
         (assoc :table target-table)
         transforms.u/add-source-readable)))
