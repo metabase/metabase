@@ -109,7 +109,10 @@
       (when-not (apply = breakout-counts)
         (throw (ex-info "All leaves in arithmetic expression must have the same number of breakout dimensions"
                         {:status-code 400
-                         :breakout-counts (zipmap (map :uuid leaf-infos) breakout-counts)}))))
+                         :breakout-counts (zipmap (map :uuid leaf-infos) breakout-counts)})))
+      (when (zero? (first breakout-counts))
+        (throw (ex-info "Arithmetic expressions require projections (group-by dimensions) on all metrics"
+                        {:status-code 400}))))
     (let [sig-vecs (map :signatures leaf-infos)]
       (when-not (all-signatures-compatible? sig-vecs)
         (throw (ex-info "All leaves in arithmetic expression must have the same breakout dimension types and bucketing"
