@@ -2,9 +2,8 @@ import { b64url_to_utf8, utf8_to_b64url } from "metabase/lib/encoding";
 import { getObjectEntries } from "metabase/lib/objects";
 import type { MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
-import type { TemporalUnit } from "metabase-types/api";
+import type { MathOperator, TemporalUnit } from "metabase-types/api";
 
-import type { MathOperator } from "../types/operators";
 import type {
   ExpressionSubToken,
   MetricExpressionId,

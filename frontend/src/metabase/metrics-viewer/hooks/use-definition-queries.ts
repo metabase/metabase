@@ -7,17 +7,16 @@ import type { MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 import type {
   Dataset,
+  ExpressionRef,
   JsMetricDefinition,
   MetricBreakoutValuesResponse,
   TypedProjection,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import type { MathOperator } from "../types/operators";
 import {
   type ExpressionDefinitionEntry,
   type ExpressionItemResult,
-  type ExpressionSubToken,
   type MetricSourceId,
   type MetricsViewerDefinitionEntry,
   type MetricsViewerFormulaEntity,
@@ -30,6 +29,7 @@ import {
   toJsDefinition,
 } from "../utils/definition-cache";
 import { entryHasBreakout } from "../utils/definition-entries";
+import { parseExpression } from "../utils/parse-expression";
 import { getTabConfig } from "../utils/tab-config";
 
 export interface UseDefinitionQueriesResult {
@@ -45,71 +45,6 @@ export interface UseDefinitionQueriesResult {
    */
   expressionItems: ExpressionItemResult[];
 }
-
-// --- Expression parsing ---
-
-type ParseCtx = {
-  tokens: ExpressionSubToken[];
-  pos: number;
-  leafRefs: Map<number, unknown>;
-};
-
-function parseTerm(ctx: ParseCtx): unknown | null {
-  if (ctx.pos >= ctx.tokens.length) {
-    return null;
-  }
-  const token = ctx.tokens[ctx.pos];
-
-  if (token.type === "metric") {
-    const tokenPos = ctx.pos;
-    ctx.pos++;
-    return ctx.leafRefs.get(tokenPos) ?? null;
-  }
-
-  if (token.type === "constant") {
-    ctx.pos++;
-    return token.value;
-  }
-
-  if (token.type === "open-paren") {
-    ctx.pos++;
-    const expr = parseExpression(ctx);
-    if (
-      ctx.pos < ctx.tokens.length &&
-      ctx.tokens[ctx.pos].type === "close-paren"
-    ) {
-      ctx.pos++;
-    }
-    return expr;
-  }
-
-  return null;
-}
-
-function parseExpression(ctx: ParseCtx): unknown | null {
-  let left = parseTerm(ctx);
-  if (!left) {
-    return null;
-  }
-
-  while (
-    ctx.pos < ctx.tokens.length &&
-    ctx.tokens[ctx.pos].type === "operator"
-  ) {
-    const op = (ctx.tokens[ctx.pos] as { type: "operator"; op: MathOperator })
-      .op;
-    ctx.pos++;
-    const right = parseTerm(ctx);
-    if (!right) {
-      return null;
-    }
-    left = [op, {}, left, right];
-  }
-
-  return left;
-}
-
-// ---
 
 type DatasetRequest = {
   sourceId: MetricSourceId;
@@ -170,7 +105,7 @@ function buildArithmeticRequest(
   // Build leaf refs and projections for each metric occurrence in the expression.
   // Each occurrence gets its own unique UUID keyed by token position so the same
   // metric can appear multiple times (e.g. Revenue / Revenue).
-  const leafRefs = new Map<number, unknown>();
+  const leafRefs = new Map<number, ExpressionRef>();
   const projections: TypedProjection[] = [];
   const seenProjections = new Set<string>();
   const modifiedDefinitions: {
@@ -218,9 +153,7 @@ function buildArithmeticRequest(
     }
   }
 
-  // Parse token stream into nested expression tree
-  const ctx: ParseCtx = { tokens, pos: 0, leafRefs };
-  const expr = parseExpression(ctx);
+  const expr = parseExpression(tokens, leafRefs);
   if (!expr) {
     return null;
   }
@@ -228,7 +161,7 @@ function buildArithmeticRequest(
   return {
     modifiedDefinitions,
     definition: {
-      expression: expr as JsMetricDefinition["expression"],
+      expression: expr,
       projections,
     },
   };

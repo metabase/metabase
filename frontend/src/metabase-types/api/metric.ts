@@ -23,9 +23,22 @@ export type Metric = {
   result_column_name?: string;
 };
 
+export type MathOperator = "+" | "-" | "*" | "/";
+export const MATH_OPERATORS: MathOperator[] = ["+", "-", "*", "/"];
+
+export function isMathOperator(key: string): key is MathOperator {
+  return key === "+" || key === "-" || key === "*" || key === "/";
+}
+
 export type ExpressionRef =
   | ["metric", { "lib/uuid": string }, number]
-  | ["measure", { "lib/uuid": string }, number];
+  | ["measure", { "lib/uuid": string }, number]
+  | [
+      MathOperator,
+      Record<string, never>,
+      ExpressionRef | number,
+      ExpressionRef | number,
+    ];
 
 export type InstanceFilter = {
   "lib/uuid": string;

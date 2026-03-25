@@ -4,12 +4,11 @@ import type {
   ConcreteTableId,
   Dataset,
   DimensionId,
+  MathOperator,
   TemporalUnit,
 } from "metabase-types/api";
 
 import type { DimensionFilterValue } from "../utils/dimension-filters";
-
-import type { MathOperator } from "./operators";
 
 // ── Core types ──
 
