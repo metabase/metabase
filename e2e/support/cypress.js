@@ -10,7 +10,7 @@ import "./commands";
 
 const isCI = Cypress.expose("CI");
 const isNetworkThrottlingEnabled = Cypress.expose("ENABLE_NETWORK_THROTTLING");
-const isBailEnabled = Cypress.expose("BAIL");
+const isFailFastEnabled = Cypress.expose("FAIL_FAST");
 
 // remove default html output on test failure
 configure({
@@ -159,7 +159,7 @@ if (isCI) {
 }
 
 afterEach(function () {
-  if (isBailEnabled && this.currentTest.state === "failed") {
+  if (isFailFastEnabled && this.currentTest.state === "failed") {
     Cypress.runner.stop();
   }
 });
