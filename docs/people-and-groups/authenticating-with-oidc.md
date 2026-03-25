@@ -1,6 +1,6 @@
 ---
 title: OIDC-based authentication
-summary: Connect an OpenID Connect (OIDC) identity provider to Metabase for SSO login, automatic account provisioning, user attribute mapping, and group sync.
+summary: Set up OIDC single sign-on in Metabase.
 ---
 
 # OIDC-based authentication
@@ -34,6 +34,8 @@ For more, see [Encrypting your database connection](../databases/encrypting-deta
 
 _Admin > Settings > Authentication > OIDC_
 
+You can also configure OIDC with [environment variables](#environment-variables).
+
 You'll need to enter the following:
 
 | Field             | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
@@ -64,11 +66,11 @@ If your IdP uses different claim names, update these fields to match.
 
 You can configure Metabase to automatically sync group memberships from your IdP, so that people are added to (or removed from) Metabase groups based on their IdP groups.
 
-Unlike SAML, OIDC doesn't define a standard groups claim. You'll need to configure your IdP to include a groups claim in the ID token. Some IdPs (like Azure AD/Entra ID) require a specific `groups` scope or API permission to include group claims — check your provider's docs. Keycloak includes groups via a client scope mapper without needing an extra scope. For a Keycloak example, see [Sync groups from Keycloak to Metabase](./oidc-keycloak.md#sync-groups-from-keycloak-to-metabase).
+OIDC doesn't define a standard groups claim. You'll need to configure your IdP to include a groups claim in the ID token. Some IdPs (like Azure AD/Entra ID) require a specific `groups` scope or API permission to include group claims — check your provider's docs. Keycloak includes groups via a client scope mapper without needing an extra scope. For a Keycloak example, see [Sync groups from Keycloak to Metabase](./oidc-keycloak.md#sync-groups-from-keycloak-to-metabase).
 
 ### Configure group sync in Metabase
 
-> Group sync settings appear after you've saved the provider. If you're setting up a new provider, save it first, then return to configure group sync.
+> If your provider is configured via the `MB_OIDC_PROVIDERS` environment variable, group sync settings are read-only in the admin UI. Manage group mappings in the environment variable instead. See [Environment variables](#environment-variables).
 
 1. Go to **Admin** > **Settings** > **Authentication** > **OIDC** and select your provider.
 2. Turn on **Synchronize Group Memberships**. You can click **About mappings** to learn more about how group mappings work.
@@ -87,7 +89,7 @@ Unlike SAML, OIDC doesn't define a standard groups claim. You'll need to configu
 
 ## Check connection
 
-The **Check connection** button verifies two things: 1) that Metabase can fetch the discovery document from your Issuer URI, and 2) that the client credentials are valid.
+After entering your OIDC provider settings in **Admin** > **Settings** > **Authentication** > **OIDC**, click **Check connection** to verify that Metabase can reach your provider. The check verifies two things: 1) that Metabase can fetch the discovery document from your Issuer URI, and 2) that the client credentials are valid.
 
 If the check reports "OIDC discovery succeeded, but credentials could not be verified", this could mean you need to configure the client to support the grant type Metabase uses for testing. In a Keycloak client, for example, you should turn on **Service accounts roles** and **Client authentication**.
 
@@ -105,54 +107,54 @@ If auto-provisioning is off, and no matching account exists, the person gets an 
 
 ## Environment variables
 
-You can also configure OIDC via environment variables instead of the admin UI:
+You can also configure OIDC via environment variables instead of the admin UI. Settings configured via environment variables are read-only in the admin UI.
 
 - [`MB_OIDC_ALLOWED_NETWORKS`](../configuring-metabase/environment-variables.md#mb_oidc_allowed_networks): controls which networks OIDC requests are allowed to reach. Possible values: `allow-all` (default, no restrictions), `allow-private` (allows external and private networks, but blocks localhost and loopback), or `external-only` (blocks requests to private networks).
 - [`MB_OIDC_USER_PROVISIONING_ENABLED`](../configuring-metabase/environment-variables.md#mb_oidc_user_provisioning_enabled): toggle auto-provisioning (`true` by default).
-- [`MB_OIDC_PROVIDERS`](../configuring-metabase/environment-variables.md#mb_oidc_providers): JSON string containing the full provider configuration. The value is an array of provider objects:
+- [`MB_OIDC_PROVIDERS`](../configuring-metabase/environment-variables.md#mb_oidc_providers): JSON string containing the full provider configuration. The value is an array of provider objects. Here's an example:
 
-```json
-[
-  {
-    "key": "keycloak",
-    "login-prompt": "Sign in with Keycloak",
-    "issuer-uri": "http://keycloak:8080/realms/metabase",
-    "client-id": "metabase-client",
-    "client-secret": "metabase-client-secret",
-    "scopes": ["openid", "email", "profile"],
-    "enabled": true,
-    "attribute-map": {
-      "email": "email",
-      "first_name": "given_name",
-      "last_name": "family_name"
-    },
-    "group-sync": {
-      "enabled": true,
-      "group-attribute": "groups",
-      "group-mappings": {
-        "engineering": [5, 6],
-        "data-team": [3]
-      }
-    }
-  }
-]
-```
+   ```json
+   [
+     {
+       "key": "keycloak",
+       "login-prompt": "Sign in with Keycloak",
+       "issuer-uri": "http://keycloak:8080/realms/metabase",
+       "client-id": "metabase-client",
+       "client-secret": "metabase-client-secret",
+       "scopes": ["openid", "email", "profile"],
+       "enabled": true,
+       "attribute-map": {
+         "email": "email",
+         "first_name": "given_name",
+         "last_name": "family_name"
+       },
+       "group-sync": {
+         "enabled": true,
+         "group-attribute": "groups",
+         "group-mappings": {
+           "engineering": [5, 6],
+           "data-team": [3]
+         }
+       }
+     }
+   ]
+   ```
 
-| Field                          | Required | Default                          |
-| ------------------------------ | -------- | -------------------------------- |
-| **key**                        | Yes      |                                  |
-| **login-prompt**               | Yes      |                                  |
-| **issuer-uri**                 | Yes      |                                  |
-| **client-id**                  | Yes      |                                  |
-| **client-secret**              | Yes      |                                  |
-| **enabled**                    | No       | `true`                           |
-| **scopes**                     | No       | `["openid", "email", "profile"]` |
-| **attribute-map**              | No       | See attribute map above          |
-| **group-sync.enabled**         | No       | `false`                          |
-| **group-sync.group-attribute** | No       | `"groups"`                       |
-| **group-sync.group-mappings**  | No       | `{}`                             |
+   | Field                          | Required | Default                          |
+   | ------------------------------ | -------- | -------------------------------- |
+   | **key**                        | Yes      |                                  |
+   | **login-prompt**               | Yes      |                                  |
+   | **issuer-uri**                 | Yes      |                                  |
+   | **client-id**                  | Yes      |                                  |
+   | **client-secret**              | Yes      |                                  |
+   | **enabled**                    | No       | `true`                           |
+   | **scopes**                     | No       | `["openid", "email", "profile"]` |
+   | **attribute-map**              | No       | See attribute map above          |
+   | **group-sync.enabled**         | No       | `false`                          |
+   | **group-sync.group-attribute** | No       | `"groups"`                       |
+   | **group-sync.group-mappings**  | No       | `{}`                             |
 
-The `group-sync` fields are nested inside each provider object. In `group-mappings`, keys are IdP group names and values are arrays of Metabase group IDs. You can find group IDs under **Admin** > **People** > **Groups**, or via the `GET /api/permissions/group` API endpoint.
+   The `group-sync` fields are nested inside each provider object. In `group-mappings`, keys are IdP group names and values are arrays of Metabase group IDs. You can find group IDs under **Admin** > **People** > **Groups**, or via the `GET /api/permissions/group` API endpoint.
 
 See [Environment variables](../configuring-metabase/environment-variables.md).
 
@@ -164,4 +166,4 @@ To require SSO for all logins, go to **Admin settings** > **Authentication** and
 
 ## OIDC example provider guide
 
-See a guide for setting up OIDC with [Keycloak](./oidc-keycloak.md).
+For a step-by-step walkthrough, see [Keycloak](./oidc-keycloak.md).
