@@ -83,6 +83,7 @@ export function setup({
           hasLibrary
           canPublish
           onSyncOptionsClick={onSyncOptionsClick}
+          onUpdate={jest.fn()}
         />
       )}
     />,
