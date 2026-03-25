@@ -209,6 +209,9 @@
           (log/info "Populating index")
           (populate-index! (if created? :search/reindexing :search/updating)))))))
 
+(defmethod search.engine/sync-from-restored-db! :search.engine/appdb [_]
+  (search.index/sync-from-restored-db!))
+
 (defmethod search.engine/reindex! :search.engine/appdb
   [_ {:keys [in-place?]}]
   (try

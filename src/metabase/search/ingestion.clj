@@ -313,6 +313,34 @@
          (track-queue-size!)
          true)))))
 
+(defn wait-for-idle!
+  "Block until the ingestion queue has been drained and no more items arrive.
+   Polls the queue and considers it idle when it has been empty for `settle-ms`
+   (default 500ms). Gives up after `timeout-ms` (default 30s)."
+  [& {:keys [settle-ms timeout-ms poll-ms]
+      :or   {settle-ms 500, timeout-ms 30000, poll-ms 50}}]
+  (let [deadline-ns (+ (System/nanoTime) (* (long timeout-ms) 1000000))
+        settle-ns   (* (long settle-ms) 1000000)
+        poll-ms     (long poll-ms)
+        empty-since (atom nil)]
+    (loop []
+      (let [now-ns       (System/nanoTime)
+            sz           (.size queue)
+            remaining-ns (- settle-ns (- now-ns (or @empty-since now-ns)))]
+        (cond
+          (>= now-ns deadline-ns)
+          (log/warnf "wait-for-idle! timed out with %d items still in the queue" sz)
+
+          (pos? sz)
+          (do (reset! empty-since nil)
+              (Thread/sleep poll-ms)
+              (recur))
+
+          (pos? remaining-ns)
+          (do (when-not @empty-since (reset! empty-since now-ns))
+              (Thread/sleep (long (max poll-ms (quot remaining-ns 1000000))))
+              (recur)))))))
+
 (defn start-listener!
   "Starts the ingestion listener on the queue"
   []
