@@ -18,7 +18,6 @@
    [metabase.metabot.feedback :as metabot.feedback]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.self.core :as self.core]
-   [metabase.metabot.settings :as metabot.settings]
    [metabase.server.streaming-response :as sr]
    [metabase.slackbot.api]
    [metabase.util :as u]
