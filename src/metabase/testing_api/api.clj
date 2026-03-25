@@ -18,6 +18,7 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.core :as search]
    [metabase.search.ingestion :as search.ingestion]
+   [metabase.search.task.search-index :as task.search-index]
    [metabase.util.date-2 :as u.date]
    [metabase.util.files :as u.files]
    [metabase.util.json :as json]
@@ -60,6 +61,7 @@
   "Snapshot the database for testing purposes."
   [{snapshot-name :name} :- [:map
                              [:name ms/NonBlankString]]]
+  (task.search-index/wait-for-init!)
   (save-snapshot! snapshot-name)
   nil)
 
