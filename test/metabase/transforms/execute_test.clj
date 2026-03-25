@@ -103,12 +103,10 @@
                                    (lib/breakout (lib/with-temporal-bucket
                                                    orders-order-date :day))
                                    (as-> <> (lib/order-by <> (lib/aggregation-ref <> 0) :desc)))]
-            (mt/with-temp [:model/Transform transform-no-limit {:name   "transform"
-                                                                :source {:type  :query
+            (mt/with-temp [:model/Transform transform-no-limit {:source {:type  :query
                                                                          :query query-no-limit}
                                                                 :target no-limit-table}
-                           :model/Transform transform-limit {:name   "transform"
-                                                             :source {:type  :query
+                           :model/Transform transform-limit {:source {:type  :query
                                                                       :query (lib/limit query-no-limit 5)}
                                                              :target limit-table}]
               (doseq [transform [transform-no-limit transform-limit]]

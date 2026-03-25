@@ -514,7 +514,7 @@
   (mt/when-ee-evailable
    (testing :event/transform-run-start
      (mt/with-current-user (mt/user->id :rasta)
-       (mt/with-temp [:model/Transform transform {:name "Test Transform"}
+       (mt/with-temp [:model/Transform transform {}
                       :model/TransformRun transform-run {:transform_id (:id transform)
                                                          :status :started
                                                          :run_method :manual
@@ -619,15 +619,14 @@
 (deftest transform-events-test
   (mt/when-ee-evailable
    (mt/with-current-user (mt/user->id :rasta)
-     (mt/with-temp [:model/Transform transform {:name "Test Transform"
-                                                :description "Test description"}]
+     (mt/with-temp [:model/Transform transform {:description "Test description"}]
        (testing :event/transform-create
          (is (= {:object transform}
                 (events/publish-event! :event/transform-create {:object transform})))
          (is (partial=
               {:model_id (:id transform)
                :user_id (mt/user->id :rasta)
-               :details {:name "Test Transform"
+               :details {:name (:name transform)
                          :description "Test description"}
                :topic :transform-create
                :model "Transform"}
@@ -641,7 +640,7 @@
                                                                   :previous-object transform})))
            (is (= {:model_id (:id transform)
                    :user_id (mt/user->id :rasta)
-                   :details {:previous {:name "Test Transform"}
+                   :details {:previous {:name (:name transform)}
                              :new {:name "Updated Transform"}}
                    :topic :update-transform
                    :model "Transform"}
