@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.markdown-link-buffer :as mlb]
    [metabase.test :as mt]))
 
@@ -35,6 +36,20 @@
        (let [[new-state output] (mlb/step state chunk)]
          (recur new-state more (conj outputs output)))
        [outputs (mlb/flush-state state)]))))
+
+(defn- process-chunks-with-registry
+  "Like `process-chunks` but returns [outputs flushed registry-map]."
+  ([chunks] (process-chunks-with-registry chunks {} {}))
+  ([chunks queries] (process-chunks-with-registry chunks queries {}))
+  ([chunks queries charts]
+   (let [registry (atom {})]
+     (loop [state (mlb/with-context mlb/initial-state queries charts registry)
+            [chunk & more] chunks
+            outputs []]
+       (if chunk
+         (let [[new-state output] (mlb/step state chunk)]
+           (recur new-state more (conj outputs output)))
+         [outputs (mlb/flush-state state) @registry])))))
 
 ;;; State machine / buffering tests
 
@@ -180,10 +195,47 @@
         (is (= "" flushed))))))
 
 (deftest ^:parallel slack-link-no-buffering-regular-angle-brackets-test
-  (testing "does NOT buffer regular < characters"
+  (testing "does NOT buffer regular < characters in the middle of text"
     (let [[output flushed] (process "x < y and z > w")]
       (is (= "x < y and z > w" output))
       (is (= "" flushed)))))
+
+(deftest ^:parallel slack-link-split-prefix-lone-angle-bracket-test
+  (testing "lone < at end followed by non-link text disambiguates on next chunk"
+    (let [[outputs flushed] (process-chunks ["x <" " y"])]
+      (is (= "x " (first outputs)))
+      (is (= "< y" (second outputs)))
+      (is (= "" flushed)))))
+
+(deftest slack-link-split-prefix-test
+  (mt/with-temporary-setting-values [site-url "https://metabase.example.com"]
+    (testing "resolves link when prefix is split at various points"
+      (doseq [[desc chunks] [["split after <"             ["Check <" "metabase://metric/123|My Metric>"]]
+                             ["split after <m"            ["Check <m" "etabase://metric/123|My Metric>"]]
+                             ["split after <meta"         ["Check <meta" "base://metric/123|My Metric>"]]
+                             ["split after <metabase"     ["Check <metabase" "://metric/123|My Metric>"]]
+                             ["split after <metabase:"    ["Check <metabase:" "//metric/123|My Metric>"]]
+                             ["split after <metabase:/"   ["Check <metabase:/" "/metric/123|My Metric>"]]
+                             ["split after <metabase://"  ["Check <metabase://" "metric/123|My Metric>"]]
+                             ["split after <metabase://m" ["Check <metabase://m" "etric/123|My Metric>"]]]]
+        (testing desc
+          (let [[outputs flushed] (process-chunks chunks)]
+            (is (= "Check " (first outputs))
+                (str "should buffer partial prefix — " desc))
+            (is (re-find #"metabase\.example\.com/metric/123" (apply str (rest outputs)))
+                (str "should resolve link — " desc))
+            (is (= "" flushed))))))))
+
+(deftest slack-link-split-prefix-registry-and-inversion-test
+  (mt/with-temporary-setting-values [site-url "https://metabase.example.com"]
+    (testing "split-prefix Slack links are recorded in link registry and invertible"
+      (let [[outputs flushed registry] (process-chunks-with-registry
+                                        ["Check <metabase" "://metric/123|My Metric>"])
+            resolved-output (apply str (conj outputs flushed))]
+        (is (= {"https://metabase.example.com/metric/123" "metabase://metric/123"}
+               registry))
+        (is (= "Check <metabase://metric/123|My Metric>"
+               (links/invert-slack-links resolved-output registry)))))))
 
 (deftest mixed-link-formats-test
   (mt/with-temporary-setting-values [site-url "https://metabase.example.com"]
