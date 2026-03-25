@@ -38,7 +38,11 @@
   - new-chart-type: New chart type to use
   - charts-state: Map of chart-id to chart data from agent state
 
-  Returns a map with:
+  Returns a map with result and new-chart-data.
+
+  `new-chart-data`: format that could be stored directly in memory or state's :charts key.
+
+  `result`:
   - :chart-id - New unique ID for the edited chart
   - :chart-content - XML representation of the chart
   - :chart-link - Metabase link to the chart

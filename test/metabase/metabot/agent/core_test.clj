@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.analytics.snowplow-test :as snowplow-test]
+   [metabase.lib.core :as lib]
    [metabase.metabot.agent.analytics :as agent-analytics]
    [metabase.metabot.agent.core :as agent]
    [metabase.metabot.agent.memory :as memory]
@@ -283,7 +284,7 @@
             llm-call-count  (atom 0)
             ;; Scripted LLM responses - uses real table ID from test DB
             llm-responses
-            [ ;; Iteration 1: Search for orders table
+            [;; Iteration 1: Search for orders table
              [{:type :start :id "msg-1"}
               {:type      :tool-input
                :id        "call-search-1"
@@ -748,3 +749,32 @@
                                                 :track-user-intent?  true}})
         (tu/poll-until 5000 @classify-called)
         (is (true? @classify-called))))))
+
+(deftest chart-configs-loaded-into-charts-test
+  (let [query (lib/native-query (mt/metadata-provider) "select 1")
+        chart-config {:display_type "pie"
+                      :query query
+                      :image_base_64 "asdf"
+                      :series {}
+                      :timeline_events []}
+        memory (-> (#'agent/init-agent {:profile-id :internal
+                                        :context {:user_is_viewing
+                                                  [{:chart_configs [chart-config]}]}})
+                   :memory-atom
+                   deref)
+
+        chart-configs (get-in memory [:state :chart-configs])
+        chart-configs-key (first (keys chart-configs))
+        charts (get-in memory [:state :charts])
+        chart-key (first (keys charts))]
+    (testing "Loaded charts from chart configs into memory"
+      (is (string? chart-key))
+      (is (=? {chart-key {:chart_id chart-key
+                          :timeline_events []
+                          :queries [query]
+                          :chart_config chart-config}}
+              charts)))
+    (testing "Loaded chart configs into memory"
+      (is (every? string? (keys chart-configs)))
+      (is (=? {chart-configs-key chart-config}
+              chart-configs)))))

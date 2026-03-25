@@ -358,12 +358,13 @@
 
 (defn chart-config->chart
   "Create chart structure from chart-config"
-  [{:keys [query timeline_events image_base_64] :as chart-config}]
-  {:chart_id (str (random-uuid))
+  [id {:keys [query timeline_events image_base_64] :as chart-config}]
+  {:chart_id id
    :queries [query]
    :image_base_64 image_base_64
    :timeline_events (or timeline_events [])
-   ;; TODO: VIZ SETTINGS -- what is that needed for?
+   ;; TODO (lbrdnk 2026-03-25): Viz settings seem to be redundant wrt fix this PR is implementing. Figure out
+   ;;                           what is the reason behind that if any and either add it or drop.
    :visualization_settings nil
    :chart_config chart-config})
 
@@ -381,8 +382,7 @@
                (into {}
                      (map (comp
                            (juxt :chart_id identity)
-                           #(assoc % :chart_id id)
-                           chart-config->chart))
+                           (partial chart-config->chart id)))
                      chart_configs))))
    state
    (:user_is_viewing context)))
