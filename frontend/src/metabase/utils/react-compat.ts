@@ -1,9 +1,7 @@
 // Support React 17 backwards compatibility for the Embedding SDK
-import type React from "react";
+import React from "react";
 import ReactDOM from "react-dom";
 import { type Root, createRoot } from "react-dom/client";
-
-import { getMajorReactVersion } from "./compat/check-version";
 
 export function renderRoot(
   content: React.JSX.Element,
@@ -36,3 +34,9 @@ export function unmountRoot(root?: Root, element?: Element) {
     root.unmount();
   }
 }
+
+export const getMajorReactVersion = () => {
+  const versionParts = React.version.split(".").map(Number);
+
+  return versionParts[0];
+};

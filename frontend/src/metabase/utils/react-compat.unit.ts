@@ -1,6 +1,6 @@
 import React from "react";
 
-import { getMajorReactVersion } from "./check-version";
+import { getMajorReactVersion } from "./react-compat";
 
 describe("getMajorReactVersion", () => {
   const versions = [
