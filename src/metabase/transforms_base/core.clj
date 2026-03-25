@@ -42,7 +42,5 @@
   ([transform opts]
    (let [result (transforms-base.i/execute-base! transform opts)]
      (when (= :succeeded (:status result))
-       (when-let [source-range-params (:source-range-params result)]
-         (transforms-base.u/save-watermark! (:id transform) source-range-params))
        (transforms-base.u/complete-execution! transform opts))
      result)))

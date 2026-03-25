@@ -53,12 +53,8 @@
                         (when-not (= :succeeded (:status result))
                           (throw (or (:error result) (ex-info "Transform failed" {:status (:status result)}))))
                         result))))]
-             ;; Post-processing: sync, transform_id, events, secondary indexes (after succeed-started-run!)
-             (transforms-base.u/complete-execution! transform
-                                                    {:run-id               run-id
-                                                     :with-stage-timing-fn (fn [rid stage thunk]
-                                                                             (transforms.instrumentation/with-stage-timing [rid stage]
-                                                                               (thunk)))})))))
+             ;; Post-processing: sync, transform_id, events
+             (transforms-base.u/complete-execution! transform {})))))
      (catch Throwable t
        (if (= :already-running (:error (ex-data t)))
          (log/warnf "Transform %d is already running" id)
