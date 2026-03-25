@@ -5,6 +5,17 @@ const { H } = cy;
 
 const { STATIC_ORDERS_ID, STATIC_PEOPLE_ID } = SAMPLE_DB_TABLES;
 
+const openDataSegregationStrategyStep = () => {
+  H.main()
+    .findByRole("listitem", {
+      name: "Which data segregation strategy does your database use?",
+      timeout: 10_000,
+    })
+    .scrollIntoView()
+    .click()
+    .should("have.attr", "data-active", "true");
+};
+
 describe("scenarios - embedding hub", () => {
   describe("checklist", () => {
     beforeEach(() => {
@@ -770,13 +781,13 @@ describe("scenarios - embedding hub", () => {
           .should("not.exist");
 
         cy.log("strategy picker should show RLS pre-selected");
-        H.main()
-          .findByText("Which data segregation strategy does your database use?")
-          .scrollIntoView()
-          .click();
+        openDataSegregationStrategyStep();
 
         H.main()
-          .findByRole("radio", { name: /Row and column level security/ })
+          .findByRole("radio", {
+            name: /Row and column level security/,
+            timeout: 10_000,
+          })
           .should("have.attr", "aria-checked", "true");
       });
 
@@ -1135,15 +1146,14 @@ describe("scenarios - embedding hub", () => {
       cy.visit("/admin/embedding/setup-guide/permissions");
 
       cy.log("open the data segregation strategy step");
-      H.main()
-        .findByText("Which data segregation strategy does your database use?")
-        .scrollIntoView()
-        .should("be.visible")
-        .click();
+      openDataSegregationStrategyStep();
 
       cy.log("select row and column level security strategy");
       H.main()
-        .findByRole("radio", { name: /Row and column level security/ })
+        .findByRole("radio", {
+          name: /Row and column level security/,
+          timeout: 10_000,
+        })
         .scrollIntoView()
         .click();
 
