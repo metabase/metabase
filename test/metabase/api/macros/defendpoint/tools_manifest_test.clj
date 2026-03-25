@@ -1,7 +1,6 @@
 (ns metabase.api.macros.defendpoint.tools-manifest-test
   (:require
    [clojure.test :refer :all]
-   [clojure.walk]
    [metabase.api.macros :as api.macros]
    [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
    [metabase.util.malli.registry :as mr])
@@ -30,57 +29,65 @@
 
 (deftest ^:parallel prefer-tool-descriptions-test
   (testing "tool/description replaces description in JSON schema output"
-    (let [defs (atom (sorted-map))
-          jss  (tools-manifest/malli->json-schema
-                defs
-                [:map [:id [:int {:description      "Internal ID"
-                                  :tool/description "The ID of the saved question"}]]])]
+    (let [jss (tools-manifest/malli->json-schema
+               [:map [:id [:int {:description      "Internal ID"
+                                 :tool/description "The ID of the saved question"}]]])]
       (is (= "The ID of the saved question"
              (get-in jss [:properties :id :description])))))
   (testing "schemas without tool/description keep original description"
-    (let [defs (atom (sorted-map))
-          jss  (tools-manifest/malli->json-schema
-                defs
-                [:map [:id [:int {:description "Internal ID"}]]])]
+    (let [jss (tools-manifest/malli->json-schema
+               [:map [:id [:int {:description "Internal ID"}]]])]
       (is (= "Internal ID"
              (get-in jss [:properties :id :description]))))))
 
 (mr/def ::ref-target-a [:enum "x" "y"])
 (mr/def ::ref-target-b [:map [:nested ::ref-target-a]])
 
-(deftest ^:parallel nested-ref-sanitization-test
-  (testing "All $ref values are sanitized, including nested ones inside oneOf/definitions"
-    (let [defs (atom (sorted-map))
-          ;; [:or ...] produces oneOf in JSON Schema, each branch may have its own $ref
-          jss  (tools-manifest/malli->json-schema defs [:or ::ref-target-a ::ref-target-b])]
-      ;; The top-level schema should be an anyOf (malli :or → anyOf) with $ref entries
-      (is (contains? jss :anyOf))
-      ;; Every $ref anywhere in the output must use sanitized names (no raw / characters after #/$defs/)
-      (let [all-refs (atom [])]
-        (clojure.walk/postwalk
-         (fn [x]
-           (when (and (map-entry? x) (= (key x) :$ref))
-             (swap! all-refs conj (val x)))
-           x)
-         jss)
-        (is (seq @all-refs) "should have found $ref entries")
-        (doseq [ref @all-refs]
-          (is (not (re-find #"#/\$defs/.*/" ref))
-              (str "$ref should not contain unsanitized /: " ref))))
-      ;; Also check that definitions stored in defs have sanitized nested $refs
-      (doseq [[_def-name def-val] @defs]
-        (clojure.walk/postwalk
-         (fn [x]
-           (when (and (map-entry? x) (= (key x) :$ref))
-             (is (not (re-find #"#/\$defs/.*/" (val x)))
-                 (str "$ref in definition should not contain unsanitized /: " (val x))))
-           x)
-         def-val)))))
+(deftest ^:parallel inline-malli-refs-test
+  (testing "registered schema refs are inlined in JSON Schema output"
+    (let [jss (tools-manifest/malli->json-schema [:map [:nested ::ref-target-a]])]
+      (is (= {:type "object"
+              :properties {:nested {:type "string" :enum ["x" "y"]}}
+              :required [:nested]}
+             jss))
+      (is (not (contains? jss :definitions)))
+      (is (not (re-find #"\$ref" (pr-str jss))))))
+  (testing "nested registered refs are fully inlined"
+    (let [jss (tools-manifest/malli->json-schema [:map [:item ::ref-target-b]])]
+      (is (= {:type "string" :enum ["x" "y"]}
+             (get-in jss [:properties :item :properties :nested])))
+      (is (not (re-find #"\$ref" (pr-str jss)))))))
+
+(deftest ^:parallel flatten-any-of-test
+  (testing "merges anyOf object branches into single object"
+    (let [schema {:anyOf [{:type "object"
+                           :properties {:a {:type "string"} :b {:type "integer"}}
+                           :required [:a]}
+                          {:type "object"
+                           :properties {:a {:type "string"} :c {:type "boolean"}}
+                           :required [:a :c]}]}
+          result (#'tools-manifest/flatten-any-of schema)]
+      (is (= "object" (:type result)))
+      (is (= {:a {:type "string"} :b {:type "integer"} :c {:type "boolean"}}
+             (:properties result)))
+      (is (= [:a] (:required result))
+          "only properties required in ALL branches are kept required")))
+  (testing "non-anyOf schema passes through unchanged"
+    (let [schema {:type "object" :properties {:x {:type "string"}}}]
+      (is (= schema (#'tools-manifest/flatten-any-of schema)))))
+  (testing "no common required produces no :required key"
+    (let [schema {:anyOf [{:type "object"
+                           :properties {:a {:type "string"}}
+                           :required [:a]}
+                          {:type "object"
+                           :properties {:b {:type "string"}}
+                           :required [:b]}]}
+          result (#'tools-manifest/flatten-any-of schema)]
+      (is (nil? (:required result))))))
 
 (deftest ^:parallel endpoint->tool-definition-test
   (testing "Basic endpoint conversion"
-    (let [defs   (atom (sorted-map))
-          form   {:method          :get
+    (let [form   {:method          :get
                   :route           {:path "/v1/table/:id"}
                   :params          {:route {:binding '{:keys [id]}
                                             :schema  [:map [:id :int]]}}
@@ -88,7 +95,7 @@
                   :docstr          "Get a table."
                   :metadata        {:tool {:name "get_table"}}
                   :body            '(nil)}
-          result (tools-manifest/endpoint->tool-definition defs "/api/agent" {:form form})]
+          result (tools-manifest/endpoint->tool-definition "/api/agent" {:form form})]
       (is (= {:name           "get_table"
               :description    "Get a table."
               :endpoint       {:method "GET" :path "/api/agent/v1/table/{id}"}
@@ -103,8 +110,7 @@
              result))))
 
   (testing "Scope is included when metadata has :scope"
-    (let [defs   (atom (sorted-map))
-          form   {:method          :get
+    (let [form   {:method          :get
                   :route           {:path "/v1/table/:id"}
                   :params          {:route {:binding '{:keys [id]}
                                             :schema  [:map [:id :int]]}}
@@ -112,17 +118,16 @@
                   :metadata        {:scope "agent:table:read"
                                     :tool  {:name "get_table"}}
                   :body            '(nil)}
-          result (tools-manifest/endpoint->tool-definition defs "/api/agent" {:form form})]
+          result (tools-manifest/endpoint->tool-definition "/api/agent" {:form form})]
       (is (= "agent:table:read" (:scope result)))))
 
   (testing "Scope is omitted when metadata has no :scope"
-    (let [defs   (atom (sorted-map))
-          form   {:method          :get
+    (let [form   {:method          :get
                   :route           {:path "/v1/test"}
                   :docstr          "Test endpoint."
                   :metadata        {:tool {:name "test_no_scope"}}
                   :body            '(nil)}
-          result (tools-manifest/endpoint->tool-definition defs "/api/test" {:form form})]
+          result (tools-manifest/endpoint->tool-definition "/api/test" {:form form})]
       (is (nil? (:scope result))))))
 
 ;; This test verifies the full pipeline with actual defendpoint endpoints.
@@ -220,11 +225,25 @@
     (is (= 6 (count (:tools manifest))))
     (is (= (mapv :name (:tools manifest))
            (sort (mapv :name (:tools manifest))))
-        "tools should be sorted by name")))
+        "tools should be sorted by name")
+    (is (not (contains? manifest :$defs))
+        "manifest should not have top-level $defs")))
 
-;; NOTE: simple registered schemas like ::test-status are inlined by malli
-;; rather than producing $defs/$ref. $defs generation is exercised by the
-;; real agent API endpoints which use complex recursive schemas.
+(deftest ^:parallel refs-are-inlined-in-manifest-test
+  (testing "malli->json-schema with :or produces anyOf but no $ref"
+    (let [jss (tools-manifest/malli->json-schema [:or ::ref-target-a ::ref-target-b])]
+      (is (contains? jss :anyOf))
+      (is (not (re-find #"\$ref" (pr-str jss))))))
+  (testing "generate-tools-manifest output has no $ref or $defs anywhere"
+    (let [manifest (test-manifest)
+          as-str   (pr-str manifest)]
+      (is (not (re-find #"\$ref" as-str))
+          "manifest should contain no $ref after inlining")
+      (is (not (contains? manifest :$defs))
+          "manifest should not have top-level $defs"))))
+
+;; NOTE: all registered-schema refs are inlined at the malli level before
+;; JSON Schema generation, so no tool schema ever contains $ref or $defs.
 
 (deftest ^:parallel generate-tools-manifest-get-with-route-params-test
   (is (= {:name           "test_get_thing"

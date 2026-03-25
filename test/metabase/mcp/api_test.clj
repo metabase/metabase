@@ -347,19 +347,19 @@
       (is (true? (:isError result)))
       (is (str/includes? (:text (first (:content result))) "Missing required path parameter")))))
 
-(deftest tools-list-defs-inlined-test
-  (testing "tools with $ref in inputSchema have $defs inlined"
+(deftest tools-list-no-refs-test
+  (testing "tool inputSchemas have no $ref, no $defs, and root type is always object"
     (let [tools (mcp.tools/list-tools nil)]
       (doseq [tool tools]
         (let [schema (:inputSchema tool)
-              refs   (into #{} (map second) (re-seq #"#/\$defs/([A-Za-z0-9._-]+)" (pr-str schema)))]
-          (when (seq refs)
-            (testing (str (:name tool) " has $defs for all $ref targets")
-              (is (map? (:$defs schema))
-                  (str (:name tool) " is missing $defs"))
-              (doseq [def-name refs]
-                (is (contains? (:$defs schema) def-name)
-                    (str (:name tool) " missing def: " def-name))))))))))
+              as-str (pr-str schema)]
+          (testing (:name tool)
+            (is (not (re-find #"\$ref" as-str))
+                (str (:name tool) " should have no $ref"))
+            (is (not (contains? schema :$defs))
+                (str (:name tool) " should have no $defs"))
+            (is (= "object" (:type schema))
+                (str (:name tool) " root type should be object"))))))))
 
 (deftest tools-call-execute-query-test
   (testing "execute_query returns a streaming response captured as MCP text content"

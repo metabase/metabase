@@ -577,7 +577,7 @@
   For metrics, supports: filters, group_by (aggregation is defined by the metric)."
   {:scope "agent:query:construct"
    :tool  {:name "construct_query"
-           :description "Construct a query against a Metabase table or metric. Returns an opaque query string that can be executed with execute_query."
+           :description "Construct a query against a Metabase table or metric. Returns an opaque query string that can be executed with execute_query.\n\nFor table queries: provide table_id. Supports filters, fields, aggregations, group_by, order_by, and limit.\nFor metric queries: provide metric_id. Supports only filters and group_by (aggregation is defined by the metric).\n\nProvide either table_id or metric_id, not both."
            :annotations {:read-only? true :idempotent? true}}}
   [_route-params
    _query-params
