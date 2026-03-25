@@ -45,10 +45,10 @@
    the oidc-provider library can find the hash where it expects it."
   [row]
   (when row
-    (let [m (select-and-kebab-keys row client-db-columns)]
+    (let [m          (select-and-kebab-keys row client-db-columns)
+          token-hash (:registration-access-token-hash m)]
       (cond-> m
-        (:registration-access-token-hash m)
-        (assoc :registration-access-token (:registration-access-token-hash m))))))
+        token-hash (assoc :registration-access-token token-hash)))))
 
 (defn- client-config->db-row
   "Convert a protocol ClientConfig map to DB column format for insert/update."
@@ -68,10 +68,9 @@
    Ensures :resource is a vector (JSON deserialization may return a list)."
   [row]
   (when row
-    (let [m (-> (select-and-kebab-keys row auth-code-db-columns)
-                (update :user-id #(some-> % str)))]
-      (cond-> m
-        (:resource m) (update :resource vec)))))
+    (-> (select-and-kebab-keys row auth-code-db-columns)
+        (update :user-id #(some-> % str))
+        (u/update-if-exists :resource vec))))
 
 (def ^:private access-token-db-columns
   [:user_id :client_id :scope :expiry :resource])
@@ -80,10 +79,9 @@
   "Convert a DB row from :model/OAuthAccessToken to the protocol's map shape."
   [row]
   (when row
-    (let [m (-> (select-and-kebab-keys row access-token-db-columns)
-                (update :user-id #(some-> % str)))]
-      (cond-> m
-        (:resource m) (update :resource vec)))))
+    (-> (select-and-kebab-keys row access-token-db-columns)
+        (update :user-id #(some-> % str))
+        (u/update-if-exists :resource vec))))
 
 (def ^:private refresh-token-db-columns
   [:user_id :client_id :scope :expiry :resource])
@@ -92,10 +90,9 @@
   "Convert a DB row from :model/OAuthRefreshToken to the protocol's map shape."
   [row]
   (when row
-    (let [m (-> (select-and-kebab-keys row refresh-token-db-columns)
-                (update :user-id #(some-> % str)))]
-      (cond-> m
-        (:resource m) (update :resource vec)))))
+    (-> (select-and-kebab-keys row refresh-token-db-columns)
+        (update :user-id #(some-> % str))
+        (u/update-if-exists :resource vec))))
 
 ;;; ------------------------------------------------ ClientStore -------------------------------------------------------
 
