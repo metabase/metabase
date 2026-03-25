@@ -4,12 +4,17 @@ import { t } from "ttag";
 
 import { useListCustomVizPluginsQuery } from "metabase/api";
 import { useToast } from "metabase/common/hooks";
-import type { IconName } from "metabase/ui";
+import {
+  measureText,
+  measureTextHeight,
+  measureTextWidth,
+} from "metabase/lib/measure-text";
 import type {
   CustomVizPluginRuntime,
   VisualizationDisplay,
 } from "metabase-types/api";
 
+import { buildCustomVizProps } from "./custom-viz-props";
 import type { Visualization } from "./types/visualization";
 
 import visualizations, { registerVisualization } from ".";
@@ -287,7 +292,13 @@ export async function loadCustomVizPlugin(
     const cacheBust = cacheBustSuffix ? `&t=${Date.now()}` : "";
     const getAssetUrl = (path: string) =>
       `${getPluginAssetUrl(plugin.id, path) ?? ""}${cacheBust}`;
-    const vizDef = factory({ getAssetUrl });
+    const props = buildCustomVizProps({
+      measureText,
+      measureTextWidth,
+      measureTextHeight,
+      getAssetUrl,
+    });
+    const vizDef = factory(props);
     if (!vizDef || !vizDef.VisualizationComponent) {
       throw new Error(
         "Factory must return an object with a VisualizationComponent property",

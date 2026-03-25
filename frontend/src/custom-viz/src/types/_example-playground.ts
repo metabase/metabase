@@ -1,5 +1,6 @@
 import type {
   CreateCustomVisualization,
+  CustomStaticVisualizationProps,
   CustomVisualizationProps,
 } from "./viz";
 
@@ -13,7 +14,11 @@ type CustomWidgetProps = {
   options: boolean[];
 };
 
-export const createMyViz: CreateCustomVisualization<MyVizSettings> = ({}) => {
+export const createMyViz: CreateCustomVisualization<MyVizSettings> = ({
+  columnTypes,
+  formatValue,
+  measureText,
+}) => {
   return {
     id: "my-custom-viz",
     getName: () => "My custom viz",
@@ -75,10 +80,17 @@ export const createMyViz: CreateCustomVisualization<MyVizSettings> = ({}) => {
       },
     },
     VisualizationComponent: MyVizComponent,
+    StaticVisualizationComponent: MyStaticVizComponent,
   };
 };
 
 const MyVizComponent = (props: CustomVisualizationProps<MyVizSettings>) => {
+  return null;
+};
+
+const MyStaticVizComponent = (
+  _props: CustomStaticVisualizationProps<MyVizSettings>,
+) => {
   return null;
 };
 
