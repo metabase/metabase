@@ -129,7 +129,6 @@
                           target-fields #(-> % :target (select-keys [:schema :name]))]
                       (api/check-403 (and (mi/can-write? old) (mi/can-write? new)))
 
-                      ;; Name uniqueness check within collection
                       (when (or (contains? body :name) (contains? body :collection_id))
                         (api/check-400 (not (transform.model/transform-name-exists-in-collection-excluding?
                                              (:name new) (:collection_id new) id))

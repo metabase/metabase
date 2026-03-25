@@ -96,7 +96,6 @@
                                                                     (ms/enum-decode-keyword ui-display-types)]
                                                                    [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (log/info "Creating transform job:" name "with schedule:" schedule)
-  ;; Check name uniqueness
   (api/check-400 (not (transform-job.model/job-name-exists? name))
                  (deferred-tru "A job with that name already exists."))
   ;; Validate cron expression
@@ -146,7 +145,6 @@
     (api/write-check existing-job)
     (when (some? tag-ids)
       (api/write-check (assoc existing-job :tag_ids tag-ids))))
-  ;; Check name uniqueness if name is being updated
   (when name
     (api/check-400 (not (transform-job.model/job-name-exists-excluding? name job-id))
                    (deferred-tru "A job with that name already exists.")))
