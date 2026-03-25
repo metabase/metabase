@@ -1,11 +1,10 @@
-(ns metabase-enterprise.agent-api.api-test
+(ns metabase.agent-api.api-test
   (:require
-   [buddy.sign.jwt :as jwt]
    [clojure.test :refer :all]
    [environ.core :as env]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase-enterprise.sso.test-setup :as sso.test-setup]
+   [metabase.agent-api.test-util :as agent-api.tu]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.normalize :as lib.normalize]
@@ -13,6 +12,7 @@
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.test-util :as search.tu]
+   [metabase.server.instance]
    [metabase.session.models.session :as session.models]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -25,42 +25,23 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db :test-users))
+(use-fixtures :once (fixtures/initialize :db :web-server :test-users))
 
-(defn- current-epoch-seconds []
-  (int (/ (System/currentTimeMillis) 1000)))
-
-(defn- sign-jwt
-  "Sign a JWT with the test secret. Automatically adds `iat` claim if not present,
-   which is required for max-age validation."
-  [claims]
-  (jwt/sign (merge {:iat (current-epoch-seconds)} claims) sso.test-setup/default-jwt-secret))
-
-(defmacro with-agent-api-setup!
-  "Sets up JWT authentication for Agent API tests.
-   Reuses the SSO JWT test setup which handles premium features and settings correctly."
+(defmacro ^:private with-agent-api-setup!
+  "Sets up JWT authentication and premium features for Agent API tests."
   [& body]
-  `(sso.test-setup/with-jwt-default-setup!
-     (mt/with-additional-premium-features #{:agent-api :metabot-v3}
-       ~@body)))
-
-(defn- auth-headers
-  "Create authorization headers with a signed JWT for the given email."
-  ([]
-   (auth-headers "rasta@metabase.com"))
-  ([email]
-   {"authorization" (str "Bearer " (sign-jwt {:email email}))}))
-
-(defn- agent-client
-  "Helper for making authenticated agent API requests, similar to mt/user-http-request.
-   Takes a test user keyword (e.g. :rasta, :crowberto), method, expected status, endpoint,
-   and optional body for POST/PUT requests."
-  [user method expected-status endpoint & [body]]
-  (let [email   (:username (mt/user->credentials user))
-        headers (auth-headers email)]
-    (apply client/client method expected-status endpoint
-           {:request-options {:headers headers}}
-           (when body [body]))))
+  `(mt/test-helpers-set-global-values!
+     (mt/with-model-cleanup [:model/User :model/Collection]
+       (mt/with-temporary-setting-values
+         [~'ldap-enabled          false
+          ~'saml-enabled          false
+          ~'jwt-enabled           true
+          ~'slack-connect-enabled false
+          ~'jwt-identity-provider-uri agent-api.tu/default-jwt-idp-uri
+          ~'jwt-shared-secret     agent-api.tu/default-jwt-secret
+          ~'site-url              (format "http://localhost:%s" (metabase.server.instance/server-port))]
+         (mt/with-premium-features #{:sso-jwt :agent-api :metabot-v3}
+           ~@body)))))
 
 (defn- orders-count-query
   "Create a simple count query on the orders table using lib functions."
@@ -74,27 +55,27 @@
     (testing "Valid JWT with email claim succeeds"
       (is (= {:message "pong"}
              (client/client :get 200 "agent/v1/ping"
-                            {:request-options {:headers (auth-headers)}}))))
+                            {:request-options {:headers (agent-api.tu/auth-headers)}}))))
 
     (testing "Email case insensitivity - uppercase email in token"
       (is (= {:message "pong"}
              (client/client :get 200 "agent/v1/ping"
-                            {:request-options {:headers (auth-headers "RASTA@METABASE.COM")}}))))
+                            {:request-options {:headers (agent-api.tu/auth-headers "RASTA@METABASE.COM")}}))))
 
     (testing "Email case insensitivity - mixed case email in token"
       (is (= {:message "pong"}
              (client/client :get 200 "agent/v1/ping"
-                            {:request-options {:headers (auth-headers "RaStA@MeTaBaSe.CoM")}}))))
+                            {:request-options {:headers (agent-api.tu/auth-headers "RaStA@MeTaBaSe.CoM")}}))))
 
     (testing "Bearer scheme is case-insensitive (uppercase BEARER)"
-      (let [token    (sign-jwt {:email "rasta@metabase.com"})
+      (let [token    (agent-api.tu/sign-jwt {:email "rasta@metabase.com"})
             response (client/client :get 200 "agent/v1/ping"
                                     {:request-options {:headers {"authorization" (str "BEARER " token)}}})]
         (is (= {:message "pong"}
                response))))
 
     (testing "Bearer scheme is case-insensitive (mixed case)"
-      (let [token    (sign-jwt {:email "rasta@metabase.com"})
+      (let [token    (agent-api.tu/sign-jwt {:email "rasta@metabase.com"})
             response (client/client :get 200 "agent/v1/ping"
                                     {:request-options {:headers {"authorization" (str "BeArEr " token)}}})]
         (is (= {:message "pong"}
@@ -119,7 +100,7 @@
       (is (= {:error   "invalid_jwt"
               :message "Invalid or expired JWT token."}
              (client/client :get 401 "agent/v1/ping"
-                            {:request-options {:headers (auth-headers "nobody@example.com")}}))))))
+                            {:request-options {:headers (agent-api.tu/auth-headers "nobody@example.com")}}))))))
 
 (deftest agent-api-session-token-auth-test
   (with-agent-api-setup!
@@ -150,7 +131,7 @@
         (is (= {:error   "invalid_jwt"
                 :message "Invalid or expired JWT token."}
                (client/client :get 401 "agent/v1/ping"
-                              {:request-options {:headers (auth-headers email)}})))))))
+                              {:request-options {:headers (agent-api.tu/auth-headers email)}})))))))
 
 (deftest agent-api-expired-session-test
   (testing "Expired sessions are rejected by the standard session middleware"
@@ -183,11 +164,11 @@
             (is (=? {:type "metric"
                      :id   (:id metric)
                      :name "Private Metric"}
-                    (agent-client :crowberto :get 200 (str "agent/v1/metric/" (:id metric))))))
+                    (agent-api.tu/agent-client :crowberto :get 200 (str "agent/v1/metric/" (:id metric))))))
 
           (testing "Non-admin user cannot access the metric"
             (is (= "You don't have permissions to do that."
-                   (agent-client :rasta :get 403 (str "agent/v1/metric/" (:id metric)))))))))))
+                   (agent-api.tu/agent-client :rasta :get 403 (str "agent/v1/metric/" (:id metric)))))))))))
 
 (deftest get-table-details-test
   (with-agent-api-setup!
@@ -200,28 +181,28 @@
                  :database_id    (mt/id)
                  :fields         sequential?
                  :related_tables sequential?}
-                (agent-client :rasta :get 200 (str "agent/v1/table/" table-id))))))
+                (agent-api.tu/agent-client :rasta :get 200 (str "agent/v1/table/" table-id))))))
 
     (testing "Returns 404 for non-existent table"
       (is (= "Not found."
-             (agent-client :rasta :get 404 "agent/v1/table/999999"))))
+             (agent-api.tu/agent-client :rasta :get 404 "agent/v1/table/999999"))))
 
     (testing "Respects query parameters"
       (let [table-id (mt/id :orders)]
         (is (=? {:type   "table"
                  :id     table-id
                  :fields empty?}
-                (agent-client :rasta :get 200
-                              (str "agent/v1/table/" table-id "?with-fields=false&with-related-tables=false"))))))
+                (agent-api.tu/agent-client :rasta :get 200
+                                           (str "agent/v1/table/" table-id "?with-fields=false&with-related-tables=false"))))))
 
     (testing "Field values are excluded by default"
       (let [table-id (mt/id :orders)
-            table    (agent-client :rasta :get 200 (str "agent/v1/table/" table-id))]
+            table    (agent-api.tu/agent-client :rasta :get 200 (str "agent/v1/table/" table-id))]
         (is (every? #(nil? (:field_values %)) (:fields table)))))
 
     (testing "Field values are included when explicitly requested"
       (let [table-id (mt/id :orders)
-            table    (agent-client :rasta :get 200 (str "agent/v1/table/" table-id "?with-field-values=true"))]
+            table    (agent-api.tu/agent-client :rasta :get 200 (str "agent/v1/table/" table-id "?with-field-values=true"))]
         (is (some #(seq (:field_values %)) (:fields table)))))))
 
 (deftest get-metric-details-test
@@ -235,18 +216,18 @@
                  :id                   (:id metric)
                  :name                 "Test Metric"
                  :queryable_dimensions sequential?}
-                (agent-client :rasta :get 200 (str "agent/v1/metric/" (:id metric))))))
+                (agent-api.tu/agent-client :rasta :get 200 (str "agent/v1/metric/" (:id metric))))))
 
       (testing "Respects query parameters"
         (is (=? {:type "metric"
                  :id   (:id metric)}
-                (agent-client :rasta :get 200
-                              (str "agent/v1/metric/" (:id metric)
-                                   "?with-queryable-dimensions=false&with-field-values=false")))))
+                (agent-api.tu/agent-client :rasta :get 200
+                                           (str "agent/v1/metric/" (:id metric)
+                                                "?with-queryable-dimensions=false&with-field-values=false")))))
 
       (testing "Returns 404 for non-existent metric"
         (is (= "Not found."
-               (agent-client :rasta :get 404 "agent/v1/metric/999999")))))))
+               (agent-api.tu/agent-client :rasta :get 404 "agent/v1/metric/999999")))))))
 
 (defn- ensure-fresh-field-values!
   "Ensure field values exist for a field by deleting any existing ones and recreating them."
@@ -276,8 +257,8 @@
       (let [table-id (mt/id :people)
             field-id (visible-field-id table-id "State")]
         (is (some? field-id) "Should find the State field")
-        (let [result (agent-client :crowberto :get 200
-                                   (format "agent/v1/table/%d/field/%s/values" table-id field-id))]
+        (let [result (agent-api.tu/agent-client :crowberto :get 200
+                                                (format "agent/v1/table/%d/field/%s/values" table-id field-id))]
           (is (=? {:value_metadata {:statistics   {:distinct-count 49}
                                     :field_values sequential?}}
                   result))
@@ -287,17 +268,17 @@
       (let [table-id (mt/id :people)
             field-id (visible-field-id table-id "State")]
         (is (=? {:value_metadata {:field_values #(= 5 (count %))}}
-                (agent-client :crowberto :get 200
-                              (format "agent/v1/table/%d/field/%s/values?limit=5" table-id field-id))))))
+                (agent-api.tu/agent-client :crowberto :get 200
+                                           (format "agent/v1/table/%d/field/%s/values?limit=5" table-id field-id))))))
 
     (testing "Returns 404 for non-existent table"
       (is (= "Not found."
-             (agent-client :crowberto :get 404 "agent/v1/table/999999/field/t999999-0/values"))))
+             (agent-api.tu/agent-client :crowberto :get 404 "agent/v1/table/999999/field/t999999-0/values"))))
 
     (testing "Returns 400 for invalid field-id format"
       (let [table-id (mt/id :people)]
         (is (= "Invalid field_id format: not-a-valid-id"
-               (agent-client :crowberto :get 400 (format "agent/v1/table/%d/field/not-a-valid-id/values" table-id))))))))
+               (agent-api.tu/agent-client :crowberto :get 400 (format "agent/v1/table/%d/field/not-a-valid-id/values" table-id))))))))
 
 (deftest search-test
   (with-agent-api-setup!
@@ -307,8 +288,8 @@
           (testing "Returns search results for term queries"
             (is (=? {:data        [{:type "table" :name "AgentSearchTestTable"}]
                      :total_count 1}
-                    (agent-client :rasta :post 200 "agent/v1/search"
-                                  {:term_queries ["AgentSearchTestTable"]})))))))))
+                    (agent-api.tu/agent-client :rasta :post 200 "agent/v1/search"
+                                               {:term_queries ["AgentSearchTestTable"]})))))))))
 
 (defn- decode-query
   "Decode a base64-encoded query response to a Clojure map, then normalize it so lib functions work."
@@ -319,8 +300,8 @@
   (with-agent-api-setup!
     (testing "Constructs a simple query from a table"
       (let [table-id (mt/id :orders)
-            response (agent-client :rasta :post 200 "agent/v1/construct-query"
-                                   {:table_id table-id})]
+            response (agent-api.tu/agent-client :rasta :post 200 "agent/v1/construct-query"
+                                                {:table_id table-id})]
         (is (string? (:query response)) "Response should contain a query string")
         (let [decoded (decode-query response)]
           (is (= :mbql/query (lib/normalized-query-type decoded)))
@@ -329,34 +310,34 @@
 
     (testing "Applies default limit of 200 when no limit is specified"
       (let [table-id (mt/id :orders)
-            response (agent-client :rasta :post 200 "agent/v1/construct-query"
-                                   {:table_id table-id})
+            response (agent-api.tu/agent-client :rasta :post 200 "agent/v1/construct-query"
+                                                {:table_id table-id})
             decoded  (decode-query response)]
         (is (= 200 (lib/current-limit decoded)))))
 
     (testing "Respects explicit limit"
       (let [table-id (mt/id :orders)
-            response (agent-client :rasta :post 200 "agent/v1/construct-query"
-                                   {:table_id table-id
-                                    :limit    10})
+            response (agent-api.tu/agent-client :rasta :post 200 "agent/v1/construct-query"
+                                                {:table_id table-id
+                                                 :limit    10})
             decoded  (decode-query response)]
         (is (= 10 (lib/current-limit decoded)))))
 
     (testing "Returns 404 for non-existent table"
       (is (= "No table found with table_id 999999"
-             (agent-client :rasta :post 404 "agent/v1/construct-query"
-                           {:table_id 999999}))))))
+             (agent-api.tu/agent-client :rasta :post 404 "agent/v1/construct-query"
+                                        {:table_id 999999}))))))
 
 (deftest execute-query-test
   (with-agent-api-setup!
     (testing "Executes a query and returns results with column metadata"
       (let [table-id       (mt/id :orders)
-            construct-resp (agent-client :rasta :post 200 "agent/v1/construct-query"
-                                         {:table_id table-id
-                                          :limit    5})
+            construct-resp (agent-api.tu/agent-client :rasta :post 200 "agent/v1/construct-query"
+                                                      {:table_id table-id
+                                                       :limit    5})
             ;; Streaming response returns 202 (accepted) since it starts streaming before completion
-            execute-resp   (agent-client :rasta :post 202 "agent/v1/execute"
-                                         {:query (:query construct-resp)})]
+            execute-resp   (agent-api.tu/agent-client :rasta :post 202 "agent/v1/execute"
+                                                      {:query (:query construct-resp)})]
         (is (=? {:status    "completed"
                  :row_count 5
                  :data      {:cols (fn [cols]
@@ -368,11 +349,11 @@
 
     (testing "Enforces agent query row limit even when query specifies a higher limit"
       (let [table-id       (mt/id :orders)
-            construct-resp (agent-client :rasta :post 200 "agent/v1/construct-query"
-                                         {:table_id table-id
-                                          :limit    300})
-            execute-resp   (agent-client :rasta :post 202 "agent/v1/execute"
-                                         {:query (:query construct-resp)})]
+            construct-resp (agent-api.tu/agent-client :rasta :post 200 "agent/v1/construct-query"
+                                                      {:table_id table-id
+                                                       :limit    300})
+            execute-resp   (agent-api.tu/agent-client :rasta :post 202 "agent/v1/execute"
+                                                      {:query (:query construct-resp)})]
         (is (=? {:status "completed" :row_count 200}
                 execute-resp))))))
 
@@ -381,7 +362,7 @@
     (testing "Executed queries are recorded with :agent context"
       (mt/with-temp [:model/User {user-id :id email :email} {:is_superuser true}]
         (let [table-id       (mt/id :orders)
-              headers        (auth-headers email)
+              headers        (agent-api.tu/auth-headers email)
               construct-resp (client/client :post 200 "agent/v1/construct-query"
                                             {:request-options {:headers headers}}
                                             {:table_id table-id :limit 5})
@@ -401,23 +382,23 @@
                                        :database_id   (mt/id)
                                        :dataset_query (orders-count-query)}]
       (testing "Returns field statistics for a field that has statistics"
-        (let [metric-details (agent-client :rasta :get 200 (str "agent/v1/metric/" (:id metric)))
+        (let [metric-details (agent-api.tu/agent-client :rasta :get 200 (str "agent/v1/metric/" (:id metric)))
               quantity-field (m/find-first #(= (:name %) "QUANTITY") (:queryable_dimensions metric-details))]
           (is (some? quantity-field) "Quantity field should be in queryable_dimensions")
           (when-let [field-id (:field_id quantity-field)]
             (is (=? {:value_metadata {:statistics   map?
                                       :field_values sequential?}}
-                    (agent-client :rasta :get 200
-                                  (format "agent/v1/metric/%d/field/%s/values" (:id metric) field-id)))))))
+                    (agent-api.tu/agent-client :rasta :get 200
+                                               (format "agent/v1/metric/%d/field/%s/values" (:id metric) field-id)))))))
 
       (testing "Returns 404 for non-existent metric"
         (is (= "Not found."
-               (agent-client :rasta :get 404 "agent/v1/metric/999999/field/c999999-0/values"))))
+               (agent-api.tu/agent-client :rasta :get 404 "agent/v1/metric/999999/field/c999999-0/values"))))
 
       (testing "Returns 400 for field-id from wrong entity type"
         ;; Using a table field-id (t-prefix) when querying a metric should fail
         (is (re-find #"does not match expected prefix"
-                     (agent-client :rasta :get 400 (format "agent/v1/metric/%d/field/t123-0/values" (:id metric)))))))))
+                     (agent-api.tu/agent-client :rasta :get 400 (format "agent/v1/metric/%d/field/t123-0/values" (:id metric)))))))))
 
 (deftest construct-metric-query-test
   (with-agent-api-setup!
@@ -426,8 +407,8 @@
                                        :database_id   (mt/id)
                                        :dataset_query (orders-count-query)}]
       (testing "Constructs a query from a metric"
-        (let [response (agent-client :rasta :post 200 "agent/v1/construct-query"
-                                     {:metric_id (:id metric)})]
+        (let [response (agent-api.tu/agent-client :rasta :post 200 "agent/v1/construct-query"
+                                                  {:metric_id (:id metric)})]
           (is (string? (:query response)) "Response should contain a query string")
           (let [decoded (decode-query response)]
             (is (= :mbql/query (lib/normalized-query-type decoded)))
@@ -435,29 +416,29 @@
 
       (testing "Returns 404 for non-existent metric"
         (is (= "Not found."
-               (agent-client :rasta :post 404 "agent/v1/construct-query"
-                             {:metric_id 999999})))))))
+               (agent-api.tu/agent-client :rasta :post 404 "agent/v1/construct-query"
+                                          {:metric_id 999999})))))))
 
 (deftest construct-query-with-count-aggregation-test
   (with-agent-api-setup!
     (testing "Count aggregation without field_id produces a valid query"
       (let [table-id (mt/id :orders)
-            response (agent-client :rasta :post 200 "agent/v1/construct-query"
-                                   {:table_id     table-id
-                                    :aggregations [{:function "count"}]
-                                    :limit        10})]
+            response (agent-api.tu/agent-client :rasta :post 200 "agent/v1/construct-query"
+                                                {:table_id     table-id
+                                                 :aggregations [{:function "count"}]
+                                                 :limit        10})]
         (is (string? (:query response)))
         (let [decoded (decode-query response)]
           (is (= 1 (count (lib/aggregations decoded)))))))
 
     (testing "Count aggregation with field_id still works"
       (let [table-id (mt/id :orders)
-            table    (agent-client :rasta :get 200 (str "agent/v1/table/" table-id))
+            table    (agent-api.tu/agent-client :rasta :get 200 (str "agent/v1/table/" table-id))
             field-id (-> table :fields first :field_id)
-            response (agent-client :rasta :post 200 "agent/v1/construct-query"
-                                   {:table_id     table-id
-                                    :aggregations [{:function "count" :field_id field-id}]
-                                    :limit        10})]
+            response (agent-api.tu/agent-client :rasta :post 200 "agent/v1/construct-query"
+                                                {:table_id     table-id
+                                                 :aggregations [{:function "count" :field_id field-id}]
+                                                 :limit        10})]
         (is (string? (:query response)))
         (let [decoded (decode-query response)]
           (is (= 1 (count (lib/aggregations decoded)))))))))
@@ -467,13 +448,13 @@
     (testing "Constructs a query with filters"
       (let [table-id (mt/id :orders)
             ;; Get table details to find a valid field_id
-            table    (agent-client :rasta :get 200 (str "agent/v1/table/" table-id))
+            table    (agent-api.tu/agent-client :rasta :get 200 (str "agent/v1/table/" table-id))
             field-id (-> table :fields first :field_id)
-            response (agent-client :rasta :post 200 "agent/v1/construct-query"
-                                   {:table_id table-id
-                                    :filters  [{:field_id  field-id
-                                                :operation "is-not-null"}]
-                                    :limit    10})]
+            response (agent-api.tu/agent-client :rasta :post 200 "agent/v1/construct-query"
+                                                {:table_id table-id
+                                                 :filters  [{:field_id  field-id
+                                                             :operation "is-not-null"}]
+                                                 :limit    10})]
         (is (string? (:query response)))
         (let [decoded (decode-query response)]
           (is (seq (lib/filters decoded)) "Query should have filters"))))))
@@ -487,12 +468,12 @@
                                                       :table_id   (mt/id :orders)
                                                       :definition measure-def}]
         (testing "with-measures=false (default) does not include measures"
-          (let [table (agent-client :rasta :get 200 (str "agent/v1/table/" (mt/id :orders)))]
+          (let [table (agent-api.tu/agent-client :rasta :get 200 (str "agent/v1/table/" (mt/id :orders)))]
             (is (nil? (:measures table)))))
 
         (testing "with-measures=true includes measures for the table"
-          (let [table (agent-client :rasta :get 200
-                                    (str "agent/v1/table/" (mt/id :orders) "?with-measures=true"))]
+          (let [table (agent-api.tu/agent-client :rasta :get 200
+                                                 (str "agent/v1/table/" (mt/id :orders) "?with-measures=true"))]
             (is (sequential? (:measures table)))
             (is (=? [{:id   measure-id
                       :name "Total Revenue"}]
@@ -502,7 +483,7 @@
   (with-agent-api-setup!
     (let [table-id (mt/id :orders)]
       (testing "No scope claim — unscoped JWT can access all endpoints (backwards compat)"
-        (let [headers {"authorization" (str "Bearer " (sign-jwt {:email "rasta@metabase.com"}))}]
+        (let [headers {"authorization" (str "Bearer " (agent-api.tu/sign-jwt {:email "rasta@metabase.com"}))}]
           (is (= {:message "pong"}
                  (client/client :get 200 "agent/v1/ping"
                                 {:request-options {:headers headers}})))
@@ -511,37 +492,37 @@
                                  {:request-options {:headers headers}})))))
 
       (testing "Matching scope — agent:table:read can access /v1/table/:id"
-        (let [headers {"authorization" (str "Bearer " (sign-jwt {:email "rasta@metabase.com"
-                                                                 :scope "agent:table:read"}))}]
+        (let [headers {"authorization" (str "Bearer " (agent-api.tu/sign-jwt {:email "rasta@metabase.com"
+                                                                              :scope "agent:table:read"}))}]
           (is (=? {:type "table" :id table-id}
                   (client/client :get 200 (str "agent/v1/table/" table-id)
                                  {:request-options {:headers headers}})))))
 
       (testing "Wildcard scope — agent:* can access any scoped endpoint"
-        (let [headers {"authorization" (str "Bearer " (sign-jwt {:email "rasta@metabase.com"
-                                                                 :scope "agent:*"}))}]
+        (let [headers {"authorization" (str "Bearer " (agent-api.tu/sign-jwt {:email "rasta@metabase.com"
+                                                                              :scope "agent:*"}))}]
           (is (=? {:type "table" :id table-id}
                   (client/client :get 200 (str "agent/v1/table/" table-id)
                                  {:request-options {:headers headers}})))))
 
       (testing "Wrong scope — agent:search gets 403 on /v1/table/:id"
-        (let [headers {"authorization" (str "Bearer " (sign-jwt {:email "rasta@metabase.com"
-                                                                 :scope "agent:search"}))}]
+        (let [headers {"authorization" (str "Bearer " (agent-api.tu/sign-jwt {:email "rasta@metabase.com"
+                                                                              :scope "agent:search"}))}]
           (is (= {:error   "unsupported_scope"
                   :message "Token does not have required scope: agent:table:read"}
                  (client/client :get 403 (str "agent/v1/table/" table-id)
                                 {:request-options {:headers headers}})))))
 
       (testing "Scoped JWT on unchecked endpoint — agent:table:read can access /v1/ping"
-        (let [headers {"authorization" (str "Bearer " (sign-jwt {:email "rasta@metabase.com"
-                                                                 :scope "agent:table:read"}))}]
+        (let [headers {"authorization" (str "Bearer " (agent-api.tu/sign-jwt {:email "rasta@metabase.com"
+                                                                              :scope "agent:table:read"}))}]
           (is (= {:message "pong"}
                  (client/client :get 200 "agent/v1/ping"
                                 {:request-options {:headers headers}})))))
 
       (testing "Empty scope string — gets 403 on scoped endpoints"
-        (let [headers {"authorization" (str "Bearer " (sign-jwt {:email "rasta@metabase.com"
-                                                                 :scope ""}))}]
+        (let [headers {"authorization" (str "Bearer " (agent-api.tu/sign-jwt {:email "rasta@metabase.com"
+                                                                              :scope ""}))}]
           (is (= {:error   "unsupported_scope"
                   :message "Token does not have required scope: agent:table:read"}
                  (client/client :get 403 (str "agent/v1/table/" table-id)
@@ -552,10 +533,10 @@
     (testing "Returns results for a table query"
       (let [table-id (mt/id :orders)
             field-id (visible-field-id table-id "ID")
-            response (agent-client :rasta :post 202 "agent/v1/query"
-                                   {:table_id table-id
-                                    :order_by [{:field {:field_id field-id} :direction "asc"}]
-                                    :limit    5})]
+            response (agent-api.tu/agent-client :rasta :post 202 "agent/v1/query"
+                                                {:table_id table-id
+                                                 :order_by [{:field {:field_id field-id} :direction "asc"}]
+                                                 :limit    5})]
         (is (=? {:status             "completed"
                  :row_count          5
                  :continuation_token string?
@@ -566,12 +547,12 @@
     (testing "Continuation token returns next page of results"
       (let [table-id (mt/id :orders)
             field-id (visible-field-id table-id "ID")
-            page1    (agent-client :rasta :post 202 "agent/v1/query"
-                                   {:table_id table-id
-                                    :order_by [{:field {:field_id field-id} :direction "asc"}]
-                                    :limit    5})
-            page2    (agent-client :rasta :post 202 "agent/v1/query"
-                                   {:continuation_token (:continuation_token page1)})]
+            page1    (agent-api.tu/agent-client :rasta :post 202 "agent/v1/query"
+                                                {:table_id table-id
+                                                 :order_by [{:field {:field_id field-id} :direction "asc"}]
+                                                 :limit    5})
+            page2    (agent-api.tu/agent-client :rasta :post 202 "agent/v1/query"
+                                                {:continuation_token (:continuation_token page1)})]
         (is (=? {:row_count          5
                  :continuation_token string?
                  :data               {:rows (fn [rows] (= 5 (count rows)))}}
@@ -587,16 +568,16 @@
     (testing "No continuation_token when all rows are returned"
       (is (=? {:status             "completed"
                :continuation_token nil?}
-              (agent-client :rasta :post 202 "agent/v1/query"
-                            {:table_id     (mt/id :orders)
-                             :aggregations [{:function "count"}]}))))
+              (agent-api.tu/agent-client :rasta :post 202 "agent/v1/query"
+                                         {:table_id     (mt/id :orders)
+                                          :aggregations [{:function "count"}]}))))
 
     (testing "Constraint cap limits results to 200 rows"
       (is (=? {:status    "completed"
                :row_count (fn [n] (<= n 200))}
-              (agent-client :rasta :post 202 "agent/v1/query"
-                            {:table_id (mt/id :orders)
-                             :limit    1000}))))))
+              (agent-api.tu/agent-client :rasta :post 202 "agent/v1/query"
+                                         {:table_id (mt/id :orders)
+                                          :limit    1000}))))))
 
 (deftest combined-query-metric-test
   (with-agent-api-setup!
@@ -607,30 +588,30 @@
       (testing "Returns results for a metric query"
         (is (=? {:status    "completed"
                  :row_count pos?}
-                (agent-client :rasta :post 202 "agent/v1/query"
-                              {:metric_id (:id metric)})))))))
+                (agent-api.tu/agent-client :rasta :post 202 "agent/v1/query"
+                                           {:metric_id (:id metric)})))))))
 
 (deftest combined-query-scope-test
   (with-agent-api-setup!
     (testing "agent:query scope grants access to combined query endpoint"
-      (let [headers {"authorization" (str "Bearer " (sign-jwt {:email "rasta@metabase.com"
-                                                               :scope "agent:query"}))}]
+      (let [headers {"authorization" (str "Bearer " (agent-api.tu/sign-jwt {:email "rasta@metabase.com"
+                                                                            :scope "agent:query"}))}]
         (is (= "completed"
                (:status (client/client :post 202 "agent/v1/query"
                                        {:request-options {:headers headers}}
                                        {:table_id (mt/id :orders) :limit 1}))))))
 
     (testing "agent:* wildcard scope grants access"
-      (let [headers {"authorization" (str "Bearer " (sign-jwt {:email "rasta@metabase.com"
-                                                               :scope "agent:*"}))}]
+      (let [headers {"authorization" (str "Bearer " (agent-api.tu/sign-jwt {:email "rasta@metabase.com"
+                                                                            :scope "agent:*"}))}]
         (is (= "completed"
                (:status (client/client :post 202 "agent/v1/query"
                                        {:request-options {:headers headers}}
                                        {:table_id (mt/id :orders) :limit 1}))))))
 
     (testing "agent:query:construct scope does NOT grant access to combined endpoint"
-      (let [headers {"authorization" (str "Bearer " (sign-jwt {:email "rasta@metabase.com"
-                                                               :scope "agent:query:construct"}))}]
+      (let [headers {"authorization" (str "Bearer " (agent-api.tu/sign-jwt {:email "rasta@metabase.com"
+                                                                            :scope "agent:query:construct"}))}]
         (is (= {:error   "unsupported_scope"
                 :message "Token does not have required scope: agent:query"}
                (client/client :post 403 "agent/v1/query"
@@ -648,5 +629,5 @@
           (testing "Returns metrics in search results"
             (is (=? {:data        [{:type "metric" :name "AgentSearchTestMetric"}]
                      :total_count 1}
-                    (agent-client :rasta :post 200 "agent/v1/search"
-                                  {:term_queries ["AgentSearchTestMetric"]})))))))))
+                    (agent-api.tu/agent-client :rasta :post 200 "agent/v1/search"
+                                               {:term_queries ["AgentSearchTestMetric"]})))))))))
