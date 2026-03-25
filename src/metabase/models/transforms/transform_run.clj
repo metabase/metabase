@@ -62,12 +62,12 @@
   ([transform-id]
    (start-run! transform-id {}))
   ([transform-id properties]
-   (let [transform (t2/select-one [:model/Transform :name :entity_id] :id transform-id)
+   (let [transform (t2/select-one [:model/Transform :name] :id transform-id)
          run (t2/insert-returning-instance! :model/TransformRun
                                             (assoc properties
                                                    :transform_id transform-id
                                                    :transform_name (:name transform)
-                                                   :transform_entity_id (:entity_id transform)
+                                                   :transform_entity_id nil
                                                    :status :started
                                                    :is_active true))]
      ;; Pass user_id to the event so audit log properly attributes the run

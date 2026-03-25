@@ -13,7 +13,6 @@
 
 (doto :model/TransformTag
   (derive :metabase/model)
-  (derive :hook/entity-id)
   (derive :hook/timestamped?))
 
 (defmethod mi/can-read? :model/TransformTag
@@ -98,15 +97,22 @@
   [_tt]
   [:name :built_in_type])
 
+(defmethod serdes/entity-id "TransformTag" [_ {:keys [name]}]
+  (str name))
+
 (defmethod serdes/make-spec "TransformTag"
   [_model-name _opts]
-  {:copy [:entity_id :built_in_type]
+  {:copy [:built_in_type]
    :transform {:name {:export str :import identity}
                :created_at (serdes/date)}})
 
+(defmethod serdes/load-find-local "TransformTag" [path]
+  (let [{:keys [id]} (last path)]
+    (t2/select-one :model/TransformTag :name id)))
+
 (defmethod serdes/storage-path "TransformTag" [tt _ctx]
-  (let [{:keys [id label]} (-> tt serdes/path last)]
-    ["transforms" "transform_tags" (serdes/storage-leaf-file-name id label)]))
+  (let [{:keys [label]} (-> tt serdes/path last)]
+    ["transforms" "transform_tags" label]))
 
 ;; Event hooks for remote-sync tracking
 (t2/define-after-insert :model/TransformTag [tag]

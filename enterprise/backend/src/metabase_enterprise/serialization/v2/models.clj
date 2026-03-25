@@ -51,9 +51,7 @@
    "ParameterCard"
    "DashboardCardSeries"
    "MetabotPrompt"
-   "TimelineEvent"
-   "TransformJobTransformTag"
-   "TransformTransformTag"])
+   "TimelineEvent"])
 
 (def excluded-models
   "List of models which are not going to be serialized ever."
@@ -123,8 +121,10 @@
    "TaskRun"
    "Tenant"
    "TransformJobRun"
+   "TransformJobTransformTag"
    "TransformRun"
    "TransformRunCancelation"
+   "TransformTransformTag"
    "Undo"
    "User"
    "UserKeyValue"

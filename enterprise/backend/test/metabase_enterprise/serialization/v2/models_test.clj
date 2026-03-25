@@ -111,7 +111,8 @@
           (testing "Nested models should declare `parent-ref`\n"
             (doseq [[_nested transform] (filter #(::serdes/nested (second %)) spec')
                     :let                [{:keys [model backward-fk]} transform
-                                         inner-spec (serdes/make-spec (name model) nil)]]
+                                         inner-spec (serdes/make-spec (name model) nil)]
+                    :when               inner-spec]
               (testing (format "%s has %s declared as `parent-ref`" model backward-fk)
                 (is (= (serdes/parent-ref)
                        (get-in inner-spec [:transform backward-fk])))))))))))

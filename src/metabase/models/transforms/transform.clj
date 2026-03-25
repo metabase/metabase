@@ -28,7 +28,7 @@
 
 (methodical/defmethod t2/table-name :model/Transform [_model] :transform)
 
-(doseq [trait [:metabase/model :hook/entity-id :hook/timestamped?]]
+(doseq [trait [:metabase/model :hook/timestamped?]]
   (derive :model/Transform trait))
 
 (defmethod mi/can-read? :model/Transform
@@ -347,9 +347,35 @@
   [_transform]
   [:name :created_at])
 
+(defmethod serdes/entity-id "Transform" [_ {:keys [name]}]
+  (str name))
+
+(defn- tag-names-transformer
+  "Custom transformer that serializes join table tag associations as a simple array of tag names.
+   Position is inferred from array index on import."
+  [join-model backward-fk]
+  {::serdes/nested true
+   :model          join-model
+   :backward-fk    backward-fk
+   :export-with-context
+   (fn [_current _ data]
+     (let [tag-ids  (map :tag_id (sort-by :position data))
+           tags     (when (seq tag-ids)
+                      (m/index-by :id (t2/select :model/TransformTag :id [:in tag-ids])))]
+       (mapv #(str (:name (get tags (:tag_id %)))) (sort-by :position data))))
+   :import-with-context
+   (fn [current _ tag-names]
+     (let [parent-id (:id current)]
+       (t2/delete! join-model backward-fk parent-id)
+       (doseq [[position tag-name] (map-indexed vector tag-names)
+               :let [tag-id (t2/select-one-pk :model/TransformTag :name tag-name)]]
+         (t2/insert! join-model {backward-fk parent-id
+                                 :tag_id     tag-id
+                                 :position   position}))))})
+
 (defmethod serdes/make-spec "Transform"
-  [_model-name opts]
-  {:copy      [:name :description :entity_id :owner_email]
+  [_model-name _opts]
+  {:copy      [:name :description :owner_email]
    :skip      [:dependency_analysis_version :source_type :target_db_id :last_checkpoint_value]
    :transform {:created_at         (serdes/date)
                :creator_id         (serdes/fk :model/User)
@@ -367,7 +393,7 @@
                                                   (m/update-existing :query serdes/import-mbql)))}
                :target             {:export #(serdes/export-mbql (dissoc % :table_id))
                                     :import serdes/import-mbql}
-               :tags               (serdes/nested :model/TransformTransformTag :transform_id opts)}})
+               :tags               (tag-names-transformer :model/TransformTransformTag :transform_id)}})
 
 (defmethod serdes/dependencies "Transform"
   [{:keys [collection_id source tags source_database_id]}]
@@ -377,17 +403,21 @@
       [[{:model "Collection" :id collection_id}]])
     (when source_database_id
       [[{:model "Database" :id source_database_id}]])
-    (for [{tag-id :tag_id} tags]
-      [{:model "TransformTag" :id tag-id}])
+    (for [tag-name tags]
+      [{:model "TransformTag" :id tag-name}])
     (serdes/mbql-deps source))))
 
+(defmethod serdes/load-find-local "Transform" [path]
+  (let [{:keys [id]} (last path)]
+    (t2/select-one :model/Transform :name id)))
+
 (defmethod serdes/storage-path "Transform" [transform ctx]
-  ;; Path: ["collections" "<nested ... collections>" "transforms" "<entity_id_name>"]
+  ;; Path: ["collections" "<nested ... collections>" "transforms" "<label>"]
   ;; Use default collection path, then restructure similar to NativeQuerySnippet
   (let [basis (serdes/storage-default-collection-path transform ctx)
-        file  (last basis)
-        colls (->> basis rest (drop-last 2))] ; Drop "collections" at start, and last two elements
-    (concat ["collections"] colls ["transforms" file])))
+        {:keys [label]} (-> transform serdes/path last)
+        colls (->> basis rest (drop-last 2))]
+    (concat ["collections"] colls ["transforms" label])))
 
 (defmethod serdes/required "Transform"
   [_model id]

@@ -2197,24 +2197,22 @@
         (t2/delete! :model/TransformTag)
         (ts/with-temp-dpc [;; Create built-in tags
                            :model/TransformTag
-                           {hourly-tag-id :id
-                            hourly-tag-eid :entity_id}
+                           {hourly-tag-id :id}
                            {:name "hourly" :built_in_type "hourly"}
 
                            :model/TransformTag
-                           {daily-tag-eid :entity_id}
+                           {}
                            {:name "daily" :built_in_type "daily"}
 
                            ;; Create custom tag
                            :model/TransformTag
-                           {custom-tag-id :id
-                            custom-tag-eid :entity_id}
+                           {custom-tag-id :id}
                            {:name "custom-etl"}]
 
           (testing "built-in tags extract correctly"
             (let [ser (serdes/extract-one "TransformTag" {} (t2/hydrate (t2/select-one :model/TransformTag :id hourly-tag-id) :tags))]
               (is (=? {:serdes/meta [{:model "TransformTag"
-                                      :id hourly-tag-eid}]
+                                      :id "hourly"}]
                        :name "hourly"
                        :built_in_type "hourly"
                        :created_at string?}
@@ -2225,7 +2223,7 @@
           (testing "custom tags extract correctly"
             (let [ser (serdes/extract-one "TransformTag" {} (t2/hydrate (t2/select-one :model/TransformTag :id custom-tag-id) :tags))]
               (is (=? {:serdes/meta [{:model "TransformTag"
-                                      :id custom-tag-eid}]
+                                      :id "custom-etl"}]
                        :name "custom-etl"
                        :built_in_type nil
                        :created_at string?}
@@ -2234,7 +2232,7 @@
               (is (empty? (serdes/dependencies ser)))))
 
           (testing "all transform tags are extracted"
-            (is (= #{hourly-tag-eid daily-tag-eid custom-tag-eid}
+            (is (= #{"hourly" "daily" "custom-etl"}
                    (ids-by-model "TransformTag" (extract/extract {}))))))))))
 
 (deftest transform-extraction-test
@@ -2262,27 +2260,22 @@
 
                            ;; Create tags for associations
                            :model/TransformTag
-                           {hourly-tag-id :id
-                            hourly-tag-eid :entity_id}
-                           {:name "hourly" :built_in_type "hourly" :entity_id "hourlyhourlyhourlyxxx"}
+                           {hourly-tag-id :id}
+                           {:name "hourly" :built_in_type "hourly"}
 
                            :model/TransformTag
-                           {daily-tag-id :id
-                            daily-tag-eid :entity_id}
-                           {:name "daily" :built_in_type "daily" :entity_id "dailydailydailydailyx"}
+                           {daily-tag-id :id}
+                           {:name "daily" :built_in_type "daily"}
 
                            :model/TransformTag
-                           {custom-tag-id :id
-                            custom-tag-eid :entity_id}
-                           {:name "custom-etl" :entity_id "custometlcustometlcus"}
+                           {custom-tag-id :id}
+                           {:name "custom-etl"}
 
                            ;; Create Transform
                            :model/Transform
-                           {transform-id :id
-                            transform-eid :entity_id}
+                           {transform-id :id}
                            {:name "Test Transform"
                             :description "A test transform for serialization"
-                            :entity_id "2HzIFwJ6720JAx07UMavl"
                             :collection_id coll-id
                             :source {:query {:database db-id
                                              :type     "query"
@@ -2315,7 +2308,7 @@
           (let [ser (serdes/extract-one "Transform" {} (t2/hydrate (t2/select-one :model/Transform :id transform-id) :tags))]
             (testing "basic Transform structure"
               (is (=? {:serdes/meta [{:model "Transform"
-                                      :id transform-eid}]
+                                      :id "Test Transform"}]
                        :name "Test Transform"
                        :description "A test transform for serialization"
                        :created_at string?}
@@ -2327,24 +2320,20 @@
                        :target {:database "My Database" :type "table" :schema "public" :name "target_table"}}
                       (select-keys ser [:source :target]))))
 
-            (testing "tag associations with preserved order"
-              (is (= 3 (count (:tags ser))))
-              (let [tag-ids (map :tag_id (:tags ser))
-                    positions (map :position (:tags ser))]
-                (is (= [hourly-tag-eid custom-tag-eid daily-tag-eid] tag-ids))
-                (is (= [0 1 2] positions))))
+            (testing "tag associations with preserved order as tag names"
+              (is (= ["hourly" "custom-etl" "daily"] (:tags ser))))
 
             (testing "dependencies include collection, source table, and tags"
               (let [deps (set (serdes/dependencies ser))]
                 (is (contains? deps [{:model "Collection" :id coll-eid}]))
                 (is (contains? deps [{:model "Database" :id "My Database"}
                                      {:model "Table" :id "Schemaless Table"}]))
-                (is (contains? deps [{:model "TransformTag" :id hourly-tag-eid}]))
-                (is (contains? deps [{:model "TransformTag" :id custom-tag-eid}]))
-                (is (contains? deps [{:model "TransformTag" :id daily-tag-eid}])))))
+                (is (contains? deps [{:model "TransformTag" :id "hourly"}]))
+                (is (contains? deps [{:model "TransformTag" :id "custom-etl"}]))
+                (is (contains? deps [{:model "TransformTag" :id "daily"}])))))
 
           (testing "transform is extracted"
-            (is (= #{transform-eid}
+            (is (= #{"Test Transform"}
                    (ids-by-model "Transform" (extract/extract {}))))))))))
 
 (deftest transform-job-extraction-test
@@ -2356,24 +2345,20 @@
         (t2/delete! :model/TransformJob)
         (ts/with-temp-dpc [;; Create tags for job associations
                            :model/TransformTag
-                           {hourly-tag-id :id
-                            hourly-tag-eid :entity_id}
+                           {hourly-tag-id :id}
                            {:name "hourly" :built_in_type "hourly"}
 
                            :model/TransformTag
-                           {daily-tag-id :id
-                            daily-tag-eid :entity_id}
+                           {daily-tag-id :id}
                            {:name "daily" :built_in_type "daily"}
 
                            :model/TransformTag
-                           {custom-tag-id :id
-                            custom-tag-eid :entity_id}
+                           {custom-tag-id :id}
                            {:name "custom-etl"}
 
                            ;; Create built-in TransformJob
                            :model/TransformJob
-                           {hourly-job-id :id
-                            hourly-job-eid :entity_id}
+                           {hourly-job-id :id}
                            {:name "Hourly job"
                             :description "Executes transforms tagged with 'hourly' every hour"
                             :schedule "0 0 * * * ? *"
@@ -2381,8 +2366,7 @@
 
                            ;; Create custom TransformJob
                            :model/TransformJob
-                           {custom-job-id :id
-                            custom-job-eid :entity_id}
+                           {custom-job-id :id}
                            {:name "Custom ETL Job"
                             :description "Custom data processing job"
                             :schedule "0 0 2 * * ? *"}
@@ -2409,7 +2393,7 @@
           (testing "built-in job extracts correctly"
             (let [ser (serdes/extract-one "TransformJob" {} (t2/hydrate (t2/select-one :model/TransformJob :id hourly-job-id) :job_tags))]
               (is (=? {:serdes/meta [{:model "TransformJob"
-                                      :id hourly-job-eid}]
+                                      :id "Hourly job"}]
                        :name "Hourly job"
                        :description "Executes transforms tagged with 'hourly' every hour"
                        :schedule "0 0 * * * ? *"
@@ -2417,18 +2401,16 @@
                        :created_at string?}
                       ser))
               (is (not (contains? ser :id)))
-              (testing "job has associated tags"
-                (is (= 1 (count (:job_tags ser))))
-                (is (= hourly-tag-eid (-> ser :job_tags first :tag_id)))
-                (is (= 0 (-> ser :job_tags first :position))))
+              (testing "job has associated tags as names"
+                (is (= ["hourly"] (:job_tags ser))))
               (testing "dependencies include referenced tags"
-                (is (= #{[{:model "TransformTag" :id hourly-tag-eid}]}
+                (is (= #{[{:model "TransformTag" :id "hourly"}]}
                        (set (serdes/dependencies ser)))))))
 
           (testing "custom job extracts correctly"
             (let [ser (serdes/extract-one "TransformJob" {} (t2/hydrate (t2/select-one :model/TransformJob :id custom-job-id) :job_tags))]
               (is (=? {:serdes/meta [{:model "TransformJob"
-                                      :id custom-job-eid}]
+                                      :id "Custom ETL Job"}]
                        :name "Custom ETL Job"
                        :description "Custom data processing job"
                        :schedule "0 0 2 * * ? *"
@@ -2437,18 +2419,14 @@
                       ser))
               (is (not (contains? ser :id)))
               (testing "job has multiple associated tags in correct order"
-                (is (= 2 (count (:job_tags ser))))
-                (let [tag-ids (map :tag_id (:job_tags ser))
-                      positions (map :position (:job_tags ser))]
-                  (is (= [custom-tag-eid daily-tag-eid] tag-ids))
-                  (is (= [0 1] positions))))
+                (is (= ["custom-etl" "daily"] (:job_tags ser))))
               (testing "dependencies include all referenced tags"
-                (is (= #{[{:model "TransformTag" :id custom-tag-eid}]
-                         [{:model "TransformTag" :id daily-tag-eid}]}
+                (is (= #{[{:model "TransformTag" :id "custom-etl"}]
+                         [{:model "TransformTag" :id "daily"}]}
                        (set (serdes/dependencies ser)))))))
 
           (testing "all transform jobs are extracted"
-            (is (= #{hourly-job-eid custom-job-eid}
+            (is (= #{"Hourly job" "Custom ETL Job"}
                    (ids-by-model "TransformJob" (extract/extract {}))))))))))
 
 (deftest collection-export-includes-published-tables-test

@@ -196,8 +196,9 @@
       (throw (ex-info "Cannot set data_authority back to unconfigured once it has been configured"
                       {:status-code 400})))
 
-    ;; Prevent changing data_source to/from metabase-transform
-    (when (contains? changes :data_source)
+    ;; Prevent changing data_source to/from metabase-transform (skip during deserialization)
+    (when (and (not mi/*deserializing?*)
+               (contains? changes :data_source))
       (let [original-data-source (:data_source original-table)
             new-data-source      (:data_source changes)]
         (when (and (= original-data-source :metabase-transform)

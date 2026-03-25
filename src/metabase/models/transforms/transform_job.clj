@@ -16,7 +16,6 @@
 
 (doto :model/TransformJob
   (derive :metabase/model)
-  (derive :hook/entity-id)
   (derive :hook/timestamped?))
 
 (t2/deftransforms :model/TransformJob
@@ -182,21 +181,51 @@
   [_job]
   [:name :built_in_type])
 
+(defmethod serdes/entity-id "TransformJob" [_ {:keys [name]}]
+  (str name))
+
+(defn- tag-names-transformer
+  "Custom transformer that serializes join table tag associations as a simple array of tag names.
+   Position is inferred from array index on import."
+  [join-model backward-fk]
+  {::serdes/nested true
+   :model          join-model
+   :backward-fk    backward-fk
+   :export-with-context
+   (fn [_current _ data]
+     (let [tag-ids  (map :tag_id (sort-by :position data))
+           tags     (when (seq tag-ids)
+                      (m/index-by :id (t2/select :model/TransformTag :id [:in tag-ids])))]
+       (mapv #(str (:name (get tags (:tag_id %)))) (sort-by :position data))))
+   :import-with-context
+   (fn [current _ tag-names]
+     (let [parent-id (:id current)]
+       (t2/delete! join-model backward-fk parent-id)
+       (doseq [[position tag-name] (map-indexed vector tag-names)
+               :let [tag-id (t2/select-one-pk :model/TransformTag :name tag-name)]]
+         (t2/insert! join-model {backward-fk parent-id
+                                 :tag_id     tag-id
+                                 :position   position}))))})
+
 (defmethod serdes/make-spec "TransformJob"
-  [_model-name opts]
-  {:copy [:entity_id :built_in_type :schedule :ui_display_type]
+  [_model-name _opts]
+  {:copy [:built_in_type :schedule :ui_display_type]
    :skip []
    :transform {:name {:export str :import identity}
                :description {:export str :import identity}
                :created_at (serdes/date)
-               :job_tags (serdes/nested :model/TransformJobTransformTag :job_id opts)}})
+               :job_tags (tag-names-transformer :model/TransformJobTransformTag :job_id)}})
 
 (defmethod serdes/dependencies "TransformJob"
   [{:keys [job_tags]}]
   (set
-   (for [{tag-id :tag_id} job_tags]
-     [{:model "TransformTag" :id tag-id}])))
+   (for [tag-name job_tags]
+     [{:model "TransformTag" :id tag-name}])))
+
+(defmethod serdes/load-find-local "TransformJob" [path]
+  (let [{:keys [id]} (last path)]
+    (t2/select-one :model/TransformJob :name id)))
 
 (defmethod serdes/storage-path "TransformJob" [job _ctx]
-  (let [{:keys [id label]} (-> job serdes/path last)]
-    ["transforms" "transform_jobs" (serdes/storage-leaf-file-name id label)]))
+  (let [{:keys [label]} (-> job serdes/path last)]
+    ["transforms" "transform_jobs" label]))
