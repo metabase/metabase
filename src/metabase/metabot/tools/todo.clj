@@ -2,8 +2,11 @@
   "Tools for managing todo lists during agent conversations.
   Todos are stored in agent memory and streamed to the frontend via todo_list data parts."
   (:require
+   [clojure.string :as str]
    [metabase.metabot.agent.streaming :as streaming]
-   [metabase.util.log :as log]))
+   [metabase.metabot.tools.shared :as shared]
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -77,3 +80,63 @@
     {:structured-output {:todos todos
                          :todo_count (count todos)}
      :instructions "You should call todo_write after reading this todo_list to make any updates."}))
+
+(defn- format-todo-write-output
+  [{:keys [todo_count]}]
+  (str "Todo list updated successfully. " todo_count " item(s)."))
+
+(defn- format-todo-read-output
+  [{:keys [todos todo_count]}]
+  (if (seq todos)
+    (str "Current todo list (" todo_count " items):\n"
+         (str/join "\n" (map (fn [{:keys [id content status priority]}]
+                               (str "- [" status "] " content " (id=" id ", priority=" priority ")"))
+                             todos)))
+    "No todos found."))
+
+(defn- add-output
+  [result format-fn]
+  (if-let [structured (:structured-output result)]
+    (assoc result :output (format-fn structured))
+    result))
+
+(def ^:private todo-write-schema
+  [:map {:closed true}
+   [:todos [:sequential [:map {:closed true}
+                         [:id :string]
+                         [:content :string]
+                         [:status [:enum "pending" "in_progress" "completed" "cancelled"]]
+                         [:priority [:enum "high" "medium" "low"]]]]]])
+
+(mu/defn ^{:tool-name "todo_write"}
+  todo-write-tool
+  "Create and manage a structured task list.
+  Write or update the todo list with tasks for tracking progress.
+
+  Each todo item must have:
+  - id: Unique identifier for the task
+  - content: Description of what needs to be done
+  - status: One of 'pending', 'in_progress', 'completed', 'cancelled'
+  - priority: One of 'high', 'medium', 'low'"
+  [{:keys [todos]} :- todo-write-schema]
+  (try
+    (add-output
+     (todo-write {:todos todos
+                  :memory-atom shared/*memory-atom*})
+     format-todo-write-output)
+    (catch Exception e
+      (if (:agent-error? (ex-data e))
+        {:output (ex-message e)}
+        {:output (str "Failed to update todo list: " (or (ex-message e) "Unknown error"))}))))
+
+(mu/defn ^{:tool-name "todo_read"}
+  todo-read-tool
+  "Read the current todo list from memory.
+  Returns the list of todos that have been created during this conversation."
+  [_args :- [:maybe [:map {:closed true}]]]
+  (try
+    (add-output
+     (todo-read {:memory-atom shared/*memory-atom*})
+     format-todo-read-output)
+    (catch Exception e
+      {:output (str "Failed to read todo list: " (or (ex-message e) "Unknown error"))})))

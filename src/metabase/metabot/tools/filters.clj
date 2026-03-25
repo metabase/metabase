@@ -8,7 +8,7 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.metabot.agent.streaming :as streaming]
-   [metabase.metabot.tools.instructions :as instructions]
+   [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]

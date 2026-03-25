@@ -9,7 +9,7 @@
    [metabase.api.macros.scope :as scope]
    [metabase.api.routes.common :as api.routes.common]
    [metabase.auth-identity.core :as auth-identity]
-   [metabase.metabot.tools.api :as tools.api]
+   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.metabot.tools.deftool :as deftool]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.field-stats :as field-stats]
@@ -305,6 +305,190 @@
 ;; These use snake_case keys for validation and OpenAPI generation,
 ;; with :encode/tool-api-request transformers for converting to the internal format.
 
+(mr/def ::bucket
+  (into [:enum {:error/message           "Valid bucket"
+                :encode/tool-api-request keyword}]
+        (map name)
+        lib.schema.temporal-bucketing/ordered-datetime-bucketing-units))
+
+(mr/def ::existence-filter
+  [:and
+   [:map
+    [:field_id :string]
+    [:operation [:enum {:encode/tool-api-request keyword}
+                 "is-null"         "is-not-null"
+                 "string-is-empty" "string-is-not-empty"
+                 "is-true"         "is-false"]]]
+   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
+
+(mr/def ::temporal-extraction-filter
+  [:and
+   [:map
+    [:field_id :string]
+    [:operation [:enum {:encode/tool-api-request keyword}
+                 "year-equals"        "year-not-equals"
+                 "quarter-equals"     "quarter-not-equals"
+                 "month-equals"       "month-not-equals"
+                 "day-of-week-equals" "day-of-week-not-equals"
+                 "hour-equals"        "hour-not-equals"
+                 "minute-equals"      "minute-not-equals"
+                 "second-equals"      "second-not-equals"]]
+    [:value :int]]
+   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
+
+(mr/def ::disjunctive-temporal-extraction-filter
+  [:and
+   [:map
+    [:field_id :string]
+    [:operation [:enum {:encode/tool-api-request keyword}
+                 "year-equals"        "year-not-equals"
+                 "quarter-equals"     "quarter-not-equals"
+                 "month-equals"       "month-not-equals"
+                 "day-of-week-equals" "day-of-week-not-equals"
+                 "hour-equals"        "hour-not-equals"
+                 "minute-equals"      "minute-not-equals"
+                 "second-equals"      "second-not-equals"]]
+    [:values [:sequential :int]]]
+   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
+
+(mr/def ::temporal-filter
+  [:and
+   [:map
+    [:field_id :string]
+    [:bucket {:optional true} ::bucket]
+    [:operation [:enum {:encode/tool-api-request keyword}
+                 "equals"       "not-equals"
+                 "greater-than" "greater-than-or-equal"
+                 "less-than"    "less-than-or-equal"]]
+    [:value [:or :string :int]]]
+   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
+
+(mr/def ::disjunctive-temporal-filter
+  [:and
+   [:map
+    [:field_id :string]
+    [:bucket {:optional true} ::bucket]
+    [:operation [:enum {:encode/tool-api-request keyword}
+                 "equals"       "not-equals"
+                 "greater-than" "greater-than-or-equal"
+                 "less-than"    "less-than-or-equal"]]
+    [:values [:sequential [:or :string :int]]]]
+   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
+
+(mr/def ::string-filter
+  [:and
+   [:map
+    [:field_id :string]
+    [:operation [:enum {:encode/tool-api-request keyword}
+                 "equals"             "not-equals"
+                 "string-contains"    "string-not-contains"
+                 "string-starts-with" "string-ends-with"]]
+    [:value :string]]
+   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
+
+(mr/def ::disjunctive-string-date-filter
+  [:and
+   [:map
+    [:field_id :string]
+    [:operation [:enum {:encode/tool-api-request keyword}
+                 "equals"             "not-equals"
+                 "string-contains"    "string-not-contains"
+                 "string-starts-with" "string-ends-with"]]
+    [:values [:sequential :string]]]
+   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
+
+(mr/def ::numeric-filter
+  [:and
+   [:map
+    [:field_id :string]
+    [:operation [:enum {:encode/tool-api-request keyword}
+                 "equals"       "not-equals"
+                 "greater-than" "greater-than-or-equal"
+                 "less-than"    "less-than-or-equal"]]
+    [:value [:or :int :double]]]
+   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
+
+(mr/def ::disjunctive-numeric-filter
+  [:and
+   [:map
+    [:field_id :string]
+    [:operation [:enum {:encode/tool-api-request keyword}
+                 "equals" "not-equals"]]
+    [:values [:sequential [:or :int :double]]]]
+   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
+
+(mr/def ::segment-filter
+  "Filter using a pre-defined segment."
+  [:and
+   [:map
+    [:segment_id :int]]
+   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
+
+(mr/def ::filter
+  [:or
+   ::segment-filter
+   ::existence-filter
+   ::temporal-extraction-filter ::disjunctive-temporal-extraction-filter
+   ::temporal-filter ::disjunctive-temporal-filter
+   ::string-filter ::disjunctive-string-date-filter
+   ::numeric-filter ::disjunctive-numeric-filter])
+
+(mr/def ::group-by
+  [:and
+   [:map
+    [:field_id :string]
+    [:field_granularity {:optional true}
+     [:maybe [:enum {:encode/tool-api-request keyword}
+              "minute", "hour" "day" "week" "month" "quarter" "year" "day-of-week"]]]]
+   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
+
+(mr/def ::count-aggregation
+  "Count aggregation — counts rows, no field_id needed.
+   Use sort_order to order results by this aggregation ('asc' or 'desc')."
+  [:and
+   [:map
+    [:function [:= {:encode/tool-api-request keyword} "count"]]
+    [:bucket {:optional true} ::bucket]
+    [:sort_order {:optional true} [:maybe [:enum {:encode/tool-api-request keyword} "asc" "desc"]]]]
+   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
+
+(mr/def ::field-aggregation
+  "Aggregation using a field and function. field_id is required.
+   Use sort_order to order results by this aggregation ('asc' or 'desc')."
+  [:and
+   [:map
+    [:field_id :string]
+    [:bucket {:optional true} ::bucket]
+    [:sort_order {:optional true} [:maybe [:enum {:encode/tool-api-request keyword} "asc" "desc"]]]
+    [:function [:enum {:encode/tool-api-request keyword}
+                "avg" "count-distinct" "max" "min" "sum"]]]
+   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
+
+(mr/def ::measure-aggregation
+  "Aggregation using a pre-defined measure."
+  [:and
+   [:map
+    [:measure_id :int]
+    [:sort_order {:optional true} [:maybe [:enum {:encode/tool-api-request keyword} "asc" "desc"]]]]
+   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
+
+(mr/def ::aggregation
+  "Aggregation — count (field optional), field-based (field required), or measure-based."
+  [:or ::count-aggregation ::field-aggregation ::measure-aggregation])
+
+(mr/def ::field
+  [:and
+   [:map
+    [:field_id :string]
+    [:bucket {:optional true} ::bucket]]
+   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
+
+(mr/def ::order-by
+  "Order by item specifying a field and sort direction."
+  [:map
+   [:field ::field]
+   [:direction [:enum {:encode/tool-api-request keyword} "asc" "desc"]]])
+
 (mr/def ::construct-query-table-request
   "Request schema for constructing a query from a table.
 
@@ -318,13 +502,13 @@
   [:and
    [:map
     [:table_id ms/PositiveInt]
-    [:filters      {:optional true} [:maybe [:sequential ::tools.api/filter]]]
-    [:fields       {:optional true} [:maybe [:sequential ::tools.api/field]]]
-    [:aggregations {:optional true} [:maybe [:sequential ::tools.api/aggregation]]]
-    [:group_by     {:optional true} [:maybe [:sequential ::tools.api/group-by]]]
+    [:filters      {:optional true} [:maybe [:sequential ::filter]]]
+    [:fields       {:optional true} [:maybe [:sequential ::field]]]
+    [:aggregations {:optional true} [:maybe [:sequential ::aggregation]]]
+    [:group_by     {:optional true} [:maybe [:sequential ::group-by]]]
     [:order_by     {:optional true
                     :description "Order by regular fields only. To order by aggregation results, use sort_order on the aggregation."}
-     [:maybe [:sequential ::tools.api/order-by]]]
+     [:maybe [:sequential ::order-by]]]
     [:limit        {:optional true} [:maybe ms/PositiveInt]]]
    [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
 
@@ -334,8 +518,8 @@
   [:and
    [:map
     [:metric_id ms/PositiveInt]
-    [:filters  {:optional true} [:maybe [:sequential ::tools.api/filter]]]
-    [:group_by {:optional true} [:maybe [:sequential ::tools.api/group-by]]]]
+    [:filters  {:optional true} [:maybe [:sequential ::filter]]]
+    [:group_by {:optional true} [:maybe [:sequential ::group-by]]]]
    [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
 
 (mr/def ::construct-query-request

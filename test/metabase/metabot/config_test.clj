@@ -25,53 +25,44 @@
 (deftest resolve-dynamic-profile-id-test
   (testing "profile ID resolution precedence"
     (mt/with-premium-features #{:metabot-v3}
-      (mt/with-temporary-setting-values [metabot.settings/ai-service-profile-id nil]
-        (testing "explicit profile-id takes highest precedence"
-          (is (= "explicit-profile"
-                 (metabot.config/resolve-dynamic-profile-id "explicit-profile" "any-metabot-id"))))
+      (testing "explicit profile-id takes highest precedence"
+        (is (= "explicit-profile"
+               (metabot.config/resolve-dynamic-profile-id "explicit-profile" "any-metabot-id"))))
 
-        (testing "environment variable takes second precedence"
-          (mt/with-temporary-setting-values [metabot.settings/ai-service-profile-id "env-profile"]
-            (is (= "env-profile"
-                   (metabot.config/resolve-dynamic-profile-id nil "any-metabot-id")))))
+      (testing "metabot-id mapping takes second precedence"
+        (is (= "internal"
+               (metabot.config/resolve-dynamic-profile-id nil metabot.config/internal-metabot-id)))
+        (is (= "embedding_next"
+               (metabot.config/resolve-dynamic-profile-id nil metabot.config/embedded-metabot-id))))
 
-        (testing "metabot-id mapping takes third precedence"
-          (is (= "internal"
-                 (metabot.config/resolve-dynamic-profile-id nil metabot.config/internal-metabot-id)))
+      (testing "falls back to default when no matches"
+        (is (= "embedding_next"
+               (metabot.config/resolve-dynamic-profile-id nil "unknown-metabot-id"))))
+
+      (testing "single arity version uses dynamic metabot resolution"
+        (mt/with-temporary-setting-values [metabot.settings/metabot-id metabot.config/embedded-metabot-id]
           (is (= "embedding_next"
-                 (metabot.config/resolve-dynamic-profile-id nil metabot.config/embedded-metabot-id))))
-
-        (testing "falls back to default when no matches"
-          (is (= "embedding_next"
-                 (metabot.config/resolve-dynamic-profile-id nil "unknown-metabot-id"))))
-
-        (testing "single arity version uses dynamic metabot resolution"
-          (mt/with-temporary-setting-values [metabot.settings/metabot-id metabot.config/embedded-metabot-id]
-            (is (= "embedding_next"
-                   (metabot.config/resolve-dynamic-profile-id nil)))))))))
+                 (metabot.config/resolve-dynamic-profile-id nil))))))))
 
 (deftest integrated-resolution-test
   (testing "combination of metabot-id and profile-id precedence resolution"
     (mt/with-premium-features #{:metabot-v3}
       (testing "explicit params override everything"
-        (mt/with-temporary-setting-values [metabot.settings/metabot-id nil
-                                           metabot.settings/ai-service-profile-id nil]
+        (mt/with-temporary-setting-values [metabot.settings/metabot-id nil]
           (let [metabot-id (metabot.config/resolve-dynamic-metabot-id "custom-metabot")
                 profile-id (metabot.config/resolve-dynamic-profile-id "custom-profile" metabot-id)]
             (is (= "custom-metabot" metabot-id))
             (is (= "custom-profile" profile-id)))))
 
-      (testing "environment variables work together"
-        (mt/with-temporary-setting-values [metabot.settings/metabot-id "env-metabot"
-                                           metabot.settings/ai-service-profile-id "env-profile"]
+      (testing "env metabot-id resolves profile via metabot-id mapping"
+        (mt/with-temporary-setting-values [metabot.settings/metabot-id metabot.config/embedded-metabot-id]
           (let [metabot-id (metabot.config/resolve-dynamic-metabot-id nil)
                 profile-id (metabot.config/resolve-dynamic-profile-id nil metabot-id)]
-            (is (= "env-metabot" metabot-id))
-            (is (= "env-profile" profile-id)))))
+            (is (= metabot.config/embedded-metabot-id metabot-id))
+            (is (= "embedding_next" profile-id)))))
 
       (testing "defaults work together"
-        (mt/with-temporary-setting-values [metabot.settings/metabot-id nil
-                                           metabot.settings/ai-service-profile-id nil]
+        (mt/with-temporary-setting-values [metabot.settings/metabot-id nil]
           (let [metabot-id (metabot.config/resolve-dynamic-metabot-id nil)
                 profile-id (metabot.config/resolve-dynamic-profile-id nil metabot-id)]
             (is (= metabot.config/internal-metabot-id metabot-id))

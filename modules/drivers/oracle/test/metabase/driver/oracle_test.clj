@@ -279,7 +279,7 @@
                    "FROM"
                    "  ("
                    "    SELECT"
-                   "      \"source\".\"s\" \"s\""
+                   "      \"__mb_source\".\"s\" \"s\""
                    "    FROM"
                    "      ("
                    "        SELECT"
@@ -287,7 +287,7 @@
                    "          SUBSTR(\"public\".\"table\".\"field\", 2) \"s\""
                    "        FROM"
                    "          \"public\".\"table\""
-                   "      ) \"source\""
+                   "      ) \"__mb_source\""
                    "  )"
                    "WHERE"
                    "  rownum <= 3"]]
