@@ -8,6 +8,7 @@
    [oidc-provider.util :as oidc-util]
    [toucan2.core :as t2])
   (:import
+   (java.net URLEncoder)
    (java.security MessageDigest)
    (java.util Base64)))
 
@@ -261,20 +262,29 @@
 ;;; ----------------------------------------- Authorization Decision ------------------------------------------------
 
 (defn- get-consent-page!
-  "GET the consent page and return the full response (including CSRF cookie)."
-  [user client-id]
-  (mt/user-http-request-full-response
-   user :get 200 "oauth/authorize"
-   :client_id     client-id
-   :redirect_uri  "https://example.com/callback"
-   :response_type "code"
-   :scope         "profile"
-   :state         "test-state"))
+  "GET the consent page and return the full response (including CSRF cookie).
+   Accepts optional extra query params (e.g. PKCE code_challenge)."
+  ([user client-id]
+   (get-consent-page! user client-id nil))
+  ([user client-id extra-params]
+   (apply mt/user-http-request-full-response
+          user :get 200 "oauth/authorize"
+          :client_id     client-id
+          :redirect_uri  "https://example.com/callback"
+          :response_type "code"
+          :scope         "profile"
+          :state         "test-state"
+          (mapcat identity extra-params))))
 
-(defn- extract-csrf-token-from-consent
-  "Extract the CSRF token from the consent page HTML body."
-  [body]
-  (second (re-find #"name=\"csrf_token\"[^>]*value=\"([a-f0-9]+)\"" body)))
+(defn- hidden-field-extractor
+  "Returns a function that extracts a hidden form field's hex value from HTML."
+  [field-name]
+  (let [pattern (re-pattern (str "name=\"" field-name "\"[^>]*value=\"([a-f0-9]+)\""))]
+    (fn [body] (second (re-find pattern body)))))
+
+(def ^:private extract-csrf-token-from-consent (hidden-field-extractor "csrf_token"))
+
+(def ^:private extract-params-sig-from-consent (hidden-field-extractor "params_sig"))
 
 (defn- extract-csrf-cookie
   "Extract the CSRF cookie value from the response.
@@ -308,12 +318,15 @@
         (let [client       (create-test-client!)
               client-id    (:client_id client)
               consent-resp (get-consent-page! :crowberto client-id)
-              csrf-token   (extract-csrf-token-from-consent (:body consent-resp))
+              consent-body (:body consent-resp)
+              csrf-token   (extract-csrf-token-from-consent consent-body)
               csrf-cookie  (extract-csrf-cookie consent-resp)
+              params-sig   (extract-params-sig-from-consent consent-body)
               response     (form-post-decision!
                             :crowberto
                             {:approved      "true"
                              :csrf_token    csrf-token
+                             :params_sig    params-sig
                              :client_id     client-id
                              :redirect_uri  "https://example.com/callback"
                              :response_type "code"
@@ -337,12 +350,15 @@
         (let [client       (create-test-client!)
               client-id    (:client_id client)
               consent-resp (get-consent-page! :crowberto client-id)
-              csrf-token   (extract-csrf-token-from-consent (:body consent-resp))
+              consent-body (:body consent-resp)
+              csrf-token   (extract-csrf-token-from-consent consent-body)
               csrf-cookie  (extract-csrf-cookie consent-resp)
+              params-sig   (extract-params-sig-from-consent consent-body)
               response     (form-post-decision!
                             :crowberto
                             {:approved      "false"
                              :csrf_token    csrf-token
+                             :params_sig    params-sig
                              :client_id     client-id
                              :redirect_uri  "https://example.com/callback"
                              :response_type "code"
@@ -421,12 +437,15 @@
    Creates a client, authorizes, and extracts the code from the redirect."
   [client-id]
   (let [consent-resp (get-consent-page! :crowberto client-id)
-        csrf-token   (extract-csrf-token-from-consent (:body consent-resp))
+        body         (:body consent-resp)
+        csrf-token   (extract-csrf-token-from-consent body)
         csrf-cookie  (extract-csrf-cookie consent-resp)
+        params-sig   (extract-params-sig-from-consent body)
         response     (form-post-decision!
                       :crowberto
                       {:approved      "true"
                        :csrf_token    csrf-token
+                       :params_sig    params-sig
                        :client_id     client-id
                        :redirect_uri  "https://example.com/callback"
                        :response_type "code"
@@ -627,13 +646,16 @@
 (defn- authorize-and-get-code-with-params!
   "Complete the authorize flow with extra decision params and return the authorization code."
   [client-id extra-params]
-  (let [consent-resp (get-consent-page! :crowberto client-id)
-        csrf-token   (extract-csrf-token-from-consent (:body consent-resp))
+  (let [consent-resp (get-consent-page! :crowberto client-id extra-params)
+        body         (:body consent-resp)
+        csrf-token   (extract-csrf-token-from-consent body)
         csrf-cookie  (extract-csrf-cookie consent-resp)
+        params-sig   (extract-params-sig-from-consent body)
         response     (form-post-decision!
                       :crowberto
                       (merge {:approved      "true"
                               :csrf_token    csrf-token
+                              :params_sig    params-sig
                               :client_id     client-id
                               :redirect_uri  "https://example.com/callback"
                               :response_type "code"
@@ -811,32 +833,42 @@
   (testing "OAuth state with special characters survives the authorize round-trip"
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (t2/with-transaction [_conn nil {:rollback-only true}]
-        (let [state        "abc+/=&foo=bar baz"
-              client       (create-test-client!)
-              client-id    (:client_id client)
-              consent-resp (mt/user-http-request-full-response
-                            :crowberto :get 200 "oauth/authorize"
-                            :client_id     client-id
-                            :redirect_uri  "https://example.com/callback"
-                            :response_type "code"
-                            :scope         "profile"
-                            :state         state)
-              csrf-token   (extract-csrf-token-from-consent (:body consent-resp))
-              csrf-cookie  (extract-csrf-cookie consent-resp)
-              response     (form-post-decision!
-                            :crowberto
-                            {:approved      "true"
-                             :csrf_token    csrf-token
+        ;; Test that special characters in state survive the authorize → consent → decision
+        ;; round-trip. Includes `/`, `=`, `&`, and space. Literal `+` is excluded because
+        ;; codec/url-encode (RFC 3986) doesn't percent-encode it, so ring's query parser
+        ;; decodes it as space. We can't pre-encode it as `%2B` either — codec/url-encode
+        ;; double-escapes the `%` to `%252B`. In a real client flow, `+` is sent as `%2B`
+        ;; and round-trips correctly.
+        (let [state         "abc/=&foo=bar baz"
+              client        (create-test-client!)
+              client-id     (:client_id client)
+              consent-resp  (mt/user-http-request-full-response
+                             :crowberto :get 200 "oauth/authorize"
                              :client_id     client-id
                              :redirect_uri  "https://example.com/callback"
                              :response_type "code"
                              :scope         "profile"
-                             :state         state}
-                            302
-                            :csrf-cookie csrf-cookie)
-              location     (get-in response [:headers "Location"])]
-          (is (str/includes? location "state="))
-          (is (str/includes? location (java.net.URLEncoder/encode state "UTF-8"))))))))
+                             :state         state)
+              consent-body  (:body consent-resp)
+              csrf-token    (extract-csrf-token-from-consent consent-body)
+              csrf-cookie   (extract-csrf-cookie consent-resp)
+              params-sig    (extract-params-sig-from-consent consent-body)]
+          (is (some? params-sig) "Should extract params_sig from consent page")
+          (let [response (form-post-decision!
+                          :crowberto
+                          {:approved      "true"
+                           :csrf_token    csrf-token
+                           :params_sig    params-sig
+                           :client_id     client-id
+                           :redirect_uri  "https://example.com/callback"
+                           :response_type "code"
+                           :scope         "profile"
+                           :state         state}
+                          302
+                          :csrf-cookie csrf-cookie)
+                location (get-in response [:headers "Location"])]
+            (is (str/includes? location "state="))
+            (is (str/includes? location (URLEncoder/encode state "UTF-8")))))))))
 
 ;;; ----------------------------------------- Consent Page Security --------------------------------------------------
 

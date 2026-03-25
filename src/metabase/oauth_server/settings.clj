@@ -25,7 +25,7 @@
   (deferred-tru "Refresh token time-to-live in seconds for the embedded OAuth server.")
   :type       :integer
   :visibility :internal
-  :default    2592000
+  :default    2592000 ;; 30 days
   :doc        false
   :export?    false
   :audit      :never)

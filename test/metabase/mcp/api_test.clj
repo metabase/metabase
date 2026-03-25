@@ -149,7 +149,7 @@
       (is (= 200 (:status post-response))))))
 
 (deftest tools-list-test
-  (testing "tools/list returns the 7 agent tools"
+  (testing "tools/list returns the 8 agent tools"
     (let [[session-id _] (initialize!)
           response (mcp-request (jsonrpc-request "tools/list")
                                 {"mcp-session-id" session-id})
@@ -157,7 +157,7 @@
       (is (= 200 (:status response)))
       (is (pos? (count tools)))
       (is (= #{"search" "get_table" "get_metric" "get_table_field_values"
-               "get_metric_field_values" "construct_query" "execute_query"}
+               "get_metric_field_values" "construct_query" "execute_query" "query"}
              (set (map :name tools))))
       (testing "each tool has a description and inputSchema"
         (doseq [tool tools]
@@ -409,7 +409,7 @@
 (deftest tools-list-scope-filtering-test
   (testing "tools/list with unrestricted scopes returns all tools"
     (let [tools (mcp.tools/list-tools #{::scope/unrestricted})]
-      (is (= 7 (count tools)))))
+      (is (= 8 (count tools)))))
 
   (testing "tools/list with specific scope only returns matching tools"
     (let [tools     (mcp.tools/list-tools #{"agent:search"})
@@ -422,11 +422,11 @@
 
   (testing "tools/list with wildcard scope matches all agent tools"
     (let [tools (mcp.tools/list-tools #{"agent:*"})]
-      (is (= 7 (count tools)))))
+      (is (= 8 (count tools)))))
 
   (testing "tools/list with nil scopes returns all tools"
     (let [tools (mcp.tools/list-tools nil)]
-      (is (= 7 (count tools)))))
+      (is (= 8 (count tools)))))
 
   (testing "tools/list with empty scopes does not return all tools"
     (let [tools (mcp.tools/list-tools #{})]
@@ -481,3 +481,23 @@
       (is (= "Insufficient scope to call tool: get_table"
              (-> result :content first :text))
           "Error must not leak the required scope name"))))
+
+(deftest agent-api-preserves-token-scopes-test
+  (testing "scoped token restrictions are enforced by the Agent API layer (defense-in-depth)"
+    (testing "restricted scopes that don't match the endpoint are rejected by Agent API"
+      (let [result (mt/with-current-user (mt/user->id :crowberto)
+                     ;; Bypass the MCP scope check by calling invoke-agent-api directly
+                     ;; with scopes that don't match the endpoint's required scope (agent:table:read)
+                     (#'mcp.tools/invoke-agent-api :get (str "/v1/table/" (mt/id :orders)) #{"agent:search"}))]
+        (is (=? {:isError true} result)
+            "Agent API should reject when token scopes don't include the required scope")))
+    (testing "matching scopes are accepted by Agent API"
+      (let [result (mt/with-current-user (mt/user->id :crowberto)
+                     (#'mcp.tools/invoke-agent-api :get (str "/v1/table/" (mt/id :orders)) #{"agent:table:read"}))]
+        (is (not (:isError result))
+            "Agent API should accept when token scopes include the required scope")))
+    (testing "unrestricted scopes are accepted by Agent API"
+      (let [result (mt/with-current-user (mt/user->id :crowberto)
+                     (#'mcp.tools/invoke-agent-api :get (str "/v1/table/" (mt/id :orders)) #{::scope/unrestricted}))]
+        (is (not (:isError result))
+            "Agent API should accept unrestricted scopes")))))

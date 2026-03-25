@@ -5,6 +5,7 @@
    to avoid circular dependencies between test namespaces."
   (:require
    [clojure.string :as str]
+   [metabase.config.core :as config]
    [metabase.premium-features.token-check :as token-check]
    [metabase.request.core :as request]
    [metabase.server.instance :as server.instance]
@@ -92,6 +93,16 @@
   "Default JWT secret for tests. Note: this is regenerated on each test run."
   (u.random/secure-hex 32))
 
+(defn- localhost-site-url
+  "Return a valid localhost site URL for tests, even when no Jetty server is running.
+   The CLI test runner often executes without a live server instance, so `server-port`
+   can be nil in that mode."
+  []
+  (str "http://localhost:"
+       (or (server.instance/server-port)
+           (config/config-str :mb-jetty-port)
+           3000)))
+
 (defn call-with-default-jwt-config!
   "Execute `f` with default JWT configuration set up."
   [f]
@@ -101,7 +112,7 @@
         [jwt-enabled              true
          jwt-identity-provider-uri default-jwt-idp-uri
          jwt-shared-secret        default-jwt-secret
-         site-url                 (format "http://localhost:%s" (server.instance/server-port))]
+         site-url                 (localhost-site-url)]
         (mt/with-premium-features current-features
           (f))))))
 
@@ -137,7 +148,7 @@
          slack-connect-client-secret            default-slack-client-secret
          slack-connect-authentication-mode      "sso"
          slack-connect-user-provisioning-enabled true
-         site-url                               (format "http://localhost:%s" (server.instance/server-port))]
+         site-url                               (localhost-site-url)]
         (mt/with-premium-features current-features
           (f))))))
 
@@ -159,7 +170,7 @@
     (mt/with-additional-premium-features #{:sso-oidc}
       (mt/with-temporary-setting-values
         [oidc-providers [default-oidc-provider]
-         site-url       (format "http://localhost:%s" (server.instance/server-port))]
+         site-url       (localhost-site-url)]
         (mt/with-premium-features current-features
           (f))))))
 

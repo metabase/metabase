@@ -20,8 +20,6 @@
 
 (set! *warn-on-reflection* true)
 
-(comment streaming-response/keep-me) ; ensure StreamingResponse class is loaded
-
 (defn- generate-manifest
   "Generate tools manifest from agent API endpoint metadata."
   []
@@ -70,20 +68,19 @@
   "Does `token-scopes` grant access to a tool with the given `tool-scope`?
    - nil token-scopes → always matches (internal callers)
    - ::scope/unrestricted in token-scopes → always matches
-   - nil tool-scope → always matches (tool has no scope restriction)
-   - empty token-scopes #{} → only matches tools with nil tool-scope
+   - nil tool-scope → only matches nil or unrestricted token-scopes
    - wildcard scopes like \"agent:*\" match any tool scope starting with \"agent:\""
   [token-scopes tool-scope]
   (or (nil? token-scopes)
       (contains? token-scopes ::scope/unrestricted)
-      (nil? tool-scope)
-      (contains? token-scopes tool-scope)
-      (some (fn [s]
-              (when (string? s)
-                (when-let [prefix (when (str/ends-with? s ":*")
-                                    (subs s 0 (dec (count s))))]
-                  (str/starts-with? tool-scope prefix))))
-            token-scopes)))
+      (when (some? tool-scope)
+        (or (contains? token-scopes tool-scope)
+            (some (fn [s]
+                    (when (string? s)
+                      (when-let [prefix (when (str/ends-with? s ":*")
+                                          (subs s 0 (dec (count s))))]
+                        (str/starts-with? tool-scope prefix))))
+                  token-scopes)))))
 
 (defn list-tools
   "Return the tool definitions suitable for MCP `tools/list` responses.
@@ -107,17 +104,19 @@
                            (seq used) (update :inputSchema assoc :$defs used))))))
           tools)))
 
-(defn- build-tool-index []
-  (into {} (map (juxt :name identity)) (:tools (manifest))))
+(defn- build-tool-index
+  "Build name->tool lookup from manifest tools."
+  [tools]
+  (into {} (map (juxt :name identity)) tools))
 
 (def ^:private tool-index-delay
-  (delay (build-tool-index)))
+  (delay (build-tool-index (:tools @manifest-delay))))
 
 (defn- tool-index
   "Lookup from tool name to its full manifest definition. Cached in prod, recomputed each call in dev."
   []
   (if config/is-dev?
-    (build-tool-index)
+    (build-tool-index (:tools (manifest)))
     @tool-index-delay))
 
 ;;; ------------------------------------------------- Tool Dispatch -------------------------------------------------
@@ -132,24 +131,24 @@
   [message]
   {:content [{:type "text" :text message}] :isError true})
 
+(comment streaming-response/keep-me) ; ensure StreamingResponse class is loaded
+
 (defn- capture-streaming-response
   "Execute a StreamingResponse in-process by writing to a ByteArrayOutputStream,
    then parse the JSON output and return it as MCP text content.
 
-   NOTE: This intentionally bypasses the normal StreamingResponse lifecycle (thread pool,
-   gzip, donechan delivery) because the agent-api streaming functions only write JSON to
-   the output stream and don't depend on `streaming-response/*response*` or other
-   infrastructure bindings. BOT-1120 tracks streaming MCP responses without buffering
-   in memory, which will replace this approach."
+   This buffers the full response in memory (~120KB for 200 rows), which is fine for
+   the row limits we enforce."
   [^StreamingResponse response]
-  (let [baos (ByteArrayOutputStream.)
+  (let [baos         (ByteArrayOutputStream.)
         canceled-chan (a/promise-chan)
-        f (.f response)]
+        f            (.f response)]
     (f baos canceled-chan)
     (text-content (json/decode+kw (.toString baos "UTF-8")))))
 
 (defn- deliver-agent-api-response
-  "Dispatch to agent API routes and deliver response to promise."
+  "Dispatch to agent API routes and deliver response to promise.
+   Materializes StreamingResponse bodies in-process before delivering."
   [result method path token-scopes body]
   (agent-api/routes
    (cond-> {:request-method   method
@@ -157,7 +156,10 @@
             :metabase-user-id api/*current-user-id*
             :token-scopes     token-scopes}
      body (assoc :body body))
-   (fn [response] (deliver result response))
+   (fn [{resp-body :body :as response}]
+     (deliver result (if (instance? StreamingResponse resp-body)
+                       (capture-streaming-response resp-body)
+                       response)))
    (fn [error] (deliver result {:status 500 :body {:message (ex-message error)}}))))
 
 (defn- invoke-agent-api
@@ -171,8 +173,9 @@
     (deliver-agent-api-response result method path token-scopes body)
     (let [response (deref result 30000 {:status 504 :body {:message "Timeout"}})]
       (cond
-        (instance? StreamingResponse (:body response))
-        (capture-streaming-response (:body response))
+        ;; Already materialized from a StreamingResponse
+        (:content response)
+        response
 
         (= 200 (:status response))
         (text-content (:body response))
@@ -232,7 +235,7 @@
   "Dispatch an MCP `tools/call` request to the appropriate handler.
    `token-scopes` from the original MCP session are propagated to the synthetic
    agent-api request so that scope restrictions are preserved.
-   Returns MCP content on success, or error content on failure."
+   Returns MCP content maps (text-content on success, error-content on failure)."
   [token-scopes tool-name arguments]
   (if-let [tool-def (get (tool-index) tool-name)]
     (if-not (scope-matches? token-scopes (:scope tool-def))
