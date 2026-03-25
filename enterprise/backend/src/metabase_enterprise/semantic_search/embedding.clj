@@ -279,7 +279,7 @@
   []
   (let [api-key (semantic-settings/openai-api-key)]
     (when-not api-key
-      (throw (ex-info "OpenAI API key not configured" {:setting "ee-openai-api-key"})))
+      (throw (ex-info "OpenAI API key not configured" {:setting "llm-openai-api-key"})))
     [(str (semantic-settings/openai-api-base-url) "/v1/embeddings") api-key]))
 
 (defmethod get-embedding "openai" [embedding-model text & {:as opts}]

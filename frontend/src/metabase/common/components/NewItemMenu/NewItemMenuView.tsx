@@ -5,8 +5,8 @@ import { t } from "ttag";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { getNewMenuItemAIExploration } from "metabase/metabot/components/NewMenuItemAIExploration";
 import { useMetabotEnabledEmbeddingAware } from "metabase/metabot/hooks";
-import { PLUGIN_METABOT } from "metabase/plugins";
 import { setOpenModal } from "metabase/redux/ui";
 import { getSetting } from "metabase/selectors/settings";
 import { getUserCanWriteToCollections } from "metabase/selectors/user";
@@ -47,7 +47,7 @@ export const NewItemMenuView = ({
   const menuItems = useMemo(() => {
     const items = [];
 
-    const aiExplorationItem = PLUGIN_METABOT.getNewMenuItemAIExploration(
+    const aiExplorationItem = getNewMenuItemAIExploration(
       hasDataAccess,
       collectionId,
       isMetabotEnabled,

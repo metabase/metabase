@@ -1,5 +1,5 @@
 (ns metabase.llm.api
-  "API endpoints for LLM-powered SQL generation (OSS)."
+  "API endpoints for OSS BYOK SQL generation."
   (:require
    [clojure.java.io :as io]
    [clojure.set :as set]

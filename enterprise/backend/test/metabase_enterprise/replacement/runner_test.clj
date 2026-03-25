@@ -5,6 +5,7 @@
    [metabase-enterprise.dependencies.events]
    [metabase-enterprise.replacement.protocols :as replacement.protocols]
    [metabase-enterprise.replacement.runner :as replacement.runner]
+   [metabase-enterprise.replacement.source-swap :as replacement.source-swap]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -171,8 +172,8 @@
         (testing "documents are not fetched (no-op entities)"
           (is (not (contains? loaded [:document 123]))))))))
 
-(deftest run-swap-updates-dependent-cards-test
-  (testing "run-swap upgrades field refs and swaps source for all transitive dependents"
+(deftest run-swap-source!-updates-dependent-cards-test
+  (testing "run-swap-source! upgrades field refs and swaps source for all transitive dependents"
     (mt/with-premium-features #{:dependencies}
       (mt/with-test-user :rasta
         (let [mp (mt/metadata-provider)]
@@ -211,7 +212,7 @@
                                    (start-run! [_])
                                    (succeed-run! [_])
                                    (fail-run! [_ _]))]
-                (replacement.runner/run-swap [:card old-id] [:card new-id] progress)
+                (replacement.runner/run-swap-source! [:card old-id] [:card new-id] progress)
 
                 (testing "child card's source-card is updated to new model"
                   (is (= new-id (get-in (t2/select-one-fn :dataset_query :model/Card :id child-id)
@@ -222,3 +223,55 @@
                       "set-total! should have been called")
                   (is (seq (filter #(= :advance (first %)) @progress-log))
                       "advance! should have been called"))))))))))
+
+(deftest run-swap-source!-partial-failure-test
+  (testing "run-swap-source! continues past individual swap failures and throws composite error"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-test-user :rasta
+        (let [mp (mt/metadata-provider)]
+          (mt/with-temp [:model/Card {old-id :id :as old-card}
+                         {:database_id   (mt/id)
+                          :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                          :type          :model
+                          :name          "Old Model"}
+
+                         :model/Card {new-id :id}
+                         {:database_id   (mt/id)
+                          :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                          :type          :model
+                          :name          "New Model"}
+
+                         :model/Card {child-1-id :id :as child-1}
+                         {:database_id   (mt/id)
+                          :dataset_query (lib/query mp (lib.metadata/card mp old-id))
+                          :type          :question
+                          :name          "Child 1"}
+
+                         :model/Card {child-2-id :id :as child-2}
+                         {:database_id   (mt/id)
+                          :dataset_query (lib/query mp (lib.metadata/card mp old-id))
+                          :type          :question
+                          :name          "Child 2"}]
+            (mt/with-model-cleanup [:model/Dependency]
+              (doseq [card [old-card child-1 child-2]]
+                (events/publish-event! :event/card-create {:object card :user-id (mt/user->id :rasta)}))
+
+              (let [original-swap! replacement.source-swap/swap-source!]
+                (with-redefs [replacement.source-swap/swap-source!
+                              (fn [entity object old-source new-source]
+                                (if (= (second entity) child-1-id)
+                                  (throw (ex-info "Simulated swap failure" {:entity entity}))
+                                  (original-swap! entity object old-source new-source)))]
+                  (let [ex (is (thrown-with-msg? clojure.lang.ExceptionInfo #"1 of 2 entities failed"
+                                                 (replacement.runner/run-swap-source!
+                                                  [:card old-id] [:card new-id])))]
+                    (testing "failure details are in ex-data"
+                      (is (= 1 (count (:failures (ex-data ex))))))
+
+                    (testing "child-2 was still swapped successfully"
+                      (is (= new-id (get-in (t2/select-one-fn :dataset_query :model/Card :id child-2-id)
+                                            [:stages 0 :source-card]))))
+
+                    (testing "child-1 retains original source (swap failed)"
+                      (is (= old-id (get-in (t2/select-one-fn :dataset_query :model/Card :id child-1-id)
+                                            [:stages 0 :source-card]))))))))))))))

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 
-import { Sidebar } from "metabase/dashboard/components/Sidebar";
+import { Sidebar } from "metabase/common/components/Sidebar";
 import { useDashboardContext } from "metabase/dashboard/context";
 import {
   getEditingParameterInlineDashcard,
