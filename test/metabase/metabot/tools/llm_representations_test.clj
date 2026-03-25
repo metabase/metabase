@@ -207,7 +207,18 @@
       (is (str/includes? xml "<name>Revenue Report</name>"))
       (is (str/includes? xml "<description>Monthly revenue breakdown</description>"))
       (is (str/includes? xml "The question is stored in the following collection"))
-      (is (str/ends-with? (str/trim xml) "</metabase_question>")))))
+      (is (str/ends-with? (str/trim xml) "</metabase_question>"))))
+  (testing "includes display_type when present"
+    (let [question {:id 101
+                    :name "Pie Chart"
+                    :display :pie}
+          xml (llm-rep/question->xml question)]
+      (is (str/includes? xml "display_type=\"pie\""))))
+  (testing "omits display_type when not present"
+    (let [question {:id 102
+                    :name "No Display"}
+          xml (llm-rep/question->xml question)]
+      (is (not (str/includes? xml "display_type"))))))
 
 (deftest dashboard->xml-test
   (testing "formats dashboard matching Python"

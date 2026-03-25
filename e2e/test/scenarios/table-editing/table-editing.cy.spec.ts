@@ -307,7 +307,7 @@ describe("scenarios > table-editing", () => {
       cases.forEach(({ dataType, column, value }) => {
         it(`should allow to edit a cell with type ${dataType}`, () => {
           // Locate the table and the specific cell to edit
-          cy.findByTestId("table-body")
+          H.tableInteractiveBody()
             .find(`[data-column-id='${column}']`)
             .eq(1) // Select the second row (index 1)
             .as("targetCell")
@@ -350,7 +350,7 @@ describe("scenarios > table-editing", () => {
       });
 
       it("should allow to edit a cell with date type", () => {
-        cy.findByTestId("table-body")
+        H.tableInteractiveBody()
           .find("[data-column-id='date']")
           .eq(1)
           .as("targetCell")
@@ -375,11 +375,15 @@ describe("scenarios > table-editing", () => {
       });
 
       it("should allow to edit a cell with datetime type", () => {
-        cy.findByTestId("table-body")
-          .find("[data-column-id='datetime']")
+        H.tableInteractiveBody()
+          .findByTestId("center-center-quadrant")
+          .findAllByRole("row")
           .eq(1)
-          .as("targetCell")
-          .click({ scrollBehavior: false });
+          .within(() => {
+            cy.get("[data-column-id='datetime']").as("targetCell").click({
+              scrollBehavior: false,
+            });
+          });
 
         const day = Math.floor(Math.random() * 10) + 10; // 10-20
         const hour = Math.floor(Math.random() * 12);
@@ -416,7 +420,7 @@ describe("scenarios > table-editing", () => {
       });
 
       it("should allow to edit a cell with select type", () => {
-        cy.findByTestId("table-body")
+        H.tableInteractiveBody()
           .find("[data-column-id='boolean']")
           .eq(1)
           .as("targetCell")
@@ -435,7 +439,7 @@ describe("scenarios > table-editing", () => {
       });
 
       it("should not allow to edit PK cells", () => {
-        cy.findByTestId("table-body")
+        H.tableInteractiveBody()
           .find("[data-column-id='id']")
           .eq(1)
           .as("targetCell")
@@ -445,7 +449,7 @@ describe("scenarios > table-editing", () => {
       });
 
       it("should handle errors", () => {
-        cy.findByTestId("table-body")
+        H.tableInteractiveBody()
           .find("[data-column-id='tinyint']")
           .eq(1)
           .as("targetCell")

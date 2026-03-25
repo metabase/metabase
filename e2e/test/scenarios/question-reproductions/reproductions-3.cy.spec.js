@@ -563,6 +563,7 @@ describe(
 
     it("should be possible to filter by Mongo _id column (metabase#40770, metabase#42010)", () => {
       H.tableInteractiveBody()
+        .findByTestId("center-center-quadrant")
         .findAllByRole("gridcell")
         .first()
         .then(($cell) => {
