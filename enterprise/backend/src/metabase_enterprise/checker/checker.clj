@@ -24,7 +24,9 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.serialization.resolve :as resolve]
    [metabase.query-processor.compile :as qp.compile]
-   [metabase.sql-parsing.core :as sql-parsing]))
+   [metabase.sql-parsing.core :as sql-parsing]
+   [metabase.sql-tools.core :as sql-tools]
+   [metabase.sql-tools.init]))
 
 (set! *warn-on-reflection* true)
 
@@ -531,8 +533,29 @@
         (extract-refs-from-query store (lib/query provider dq) provider visited)))
     (catch Exception _ {:tables [] :fields [] :source-cards []})))
 
+(defn- validate-native-sql
+  "Validate native SQL using sql-tools. Compiles the query to SQL, then uses
+   sql-tools/validate-query to check that referenced tables and columns exist
+   in the metadata provider.
+
+   Returns a set of error maps, or nil if validation passes or isn't applicable."
+  [store provider query db-name]
+  (when db-name
+    (let [engine (keyword (:engine (cached-entity store :database db-name)))
+          sql    (compile-query-to-sql engine query)]
+      (when sql
+        (try
+          ;; Build a native-only pMBQL query with the SQL and our metadata provider
+          (let [native-query (lib/native-query provider sql)
+                errors       (binding [driver/*driver* engine]
+                               (sql-tools/validate-query engine native-query))]
+            (when (seq errors)
+              errors))
+          (catch Exception _
+            nil))))))
+
 (defn check-card
-  "Check a single card. Returns result map with :name, :refs, :unresolved, :bad-refs, :error."
+  "Check a single card. Returns result map with :name, :refs, :unresolved, :bad-refs, :error, :native-errors."
   [store provider entity-id]
   (let [data     (load-card! store entity-id)
         card-id  (:id data)
@@ -550,7 +573,8 @@
               refs      (extract-refs-from-query store query provider #{card-id})
               ;; Compile native queries to SQL via QP, then parse for table/field refs
               db-name   (get-in data [:dataset_query :database])
-              sql-refs  (when (and (get-in data [:dataset_query :native :query]) db-name)
+              is-native? (get-in data [:dataset_query :native :query])
+              sql-refs  (when (and is-native? db-name)
                           (parse-native-sql-refs store db-name query))
               ;; Merge MBQL refs with SQL-parsed refs
               refs      (if sql-refs
@@ -560,13 +584,17 @@
                               (update :tables #(vec (distinct %)))
                               (update :fields #(vec (distinct %))))
                           refs)
-              bad-refs  (lib/find-bad-refs query)]
-          {:card-id    card-id
-           :name       (:name data)
-           :entity-id  entity-id
-           :refs       refs
-           :unresolved (::unresolved-refs card-meta)
-           :bad-refs   bad-refs})
+              bad-refs      (lib/find-bad-refs query)
+              ;; Run native SQL validation for deeper error detection
+              native-errors (when is-native?
+                              (validate-native-sql store provider query db-name))]
+          (cond-> {:card-id    card-id
+                   :name       (:name data)
+                   :entity-id  entity-id
+                   :refs       refs
+                   :unresolved (::unresolved-refs card-meta)
+                   :bad-refs   bad-refs}
+            (seq native-errors) (assoc :native-errors native-errors)))
         (catch Exception e
           {:card-id    card-id
            :name       (:name data)
@@ -593,20 +621,22 @@
   "Compute the status of a single card result."
   [result]
   (cond
-    (:error result)          :error
-    (seq (:unresolved result)) :unresolved
-    (seq (:bad-refs result))   :issues
-    :else                      :ok))
+    (:error result)              :error
+    (seq (:unresolved result))   :unresolved
+    (seq (:native-errors result)) :native-errors
+    (seq (:bad-refs result))     :issues
+    :else                        :ok))
 
 (defn summarize-results
   "Summarize check results into counts by status."
   [results]
   (let [by-status (group-by (comp result-status second) results)]
-    {:total      (count results)
-     :ok         (count (get by-status :ok))
-     :errors     (count (get by-status :error))
-     :unresolved (count (get by-status :unresolved))
-     :issues     (count (get by-status :issues))}))
+    {:total         (count results)
+     :ok            (count (get by-status :ok))
+     :errors        (count (get by-status :error))
+     :unresolved    (count (get by-status :unresolved))
+     :native-errors (count (get by-status :native-errors))
+     :issues        (count (get by-status :issues))}))
 
 (defn results-by-status
   "Group results by status. Returns map of status → seq of [entity-id result]."
@@ -630,12 +660,17 @@
       (doseq [{:keys [type path entity-id name]} unresolved]
         (conj! lines (str "    - " (clojure.core/name type) ": "
                           (or (some->> path (str/join ".")) entity-id name)))))
+    (when-let [native-errors (seq (:native-errors result))]
+      (conj! lines "  NATIVE SQL ERRORS:")
+      (doseq [err native-errors]
+        (conj! lines (str "    - " (pr-str err)))))
     (conj! lines (case (result-status result)
-                   :error      (str "  ERROR: " (:error result))
-                   :unresolved "  Status: MISSING REFS"
-                   :issues     (str "  Status: ISSUES FOUND\n"
-                                    (str/join "\n" (map #(str "    - " (pr-str %)) (:bad-refs result))))
-                   :ok         "  Status: OK"))
+                   :error        (str "  ERROR: " (:error result))
+                   :unresolved   "  Status: MISSING REFS"
+                   :native-errors "  Status: NATIVE SQL ERRORS"
+                   :issues       (str "  Status: ISSUES FOUND\n"
+                                      (str/join "\n" (map #(str "    - " (pr-str %)) (:bad-refs result))))
+                   :ok           "  Status: OK"))
     (str/join "\n" (persistent! lines))))
 
 (defn format-error
@@ -652,6 +687,9 @@
         (when (seq (:bad-refs result))
           (doseq [ref (:bad-refs result)]
             (swap! lines conj (str "  bad ref: " (pr-str ref)))))
+        (when (seq (:native-errors result))
+          (doseq [err (:native-errors result)]
+            (swap! lines conj (str "  sql error: " (pr-str (dissoc err :source-entity-type :source-entity-id))))))
         (when (:error result)
           (swap! lines conj (str "  error: " (:error result))))
         (str/join "\n" @lines)))))

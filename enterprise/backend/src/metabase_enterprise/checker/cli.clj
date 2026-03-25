@@ -70,6 +70,7 @@
         (println "  OK:" (:ok summary))
         (println "  Errors:" (:errors summary))
         (println "  Unresolved refs:" (:unresolved summary))
+        (println "  Native SQL errors:" (:native-errors summary))
         (println "  Issues:" (:issues summary))
         ;; Print failures
         (when (seq failures)
@@ -80,7 +81,7 @@
             (println (checker/format-result entry))))))
     ;; Exit with appropriate code
     (flush)
-    (System/exit (if (zero? (+ (:errors summary) (:unresolved summary) (:issues summary)))
+    (System/exit (if (zero? (+ (:errors summary) (:unresolved summary) (:native-errors summary) (:issues summary)))
                    0
                    1))))
 
