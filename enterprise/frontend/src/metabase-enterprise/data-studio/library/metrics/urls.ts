@@ -6,5 +6,6 @@ export const dataStudioMetricUrls: MetricUrls = {
   query: Urls.dataStudioMetricQuery,
   dependencies: Urls.dataStudioMetricDependencies,
   caching: Urls.dataStudioMetricCaching,
+  history: Urls.dataStudioMetricHistory,
   database: (databaseId) => Urls.dataStudioData({ databaseId }),
 };

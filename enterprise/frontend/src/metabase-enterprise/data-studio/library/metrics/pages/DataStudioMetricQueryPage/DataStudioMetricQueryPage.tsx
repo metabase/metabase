@@ -21,6 +21,7 @@ export function DataStudioMetricQueryPage({
       route={route}
       urls={dataStudioMetricUrls}
       showAppSwitcher
+      showDataStudioLink={false}
       renderBreadcrumbs={(card) => <DataStudioMetricBreadcrumbs card={card} />}
     />
   );

@@ -3,6 +3,7 @@ import { IndexRoute, Route } from "react-router";
 import { PLUGIN_CACHING, PLUGIN_DEPENDENCIES } from "metabase/plugins";
 
 import { MetricDependenciesPage } from "./pages/MetricDependenciesPage";
+import { MetricHistoryPage } from "./pages/MetricHistoryPage";
 import { MetricOverviewPage } from "./pages/MetricOverviewPage";
 import { MetricQueryPage } from "./pages/MetricQueryPage";
 import { NewMetricPage } from "./pages/NewMetricPage";
@@ -18,6 +19,7 @@ export function getMetricRoutes() {
           <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
         </Route>
       )}
+      <Route path=":cardId/history" component={MetricHistoryPage} />
       {PLUGIN_CACHING.isGranularCachingEnabled() && (
         <Route
           path=":cardId/caching"

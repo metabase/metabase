@@ -1,19 +1,18 @@
+import { MetricHistoryPage } from "metabase/metrics/pages/MetricHistoryPage";
 import type { MetricPageParams } from "metabase/metrics/types";
-import { PLUGIN_CACHING } from "metabase/plugins";
 
 import { DataStudioMetricBreadcrumbs } from "../../components/DataStudioMetricBreadcrumbs";
 import { dataStudioMetricUrls } from "../../urls";
 
-interface DataStudioMetricCachingPageProps {
+interface DataStudioMetricHistoryPageProps {
   params: MetricPageParams;
 }
 
-export function DataStudioMetricCachingPage({
+export function DataStudioMetricHistoryPage({
   params,
-}: DataStudioMetricCachingPageProps) {
-  const CachingPage = PLUGIN_CACHING.MetricCachingPage;
+}: DataStudioMetricHistoryPageProps) {
   return (
-    <CachingPage
+    <MetricHistoryPage
       params={params}
       urls={dataStudioMetricUrls}
       showAppSwitcher

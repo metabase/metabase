@@ -35,10 +35,6 @@ const PATHS_WITHOUT_NAVBAR = [
   /\/model\/query/,
   /\/model\/columns/,
   /\/model\/metadata/,
-  /\/metric-old\/.*\/query/,
-  /\/metric-old\/.*\/metadata/,
-  /\/metric-old\/query/,
-  /\/metric-old\/metadata/,
   /\/transform\/new\/.*\/query/,
 ];
 
