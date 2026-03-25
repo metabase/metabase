@@ -142,7 +142,7 @@
                            "If not provided it's assumed a new Transform is to be created")}
         [:maybe :int]]
        [:edit_action
-        {:description "You MUST set this param. Use new_content and edits accroding to mode you choose."}
+        {:description "You MUST set this param. Use new_content and edits according to mode you choose."}
         [:map
          [:mode
           {:description (str "Use 'edit' mode for targeted string replacements. "
@@ -170,8 +170,8 @@
         [:maybe :string]]
        [:transform_description
         {:optional true
-         :description (str "The ID of the Transform with the SQL query to edit. "
-                           "If not provided it's assumed a new Transform is to be created")}
+         :description (str "A short description of what the transform does. Required when creating a new transform. "
+                           "Do not provide when editing an existing transform with a transform_id.")}
         [:maybe :string]]]]
   (try
     (let [result (add-output
@@ -194,74 +194,74 @@
       (if (:agent-error? (ex-data e))
         {:output (ex-message e)}
         {:output (str "Failed to write SQL transform: " (or (ex-message e) "Unknown error"))}))))
-
+(def write-transform-python-schema
+  [:map {:closed true}
+   [:transform_id
+    {:optional true
+     :description (str "The ID of the Transform with the SQL query to edit. "
+                       "If not provided it's assumed a new Transform is to be created")}
+    [:maybe :int]]
+   [:edit_action
+    {:description "You MUST set this param. Use new_content and edits according to mode you choose."}
+    [:map
+     [:mode
+      {:description (str "Use 'edit' mode for targeted string replacements. "
+                         "Use 'replace' mode to replace entire content.")}
+      [:enum "edit" "replace"]]
+     [:edits
+      {:optional true
+       :description "List of targeted string replacements to apply sequentially"}
+      [:maybe [:sequential [:map
+                            [:old_string :string]
+                            [:new_string :string]
+                            [:replace_all {:optional true} [:maybe :boolean]]]]]]
+     [:new_content
+      {:optional true
+       :description "The complete new content to replace the current content with"}
+      [:maybe :string]]]]
+   [:thinking
+    {:optional true
+     :description "Brief explanation of what changes you're making and why"}
+    [:maybe :string]]
+   [:transform_name
+    {:optional true
+     :description (str  "A descriptive name for the transform. Required when creating a new transform. "
+                        "Do not provide when editing an existing transform with a transform_id.")}
+    [:maybe :string]]
+   [:transform_description
+    {:optional true
+     :description (str "A short description of what the transform does. Required when creating a new transform. "
+                       "Do not provide when editing an existing transform with a transform_id.")}
+    [:maybe :string]]
+   [:database_id
+    {:optional true
+     :description (str "When creating a Transform, the database id of the "
+                       "tables being used to create the transform. Not provided when editing "
+                       "an existing transform. You MUST never select something that looks "
+                       "like a sample database with sample tables. ")}
+    [:maybe :int]]
+   [:source_tables
+    {:optional true
+     :description (str "A list of source tables, each described as an object with: "
+                       "`alias` (the name used in the transform function, e.g. the parameter name in "
+                       "`def transform(table_a, table_b):`), "
+                       "`table_id` (the database table ID), "
+                       "`schema` (the database schema name, e.g. \"PUBLIC\"), and "
+                       "`database_id` (the database ID). "
+                       "For example: [{\"alias\": \"table_a\", \"table_id\": 1, \"schema\": \"PUBLIC\", \"database_id\": 1}, "
+                       "{\"alias\": \"table_b\", \"table_id\": 2, \"schema\": \"PUBLIC\", \"database_id\": 1}]. "
+                       "The table_id values MUST be IDs of database tables. You CAN NOT use metabase model IDs. "
+                       "You MUST provide this argument when modifying the source tables of an existing transform "
+                       "or when creating a new transform. DO NOT guess or make up table IDs, use the "
+                       "search_tables tool to find the correct table IDs first.")}
+    [:sequential
+     [:map
+      [:alias :string]
+      [:table_id :int]
+      [:schema :string]
+      [:database_id :int]]]]])
 (defenterprise ^{:tool-name    "write_transform_python"
-                 :schema       [:=> [:cat [:map {:closed true}
-                                           [:transform_id
-                                            {:optional true
-                                             :description (str "The ID of the Transform with the SQL query to edit. "
-                                                               "If not provided it's assumed a new Transform is to be created")}
-                                            [:maybe :int]]
-                                           [:edit_action
-                                            {:description "You MUST set this param. Use new_content and edits accroding to mode you choose."}
-                                            [:map
-                                             [:mode
-                                              {:description (str "Use 'edit' mode for targeted string replacements. "
-                                                                 "Use 'replace' mode to replace entire content.")}
-                                              [:enum "edit" "replace"]]
-                                             [:edits
-                                              {:optional true
-                                               :description "List of targeted string replacements to apply sequentially"}
-                                              [:maybe [:sequential [:map
-                                                                    [:old_string :string]
-                                                                    [:new_string :string]
-                                                                    [:replace_all {:optional true} [:maybe :boolean]]]]]]
-                                             [:new_content
-                                              {:optional true
-                                               :description "The complete new content to replace the current content with"}
-                                              [:maybe :string]]]]
-                                           [:thinking
-                                            {:optional true
-                                             :description "Brief explanation of what changes you're making and why"}
-                                            [:maybe :string]]
-                                           [:transform_name
-                                            {:optional true
-                                             :description (str  "A descriptive name for the transform. Required when creating a new transform. "
-                                                                "Do not provide when editing an existing transform with a transform_id.")}
-                                            [:maybe :string]]
-                                           [:transform_description
-                                            {:optional true
-                                             :description (str "A short description of what the transform does. Required when creating a new transform. "
-                                                               "Do not provide when editing an existing transform with a transform_id.")}
-                                            [:maybe :string]]
-                                           [:source_database
-                                            {:optional true
-                                             :description (str "When creating a Transform, the database id of the "
-                                                               "tables being used to create the transform. Not provided when editing "
-                                                               "an existing transform. You MUST never select something that looks "
-                                                               "like a sample database with sample tables. ")}
-                                            [:maybe :int]]
-                                           [:source_tables
-                                            {:optional true
-                                             :description (str "A list of source tables, each described as an object with: "
-                                                               "`alias` (the name used in the transform function, e.g. the parameter name in "
-                                                               "`def transform(table_a, table_b):`), "
-                                                               "`table_id` (the database table ID), "
-                                                               "`schema` (the database schema name, e.g. \"PUBLIC\"), and "
-                                                               "`database_id` (the database ID). "
-                                                               "For example: [{\"alias\": \"table_a\", \"table_id\": 1, \"schema\": \"PUBLIC\", \"database_id\": 1}, "
-                                                               "{\"alias\": \"table_b\", \"table_id\": 2, \"schema\": \"PUBLIC\", \"database_id\": 1}]. "
-                                                               "The table_id values MUST be IDs of database tables. You CAN NOT use metabase model IDs. "
-                                                               "You MUST provide this argument when modifying the source tables of an existing transform "
-                                                               "or when creating a new transform. DO NOT guess or make up table IDs, use the "
-                                                               "search_tables tool to find the correct table IDs first.")}
-                                            [:sequential
-                                             [:map
-                                              [:alias :string]
-                                              [:table_id :int]
-                                              [:schema :string]
-                                              [:database_id :int]]]]]]
-                                :map]
+                 :schema       [:=> [:cat write-transform-python-schema] :map]
                  :capabilities #{:feature-transforms :feature-transforms-python :permission-write-transforms}
                  :ee-feature   :transforms}
   write-transform-python-tool
