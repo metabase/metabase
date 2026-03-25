@@ -1,6 +1,7 @@
 (ns metabase.metabot.config
   (:require
    [medley.core :as m]
+   [metabase.api.common :as api]
    [metabase.metabot.settings :as metabot.settings]
    [toucan2.core :as t2]))
 
@@ -15,6 +16,24 @@
 (def slackbot-metabot-id
   "The ID of the Slack Metabot instance."
   "9a89fe64-54b9-4ab2-8022-eccd772e5073")
+
+(defn any-metabot-enabled?
+  "Returns true if at least one of the metabot instances (internal or embedded) is enabled."
+  []
+  (or (metabot.settings/metabot-enabled?) (metabot.settings/embedded-metabot-enabled?)))
+
+(defn check-metabot-enabled!
+  "Throws a 403 if metabot is not enabled. When called with no arguments, checks that at least one metabot instance is
+  enabled. When called with a `metabot-id`, checks the specific instance's setting."
+  ([]
+   (api/check (any-metabot-enabled?)
+              [403 "Metabot is not enabled."]))
+  ([metabot-id]
+   (if (= metabot-id embedded-metabot-id)
+     (api/check (metabot.settings/embedded-metabot-enabled?)
+                [403 "Embedded Metabot is not enabled."])
+     (api/check (metabot.settings/metabot-enabled?)
+                [403 "Metabot is not enabled."]))))
 
 (def metabot-config
   "The name of the collection exposed by the answer-sources tool."
