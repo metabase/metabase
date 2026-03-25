@@ -155,10 +155,11 @@ async function setup({
   for (const provider of Object.keys(responseMap) as MetabotProvider[]) {
     const response = responseMap[provider];
 
-    fetchMock.get(
-      { url: "path:/api/metabot/settings", query: { provider } },
-      typeof response === "function" ? response : response,
-    );
+    fetchMock.get({
+      url: "path:/api/metabot/settings",
+      query: { provider },
+      response,
+    });
   }
 
   fetchMock.put("path:/api/metabot/settings", updateResponse);
