@@ -85,26 +85,27 @@
              (not (neg? (compare local-id threshold-id)))))))
 
 (defn- parse-change-set-id
-  "Parses a changeset ID like `v49.2024-01-01T10:30:00` into [version local-part],
-  or [nil full-id] if unprefixed."
+  "Parses a changeset ID like `v49.2024-01-01T10:30:00` into [version local-part].
+  version is a long, local-part is a long when purely numeric or a string otherwise."
   [id]
-  (if-let [[_ v local] (re-matches #"^v(\d+)\.(.+)$" (str id))]
-    [(parse-long v) local]
-    [nil (str id)]))
+  (let [s (str id)
+        [_ v local] (re-matches #"^v(\d+)\.(.+)$" s)]
+    (if v
+      [(parse-long v) (or (parse-long local) local)]
+      [nil (or (parse-long s) s)])))
 
 (defn- compare-change-set-ids
   "Compare two changeset IDs. Version number takes priority; within the same version,
   numeric local parts are compared as numbers, timestamps lexicographically, and
-  timestamps sort before numeric IDs (legacy before new format)."
+  timestamps sort after string IDs (legacy date format before new numeric format)."
   [a b]
   (let [[va la] (parse-change-set-id a)
         [vb lb] (parse-change-set-id b)]
     (cond
       (and va vb (not= va vb)) (compare va vb)
-      (every? #(re-matches #"\d+" %) [la lb]) (compare (parse-long la) (parse-long lb))
-      (re-matches #"\d+" la) 1
-      (re-matches #"\d+" lb) -1
-      :else (compare la lb))))
+      (= (type la) (type lb))  (compare la lb)
+      (int? la)                 1
+      :else                    -1)))
 
 (defn- require-change-set-ids-in-order [change-log _file]
   (let [ids          (change-set-ids change-log)
