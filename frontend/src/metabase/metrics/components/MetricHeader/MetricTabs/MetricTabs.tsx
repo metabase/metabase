@@ -36,6 +36,10 @@ function getTabs(
 ): PaneHeaderTab[] {
   const tabs: PaneHeaderTab[] = [
     {
+      label: t`About`,
+      to: urls.about(card.id),
+    },
+    {
       label: t`Overview`,
       to: urls.overview(card.id),
     },

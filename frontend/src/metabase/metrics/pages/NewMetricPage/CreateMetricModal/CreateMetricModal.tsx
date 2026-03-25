@@ -91,7 +91,7 @@ function CreateMetricForm({
           <FormTextInput
             name="name"
             label={t`Name`}
-            placeholder={t`My Great Metric`}
+            placeholder={t`What is the name of your metric?`}
             data-autofocus
           />
           <FormTextarea
@@ -141,6 +141,7 @@ function getCreateRequest(
     name,
     description,
     collection_id,
+    collection_position: 1,
     result_metadata,
     type: "metric",
     dataset_query: Lib.toJsQuery(query),

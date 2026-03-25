@@ -31,7 +31,6 @@ export function CollectionBreadcrumbs({ card }: CollectionBreadcrumbsProps) {
           {collection.name}
         </Link>
       ))}
-      <span>{card.name}</span>
     </Breadcrumbs>
   );
 }

@@ -4,11 +4,10 @@ import { useLoadCardWithMetadata } from "metabase/data-studio/common/hooks/use-l
 import * as Urls from "metabase/lib/urls";
 import { Center } from "metabase/ui";
 
+import { MetricDimensionGrid } from "../../components/MetricDimensionGrid";
 import { MetricPageShell } from "../../components/MetricPageShell";
 import type { MetricPageProps } from "../../types";
 import { metricUrls as defaultUrls } from "../../urls";
-
-import { MetricOverview } from "./MetricOverview";
 
 export function MetricOverviewPage({
   params,
@@ -37,7 +36,7 @@ export function MetricOverviewPage({
         showAppSwitcher={showAppSwitcher}
         showDataStudioLink={showDataStudioLink}
       />
-      <MetricOverview card={card} urls={urls} />
+      {card.id != null && <MetricDimensionGrid metricId={card.id} />}
     </PageContainer>
   );
 }
