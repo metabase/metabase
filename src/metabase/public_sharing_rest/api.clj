@@ -19,6 +19,7 @@
    [metabase.queries.core :as queries]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.dashboard :as qp.dashboard]
+   [metabase.query-processor.dashboard-batch :as qp.dashboard-batch]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -308,6 +309,28 @@
       ;; dashboard in Metabase proper.)
       (binding [api/*current-user-id* nil]
         (m/mapply qp.dashboard/process-query-for-dashcard options)))))
+
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :get "/dashboard/:uuid/card-query-batch"
+  "Run queries for multiple cards on a publicly-accessible Dashboard in a single request.
+   Results are streamed back as NDJSON. Does not require auth credentials. Public sharing must be enabled."
+  [{:keys [uuid]} :- [:map [:uuid ms/UUIDString]]
+   {:keys [parameters cards]} :- [:map
+                                  [:parameters {:optional true} [:maybe ms/JSONString]]
+                                  [:cards      {:optional true} [:maybe ms/JSONString]]]]
+  (public-sharing.validation/check-public-sharing-enabled)
+  (let [dashboard-id (api/check-404 (t2/select-one-pk :model/Dashboard :public_uuid uuid, :archived false))
+        cards-parsed (some-> cards json/decode+kw)
+        params       (cond-> parameters (string? parameters) json/decode+kw)]
+    (request/as-admin
+      (binding [api/*current-user-id* nil]
+        (qp.dashboard-batch/process-batch-queries
+         {:dashboard-id dashboard-id
+          :parameters   params
+          :context      :public-dashboard
+          :cards        (some->> cards-parsed
+                                 (mapv (fn [{:keys [dashcard_id card_id]}]
+                                         {:dashcard-id dashcard_id :card-id card_id})))})))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

@@ -6,6 +6,8 @@ import _ from "underscore";
 
 import { automagicDashboardsApi, cardApi, dashboardApi } from "metabase/api";
 import { applyParameters } from "metabase/common/utils/card";
+import type { BatchRequestConfig } from "metabase/dashboard/actions/batch-card-query";
+import { streamBatchCardQuery } from "metabase/dashboard/actions/batch-card-query";
 import { showAutoApplyFiltersToast } from "metabase/dashboard/actions/parameters";
 import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
 import {
@@ -60,6 +62,7 @@ import type {
   DashboardId,
   Dataset,
   JsonQuery,
+  Parameter,
   ParameterValuesMap,
   QuestionDashboardCard,
 } from "metabase-types/api";
@@ -73,6 +76,14 @@ export const fetchDashboardCardDataAction = createAction<{
 
 export const CANCEL_FETCH_DASHBOARD_CARD_DATA =
   "metabase/dashboard/CANCEL_FETCH_DASHBOARD_CARD_DATA";
+
+export const RECEIVE_BATCH_CARD_RESULT =
+  "metabase/dashboard/RECEIVE_BATCH_CARD_RESULT";
+export const receiveBatchCardResult = createAction<{
+  dashcard_id: DashCardId;
+  card_id: CardId;
+  result: Dataset | { error: unknown };
+}>(RECEIVE_BATCH_CARD_RESULT);
 
 export const FETCH_CARD_DATA = "metabase/dashboard/FETCH_CARD_DATA";
 export const ADD_DASHCARD_IDS_TO_LOADING_QUEUE =
@@ -245,24 +256,12 @@ export const fetchCardDataAction = createAsyncThunk<
 
     const dashboard = dashboards[dashboardId];
 
-    // if the dashboard is being edited, ignore parameters that do not exist in
-    // the saved dashboard to avoid query errors
-    const savedParameterIds = new Set(
-      editingDashboard?.parameters?.map((parameter) => parameter.id),
-    );
-    const savedParameters =
-      editingDashboard != null
-        ? dashboard.parameters?.filter((parameter) =>
-            savedParameterIds.has(parameter.id),
-          )
-        : dashboard.parameters;
-
-    // if we have a parameter, apply it to the card query before we execute
-    const datasetQuery = applyParameters(
+    const { datasetQuery, queryParams } = buildCardQuery(
       card,
-      savedParameters,
+      dashcard,
+      dashboard.parameters,
       parameterValues,
-      dashcard?.parameter_mappings ?? undefined,
+      editingDashboard?.parameters,
     );
 
     const lastResult = getIn(dashcardData, [dashcard.id, card.id]);
@@ -270,10 +269,7 @@ export const fetchCardDataAction = createAsyncThunk<
       // if reload not set, check to see if the last result has the same query dict and return that
       if (
         lastResult &&
-        _.isEqual(
-          getDatasetQueryParams(lastResult.json_query),
-          getDatasetQueryParams(datasetQuery),
-        )
+        _.isEqual(getDatasetQueryParams(lastResult.json_query), queryParams)
       ) {
         return {
           dashcard_id: dashcard.id,
@@ -289,10 +285,7 @@ export const fetchCardDataAction = createAsyncThunk<
        * path below.
        */
       const inFlight = cardDataCancelDeferreds[`${dashcard.id},${card.id}`];
-      if (
-        inFlight &&
-        _.isEqual(inFlight.queryParams, getDatasetQueryParams(datasetQuery))
-      ) {
+      if (inFlight && _.isEqual(inFlight.queryParams, queryParams)) {
         return;
       }
     }
@@ -303,10 +296,7 @@ export const fetchCardDataAction = createAsyncThunk<
     // state so that the loader spinner shows as expected (#33767)
     const hasParametersChanged =
       !lastResult ||
-      !_.isEqual(
-        getDatasetQueryParams(lastResult.json_query),
-        getDatasetQueryParams(datasetQuery),
-      );
+      !_.isEqual(getDatasetQueryParams(lastResult.json_query), queryParams);
 
     if (clearCache || hasParametersChanged) {
       // clears the card data to indicate the card is reloading
@@ -323,12 +313,7 @@ export const fetchCardDataAction = createAsyncThunk<
     }, DASHBOARD_SLOW_TIMEOUT);
 
     const deferred = defer();
-    setFetchCardDataCancel(
-      card.id,
-      dashcard.id,
-      deferred,
-      getDatasetQueryParams(datasetQuery),
-    );
+    setFetchCardDataCancel(card.id, dashcard.id, deferred, queryParams);
 
     let cancelled = false;
     deferred.promise.then(() => {
@@ -512,6 +497,84 @@ async function runWithConcurrencyLimit(
   );
 }
 
+function getBatchRequestConfig(
+  dashboardId: DashboardId,
+  dashboardType: string,
+  dashboardLoadId: string,
+  parameters: { id: string; type: string; value: unknown }[],
+  cards: { dashcard_id: DashCardId; card_id: CardId }[],
+  parameterValues: ParameterValuesMap,
+  dashboardParameters: { id: string; slug?: string }[] | undefined,
+  ignoreCache: boolean,
+  signal: AbortSignal,
+): BatchRequestConfig | null {
+  if (dashboardType === "normal") {
+    return {
+      url: `/api/dashboard/${dashboardId}/card-query-batch`,
+      method: "POST",
+      body: {
+        dashboard_load_id: dashboardLoadId,
+        parameters,
+        ignore_cache: ignoreCache,
+        cards,
+      },
+      signal,
+    };
+  }
+  if (dashboardType === "public") {
+    const qs = new URLSearchParams();
+    if (parameters.length > 0) {
+      qs.set("parameters", JSON.stringify(parameters));
+    }
+    if (cards.length > 0) {
+      qs.set("cards", JSON.stringify(cards));
+    }
+    const query = qs.toString();
+    return {
+      url: `/api/public/dashboard/${dashboardId}/card-query-batch${query ? `?${query}` : ""}`,
+      method: "GET",
+      signal,
+    };
+  }
+  if (dashboardType === "embed") {
+    const qs = new URLSearchParams();
+    // Embed uses slug-based parameter values
+    if (dashboardParameters) {
+      const slugValues = getParameterValuesBySlug(
+        dashboardParameters,
+        parameterValues,
+      );
+      for (const [slug, value] of Object.entries(slugValues)) {
+        if (value != null) {
+          qs.set(slug, String(value));
+        }
+      }
+    }
+    if (cards.length > 0) {
+      qs.set("cards", JSON.stringify(cards));
+    }
+    const query = qs.toString();
+    return {
+      url: `/api/embed/dashboard/${dashboardId}/card-query-batch${query ? `?${query}` : ""}`,
+      method: "GET",
+      signal,
+    };
+  }
+  return null;
+}
+
+function canUseBatchEndpoint(
+  dashboardType: string,
+  isEditing: boolean,
+): boolean {
+  return (
+    !isEditing &&
+    (dashboardType === "normal" ||
+      dashboardType === "public" ||
+      dashboardType === "embed")
+  );
+}
+
 export const fetchDashboardCardData =
   ({ isRefreshing = false, reload = false, clearCache = false } = {}) =>
   (dispatch: Dispatch, getState: GetState) => {
@@ -528,51 +591,228 @@ export const fetchDashboardCardData =
       selectedTabId,
     ).filter(({ dashcard }) => !isVirtualDashCard(dashcard));
 
-    let nonVirtualDashcardsToFetch = [];
+    const dashboardType = getDashboardType(dashboard.id);
+    const { editingDashboard, parameterValues } = getState().dashboard;
+    const isEditing = editingDashboard != null;
+    const useBatchEndpoint = canUseBatchEndpoint(dashboardType, isEditing);
+
+    let nonVirtualDashcardsToFetch: typeof nonVirtualDashcards = [];
     if (isRefreshing) {
       nonVirtualDashcardsToFetch = nonVirtualDashcards.filter(
         ({ dashcard }) => {
           return !loadingIds.includes(dashcard.id);
         },
       );
-      const newLoadingIds = nonVirtualDashcardsToFetch.map(({ dashcard }) => {
-        return dashcard.id;
-      });
-
-      dispatch(
-        fetchDashboardCardDataAction({
-          currentTime: performance.now(),
-          loadingIds: loadingIds.concat(newLoadingIds),
-        }),
-      );
     } else {
       nonVirtualDashcardsToFetch = nonVirtualDashcards;
-      const newLoadingIds = nonVirtualDashcardsToFetch.map(({ dashcard }) => {
-        return dashcard.id;
-      });
-
-      /**
-       * We intentionally do NOT cancel in-flight requests here. Each card's fetch (fetchCardDataAction) handles its
-       * own deduplication: it returns early when an identical request is already in-flight and cancels stale requests
-       * when parameters change. Batch-cancelling here would abort nearly-complete requests on tab switch, forcing
-       * slow queries (e.g. pivots) to restart from scratch. (#70534)
-       */
-
-      dispatch(
-        fetchDashboardCardDataAction({
-          currentTime: performance.now(),
-          loadingIds: newLoadingIds,
-        }),
-      );
     }
 
+    // Pre-filter for the batch path: classify each card as cached (no fetch needed), already
+    // in-flight with matching params (let the existing request finish), already in-flight with
+    // different params (cancel and re-fetch), or fresh. Cached cards are dropped from loadingIds
+    // entirely; the others are loaded. The per-card path does this dedup inside
+    // fetchCardDataAction, so we skip it here when canUseBatchEndpoint is false.
+    type BatchEntry = {
+      card: Card;
+      dashcard: (typeof nonVirtualDashcards)[number]["dashcard"];
+      queryParams: ReturnType<typeof getDatasetQueryParams>;
+    };
+    const batchEntries: BatchEntry[] = useBatchEndpoint
+      ? nonVirtualDashcardsToFetch.map(({ card, dashcard }) => ({
+          card: card as Card,
+          dashcard,
+          queryParams: buildCardQuery(
+            card as Card,
+            dashcard,
+            dashboard.parameters,
+            parameterValues,
+            editingDashboard?.parameters,
+          ).queryParams,
+        }))
+      : [];
+
+    const batchCardsToFetch: BatchEntry[] = [];
+    const batchCardsAlreadyInFlight: BatchEntry[] = [];
+    if (useBatchEndpoint) {
+      for (const entry of batchEntries) {
+        const { card, dashcard, queryParams } = entry;
+        if (reload) {
+          batchCardsToFetch.push(entry);
+          continue;
+        }
+        const key = `${dashcard.id},${card.id}` as const;
+        const lastResult = getIn(getState().dashboard.dashcardData, [
+          dashcard.id,
+          card.id,
+        ]);
+        if (
+          lastResult &&
+          _.isEqual(getDatasetQueryParams(lastResult.json_query), queryParams)
+        ) {
+          continue; // cached, drop from both loadingIds and batch
+        }
+        const inFlight = cardDataCancelDeferreds[key];
+        if (inFlight && _.isEqual(inFlight.queryParams, queryParams)) {
+          batchCardsAlreadyInFlight.push(entry);
+          continue;
+        }
+        if (inFlight) {
+          dispatch(cancelFetchCardData(card.id, dashcard.id));
+        }
+        if (lastResult) {
+          dispatch(clearCardData(card.id, dashcard.id));
+        }
+        batchCardsToFetch.push(entry);
+      }
+    }
+
+    const newLoadingIds = useBatchEndpoint
+      ? [...batchCardsToFetch, ...batchCardsAlreadyInFlight].map(
+          ({ dashcard }) => dashcard.id,
+        )
+      : nonVirtualDashcardsToFetch.map(({ dashcard }) => dashcard.id);
+
+    /**
+     * We intentionally do NOT cancel in-flight requests here. Both paths handle their own
+     * deduplication: the per-card path (fetchCardDataAction) returns early when an identical
+     * request is already in-flight and cancels stale requests when parameters change. The batch
+     * path pre-filters its candidate set against the same in-flight map above. Cancelling here
+     * would abort nearly-complete requests on tab switch, forcing slow queries (e.g. pivots) to
+     * restart from scratch. (#70534)
+     */
+    dispatch(
+      fetchDashboardCardDataAction({
+        currentTime: performance.now(),
+        loadingIds: isRefreshing ? loadingIds.concat(newLoadingIds) : newLoadingIds,
+      }),
+    );
+
+    if (nonVirtualDashcardsToFetch.length === 0) {
+      return;
+    }
+
+    if (useBatchEndpoint && batchCardsToFetch.length === 0) {
+      // Nothing new to fetch. Any matched-in-flight requests will resolve themselves.
+      if (batchCardsAlreadyInFlight.length === 0) {
+        dispatch(loadingComplete());
+      }
+      return;
+    }
+
+    if (useBatchEndpoint) {
+      // Build parameters: dashboard-level params with current values
+      const batchParameters = (dashboard.parameters ?? [])
+        .filter((p) => parameterValues[p.id] != null)
+        .map((p) => ({
+          id: p.id,
+          type: p.type,
+          value: parameterValues[p.id],
+        }));
+
+      const cards = batchCardsToFetch.map(({ card, dashcard }) => ({
+        dashcard_id: dashcard.id,
+        card_id: card.id,
+      }));
+
+      const abortController = new AbortController();
+      batchFetchAbortController = abortController;
+
+      let completedCount = 0;
+      const totalCount = batchCardsToFetch.length;
+      dispatch(setDocumentTitle(t`0/${totalCount} loaded`));
+
+      // Register a deferred per card so subsequent fetchDashboardCardData calls observe these as
+      // in-flight. The deferreds aren't used as cancellation tokens (the shared abortController
+      // does that) — they're only in-flight markers in cardDataCancelDeferreds. We track them in
+      // batchDeferreds so callbacks can detect when a newer batch has taken over a key.
+      const batchDeferreds = new Map<string, Deferred>();
+      for (const { card, dashcard, queryParams } of batchCardsToFetch) {
+        const deferred = defer();
+        batchDeferreds.set(`${dashcard.id},${card.id}`, deferred);
+        setFetchCardDataCancel(card.id, dashcard.id, deferred, queryParams);
+      }
+
+      const clearBatchDeferreds = () => {
+        for (const [key, deferred] of batchDeferreds) {
+          const typedKey = key as `${DashCardId},${DashboardCard["card_id"]}`;
+          if (cardDataCancelDeferreds[typedKey]?.deferred === deferred) {
+            cardDataCancelDeferreds[typedKey] = null;
+          }
+        }
+        batchDeferreds.clear();
+      };
+
+      const requestConfig = getBatchRequestConfig(
+        dashboard.id,
+        dashboardType,
+        dashboardLoadId,
+        batchParameters,
+        cards,
+        parameterValues,
+        dashboard.parameters ?? undefined,
+        reload,
+        abortController.signal,
+      );
+
+      if (!requestConfig) {
+        // Shouldn't happen given canUseBatchEndpoint check, but satisfy TS
+        clearBatchDeferreds();
+        return;
+      }
+
+      const dispatchBatchCardResult = (
+        dashcardId: DashCardId,
+        cardId: CardId,
+        payload: { result?: Dataset; error?: unknown },
+      ) => {
+        const key = `${dashcardId},${cardId}` as const;
+        const current = cardDataCancelDeferreds[key];
+        if (!current || current.deferred !== batchDeferreds.get(key)) {
+          // A newer batch (or explicit cancellation) has replaced this entry — drop the stale
+          // result instead of overwriting fresh state.
+          return;
+        }
+        cardDataCancelDeferreds[key] = null;
+        batchDeferreds.delete(key);
+        dispatch(
+          receiveBatchCardResult({
+            dashcard_id: dashcardId,
+            card_id: cardId,
+            result:
+              payload.error !== undefined ? { error: payload.error } : payload.result!,
+          }),
+        );
+        completedCount++;
+        dispatch(setDocumentTitle(t`${completedCount}/${totalCount} loaded`));
+      };
+
+      return streamBatchCardQuery(requestConfig, {
+        onCardResult: (dashcardId, cardId, result) =>
+          dispatchBatchCardResult(dashcardId, cardId, { result }),
+        onCardError: (dashcardId, cardId, error) =>
+          dispatchBatchCardResult(dashcardId, cardId, { error }),
+        onComplete: () => {
+          clearBatchDeferreds();
+          batchFetchAbortController = null;
+          dispatch(loadingComplete());
+        },
+      }).catch((err) => {
+        if (err?.name !== "AbortError") {
+          console.error("Batch card query failed:", err);
+        }
+        clearBatchDeferreds();
+        batchFetchAbortController = null;
+      });
+    }
+
+    // Fallback: per-card fetching for transient/inline dashboards or editing mode
+    dispatch(
+      setDocumentTitle(t`0/${nonVirtualDashcardsToFetch.length} loaded`),
+    );
     const tasks = nonVirtualDashcardsToFetch.map(
       ({ card, dashcard }) =>
         async () => {
           await dispatch(
-            // TODO: fix the return type of getAllDashboardCards to make sure
-            // that the relationship between a dashcard and its card
-            // is actually reflected in the type system
             fetchCardData(card as Card, dashcard, {
               reload,
               clearCache,
@@ -583,19 +823,13 @@ export const fetchDashboardCardData =
         },
     );
 
-    if (nonVirtualDashcardsToFetch.length > 0) {
-      dispatch(
-        setDocumentTitle(t`0/${nonVirtualDashcardsToFetch.length} loaded`),
-      );
-
-      // TODO: There is a race condition here, when refreshing a dashboard before
-      // the previous API calls finished.
-      return runWithConcurrencyLimit(tasks, CONCURRENT_CARD_FETCH_LIMIT).then(
-        () => {
-          dispatch(loadingComplete());
-        },
-      );
-    }
+    // TODO: There is a race condition here, when refreshing a dashboard before
+    // the previous API calls finished.
+    return runWithConcurrencyLimit(tasks, CONCURRENT_CARD_FETCH_LIMIT).then(
+      () => {
+        dispatch(loadingComplete());
+      },
+    );
   };
 
 export const reloadDashboardCards =
@@ -626,6 +860,12 @@ export const reloadDashboardCards =
 export const cancelFetchDashboardCardData = createThunkAction(
   CANCEL_FETCH_DASHBOARD_CARD_DATA,
   () => (dispatch, getState) => {
+    // Cancel batch request if in flight
+    if (batchFetchAbortController) {
+      batchFetchAbortController.abort();
+      batchFetchAbortController = null;
+    }
+
     const dashboard = getDashboardComplete(getState());
 
     if (!dashboard) {
@@ -642,6 +882,8 @@ type InFlightEntry = {
   deferred: Deferred;
   queryParams: ReturnType<typeof getDatasetQueryParams>;
 };
+
+let batchFetchAbortController: AbortController | null = null;
 
 const cardDataCancelDeferreds: Record<
   `${DashCardId},${DashboardCard["card_id"]}`,
@@ -685,6 +927,32 @@ function getDatasetQueryParams(datasetQuery?: JsonQuery) {
       value: parameter.value ?? null,
     }))
     .sort(sortById);
+}
+
+// Builds a card's resolved datasetQuery from dashboard parameter state, plus its normalized
+// queryParams used as the cache/in-flight key. Both the per-card and the batch path call this so
+// the dedup keys stay identical across paths.
+function buildCardQuery(
+  card: Card,
+  dashcard: DashboardCard,
+  dashboardParameters: Parameter[] | null | undefined,
+  parameterValues: ParameterValuesMap,
+  editingDashboardParameters: Parameter[] | null | undefined,
+) {
+  const savedParameterIds = new Set(
+    editingDashboardParameters?.map((p) => p.id),
+  );
+  const savedParameters =
+    editingDashboardParameters != null
+      ? dashboardParameters?.filter((p) => savedParameterIds.has(p.id))
+      : dashboardParameters;
+  const datasetQuery = applyParameters(
+    card,
+    savedParameters,
+    parameterValues,
+    dashcard?.parameter_mappings ?? undefined,
+  );
+  return { datasetQuery, queryParams: getDatasetQueryParams(datasetQuery) };
 }
 
 function sortById(a: UiParameter, b: UiParameter) {

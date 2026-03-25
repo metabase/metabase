@@ -350,6 +350,118 @@ describe("fetchDashboardCardData", () => {
     expect(getMaxConcurrent()).toBe(5);
   });
 
+  it("should skip cached cards from the batch request when params match (#70534)", async () => {
+    const dashboardId = 500;
+    const dashcardId = 50;
+    const cardId = 50;
+
+    fetchMock.post(
+      `/api/dashboard/${dashboardId}/card-query-batch`,
+      new Response("", { headers: { "Content-Type": "application/x-ndjson" } }),
+    );
+
+    const database = createSampleDatabase();
+    const dashcard = createMockDashboardCard({
+      id: dashcardId,
+      card_id: cardId,
+      dashboard_id: dashboardId,
+      card: createMockCard({ id: cardId }),
+    });
+    const DASHBOARD = createMockDashboard({
+      id: dashboardId,
+      dashcards: [dashcard],
+    });
+
+    const state: Partial<State> = {
+      dashboard: createMockDashboardState({
+        dashboardId: DASHBOARD.id,
+        dashboards: {
+          [DASHBOARD.id]: createMockStoreDashboard({
+            ...DASHBOARD,
+            dashcards: [dashcard.id],
+          }),
+        },
+        dashcards: { [dashcard.id]: dashcard },
+        // Pre-populate with a cached result whose json_query has no parameters,
+        // matching what buildCardQuery will produce for an unparameterized dashboard.
+        dashcardData: {
+          [dashcardId]: {
+            [cardId]: { json_query: { parameters: [] } } as never,
+          },
+        },
+      }),
+      entities: createMockEntitiesState({ databases: [database] }),
+      settings: createMockSettingsState(),
+    };
+
+    const getState = () => state;
+    const dispatch = createMockDispatch(getState);
+
+    await fetchDashboardCardData()(dispatch as never, getState as never);
+
+    const batchCalls = fetchMock.callHistory.calls(
+      `/api/dashboard/${dashboardId}/card-query-batch`,
+    );
+    expect(batchCalls).toHaveLength(0);
+  });
+
+  it("should bypass cache when reload is true", async () => {
+    const dashboardId = 501;
+    const dashcardId = 51;
+    const cardId = 51;
+
+    fetchMock.post(
+      `/api/dashboard/${dashboardId}/card-query-batch`,
+      new Response("", { headers: { "Content-Type": "application/x-ndjson" } }),
+    );
+
+    const database = createSampleDatabase();
+    const dashcard = createMockDashboardCard({
+      id: dashcardId,
+      card_id: cardId,
+      dashboard_id: dashboardId,
+      card: createMockCard({ id: cardId }),
+    });
+    const DASHBOARD = createMockDashboard({
+      id: dashboardId,
+      dashcards: [dashcard],
+    });
+
+    const state: Partial<State> = {
+      dashboard: createMockDashboardState({
+        dashboardId: DASHBOARD.id,
+        dashboards: {
+          [DASHBOARD.id]: createMockStoreDashboard({
+            ...DASHBOARD,
+            dashcards: [dashcard.id],
+          }),
+        },
+        dashcards: { [dashcard.id]: dashcard },
+        // Cached result that would otherwise satisfy the pre-filter.
+        dashcardData: {
+          [dashcardId]: {
+            [cardId]: { json_query: { parameters: [] } } as never,
+          },
+        },
+      }),
+      entities: createMockEntitiesState({ databases: [database] }),
+      settings: createMockSettingsState(),
+    };
+
+    const getState = () => state;
+    const dispatch = createMockDispatch(getState);
+
+    await fetchDashboardCardData({ reload: true })(
+      dispatch as never,
+      getState as never,
+    );
+
+    const batchCalls = fetchMock.callHistory.calls(
+      `/api/dashboard/${dashboardId}/card-query-batch`,
+    );
+    expect(batchCalls).toHaveLength(1);
+  });
+
   it("should not cancel in-flight requests from other tabs on tab switch (#70534)", async () => {
     const dashboardId = 300;
     const tab1 = createMockDashboardTab({
