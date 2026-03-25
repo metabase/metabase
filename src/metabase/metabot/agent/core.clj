@@ -4,6 +4,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase.analytics.prometheus :as prometheus]
+   [metabase.api.common :as api]
    [metabase.config.core :as config]
    [metabase.metabot.agent.analytics :as agent-analytics]
    [metabase.metabot.agent.links :as links]
@@ -15,7 +16,6 @@
    [metabase.metabot.self :as self]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.tools :as tools]
-   [metabase.api.common :as api]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -544,27 +544,27 @@
             (binding [*debug-log*                              (when debug? (atom []))
                       scope/*current-user-scope*               scopes
                       scope/*current-user-metabot-permissions* perms]
-                (try
-                  (let [agent              (init-agent opts)
-                        _                  (when track-user-intent?
-                                             (agent-analytics/classify-and-track-user-intent-async!
-                                              (:messages opts)
-                                              (:tracking-opts agent)))
-                        {result    :result
-                         iteration :iteration} (->> (initial-loop-state agent rf init (atom {}))
-                                                    (iterate loop-step)
-                                                    (drop-while #(= :continue (:status %)))
-                                                    first)]
-                    (prometheus/observe! :metabase-metabot/agent-iterations labels iteration)
+              (try
+                (let [agent              (init-agent opts)
+                      _                  (when track-user-intent?
+                                           (agent-analytics/classify-and-track-user-intent-async!
+                                            (:messages opts)
+                                            (:tracking-opts agent)))
+                      {result    :result
+                       iteration :iteration} (->> (initial-loop-state agent rf init (atom {}))
+                                                  (iterate loop-step)
+                                                  (drop-while #(= :continue (:status %)))
+                                                  first)]
+                  (prometheus/observe! :metabase-metabot/agent-iterations labels iteration)
                     ;; Emit debug log as a data part if debug mode was active
-                    (if (and debug? (seq @*debug-log*))
-                      (rf result (debug-log-part @*debug-log*))
-                      result))
-                  (catch Exception e
-                    (prometheus/inc! :metabase-metabot/agent-errors labels)
-                    (if (:api-error (ex-data e))
-                      (log/errorf "Agent loop API error: %s" (ex-message e))
-                      (log/error e "Agent loop error"))
-                    (rf init (error-part e)))
-                  (finally
-                    (prometheus/observe! :metabase-metabot/agent-duration-ms labels (u/since-ms start-ms))))))))))))
+                  (if (and debug? (seq @*debug-log*))
+                    (rf result (debug-log-part @*debug-log*))
+                    result))
+                (catch Exception e
+                  (prometheus/inc! :metabase-metabot/agent-errors labels)
+                  (if (:api-error (ex-data e))
+                    (log/errorf "Agent loop API error: %s" (ex-message e))
+                    (log/error e "Agent loop error"))
+                  (rf init (error-part e)))
+                (finally
+                  (prometheus/observe! :metabase-metabot/agent-duration-ms labels (u/since-ms start-ms)))))))))))
