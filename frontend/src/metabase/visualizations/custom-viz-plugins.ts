@@ -3,7 +3,7 @@ import * as jsxRuntime from "react/jsx-runtime";
 import { t } from "ttag";
 
 import { useListCustomVizPluginsQuery } from "metabase/api";
-import { useToast } from "metabase/common/hooks";
+import { useSetting, useToast } from "metabase/common/hooks";
 import {
   measureText,
   measureTextHeight,
@@ -156,7 +156,8 @@ function useCustomVizDevReload(
 export function useAutoLoadCustomVizPlugin(display: string | undefined): {
   loading: boolean;
 } {
-  const plugins = useCustomVizPlugins();
+  const customVizEnabled = useSetting("custom-viz-enabled");
+  const plugins = useCustomVizPlugins({ enabled: customVizEnabled });
   const [sendToast] = useToast();
   const [loading, setLoading] = useState(false);
   const loadingRef = useRef<string | null>(null);
