@@ -31,6 +31,11 @@ on:
         type: boolean
         required: false
         default: true
+      bail:
+        description: "Stop running remaining tests after the first failure"
+        type: boolean
+        required: false
+        default: true
 
 jobs:
   determine-test-type:
@@ -67,6 +72,7 @@ jobs:
           echo '- `grep`: "${{ inputs.grep }}"' >> $GITHUB_STEP_SUMMARY
           echo '- `qa_db`: "${{ inputs.qa_db }}"' >> $GITHUB_STEP_SUMMARY
           echo '- `enable_network_throttling`: "${{ inputs.enable_network_throttling }}"' >> $GITHUB_STEP_SUMMARY
+          echo '- `bail`: "${{ inputs.bail }}"' >> $GITHUB_STEP_SUMMARY
           echo '' >> $GITHUB_STEP_SUMMARY
           echo 'triggered by: @${{ github.event.sender.login }}' >> $GITHUB_STEP_SUMMARY
 
@@ -144,6 +150,7 @@ jobs:
         env:
           GREP: ${{ github.event.inputs.grep }}
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
+          BAIL: ${{ inputs.bail }}
         run: |
           node e2e/runner/run_cypress_ci.js ${{ needs.determine-test-type.outputs.type }} \
           --spec '${{ github.event.inputs.spec }}' \
