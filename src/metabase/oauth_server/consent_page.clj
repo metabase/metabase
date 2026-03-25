@@ -45,6 +45,16 @@
 (def ^:private default-logo-svg
   (delay (some-> (io/resource "frontend_client/app/assets/img/logo.svg") slurp)))
 
+(def ^:private default-brand-color "#509ee3")
+
+(defn- sanitize-css-color
+  "Return `color` if it looks like a safe CSS color value (hex or named color),
+   otherwise return the default brand color. Prevents CSS injection via `h/raw` interpolation."
+  [color]
+  (if (and (string? color) (re-matches #"#[0-9a-fA-F]{3,8}|[a-zA-Z]+" color))
+    color
+    default-brand-color))
+
 (defn- branded-logo-svg
   "Return the default Metabase logo SVG with `currentColor` replaced by the brand color."
   [brand-color]
@@ -58,7 +68,7 @@
     {:font-family    (appearance/application-font)
      :logo-url       (absolute-url logo-url)
      :default-logo?  (= logo-url default-logo-url)
-     :brand-color    (get colors "brand" "#509ee3")}))
+     :brand-color    (sanitize-css-color (get colors "brand"))}))
 
 (defn render-consent-page
   "Render a server-side HTML consent page for the OAuth authorization flow."
