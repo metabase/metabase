@@ -1227,7 +1227,6 @@
               documents
               driver
               internal-stats
-              legacy-mbql
               lib
               lib-be
               llm
