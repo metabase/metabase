@@ -381,7 +381,13 @@
                :creator_id         (serdes/fk :model/User)
                :owner_user_id      (serdes/fk :model/User)
                :collection_id      (serdes/fk :model/Collection)
-               :source_database_id (serdes/fk :model/Database :name)
+               :source_database_id {::serdes/fk true
+                                    :export (constantly ::serdes/skip)
+                                    :import-with-context
+                                    (fn [ingested _ _]
+                                      (let [db-name (transforms-base.i/source-db-id {:source (:source ingested)})]
+                                        (when db-name
+                                          (t2/select-one-pk :model/Database :name db-name))))}
                :source             {:export #(update % :query serdes/export-mbql)
                                     :import (fn [source]
                                               (-> source
@@ -396,13 +402,11 @@
                :tags               (tag-names-transformer :model/TransformTransformTag :transform_id)}})
 
 (defmethod serdes/dependencies "Transform"
-  [{:keys [collection_id source tags source_database_id]}]
+  [{:keys [collection_id source tags]}]
   (set
    (concat
     (when collection_id
       [[{:model "Collection" :id collection_id}]])
-    (when source_database_id
-      [[{:model "Database" :id source_database_id}]])
     (for [tag-name tags]
       [{:model "TransformTag" :id tag-name}])
     (serdes/mbql-deps source))))
