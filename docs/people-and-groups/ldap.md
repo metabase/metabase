@@ -28,7 +28,9 @@ In the **Admin settings** > **Settings** > **Authentication** tab, go to the LDA
 
 ## User provisioning
 
-When a person logs in via LDAP, Metabase can create a Metabase account for them automatically (if they don't already have a Metabase account).
+User provisioning is enabled by default. Metabase will create accounts for people who don't yet have a Metabase account but who are able to log in via LDAP.
+
+If you disable user provisioning, users without accounts or with deactivated accounts will not be able to log in.
 
 ## Server settings
 
