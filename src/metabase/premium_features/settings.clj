@@ -64,10 +64,10 @@
   :visibility :public
   :setter     :none
   :audit      :never
-  :getter     (fn [] (boolean
-                      (and
-                       (not (has-feature? :hosting))
-                       (not (airgap-enabled)))))
+  :getter     (fn [] (or true (boolean
+                               (and
+                                (not (has-feature? :hosting))
+                                (not (airgap-enabled))))))
   :doc        false)
 
 (def ^:private premium-features

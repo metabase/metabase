@@ -156,7 +156,7 @@ async function setup({
     const response = responseMap[provider];
 
     fetchMock.get(
-      `path:/api/metabot/settings?provider=${provider}`,
+      { url: "path:/api/metabot/settings", query: { provider } },
       typeof response === "function" ? response : response,
     );
   }
@@ -189,24 +189,6 @@ async function openModelSelector() {
 }
 
 describe("MetabotSetup", () => {
-  it("should redirect to the hosted Metabot page when hosted", async () => {
-    const { history } = await setup({ isHosted: true });
-
-    await waitFor(() => {
-      expect(history?.getCurrentLocation()?.pathname).toBe("/admin/metabot/");
-    });
-  });
-
-  it("should not redirect to the hosted Metabot page when not hosted", async () => {
-    const { history } = await setup({ isHosted: false });
-
-    await screen.findByText("Connect to AI Provider");
-
-    expect(history?.getCurrentLocation()?.pathname).toBe(
-      "/admin/metabot/setup",
-    );
-  });
-
   it("shows the env var message and disables both provider and model inputs when provider is env-backed", async () => {
     await setup({
       providerSettingIsEnv: true,

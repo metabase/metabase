@@ -7,10 +7,8 @@ import { MetabotNavPane } from "./MetabotNavPane";
 
 const setup = ({
   isConfigured = true,
-  isHosted = false,
 }: {
   isConfigured?: boolean;
-  isHosted?: boolean;
 } = {}) =>
   renderWithProviders(
     <Route path="/admin/metabot*" component={MetabotNavPane} />,
@@ -20,23 +18,23 @@ const setup = ({
       storeInitialState: {
         settings: createMockSettingsState({
           "llm-metabot-configured?": isConfigured,
-          "is-hosted?": isHosted,
         }),
       },
     },
   );
 
 describe("MetabotNavPane", () => {
-  it("should not show metabots if it isn't configured", () => {
+  it("should not show metabots if it isn't configured", async () => {
     setup({ isConfigured: false });
 
     expect(screen.queryByText("Metabot")).not.toBeInTheDocument();
     expect(screen.queryByText("Embedded Metabot")).not.toBeInTheDocument();
   });
 
-  it("should not show Connection settings if it is hosted", () => {
-    setup({ isHosted: true });
+  it("should show metabots if it is configured", async () => {
+    setup({ isConfigured: true });
 
-    expect(screen.queryByText("Connection settings")).not.toBeInTheDocument();
+    expect(await screen.findByText("Metabot")).toBeInTheDocument();
+    expect(await screen.findByText("Embedded Metabot")).toBeInTheDocument();
   });
 });
