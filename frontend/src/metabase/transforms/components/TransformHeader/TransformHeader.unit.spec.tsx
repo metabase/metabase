@@ -1,6 +1,7 @@
 import { Route } from "react-router";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { setupEnterprisePlugins } from "__support__/enterprise";
+import { renderWithProviders, screen, within } from "__support__/ui";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { createMockTransform } from "metabase-types/api/mocks";
 
@@ -81,34 +82,24 @@ describe("TransformHeader", () => {
     it("should show upsell gem when transforms-python is not enabled", () => {
       setup();
 
-      const inspectLink = screen.getByText("Inspect").closest("a");
+      const inspectLink = screen.getByRole("link", { name: /Inspect/ });
       expect(inspectLink).toBeInTheDocument();
 
-      const upsellGems = screen.queryAllByTestId("upsell-gem");
-      const inspectUpsellGems = upsellGems.filter((gem) =>
-        inspectLink?.contains(gem),
-      );
-      expect(inspectUpsellGems.length).toBeGreaterThan(0);
+      expect(within(inspectLink).getByTestId("upsell-gem")).toBeInTheDocument();
     });
 
     it("should not show upsell gem when transforms-python is enabled", () => {
-      const original = PLUGIN_TRANSFORMS_PYTHON.isEnabled;
+      setupEnterprisePlugins();
       PLUGIN_TRANSFORMS_PYTHON.isEnabled = true;
 
-      try {
-        setup();
+      setup();
 
-        const inspectLink = screen.getByText("Inspect").closest("a");
-        expect(inspectLink).toBeInTheDocument();
+      const inspectLink = screen.getByRole("link", { name: "Inspect" });
+      expect(inspectLink).toBeInTheDocument();
 
-        const upsellGems = screen.queryAllByTestId("upsell-gem");
-        const inspectUpsellGems = upsellGems.filter((gem) =>
-          inspectLink?.contains(gem),
-        );
-        expect(inspectUpsellGems).toHaveLength(0);
-      } finally {
-        PLUGIN_TRANSFORMS_PYTHON.isEnabled = original;
-      }
+      expect(
+        within(inspectLink).queryByTestId("upsell-gem"),
+      ).not.toBeInTheDocument();
     });
   });
 
