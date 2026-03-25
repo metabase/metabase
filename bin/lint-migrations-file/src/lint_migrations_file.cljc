@@ -84,36 +84,33 @@
         (and (= v threshold-version)
              (not (neg? (compare local-id threshold-id)))))))
 
-(defn- numeric-id? [s]
-  (boolean (re-matches #"\d+" s)))
-
-(defn- compare-local-ids
-  "Compare two local changeset IDs (the part after the `v{version}.` prefix).
-  - Both numeric: compare as numbers (so `2` < `10`)
-  - One numeric, one string: string (legacy date format) sorts before number (new format)
-  - Both strings: lexicographic comparison (works for date-based timestamps)"
-  [a b]
-  (let [na (numeric-id? a)
-        nb (numeric-id? b)]
-    (cond
-      (and na nb)       (compare (parse-long a) (parse-long b))
-      (and na (not nb)) 1
-      (and nb (not na)) -1
-      :else             (compare a b))))
-
-(defn- id-local-part
-  "Returns the local part of a changeset ID (after the `v{version}.` prefix), or the full ID if unprefixed."
+(defn- parse-change-set-id
+  "Parses a changeset ID like `v49.2024-01-01T10:30:00` into [version local-part],
+  or [nil full-id] if unprefixed."
   [id]
-  (if-let [[_ local] (re-matches #"^v\d+\.(.+)$" (str id))]
-    local
-    (str id)))
+  (if-let [[_ v local] (re-matches #"^v(\d+)\.(.+)$" (str id))]
+    [(parse-long v) local]
+    [nil (str id)]))
+
+(defn- compare-change-set-ids
+  "Compare two changeset IDs. Version number takes priority; within the same version,
+  numeric local parts are compared as numbers, timestamps lexicographically, and
+  timestamps sort before numeric IDs (legacy before new format)."
+  [a b]
+  (let [[va la] (parse-change-set-id a)
+        [vb lb] (parse-change-set-id b)]
+    (cond
+      (and va vb (not= va vb)) (compare va vb)
+      (every? #(re-matches #"\d+" %) [la lb]) (compare (parse-long la) (parse-long lb))
+      (re-matches #"\d+" la) 1
+      (re-matches #"\d+" lb) -1
+      :else (compare la lb))))
 
 (defn- require-change-set-ids-in-order [change-log _file]
   (let [ids          (change-set-ids change-log)
         out-of-order (->> ids
                           (partition 2 1)
-                          (filter (fn [[a b]] (pos? (compare-local-ids (id-local-part a)
-                                                                       (id-local-part b))))))]
+                          (filter (fn [[a b]] (pos? (compare-change-set-ids a b)))))]
     (when (seq out-of-order)
       (throw (validation-error "Change set IDs are not in order"
                                {:out-of-order-ids out-of-order})))))

@@ -132,7 +132,27 @@
              (validate-file dir-file
                             (mock-change-set :id "v60.2026-03-10T00:00:00")
                             (mock-change-set :id "v60.1")
-                            (mock-change-set :id "v60.2")))))))
+                            (mock-change-set :id "v60.2"))))))
+
+  (testing "Cross-version boundaries: later version with earlier local part is allowed"
+    (is (= :ok
+           (validate
+            (mock-change-set :id "v52.2025-05-28T00:00:01")
+            (mock-change-set :id "v53.2024-12-02T16:21:15"))))
+    (is (= :ok
+           (validate
+            (mock-change-set :id "v45.00-057")
+            (mock-change-set :id "v46.00-000")
+            (mock-change-set :id "v46.00-090")
+            (mock-change-set :id "v47.00-001")))))
+
+  (testing "Cross-version boundaries: earlier version after later version is not allowed"
+    (is-thrown-with-error-info?
+     "Change set IDs are not in order"
+     {:out-of-order-ids [["v53.2024-12-02T16:21:15" "v52.2025-05-28T00:00:01"]]}
+     (validate
+      (mock-change-set :id "v53.2024-12-02T16:21:15")
+      (mock-change-set :id "v52.2025-05-28T00:00:01")))))
 
 (deftest only-one-column-per-add-column-test
   (testing "we should only allow one column per addColumn change"
