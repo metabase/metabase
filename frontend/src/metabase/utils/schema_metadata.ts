@@ -1,4 +1,4 @@
-import { FIELD_SEMANTIC_TYPES_MAP } from "metabase/utils/core";
+import { FIELD_SEMANTIC_TYPES_MAP } from "metabase/common/utils/fields";
 import type { IconName } from "metabase/ui";
 import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
 
