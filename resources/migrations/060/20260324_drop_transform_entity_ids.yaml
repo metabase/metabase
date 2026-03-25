@@ -3,43 +3,98 @@
 
 databaseChangeLog:
   - logicalFilePath: migrations/060_update_migrations.yaml
+
   - changeSet:
       id: v60.2026-03-24T00:00:00
-      author: alex
+      author: ranquild
       comment: Drop entity_id from transform_transform_tag
       changes:
         - dropColumn:
             tableName: transform_transform_tag
             columnName: entity_id
+      rollback:
+        - addColumn:
+            tableName: transform_transform_tag
+            columns:
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  constraints:
+                    nullable: true
+                    unique: true
+
   - changeSet:
       id: v60.2026-03-24T00:00:01
-      author: alex
+      author: ranquild
       comment: Drop entity_id from transform_job_transform_tag
       changes:
         - dropColumn:
             tableName: transform_job_transform_tag
             columnName: entity_id
+      rollback:
+        - addColumn:
+            tableName: transform_job_transform_tag
+            columns:
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  constraints:
+                    nullable: true
+                    unique: true
+
   - changeSet:
       id: v60.2026-03-24T00:00:02
-      author: alex
+      author: ranquild
       comment: Drop entity_id from transform
       changes:
         - dropColumn:
             tableName: transform
             columnName: entity_id
+      rollback:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  constraints:
+                    nullable: true
+                    unique: true
+
   - changeSet:
       id: v60.2026-03-24T00:00:03
-      author: alex
+      author: ranquild
       comment: Drop entity_id from transform_tag
       changes:
         - dropColumn:
             tableName: transform_tag
             columnName: entity_id
+      rollback:
+        - addColumn:
+            tableName: transform_tag
+            columns:
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  constraints:
+                    nullable: true
+                    unique: true
+
   - changeSet:
       id: v60.2026-03-24T00:00:04
-      author: alex
+      author: ranquild
       comment: Drop entity_id from transform_job
       changes:
         - dropColumn:
             tableName: transform_job
             columnName: entity_id
+      rollback:
+        - addColumn:
+            tableName: transform_job
+            columns:
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  constraints:
+                    nullable: true
+                    unique: true
