@@ -84,16 +84,39 @@
         (and (= v threshold-version)
              (not (neg? (compare local-id threshold-id)))))))
 
-(defn- require-change-set-ids-in-order [change-log file]
-  (when-not (directory-based-migration-file? file)
-    (let [ids              (change-set-ids change-log)
-          out-of-order-ids (->> ids
-                                (partition 2 1)
-                                (filter (fn [[id1 id2]]
-                                          (pos? (compare id1 id2)))))]
-      (when (seq out-of-order-ids)
-        (throw (validation-error "Change set IDs are not in order"
-                                 {:out-of-order-ids out-of-order-ids}))))))
+(defn- numeric-id? [s]
+  (boolean (re-matches #"\d+" s)))
+
+(defn- compare-local-ids
+  "Compare two local changeset IDs (the part after the `v{version}.` prefix).
+  - Both numeric: compare as numbers (so `2` < `10`)
+  - One numeric, one string: string (legacy date format) sorts before number (new format)
+  - Both strings: lexicographic comparison (works for date-based timestamps)"
+  [a b]
+  (let [na (numeric-id? a)
+        nb (numeric-id? b)]
+    (cond
+      (and na nb)       (compare (parse-long a) (parse-long b))
+      (and na (not nb)) 1
+      (and nb (not na)) -1
+      :else             (compare a b))))
+
+(defn- id-local-part
+  "Returns the local part of a changeset ID (after the `v{version}.` prefix), or the full ID if unprefixed."
+  [id]
+  (if-let [[_ local] (re-matches #"^v\d+\.(.+)$" (str id))]
+    local
+    (str id)))
+
+(defn- require-change-set-ids-in-order [change-log _file]
+  (let [ids          (change-set-ids change-log)
+        out-of-order (->> ids
+                          (partition 2 1)
+                          (filter (fn [[a b]] (pos? (compare-local-ids (id-local-part a)
+                                                                       (id-local-part b))))))]
+    (when (seq out-of-order)
+      (throw (validation-error "Change set IDs are not in order"
+                               {:out-of-order-ids out-of-order})))))
 
 (defn- require-change-set-ids-in-correct-file [change-log file]
   (let [fv  (file-version file)

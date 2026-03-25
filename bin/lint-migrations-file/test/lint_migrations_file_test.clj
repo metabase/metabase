@@ -96,7 +96,43 @@
                           "v49.2023-12-14T08:54:53"]]}
      (validate
       (mock-change-set :id "v49.2023-12-14T08:54:54")
-      (mock-change-set :id "v49.2023-12-14T08:54:53")))))
+      (mock-change-set :id "v49.2023-12-14T08:54:53"))))
+
+  (testing "Directory-based: numeric IDs are compared numerically (10 > 2)"
+    (let [dir-file (io/file "060/20260310_test.yaml")]
+      (is (= :ok
+             (validate-file dir-file
+                            (mock-change-set :id "v60.1")
+                            (mock-change-set :id "v60.2")
+                            (mock-change-set :id "v60.10"))))
+      (is-thrown-with-error-info?
+       "Change set IDs are not in order"
+       {:out-of-order-ids [["v60.10" "v60.2"]]}
+       (validate-file dir-file
+                      (mock-change-set :id "v60.10")
+                      (mock-change-set :id "v60.2")))))
+
+  (testing "Directory-based: date-based IDs use string comparison"
+    (let [dir-file (io/file "060/20260310_test.yaml")]
+      (is (= :ok
+             (validate-file dir-file
+                            (mock-change-set :id "v60.2026-03-10T00:00:00")
+                            (mock-change-set :id "v60.2026-03-10T00:00:01")
+                            (mock-change-set :id "v60.2026-03-10T00:00:10"))))
+      (is-thrown-with-error-info?
+       "Change set IDs are not in order"
+       {:out-of-order-ids [["v60.2026-03-10T00:00:10" "v60.2026-03-10T00:00:02"]]}
+       (validate-file dir-file
+                      (mock-change-set :id "v60.2026-03-10T00:00:10")
+                      (mock-change-set :id "v60.2026-03-10T00:00:02")))))
+
+  (testing "Directory-based: numeric IDs sort after date-based IDs (legacy first)"
+    (let [dir-file (io/file "060/20260310_test.yaml")]
+      (is (= :ok
+             (validate-file dir-file
+                            (mock-change-set :id "v60.2026-03-10T00:00:00")
+                            (mock-change-set :id "v60.1")
+                            (mock-change-set :id "v60.2")))))))
 
 (deftest only-one-column-per-add-column-test
   (testing "we should only allow one column per addColumn change"
