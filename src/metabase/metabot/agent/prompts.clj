@@ -239,7 +239,7 @@
   "Prepends a formatted context to a string, message."
   [context str*]
   (let [;; Injection is performed only when the hardcoded keys are present in in context to avoid
-        ;; insertion e.g. isertion of blank xml tags.
+        ;; insertion e.g. insertion of blank xml tags.
         injection (when (some #(string? (not-empty (get context %)))
                               [:viewing_context :current_time :current_user_info])
                     (selmer/render (get-cached-message-injection-template)
