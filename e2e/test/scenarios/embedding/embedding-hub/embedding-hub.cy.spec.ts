@@ -6,33 +6,6 @@ const { H } = cy;
 const { STATIC_ORDERS_ID } = SAMPLE_DB_TABLES;
 const NON_SAMPLE_DB_NAME = "QA Postgres12";
 
-const getDatabaseTable = (databaseId: number, displayName: string) =>
-  cy.request("GET", `/api/database/${databaseId}/metadata`).then(({ body }) => {
-    const table = body?.tables?.find(
-      (table: { display_name?: string; name?: string }) =>
-        table.display_name === displayName ||
-        table.name?.toLowerCase() === displayName.toLowerCase(),
-    );
-
-    expect(table, `table ${displayName} in database ${databaseId}`).to.exist;
-
-    return table;
-  });
-
-const getTableFieldId = (tableId: number, displayName: string) =>
-  cy.request("GET", `/api/table/${tableId}/query_metadata`).then(({ body }) => {
-    const field = body?.fields?.find(
-      (field: { display_name?: string; name?: string; id?: number }) =>
-        field.display_name === displayName ||
-        field.name?.toLowerCase() === displayName.toLowerCase(),
-    );
-
-    expect(field, `field ${displayName} in table ${tableId}`).to.exist;
-    expect(field?.id, `field id for ${displayName}`).to.be.a("number");
-
-    return field.id as number;
-  });
-
 describe("scenarios - embedding hub", () => {
   describe("checklist", () => {
     beforeEach(() => {
@@ -737,10 +710,9 @@ describe("scenarios - embedding hub", () => {
       });
 
       it("shows autocomplete suggestions for organization_id based on selected field values", () => {
-        H.restore("setup");
+        H.restore("postgres-12");
         cy.signInAsAdmin();
         H.activateToken("bleeding-edge");
-        H.addPostgresDatabase(NON_SAMPLE_DB_NAME);
 
         cy.visit("/admin/embedding/setup-guide/permissions");
 
@@ -773,7 +745,6 @@ describe("scenarios - embedding hub", () => {
 
         cy.log("pick orders table");
         H.main().findByText("Pick a table").click();
-        H.miniPicker().findByText("Sample Database").should("not.exist");
         H.miniPicker().findByText(NON_SAMPLE_DB_NAME).click();
         H.miniPicker().findByText("Orders").click();
 
@@ -797,10 +768,9 @@ describe("scenarios - embedding hub", () => {
     // are only populated when the user goes through the "Select data" step
     // in the UI. Without it, the data permissions description won't show.
     it("shows RLS data permissions description in summary", () => {
-      H.restore("setup");
+      H.restore("postgres-12");
       cy.signInAsAdmin();
       H.activateToken("bleeding-edge");
-      H.addPostgresDatabase(NON_SAMPLE_DB_NAME);
 
       cy.visit("/admin/embedding/setup-guide/permissions");
 
@@ -833,7 +803,6 @@ describe("scenarios - embedding hub", () => {
 
       cy.log("pick Orders table and User ID column");
       H.main().findByText("Pick a table").click();
-      H.miniPicker().findByText("Sample Database").should("not.exist");
       H.miniPicker().findByText(NON_SAMPLE_DB_NAME).click();
       H.miniPicker().findByText("Orders").click();
 
@@ -877,10 +846,9 @@ describe("scenarios - embedding hub", () => {
     });
 
     it("should create sandboxes for multiple tables via row-level security setup", () => {
-      H.restore("setup");
+      H.restore("postgres-12");
       cy.signInAsAdmin();
       H.activateToken("bleeding-edge");
-      H.addPostgresDatabase(NON_SAMPLE_DB_NAME);
 
       cy.intercept("PUT", "/api/permissions/graph").as(
         "updatePermissionsGraph",
@@ -974,73 +942,65 @@ describe("scenarios - embedding hub", () => {
       // 1. The admin permissions UI is complex and would add significant test time
       // 2. This test focuses on the onboarding flow, not the permissions UI
       cy.log("access policies should be created");
-      cy.request("GET", "/api/mt/gtap").then((response) => {
-        const policies = response.body;
-        expect(policies.length).to.be.at.least(2);
+      H.getTableId({ databaseId: WRITABLE_DB_ID, name: "orders" }).then(
+        (ordersTableId) => {
+          H.getTableId({ databaseId: WRITABLE_DB_ID, name: "people" }).then(
+            (peopleTableId) => {
+              cy.request("GET", "/api/mt/gtap").should((response) => {
+                const policies = response.body;
+                expect(policies.length).to.be.at.least(2);
 
-        const orderPolicy = policies.find(
-          (p: { attribute_remappings: Record<string, unknown> }) =>
-            p.attribute_remappings?.organization_id,
-        );
-        const peoplePolicy = policies.find(
-          (p: {
-            table_id: number;
-            attribute_remappings: Record<string, unknown>;
-          }) =>
-            p.attribute_remappings?.organization_id &&
-            p.table_id !== orderPolicy.table_id,
-        );
+                const orderPolicy = policies.find(
+                  (policy: { table_id: number }) =>
+                    policy.table_id === ordersTableId,
+                );
 
-        expect(orderPolicy).to.exist;
-        expect(peoplePolicy).to.exist;
+                const peoplePolicy = policies.find(
+                  (policy: { table_id: number }) =>
+                    policy.table_id === peopleTableId,
+                );
 
-        const ordersTableId = orderPolicy.table_id as number;
-        const peopleTableId = peoplePolicy.table_id as number;
+                expect(orderPolicy).to.exist;
+                expect(peoplePolicy).to.exist;
 
-        cy.get<number>("@postgresID").then((postgresId) => {
-          cy.request(
-            "GET",
-            `/api/permissions/graph/group/${ALL_EXTERNAL_USERS_GROUP_ID}`,
-          ).should((response) => {
-            const graph = response.body;
+                expect(orderPolicy.attribute_remappings).to.have.property(
+                  "organization_id",
+                );
 
-            const permissions =
-              graph.groups[ALL_EXTERNAL_USERS_GROUP_ID!][postgresId];
-            expect(permissions).to.exist;
-            const viewData = permissions["view-data"];
-            const createQueries = permissions["create-queries"];
-            const schemaPermissions =
-              Object.values(viewData).find(
-                (value) =>
-                  value != null &&
-                  typeof value === "object" &&
-                  !Array.isArray(value) &&
-                  ordersTableId in value &&
-                  peopleTableId in value,
-              ) ?? {};
+                expect(peoplePolicy.attribute_remappings).to.have.property(
+                  "organization_id",
+                );
+              });
 
-            expect(schemaPermissions).to.deep.equal({
-              [ordersTableId]: "sandboxed",
-              [peopleTableId]: "sandboxed",
-            });
+              cy.request(
+                "GET",
+                `/api/permissions/graph/group/${ALL_EXTERNAL_USERS_GROUP_ID}`,
+              ).should((response) => {
+                const graph = response.body;
 
-            const createQuerySchemaPermissions =
-              Object.values(createQueries).find(
-                (value) =>
-                  value != null &&
-                  typeof value === "object" &&
-                  !Array.isArray(value) &&
-                  ordersTableId in value &&
-                  peopleTableId in value,
-              ) ?? {};
+                const permissions =
+                  graph.groups[ALL_EXTERNAL_USERS_GROUP_ID!][WRITABLE_DB_ID];
+                expect(permissions).to.exist;
 
-            expect(createQuerySchemaPermissions).to.deep.equal({
-              [ordersTableId]: "query-builder",
-              [peopleTableId]: "query-builder",
-            });
-          });
-        });
-      });
+                const schemaName =
+                  permissions["view-data"].public != null ? "public" : "PUBLIC";
+
+                expect(permissions["view-data"][schemaName]).to.deep.equal({
+                  [ordersTableId]: "sandboxed",
+                  [peopleTableId]: "sandboxed",
+                });
+
+                expect(permissions["create-queries"][schemaName]).to.deep.equal(
+                  {
+                    [ordersTableId]: "query-builder",
+                    [peopleTableId]: "query-builder",
+                  },
+                );
+              });
+            },
+          );
+        },
+      );
 
       H.main()
         .findByRole("listitem", {
@@ -1052,10 +1012,9 @@ describe("scenarios - embedding hub", () => {
     });
 
     it("should update existing sandboxes when changing column selection", () => {
-      H.restore("setup");
+      H.restore("postgres-12");
       cy.signInAsAdmin();
       H.activateToken("bleeding-edge");
-      H.addPostgresDatabase(NON_SAMPLE_DB_NAME);
 
       cy.intercept("PUT", "/api/permissions/graph").as(
         "updatePermissionsGraph",
@@ -1076,31 +1035,42 @@ describe("scenarios - embedding hub", () => {
       });
 
       cy.log("create an existing sandbox for Orders table via API");
-      cy.get<number>("@postgresID").then((postgresId) => {
-        getDatabaseTable(postgresId, "Orders").then((ordersTable) => {
-          getTableFieldId(ordersTable.id, "User ID").then((userIdFieldId) => {
-            cy.wrap(userIdFieldId).as("setupUserIdFieldId");
-            cy.request("GET", "/api/permissions/group").then((response) => {
-              const allExternalUsersGroup = response.body.find(
-                (g: { magic_group_type: string }) =>
-                  g.magic_group_type === "all-external-users",
-              );
+      H.getTableId({ databaseId: WRITABLE_DB_ID, name: "orders" }).then(
+        (ordersTableId) => {
+          cy.wrap(ordersTableId).as("ordersTableId");
 
-              cy.request("POST", "/api/mt/gtap", {
-                table_id: ordersTable.id,
-                group_id: allExternalUsersGroup.id,
-                card_id: null,
-                attribute_remappings: {
-                  organization_id: [
-                    "dimension",
-                    ["field", userIdFieldId, null],
-                  ],
+          H.getFieldId({ tableId: ordersTableId, name: "user_id" }).then(
+            (userIdFieldId) => {
+              H.getFieldId({ tableId: ordersTableId, name: "product_id" }).then(
+                (productIdFieldId) => {
+                  cy.wrap(productIdFieldId).as("productIdFieldId");
+
+                  cy.request("GET", "/api/permissions/group").then(
+                    (response) => {
+                      const allExternalUsersGroup = response.body.find(
+                        (g: { magic_group_type: string }) =>
+                          g.magic_group_type === "all-external-users",
+                      );
+
+                      cy.request("POST", "/api/mt/gtap", {
+                        table_id: ordersTableId,
+                        group_id: allExternalUsersGroup.id,
+                        card_id: null,
+                        attribute_remappings: {
+                          organization_id: [
+                            "dimension",
+                            ["field", userIdFieldId, null],
+                          ],
+                        },
+                      });
+                    },
+                  );
                 },
-              });
-            });
-          });
-        });
-      });
+              );
+            },
+          );
+        },
+      );
 
       cy.visit("/admin/embedding/setup-guide/permissions");
 
@@ -1128,7 +1098,6 @@ describe("scenarios - embedding hub", () => {
 
       cy.log("Select the same Orders table");
       H.main().findByText("Pick a table").click();
-      H.miniPicker().findByText("Sample Database").should("not.exist");
       H.miniPicker().findByText(NON_SAMPLE_DB_NAME).click();
       H.miniPicker().findByText("Orders").click();
 
@@ -1144,24 +1113,25 @@ describe("scenarios - embedding hub", () => {
       H.undoToast().should("not.exist");
 
       cy.log("sandbox should be updated and not created");
-      cy.get<number>("@setupUserIdFieldId").then((userIdFieldId) => {
-        cy.request("GET", "/api/mt/gtap").should((response) => {
-          const policies = response.body;
+      cy.get<number>("@ordersTableId").then((ordersTableId) => {
+        cy.get<number>("@productIdFieldId").then((productIdFieldId) => {
+          cy.request("GET", "/api/mt/gtap").should((response) => {
+            const policies = response.body;
 
-          const orderPolicies = policies.filter(
-            (policy: { attribute_remappings?: Record<string, unknown> }) =>
-              policy.attribute_remappings?.organization_id,
-          );
+            const orderPolicies = policies.filter(
+              (policy: { table_id: number }) =>
+                policy.table_id === ordersTableId,
+            );
 
-          // should only have one sandbox for Orders table
-          expect(orderPolicies.length).to.equal(1);
+            // should only have one sandbox for Orders table
+            expect(orderPolicies.length).to.equal(1);
 
-          const [orderPolicy] = orderPolicies;
-          const tenantFieldRef =
-            orderPolicy.attribute_remappings.organization_id;
+            const [orderPolicy] = orderPolicies;
+            const tenantFieldRef =
+              orderPolicy.attribute_remappings.organization_id;
 
-          // field ref should have changed from the original User ID field
-          expect(tenantFieldRef[1][1]).to.not.equal(userIdFieldId);
+            expect(tenantFieldRef[1][1]).to.equal(productIdFieldId);
+          });
         });
       });
 
