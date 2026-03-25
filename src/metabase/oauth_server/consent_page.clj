@@ -72,7 +72,7 @@
 
 (defn render-consent-page
   "Render a server-side HTML consent page for the OAuth authorization flow."
-  [{:keys [client-name oauth-params nonce csrf-token]}]
+  [{:keys [client-name oauth-params nonce csrf-token params-sig]}]
   (let [{:keys [font-family logo-url default-logo? brand-color]} (appearance-settings)
         css-font-family (css-escape-font-name font-family)]
     (str
@@ -116,6 +116,7 @@
           [:strong (appearance/application-name)] " on your behalf."]
          [:form {:method "POST" :action "/oauth/authorize/decision"}
           [:input {:type "hidden" :name "csrf_token" :value csrf-token}]
+          [:input {:type "hidden" :name "params_sig" :value params-sig}]
           (for [[k v] oauth-params
                 :when (some? v)
                 v (if (sequential? v) v [v])]
