@@ -85,19 +85,42 @@
        (sql.qp/->honeysql driver (first conditions))
        (into [:and] (mapv (partial sql.qp/->honeysql driver) conditions)))]))
 
+(defn- agg-by-id [aggs agg-uuid]
+  (m/find-first #(= (lib.options/uuid %) agg-uuid) aggs))
+
 (defmethod sql.qp/->honeysql [:sql-mbql5 :aggregation]
-  [driver [_ opts agg-uuid :as clause]]
-  ;; TODO(rileythomp, 2026-03): Handle more cases here?
-  (if-let [desired-alias (get opts driver-api/qp.add.desired-alias)]
+  [driver [_ _opts _agg-uuid :as clause]]
+  (driver-api/match-lite clause
+    [:aggregation {driver-api/qp.add.desired-alias desired-alias} _agg-uuid]
     (sql.qp/->honeysql driver (h2x/identifier :field-alias desired-alias))
-    (throw (ex-info "Aggregation reference missing ::desired-alias. Was add-alias-info run?"
-                    {:clause clause, :uuid agg-uuid}))))
+
+    [:aggregation {driver-api/qp.add.source-alias source-alias} _agg-uuid]
+    (sql.qp/->honeysql driver (h2x/identifier :field-alias source-alias))
+
+    [:aggregation {:lib/source-name source-name} _agg-uuid]
+    (sql.qp/->honeysql driver (h2x/identifier :field-alias source-name))
+
+    [:aggregation _opts agg-uuid]
+    (let [agg (agg-by-id (:aggregation sql.qp/*inner-query*) agg-uuid)]
+      (&recur agg))
+
+    [:distinct & _]
+    (sql.qp/->honeysql driver (h2x/identifier :field-alias :count))
+
+    [#{:+ :- :* :/} & _]
+    (sql.qp/->honeysql driver &match)
+
+    [:offset {:lib/source-name source-name} _expr _n]
+    (sql.qp/->honeysql driver (h2x/identifier :field-alias source-name))
+
+    [ag-type & _]
+    (sql.qp/->honeysql driver (h2x/identifier :field-alias ag-type))))
 
 (defmethod sql.qp/over-order-by->honeysql :sql-mbql5
   [driver aggregations [direction _opts expr]]
   (if (lib.util/clause-of-type? expr :aggregation)
     (let [[_op _opts agg-uuid] expr
-          aggregation (m/find-first #(= (lib.options/uuid %) agg-uuid) aggregations)]
+          aggregation (agg-by-id aggregations agg-uuid)]
       (when-not (#'sql.qp/contains-clause? #{:cum-count :cum-sum :offset} aggregation)
         [(sql.qp/->honeysql driver aggregation) direction]))
     [(sql.qp/->honeysql driver expr) direction]))
