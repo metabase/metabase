@@ -57,7 +57,9 @@ describe("DeleteDatabaseModal", () => {
   it("should allow deleting database without content after confirming its name", async () => {
     const { onDelete } = await setup({ hasContent: false });
 
-    const deleteButton = screen.getByRole("button", { name: "Delete" });
+    const deleteButton = screen.getByRole("button", {
+      name: "Delete this DB connection",
+    });
 
     expect(
       screen.queryByText("Delete 10 saved questions"),
@@ -81,7 +83,7 @@ describe("DeleteDatabaseModal", () => {
     const { onDelete } = await setup({ hasContent: true });
 
     const deleteButton = screen.getByRole("button", {
-      name: "Delete this content and the DB connection",
+      name: "Delete this DB connection",
     });
 
     expect(deleteButton).toBeDisabled();
@@ -93,11 +95,6 @@ describe("DeleteDatabaseModal", () => {
     await userEvent.click(screen.getByText("50 transforms will stop working"));
 
     expect(deleteButton).toBeDisabled();
-    expect(
-      screen.getByText(
-        "Transforms that use this database won’t be deleted, but they will stop working.",
-      ),
-    ).toBeInTheDocument();
 
     await userEvent.type(
       screen.getByTestId("database-name-confirmation-input"),
@@ -119,7 +116,9 @@ describe("DeleteDatabaseModal", () => {
       },
     });
 
-    const deleteButton = screen.getByRole("button", { name: "Delete" });
+    const deleteButton = screen.getByRole("button", {
+      name: "Delete this DB connection",
+    });
     await userEvent.type(
       screen.getByTestId("database-name-confirmation-input"),
       "database name",
