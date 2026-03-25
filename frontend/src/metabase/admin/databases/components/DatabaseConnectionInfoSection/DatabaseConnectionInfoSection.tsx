@@ -73,35 +73,37 @@ export const DatabaseConnectionInfoSection = ({
 
       <DatabaseInfoSectionDivider condensed />
 
-      <Flex gap="sm" wrap="wrap">
-        {!isSynced && <Button disabled>{t`Syncing database…`}</Button>}
-        <ActionButton
-          className={S.actionButton}
-          actionFn={handleSyncDatabaseSchema}
-          normalText={t`Sync database schema`}
-          activeText={t`Starting…`}
-          failedText={t`Failed to sync`}
-          successText={t`Sync triggered!`}
-        />
-        <ActionButton
-          className={S.actionButton}
-          actionFn={() => rescanDatabaseFieldValues(database.id).unwrap()}
-          normalText={t`Re-scan field values`}
-          activeText={t`Starting…`}
-          failedText={t`Failed to start scan`}
-          successText={t`Scan triggered!`}
-        />
-        {!isSynced && (
+      {!database.is_attached_dwh && (
+        <Flex gap="sm" wrap="wrap">
+          {!isSynced && <Button disabled>{t`Syncing database…`}</Button>}
           <ActionButton
             className={S.actionButton}
-            actionFn={handleDismissSyncSpinner}
-            normalText={t`Dismiss sync spinner manually`}
-            activeText={t`Dismissing…`}
-            failedText={t`Failed to dismiss sync spinner`}
-            successText={t`Sync spinners dismissed!`}
+            actionFn={handleSyncDatabaseSchema}
+            normalText={t`Sync database schema`}
+            activeText={t`Starting…`}
+            failedText={t`Failed to sync`}
+            successText={t`Sync triggered!`}
           />
-        )}
-      </Flex>
+          <ActionButton
+            className={S.actionButton}
+            actionFn={() => rescanDatabaseFieldValues(database.id).unwrap()}
+            normalText={t`Re-scan field values`}
+            activeText={t`Starting…`}
+            failedText={t`Failed to start scan`}
+            successText={t`Scan triggered!`}
+          />
+          {!isSynced && (
+            <ActionButton
+              className={S.actionButton}
+              actionFn={handleDismissSyncSpinner}
+              normalText={t`Dismiss sync spinner manually`}
+              activeText={t`Dismissing…`}
+              failedText={t`Failed to dismiss sync spinner`}
+              successText={t`Sync spinners dismissed!`}
+            />
+          )}
+        </Flex>
+      )}
     </DatabaseInfoSection>
   );
 };

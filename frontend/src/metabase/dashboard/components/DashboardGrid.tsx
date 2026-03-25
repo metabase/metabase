@@ -17,10 +17,8 @@ import {
 } from "metabase/common/components/Pickers/QuestionPicker";
 import { ContentViewportContext } from "metabase/common/context/ContentViewportContext";
 import DashboardS from "metabase/css/dashboard.module.css";
-import {
-  getVisibleCardIds,
-  isQuestionDashCard,
-} from "metabase/dashboard/utils";
+import { getVisibleCardIds } from "metabase/dashboard/utils";
+import { isQuestionDashCard } from "metabase/lib/dashboard";
 import {
   GRID_ASPECT_RATIO,
   GRID_BREAKPOINTS,

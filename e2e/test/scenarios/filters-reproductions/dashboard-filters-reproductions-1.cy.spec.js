@@ -1820,7 +1820,10 @@ describe("issue 25374", () => {
 
     H.saveDashboard();
     cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
-    H.getDashboardCard().findByRole("gridcell").should("have.text", "3");
+    H.getDashboardCard()
+      .findByTestId("table-body")
+      .findByTestId("cell-data")
+      .should("have.text", "3");
 
     cy.button("Clear").click();
     cy.wait("@dashcardQuery");
@@ -1832,7 +1835,10 @@ describe("issue 25374", () => {
 
     cy.button("Reset filter to default state").click();
     cy.wait("@dashcardQuery");
-    H.getDashboardCard().findByRole("gridcell").should("have.text", "3");
+    H.getDashboardCard()
+      .findByTestId("table-body")
+      .findByTestId("cell-data")
+      .should("have.text", "3");
     cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
 
     // Drill-through and go to the question
@@ -1856,7 +1862,10 @@ describe("issue 25374", () => {
       .type("1,2,3");
     H.saveDashboard();
     cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
-    H.getDashboardCard().findByRole("gridcell").should("have.text", "3");
+    H.getDashboardCard()
+      .findByTestId("table-body")
+      .findByTestId("cell-data")
+      .should("have.text", "3");
 
     cy.button("Clear").click();
     cy.wait("@dashcardQuery");
@@ -1871,14 +1880,17 @@ describe("issue 25374", () => {
     cy.wait("@dashcardQuery");
     cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
     cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
-    H.getDashboardCard().findByRole("gridcell").should("have.text", "3");
+    H.getDashboardCard()
+      .findByTestId("table-body")
+      .findByTestId("cell-data")
+      .should("have.text", "3");
 
     // Drill-through and go to the question
     H.getDashboardCard(0).findByText(questionDetails.name).click();
     cy.wait("@cardQuery");
 
     H.tableHeaderColumn("COUNT(*)");
-    H.tableInteractiveBody().findByRole("gridcell").should("have.text", "3");
+    H.tableInteractiveBody().findByTestId("cell-data").should("have.text", "3");
 
     cy.location("search").should("eq", "?num=1%2C2%2C3");
   });
@@ -1944,7 +1956,9 @@ describe("issue 25908", () => {
         // Note the capital first letter
         cy.visit(`/dashboard/${dashboard_id}?text_contains=Li`);
         cy.wait("@dashcardQuery");
-        cy.findAllByRole("row").should("have.length", CASE_INSENSITIVE_ROWS);
+        H.tableInteractiveBody()
+          .findAllByRole("row")
+          .should("have.length", CASE_INSENSITIVE_ROWS);
       },
     );
   });

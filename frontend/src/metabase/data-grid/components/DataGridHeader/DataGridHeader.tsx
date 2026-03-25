@@ -35,6 +35,7 @@ export const DataGridHeader = <TData,>({
   return (
     <div
       className={cx(S.row, classNames?.row)}
+      role="row"
       style={{
         backgroundColor,
         paddingLeft,
@@ -69,6 +70,7 @@ export const DataGridHeader = <TData,>({
         return (
           <div
             key={header.id}
+            role="columnheader"
             style={columnPositionStyles}
             data-header-id={header.id}
           >

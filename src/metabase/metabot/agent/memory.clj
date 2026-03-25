@@ -17,7 +17,7 @@
    {:input-messages messages
     :steps-taken []
     :context context
-    :state (or state {:queries {} :charts {} :todos [] :transforms {}})}))
+    :state (or state {:queries {} :charts {} :todos [] :transforms {} :link-registry {}})}))
 
 (defn add-step
   "Add a completed agent step to memory.
@@ -169,4 +169,16 @@
   [memory state]
   (if-let [todos (:todos state)]
     (set-todos memory todos)
+    memory))
+
+(defn load-link-registry-from-state
+  "Load link registry from incoming state into memory.
+  Ensures keys are strings since JSON round-tripping may keywordize them."
+  [memory state]
+  (if-let [link-registry (not-empty (:link-registry state))]
+    (assoc-in memory [:state :link-registry]
+              ;; We don't use `name` in case the key is a relative url fragment like `:question/123`.
+              (update-keys link-registry #(if (keyword? %)
+                                            (subs (str %) 1)
+                                            %)))
     memory))

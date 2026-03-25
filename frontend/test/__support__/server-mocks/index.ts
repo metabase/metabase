@@ -1,7 +1,6 @@
 export * from "./action";
 export * from "./activity";
 export * from "./ai-entity-analysis";
-export * from "./ai-sql-fixer";
 export * from "./alert";
 export * from "./api-key";
 export * from "./audit";
@@ -40,6 +39,7 @@ export * from "./premium-features";
 export * from "./public";
 export * from "./pulse";
 export * from "./remote-sync";
+export * from "./replacement";
 export * from "./revision";
 export * from "./search";
 export * from "./segment";
