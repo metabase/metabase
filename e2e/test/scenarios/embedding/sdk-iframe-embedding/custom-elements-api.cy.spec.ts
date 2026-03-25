@@ -455,8 +455,6 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
     });
 
     it("should load the embedded Metabot component", () => {
-      cy.request("PUT", "/api/setting/use-native-agent", { value: true });
-
       H.visitCustomHtmlPage(`
       ${H.getNewEmbedScriptTag()}
       ${H.getNewEmbedConfigurationScript()}

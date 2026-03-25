@@ -125,7 +125,7 @@ Chart link: metabase://chart/{{chart_id}}
 </chart>
 {% endif %}
 {% if is_question %}
-<metabase_question id="{{question_id}}" is_verified="{{question_verified}}">
+<metabase_question id="{{question_id}}" is_verified="{{question_verified}}"{% if question_display_type %} display_type="{{question_display_type}}"{% endif %}>
 <name>{{question_name}}</name>
 {% if question_description %}
 <description>{{question_description}}</description>

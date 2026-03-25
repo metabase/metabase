@@ -11,6 +11,7 @@ type CheckListApiStep =
   | "embed-production"
   | "sso-configured"
   | "enable-tenants"
+  | "move-dashboard-to-shared"
   | "create-tenants"
   | "setup-data-segregation-strategy"
   | "data-permissions-and-enable-tenants"

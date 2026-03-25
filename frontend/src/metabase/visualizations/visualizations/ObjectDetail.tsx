@@ -11,10 +11,7 @@ import {
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
 
-import type {
-  VisualizationDefinition,
-  VisualizationSettingsDefinitions,
-} from "../types";
+import type { VisualizationDefinition } from "../types";
 
 const ObjectDetailProperties: VisualizationDefinition = {
   getUiName() {
@@ -35,7 +32,7 @@ const ObjectDetailProperties: VisualizationDefinition = {
     ...tableColumnSettings({ isShowingDetailsOnlyColumns: true }),
   },
   columnSettings: () => {
-    const settings: VisualizationSettingsDefinitions = {
+    return {
       column_title: {
         title: t`Column title`,
         widget: "input",
@@ -49,8 +46,6 @@ const ObjectDetailProperties: VisualizationDefinition = {
       link_text: { hidden: true },
       link_url: { hidden: true },
     };
-
-    return settings;
   },
   isSensible: () => true,
   checkRenderable: () => true,

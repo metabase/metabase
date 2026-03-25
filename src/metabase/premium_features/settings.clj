@@ -216,10 +216,6 @@
   "Enable restrict email recipients?"
   :email-restrict-recipients)
 
-(define-premium-feature ^{:added "0.50.0"} enable-llm-autodescription?
-  "Enable automatic descriptions of questions and dashboards by LLMs?"
-  :llm-autodescription)
-
 (define-premium-feature ^{:added "0.51.0"} enable-query-reference-validation?
   "Enable the Query Validator Tool?"
   :query-reference-validation)
@@ -249,16 +245,8 @@
   :development-mode)
 
 (define-premium-feature ^{:added "0.52.0"} enable-metabot-v3?
-  "Enable the newest LLM-based MetaBot? (The one that lives in [[metabase-enterprise.metabot-v3.core]].)"
+  "Enable the newest LLM-based MetaBot? (The one that lives in [[metabase.metabot.core]].)"
   :metabot-v3)
-
-(define-premium-feature ^{:added "0.54.0"} enable-ai-sql-fixer?
-  "Should Metabase suggest SQL fixes?"
-  :ai-sql-fixer)
-
-(define-premium-feature ^{:added "0.54.0"} enable-ai-sql-generation?
-  "Should Metabase generate SQL queries?"
-  :ai-sql-generation)
 
 ; the "-feature" suffix avoids name collision with the setting getter
 (define-premium-feature ^{:added "0.55.0"} enable-embedding-simple-feature?
@@ -268,10 +256,6 @@
 (define-premium-feature ^{:added "0.57.0"} enable-embedding-hub?
   "Should we enable the embedding hub?"
   :embedding-hub)
-
-(define-premium-feature ^{:added "0.55.0"} enable-ai-entity-analysis?
-  "Should Metabase do AI analysis on entities?"
-  :ai-entity-analysis)
 
 (define-premium-feature ^{:added "0.56.0"} cloud-custom-smtp?
   "Can Metabase have a custom smtp details separate from the default Cloud details."
@@ -331,9 +315,6 @@
 
 (defn- -token-features []
   {:advanced_permissions           (enable-advanced-permissions?)
-   :ai_sql_fixer                   (enable-ai-sql-fixer?)
-   :ai_sql_generation              (enable-ai-sql-generation?)
-   :ai_entity_analysis             (enable-ai-entity-analysis?)
    :attached_dwh                   (has-attached-dwh?)
    :audit_app                      (enable-audit-app?)
    :cache_granular_controls        (enable-cache-granular-controls?)
@@ -358,7 +339,6 @@
    :etl_connections                (enable-etl-connections?)
    :etl_connections_pg             (enable-etl-connections-pg?)
    :hosting                        (is-hosted?)
-   :llm_autodescription            (enable-llm-autodescription?)
    :metabot_v3                     (enable-metabot-v3?)
    :official_collections           (enable-official-collections?)
    :query_reference_validation     (enable-query-reference-validation?)
