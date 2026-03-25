@@ -133,7 +133,8 @@
   [result format-fn]
   (m/assoc-some result :output (some-> result :structured-output format-fn)))
 
-(mu/defn ^{:tool-name "list_available_data_sources"}
+(mu/defn ^{:tool-name "list_available_data_sources"
+           :scope     "agent:metadata:read"}
   list-available-data-sources-tool
   "List all data sources (metrics and models) available to the metabot instance."
   [_args :- [:maybe [:map {:closed true}]]]
@@ -148,7 +149,8 @@
    [:model_ids [:sequential :int]]
    [:metric_ids [:sequential :int]]])
 
-(mu/defn ^{:tool-name "list_available_fields"}
+(mu/defn ^{:tool-name "list_available_fields"
+           :scope     "agent:metadata:read"}
   list-available-fields-tool
   "Retrieve metadata for tables, models, and metrics."
   [{:keys [table_ids model_ids metric_ids]} :- list-available-fields-schema]
@@ -164,7 +166,8 @@
    [:source_id :int]
    [:field_id :string]])
 
-(mu/defn ^{:tool-name "get_field_values"}
+(mu/defn ^{:tool-name "get_field_values"
+           :scope     "agent:metadata:read"}
   get-field-values-tool
   "Return metadata for a given field of a given data source."
   [{:keys [data_source source_id field_id]} :- get-field-values-schema]

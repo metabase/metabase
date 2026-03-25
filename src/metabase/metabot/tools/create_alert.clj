@@ -138,6 +138,7 @@ NEVER tell the user you have created an alert without actually calling the creat
    [:send_once {:optional true :default false} :boolean]])
 
 (mu/defn ^{:tool-name           "create_alert"
+           :scope               "agent:alert:create"
            :system-instructions create-alert-system-instructions}
   create-alert-tool
   "Create an alert based on a saved question's results on a recurring schedule."

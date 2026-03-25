@@ -99,6 +99,7 @@ Before calling the tool, ensure you have ALL of the following:
 If any required information is missing, ask the user for it rather than assuming or fabricating values.")
 
 (mu/defn ^{:tool-name           "create_dashboard_subscription"
+           :scope               "agent:dashboard:subscribe"
            :system-instructions create-dashboard-subscription-system-instructions}
   slackbot-create-dashboard-subscription-tool
   "Create a recurring subscription that delivers a dashboard's contents to a Slack channel."
@@ -132,7 +133,8 @@ If any required information is missing, ask the user for it rather than assuming
                [:day_of_week {:optional true} [:maybe :string]]
                [:day_of_month {:optional true} [:maybe :string]]]]])
 
-(mu/defn ^{:tool-name "create_dashboard_subscription"}
+(mu/defn ^{:tool-name "create_dashboard_subscription"
+           :scope     "agent:dashboard:subscribe"}
   create-dashboard-subscription-tool
   "Create a dashboard subscription to send regular updates via email or Slack.
 

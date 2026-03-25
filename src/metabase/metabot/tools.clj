@@ -119,6 +119,7 @@
                      :decode               (:decode m)
                      :system-instructions  (:system-instructions m)
                      :capabilities         (:capabilities m)
+                     :scope                (:scope m)
                      :fn                   (if (contains? state-dependent-tools tool-name)
                                              (fn [args]
                                                (binding [shared/*memory-atom* memory-atom
