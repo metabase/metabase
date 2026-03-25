@@ -2,7 +2,6 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { PLUGIN_IS_EE_BUILD } from "metabase/plugins";
-import type { EntityToken } from "metabase-types/api/entity";
 
 export function isEmpty(str: string | null) {
   if (str != null) {
@@ -31,13 +30,6 @@ export function numberToWord(num: number) {
   } else {
     return "" + num;
   }
-}
-
-export function isJWT(string: unknown): string is string {
-  return (
-    typeof string === "string" &&
-    /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(string)
-  );
 }
 
 export function equals(a: unknown, b: unknown) {
@@ -168,35 +160,3 @@ export function versionIsLatest({
  * ie: "Switch binary" vs "Put a valid token in the settings"
  */
 export const isEEBuild = () => PLUGIN_IS_EE_BUILD.isEEBuild();
-
-// Extract resource id from signed JWT token used in Static Embedding
-export const extractResourceIdFromJwtToken = (jwtToken: EntityToken) => {
-  try {
-    const parts = jwtToken.split(".");
-    const payloadPart = parts[1];
-
-    let base64 = payloadPart.replace(/-/g, "+").replace(/_/g, "/");
-    const padding = base64.length % 4;
-
-    if (padding === 2) {
-      base64 += "==";
-    } else if (padding === 3) {
-      base64 += "=";
-    } else if (padding !== 0) {
-      throw new Error("Invalid base64url payload");
-    }
-
-    const jsonString = decodeURIComponent(
-      Array.from(window.atob(base64))
-        .map((c) => "%" + c.charCodeAt(0).toString(16).padStart(2, "0"))
-        .join(""),
-    );
-    const payload = JSON.parse(jsonString);
-    const resource = payload.resource;
-    const entityId = resource.dashboard || resource.question;
-
-    return entityId;
-  } catch {
-    return null;
-  }
-};

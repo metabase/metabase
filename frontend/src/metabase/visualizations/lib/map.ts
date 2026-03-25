@@ -1,5 +1,5 @@
 import { IS_EMBED_PREVIEW } from "metabase/utils/embed";
-import { isJWT } from "metabase/utils/utils";
+import { isJWT } from "metabase/utils/jwt";
 import { isUuid } from "metabase/utils/uuid";
 import type { DashboardId, JsonQuery, Parameter } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";

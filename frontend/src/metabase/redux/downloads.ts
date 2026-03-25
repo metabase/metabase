@@ -12,14 +12,14 @@ import { waitUntilNextFramePainted } from "metabase/common/utils/wait-until-next
 import { trackExportDashboardToPDF } from "metabase/dashboard/analytics";
 import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "metabase/dashboard/constants";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { getTokenFeature } from "metabase/setup/selectors";
 import api, { GET, POST } from "metabase/utils/api";
 import { isWithinIframe, openSaveDialog } from "metabase/utils/dom";
+import { isJWT } from "metabase/utils/jwt";
 import { createAsyncThunk } from "metabase/utils/redux";
 import { checkNotNull } from "metabase/utils/types";
 import * as Urls from "metabase/utils/urls";
-import { isJWT } from "metabase/utils/utils";
 import { isUuid } from "metabase/utils/uuid";
-import { getTokenFeature } from "metabase/setup/selectors";
 import { saveChartImage } from "metabase/visualizations/lib/save-chart-image";
 import { saveDashboardPdf } from "metabase/visualizations/lib/save-dashboard-pdf";
 import { getCardKey } from "metabase/visualizations/lib/utils";

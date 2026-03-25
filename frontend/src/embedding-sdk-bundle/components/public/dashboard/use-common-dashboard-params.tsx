@@ -8,11 +8,11 @@ import {
 } from "metabase/dashboard/actions";
 import { getNewCardUrl } from "metabase/dashboard/actions/getNewCardUrl";
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
-import { parseNumber } from "metabase/utils/number";
-import * as Urls from "metabase/utils/urls";
-import { isJWT } from "metabase/utils/utils";
 import { navigateBackToDashboard } from "metabase/query_builder/actions";
 import { getMetadata } from "metabase/selectors/metadata";
+import { isJWT } from "metabase/utils/jwt";
+import { parseNumber } from "metabase/utils/number";
+import * as Urls from "metabase/utils/urls";
 import type Question from "metabase-lib/v1/Question";
 import {
   type DashboardId,

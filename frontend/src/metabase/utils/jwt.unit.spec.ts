@@ -1,6 +1,6 @@
 import { SignJWT } from "jose";
 
-import { extractResourceIdFromJwtToken } from "metabase/utils/utils";
+import { extractResourceIdFromJwtToken } from "./jwt";
 
 const SECRET = new TextEncoder().encode("test-secret-key-for-jwt-signing");
 
