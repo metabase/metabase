@@ -16,8 +16,9 @@
    do the library will pass the client-id (a UUID) which is not a valid integer — the
    lenient nil return keeps this path open."
   [user-id]
-  (when (some->> user-id str (re-matches #"[1-9]\d*"))
-    (Integer/parseInt (str user-id))))
+  (let [s (str user-id)]
+    (when (re-matches #"[1-9]\d*" s)
+      (Integer/parseInt s))))
 
 (defn- parse-user-id-or-throw
   "Like [[parse-user-id]] but throws if the user-id is missing or not a valid integer.
