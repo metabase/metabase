@@ -476,15 +476,6 @@
   "Aggregation — count (field optional), field-based (field required), or measure-based."
   [:or ::count-aggregation ::field-aggregation ::measure-aggregation])
 
-(mr/def ::group-by
-  [:and
-   [:map
-    [:field_id :string]
-    [:field_granularity {:optional true}
-     [:maybe [:enum {:encode/tool-api-request keyword}
-              "minute", "hour" "day" "week" "month" "quarter" "year" "day-of-week"]]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
-
 (mr/def ::field
   [:and
    [:map

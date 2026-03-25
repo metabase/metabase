@@ -19,7 +19,6 @@
    [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.settings :as metabot.settings]
-   [metabase.metabot.tools.api]
    [metabase.server.streaming-response :as sr]
    [metabase.slackbot.api]
    [metabase.util :as u]
@@ -30,8 +29,7 @@
    (java.io OutputStream)))
 
 (comment
-  metabase.metabot.api.describe/keep-me
-  metabase.metabot.tools.api/keep-me)
+  metabase.metabot.api.describe/keep-me)
 
 (set! *warn-on-reflection* true)
 
@@ -262,7 +260,6 @@
     {"/metabot"  metabase.metabot.api.metabot/routes
      "/document" metabase.metabot.api.document/routes
      ;; premium check happens in the route so we still ack events to prevent slack retrying
-     "/slack"    metabase.slackbot.api/routes
-     "/tools"    (api.macros/ns-handler 'metabase.metabot.tools.api +auth)})
+     "/slack"    metabase.slackbot.api/routes})
    (api.macros/ns-handler 'metabase.metabot.api.describe +auth)
    (api.macros/ns-handler *ns* +auth)))
