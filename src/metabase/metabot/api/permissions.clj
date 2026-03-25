@@ -41,10 +41,11 @@
    permissions list with defaults filled in."
   [_route-params
    _query-params
-   permissions :- [:sequential [:map
-                                [:group_id pos-int?]
-                                [:perm_type :string]
-                                [:perm_value :string]]]]
+   {:keys [permissions]} :- [:map
+                             [:permissions [:sequential [:map
+                                                         [:group_id pos-int?]
+                                                         [:perm_type :string]
+                                                         [:perm_value :string]]]]]]
   (api/check-superuser)
   (t2/with-transaction [_conn]
     (doseq [{:keys [group_id perm_type perm_value]} permissions]
