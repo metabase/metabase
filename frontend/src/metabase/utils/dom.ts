@@ -11,12 +11,6 @@ import { isObject } from "metabase-types/guards";
 
 import { checkNotNull } from "./types";
 
-// IE doesn't support scrollX/scrollY:
-export const getScrollX = (): number =>
-  typeof window.scrollX === "undefined" ? window.pageXOffset : window.scrollX;
-export const getScrollY = (): number =>
-  typeof window.scrollY === "undefined" ? window.pageYOffset : window.scrollY;
-
 // denotes whether the current page is loaded in an iframe or not
 // Cypress renders the whole app within an iframe, but we want to exclude it from this check to avoid certain components (like Nav bar) not rendering
 // Storybook also uses an iframe to display story content, so we want to ignore it
