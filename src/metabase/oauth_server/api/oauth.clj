@@ -26,6 +26,16 @@
   []
   (codecs/bytes->hex (nonce/random-bytes 16)))
 
+(defn- csrf-cookie-opts
+  "Cookie options for the CSRF cookie. Sets `:secure` when site-url is HTTPS."
+  [max-age]
+  (cond-> {:http-only true
+           :same-site :strict
+           :path      "/oauth/authorize"
+           :max-age   max-age}
+    (str/starts-with? (system/site-url) "https")
+    (assoc :secure true)))
+
 (defn- login-redirect-url
   "Build a redirect URL to the login page that will redirect back to the given path after login.
    Only allows redirecting back to OAuth paths to prevent open-redirect attacks."
@@ -133,11 +143,7 @@
                                              :code_challenge        (:code_challenge parsed)
                                              :code_challenge_method (:code_challenge_method parsed)
                                              :resource              (:resource parsed)}})}
-                  (response/set-cookie csrf-cookie-name csrf-token
-                                       {:http-only true
-                                        :same-site :strict
-                                        :path      "/oauth/authorize"
-                                        :max-age   600})))
+                  (response/set-cookie csrf-cookie-name csrf-token (csrf-cookie-opts 600))))
             (catch clojure.lang.ExceptionInfo e
               {:status  400
                :headers {"Content-Type" "application/json"}
@@ -173,18 +179,12 @@
                         (-> {:status  302
                              :headers {"Location" url}
                              :body    ""}
-                            (response/set-cookie csrf-cookie-name "" {:http-only true
-                                                                      :same-site :strict
-                                                                      :path      "/oauth/authorize"
-                                                                      :max-age   0})))
+                            (response/set-cookie csrf-cookie-name "" (csrf-cookie-opts 0))))
                       (let [url (oidc/deny-authorization provider parsed "access_denied" "User denied the request")]
                         (-> {:status  302
                              :headers {"Location" url}
                              :body    ""}
-                            (response/set-cookie csrf-cookie-name "" {:http-only true
-                                                                      :same-site :strict
-                                                                      :path      "/oauth/authorize"
-                                                                      :max-age   0})))))
+                            (response/set-cookie csrf-cookie-name "" (csrf-cookie-opts 0))))))
                   (catch clojure.lang.ExceptionInfo e
                     {:status  400
                      :headers {"Content-Type" "application/json"}
