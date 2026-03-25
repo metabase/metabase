@@ -48,6 +48,7 @@ export const SetupPermissionsAndTenantsPage = () => {
 
   // Track the tenants created in this onboarding flow
   const [createdTenants, setCreatedTenants] = useState<CreatedTenantData[]>([]);
+  const [needsTenantRecreation, setNeedsTenantRecreation] = useState(false);
 
   const [tenantDrafts, setTenantDrafts] = useState<CreatedTenantData[]>(() => [
     createEmptyTenantDraft(1),
@@ -76,7 +77,13 @@ export const SetupPermissionsAndTenantsPage = () => {
   const isDataSegregationSetupDone =
     checklist?.["setup-data-segregation-strategy"] ?? false;
 
-  const isTenantsCreated = checklist?.["create-tenants"] ?? false;
+  const backendStrategy =
+    checklistResponse?.["data-isolation-strategy"] ?? null;
+  const isTenantsCreatedFromBackend = checklist?.["create-tenants"] ?? false;
+  const isTenantsCreated =
+    !needsTenantRecreation &&
+    (createdTenants.length > 0 ||
+      (isTenantsCreatedFromBackend && activeStrategy === backendStrategy));
 
   // When data segregation is finally configured, we permanently
   // mark this step as done. Otherwise rely on UI state.
@@ -174,11 +181,29 @@ export const SetupPermissionsAndTenantsPage = () => {
           <DataSegregationStrategyPicker
             value={activeStrategy}
             onChange={(value) => {
+              const hasStrategyChanged = value !== activeStrategy;
+
               setSelectedStrategy(value);
               setIsStrategyConfirmed(false);
+
+              if (hasStrategyChanged) {
+                setCreatedTenants([]);
+                setTenantDrafts([createEmptyTenantDraft(1)]);
+                setRlsSelection(createEmptyRlsSelection());
+                setRlsSelectionsDraft([createEmptyTableColumnSelection()]);
+              }
             }}
             onConfirm={() => {
+              const confirmedStrategy = activeStrategy;
+              const shouldRecreateTenants =
+                confirmedStrategy !== backendStrategy;
+
               setIsStrategyConfirmed(true);
+              setNeedsTenantRecreation(shouldRecreateTenants);
+
+              if (shouldRecreateTenants) {
+                setCreatedTenants([]);
+              }
 
               // User is re-configuring the data segregation,
               // so we need to _always_ go to the next step.
@@ -223,6 +248,7 @@ export const SetupPermissionsAndTenantsPage = () => {
           <PLUGIN_TENANTS.CreateTenantsOnboardingStep
             onTenantsCreated={(tenants) => {
               setCreatedTenants(tenants);
+              setNeedsTenantRecreation(false);
               setTenantDrafts([createEmptyTenantDraft(1)]);
             }}
             tenants={tenantDrafts}
