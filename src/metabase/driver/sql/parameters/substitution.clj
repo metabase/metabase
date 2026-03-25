@@ -292,16 +292,20 @@
   ;; I haven't figured out what that is yet
   (field->clause field {:temporal-unit (align-temporal-unit-with-param-type-and-value driver field param-type value)}))
 
+(defn- maybe->pMBQL [driver mbql]
+  (cond-> mbql
+    (isa? driver/hierarchy driver :sql-mbql5) (lib/->pMBQL)))
+
 (mu/defn- field->identifier :- driver-api/schema.common.non-blank-string
   "Return an appropriate snippet to represent this `field` in SQL given its param type.
    For non-date Fields, this is just a quoted identifier; for dates, the SQL includes appropriately bucketing based on
    the `param-type`."
   [driver field param-type value]
-  (let [[tag id-or-name opts] (field->field-filter-clause driver field param-type value)]
-    (->> (sql.qp/mbql-clause-with-opts driver tag opts id-or-name)
-         (sql.qp/->honeysql driver)
-         (honeysql->replacement-snippet-info driver)
-         :replacement-snippet)))
+  (->> (field->field-filter-clause driver field param-type value)
+       (maybe->pMBQL driver)
+       (sql.qp/->honeysql driver)
+       (honeysql->replacement-snippet-info driver)
+       :replacement-snippet))
 
 (defn- field-filter->replacement-snippet-for-datetime-field
   "Generate replacement snippet for field filter on datetime field. For details on how range is generated see
@@ -322,9 +326,9 @@
             (update x :replacement-snippet
                     (partial str (field->identifier driver field param-type value) " ")))
           (->honeysql [form]
-            (cond->> form
-              (isa? driver/hierarchy driver :sql-mbql5) (lib/->pMBQL)
-              true (sql.qp/->honeysql driver)))]
+            (->> form
+                 (maybe->pMBQL driver)
+                 (sql.qp/->honeysql driver)))]
     (cond
       (params.ops/operator? param-type)
       #_{:clj-kondo/ignore [:deprecated-var]}
@@ -332,7 +336,6 @@
            params.ops/to-clause
            driver-api/desugar-filter-clause
            driver-api/wrap-value-literals-in-mbql
-           ;; TODO(rileythomp, 2026-03): Convert to mbql5 based on driver before ->honeysql
            ->honeysql
            (honeysql->replacement-snippet-info driver))
 
@@ -342,7 +345,6 @@
         (->> (params.dates/date-string->filter value field-clause)
              driver-api/desugar-filter-clause
              driver-api/wrap-value-literals-in-mbql
-             ;; TODO(rileythomp, 2026-03): Convert to mbql5 based on driver before ->honeysql
              ->honeysql
              (honeysql->replacement-snippet-info driver)))
 
@@ -369,8 +371,8 @@
   [driver field alias replacement-snippet-info]
   (if (str/blank? alias)
     replacement-snippet-info
-    ;; TODO(rileythomp, 2026-03): Convert to mbql5 based on driver before ->honeysql
     (let [[old-name] (->> (field->clause field nil)
+                          (maybe->pMBQL driver)
                           (sql.qp/->honeysql driver)
                           (sql.qp/format-honeysql driver))]
       (update replacement-snippet-info :replacement-snippet str/replace old-name alias))))
@@ -412,13 +414,11 @@
 
 (defmethod ->replacement-snippet-info [:sql TemporalUnit]
   [driver {:keys [value field alias]}]
-  (let [replacement-snippet-info
-        (honeysql->replacement-snippet-info
-         driver
-         ;; TODO(rileythomp, 2026-03): Convert to mbql5 based on driver before ->honeysql
-         (sql.qp/->honeysql driver
-                            (field->clause field (when (not= value params/no-value)
-                                                   {:temporal-unit (keyword value)}))))]
+  (let [replacement-snippet-info (->> (field->clause field (when (not= value params/no-value)
+                                                             {:temporal-unit (keyword value)}))
+                                      (maybe->pMBQL driver)
+                                      (sql.qp/->honeysql driver)
+                                      (honeysql->replacement-snippet-info driver))]
     (replace-alias driver field alias replacement-snippet-info)))
 
 (defmethod ->replacement-snippet-info [:sql ReferencedTableQuery]

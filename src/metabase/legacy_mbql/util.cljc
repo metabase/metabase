@@ -483,8 +483,7 @@
   (cond-> clause
     (mbql.preds/FieldOrExpressionDef? clause) desugar-expression))
 
-;; TODO(rileythomp, 2026-03-18): Make schemas work with mbql4 and mbql5
-(mu/defn desugar-filter-clause ; :- ::mbql.s/Filter
+(mu/defn desugar-filter-clause :- ::mbql.s/Filter
   "Rewrite various 'syntatic sugar' filter clauses like `:time-interval` and `:inside` as simpler, logically
   equivalent clauses. This can be used to simplify the number of filter clauses that need to be supported by anything
   that needs to enumerate all the possible filter types (such as driver query processor implementations, or the
@@ -493,7 +492,7 @@
   DEPRECATED: This will be removed in a future release. Use [[metabase.lib.core/desugar-filter-clause]] instead going
   forward."
   {:deprecated "0.57.0"}
-  [filter-clause #_#_:- ::mbql.s/Filter]
+  [filter-clause :- ::mbql.s/Filter]
   #_{:clj-kondo/ignore [:deprecated-var]}
   (-> filter-clause
       desugar-current-relative-datetime
@@ -678,7 +677,7 @@
 
   DEPRECATED: Use MBQL 5 + [[metabase.lib.core/update-options]] going forward."
   {:arglists '([field-or-ag-ref-or-expression-ref f & args]), :deprecated "0.57.0"}
-  [[clause-type id-or-name opts] #_#_:- ::mbql.s/Reference f & args] ;; TODO(rileythomp, 2026-03): Add schema back here
+  [[clause-type id-or-name opts] :- ::mbql.s/Reference f & args]
   (let [opts (not-empty (remove-empty (apply f opts args)))]
     ;; `:field` clauses should have a `nil` options map if there are no options. `:aggregation` and `:expression`
     ;; should get the arg removed if it's `nil` or empty. (For now. In the future we may change this if we make the
