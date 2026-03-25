@@ -1,8 +1,6 @@
 import type { ComponentType } from "react";
 
-import type { ColumnTypes } from "./column-types";
 import type { Column, DatasetData, RowValue, Series } from "./data";
-import type { FormatValue } from "./format";
 import type {
   TextHeightMeasurer,
   TextMeasurer,
@@ -28,17 +26,6 @@ export type CreateCustomVisualizationProps = {
    * @example getAssetUrl("icon.svg")
    */
   getAssetUrl: (assetPath: string) => string;
-
-  /**
-   * Column type predicates for checking semantic/base/effective types of columns.
-   */
-  columnTypes: ColumnTypes;
-
-  /**
-   * Formats a value for display based on column type and options.
-   * Always returns a string (never JSX).
-   */
-  formatValue: FormatValue;
 
   /**
    * Measures text dimensions (width and height) for given text and font style.

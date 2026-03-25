@@ -4,6 +4,8 @@ import { t } from "ttag";
 
 import { useListCustomVizPluginsQuery } from "metabase/api";
 import { useToast } from "metabase/common/hooks";
+import type { OptionsType } from "metabase/lib/formatting/types";
+import { formatValue as internalFormatValue } from "metabase/lib/formatting/value";
 import {
   measureText,
   measureTextHeight,
@@ -11,6 +13,7 @@ import {
 } from "metabase/lib/measure-text";
 import visualizations, { registerVisualization } from "metabase/visualizations";
 import type { Visualization } from "metabase/visualizations/types/visualization";
+import * as isa from "metabase-lib/v1/types/utils/isa";
 import type {
   CustomVizPluginRuntime,
   VisualizationDisplay,
@@ -37,6 +40,11 @@ declare global {
     __METABASE_VIZ_API__?: {
       React: typeof React;
       jsxRuntime: typeof jsxRuntime;
+      columnTypes: typeof isa;
+      formatValue: (
+        value: unknown,
+        options?: Record<string, unknown>,
+      ) => string;
     };
     // Set by custom viz IIFE bundles during loading, read and cleared by loadCustomVizPlugin
     __customVizPlugin__?: (
@@ -45,9 +53,25 @@ declare global {
   }
 }
 
+function wrappedFormatValue(
+  value: unknown,
+  options?: Record<string, unknown>,
+): string {
+  const result = internalFormatValue(value, {
+    ...(options as OptionsType),
+    jsx: false,
+  });
+  return String(result ?? "");
+}
+
 function ensureVizApi() {
   if (!window.__METABASE_VIZ_API__) {
-    window.__METABASE_VIZ_API__ = { React, jsxRuntime };
+    window.__METABASE_VIZ_API__ = {
+      React,
+      jsxRuntime,
+      columnTypes: isa,
+      formatValue: wrappedFormatValue,
+    };
   }
 }
 

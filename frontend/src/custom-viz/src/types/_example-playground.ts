@@ -1,5 +1,7 @@
 import { defineSetting } from "../lib";
 
+import { isDate } from "../column-types";
+import { formatValue } from "../format";
 import type {
   CreateCustomVisualization,
   CustomStaticVisualizationProps,
@@ -16,10 +18,8 @@ type CustomWidgetProps = {
   options: boolean[];
 };
 
-const createMyViz: CreateCustomVisualization<MyVizSettings> = ({
-  columnTypes: _columnTypes,
-  formatValue: _formatValue,
-  measureText: _measureText,
+export const createMyViz: CreateCustomVisualization<MyVizSettings> = ({
+  measureText,
 }) => {
   return {
     id: "my-custom-viz",

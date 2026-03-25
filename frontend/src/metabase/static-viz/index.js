@@ -10,9 +10,20 @@ import ReactDOMServer from "react-dom/server";
 import enterpriseOverrides from "ee-overrides";
 import "metabase/lib/dayjs";
 
-// Expose React and jsxRuntime for custom viz bundles that reference
+import { formatValue as internalFormatValue } from "metabase/lib/formatting/value";
+import * as isa from "metabase-lib/v1/types/utils/isa";
+
+// Expose React, jsxRuntime, and utils for custom viz bundles that reference
 // window.__METABASE_VIZ_API__ via the metabaseVizExternals Vite plugin.
-window.__METABASE_VIZ_API__ = { React, jsxRuntime };
+window.__METABASE_VIZ_API__ = {
+  React,
+  jsxRuntime,
+  columnTypes: isa,
+  formatValue: (value, options) => {
+    const result = internalFormatValue(value, { ...options, jsx: false });
+    return String(result ?? "");
+  },
+};
 
 import { updateStartOfWeek } from "metabase/lib/i18n";
 import MetabaseSettings from "metabase/lib/settings";

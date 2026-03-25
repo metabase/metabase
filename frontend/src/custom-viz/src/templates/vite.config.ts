@@ -13,6 +13,7 @@ import { defineConfig } from "vite";
 function metabaseVizExternals() {
   const VIRTUAL_REACT = "\0virtual:react";
   const VIRTUAL_JSX_RUNTIME = "\0virtual:react/jsx-runtime";
+  const VIRTUAL_CUSTOM_VIZ = "\0virtual:@metabase/custom-viz";
 
   return {
     name: "metabase-viz-externals",
@@ -24,6 +25,9 @@ function metabaseVizExternals() {
       }
       if (source === "react/jsx-runtime") {
         return VIRTUAL_JSX_RUNTIME;
+      }
+      if (source === "@metabase/custom-viz") {
+        return VIRTUAL_CUSTOM_VIZ;
       }
       return null;
     },
@@ -40,6 +44,13 @@ function metabaseVizExternals() {
         return [
           "const jsxRuntime = window.__METABASE_VIZ_API__.jsxRuntime;",
           "export const { jsx, jsxs, Fragment } = jsxRuntime;",
+        ].join("\n");
+      }
+      if (id === VIRTUAL_CUSTOM_VIZ) {
+        return [
+          "const ct = window.__METABASE_VIZ_API__.columnTypes;",
+          "export const { isDate, isNumeric, isInteger, isBoolean, isString, isStringLike, isSummable, isNumericBaseType, isDateWithoutTime, isNumber, isFloat, isTime, isFK, isPK, isEntityName, isTitle, isProduct, isSource, isAddress, isScore, isQuantity, isCategory, isAny, isState, isCountry, isCoordinate, isLatitude, isLongitude, isCurrency, isPercentage, isID, isURL, isEmail, isAvatarURL, isImageURL, hasLatitudeAndLongitudeColumns } = ct;",
+          "export const formatValue = window.__METABASE_VIZ_API__.formatValue;",
         ].join("\n");
       }
       return null;
