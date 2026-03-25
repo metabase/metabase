@@ -66,7 +66,7 @@
   :audit      :never
   :getter     (fn [] (boolean
                       (and
-                       (not (has-feature? :hosting))
+                       (has-feature? :hosting)
                        (not (airgap-enabled)))))
   :doc        false)
 
