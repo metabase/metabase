@@ -217,12 +217,12 @@
         (when backfill?
           (serdes.backfill/backfill-ids!))
         (let [contents      (serdes.ingest/ingest-list ingestion)
-              ingest-errors (serdes.ingest/ingestion-errors ingestion)
+              ingest-errors (serdes.ingest/ingest-errors ingestion)
               ctx           (cond-> (new-context ingestion)
                               (seq ingest-errors) (update :errors into ingest-errors))]
           (when (and (seq ingest-errors) (not continue-on-error))
             (throw (ex-info (format "Failed to read %d file(s) during ingestion" (count ingest-errors))
-                            {:ingestion-errors ingest-errors}
+                            {:ingest-errors ingest-errors}
                             (first ingest-errors))))
           (log/infof "Starting deserialization, total %s documents" (count contents))
           (reduce (fn [ctx item]

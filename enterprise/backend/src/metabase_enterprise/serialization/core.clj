@@ -26,7 +26,7 @@
   ingest-yaml
   ingest-list
   ingest-one
-  ingestion-errors
+  ingest-errors
   read-timestamps
   parse-key]
  [metabase-enterprise.serialization.v2.load

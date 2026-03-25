@@ -52,8 +52,8 @@
     (u/prog1 (serialization/ingest-one ingestable serdes-path)
       (callback <> serdes-path)))
 
-  (ingestion-errors [_]
-    (serialization/ingestion-errors ingestable)))
+  (ingest-errors [_]
+    (serialization/ingest-errors ingestable)))
 
 (defn wrap-progress-ingestable
   "Wraps an Ingestable to track and update progress during ingestion.
@@ -97,8 +97,8 @@
   (ingest-one [_ serdes-path]
     (serialization/ingest-one ingestable serdes-path))
 
-  (ingestion-errors [_]
-    (serialization/ingestion-errors ingestable)))
+  (ingest-errors [_]
+    (serialization/ingest-errors ingestable)))
 
 (defn wrap-root-dep-ingestable
   "Wraps an Ingestable to filter items by root dependencies.
@@ -111,26 +111,26 @@
   [root-dependencies ingestable]
   (->RootDependencyIngestable ingestable root-dependencies (atom {})))
 
+(defn- populate-cache! [cache errors-atom ingest-fn]
+  (when-not @cache
+    (let [result (ingest-fn)]
+      (reset! cache (:entities result))
+      (reset! errors-atom (:errors result)))))
+
 ;; Wraps a snapshot object providing the ingestable interface for serdes
 (defrecord IngestableSnapshot [^SourceSnapshot snapshot cache errors-atom]
   serialization/Ingestable
   (ingest-list [_]
-    (when-not @cache
-      (let [result (ingest-all snapshot)]
-        (reset! cache (:entities result))
-        (reset! errors-atom (:errors result))))
+    (populate-cache! cache errors-atom #(ingest-all snapshot))
     (keys @cache))
 
   (ingest-one [_ serdes-path]
-    (when-not @cache
-      (let [result (ingest-all snapshot)]
-        (reset! cache (:entities result))
-        (reset! errors-atom (:errors result))))
+    (populate-cache! cache errors-atom #(ingest-all snapshot))
     (when-let [target (get @cache (serialization/strip-labels serdes-path))]
       (try
         (ingest-content (second target))
         (catch Exception e
           (throw (ex-info "Unable to ingest file" {:abs-path serdes-path} e))))))
 
-  (ingestion-errors [_]
+  (ingest-errors [_]
     (or @errors-atom [])))

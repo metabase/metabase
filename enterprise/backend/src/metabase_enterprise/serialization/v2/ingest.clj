@@ -32,7 +32,7 @@
     "Given one of the `:serdes/meta` abstract paths returned by [[ingest-list]], read in and return the entire
     corresponding entity.")
 
-  (ingestion-errors
+  (ingest-errors
     [this]
     "Return a vector of exceptions that occurred during ingestion (e.g. YAML parse failures).
     Returns [] if no errors occurred."))
@@ -104,23 +104,23 @@
                           [(strip-labels hierarchy) [hierarchy file]]))
      :errors  @errors}))
 
+(defn- populate-cache! [cache errors-atom ingest-fn]
+  (when-not @cache
+    (let [result (ingest-fn)]
+      (reset! cache (:entities result))
+      (reset! errors-atom (:errors result)))))
+
 (deftype YamlIngestion [^File root-dir settings cache errors-atom]
   Ingestable
   (ingest-list [_]
-    (when-not @cache
-      (let [result (ingest-all root-dir)]
-        (reset! cache (:entities result))
-        (reset! errors-atom (:errors result))))
+    (populate-cache! cache errors-atom #(ingest-all root-dir))
     (-> @cache
         keys
         (concat (for [k (keys settings)]
                   [{:model "Setting" :id (name k)}]))))
 
   (ingest-one [_ serdes-meta]
-    (when-not @cache
-      (let [result (ingest-all root-dir)]
-        (reset! cache (:entities result))
-        (reset! errors-atom (:errors result))))
+    (populate-cache! cache errors-atom #(ingest-all root-dir))
     (let [{:keys [id]} (first serdes-meta)
           kw-id        (keyword id)]
       (if (= ["Setting"] (mapv :model serdes-meta))
@@ -133,7 +133,7 @@
               (throw (ex-info "Unable to ingest file" {:file     (.getName ^File (second target))
                                                        :abs-path serdes-meta} e))))))))
 
-  (ingestion-errors [_]
+  (ingest-errors [_]
     (or @errors-atom [])))
 
 (defn ingest-yaml

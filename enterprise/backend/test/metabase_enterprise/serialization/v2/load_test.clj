@@ -49,7 +49,7 @@
         (keys mapped))
       (ingest-one [_ path]
         (get mapped (no-labels path)))
-      (ingestion-errors [_]
+      (ingest-errors [_]
         []))))
 
 ;;; WARNING for test authors: [[extract/extract]] returns a lazy reducible value. To make sure you don't

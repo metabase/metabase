@@ -899,6 +899,30 @@
             (let [{:keys [errors]} (#'ingest/ingest-all (io/file dump-dir))]
               (is (= 1 (count errors))))))))))
 
+(deftest ingestion-errors-fail-import-test
+  (testing "Unparseable YAML files cause load-metabase! to fail by default"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (mt/with-empty-h2-app-db!
+        (let [coll (ts/create! :model/Collection :name "coll")
+              _    (ts/create! :model/Card :name "card" :collection_id (:id coll))]
+          (storage/store! (extract/extract {:no-settings   true
+                                            :no-data-model true}) dump-dir)
+          (spit (io/file dump-dir "collections" "corrupt.yaml") "\0")
+
+          (testing "continue-on-error false (default) — throws on ingestion errors"
+            (is (thrown-with-msg? Exception #"Failed to read 1 file\(s\) during ingestion"
+                                  (serdes/with-cache
+                                    (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir))))))
+
+          (testing "continue-on-error true — collects ingestion errors without throwing"
+            (let [result (serdes/with-cache
+                           (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)
+                                                       {:continue-on-error true}))]
+              (is (seq (:errors result))
+                  "Should have collected ingestion errors")
+              (is (seq (:seen result))
+                  "Should have still loaded the valid entities"))))))))
+
 (deftest channel-test
   (mt/test-helpers-set-global-values!
     (ts/with-random-dump-dir [dump-dir "serdesv2-"]
