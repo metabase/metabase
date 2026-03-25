@@ -12,6 +12,7 @@
    [metabase.metabot.api.describe]
    [metabase.metabot.api.document]
    [metabase.metabot.api.metabot]
+   [metabase.metabot.api.permissions]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.context :as metabot.context]
    [metabase.metabot.envelope :as metabot.envelope]
