@@ -63,10 +63,19 @@ export function SettingsNav() {
         icon="globe"
       />
       <SettingsNavItem
-        path="custom-viz-plugins"
-        label={t`Custom viz plugins`}
-        icon="embed"
-      />
+        label={t`Custom visualizations`}
+        icon="bar"
+        folderPattern="custom-visualizations"
+      >
+        <SettingsNavItem
+          path="custom-visualizations"
+          label={t`Manage visualizations`}
+        />
+        <SettingsNavItem
+          path="custom-visualizations/development"
+          label={t`Development`}
+        />
+      </SettingsNavItem>
       <SettingsNavItem path="maps" label={t`Maps`} icon="pinmap" />
       <SettingsNavItem
         path={!hasWhitelabel ? "whitelabel" : undefined}

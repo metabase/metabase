@@ -1,0 +1,16 @@
+.pluginListItem {
+  cursor: pointer;
+  border-radius: var(--mantine-radius-md);
+}
+
+.pluginListItem:hover {
+  background-color: var(--mb-color-background-hover);
+}
+
+.pluginList > *:not(:last-child) {
+  border-bottom: 1px solid var(--mb-color-border);
+}
+
+.devUrlList > *:not(:last-child) {
+  border-bottom: 1px solid var(--mb-color-border);
+}
