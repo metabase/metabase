@@ -22,7 +22,7 @@ databaseChangeLog:
             columnName: target_table_id
 
   - changeSet:
-      id: v60.2026-03-10T00:00:05
+      id: v60.2026-03-10T00:00:01
       author: christruter
       comment: Add index on transform.target_table_id
       changes:
@@ -34,7 +34,7 @@ databaseChangeLog:
                   name: target_table_id
 
   - changeSet:
-      id: v60.2026-03-10T00:00:01
+      id: v60.2026-03-10T00:00:02
       author: christruter
       comment: Add FK from transform.target_table_id to metabase_table with SET NULL
       preConditions:
@@ -52,7 +52,7 @@ databaseChangeLog:
             onDelete: SET NULL
 
   - changeSet:
-      id: v60.2026-03-10T00:00:02
+      id: v60.2026-03-10T00:00:03
       author: christruter
       comment: Backfill transform.target_table_id from target JSON column
       changes:
@@ -61,7 +61,7 @@ databaseChangeLog:
       rollback:
 
   - changeSet:
-      id: v60.2026-03-10T00:00:06
+      id: v60.2026-03-10T00:00:04
       author: christruter
       comment: Add index on workspace_output.global_table_id
       changes:
@@ -73,7 +73,7 @@ databaseChangeLog:
                   name: global_table_id
 
   - changeSet:
-      id: v60.2026-03-10T00:00:03
+      id: v60.2026-03-10T00:00:05
       author: christruter
       comment: Add FK from workspace_output.global_table_id to metabase_table with SET NULL
       preConditions:
@@ -91,7 +91,7 @@ databaseChangeLog:
             onDelete: SET NULL
 
   - changeSet:
-      id: v60.2026-03-10T00:00:07
+      id: v60.2026-03-10T00:00:06
       author: christruter
       comment: Add index on workspace_output.isolated_table_id
       changes:
@@ -103,7 +103,7 @@ databaseChangeLog:
                   name: isolated_table_id
 
   - changeSet:
-      id: v60.2026-03-10T00:00:04
+      id: v60.2026-03-10T00:00:07
       author: christruter
       comment: Add FK from workspace_output.isolated_table_id to metabase_table with SET NULL
       preConditions:
@@ -121,7 +121,7 @@ databaseChangeLog:
             onDelete: SET NULL
 
   - changeSet:
-      id: v60.2026-03-10T00:00:09
+      id: v60.2026-03-10T00:00:08
       author: christruter
       comment: Add FK from workspace_input.table_id to metabase_table with SET NULL
       preConditions:
@@ -139,7 +139,7 @@ databaseChangeLog:
             onDelete: SET NULL
 
   - changeSet:
-      id: v60.2026-03-10T00:00:10
+      id: v60.2026-03-10T00:00:09
       author: christruter
       comment: Add index on workspace_input_external.table_id
       changes:
@@ -151,7 +151,7 @@ databaseChangeLog:
                   name: table_id
 
   - changeSet:
-      id: v60.2026-03-10T00:00:11
+      id: v60.2026-03-10T00:00:10
       author: christruter
       comment: Add FK from workspace_input_external.table_id to metabase_table with SET NULL
       preConditions:
@@ -169,7 +169,7 @@ databaseChangeLog:
             onDelete: SET NULL
 
   - changeSet:
-      id: v60.2026-03-10T00:00:12
+      id: v60.2026-03-10T00:00:11
       author: christruter
       comment: Add index on workspace_output_external.global_table_id
       changes:
@@ -181,7 +181,7 @@ databaseChangeLog:
                   name: global_table_id
 
   - changeSet:
-      id: v60.2026-03-10T00:00:13
+      id: v60.2026-03-10T00:00:12
       author: christruter
       comment: Add FK from workspace_output_external.global_table_id to metabase_table with SET NULL
       preConditions:
@@ -199,7 +199,7 @@ databaseChangeLog:
             onDelete: SET NULL
 
   - changeSet:
-      id: v60.2026-03-10T00:00:14
+      id: v60.2026-03-10T00:00:13
       author: christruter
       comment: Add index on workspace_output_external.isolated_table_id
       changes:
@@ -211,7 +211,7 @@ databaseChangeLog:
                   name: isolated_table_id
 
   - changeSet:
-      id: v60.2026-03-10T00:00:15
+      id: v60.2026-03-10T00:00:14
       author: christruter
       comment: Add FK from workspace_output_external.isolated_table_id to metabase_table with SET NULL
       preConditions:
