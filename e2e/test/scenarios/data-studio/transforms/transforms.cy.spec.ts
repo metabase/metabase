@@ -1808,7 +1808,7 @@ LIMIT
           .click()
           .should("be.checked");
         cy.findByTestId("database-name-confirmation-input").type(DB_NAME);
-        cy.findByText("Delete this content and the DB connection").click();
+        cy.findByText("Delete this DB connection").click();
         cy.wait("@deleteDb");
       });
 
