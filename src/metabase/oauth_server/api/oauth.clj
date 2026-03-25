@@ -198,7 +198,7 @@
                 form-token   (str (:csrf_token body))
                 auth-params  (select-keys body [:client_id :redirect_uri :response_type :scope :state :nonce
                                                 :code_challenge :code_challenge_method :resource])
-                params-sig   (str (:params_sig body))]
+                params-sig   (some-> (:params_sig body) str)]
             (cond
               (or (str/blank? cookie-token)
                   (str/blank? form-token)
