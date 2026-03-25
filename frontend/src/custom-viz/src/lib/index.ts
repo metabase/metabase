@@ -1,1 +1,1 @@
-export * from "./defineSettings";
+export * from "./defineSetting";
