@@ -1,5 +1,5 @@
 import type {
-  CustomVisualizationSettingsDefinitions,
+  CustomVisualizationSettingDefinition,
   Series,
   WidgetName,
   Widgets,
@@ -42,6 +42,6 @@ export function defineSetting<
     vizSettings: CustomVisualizationSettings,
   ): PropsFromWidget<W>;
   getValue?: (series: Series, settings: CustomVisualizationSettings) => TValue;
-}): CustomVisualizationSettingsDefinitions<CustomVisualizationSettings> {
-  return settingDefinition;
+}): CustomVisualizationSettingDefinition<CustomVisualizationSettings> {
+  return settingDefinition as unknown as CustomVisualizationSettingDefinition<CustomVisualizationSettings>;
 }

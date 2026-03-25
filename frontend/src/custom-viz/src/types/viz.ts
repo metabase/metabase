@@ -31,9 +31,8 @@ export type CreateCustomVisualizationProps = {
    */
 };
 
-export type CustomVisualizationSettingsDefinitions<
-  _CustomVisualizationSettings,
-> = unknown;
+export type CustomVisualizationSettingDefinition<_CustomVisualizationSettings> =
+  unknown;
 
 export type CustomVisualization<CustomVisualizationSettings> = {
   /**
@@ -69,7 +68,10 @@ export type CustomVisualization<CustomVisualizationSettings> = {
   /**
    * Visualization settings definitions.
    */
-  settings?: CustomVisualizationSettingsDefinitions<CustomVisualizationSettings>;
+  settings?: Record<
+    keyof CustomVisualizationSettings,
+    CustomVisualizationSettingDefinition<CustomVisualizationSettings>
+  >;
 
   /**
    * This function should return true if the data shape makes sense for this visualization.
