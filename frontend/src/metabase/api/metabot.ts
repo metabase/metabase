@@ -32,26 +32,11 @@ export const metabotApi = Api.injectEndpoints({
       MetabotSettingsResponse,
       { provider: MetabotProvider }
     >({
-      queryFn: async ({ provider }, _api, _extraOptions, baseQuery) => {
-        if (provider === "metabase") {
-          return {
-            data: {
-              value: "metabase/smart",
-              models: [
-                { id: "fast", display_name: "Fast" },
-                { id: "smart", display_name: "Smart" },
-                { id: "genius", display_name: "Genius" },
-              ],
-            },
-          };
-        }
-
-        return baseQuery({
-          method: "GET",
-          url: "/api/metabot/settings",
-          params: { provider },
-        }) as { data: MetabotSettingsResponse };
-      },
+      query: ({ provider }) => ({
+        method: "GET",
+        url: "/api/metabot/settings",
+        params: { provider },
+      }),
       providesTags: () => [listTag("llm-models"), "session-properties"],
     }),
     updateMetabotSettings: builder.mutation<
