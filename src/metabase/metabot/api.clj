@@ -65,15 +65,6 @@
                                        (map #(+ (:prompt %) (:completion %)))
                                        (apply +))})))
 
-(defn- check-metabot-enabled!
-  "Checks that the Metabot instance identified by `metabot-id` is enabled. Throws a 403 if it's not."
-  [metabot-id]
-  (if (= metabot-id metabot.config/embedded-metabot-id)
-    (api/check (metabot.settings/embedded-metabot-enabled?)
-               [403 "Embedded Metabot is not enabled."])
-    (api/check (metabot.settings/metabot-enabled?)
-               [403 "Metabot is not enabled."])))
-
 (defn- extract-usage
   "Extract usage from parts, taking the last `:usage` per model.
 
@@ -204,7 +195,7 @@
   [{:keys [metabot_id profile_id message context history conversation_id state debug]}]
   (let [message    (metabot.envelope/user-message message)
         metabot-id (metabot.config/resolve-dynamic-metabot-id metabot_id)
-        _          (check-metabot-enabled! metabot-id)
+        _          (metabot.config/check-metabot-enabled! metabot-id)
         profile-id (metabot.config/resolve-dynamic-profile-id profile_id metabot-id)
         ;; Only allow debug mode in dev — never in production
         debug?     (and config/is-dev? (boolean debug))]
@@ -249,6 +240,7 @@
   [_route-params
    _query-params
    feedback :- :map]
+  (metabot.config/check-metabot-enabled!)
   (try
     (api/check-400 (metabot.feedback/submit-to-harbormaster! feedback)
                    "Cannot submit feedback. The license token and/or Store API URL are missing!")

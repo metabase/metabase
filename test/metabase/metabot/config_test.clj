@@ -44,6 +44,19 @@
           (is (= "embedding_next"
                  (metabot.config/resolve-dynamic-profile-id nil))))))))
 
+(deftest check-metabot-enabled-test
+  (testing "0-arity throws when both are disabled, passes when either is enabled"
+    (mt/with-temporary-setting-values [metabot-enabled? false embedded-metabot-enabled? false]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Metabot is not enabled"
+                            (metabot.config/check-metabot-enabled!))))
+    (mt/with-temporary-setting-values [metabot-enabled? true embedded-metabot-enabled? false]
+      (is (metabot.config/check-metabot-enabled!))))
+  (testing "1-arity checks the specific instance's setting"
+    (mt/with-temporary-setting-values [metabot-enabled? false embedded-metabot-enabled? true]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Metabot is not enabled"
+                            (metabot.config/check-metabot-enabled! metabot.config/internal-metabot-id)))
+      (is (metabot.config/check-metabot-enabled! metabot.config/embedded-metabot-id)))))
+
 (deftest integrated-resolution-test
   (testing "combination of metabot-id and profile-id precedence resolution"
     (mt/with-premium-features #{:metabot-v3}
