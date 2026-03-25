@@ -2,7 +2,6 @@
   (:gen-class)
   (:require
    [clojure.java.io :as io]
-   [clojure.string :as str]
    [clojure.tools.cli :as cli]))
 
 (set! *warn-on-reflection* true)
@@ -42,15 +41,17 @@
    Errors if --mode is specified but not recognized.
    The mode's -main function is responsible for calling System/exit."
   [mode args]
-  (let [startup (case mode
-                  "checker" 'metabase-enterprise.checker.cli/-main
-                  nil)]
-    (if startup
-      ((requiring-resolve startup) args)
-      (do (binding [*out* *err*]
-            (println (str "Unknown mode: " mode))
-            (println "Available modes: checker"))
-          (System/exit 1)))))
+  (if (nil? mode)
+    false
+    (let [startup (case mode
+                    "checker" 'metabase-enterprise.checker.cli/-main
+                    nil)]
+      (if startup
+        ((requiring-resolve startup) args)
+        (do (binding [*out* *err*]
+              (println (str "Unknown mode: " mode))
+              (println "Available modes: checker"))
+            (System/exit 1))))))
 
 (defn -main
   "Main entrypoint. Invokes [[metabase.core.core/entrypoint]]"
