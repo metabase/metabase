@@ -63,6 +63,29 @@
               (codecs/hex->bytes signature)
               {:key csrf-token :alg :hmac+sha256}))
 
+(def ^:private oauth-param-keys
+  "The set of OAuth authorization parameters that are signed and verified."
+  [:client_id
+   :code_challenge
+   :code_challenge_method
+   :nonce
+   :redirect_uri
+   :resource
+   :response_type
+   :scope
+   :state])
+
+(defn- redirect-authorization-decision
+  "Issue a 302 redirect for an approved or denied authorization decision, clearing the CSRF cookie."
+  [provider parsed approved request]
+  (let [url (if approved
+              (oidc/authorize provider parsed (str (:metabase-user-id request)))
+              (oidc/deny-authorization provider parsed "access_denied" "User denied the request"))]
+    (-> {:status  302
+         :headers {"Location" url}
+         :body    ""}
+        (response/set-cookie csrf-cookie-name "" (csrf-cookie-opts 0)))))
+
 (defn- login-redirect-url
   "Build a redirect URL to the login page that will redirect back to the given path after login.
    Only allows redirecting back to OAuth paths to prevent open-redirect attacks."
@@ -155,15 +178,7 @@
             (let [parsed      (oidc/parse-authorization-request provider query-params)
                   client      (proto/get-client (:client-store provider) (:client_id parsed))
                   csrf-token  (generate-csrf-token)
-                  oauth-params {:client_id             (:client_id parsed)
-                                :redirect_uri          (:redirect_uri parsed)
-                                :response_type         (:response_type parsed)
-                                :scope                 (:scope parsed)
-                                :state                 (:state parsed)
-                                :nonce                 (:nonce parsed)
-                                :code_challenge        (:code_challenge parsed)
-                                :code_challenge_method (:code_challenge_method parsed)
-                                :resource              (:resource parsed)}
+                  oauth-params (select-keys parsed oauth-param-keys)
                   params-sig  (sign-oauth-params csrf-token oauth-params)]
               (-> {:status  200
                    :headers {"Content-Type" "text/html; charset=utf-8"}
@@ -196,48 +211,26 @@
     (or (when-let [provider (oauth-server/get-provider)]
           (let [cookie-token (get-in request [:cookies csrf-cookie-name :value])
                 form-token   (str (:csrf_token body))
-                auth-params  (select-keys body [:client_id :redirect_uri :response_type :scope :state :nonce
-                                                :code_challenge :code_challenge_method :resource])
+                auth-params  (select-keys body oauth-param-keys)
                 params-sig   (some-> (:params_sig body) str)]
-            (cond
-              (or (str/blank? cookie-token)
-                  (str/blank? form-token)
-                  (not (oidc-util/constant-time-eq? cookie-token form-token)))
+            (if (or (str/blank? cookie-token)
+                    (str/blank? form-token)
+                    (not (oidc-util/constant-time-eq? cookie-token form-token)))
               {:status  403
                :headers {"Content-Type" "application/json"}
                :body    {:error "csrf_validation_failed"}}
-
-              :else
               (let [approved (= "true" (str (:approved body)))]
                 (try
-                  (let [parsed       (oidc/parse-authorization-request provider auth-params)
+                  (let [parsed        (oidc/parse-authorization-request provider auth-params)
                         ;; Verify the HMAC against the *parsed* params (same normalized form as the consent page).
                         ;; This must happen after parsing to ensure form-encoding round-trips don't cause mismatches.
-                        parsed-params {:client_id             (:client_id parsed)
-                                       :redirect_uri          (:redirect_uri parsed)
-                                       :response_type         (:response_type parsed)
-                                       :scope                 (:scope parsed)
-                                       :state                 (:state parsed)
-                                       :nonce                 (:nonce parsed)
-                                       :code_challenge        (:code_challenge parsed)
-                                       :code_challenge_method (:code_challenge_method parsed)
-                                       :resource              (:resource parsed)}]
+                        parsed-params (select-keys parsed oauth-param-keys)]
                     (if (or (str/blank? params-sig)
                             (not (verify-oauth-params-signature cookie-token parsed-params params-sig)))
                       {:status  403
                        :headers {"Content-Type" "application/json"}
                        :body    {:error "params_tampered"}}
-                      (if approved
-                        (let [url (oidc/authorize provider parsed (str (:metabase-user-id request)))]
-                          (-> {:status  302
-                               :headers {"Location" url}
-                               :body    ""}
-                              (response/set-cookie csrf-cookie-name "" (csrf-cookie-opts 0))))
-                        (let [url (oidc/deny-authorization provider parsed "access_denied" "User denied the request")]
-                          (-> {:status  302
-                               :headers {"Location" url}
-                               :body    ""}
-                              (response/set-cookie csrf-cookie-name "" (csrf-cookie-opts 0)))))))
+                      (redirect-authorization-decision provider parsed approved request)))
                   (catch ExceptionInfo e
                     (log/warn e "OAuth authorization decision failed")
                     {:status  400
