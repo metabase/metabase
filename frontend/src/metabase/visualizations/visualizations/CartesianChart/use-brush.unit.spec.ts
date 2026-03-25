@@ -73,7 +73,6 @@ const simulateDesktop = () => {
   });
 };
 
-// Behavioral assertions — hide ECharts action payload details
 const expectBrushEnabled = (dispatchAction: jest.Mock) => {
   expect(dispatchAction).toHaveBeenCalledWith(
     expect.objectContaining({ type: "takeGlobalCursor", key: "brush" }),
