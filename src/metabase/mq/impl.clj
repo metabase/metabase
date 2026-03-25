@@ -3,6 +3,7 @@
   (:require
    [metabase.mq.analytics :as mq.analytics]
    [metabase.mq.listener :as listener]
+   [metabase.mq.polling :as mq.polling]
    [metabase.mq.publish-buffer :as publish-buffer]
    [metabase.mq.queue.backend :as q.backend]
    [metabase.util.log :as log])
@@ -136,7 +137,8 @@
                                               (fn [handlers]
                                                 (if (identical? gen (:gen (get handlers channel)))
                                                   (dissoc handlers channel)
-                                                  handlers)))))))]
+                                                  handlers)))
+                                       (mq.polling/notify-all!)))))]
         ;; Only set the future if this generation still owns the slot
         (swap! active-handlers
                (fn [handlers]

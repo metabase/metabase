@@ -598,7 +598,7 @@
    ;; messaging metrics
    (prometheus/counter :metabase-mq/appdb-cleanup-deleted
                        {:description "Messages/batches deleted by cleanup."
-                        :labels [:type :channel]})
+                        :labels [:transport :channel]})
    (prometheus/gauge :metabase-mq/appdb-queue-depth
                      {:description "Batch count per queue by status."
                       :labels [:channel :status]})
@@ -610,20 +610,20 @@
                       :labels [:channel]})
    (prometheus/counter :metabase-mq/batch-stale-recoveries
                        {:description "Batches recovered from stale processing state."
-                        :labels [:type :channel]})
+                        :labels [:transport :channel]})
    (prometheus/counter :metabase-mq/batches-handled
                        {:description "Batches handled by status."
-                        :labels [:type :channel :status]})
+                        :labels [:transport :channel :status]})
    (prometheus/counter :metabase-mq/dedup-messages-dropped
                        {:description "Messages dropped by dedup before publishing."
                         :labels [:channel]})
    (prometheus/histogram :metabase-mq/handle-duration-ms
                          {:description "Duration in milliseconds to process a batch."
-                          :labels [:type :channel]
+                          :labels [:transport :channel]
                           :buckets [1 5 10 50 100 500 1000 5000 10000 30000]})
    (prometheus/counter :metabase-mq/messages-published
                        {:description "Total messages published."
-                        :labels [:type :channel]})
+                        :labels [:transport :channel]})
    (prometheus/gauge :metabase-mq/publish-buffer-depth
                      {:description "Messages sitting in the publish buffer awaiting flush."
                       :labels [:channel]})
@@ -638,11 +638,10 @@
                         :labels [:channel]})
    (prometheus/counter :metabase-mq/messages-received
                        {:description "Individual messages delivered to handlers."
-                        :labels [:type :channel]})
+                        :labels [:transport :channel]})
    (prometheus/counter :metabase-mq/topic-handler-errors
                        {:description "Errors in topic subscriber handlers."
-                        :labels [:channel]
-                        :buckets [100 500 1000 5000 10000 30000 60000 120000 300000 600000]})
+                        :labels [:transport :channel]})
 
    ;; release dashboard metrics
    (prometheus/counter :metabase-sync/failures

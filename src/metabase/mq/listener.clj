@@ -44,7 +44,7 @@
   "Wraps a listener with Prometheus metrics instrumentation."
   [channel listener]
   (let [labels    {:transport (namespace channel) :channel (name channel)}
-        received  :metabase-mq/topic-messages-received
+        received  :metabase-mq/messages-received
         errors    :metabase-mq/topic-handler-errors]
     (fn [msg]
       (try

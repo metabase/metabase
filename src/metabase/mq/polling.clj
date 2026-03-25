@@ -20,6 +20,10 @@
         (catch Exception e
           (log/error e (str "Error in " label)))))))
 
+(def ^:private active-poll-states
+  "Set of poll states that currently have a running polling thread."
+  (atom #{}))
+
 (defn make-poll-state
   "Creates a polling state map with an atom for the background process and a notify object."
   []
@@ -28,28 +32,34 @@
 
 (defn start-polling!
   "Starts a polling thread that calls `poll-fn` in a loop, waiting on the notify object
-   for `wait-ms` between iterations. Idempotent — second call is a no-op."
-  [{:keys [process notify]} label wait-ms poll-fn]
+   for `wait-ms` between iterations. If `poll-fn` returns a truthy value (indicating work
+   was found), the next iteration runs immediately without waiting. Idempotent — second
+   call is a no-op."
+  [{:keys [process notify] :as poll-state} label wait-ms poll-fn]
   (when-not @process
     (log/infof "Starting %s polling thread" label)
+    (swap! active-poll-states conj poll-state)
     (reset! process
             (future
               (try
                 (loop []
                   (when @process
-                    (try
-                      (poll-fn)
-                      (catch InterruptedException e (throw e))
-                      (catch Exception e
-                        (log/errorf e "Error in %s polling loop" label)))
-                    (locking notify (.wait ^Object notify (long wait-ms)))
+                    (let [found-work? (try
+                                        (poll-fn)
+                                        (catch InterruptedException e (throw e))
+                                        (catch Exception e
+                                          (log/errorf e "Error in %s polling loop" label)
+                                          false))]
+                      (when-not found-work?
+                        (locking notify (.wait ^Object notify (long wait-ms)))))
                     (recur)))
                 (catch InterruptedException _
                   (log/infof "%s polling thread interrupted" label)))))))
 
 (defn stop-polling!
   "Stops a polling thread."
-  [{:keys [process]} label]
+  [{:keys [process] :as poll-state} label]
+  (swap! active-poll-states disj poll-state)
   (when-let [f @process]
     (reset! process nil)
     (when (instance? Future f)
@@ -60,3 +70,9 @@
   "Wakes the polling thread so it runs immediately."
   [{:keys [notify]}]
   (locking notify (.notifyAll ^Object notify)))
+
+(defn notify-all!
+  "Wakes all active polling threads so they run immediately."
+  []
+  (doseq [ps @active-poll-states]
+    (notify! ps)))

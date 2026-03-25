@@ -1,6 +1,7 @@
 (ns metabase.mq.topic.appdb-test
   (:require
    [clojure.test :refer :all]
+   [metabase.mq.impl :as mq.impl]
    [metabase.mq.listener :as listener]
    [metabase.mq.topic.appdb]
    [metabase.mq.topic.backend :as topic.backend]
@@ -32,22 +33,30 @@
     (t2/delete! :topic_message_batch :topic_name (name topic-name))))
 
 (deftest subscribe-and-receive-test
-  (let [topic-name :topic/sub-receive-test
+  (let [topic-name (keyword "topic" (str "sub-receive-test-" (random-uuid)))
         received   (atom [])]
-    (listener/listen! topic-name
-                      {}
-                      (fn [message]
-                        (swap! received conj message)))
-    (topic.backend/publish! :topic.backend/appdb topic-name ["hello-appdb"])
-    ;; allow time for polling
-    (Thread/sleep 5000)
+    (try
+      ;; Register listener (this also subscribes, setting the offset via the current *backend*)
+      (binding [topic.backend/*backend* :topic.backend/appdb]
+        (listener/listen! topic-name
+                          {}
+                          (fn [message]
+                            (swap! received conj message))))
+      ;; Publish then deliver synchronously via poll-iteration! + deliver!
+      (topic.backend/publish! :topic.backend/appdb topic-name ["hello-appdb"])
+      ;; poll-iteration! fetches rows and calls submit-delivery! which is async.
+      ;; Instead, poll the messages and deliver synchronously on this thread.
+      (let [offset (or (get @@#'metabase.mq.topic.appdb/offsets topic-name) 0)
+            rows   (#'metabase.mq.topic.appdb/poll-messages! topic-name offset)]
+        (when (seq rows)
+          (let [all-messages (into [] (mapcat (comp json/decode :messages)) rows)]
+            (mq.impl/deliver! topic-name all-messages nil nil))))
 
-    (testing "Subscriber receives the published message"
-      (is (= ["hello-appdb"] @received)))
-
-    (listener/unlisten! topic-name)
-    ;; cleanup
-    (t2/delete! :topic_message_batch :topic_name (name topic-name))))
+      (testing "Subscriber receives the published message"
+        (is (= ["hello-appdb"] @received)))
+      (finally
+        (listener/unlisten! topic-name)
+        (t2/delete! :topic_message_batch :topic_name (name topic-name))))))
 
 (deftest no-messages-without-subscribers-test
   (let [topic-name :topic/no-sub-test]

@@ -201,7 +201,7 @@
                                                    :status_heartbeat stale-heartbeat
                                                    :failures         1
                                                    :owner            "dead-owner"})]
-          (is (pos? (q.appdb/recover-stale-processing-batches!)))
+          (is (pos? (#'q.appdb/recover-stale-processing-batches!)))
           (let [row (t2/select-one :queue_message_batch :id message-id)]
             (is (= "pending" (:status row)))
             (is (= 2 (:failures row)))
@@ -215,7 +215,7 @@
                                                    :status_heartbeat stale-heartbeat
                                                    :failures         (dec (mq.settings/queue-max-retries))
                                                    :owner            "dead-owner"})]
-          (is (pos? (q.appdb/recover-stale-processing-batches!)))
+          (is (pos? (#'q.appdb/recover-stale-processing-batches!)))
           (let [row (t2/select-one :queue_message_batch :id message-id)]
             (is (= "failed" (:status row)))
             (is (= (mq.settings/queue-max-retries) (:failures row)))
@@ -228,27 +228,10 @@
                                                    :status           "processing"
                                                    :failures         0
                                                    :owner            "active-owner"})]
-          (q.appdb/recover-stale-processing-batches!)
+          (#'q.appdb/recover-stale-processing-batches!)
           (let [row (t2/select-one :queue_message_batch :id message-id)]
             (is (= "processing" (:status row)))
             (is (= 0 (:failures row))))))
       (finally
         (t2/delete! :queue_message_batch :queue_name (name queue-name))))))
 
-(deftest recover-all-processing-batches-test
-  (let [queue-name (keyword "queue" (str "recover-all-test-" (random-uuid)))]
-    (try
-      (testing "Recovers recent processing batches that stale check would skip"
-        (let [message-id (t2/insert-returning-pk! :queue_message_batch
-                                                  {:queue_name       (name queue-name)
-                                                   :messages         (json/encode ["recent-msg"])
-                                                   :status           "processing"
-                                                   :failures         0
-                                                   :owner            "some-owner"})]
-          (is (pos? (q.appdb/recover-all-processing-batches!)))
-          (let [row (t2/select-one :queue_message_batch :id message-id)]
-            (is (= "pending" (:status row)))
-            (is (= 1 (:failures row)))
-            (is (nil? (:owner row))))))
-      (finally
-        (t2/delete! :queue_message_batch :queue_name (name queue-name))))))

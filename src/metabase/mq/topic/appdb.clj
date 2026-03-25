@@ -66,22 +66,26 @@
                          (- max-id offset)))))
 
 (defn- poll-iteration!
-  "One iteration of the polling loop: run periodic tasks, then poll all topics."
+  "One iteration of the polling loop: run periodic tasks, then poll all topics.
+  Returns true if any topic had messages delivered."
   []
   (mq.polling/periodically! last-cleanup-ms   (* 10 60 1000) "topic cleanup"    cleanup-old-messages!)
   (mq.polling/periodically! last-lag-gauge-ms (* 30 1000)    "topic lag gauge"  update-lag-gauges!)
-  (doseq [topic-name (remove mq.impl/channel-busy? (listener/topic-names))]
-    (let [offset (if (contains? @offsets topic-name)
-                   (get @offsets topic-name)
-                   (let [o (current-max-id topic-name)]
-                     (swap! offsets assoc topic-name o)
-                     o))
-          rows   (poll-messages! topic-name offset)]
-      (when (seq rows)
-        (let [all-messages (into [] (mapcat (comp json/decode :messages)) rows)
-              max-id       (:id (last rows))]
-          (when (mq.impl/submit-delivery! topic-name all-messages nil nil nil)
-            (swap! offsets assoc topic-name max-id)))))))
+  (let [found-work? (atom false)]
+    (doseq [topic-name (remove mq.impl/channel-busy? (listener/topic-names))]
+      (let [offset (if (contains? @offsets topic-name)
+                     (get @offsets topic-name)
+                     (let [o (current-max-id topic-name)]
+                       (swap! offsets assoc topic-name o)
+                       o))
+            rows   (poll-messages! topic-name offset)]
+        (when (seq rows)
+          (let [all-messages (into [] (mapcat (comp json/decode :messages)) rows)
+                max-id       (:id (last rows))]
+            (when (mq.impl/submit-delivery! topic-name all-messages nil nil nil)
+              (swap! offsets assoc topic-name max-id)
+              (reset! found-work? true))))))
+    @found-work?))
 
 (defmethod topic.backend/start! :topic.backend/appdb [_]
   (mq.polling/start-polling! poll-state "Topic" 2000 poll-iteration!))

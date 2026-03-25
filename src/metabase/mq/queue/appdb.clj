@@ -65,11 +65,19 @@
                :messages  (json/decode (:messages row))})))))))
 
 ;; Stale processing recovery
+(def ^:private stale-processing-timeout-ms
+  "Messages in 'processing' status for longer than this are considered stale and recovered."
+  (* 10 60 1000))
+
 (def ^:private last-stale-check-ms (atom 0))
 
-(defn- recover-stale-processing-batches! []
+(defn- recover-stale-processing-batches!
+  "Recovers processing batches whose heartbeat is older than the stale timeout.
+  Returns the number of batches recovered."
+  []
   (let [max-retries (queue-max-retries)
-        threshold   (Timestamp/from (.minusMillis (Instant/now) (* 10 60 1000)))]
+        threshold   (Timestamp/from (.minusMillis (Instant/now) stale-processing-timeout-ms))
+        recovered   (atom 0)]
     (doseq [row (t2/select :queue_message_batch :status "processing" :status_heartbeat [:< threshold])]
       (let [new-failures (inc (:failures row))]
         (if (>= new-failures max-retries)
@@ -84,7 +92,9 @@
                        (:id row) (:queue_name row) (:failures row) new-failures)
             (mq.analytics/inc! :metabase-mq/batch-stale-recoveries {:transport "queue" :channel (:queue_name row)})
             (t2/update! :queue_message_batch (:id row)
-                        {:status "pending" :failures new-failures :status_heartbeat (mi/now) :owner nil})))))))
+                        {:status "pending" :failures new-failures :status_heartbeat (mi/now) :owner nil})))
+        (swap! recovered inc)))
+    @recovered))
 
 ;; Failed batch cleanup
 (def ^:private last-cleanup-ms (atom 0))

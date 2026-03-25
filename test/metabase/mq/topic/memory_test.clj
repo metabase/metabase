@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.mq.core :as mq]
+   [metabase.mq.impl :as mq.impl]
    [metabase.mq.listener :as listener]
    [metabase.mq.memory :as memory]
    [metabase.mq.publish-buffer :as publish-buffer]
@@ -12,17 +13,22 @@
 (set! *warn-on-reflection* true)
 
 (defmacro ^:private with-memory-topics
+  "Sets up an isolated memory topic environment. Does NOT start the background poll thread —
+  tests call `deliver-pending!` to drive delivery synchronously."
   [& body]
   `(binding [topic.backend/*backend*              :topic.backend/memory
              listener/*listeners*                  (atom {})
              publish-buffer/*publish-buffer-ms*    0
              publish-buffer/*publish-buffer*       (atom {})
              memory/*channels*                     (atom {})]
-     (try
-       (topic.backend/start! :topic.backend/memory)
-       ~@body
-       (finally
-         (topic.backend/shutdown! :topic.backend/memory)))))
+     ~@body))
+
+(defn- deliver-pending!
+  "Drains all pending memory channels and delivers messages synchronously on the current thread."
+  []
+  (doseq [channel-name (concat (listener/queue-names) (listener/topic-names))]
+    (when-let [messages (#'memory/drain! channel-name)]
+      (mq.impl/deliver! channel-name messages nil nil))))
 
 (deftest publish-and-subscribe-test
   (with-memory-topics
@@ -34,7 +40,7 @@
         (mq/put t "hello"))
       (mq/with-topic :topic/test [t]
         (mq/put t "world"))
-      (Thread/sleep 200)
+      (deliver-pending!)
 
       (testing "Subscriber receives published messages"
         (is (= ["hello" "world"] @received)))
@@ -51,7 +57,7 @@
         (mq/put t "msg-1")
         (mq/put t "msg-2")
         (mq/put t "msg-3"))
-      (Thread/sleep 200)
+      (deliver-pending!)
 
       (testing "Batch of messages received in one row"
         (is (= ["msg-1" "msg-2" "msg-3"] @received)))
@@ -67,14 +73,14 @@
 
       (mq/with-topic :topic/unsub [t]
         (mq/put t "before"))
-      (Thread/sleep 200)
+      (deliver-pending!)
       (is (= ["before"] @received))
 
       (mq/unlisten! :topic/unsub)
 
       (mq/with-topic :topic/unsub [t]
         (mq/put t "after"))
-      (Thread/sleep 200)
+      (deliver-pending!)
 
       (testing "No messages received after unsubscribe"
         (is (= ["before"] @received))))))
@@ -94,7 +100,7 @@
         (mq/put t "error!"))
       (mq/with-topic :topic/errors [t]
         (mq/put t "also-good"))
-      (Thread/sleep 500)
+      (deliver-pending!)
 
       (testing "Good messages are received"
         (is (= ["good" "also-good"] @received)))
@@ -128,7 +134,7 @@
                             (range n))]
           (run! (fn [^Thread t] (.start t)) threads)
           (run! (fn [^Thread t] (.join t 5000)) threads))
-        (Thread/sleep 500)
+        (deliver-pending!)
         (testing "All messages delivered exactly once"
           (is (= n (count @received))))
         (testing "No duplicate messages"
@@ -150,7 +156,7 @@
         (mq/put t "for-a"))
       (mq/with-topic :topic/isolated-b [t]
         (mq/put t "for-b"))
-      (Thread/sleep 200)
+      (deliver-pending!)
 
       (testing "Messages on topic A don't appear on topic B"
         (is (= ["for-a"] @received-a))
