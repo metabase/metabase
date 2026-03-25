@@ -37,12 +37,12 @@
   (api/is-data-analyst?))
 
 (defn tag-name-exists?
-  "Check if a tag with the given name already exists"
+  "Check if a tag with the given name already exists."
   [tag-name]
   (t2/exists? :model/TransformTag :name tag-name))
 
 (defn tag-name-exists-excluding?
-  "Check if a tag with the given name exists, excluding the specified ID"
+  "Check if a tag with the given name exists, excluding the specified ID."
   [tag-name tag-id]
   (t2/exists? :model/TransformTag :name tag-name :id [:not= tag-id]))
 

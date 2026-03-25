@@ -1,0 +1,104 @@
+## Deduplicate and enforce unique names for transforms, transform tags, and transform jobs.
+## Transform names are unique within their collection; tag and job names are globally unique.
+
+databaseChangeLog:
+  - logicalFilePath: migrations/060_update_migrations.yaml
+
+  - changeSet:
+      id: v60.2026-03-24T00:00:01
+      author: ranquild
+      comment: Deduplicate transform names within the same collection by appending entity_id
+      changes:
+        - sql:
+            sql: >
+              UPDATE transform
+              SET name = name || ' ' || COALESCE(entity_id, CAST(id AS VARCHAR(36)))
+              WHERE id IN (
+                SELECT id FROM (
+                  SELECT id, ROW_NUMBER() OVER (PARTITION BY COALESCE(collection_id, 0), name ORDER BY id) AS rn
+                  FROM transform
+                ) sub
+                WHERE sub.rn > 1
+              );
+      rollback:
+
+  - changeSet:
+      id: v60.2026-03-24T00:00:02
+      author: ranquild
+      comment: Deduplicate transform tag names by appending entity_id
+      changes:
+        - sql:
+            sql: >
+              UPDATE transform_tag
+              SET name = name || ' ' || COALESCE(entity_id, CAST(id AS VARCHAR(36)))
+              WHERE id IN (
+                SELECT id FROM (
+                  SELECT id, ROW_NUMBER() OVER (PARTITION BY name ORDER BY id) AS rn
+                  FROM transform_tag
+                ) sub
+                WHERE sub.rn > 1
+              );
+      rollback:
+
+  - changeSet:
+      id: v60.2026-03-24T00:00:03
+      author: ranquild
+      comment: Deduplicate transform job names by appending entity_id
+      changes:
+        - sql:
+            sql: >
+              UPDATE transform_job
+              SET name = name || ' ' || COALESCE(entity_id, CAST(id AS VARCHAR(36)))
+              WHERE id IN (
+                SELECT id FROM (
+                  SELECT id, ROW_NUMBER() OVER (PARTITION BY name ORDER BY id) AS rn
+                  FROM transform_job
+                ) sub
+                WHERE sub.rn > 1
+              );
+      rollback:
+
+  - changeSet:
+      id: v60.2026-03-24T00:00:04
+      author: ranquild
+      comment: Add unique constraint for transform names within the same collection
+      changes:
+        - addUniqueConstraint:
+            tableName: transform
+            columnNames: collection_id, name
+            constraintName: unique_transform_name_per_collection
+
+  - changeSet:
+      id: v60.2026-03-24T00:00:05
+      author: ranquild
+      comment: Add unique index for transform names with null collection_id (partial index, not supported on H2)
+      dbms: postgresql, mysql, mariadb
+      changes:
+        - sql:
+            sql: >
+              CREATE UNIQUE INDEX unique_transform_name_null_collection
+              ON transform (name)
+              WHERE collection_id IS NULL;
+      rollback:
+        - sql:
+            sql: DROP INDEX IF EXISTS unique_transform_name_null_collection;
+
+  - changeSet:
+      id: v60.2026-03-24T00:00:06
+      author: ranquild
+      comment: Add unique constraint for transform tag names
+      changes:
+        - addUniqueConstraint:
+            tableName: transform_tag
+            columnNames: name
+            constraintName: unique_transform_tag_name
+
+  - changeSet:
+      id: v60.2026-03-24T00:00:07
+      author: ranquild
+      comment: Add unique constraint for transform job names
+      changes:
+        - addUniqueConstraint:
+            tableName: transform_job
+            columnNames: name
+            constraintName: unique_transform_job_name

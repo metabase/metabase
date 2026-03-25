@@ -58,7 +58,9 @@
   delete-job!
   existing-trigger]
  [metabase.models.transforms.transform
-  update-transform-tags!]
+  update-transform-tags!
+  transform-name-exists-in-collection?
+  transform-name-exists-in-collection-excluding?]
  [metabase.models.transforms.transform-run
   timeout-run!
   paged-runs
@@ -66,7 +68,9 @@
  [metabase.models.transforms.transform-run-cancelation
   mark-cancel-started-run!]
  [metabase.models.transforms.transform-job
-  update-job-tags!]
+  update-job-tags!
+  job-name-exists?
+  job-name-exists-excluding?]
  [metabase.models.transforms.transform-tag
   tag-name-exists?
   tag-name-exists-excluding?])

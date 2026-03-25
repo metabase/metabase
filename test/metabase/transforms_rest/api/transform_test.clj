@@ -1652,6 +1652,38 @@
                 (is (empty? ids))
                 (is (not (contains? ids transform-id)))))))))))
 
+(deftest create-transform-duplicate-name-test
+  (mt/with-premium-features #{}
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/dataset transforms-dataset/transforms-test
+        (mt/with-data-analyst-role! (mt/user->id :lucky)
+          (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+            (mt/with-temp [:model/Transform _existing {:name "transform1"}]
+              (let [query  (make-query "Gadget")
+                    schema (get-test-schema)]
+                (testing "Returns 400 when creating transform with duplicate name in same collection"
+                  (let [response (mt/user-http-request :lucky :post 400 "transform"
+                                                       {:name   "transform1"
+                                                        :source {:type "query" :query query}
+                                                        :target {:type "table" :schema schema :name "dup_name_test"}})]
+                    (is (string? response))
+                    (is (re-find #"already exists" response))))))))))))
+
+(deftest update-transform-duplicate-name-test
+  (mt/with-premium-features #{}
+    (mt/with-data-analyst-role! (mt/user->id :lucky)
+      (mt/with-temp [:model/Transform t1 {:name "transform1" :creator_id (mt/user->id :lucky)}
+                     :model/Transform t2 {:name "transform2" :creator_id (mt/user->id :lucky)}]
+        (testing "Returns 400 when renaming transform to existing name in same collection"
+          (let [response (mt/user-http-request :lucky :put 400 (format "transform/%s" (:id t2))
+                                               {:name "transform1"})]
+            (is (string? response))
+            (is (re-find #"already exists" response))))
+        (testing "Allows updating name to same name (self)"
+          (let [response (mt/user-http-request :lucky :put 200 (format "transform/%s" (:id t1))
+                                               {:name "transform1"})]
+            (is (= "transform1" (:name response)))))))))
+
 (deftest search-includes-native-and-mbql-query-transforms-test
   (mt/with-premium-features #{}
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)

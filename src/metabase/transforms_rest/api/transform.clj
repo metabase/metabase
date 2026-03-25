@@ -163,6 +163,8 @@
             [:owner_user_id {:optional true} [:maybe ms/PositiveInt]]
             [:owner_email {:optional true} [:maybe :string]]]]
   (api/create-check :model/Transform body)
+  (api/check-400 (not (transforms.core/transform-name-exists-in-collection? (:name body) (:collection_id body)))
+                 (deferred-tru "A transform with that name already exists in this collection."))
   (transforms.core/check-database-feature body)
   (transforms.core/check-feature-enabled! body)
   (transforms.core/validate-incremental-column-type! body)

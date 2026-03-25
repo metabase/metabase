@@ -68,6 +68,16 @@
          (perms/has-db-transforms-permission? api/*current-user-id* source-db-id)
          (remote-sync/transforms-editable?))))
 
+(defn transform-name-exists-in-collection?
+  "Check if a transform with the given name already exists in the specified collection."
+  [transform-name collection-id]
+  (t2/exists? :model/Transform :name transform-name :collection_id collection-id))
+
+(defn transform-name-exists-in-collection-excluding?
+  "Check if a transform with the given name exists in the specified collection, excluding a specific transform ID."
+  [transform-name collection-id transform-id]
+  (t2/exists? :model/Transform :name transform-name :collection_id collection-id :id [:not= transform-id]))
+
 (defn transform-source-out
   "Deserialize a transform source map from JSON storage format.
   Normalizes queries and keywordizes type fields."

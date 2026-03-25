@@ -44,7 +44,15 @@
                                                   :schedule "0 0 0 * * ?"
                                                   :tag_ids  [999999]})]
               (is (string? response))
-              (is (re-find #"tag IDs do not exist" response)))))))))
+              (is (re-find #"tag IDs do not exist" response))))
+
+          (testing "Returns 400 for duplicate job name"
+            (mt/with-temp [:model/TransformJob _existing-job {:name "job1" :schedule "0 0 0 * * ?"}]
+              (let [response (mt/user-http-request :lucky :post 400 "transform-job"
+                                                   {:name     "job1"
+                                                    :schedule "0 0 0 * * ?"})]
+                (is (string? response))
+                (is (re-find #"already exists" response))))))))))
 
 (deftest get-job-test
   (testing "GET /api/transform-job/:id"
@@ -171,7 +179,14 @@
               (let [response (mt/user-http-request :lucky :put 400 (str "transform-job/" (:id job))
                                                    {:schedule "invalid"})]
                 (is (string? response))
-                (is (re-find #"Invalid cron expression" response))))))))))
+                (is (re-find #"Invalid cron expression" response))))
+
+            (testing "Returns 400 when updating to duplicate name"
+              (mt/with-temp [:model/TransformJob other-job {:name "job2" :schedule "0 0 0 * * ?"}]
+                (let [response (mt/user-http-request :lucky :put 400 (str "transform-job/" (:id job))
+                                                     {:name (:name other-job)})]
+                  (is (string? response))
+                  (is (re-find #"already exists" response)))))))))))
 
 (deftest update-job-remove-tags-test
   (testing "PUT /api/transform-job/:id"

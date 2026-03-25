@@ -55,6 +55,16 @@
                (every? mi/can-write? transforms)
                true)))))
 
+(defn job-name-exists?
+  "Check if a job with the given name already exists."
+  [job-name]
+  (t2/exists? :model/TransformJob :name job-name))
+
+(defn job-name-exists-excluding?
+  "Check if a job with the given name exists, excluding the specified ID."
+  [job-name job-id]
+  (t2/exists? :model/TransformJob :name job-name :id [:not= job-id]))
+
 (mi/define-batched-hydration-method tag-ids
   :tag_ids
   "Hydrate tag IDs for jobs, preserving order defined by position"
