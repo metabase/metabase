@@ -28,11 +28,11 @@ export type MetabotProviderOption =
   | MetabotApiKeyProviderOption;
 
 export function getProviderOptions(
-  isHosted: boolean,
+  hasMetabaseProviderAccess: boolean,
 ): Partial<Record<ApiKeylessProviders, MetabotApiKeylessProviderOption>> &
   Record<ApiKeyProviders, MetabotApiKeyProviderOption> {
   return {
-    ...(isHosted && {
+    ...(hasMetabaseProviderAccess && {
       metabase: {
         value: "metabase" as const,
         // eslint-disable-next-line metabase/no-literal-metabase-strings -- This is used in admin settings
@@ -84,7 +84,7 @@ export function isApiKeyMetabotProvider(
 }
 
 export function isAvailableProvider(provider: MetabotProvider): boolean {
-  return provider === "anthropic" || provider === "metabase";
+  return provider === "anthropic";
 }
 
 export const API_KEY_SETTING_BY_PROVIDER: Record<
@@ -98,13 +98,12 @@ export const API_KEY_SETTING_BY_PROVIDER: Record<
 
 export function parseProviderAndModel(value: string | null | undefined) {
   if (!value) {
-    return { provider: null, model: null };
+    return undefined;
   }
 
   const [provider, model] = value.split(/\/(.+)/, 2);
-
   if (!isMetabotProvider(provider) || !model) {
-    return { provider: null, model: null };
+    return undefined;
   }
 
   return { provider, model };

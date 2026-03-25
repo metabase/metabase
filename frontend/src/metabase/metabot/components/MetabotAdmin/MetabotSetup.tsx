@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { SetByEnvVar } from "metabase/admin/settings/components/widgets/AdminSettingInput";
@@ -45,131 +46,90 @@ type MetabotModelOption = ComboboxItem & {
   group?: string | null;
 };
 
-type SelectModelOption = ComboboxItem;
-
-type MetabotModelGroup = {
-  group: string;
-  items: SelectModelOption[];
-};
-
-type MetabotModelSelectData = MetabotModelOption[] | MetabotModelGroup[];
-
 export function MetabotSetup() {
-  const isHosted = !!useSetting("is-hosted?");
-  const isConfigured = useSetting("llm-metabot-configured?");
-  const { value: savedProviderValue, settingDetails } = useAdminSetting(
-    "llm-metabot-provider",
-  );
+  const { value, settingDetails } = useAdminSetting("llm-metabot-provider");
+  const config = useMemo(() => parseProviderAndModel(value), [value]);
   const isEnvSetting =
-    settingDetails &&
+    !!settingDetails &&
     !!settingDetails.is_env_setting &&
     !!settingDetails.env_name;
+  const envSettingName = isEnvSetting ? settingDetails?.env_name : undefined;
 
+  const [provider, setProvider] = useState<MetabotProvider | undefined>(
+    config?.provider,
+  );
+  const [model, setModel] = useState<string>(config?.model ?? "");
+  useEffect(() => {
+    setProvider(config?.provider);
+    setModel(config?.model ?? "");
+  }, [config]);
+
+  const metabotSettingsQuery = useGetMetabotSettingsQuery(
+    provider ? { provider } : skipToken,
+  );
+  const [updateMetabotSettings, updateMetabotSettingsResult] =
+    useUpdateMetabotSettingsMutation();
+
+  const isConfigured = useSetting("llm-metabot-configured?");
   const { details: providerApiKeyDetails } = useAdminSettings([
     "llm-anthropic-api-key",
     "llm-openai-api-key",
     "llm-openrouter-api-key",
   ] as const);
 
-  const [updateMetabotSettings, updateMetabotSettingsResult] =
-    useUpdateMetabotSettingsMutation();
-
-  const saved = useMemo(
-    () => parseProviderAndModel(savedProviderValue),
-    [savedProviderValue],
-  );
-
-  const isConnected =
-    !updateMetabotSettingsResult.isLoading &&
-    saved.provider &&
-    saved.model &&
-    isConfigured;
-
-  const [provider, setProvider] = useState<MetabotProvider | null>(
-    saved.provider,
-  );
-  const [modelInputValue, setModelInputValue] = useState(saved.model);
-
-  useEffect(() => {
-    setProvider(saved.provider);
-    setModelInputValue(saved.model);
-  }, [saved.model, saved.provider]);
-
-  const selectedApiKeySetting =
-    provider && isApiKeyMetabotProvider(provider)
-      ? API_KEY_SETTING_BY_PROVIDER[provider]
-      : null;
-  const hasSelectedProviderApiKey = selectedApiKeySetting
-    ? hasConfiguredSettingValue(providerApiKeyDetails[selectedApiKeySetting])
-    : false;
-
-  const metabotSettingsQuery = useGetMetabotSettingsQuery(
-    provider ? { provider } : skipToken,
-  );
-
   const providerOptions = useMemo(() => {
-    return Object.values(getProviderOptions(isHosted)).map(
-      ({ label, value }) => ({
-        label,
-        value,
-        disabled: !isAvailableProvider(value),
-      }),
-    );
-  }, [isHosted]);
+    const options = Object.values(getProviderOptions(false));
+    return options.map((o) => ({
+      ...o,
+      disabled: !isAvailableProvider(o.value),
+    }));
+  }, []);
 
-  const modelOptions = useMemo<MetabotModelOption[]>(
-    () =>
-      metabotSettingsQuery.isFetching
-        ? []
-        : (metabotSettingsQuery.data?.models ?? []).map(
-            (model: MetabotSettingsResponse["models"][number]) => ({
-              value: model.id,
-              label: model.display_name,
-              group: model.group,
-            }),
-          ),
-    [metabotSettingsQuery.isFetching, metabotSettingsQuery.data?.models],
-  );
-  const groupedModelOptions = useMemo<MetabotModelSelectData>(
-    () => getGroupedModelOptions(modelOptions),
-    [modelOptions],
+  const modelOptions = useMemo(
+    () => getLlmModelOptions(metabotSettingsQuery.currentData?.models ?? []),
+    [metabotSettingsQuery.currentData?.models],
   );
 
-  const apiKeyError = metabotSettingsQuery.data?.["api-key-error"] ?? null;
-  const modelError = getModelError({
-    error: metabotSettingsQuery.error,
-    provider,
-  });
+  const apiKeyError = metabotSettingsQuery.data?.["api-key-error"] ?? undefined;
+  const modelError = getModelError(metabotSettingsQuery.error, provider);
   const saveError = updateMetabotSettingsResult.error
     ? getErrorMessage(
         updateMetabotSettingsResult,
         t`Unable to save provider settings.`,
       )
-    : null;
+    : undefined;
 
-  const handleProviderChange = (value: string | null) => {
-    if (!isMetabotProvider(value)) {
-      setProvider(null);
-      setModelInputValue(null);
-      return;
+  const handleProviderChange = (value: string) => {
+    if (isMetabotProvider(value)) {
+      setProvider(value);
+      const configModel =
+        value === config?.provider ? (config.model ?? "") : "";
+      setModel(configModel);
     }
-
-    setProvider(value);
-    setModelInputValue(value === saved.provider ? (saved.model ?? null) : null);
   };
 
-  const handleModelChange = async (value: string | null) => {
-    setModelInputValue(value);
+  const handleModelChange = async (value: string) => {
+    setModel(value);
     if (provider && value) {
       await updateMetabotSettings({ provider, model: value });
     }
   };
 
+  const isConnected =
+    !updateMetabotSettingsResult.isLoading &&
+    config?.provider &&
+    config?.model &&
+    isConfigured;
+
+  const selectedApiKeySetting =
+    provider && isApiKeyMetabotProvider(provider)
+      ? providerApiKeyDetails[API_KEY_SETTING_BY_PROVIDER[provider]]
+      : undefined;
+
   const needsApiKey =
     !!provider &&
-    isApiKeyMetabotProvider(provider) &&
-    !hasSelectedProviderApiKey &&
-    !!apiKeyError;
+    !!selectedApiKeySetting &&
+    (!hasConfiguredSettingValue(selectedApiKeySetting) || !!apiKeyError);
 
   return (
     <AdminSettingsLayout sidebar={<MetabotNavPane />}>
@@ -183,7 +143,7 @@ export function MetabotSetup() {
               </Badge>
             ) : (
               <Badge
-                bg="background-disabled"
+                bg="background-tertiary"
                 c="text-tertiary"
                 variant="filled"
                 size="sm"
@@ -218,11 +178,11 @@ export function MetabotSetup() {
                 >
                   {option.label}
                 </Text>
-                {!isAvailableProvider(option.value as MetabotProvider) ? (
+                {!isAvailableProvider(option.value as MetabotProvider) && (
                   <Text c="text-tertiary" lh="1rem" size="sm">
                     {t`Coming soon`}
                   </Text>
-                ) : null}
+                )}
               </Group>
             )}
           />
@@ -243,8 +203,8 @@ export function MetabotSetup() {
               }
               description={t`Available models are fetched from the selected provider using its configured API key.`}
               error={modelError}
-              data={groupedModelOptions}
-              value={modelInputValue}
+              data={modelOptions}
+              value={model}
               onChange={handleModelChange}
               disabled={isEnvSetting || needsApiKey}
               searchable
@@ -252,78 +212,46 @@ export function MetabotSetup() {
             />
           )}
 
-          {isEnvSetting && settingDetails.env_name && (
-            <SetByEnvVar varName={settingDetails.env_name} />
-          )}
+          {envSettingName && <SetByEnvVar varName={envSettingName} />}
 
-          {updateMetabotSettingsResult.isLoading ? (
+          {updateMetabotSettingsResult.isLoading && (
             <Text size="sm" c="text-secondary">
               {t`Saving provider settings...`}
             </Text>
-          ) : null}
+          )}
 
-          {saveError ? (
+          {saveError && (
             <Text size="sm" c="error">
               {saveError}
             </Text>
-          ) : null}
+          )}
         </Stack>
       </SettingsSection>
     </AdminSettingsLayout>
   );
 }
 
-function hasConfiguredSettingValue(setting: SettingDefinition | undefined) {
-  return Boolean(setting?.value || setting?.is_env_setting);
-}
-
-function getGroupedModelOptions(
-  modelOptions: MetabotModelOption[],
-): MetabotModelSelectData {
-  const groups = new Map<string, SelectModelOption[]>();
-  const ungrouped: SelectModelOption[] = [];
-
-  for (const option of modelOptions) {
-    const selectOption = { value: option.value, label: option.label };
-
-    if (!option.group) {
-      ungrouped.push(selectOption);
-      continue;
-    }
-
-    const group = groups.get(option.group) ?? [];
-    group.push(selectOption);
-    groups.set(option.group, group);
-  }
-
-  if (groups.size === 0) {
-    return ungrouped;
-  }
-
-  if (ungrouped.length > 0) {
-    groups.set(t`Other`, ungrouped);
-  }
-
-  return Array.from(groups.entries()).map(([group, items]) => ({
-    group,
-    items,
+const getLlmModelOptions = (models: MetabotSettingsResponse["models"]) => {
+  const modelOptions = models.map((m) => ({
+    value: m.id,
+    label: m.display_name,
+    group: m.group,
   }));
-}
 
-function getModelError({
-  error,
-  provider,
-}: {
-  error: unknown;
-  provider: MetabotProvider | null;
-}) {
-  if (!provider) {
-    return undefined;
-  }
+  const sel = (o: MetabotModelOption) => _.pick(o, ["value", "label"]);
+  // group model options if needed
+  return _.every(modelOptions, (o) => !o.group)
+    ? modelOptions.map(sel)
+    : _.map(
+        _.groupBy(modelOptions, (o) => o.group ?? t`Other`),
+        (items, group) => ({ group, items: items.map(sel) }),
+      );
+};
 
-  if (error) {
-    return getErrorMessage(error, t`Unable to load models.`);
-  }
+const hasConfiguredSettingValue = (setting: SettingDefinition | undefined) =>
+  Boolean(setting?.value || setting?.is_env_setting);
 
-  return undefined;
-}
+const getModelError = (error: unknown, provider?: MetabotProvider) =>
+  !provider || !error
+    ? undefined
+    : getErrorMessage(error, t`Unable to load models.`);
