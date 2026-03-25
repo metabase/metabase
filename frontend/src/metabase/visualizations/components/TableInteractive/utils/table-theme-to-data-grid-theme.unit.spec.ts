@@ -74,7 +74,7 @@ describe("tableThemeToDataGridTheme", () => {
 
     const result = tableThemeToDataGridTheme(themeWithEmFontSize, "14px");
 
-    expect(result.fontSize).toBe("12.502px");
+    expect(result.fontSize).toBe("12.5px");
   });
 
   it("keeps px fontSize unchanged when baseFontSize is provided", () => {
