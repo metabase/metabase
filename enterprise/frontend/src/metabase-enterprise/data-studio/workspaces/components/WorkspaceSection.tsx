@@ -114,7 +114,7 @@ export function WorkspacesSection({ showLabel }: WorkspacesSectionProps) {
           className={cx(S.tab, { [S.selected]: isWorkspaceListPage })}
           component={ForwardRefLink}
           to={Urls.dataStudioWorkspaceList()}
-          p="0.5rem"
+          p="sm"
           bdrs="md"
         >
           <Flex align="center" justify="center" w="100%">

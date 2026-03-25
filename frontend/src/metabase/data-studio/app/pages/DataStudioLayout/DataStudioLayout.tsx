@@ -265,7 +265,8 @@ function DataStudioTab({
         className={cx(S.tab, { [S.selected]: isSelected })}
         component={ForwardRefLink}
         to={to}
-        p="0.5rem"
+        p="sm"
+        gap="sm"
         bdrs="md"
         aria-label={label}
         justify={showLabel ? "start" : "center"}
