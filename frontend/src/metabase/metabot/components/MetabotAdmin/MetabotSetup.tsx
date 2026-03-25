@@ -136,7 +136,7 @@ export function MetabotSetup() {
       <SettingsSection
         title={
           <Flex justify="space-between" align="center">
-            <div>{t`Connect to AI Provider`}</div>
+            <div>{t`Connect to an AI provider`}</div>
             {isConnected ? (
               <Badge bg="success" variant="filled" size="sm">
                 {t`Connected`}
