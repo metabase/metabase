@@ -15,6 +15,7 @@
    [metabase.metabot.self :as self]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.tools :as tools]
+   [metabase.api.common :as api]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -526,7 +527,13 @@
         debug?             (:debug? opts)
         labels             {:profile-id (name profile-id)}
         track-user-intent? (and (metabot.settings/llm-metabot-internal-tasks-enabled?)
-                                (some-> opts :tracking-opts :track-user-intent?))]
+                                (some-> opts :tracking-opts :track-user-intent?))
+        perms              (if api/*is-superuser?*
+                             scope/all-yes-permissions
+                             (scope/resolve-user-permissions api/*current-user-id*))
+        scopes             (if api/*is-superuser?*
+                             scope/unrestricted
+                             (scope/user-metabot-perms->scopes perms))]
     (reify clojure.lang.IReduceInit
       (reduce [_ rf init]
         (with-span :info {:name       :metabot.agent/run-agent-loop
@@ -535,32 +542,29 @@
           (prometheus/inc! :metabase-metabot/agent-requests labels)
           (let [start-ms (u/start-timer)]
             (binding [*debug-log*                              (when debug? (atom []))
-                      scope/*current-user-scope*               scope/unrestricted
-                      scope/*current-user-metabot-permissions* {:permission/metabot-sql-generation :yes
-                                                                :permission/metabot-nql            :yes
-                                                                :permission/metabot-other-tools    :yes
-                                                                :permission/metabot-model          :large}]
-              (try
-                (let [agent              (init-agent opts)
-                      _                  (when track-user-intent?
-                                           (agent-analytics/classify-and-track-user-intent-async!
-                                            (:messages opts)
-                                            (:tracking-opts agent)))
-                      {result    :result
-                       iteration :iteration} (->> (initial-loop-state agent rf init (atom {}))
-                                                  (iterate loop-step)
-                                                  (drop-while #(= :continue (:status %)))
-                                                  first)]
-                  (prometheus/observe! :metabase-metabot/agent-iterations labels iteration)
-                  ;; Emit debug log as a data part if debug mode was active
-                  (if (and debug? (seq @*debug-log*))
-                    (rf result (debug-log-part @*debug-log*))
-                    result))
-                (catch Exception e
-                  (prometheus/inc! :metabase-metabot/agent-errors labels)
-                  (if (:api-error (ex-data e))
-                    (log/errorf "Agent loop API error: %s" (ex-message e))
-                    (log/error e "Agent loop error"))
-                  (rf init (error-part e)))
-                (finally
-                  (prometheus/observe! :metabase-metabot/agent-duration-ms labels (u/since-ms start-ms)))))))))))
+                      scope/*current-user-scope*               scopes
+                      scope/*current-user-metabot-permissions* perms]
+                (try
+                  (let [agent              (init-agent opts)
+                        _                  (when track-user-intent?
+                                             (agent-analytics/classify-and-track-user-intent-async!
+                                              (:messages opts)
+                                              (:tracking-opts agent)))
+                        {result    :result
+                         iteration :iteration} (->> (initial-loop-state agent rf init (atom {}))
+                                                    (iterate loop-step)
+                                                    (drop-while #(= :continue (:status %)))
+                                                    first)]
+                    (prometheus/observe! :metabase-metabot/agent-iterations labels iteration)
+                    ;; Emit debug log as a data part if debug mode was active
+                    (if (and debug? (seq @*debug-log*))
+                      (rf result (debug-log-part @*debug-log*))
+                      result))
+                  (catch Exception e
+                    (prometheus/inc! :metabase-metabot/agent-errors labels)
+                    (if (:api-error (ex-data e))
+                      (log/errorf "Agent loop API error: %s" (ex-message e))
+                      (log/error e "Agent loop error"))
+                    (rf init (error-part e)))
+                  (finally
+                    (prometheus/observe! :metabase-metabot/agent-duration-ms labels (u/since-ms start-ms))))))))))))

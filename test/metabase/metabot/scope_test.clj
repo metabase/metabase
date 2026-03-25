@@ -41,6 +41,6 @@
     (is (= #{} scope/*current-user-scope*))))
 
 (deftest user-metabot-perms->scopes-test
-  (testing "stub returns empty set"
-    (is (= #{} (scope/user-metabot-perms->scopes {})))
-    (is (= #{} (scope/user-metabot-perms->scopes nil)))))
+  (testing "with default/nil permissions, returns only always-granted scopes"
+    (is (= scope/always-granted-scopes (scope/user-metabot-perms->scopes {})))
+    (is (= scope/always-granted-scopes (scope/user-metabot-perms->scopes nil)))))
