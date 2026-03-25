@@ -533,10 +533,22 @@
         (extract-refs-from-query store (lib/query provider dq) provider visited)))
     (catch Exception _ {:tables [] :fields [] :source-cards []})))
 
+(defn- field-exists-in-store?
+  "Check if a column name exists for any table in the given database in our store."
+  [store db-name col-name]
+  (let [norm-col (str/lower-case (str col-name))]
+    (some (fn [field-path]
+            (when (= db-name (first field-path))
+              (= norm-col (str/lower-case (str (nth field-path 3))))))
+          (keys (get-in @store [:ref->id :field])))))
+
 (defn- validate-native-sql
   "Validate native SQL using sql-tools. Compiles the query to SQL, then uses
    sql-tools/validate-query to check that referenced tables and columns exist
    in the metadata provider.
+
+   Filters out :missing-column false positives caused by schema-less databases
+   where sql-tools can't match tables due to nil vs default-schema mismatch.
 
    Returns a set of error maps, or nil if validation passes or isn't applicable."
   [store provider query db-name]
@@ -545,12 +557,19 @@
           sql    (compile-query-to-sql engine query)]
       (when sql
         (try
-          ;; Build a native-only pMBQL query with the SQL and our metadata provider
           (let [native-query (lib/native-query provider sql)
                 errors       (binding [driver/*driver* engine]
                                (sql-tools/validate-query engine native-query))]
             (when (seq errors)
-              errors))
+              ;; Filter out :missing-column errors for columns that DO exist in the store.
+              ;; These are false positives caused by schema-less databases (nil schema)
+              ;; where sql-tools assumes the default schema (e.g., "public").
+              (let [filtered (remove (fn [err]
+                                       (and (= :missing-column (:type err))
+                                            (field-exists-in-store? store db-name (:name err))))
+                                     errors)]
+                (when (seq filtered)
+                  (set filtered)))))
           (catch Exception _
             nil))))))
 
