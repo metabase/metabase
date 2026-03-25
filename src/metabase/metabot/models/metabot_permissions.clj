@@ -16,10 +16,12 @@
 
 (def metabot-permissions
   "Metabot permission definitions. Values are ordered from most permissive to least permissive."
-  {:permission/metabot-model          {:values [:large :medium :small]}
-   :permission/metabot-sql-generation {:values [:yes :no]}
-   :permission/metabot-nql            {:values [:yes :no]}
-   :permission/metabot-other-tools    {:values [:yes :no]}})
+  {:permission/metabot                  {:values [:yes :no]}
+   :permission/metabot-model            {:values [:large :medium :small]}
+   :permission/metabot-semantic-search  {:values [:yes :no]}
+   :permission/metabot-sql-generation   {:values [:yes :no]}
+   :permission/metabot-nql              {:values [:yes :no]}
+   :permission/metabot-other-tools      {:values [:yes :no]}})
 
 (def perm-types
   "The set of defined metabot permission types."
@@ -27,7 +29,9 @@
 
 (def perm-type-defaults
   "Default values for each metabot permission type."
-  {:permission/metabot-model          :small
-   :permission/metabot-sql-generation :no
-   :permission/metabot-nql            :no
-   :permission/metabot-other-tools    :no})
+  {:permission/metabot                  :no
+   :permission/metabot-model            :small
+   :permission/metabot-semantic-search  :no
+   :permission/metabot-sql-generation   :no
+   :permission/metabot-nql              :no
+   :permission/metabot-other-tools      :no})
