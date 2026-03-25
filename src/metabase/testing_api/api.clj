@@ -62,6 +62,7 @@
   [{snapshot-name :name} :- [:map
                              [:name ms/NonBlankString]]]
   (task.search-index/wait-for-init!)
+  (search.ingestion/wait-for-idle!)
   (save-snapshot! snapshot-name)
   nil)
 
