@@ -107,11 +107,13 @@ function QuestionRowCountInner({
 
   const message = useMemo(() => {
     if (isNative) {
-      return isResultDirty ? "" : getRowCountMessage(result, formatNumber);
+      return isResultDirty
+        ? ""
+        : getRowCountMessage(result, formatNumber, maxRowLimit);
     }
     return isResultDirty
       ? getLimitMessage(question, result, formatNumber, maxRowLimit)
-      : getRowCountMessage(result, formatNumber);
+      : getRowCountMessage(result, formatNumber, maxRowLimit);
   }, [question, result, isResultDirty, isNative, formatNumber, maxRowLimit]);
 
   const handleLimitChange = (limit: number | null) => {
@@ -205,7 +207,7 @@ function getLimitMessage(
 ): string {
   const limit = Lib.currentLimit(question.query(), -1);
   const isValidLimit =
-    typeof limit === "number" && limit > 0 && limit < maxRowLimit;
+    typeof limit === "number" && limit > 0 && limit <= maxRowLimit;
 
   if (isValidLimit) {
     return t`Show ${formatRowCount(limit, formatNumber)}`;

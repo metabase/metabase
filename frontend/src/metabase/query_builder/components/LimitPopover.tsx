@@ -29,6 +29,8 @@ const CustomRowLimit = ({
   return (
     <NumberInput
       size="sm"
+      allowDecimal={false}
+      allowNegative={false}
       value={inputValue}
       className={cx({
         [cx(CS.textBrand, CS.borderBrand)]: limit != null && !exceedsMax,

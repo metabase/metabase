@@ -6,12 +6,7 @@ import {
   setupUnauthorizedDatabasesEndpoints,
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
-import {
-  fireEvent,
-  renderWithProviders,
-  screen,
-  waitFor,
-} from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { formatNumber } from "metabase/lib/formatting";
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
@@ -21,6 +16,7 @@ import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 import type { Card, Dataset, UnsavedCard } from "metabase-types/api";
 import {
   createMockDataset,
+  type createMockSettings,
   createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
 import {
@@ -32,7 +28,10 @@ import {
   createSavedNativeCard,
   createSavedStructuredCard,
 } from "metabase-types/api/mocks/presets";
-import { createMockQueryBuilderState } from "metabase-types/store/mocks";
+import {
+  createMockQueryBuilderState,
+  createMockSettingsState,
+} from "metabase-types/store/mocks";
 
 import { QuestionRowCount } from "./QuestionRowCount";
 
@@ -41,6 +40,7 @@ type SetupOpts = {
   result?: Dataset;
   isResultDirty?: boolean;
   isReadOnly?: boolean;
+  settings?: Partial<Parameters<typeof createMockSettings>[0]>;
 };
 
 function patchQuestion(question: Question) {
@@ -61,6 +61,7 @@ async function setup({
   result = createMockDataset(),
   isResultDirty = false,
   isReadOnly = false,
+  settings = {},
 }: SetupOpts) {
   const databases = [createSampleDatabase()];
   const metadata = createMockMetadata({
@@ -92,6 +93,7 @@ async function setup({
   renderWithProviders(<QuestionRowCount />, {
     storeInitialState: {
       qb: state,
+      settings: createMockSettingsState(settings),
       entities: createMockEntitiesState({
         databases: isReadOnly ? [] : databases,
         questions: "id" in card ? [card] : [],
@@ -161,8 +163,7 @@ describe("QuestionRowCount", () => {
 
           await userEvent.click(rowCount);
           const input = await screen.findByPlaceholderText("Pick a limit");
-          fireEvent.change(input, { target: { value: "25" } });
-          fireEvent.keyPress(input, { key: "Enter", charCode: 13 });
+          await userEvent.type(input, "25{Enter}");
 
           await waitFor(() => {
             expect(rowCount).toHaveTextContent("Show 25 rows");
@@ -176,8 +177,8 @@ describe("QuestionRowCount", () => {
 
           await userEvent.click(rowCount);
           const input = await screen.findByDisplayValue("25");
-          fireEvent.change(input, { target: { value: "400" } });
-          fireEvent.keyPress(input, { key: "Enter", charCode: 13 });
+          await userEvent.clear(input);
+          await userEvent.type(input, "400{Enter}");
 
           await waitFor(() => {
             expect(rowCount).toHaveTextContent("Show 400 rows");
@@ -215,6 +216,87 @@ describe("QuestionRowCount", () => {
 
           expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
         });
+      });
+    });
+  });
+
+  describe("with custom row limit settings", () => {
+    it("uses unaggregated-query-row-limit for queries without aggregations", async () => {
+      const { rowCount } = await setup({
+        question: createAdHocCard(),
+        result: createMockDataset({ row_count: 500 }),
+        settings: { "unaggregated-query-row-limit": 500 },
+      });
+
+      expect(rowCount).toHaveTextContent(
+        `Showing first ${formatNumber(500)} rows`,
+      );
+    });
+
+    it("uses aggregated-query-row-limit for queries with aggregations", async () => {
+      const { rowCount } = await setup({
+        question: createAdHocCard({
+          dataset_query: createMockStructuredDatasetQuery({
+            database: SAMPLE_DB_ID,
+            query: {
+              "source-table": ORDERS_ID,
+              aggregation: [["count"]],
+            },
+          }),
+        }),
+        result: createMockDataset({ row_count: 5000 }),
+        settings: { "aggregated-query-row-limit": 5000 },
+      });
+
+      expect(rowCount).toHaveTextContent(
+        `Showing first ${formatNumber(5000)} rows`,
+      );
+    });
+
+    it("shows the custom limit in the popover maximum label", async () => {
+      const { rowCount } = await setup({
+        question: createAdHocCard(),
+        settings: { "unaggregated-query-row-limit": 500 },
+      });
+
+      await userEvent.click(rowCount);
+
+      expect(
+        screen.getByRole("radio", {
+          name: `Show maximum (first ${formatNumber(500)})`,
+        }),
+      ).toBeInTheDocument();
+    });
+
+    it("does not allow setting a limit above the configured max", async () => {
+      const { rowCount } = await setup({
+        question: createAdHocCard(),
+        settings: { "unaggregated-query-row-limit": 100 },
+      });
+
+      await userEvent.click(rowCount);
+      const input = await screen.findByPlaceholderText("Pick a limit");
+      await userEvent.type(input, "200{Enter}");
+
+      expect(
+        screen.getByText("Value exceeds maximum of 100"),
+      ).toBeInTheDocument();
+
+      expect(rowCount).toHaveTextContent("Showing 0 rows");
+    });
+
+    it("allows setting a limit at exactly the configured max", async () => {
+      const { rowCount } = await setup({
+        question: createAdHocCard(),
+        settings: { "unaggregated-query-row-limit": 100 },
+      });
+
+      await userEvent.click(rowCount);
+      const input = await screen.findByPlaceholderText("Pick a limit");
+      await userEvent.type(input, "100{Enter}");
+
+      await waitFor(() => {
+        expect(rowCount).toHaveTextContent("Show 100 rows");
       });
     });
   });
