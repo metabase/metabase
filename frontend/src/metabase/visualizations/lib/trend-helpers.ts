@@ -6,21 +6,6 @@ import { formatPreviousPeriodOptionName } from "metabase/visualizations/visualiz
 import type { RowValues } from "metabase-types/api";
 import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 
-export function findLastNonEmptyRowIndex(
-  rows: RowValues[],
-  dateColumnIndex: number,
-  metricColumnIndex: number,
-): number {
-  for (let index = rows.length - 1; index >= 0; index--) {
-    const date = rows[index][dateColumnIndex];
-    const value = rows[index][metricColumnIndex];
-    if (!isEmpty(value) && !isEmpty(date)) {
-      return index;
-    }
-  }
-  return -1;
-}
-
 export function findPreviousNonEmptyRowIndex(
   rows: RowValues[],
   dateColumnIndex: number,

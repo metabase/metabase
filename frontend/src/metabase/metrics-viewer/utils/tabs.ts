@@ -9,14 +9,16 @@ import * as LibMetric from "metabase-lib/metric";
 import { MAX_AUTO_TABS } from "../constants";
 import type {
   MetricSourceId,
-  MetricsViewerDefinitionEntry,
   MetricsViewerTabState,
   MetricsViewerTabType,
   StoredMetricsViewerTab,
 } from "../types/viewer-state";
 
-import type { TabTypeDefinition } from "./tab-config";
-import { TAB_TYPE_REGISTRY, getTabConfig } from "./tab-config";
+import {
+  TAB_TYPE_REGISTRY,
+  type TabTypeDefinition,
+  getTabConfig,
+} from "./tab-config";
 
 // ── Dimension classification ──
 
@@ -104,37 +106,6 @@ export function resolveCommonTabLabel(names: string[]): string | null {
   }
 
   return bestName;
-}
-
-export function resolveEffectiveTabLabels(
-  tabs: MetricsViewerTabState[],
-  definitions: MetricsViewerDefinitionEntry[],
-): MetricsViewerTabState[] {
-  const dimsBySource = new Map(
-    definitions
-      .filter((entry) => entry.definition != null)
-      .map(
-        (entry) => [entry.id, getDimensionsByType(entry.definition!)] as const,
-      ),
-  );
-
-  return tabs.map((tab) => {
-    const names: string[] = [];
-    for (const [sourceId, dimensionId] of getObjectEntries(
-      tab.dimensionMapping,
-    )) {
-      if (dimensionId == null) {
-        continue;
-      }
-      const sourceDimensions = dimsBySource.get(sourceId);
-      const dimensionInfo = sourceDimensions?.get(dimensionId);
-      if (dimensionInfo) {
-        names.push(dimensionInfo.displayName);
-      }
-    }
-    const label = resolveCommonTabLabel(names);
-    return label != null && label !== tab.label ? { ...tab, label } : tab;
-  });
 }
 
 // ── Default tab computation ──

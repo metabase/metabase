@@ -1,4 +1,5 @@
 .metricLink {
+  transition: 200ms all;
   :hover {
     color: var(--mb-color-brand);
   }

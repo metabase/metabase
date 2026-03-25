@@ -218,7 +218,6 @@ export function buildRawSeriesFromDefinitions(
   resultsByDefinitionId: Map<MetricSourceId, Dataset>,
   modifiedDefinitions: Map<MetricSourceId, MetricDefinition>,
   sourceColors: SourceColorMap,
-  settingsOverrides?: VisualizationSettings,
 ): {
   series: SingleSeries[];
   cardIdToDimensionId: Record<CardId, MetricSourceId>;
@@ -296,7 +295,6 @@ export function buildRawSeriesFromDefinitions(
           seriesKey,
           color: sourceColors[entry.id]?.[0],
         }),
-        ...settingsOverrides,
       }),
       data: result.data,
     };

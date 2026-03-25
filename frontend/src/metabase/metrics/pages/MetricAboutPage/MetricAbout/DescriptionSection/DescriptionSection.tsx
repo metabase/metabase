@@ -96,10 +96,9 @@ export function DescriptionSection({ card, urls }: DescriptionSectionProps) {
         <Card.Section withBorder p="md">
           <Group gap="sm" mb={4}>
             <Icon name="database" c="brand" />
-
             {database ? (
               databaseUrl ? (
-                <Link to={databaseUrl}>
+                <Link to={databaseUrl} className={S.metricLink}>
                   <Text size="md" fw={600} lh="1rem">
                     {database.name}
                   </Text>
