@@ -414,7 +414,8 @@
                         (-> details
                             (select-keys [:id :type :description :name :verified])
                             (assoc :result-columns (:fields details))
-                            (m/assoc-some :average_query_time (:average_query_time card))))
+                            (m/assoc-some :average_query_time (:average_query_time card)
+                                          :display (:display card))))
                       (throw (ex-info "Invalid report_id format"
                                       {:agent-error? true :status-code 400})))]
         {:structured-output (assoc details :result-type :entity)}))

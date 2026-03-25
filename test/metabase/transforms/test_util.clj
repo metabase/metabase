@@ -160,22 +160,35 @@
           (throw (ex-info (format "Transform run failed with status %s" status)
                           {:resp resp :status status})))))))
 
-(defn wait-for-field
-  "Wait for a field with `field-name` to appear as active on the table named `table-name`.
-   Useful after schema changes where sync runs asynchronously."
-  [table-name field-name timeout-ms]
+(defn- poll-field
+  "Poll until `pred` is satisfied for the active-field lookup of `field-name` on `table-name`.
+   Returns the first truthy result of `pred`, or throws after `timeout-ms`."
+  [table-name field-name timeout-ms pred timeout-msg]
   (let [timer (u/start-timer)]
     (loop []
-      (let [table  (t2/select-one :model/Table :name table-name :db_id (mt/id))
-            field  (when table
-                     (t2/select-one :model/Field :table_id (:id table) :name field-name :active true))]
-        (cond
-          field    field
-          (> (u/since-ms timer) timeout-ms)
-          (throw (ex-info (format "Field %s on table %s did not appear after %dms" field-name table-name timeout-ms)
-                          {:table-name table-name :field-name field-name :timeout-ms timeout-ms}))
-          :else    (do (Thread/sleep 200)
-                       (recur)))))))
+      (let [table (t2/select-one :model/Table :name table-name :db_id (mt/id))
+            field (when table
+                    (t2/select-one :model/Field :table_id (:id table) :name field-name :active true))]
+        (or (pred field)
+            (if (> (u/since-ms timer) timeout-ms)
+              (throw (ex-info (format timeout-msg field-name table-name timeout-ms)
+                              {:table-name table-name :field-name field-name :timeout-ms timeout-ms}))
+              (do (Thread/sleep 200)
+                  (recur))))))))
+
+(defn wait-for-field
+  "Wait for a field with `field-name` to appear as active on `table-name`."
+  [table-name field-name timeout-ms]
+  (poll-field table-name field-name timeout-ms
+              some?
+              "Field %s on table %s did not appear after %dms"))
+
+(defn wait-for-field-inactive
+  "Wait for a field with `field-name` to no longer be active on `table-name`."
+  [table-name field-name timeout-ms]
+  (poll-field table-name field-name timeout-ms
+              nil?
+              "Field %s on table %s still active after %dms"))
 
 (defn get-test-schema
   "Get the schema from the products table in the test dataset.
