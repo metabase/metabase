@@ -10,7 +10,7 @@ import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { getEngineNativeType } from "metabase/lib/engine";
 import { useSelector } from "metabase/lib/redux";
-import { PLUGIN_AI_SQL_FIXER } from "metabase/plugins";
+import { FixSqlQueryButton } from "metabase/metabot/components/FixSqlQueryButton";
 import { getLearnUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { Box, Center, Flex, Icon } from "metabase/ui";
@@ -143,7 +143,7 @@ export function VisualizationError({
                 {t`Learn how to debug SQL errors`}
               </ExternalLink>
             )}
-            {!isResultDirty && <PLUGIN_AI_SQL_FIXER.FixSqlQueryButton />}
+            {!isResultDirty && <FixSqlQueryButton />}
           </Flex>
         </Flex>
       </Box>
