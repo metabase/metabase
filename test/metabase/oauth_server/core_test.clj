@@ -1,6 +1,7 @@
 (ns metabase.oauth-server.core-test
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [metabase.agent-api.api] ;; ensure agent API routes are loaded for scopes discovery
    [metabase.oauth-server.core :as oauth-server]
    [metabase.test :as mt]))
 

@@ -102,6 +102,7 @@
                                                           org.bouncycastle/bcprov-jdk15on
                                                           org.bouncycastle/bcpkix-jdk18on
                                                           org.bouncycastle/bcprov-jdk18on]}
+  integrant/integrant                       {:mvn/version "0.13.1"}             ; Micro-framework for data-driven architecture
   metabase/throttle                         {:mvn/version "1.0.2"}              ; Tools for throttling access to API endpoints and other code pathways
   methodical/methodical                     {:mvn/version "1.0.127"}            ; drop-in replacements for Clojure multimethods and adds several advanced features
   metosin/malli                             {:git/url "https://github.com/metabase/malli" ; Data-driven Schemas for Clojure/Script and babashka
