@@ -516,7 +516,20 @@
                         :labels [:connection-type]})
    (prometheus/counter :metabase-db-connection/type-resolved
                        {:description "Write-data details resolved by effective-details (driver-agnostic). Only incremented when write-data-details are genuinely used, not on fallback or workspace swap."
-                        :labels [:connection-type]})])
+                        :labels [:connection-type]})
+
+   ;; release dashboard metrics
+   (prometheus/counter :metabase-sync/failures
+                       {:description "Number of sync operation failures."
+                        :labels [:driver]})
+   (prometheus/counter :metabase-api/unhandled-errors
+                       {:description "Number of unhandled API errors (500s without explicit status code)."})
+   (prometheus/counter :metabase-frontend/errors
+                       {:description "Number of frontend errors reported by the browser."
+                        :labels [:type]})
+   (prometheus/counter :metabase-export/errors
+                       {:description "Number of errors during data export."
+                        :labels [:format]})])
 
 (defn- quartz-collectors
   []

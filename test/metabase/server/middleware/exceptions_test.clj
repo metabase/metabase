@@ -193,3 +193,16 @@
        (fn [e] (reset! captured-exception e)))
       (is (= test-exception @captured-exception)
           "Exception should be routed to raise handler"))))
+
+(deftest unhandled-error-increments-prometheus-counter-test
+  (testing "An unhandled exception (no status-code in ex-data) increments :metabase-api/unhandled-errors"
+    (mt/with-prometheus-system! [_ system]
+      (let [initial (mt/metric-value system :metabase-api/unhandled-errors)]
+        (mw.exceptions/api-exception-response (Exception. "boom"))
+        (is (< initial (mt/metric-value system :metabase-api/unhandled-errors))))))
+
+  (testing "An exception with an explicit status-code does NOT increment the counter"
+    (mt/with-prometheus-system! [_ system]
+      (let [initial (mt/metric-value system :metabase-api/unhandled-errors)]
+        (mw.exceptions/api-exception-response (ex-info "not found" {:status-code 404}))
+        (is (= initial (mt/metric-value system :metabase-api/unhandled-errors)))))))
