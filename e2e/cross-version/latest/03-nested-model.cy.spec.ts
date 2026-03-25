@@ -1,5 +1,6 @@
 import { Q2_JOINS_NAME, Q3_NESTED_NAME } from "../constants";
-import { saveSimpleQuestion } from "../cross-version-helpers";
+
+import * as X from "./helpers";
 
 const { H } = cy;
 
@@ -11,44 +12,49 @@ describe("Cross-version questions - nested model", () => {
       H.restoreCrossVersionDev("02-complete");
       cy.signIn("admin", { skipCache: true });
 
-      cy.visit("/");
+      cy.log("-- Create a model from a previous question --");
 
-      cy.log("Create a model from a previous question");
+      cy.visit("/");
       H.newButton("Question").click();
-      H.popover().contains("Our analytics").click();
-      H.popover().contains(Q2_JOINS_NAME).click();
+
+      X.selectFromPopover("Our analytics");
+      X.selectFromPopover(Q2_JOINS_NAME);
+
+      cy.log("-- Add aggregation --");
       H.addSummaryField({ metric: "Sum of ..." });
-      H.popover().contains("Average of Discount").click();
+      X.selectFromPopover("Average of Discount");
+
       H.visualize();
       cy.findByTestId("scalar-value").should("have.text", "$20.80");
-      saveSimpleQuestion(Q3_NESTED_NAME);
+
+      X.saveQuestion(Q3_NESTED_NAME);
+
+      cy.log("-- Turn question into a model --");
       H.openQuestionActions();
-      H.popover().findByText("Turn into a model").click();
+      X.selectFromPopover("Turn into a model");
       H.modal().button("Turn this into a model").click();
       cy.location("pathname").should("contain", "model");
 
+      cy.log("-- Edit model metadata --");
       H.openQuestionActions();
-      H.popover().findByText("Edit metadata").click();
+      X.selectFromPopover("Edit metadata");
       cy.location("pathname").should("include", "columns");
 
       H.rightSidebar().within(() => {
         cy.findByDisplayValue("Sum of Average of Discount")
-          .as("displayNameInput")
           .should("be.visible")
           .clear()
           .type("Total Discount")
           .blur();
+
+        cy.findByDisplayValue("Sum of Average of Discount").should("not.exist");
+        cy.findByDisplayValue("Total Discount").should("be.visible");
+
+        cy.findByRole("tab", { name: "Formatting" }).click();
+        cy.get("#currency").should("have.value", "US Dollar").click();
       });
-
-      cy.log("Verify that the column name got updated in the table");
-      cy.findByTestId("model-column-header-content").should(
-        "contain",
-        "Total Discount",
-      );
-
-      H.rightSidebar().findByDisplayValue("US Dollar").click();
-      H.popover().contains("Euro").click();
-      H.rightSidebar().findByDisplayValue("Euro").should("be.visible");
+      X.selectFromPopover("Euro");
+      cy.get("#currency").should("have.value", "Euro").click();
 
       H.saveMetadataChanges();
       cy.location("pathname").should("not.include", "columns");
@@ -74,11 +80,10 @@ describe("Cross-version questions - nested model", () => {
         "have.text",
         "Showing 1 row",
       );
+
+      cy.log("-- Assert that the model metadata is preserved --");
       cy.findByTestId("scalar-value").should("have.text", "€20.80");
-      H.queryBuilderFooterDisplayToggle()
-        .findAllByRole("radio")
-        .filter("[value=data]")
-        .click({ force: true });
+      cy.findByLabelText("Switch to data").click();
 
       cy.findByTestId("scalar-value").should("not.exist");
       cy.findByTestId("header-cell").should("contain", "Total Discount (€)");
