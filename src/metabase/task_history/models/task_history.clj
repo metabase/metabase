@@ -136,7 +136,7 @@
   "Schema for `info` passed to the `with-task-history` macro."
   [:map {:closed true}
    [:task                             ms/NonBlankString] ; task name, i.e. `send-pulses`. Conventionally lisp-cased
-   [:parent          {:optional true} [:maybe :int]]     ; parent task ID
+   [:parent_id       {:optional true} [:maybe :int]]     ; parent task ID
    [:db_id           {:optional true} [:maybe :int]]     ; DB involved, for sync operations or other tasks where this is applicable.
    [:on-success-info {:optional true} [:maybe [:=> [:cat TaskHistoryCallBackInfo :any] :map]]]
    [:on-fail-info    {:optional true} [:maybe [:=> [:cat TaskHistoryCallBackInfo :any] :map]]]
@@ -232,7 +232,7 @@
                                                                 :status     :started
                                                                 :started_at (t/instant))
                                                    run-id (assoc :run_id run-id)
-                                                   (:parent info) (assoc :parent (:parent info))))
+                                                   (:parent_id info) (assoc :parent_id (:parent_id info))))
         logs-atom       (log-capture-atom)]
     (binding [clojure.tools.logging/*logger-factory*
               (log-capture-factory clojure.tools.logging/*logger-factory* logs-atom)]

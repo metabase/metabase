@@ -11785,13 +11785,13 @@ databaseChangeLog:
             tableName: task_history
             columns:
               - column:
-                  name: parent
+                  name: parent_id
                   type: int
                   constraints:
                     nullable: true
         - addForeignKeyConstraint:
             baseTableName: task_history
-            baseColumnNames: parent
+            baseColumnNames: parent_id
             referencedTableName: task_history
             referencedColumnNames: id
             constraintName: fk_task_history_parent
@@ -11802,7 +11802,7 @@ databaseChangeLog:
             constraintName: fk_task_history_parent
         - dropColumn:
             tableName: task_history
-            columnName: parent
+            columnName: parent_id
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

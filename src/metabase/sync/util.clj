@@ -553,7 +553,7 @@
   "Runs `step` on `database` returning metadata from the run"
   [database :- i/DatabaseInstance
    {:keys [step-name sync-fn log-summary-fn] :as _step} :- StepDefinition
-   parent :- [:maybe :int]]
+   parent-id :- [:maybe :int]]
   (let [start-time (t/zoned-date-time)
         results    (tracing/with-span :sync (str "sync.step." step-name) {:db/id (u/the-id database) :sync/step step-name}
                      (do-with-start-and-finish-debug-logging
@@ -564,7 +564,7 @@
                         (with-returning-throwable (format "Error running step ''%s'' for %s" step-name (name-for-logging database))
                           (task-history/with-task-history
                             {:task            step-name
-                             :parent          parent
+                             :parent_id       parent-id
                              :db_id           (u/the-id database)
                              :on-success-info (fn [update-map result]
                                                 (if (instance? Throwable result)

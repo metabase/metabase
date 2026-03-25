@@ -106,10 +106,10 @@
 
 (defn- fetch-task-history-row [task-name]
   (let [task-history (t2/select-one :model/TaskHistory :task task-name)
-        parent-value (:parent task-history)]
+        parent-value (:parent_id task-history)]
     (assert (integer? (:duration task-history)))
     (-> (tu/boolean-ids-and-timestamps (dissoc task-history :duration :logs :run_id))
-        (assoc :parent parent-value))))
+        (assoc :parent_id parent-value))))
 
 (deftest task-history-test
   ((fixtures/initialize :db)
@@ -133,13 +133,13 @@
                 (map first (:steps results)))))
        (testing "operation history"
          (let [parent-task (fetch-task-history-row process-name)]
-           (is (=? (merge default-task-history {:task process-name, :task_details nil, :parent nil})
+           (is (=? (merge default-task-history {:task process-name, :task_details nil, :parent_id nil})
                    parent-task))
            (testing "step 1 history"
-             (is (=? (merge default-task-history {:task step-1-name, :task_details {:foo "bar"}, :parent pos-int?})
+             (is (=? (merge default-task-history {:task step-1-name, :task_details {:foo "bar"}, :parent_id pos-int?})
                      (fetch-task-history-row step-1-name))))
            (testing "step 2 history"
-             (is (=? (merge default-task-history {:task step-2-name, :task_details nil, :parent pos-int?})
+             (is (=? (merge default-task-history {:task step-2-name, :task_details nil, :parent_id pos-int?})
                      (fetch-task-history-row step-2-name))))))))))
 
 (deftest run-sync-operation-record-failed-task-history-test
@@ -159,7 +159,7 @@
        (call-with-operation-info! #(sync-util/run-sync-operation process-name mock-db sync-steps))
        (testing "operation history"
          (let [parent-task (fetch-task-history-row process-name)]
-           (is (=? (merge default-task-history {:task process-name, :task_details nil, :parent nil})
+           (is (=? (merge default-task-history {:task process-name, :task_details nil, :parent_id nil})
                    parent-task))
            (testing "step history should has status is failed"
              (is (=? (merge default-task-history
@@ -167,14 +167,14 @@
                              :task_details {:exception  (mt/malli=? :string)
                                             :stacktrace (mt/malli=? [:sequential :string])}
                              :status       :failed
-                             :parent       pos-int?})
+                             :parent_id    pos-int?})
                      (fetch-task-history-row step-name-1)))
              (is (=? (merge default-task-history
                             {:task         step-name-2
                              :task_details {:exception  (mt/malli=? :string)
                                             :stacktrace (mt/malli=? [:sequential :string])}
                              :status       :failed
-                             :parent       pos-int?})
+                             :parent_id    pos-int?})
                      (fetch-task-history-row step-name-2))))))))))
 
 (defn- create-test-sync-summary [step-name log-summary-fn]

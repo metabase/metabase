@@ -62,7 +62,7 @@
                             :retry_errors      (reverse @retry-errors)})]
         (log/debug "Started sending")
         (task-history/with-task-history {:task            "channel-send"
-                                         :parent          parent-id
+                                         :parent_id       parent-id
                                          :on-success-info (fn [update-map _result]
                                                             (cond-> update-map
                                                               (seq @retry-errors)
