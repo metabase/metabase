@@ -70,20 +70,20 @@
   "Does `token-scopes` grant access to a tool with the given `tool-scope`?
    - nil token-scopes → always matches (internal callers)
    - ::scope/unrestricted in token-scopes → always matches
-   - nil tool-scope → always matches (tool has no scope restriction)
-   - empty token-scopes #{} → only matches tools with nil tool-scope
+   - nil tool-scope → only matches nil or unrestricted token-scopes (consistent with
+     ensure-scopes-checked middleware which blocks scoped tokens from unscopped endpoints)
    - wildcard scopes like \"agent:*\" match any tool scope starting with \"agent:\""
   [token-scopes tool-scope]
   (or (nil? token-scopes)
       (contains? token-scopes ::scope/unrestricted)
-      (nil? tool-scope)
-      (contains? token-scopes tool-scope)
-      (some (fn [s]
-              (when (string? s)
-                (when-let [prefix (when (str/ends-with? s ":*")
-                                    (subs s 0 (dec (count s))))]
-                  (str/starts-with? tool-scope prefix))))
-            token-scopes)))
+      (when (some? tool-scope)
+        (or (contains? token-scopes tool-scope)
+            (some (fn [s]
+                    (when (string? s)
+                      (when-let [prefix (when (str/ends-with? s ":*")
+                                          (subs s 0 (dec (count s))))]
+                        (str/starts-with? tool-scope prefix))))
+                  token-scopes)))))
 
 (defn list-tools
   "Return the tool definitions suitable for MCP `tools/list` responses.
