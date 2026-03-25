@@ -456,7 +456,6 @@ export const lastRunCard = createReducer<Card | null>(null, (builder) => {
 
 // The results of a query execution. optionally an error if the query fails to complete successfully.
 export const queryResults = createReducer<Dataset[] | null>(null, (builder) => {
-  // @ts-expect-error — Draft<Dataset[]> triggers TS2589 due to Dataset's recursive types
   builder
     .addCase(RESET_QB, () => null)
     .addCase<string, { type: string; payload: { queryResults: Dataset[] } }>(
@@ -465,6 +464,7 @@ export const queryResults = createReducer<Dataset[] | null>(null, (builder) => {
     )
     .addCase<string, { type: string; payload: Dataset | null }>(
       QUERY_ERRORED,
+      // @ts-expect-error — Draft<Dataset[]> triggers TS2589 due to Dataset's recursive types
       (state, action) => (action.payload ? [action.payload] : state),
     )
     .addCase(CLEAR_QUERY_RESULT, () => null);
@@ -628,7 +628,6 @@ export const selectedTimelineEventIds = createReducer<number[]>(
 
 // the card that is actively being worked on
 export const card = createReducer<Card | null>(null, (builder) => {
-  // @ts-expect-error — Draft<Card> triggers TS2589 due to Card's recursive types (StructuredQuery, Field, etc.)
   builder
     .addCase(RESET_QB, () => null)
     .addCase(CLOSE_QB, () => null)

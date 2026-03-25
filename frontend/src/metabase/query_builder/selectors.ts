@@ -540,7 +540,7 @@ export const getZoomedObjectId = (state: State) => state.qb.zoomedRowObjectId;
 export const getZoomedObjectRowIndex = createSelector(
   [getPKRowIndexMap, getZoomedObjectId],
   (PKRowIndexMap, objectId) => {
-    if (!PKRowIndexMap) {
+    if (!PKRowIndexMap || objectId == null) {
       return;
     }
 
