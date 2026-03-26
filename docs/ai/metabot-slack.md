@@ -55,7 +55,7 @@ Metabot remembers the full context of a thread. To clear context and start a fre
 
 If you ask Metabot a question in a public channel, _everyone_ in that channel can see the response. So even though Metabot respects your Metabase [permissions](../permissions/introduction.md) (Metabot can only see what you see), be thoughtful about questions that could surface sensitive data to others that may lack your permissions.
 
-### Feedback
+### Feedback forms contain your conversation history
 
 When you submit feedback, the form you send may contain sensitive data from your conversation.
 
