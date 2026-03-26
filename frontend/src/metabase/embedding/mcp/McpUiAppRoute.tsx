@@ -31,10 +31,7 @@ export function McpUiAppRoute() {
   // selectors like getTokenFeature has populated settings.
   const [isSettingsReady, setIsSettingsReady] = useState(false);
 
-  const { instanceUrl, sessionToken } = window.metabaseConfig ?? {
-    instanceUrl: "",
-    sessionToken: "",
-  };
+  const { instanceUrl } = window.metabaseConfig ?? { instanceUrl: "" };
 
   const scheme: ResolvedColorScheme =
     hostContext?.theme === "dark" ? "dark" : "light";
@@ -89,6 +86,7 @@ export function McpUiAppRoute() {
   );
 
   useEffect(() => {
+    // Remove the loading indicator on the HTML page once the app is ready
     if (isReady) {
       document.getElementById("mcp-loading")?.remove();
     }
@@ -109,7 +107,7 @@ export function McpUiAppRoute() {
 
   return (
     <ComponentProvider
-      authConfig={{ metabaseInstanceUrl: instanceUrl, sessionToken }}
+      authConfig={{ metabaseInstanceUrl: instanceUrl }}
       theme={theme}
       reduxStore={store}
       loaderComponent={SimpleLoader}
