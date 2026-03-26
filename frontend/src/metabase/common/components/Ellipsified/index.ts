@@ -1,1 +1,1 @@
-export { Ellipsified } from "./Ellipsified";
+export { Ellipsified } from "metabase/ui/components/data-display/Ellipsified";
