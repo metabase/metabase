@@ -9,6 +9,7 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
@@ -87,6 +88,95 @@
           (or (update-rolling-average-execution-time! query query-hash execution-time-ms)
               ;; rethrow e if updating an existing average execution time failed
               (throw e))))))
+
+(defn- combined-rolling-average-params
+  "Given a sequence of execution times for the same query hash, compute the combined
+  rolling-average parameters: `{:decay d, :weighted-sum w}`.
+
+  When applied: `new_avg = ROUND(d * old_avg + w, 0)`
+
+  For k times [t₁ … tₖ]: decay = 0.9^k, weighted-sum = 0.1 × Σᵢ 0.9^(k-1-i) × tᵢ"
+  [running-times]
+  (let [k     (count running-times)
+        decay (Math/pow 0.9 k)
+        wsum  (reduce (fn [acc [i t]]
+                        (+ acc (* 0.1 (Math/pow 0.9 (- k 1 i)) (double t))))
+                      0.0
+                      (map-indexed vector running-times))]
+    {:decay decay :weighted-sum wsum}))
+
+(defn batch-save-query-and-update-average-execution-time!
+  "Batch version of [[save-query-and-update-average-execution-time!]] for use with grouper.
+  Receives a seq of `{:query, :query-hash, :running-time}` maps. Groups by query-hash,
+  computes combined rolling averages, and executes as few SQL statements as possible:
+  1 SELECT + 1 UPDATE (existing hashes) + 1 INSERT (new hashes)."
+  [items]
+  (when (seq items)
+    (try
+      (let [by-hash      (group-by :query-hash items)
+            hash->params (into {}
+                               (map (fn [[h entries]]
+                                      (let [params (combined-rolling-average-params (mapv :running-time entries))]
+                                        [h (assoc params :query (:query (peek entries)))])))
+                               by-hash)
+            all-hashes   (vec (keys hash->params))
+            ;; 1. Find which hashes already exist
+            existing     (into #{} (map :query_hash)
+                               (t2/query {:select [:query_hash]
+                                          :from   [:query]
+                                          :where  [:in :query_hash all-hashes]}))
+            to-update    (filterv existing all-hashes)
+            to-insert    (filterv (complement existing) all-hashes)]
+        ;; 2. Batch UPDATE existing rows — single UPDATE with CASE
+        (when (seq to-update)
+          (let [avg-case   (into [:case]
+                                 (mapcat (fn [h]
+                                           (let [{:keys [decay weighted-sum]} (hash->params h)]
+                                             [[:= :query_hash h]
+                                              (h2x/cast (int-casting-type)
+                                                        (h2x/round
+                                                         (h2x/+ (h2x/* [:inline decay] :average_execution_time)
+                                                                [:inline weighted-sum])
+                                                         [:inline 0]))])))
+                                 to-update)
+                query-case (into [:case]
+                                 (mapcat (fn [h]
+                                           [[:= :query_hash h]
+                                            (json/encode (:query (hash->params h)))]))
+                                 to-update)]
+            (t2/query {:update :query
+                       :set    {:average_execution_time avg-case
+                                :query                 [:case [:= :query nil] query-case
+                                                        :else :query]}
+                       :where  [:in :query_hash to-update]})))
+        ;; 3. Batch INSERT new rows — single INSERT
+        (when (seq to-insert)
+          (let [rows (mapv (fn [h]
+                             (let [{:keys [weighted-sum query]} (hash->params h)
+                                   k   (count (get by-hash h))
+                                   ;; For new rows there's no old average to decay against.
+                                   ;; Recover the effective average from the weighted sum:
+                                   ;; weighted-sum = 0.1 × Σ 0.9^(k-1-i) × tᵢ
+                                   ;; The contribution fraction is (1 - 0.9^k), so:
+                                   ;; effective_avg = weighted-sum / (1 - 0.9^k)
+                                   avg (long (Math/round (/ weighted-sum (- 1.0 (Math/pow 0.9 k)))))]
+                               {:query_hash             h
+                                :query                  (json/encode query)
+                                :average_execution_time avg}))
+                           to-insert)]
+            (try
+              (t2/insert! :model/Query rows)
+              (catch Throwable _e
+                ;; Race condition: another thread inserted the same hash. Fall back to individual updates.
+                (doseq [h to-insert]
+                  (try
+                    (save-query-and-update-average-execution-time!
+                     (:query (hash->params h)) h
+                     (:running-time (last (get by-hash h))))
+                    (catch Throwable e2
+                      (log/error e2 "Error saving query execution time for hash")))))))))
+      (catch Throwable e
+        (log/error e "Error in batch-save-query-and-update-average-execution-time!")))))
 
 (mr/def ::database-and-table-ids
   [:map

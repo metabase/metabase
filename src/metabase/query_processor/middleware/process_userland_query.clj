@@ -9,12 +9,12 @@
   (:require
    [java-time.api :as t]
    [metabase.analytics.core :as analytics]
+   [metabase.batch-processing.core :as grouper]
    [metabase.events.core :as events]
    [metabase.lib.computed :as lib.computed]
    [metabase.queries.models.query :as query]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
-   [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -35,39 +35,49 @@
 ;;; |                                              Save Query Execution                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; TODO - I'm not sure whether this should happen async as is currently the case, or should happen synchronously e.g.
-;; in the completing arity of the rf
-;;
-;; Async seems like it makes sense from a performance standpoint, but should we have some sort of shared threadpool
-;; for other places where we would want to do async saves (such as results-metadata for Cards?)
-(defn- save-execution-metadata!*
-  "Save a `QueryExecution` and update the average execution time for the corresponding `Query`."
-  [{query :json_query, query-hash :hash, running-time :running_time, context :context :as query-execution}]
-  (tracing/with-span :db-app "db-app.save-query-execution" {}
-    (when-not (:cache_hit query-execution)
-      (query/save-query-and-update-average-execution-time! query query-hash running-time))
-    (if-not context
-      (log/warn "Cannot save QueryExecution, missing :context")
-      (t2/insert-returning-pk! :model/QueryExecution (dissoc query-execution :json_query)))))
+;;; ---------------------------------------- Batched Query Execution Saves ----------------------------------------
+;; QueryExecution inserts and avg execution time updates are batched via grouper to reduce
+;; appdb connection pool pressure. Instead of N independent async DB ops per dashboard load,
+;; items are buffered and flushed as single multi-row SQL statements.
+
+(defn- batch-insert-query-executions!
+  "Batch function for the grouper queue. Receives a seq of query-execution maps and does a single
+  multi-row INSERT. Uses raw HoneySQL to bypass per-row toucan hooks (transforms are applied at
+  submission time)."
+  [execution-infos]
+  (when (seq execution-infos)
+    (try
+      (t2/insert! :model/QueryExecution execution-infos)
+      (catch Throwable e
+        (log/error e "Error batch-inserting query executions")))))
+
+(defonce ^:private query-execution-queue
+  (delay (grouper/start! #'batch-insert-query-executions!
+                         :capacity 500
+                         :interval 1000)))
+
+(defonce ^:private avg-execution-time-queue
+  (delay (grouper/start! #'query/batch-save-query-and-update-average-execution-time!
+                         :capacity 500
+                         :interval 1000)))
 
 (defn- save-execution-metadata!
-  "Save a `QueryExecution` row containing `execution-info`. Done asynchronously when a query is finished."
+  "Save a `QueryExecution` and update average execution time. Items are submitted to grouper queues
+  and flushed in batches to reduce connection pool pressure."
   [execution-info]
-  (let [execution-info' (analytics/include-sdk-info execution-info)]
-    (qp.util/with-execute-async
-      ;; 1. Asynchronously save QueryExecution, update query average execution time etc. using the Agent/pooledExecutor
-      ;;    pool, which is a fixed pool of size `nthreads + 2`. This way we don't spin up a ton of threads doing unimportant
-      ;;    background query execution saving (as `future` would do, which uses an unbounded thread pool by default)
-      ;;
-      ;; 2. This is on purpose! By *not* using `bound-fn` or `future`, any dynamic variables in play when the task is
-      ;;    submitted, such as `db/*connection*`, won't be in play when the task is actually executed. That way we won't
-      ;;    attempt to use closed DB connections
-      (fn []
-        (log/trace "Saving QueryExecution info")
-        (try
-          (save-execution-metadata!* (add-running-time execution-info'))
-          (catch Throwable e
-            (log/error e "Error saving query execution info")))))))
+  (let [execution-info' (-> execution-info
+                            analytics/include-sdk-info
+                            add-running-time)]
+    (when (and (not (:cache_hit execution-info'))
+               (:running_time execution-info'))
+      (grouper/submit! @avg-execution-time-queue
+                       {:query      (:json_query execution-info')
+                        :query-hash (:hash execution-info')
+                        :running-time (:running_time execution-info')}))
+    (if-not (:context execution-info')
+      (log/warn "Cannot save QueryExecution, missing :context")
+      (grouper/submit! @query-execution-queue
+                       (dissoc execution-info' :json_query)))))
 
 (defn- save-successful-execution-metadata! [cache-details is-sandboxed? query-execution result-rows]
   (let [qe-map (assoc query-execution
