@@ -12,15 +12,51 @@ describe("time-dayjs", () => {
       dayjs.updateLocale(dayjs.locale(), { weekStart: 0 });
     });
 
-    it("should parse week of year correctly", () => {
-      const daysOfWeek = [0, 1, 2, 3, 4, 5, 6];
-      daysOfWeek.forEach((dayOfWeek) => {
-        dayjs.updateLocale(dayjs.locale(), { weekStart: dayOfWeek });
-        expect(parseTimestamp(1, "week-of-year").isoWeek()).toBe(1);
-        expect(parseTimestamp(2, "week-of-year").isoWeek()).toBe(2);
-        expect(parseTimestamp(52, "week-of-year").isoWeek()).toBe(52);
-        expect(parseTimestamp(53, "week-of-year").isoWeek()).toBe(53);
-      });
+    const NY15_TOKYO = dayjs(1420038000000); // 2014-12-31 15:00 UTC
+    const NY15_UTC = dayjs(1420070400000); // 2015-01-01 00:00 UTC
+    const NY15_LA = dayjs(1420099200000); // 2015-01-01 00:00 UTC
+
+    const TEST_CASES = [
+      ["2015-01-01T00:00:00.000Z", 0, NY15_UTC],
+      ["2015-01-01", 0, NY15_UTC],
+      ["2015-01-01T00:00:00.000+00:00", 0, NY15_UTC],
+      ["2015-01-01T00:00:00.000+0000", 0, NY15_UTC],
+      ["2015-01-01T00:00:00Z", 0, NY15_UTC],
+      [2015, 0, NY15_UTC],
+
+      ["2015-01-01T00:00:00.000+09:00", 540, NY15_TOKYO],
+      ["2015-01-01T00:00:00.000+0900", 540, NY15_TOKYO],
+      ["2015-01-01T00:00:00+09:00", 540, NY15_TOKYO],
+      ["2015-01-01T00:00:00+0900", 540, NY15_TOKYO],
+
+      ["2015-01-01T00:00:00.000-08:00", -480, NY15_LA],
+      ["2015-01-01T00:00:00.000-0800", -480, NY15_LA],
+      ["2015-01-01T00:00:00-08:00", -480, NY15_LA],
+      ["2015-01-01T00:00:00-0800", -480, NY15_LA],
+    ] as const;
+
+    TEST_CASES.map(([str, expectedOffset, expectedDate]) => {
+      it(
+        str +
+          " should be parsed as dayjs representing " +
+          expectedDate +
+          " with the offset " +
+          expectedOffset,
+        () => {
+          const result = parseTimestamp(str);
+
+          expect(dayjs.isDayjs(result)).toBe(true);
+          expect(result.utcOffset()).toBe(expectedOffset);
+          expect(result.unix()).toEqual(expectedDate.unix());
+        },
+      );
+    });
+
+    // See https://github.com/metabase/metabase/issues/11615
+    it("parse sqlite date with unit=year correctly", () => {
+      const result = parseTimestamp("2015-01-01", "year");
+      expect(dayjs.isDayjs(result)).toBe(true);
+      expect(result.unix()).toEqual(NY15_UTC.unix());
     });
 
     it("should not parse small numbers as timestamps when non-timestamp unit is provided", () => {
@@ -31,6 +67,17 @@ describe("time-dayjs", () => {
       // Small numbers with units like "month", "quarter", "year" don't make sense
       // as timestamps, so parseTimestamp should return an invalid date
       expect(result.isValid()).toBe(false);
+    });
+
+    it("should parse week of year correctly", () => {
+      const daysOfWeek = [0, 1, 2, 3, 4, 5, 6];
+      daysOfWeek.forEach((dayOfWeek) => {
+        dayjs.updateLocale(dayjs.locale(), { week: { dow: dayOfWeek } });
+        expect(parseTimestamp(1, "week-of-year").isoWeek()).toBe(1);
+        expect(parseTimestamp(2, "week-of-year").isoWeek()).toBe(2);
+        expect(parseTimestamp(52, "week-of-year").isoWeek()).toBe(52);
+        expect(parseTimestamp(53, "week-of-year").isoWeek()).toBe(53);
+      });
     });
   });
 
