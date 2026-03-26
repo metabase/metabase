@@ -361,7 +361,10 @@ if (shouldEnableHotRefresh) {
   config.plugins.unshift(
     new ReactRefreshPlugin({
       overlay: false,
-      exclude: [SDK_DOCS_SNIPPETS_PATH],
+      // app-embed-mcp runs in an isolated iframe with no HMR websocket.
+      // Excluding it removes the React Refresh runtime (which uses eval)
+      // and avoids CSP violations in the MCP app sandbox.
+      exclude: [SDK_DOCS_SNIPPETS_PATH, /node_modules/, /app-embed-mcp/],
     }),
   );
 }
