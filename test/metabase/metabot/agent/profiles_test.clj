@@ -11,7 +11,7 @@
       (let [profile (profiles/get-profile :embedding_next)]
         (is (some? profile))
         (is (= :embedding_next (:name profile)))
-        (is (= "openrouter/anthropic/claude-haiku-4-5" (:model profile)))
+        (is (= "anthropic/claude-sonnet-4-6" (:model profile)))
         (is (= 10 (:max-iterations profile)))
         (is (= 0.3 (:temperature profile)))
         (is (vector? (:tools profile)))
@@ -22,7 +22,7 @@
       (let [profile (profiles/get-profile :internal)]
         (is (some? profile))
         (is (= :internal (:name profile)))
-        (is (= "openrouter/anthropic/claude-haiku-4-5" (:model profile)))
+        (is (= "anthropic/claude-sonnet-4-6" (:model profile)))
         (is (= 10 (:max-iterations profile)))
         (is (= 0.3 (:temperature profile)))
         (is (vector? (:tools profile)))
@@ -36,7 +36,7 @@
       (let [profile (profiles/get-profile :transforms_codegen)]
         (is (some? profile))
         (is (= :transforms_codegen (:name profile)))
-        (is (= "openrouter/anthropic/claude-haiku-4-5" (:model profile)))
+        (is (= "anthropic/claude-sonnet-4-6" (:model profile)))
         (is (= 30 (:max-iterations profile)))
         (is (= 0.3 (:temperature profile)))
         (is (vector? (:tools profile)))
@@ -46,7 +46,7 @@
     (testing "retrieves sql profile"
       (let [profile (profiles/get-profile :sql)]
         (is (=? {:name :sql
-                 :model "openrouter/anthropic/claude-haiku-4-5"
+                 :model "anthropic/claude-sonnet-4-6"
                  :max-iterations int?
                  :temperature pos?
                  :required-tool-call? true}
@@ -58,7 +58,7 @@
       (let [profile (profiles/get-profile :nlq)]
         (is (some? profile))
         (is (= :nlq (:name profile)))
-        (is (= "openrouter/anthropic/claude-haiku-4-5" (:model profile)))
+        (is (= "anthropic/claude-sonnet-4-6" (:model profile)))
         (is (= 10 (:max-iterations profile)))
         (is (= 0.3 (:temperature profile)))
         (is (contains? (tool-names profile) "search"))
@@ -68,7 +68,7 @@
       (let [profile (profiles/get-profile :slackbot)]
         (is (some? profile))
         (is (= :slackbot (:name profile)))
-        (is (= "openrouter/anthropic/claude-haiku-4-5" (:model profile)))
+        (is (= "anthropic/claude-sonnet-4-6" (:model profile)))
         (is (= 10 (:max-iterations profile)))
         (is (= 0.3 (:temperature profile)))
         (is (vector? (:tools profile)))

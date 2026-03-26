@@ -10,16 +10,23 @@
 ;;; ------------------------------------------------- Helpers ----------------------------------------------------------
 
 (defn- parse-user-id
-  "Parse a user-id string to an integer, returning nil if not a valid integer.
-   The oidc-provider library passes user-id as a string. For authorization_code and
-   refresh_token grants this is a stringified Metabase user ID. For client_credentials
-   grants the library passes the client-id string, which is not a valid integer."
+  "Parse a user-id string to a long, returning nil if not a valid positive integer.
+   The oidc-provider library passes user-id as a string. For most grants this is a
+   stringified Metabase user ID. We don't support client_credentials yet, but when we
+   do the library will pass the client-id (a UUID) which is not a valid integer — the
+   lenient nil return keeps this path open."
   [user-id]
-  (when user-id
-    (try
-      (Integer/parseInt (str user-id))
-      (catch NumberFormatException _
-        nil))))
+  (let [s (str user-id)]
+    (when (re-matches #"[1-9]\d*" s)
+      (Long/parseLong s))))
+
+(defn- parse-user-id-or-throw
+  "Like [[parse-user-id]] but throws if the user-id is missing or not a valid positive integer.
+   Use this in flows (e.g. authorization_code) where a real user must be present."
+  [user-id]
+  (or (parse-user-id user-id)
+      (throw (ex-info "Expected a valid user ID, but it was not a positive integer"
+                      {:user-id user-id}))))
 
 (def ^:private client-db-columns
   "DB columns to select/project for OAuthClient rows."
@@ -45,10 +52,10 @@
    the oidc-provider library can find the hash where it expects it."
   [row]
   (when row
-    (let [m (select-and-kebab-keys row client-db-columns)]
+    (let [m          (select-and-kebab-keys row client-db-columns)
+          token-hash (:registration-access-token-hash m)]
       (cond-> m
-        (:registration-access-token-hash m)
-        (assoc :registration-access-token (:registration-access-token-hash m))))))
+        token-hash (assoc :registration-access-token token-hash)))))
 
 (defn- client-config->db-row
   "Convert a protocol ClientConfig map to DB column format for insert/update."
@@ -68,10 +75,9 @@
    Ensures :resource is a vector (JSON deserialization may return a list)."
   [row]
   (when row
-    (let [m (-> (select-and-kebab-keys row auth-code-db-columns)
-                (update :user-id #(some-> % str)))]
-      (cond-> m
-        (:resource m) (update :resource vec)))))
+    (-> (select-and-kebab-keys row auth-code-db-columns)
+        (update :user-id #(some-> % str))
+        (u/update-if-exists :resource vec))))
 
 (def ^:private access-token-db-columns
   [:user_id :client_id :scope :expiry :resource])
@@ -80,10 +86,9 @@
   "Convert a DB row from :model/OAuthAccessToken to the protocol's map shape."
   [row]
   (when row
-    (let [m (-> (select-and-kebab-keys row access-token-db-columns)
-                (update :user-id #(some-> % str)))]
-      (cond-> m
-        (:resource m) (update :resource vec)))))
+    (-> (select-and-kebab-keys row access-token-db-columns)
+        (update :user-id #(some-> % str))
+        (u/update-if-exists :resource vec))))
 
 (def ^:private refresh-token-db-columns
   [:user_id :client_id :scope :expiry :resource])
@@ -92,10 +97,9 @@
   "Convert a DB row from :model/OAuthRefreshToken to the protocol's map shape."
   [row]
   (when row
-    (let [m (-> (select-and-kebab-keys row refresh-token-db-columns)
-                (update :user-id #(some-> % str)))]
-      (cond-> m
-        (:resource m) (update :resource vec)))))
+    (-> (select-and-kebab-keys row refresh-token-db-columns)
+        (update :user-id #(some-> % str))
+        (u/update-if-exists :resource vec))))
 
 ;;; ------------------------------------------------ ClientStore -------------------------------------------------------
 
@@ -142,7 +146,7 @@
   (save-authorization-code [_ code user-id client-id redirect-uri scope nonce expiry code-challenge code-challenge-method resource]
     (t2/insert! :model/OAuthAuthorizationCode
                 (cond-> {:code         code
-                         :user_id      (parse-user-id user-id)
+                         :user_id      (parse-user-id-or-throw user-id)
                          :client_id    client-id
                          :redirect_uri redirect-uri
                          :scope        (vec scope)
@@ -200,9 +204,8 @@
         db-row->refresh-token))
 
   (revoke-token [_ token]
-    (let [now (java.time.OffsetDateTime/now)]
-      (t2/update! :model/OAuthAccessToken {:token token} {:revoked_at now})
-      (t2/update! :model/OAuthRefreshToken {:token token} {:revoked_at now}))
+    (t2/update! :model/OAuthAccessToken {:token token} {:revoked_at :%now})
+    (t2/update! :model/OAuthRefreshToken {:token token} {:revoked_at :%now})
     true))
 
 ;;; ------------------------------------------------ Constructors ------------------------------------------------------

@@ -242,6 +242,8 @@ import grid_component from "./grid.svg?component";
 import grid_source from "./grid.svg?source";
 import grid_2x2_component from "./grid_2x2.svg?component";
 import grid_2x2_source from "./grid_2x2.svg?source";
+import grid_bordered_component from "./grid_bordered.svg?component";
+import grid_bordered_source from "./grid_bordered.svg?source";
 import group_component from "./group.svg?component";
 import group_source from "./group.svg?source";
 import history_component from "./history.svg?component";
@@ -364,6 +366,8 @@ import person_component from "./person.svg?component";
 import person_source from "./person.svg?source";
 import pie_component from "./pie.svg?component";
 import pie_source from "./pie.svg?source";
+import pie_slice_component from "./pie_slice.svg?component";
+import pie_slice_source from "./pie_slice.svg?source";
 import pin_component from "./pin.svg?component";
 import pin_source from "./pin.svg?source";
 import pinmap_component from "./pinmap.svg?component";
@@ -1017,6 +1021,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: grid_2x2_component,
       source: grid_2x2_source,
     },
+    grid_bordered: {
+      component: grid_bordered_component,
+      source: grid_bordered_source,
+    },
     group: {
       component: group_component,
       source: group_source,
@@ -1256,6 +1264,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     pie: {
       component: pie_component,
       source: pie_source,
+    },
+    pie_slice: {
+      component: pie_slice_component,
+      source: pie_slice_source,
     },
     pin: {
       component: pin_component,
@@ -1824,6 +1836,7 @@ export type IconName =
   | "grabber"
   | "grid"
   | "grid_2x2"
+  | "grid_bordered"
   | "group"
   | "google"
   | "google_drive"
@@ -1885,6 +1898,7 @@ export type IconName =
   | "permissions_limited"
   | "person"
   | "pie"
+  | "pie_slice"
   | "pin"
   | "pinmap"
   | "pivot_table"

@@ -1,6 +1,7 @@
 (ns metabase.metabot.settings
   (:require
    [clojure.string :as str]
+   [metabase.llm.settings :as llm.settings]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]))
 
@@ -93,7 +94,7 @@
   (deferred-tru "The AI provider and model for Metabot. Format: provider/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-4.1-mini`, `openrouter/anthropic/claude-haiku-4-5`.")
   :type             :string
   :encryption       :no
-  :default          "openrouter/anthropic/claude-haiku-4-5"
+  :default          "anthropic/claude-sonnet-4-6"
   :visibility       :settings-manager
   :export?          false
   :deprecated-name  :ee-ai-metabot-provider
@@ -107,7 +108,7 @@
   (deferred-tru "The AI provider and model for lightweight Metabot tasks (e.g. user intent classification).")
   :type             :string
   :encryption       :no
-  :default          "openrouter/openai/gpt-oss-20b"
+  :default          "anthropic/claude-haiku-4-5"
   :visibility       :settings-manager
   :export?          false
   :deprecated-name  :ee-ai-metabot-provider-lite
@@ -125,3 +126,37 @@
   :export?          false
   :deprecated-name  :ee-ai-metabot-internal-tasks-enabled?
   :doc              false)
+
+(defn- token-configured?
+  [token]
+  (boolean (and (string? token)
+                (not (str/blank? token)))))
+
+(defn configured-provider-api-key
+  "Returns the configured API key for the given provider, or nil if unrecognized."
+  [provider]
+  (case provider
+    "anthropic"  (llm.settings/llm-anthropic-api-key)
+    "openai"     (llm.settings/llm-openai-api-key)
+    "openrouter" (llm.settings/llm-openrouter-api-key)
+    nil))
+
+(defn- metabot-provider-prefix []
+  (some-> (llm-metabot-provider)
+          (str/split #"/" 2)
+          first))
+
+(defn- -llm-metabot-configured? []
+  (some-> (metabot-provider-prefix)
+          configured-provider-api-key
+          token-configured?
+          boolean))
+
+(defsetting llm-metabot-configured?
+  "Whether the API key for the selected Metabot provider is configured."
+  :type       :boolean
+  :visibility :public
+  :setter     :none
+  :export?    false
+  :getter     #'-llm-metabot-configured?
+  :doc        false)

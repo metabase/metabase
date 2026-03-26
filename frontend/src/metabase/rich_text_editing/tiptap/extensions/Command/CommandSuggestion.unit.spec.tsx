@@ -440,7 +440,12 @@ describe("CommandSuggestion", () => {
 
     describe("when metabot is disabled", () => {
       it("should show all available commands except Metabot", async () => {
-        setup({ settings: mockSettings({ "metabot-enabled?": false }) });
+        setup({
+          settings: mockSettings({
+            "metabot-enabled?": false,
+            "llm-metabot-configured?": false,
+          }),
+        });
 
         expect(screen.queryByText("Ask Metabot")).not.toBeInTheDocument();
         await expectStandardCommandsToBePresent();
@@ -456,7 +461,12 @@ describe("CommandSuggestion", () => {
       });
 
       it("should show all available commands including Metabot", async () => {
-        setup({ settings: mockSettings({ "metabot-enabled?": true }) });
+        setup({
+          settings: mockSettings({
+            "metabot-enabled?": true,
+            "llm-metabot-configured?": true,
+          }),
+        });
 
         expect(screen.getByText("Ask Metabot")).toBeInTheDocument();
         await expectStandardCommandsToBePresent();

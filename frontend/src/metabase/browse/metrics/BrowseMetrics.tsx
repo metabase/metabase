@@ -53,9 +53,7 @@ export function BrowseMetrics() {
       type: "library-metrics",
     });
 
-  const newMetricLink = Urls.newQuestion({
-    mode: "query",
-    cardType: "metric",
+  const newMetricLink = Urls.newMetric({
     collectionId: libraryMetricCollection?.id,
   });
 
