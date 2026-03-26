@@ -120,6 +120,19 @@ export function useMcpApp(): McpAppState {
       }
     });
 
+    // Notify the host whenever the document body changes size so it can
+    // resize the iframe to fit the content.
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect;
+        sendMessage("ui/notifications/size-changed", {
+          params: { width: Math.ceil(width), height: Math.ceil(height) },
+        });
+      }
+    });
+
+    resizeObserver.observe(document.body);
+
     sendRequest("ui/initialize", {
       appCapabilities: {},
       appInfo: { name: "metabase-visualize-query", version: "1.0.0" },
@@ -140,6 +153,7 @@ export function useMcpApp(): McpAppState {
       cleanupHostContext();
       cleanupToolInput();
       cleanupToolResult();
+      resizeObserver.disconnect();
     };
   }, []);
 
