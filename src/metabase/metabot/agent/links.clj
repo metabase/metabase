@@ -36,6 +36,15 @@
         (.getBytes "UTF-8")
         codecs/bytes->b64-str)))
 
+(defn pseudo-card->link
+  "Convert map with relevant card keys into a link. Relevant keys are e.g. dataset_query, display, displayIsLocked."
+  [pc]
+  (str "/question#"
+       (-> pc
+           json/encode
+           (.getBytes "UTF-8")
+           codecs/bytes->b64-str)))
+
 (defn- resolve-query-link
   "Resolve a metabase://query/{id} link to a /question# URL."
   [query-id queries-state]
