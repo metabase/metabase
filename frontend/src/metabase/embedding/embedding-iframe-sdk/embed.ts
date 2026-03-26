@@ -393,7 +393,6 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     // Ensure auth methods are mutually exclusive
     const authMethods = [
       settings.apiKey,
-      settings.sessionToken,
       settings.useExistingUserSession,
       settings.preferredAuthMethod,
     ].filter(
@@ -402,7 +401,7 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
 
     if (authMethods.length > 1) {
       raiseError(
-        "apiKey, sessionToken, useExistingUserSession, and preferredAuthMethod are mutually exclusive, only one can be specified.",
+        "apiKey, useExistingUserSession, and preferredAuthMethod are mutually exclusive, only one can be specified.",
       );
     }
   }

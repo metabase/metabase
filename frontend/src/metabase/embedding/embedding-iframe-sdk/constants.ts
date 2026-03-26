@@ -19,7 +19,6 @@ export const WAIT_FOR_SESSION_TOKEN_TIMEOUT = 5 * 60 * 1000;
 export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
   base: [
     "apiKey",
-    "sessionToken",
     "instanceUrl",
     "theme",
     "locale",
