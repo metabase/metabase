@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
+   [metabase.metabot.tools.sql.common :as sql-common]
    [metabase.metabot.tools.sql.create :as create-sql-query]
    [metabase.metabot.tools.sql.edit :as edit-sql-query]
    [metabase.metabot.tools.sql.replace :as replace-sql-query]
@@ -12,7 +13,7 @@
 (deftest edit-sql-query-test
   (mt/test-drivers #{:h2}
     (mt/with-current-user (mt/user->id :crowberto)
-      (mt/with-temp [:model/Database db {:engine :h2}]
+      (mt/with-temp [:model/Database {db-id :id :as db} {:engine :h2}]
         (mt/with-db db
           (testing "single replacement edit"
             (let [mp (mt/metadata-provider)
@@ -21,6 +22,23 @@
                   queries-state {query-id (-> (lib/native-query mp original-sql)
                                               lib/->legacy-MBQL)}
 
+                  {result :action-result}
+                  (edit-sql-query/edit-sql-query
+                   {:query-id query-id
+                    :queries-state queries-state
+                    :edits [{:old_string "id = 1"
+                             :new_string "id = 2"}]})]
+              (is (= query-id (:query-id result)))
+              (is (= "SELECT * FROM users WHERE id = 2" (:query-content result)))))
+
+          (testing "edit with JSON-parsed pMBQL query (string enum values)"
+            (let [original-sql "SELECT * FROM users WHERE id = 1"
+                  query-id "q-pmbql"
+                  ;; Simulates JSON round-tripped pMBQL: keyword keys, string values
+                  queries-state {query-id {:lib/type "mbql/query"
+                                           :database db-id
+                                           :stages   [{:lib/type "mbql.stage/native"
+                                                       :native  original-sql}]}}
                   {result :action-result}
                   (edit-sql-query/edit-sql-query
                    {:query-id query-id
@@ -83,6 +101,22 @@
               (is (= new-sql (:query-content result)))
               (is (= db-id (:database result)))))
 
+          (testing "replace with JSON-parsed pMBQL query (string enum values)"
+            (let [original-sql "SELECT * FROM users"
+                  new-sql "SELECT id, name FROM customers"
+                  query-id "q-pmbql-replace"
+                  queries-state {query-id {:lib/type "mbql/query"
+                                           :database db-id
+                                           :stages   [{:lib/type "mbql.stage/native"
+                                                       :native  original-sql}]}}
+                  {result :action-result}
+                  (replace-sql-query/replace-sql-query
+                   {:query-id query-id
+                    :queries-state queries-state
+                    :sql new-sql})]
+              (is (= new-sql (:query-content result)))
+              (is (= db-id (:database result)))))
+
           (testing "replaces SQL and updates name/description"
             (let [mp (mt/metadata-provider)
                   query-id "q6"
@@ -98,6 +132,33 @@
                     :description "New Description"})]
               (is (= "SELECT 2" (:query-content result)))
               (is (= db-id (:database result))))))))))
+
+(deftest update-query-sql-with-json-pmbql-test
+  (mt/test-drivers #{:h2}
+    (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
+      (testing "pMBQL query with string enum values (as received from frontend JSON)"
+        ;; Simulates what cheshire/decode+kw produces: keyword keys but string values
+        ;; for enum-like fields such as :lib/type.
+        (let [json-pmbql {:lib/type "mbql/query"
+                          :database db-id
+                          :stages   [{:lib/type "mbql.stage/native"
+                                      :native  "SELECT 1"}]}
+              result     (sql-common/update-query-sql json-pmbql "SELECT 2")]
+          (is (lib/native-only-query? result))
+          (is (= "SELECT 2" (lib/raw-native-query result)))))
+      (testing "already-normalized pMBQL query"
+        (let [mp         (mt/metadata-provider)
+              pmbql      (lib/native-query mp "SELECT 1")
+              result     (sql-common/update-query-sql pmbql "SELECT 2")]
+          (is (lib/native-only-query? result))
+          (is (= "SELECT 2" (lib/raw-native-query result)))))
+      (testing "legacy MBQL query"
+        (let [legacy {:type     :native
+                      :native   {:query "SELECT 1"}
+                      :database db-id}
+              result (sql-common/update-query-sql legacy "SELECT 2")]
+          (is (lib/native-only-query? result))
+          (is (= "SELECT 2" (lib/raw-native-query result))))))))
 
 (deftest integration-create-edit-in-memory-test
   (mt/test-drivers #{:h2}
