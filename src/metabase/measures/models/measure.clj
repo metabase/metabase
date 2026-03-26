@@ -130,8 +130,8 @@
   (validate-mbql5-definition definition)
   (when (seq definition)
     (lib/check-measure-overwrite nil definition))
-  (m/assoc-some measure
-                :table_id (some-> definition lib/primary-source-table-id)))
+  (cond-> measure
+    (seq definition) (m/assoc-some :table_id (lib/primary-source-table-id definition))))
 
 (t2/define-before-update :model/Measure [{:keys [id definition] :as measure}]
   ;; throw an Exception if someone tries to update creator_id
@@ -144,7 +144,7 @@
   (if (and (contains? (t2/changes measure) :definition)
            (seq definition))
     (m/assoc-some measure
-                  :table_id (some-> definition lib/primary-source-table-id))
+                  :table_id (lib/primary-source-table-id definition))
     measure))
 
 (defmethod mi/perms-objects-set :model/Measure

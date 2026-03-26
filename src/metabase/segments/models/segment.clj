@@ -161,9 +161,8 @@
   (let [definition (migrated-segment-definition segment)]
     (when (seq definition)
       (lib/check-segment-overwrite nil definition))
-    (m/assoc-some segment
-                  :definition definition
-                  :table_id (some-> definition lib/primary-source-table-id))))
+    (cond-> (assoc segment :definition definition)
+      (seq definition) (m/assoc-some :table_id (lib/primary-source-table-id definition)))))
 
 (t2/define-before-update :model/Segment [{:keys [id] :as segment}]
   ;; throw an Exception if someone tries to update creator_id
@@ -174,8 +173,8 @@
     (let [definition (migrated-segment-definition (assoc segment :definition def-change))]
       (when (seq definition)
         (lib/check-segment-overwrite id definition))
-      (m/assoc-some (assoc segment :definition definition)
-                    :table_id (some-> definition lib/primary-source-table-id)))
+      (cond-> (assoc segment :definition definition)
+        (seq definition) (m/assoc-some :table_id (lib/primary-source-table-id definition))))
     segment))
 
 (defmethod mi/perms-objects-set :model/Segment
