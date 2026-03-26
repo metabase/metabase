@@ -517,7 +517,7 @@
         ;; For other types, fallback to sqlite-jdbc's parser
         ;; Even in DATE column, it is possible to put DATETIME, so always treat as DATETIME
         (some? obj) (t/local-date-time (.getTimestamp rs i)))
-      (catch Exception e
+      (catch Exception _
         ;; Just return the object as is if we are unable to parse it as a date.
         ;; This can happen when there are non-date objects in the column (#71205).
         obj))))
