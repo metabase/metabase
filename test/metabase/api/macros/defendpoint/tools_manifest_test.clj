@@ -226,10 +226,10 @@
         "manifest should not have top-level $defs")))
 
 (deftest ^:parallel refs-are-inlined-in-manifest-test
-  (testing "malli->json-schema with :or produces flat object, no $ref or anyOf"
+  (testing "malli->json-schema with :or of mixed types preserves anyOf but inlines refs"
     (let [jss (tools-manifest/malli->json-schema [:or ::ref-target-a ::ref-target-b])]
-      (is (= "object" (:type jss)))
-      (is (not (contains? jss :anyOf)))
+      (is (contains? jss :anyOf)
+          "non-map :or branches stay as anyOf")
       (is (not (re-find #"\$ref" (pr-str jss))))))
   (testing "generate-tools-manifest output has no $ref or $defs anywhere"
     (let [manifest (test-manifest)

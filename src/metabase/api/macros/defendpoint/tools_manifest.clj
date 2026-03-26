@@ -20,56 +20,68 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- merge-with-optional-keys
-  "Build a `:merge` schema from `schemas`, making all map entries optional.
-   Non-map children (e.g. `:enum`, `:string`) are left as-is since `mut/optional-keys`
-   only works on map-like schemas (`:map`, `:merge`, etc.)."
-  [props schemas options]
-  (mc/into-schema :merge props
-                  (mapv (fn [child]
-                          (if (mc/-entry-schema? (mc/deref-all child))
-                            (mut/optional-keys child)
-                            child))
-                        schemas)
-                  options))
-
 (defn- inline-malli-refs
-  "Walk a malli schema, replacing all registered-schema refs with their dereferenced content
-   and simplifying composite schemas into `:merge` for LLM-compatible JSON Schema output.
-
-   Transformations:
-   - Registered-schema refs → dereferenced content (no `$ref`/`$defs` in JSON Schema)
-   - `:and`   → `:merge` (eliminates `allOf` — merges the `[:map {:encode/...}]` pattern)
-   - `:or`    → `:merge` with all entries optional (eliminates `anyOf` — union of all branches)
-   - `:multi` → `:merge` with all entries optional (eliminates conditional dispatch)
-   - Cyclic refs → `:any` (fallback for recursive schemas)
-
-   Malli's `::mc/walked-refs` tracking prevents infinite recursion on cyclic schemas."
+  "Walk a malli schema, replacing all registered-schema refs with their dereferenced content.
+   This ensures `mjs/transform` never sees refs and thus never generates `$ref` or `$defs`.
+   Malli's `::mc/walked-refs` tracking prevents infinite recursion on cyclic schemas —
+   when a cycle is detected, the walker receives the raw ref name (a string) instead of a
+   walked schema, and we fall back to `:any`."
   [schema]
   (mc/walk
    schema
    (fn [node _path children _options]
-     (cond
-       (mc/-ref-schema? node)
+     (if (mc/-ref-schema? node)
        (let [child (first children)]
          (if (mc/schema? child)
            child
            (mc/schema :any)))
-
-       (= :and (mc/type node))
-       (mc/into-schema :merge (mc/properties node) children (mc/options node))
-
-       (= :or (mc/type node))
-       (merge-with-optional-keys (mc/properties node) children (mc/options node))
-
-       (= :multi (mc/type node))
-       (merge-with-optional-keys (dissoc (mc/properties node) :dispatch)
-                                 (mapv (fn [[_k _props schema]] schema) children)
-                                 (mc/options node))
-
-       :else
        (mc/into-schema (mc/type node) (mc/properties node) children (mc/options node))))
    {::mc/walk-refs true ::mc/walk-schema-refs true}))
+
+(defn- maybe-optional-keys
+  "Apply `mut/optional-keys` if the schema is map-like (has entries after deref).
+   Non-map schemas (e.g. `:enum`, `:string`) are returned unchanged."
+  [schema]
+  (if (mc/-entry-schema? (mc/deref-all schema))
+    (mut/optional-keys schema)
+    schema))
+
+(defn- flatten-root-schema
+  "Iteratively simplify the root of a malli schema until it is a `:map`.
+   Only the outermost composite schemas are flattened — nested `anyOf`/`allOf` are preserved
+   since LLM clients handle them fine within properties.
+
+   - `:and`   → `:merge` then deref (flattens the `[:map ...] [:map {:encode/...}]` pattern)
+   - `:or`    → `:union` with all entries optional, then deref (merges branches, no required)
+   - `:multi` → same as `:or` but extracts schemas from `[dispatch-key props schema]` triples
+
+   Returns the schema unchanged if it is already a `:map` or cannot be simplified."
+  [schema]
+  (loop [s schema
+         fuel 10]
+    (if (or (= :map (mc/type s)) (zero? fuel))
+      s
+      (recur
+       (case (mc/type s)
+         :and
+         (mc/deref (mc/into-schema :merge (mc/properties s) (mc/children s) (mc/options s)))
+
+         :or
+         (mc/deref (mc/into-schema :union (mc/properties s)
+                                   (mapv (comp maybe-optional-keys flatten-root-schema)
+                                         (mc/children s))
+                                   (mc/options s)))
+
+         :multi
+         (mc/deref (mc/into-schema :union (dissoc (mc/properties s) :dispatch)
+                                   (mapv (fn [[_k _props schema]]
+                                           (maybe-optional-keys (flatten-root-schema schema)))
+                                         (mc/children s))
+                                   (mc/options s)))
+
+         ;; For any other type (e.g. :schema wrapper), try deref
+         (mc/deref s))
+       (dec fuel)))))
 
 (defn- prefer-tool-descriptions
   "Pre-process a malli schema so that `:tool/description` takes precedence over `:description`
@@ -89,10 +101,11 @@
 
 (defn malli->json-schema
   "Transform a malli schema to JSON Schema with all refs inlined (no `$ref` or `$defs`).
-   First inlines all malli registered-schema refs, then applies tool-description preferences,
-   then transforms to JSON Schema."
+   Inlines registered-schema refs, flattens root-level composite schemas (`:or`, `:and`,
+   `:multi`) into a single `:map`, applies tool-description preferences, then transforms
+   to JSON Schema. Nested `anyOf`/`allOf` within properties are preserved."
   [malli-schema]
-  (let [prepared (-> malli-schema inline-malli-refs prefer-tool-descriptions)]
+  (let [prepared (-> malli-schema inline-malli-refs flatten-root-schema prefer-tool-descriptions)]
     (mjs/transform prepared)))
 
 (def ^:private annotation-key-mapping
