@@ -73,11 +73,14 @@
   {#'*cache-strategy-cache* (atom {})})
 
 (defn- find-question-cache-config
-  "Look up question-level cache config for a specific card. Returns a CacheConfig or nil."
+  "Look up question-level cache config for a specific card. Returns a CacheConfig or nil.
+  Result is cached across cards when [[*cache-strategy-cache*]] is bound."
   [card-id]
-  (t2/select-one :model/CacheConfig
-                 :model "question"
-                 :model_id card-id))
+  (cached [::question-config card-id]
+          (fn []
+            (t2/select-one :model/CacheConfig
+                           :model "question"
+                           :model_id card-id))))
 
 (defn- find-shared-cache-config
   "Look up the highest-priority shared (dashboard/database/root) cache config.
@@ -100,6 +103,24 @@
                       :order-by :ordering
                       :limit    [:inline 1]}]
               (t2/select-one :model/CacheConfig :id q)))))
+
+(defenterprise warm-question-cache-configs!
+  "Pre-warm the question-level cache config cache for a batch of card IDs.
+  Performs a single SELECT with an IN clause and populates the request-scoped cache atom,
+  including nil entries for cards with no question-level config."
+  :feature :cache-granular-controls
+  [card-ids]
+  (when *cache-strategy-cache*
+    (let [card-id-set (set card-ids)
+          configs     (when (seq card-id-set)
+                        (t2/select :model/CacheConfig
+                                   :model "question"
+                                   :model_id [:in card-id-set]))
+          id->config  (into {} (map (juxt :model_id identity)) configs)]
+      (swap! *cache-strategy-cache*
+             into
+             (map (fn [cid] [[::question-config cid] (get id->config cid)]))
+             card-id-set))))
 
 (defenterprise-schema cache-strategy :- [:maybe ::cache-strategy]
   "Returns the granular cache strategy for a card."

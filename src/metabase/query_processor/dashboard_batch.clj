@@ -4,6 +4,7 @@
    results back as NDJSON."
   (:require
    [clojure.core.async :as a]
+   [clojure.set :as set]
    [com.climate.claypoole :as cp]
    [metabase.api.common :as api]
    [metabase.dashboards.schema :as dashboards.schema]
@@ -11,6 +12,8 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.walk.util :as lib.walk.util]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.card :as qp.card]
@@ -59,6 +62,12 @@
   metabase-enterprise.cache.strategies
   []
   {})
+
+(defenterprise warm-question-cache-configs!
+  "Pre-warm cache strategy lookups for a batch of card IDs. OSS no-op."
+  metabase-enterprise.cache.strategies
+  [_card-ids]
+  nil)
 
 (defn- ee-batch-cache-bindings
   "Collect all EE request-scoped cache bindings for batch query execution."
@@ -137,6 +146,34 @@
   (into {}
         (map (fn [dc] [(:id dc) (:visualization_settings dc)]))
         (t2/select [:model/DashboardCard :id :visualization_settings] :id [:in (set dashcard-ids)])))
+
+(defn- extract-source-card-ids
+  "Extract all card IDs referenced by the queries in `cards`. Normalizes each query to pMBQL
+  and uses [[lib.walk.util/all-source-card-ids]] for comprehensive extraction."
+  [cards]
+  (into #{}
+        (comp (keep :dataset_query)
+              (keep (fn [dq]
+                      (try
+                        (lib.walk.util/all-source-card-ids (lib/normalize ::lib.schema/query dq))
+                        (catch Exception _
+                          nil))))
+              cat)
+        cards))
+
+(defn- resolve-all-transitive-card-ids
+  "Given a map of card-id->card, resolve all transitively referenced card IDs by following
+  source-card references to arbitrary depth. Returns the full set of all card IDs."
+  [card-id->card]
+  (loop [known-cards card-id->card
+         all-ids    (set (keys card-id->card))]
+    (let [source-ids (extract-source-card-ids (vals known-cards))
+          new-ids    (set/difference source-ids all-ids)]
+      (if (empty? new-ids)
+        all-ids
+        (let [new-cards (batch-fetch-cards new-ids)]
+          (recur (merge known-cards new-cards)
+                 (into all-ids new-ids)))))))
 
 ;;; ---------------------------------------- Per-Card Query Execution ----------------------------------------
 
@@ -234,7 +271,12 @@
           _                      (doseq [db-id (distinct (vals card-db-ids))]
                                    (lib.metadata/database (lib-be/application-database-metadata-provider db-id)))
           ;; Request-scoped caches for cross-card deduplication of EE permission/routing/cache-strategy lookups.
-          ee-bindings            (ee-batch-cache-bindings)]
+          ee-bindings            (ee-batch-cache-bindings)
+          ;; Pre-warm question-level cache configs in a single query so worker threads
+          ;; don't each hit the DB individually. Includes transitive source-card references.
+          all-card-ids           (resolve-all-transitive-card-ids card-id->card)
+          _                      (with-bindings ee-bindings
+                                   (warm-question-cache-configs! all-card-ids))]
       ;; Fire dashboard-queried event once
       (events/publish-event! :event/dashboard-queried {:object-id dashboard-id :user-id current-user-id})
       ;; Store user parameter values once
