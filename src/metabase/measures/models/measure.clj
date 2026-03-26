@@ -2,6 +2,7 @@
   "A Measure is a saved MBQL 'macro', expanding to an `:aggregation` clause. It is tied to a table and contains
    exactly one aggregation expression."
   (:require
+   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -129,8 +130,8 @@
   (validate-mbql5-definition definition)
   (when (seq definition)
     (lib/check-measure-overwrite nil definition))
-  (cond-> measure
-    (seq definition) (assoc :table_id (lib/primary-source-table-id definition))))
+  (m/assoc-some measure
+                :table_id (some-> definition lib/primary-source-table-id)))
 
 (t2/define-before-update :model/Measure [{:keys [id definition] :as measure}]
   ;; throw an Exception if someone tries to update creator_id
@@ -140,10 +141,11 @@
   (when-let [def-change (:definition (t2/changes measure))]
     (validate-mbql5-definition def-change)
     (lib/check-measure-overwrite id def-change))
-  (cond-> measure
-    (and (contains? (t2/changes measure) :definition)
-         (seq definition))
-    (assoc :table_id (lib/primary-source-table-id definition))))
+  (if (and (contains? (t2/changes measure) :definition)
+           (seq definition))
+    (m/assoc-some measure
+                  :table_id (some-> definition lib/primary-source-table-id))
+    measure))
 
 (defmethod mi/perms-objects-set :model/Measure
   [measure read-or-write]

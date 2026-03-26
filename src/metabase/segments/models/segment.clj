@@ -2,6 +2,7 @@
   "A Segment is a saved MBQL 'macro', expanding to a `:filter` subclause. It is passed in as a `:filter` subclause but is
   replaced by the `expand-macros` middleware with the appropriate clauses."
   (:require
+   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -150,20 +151,19 @@
 
 (defn- migrated-segment-definition
   [{:keys [definition], table-id :table_id}]
-  (let [database-id (when table-id
-                      (t2/select-one-fn :db_id :model/Table :id table-id))]
-    (normalize-segment-definition definition table-id database-id)))
+  (when (some? definition)
+    (let [database-id (when table-id
+                        (t2/select-one-fn :db_id :model/Table :id table-id))]
+      (normalize-segment-definition definition table-id database-id))))
 
 (t2/define-before-insert :model/Segment
-  [{:keys [definition] :as segment}]
-  (let [normalized-def (when (some? definition)
-                         (migrated-segment-definition segment))
-        segment        (cond-> segment
-                         normalized-def (assoc :definition normalized-def))]
-    (when (seq normalized-def)
-      (lib/check-segment-overwrite nil normalized-def))
-    (cond-> segment
-      (seq normalized-def) (assoc :table_id (lib/primary-source-table-id normalized-def)))))
+  [segment]
+  (let [definition (migrated-segment-definition segment)]
+    (when (seq definition)
+      (lib/check-segment-overwrite nil definition))
+    (m/assoc-some segment
+                  :definition definition
+                  :table_id (some-> definition lib/primary-source-table-id))))
 
 (t2/define-before-update :model/Segment [{:keys [id] :as segment}]
   ;; throw an Exception if someone tries to update creator_id
@@ -171,11 +171,11 @@
     (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a Segment."))))
   ;; normalize and check for cycles if definition is being updated
   (if-let [def-change (:definition (t2/changes segment))]
-    (let [normalized-def (migrated-segment-definition (assoc segment :definition def-change))]
-      (when (seq normalized-def)
-        (lib/check-segment-overwrite id normalized-def))
-      (cond-> (assoc segment :definition normalized-def)
-        (seq normalized-def) (assoc :table_id (lib/primary-source-table-id normalized-def))))
+    (let [definition (migrated-segment-definition (assoc segment :definition def-change))]
+      (when (seq definition)
+        (lib/check-segment-overwrite id definition))
+      (m/assoc-some (assoc segment :definition definition)
+                    :table_id (some-> definition lib/primary-source-table-id)))
     segment))
 
 (defmethod mi/perms-objects-set :model/Segment
