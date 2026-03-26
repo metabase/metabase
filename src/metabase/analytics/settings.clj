@@ -105,3 +105,10 @@
   :type       :boolean
   :export?    true
   :setter     #'-non-table-chart-generated!)
+
+(defsetting analytics-pii-retension-enabled
+  (deferred-tru "Controls whether usage analytics collects personally identifiable information (hostname, path, user agent, IP address).")
+  :type       :boolean
+  :default    false
+  :visibility :admin
+  :export?    true)
