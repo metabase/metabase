@@ -1,7 +1,7 @@
-(ns metabase-enterprise.checker.checker
-  "CI checker for card queries.
+(ns metabase-enterprise.checker.semantic
+  "Semantic checker — validates that entity references resolve and queries are correct.
 
-   Validates cards using MLv2 (metabase.lib) without a database connection.
+   Uses MLv2 (metabase.lib) without a database connection.
    Works with any MetadataSource implementation.
 
    Architecture:
@@ -10,7 +10,7 @@
       integer IDs), and entity caches.
    2. Entities are loaded lazily from the source and cached with assigned IDs.
    3. A MetadataProvider backed by the store serves lib/query.
-   4. lib/query and lib/find-bad-refs validate the cards.
+   4. lib/query and lib/find-bad-refs validate queries.
    5. checker.native validates native SQL using sql-parsing and sql-tools.
    6. Unresolved refs get sentinel IDs so queries can still be constructed
       and lib/find-bad-refs can report the issue with context."

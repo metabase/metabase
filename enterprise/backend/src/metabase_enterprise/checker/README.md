@@ -1,13 +1,13 @@
 # Checker Module
 
-Validates serdes YAML card queries and file structure without a running Metabase instance.
+Validates serdes YAML exports without a running Metabase instance.
 
 ## Quick Start
 
 ```bash
-# Card query validation (are the queries in the YAML files valid?)
+# Semantic validation (do references resolve? are queries correct?)
 clj -M:dev:drivers:ee -m metabase.core.bootstrap \
-  --mode checker --checker cards \
+  --mode checker --checker semantic \
   --export /path/to/export \
   --schema-dir /path/to/databases
 
@@ -20,15 +20,15 @@ clj -M:dev:drivers:ee -m metabase.core.bootstrap \
 Or with a built jar:
 
 ```bash
-java -jar metabase.jar --mode checker --checker cards \
+java -jar metabase.jar --mode checker --checker semantic \
   --export /path/to/export --schema-dir /path/to/databases
 ```
 
 ## Checkers
 
-### `cards` — Query Validation
+### `semantic` — Reference and Query Validation
 
-Validates card queries using MLv2 (`metabase.lib`). Catches:
+Validates that entity references resolve and queries are correct. Uses MLv2 (`metabase.lib`) and native SQL analysis. Catches:
 - References to nonexistent databases, tables, or fields
 - Malformed MBQL queries
 - Bad joins, broken field refs
@@ -36,13 +36,13 @@ Validates card queries using MLv2 (`metabase.lib`). Catches:
 
 ```bash
 # Basic usage — two directories are always required
---checker cards --export /path/to/export --schema-dir /path/to/databases
+--checker semantic --export /path/to/export --schema-dir /path/to/databases
 
 # Errors only — clean output for LLM consumption
---checker cards --export /path/to/export --schema-dir /path/to/databases --errors-only
+--checker semantic --export /path/to/export --schema-dir /path/to/databases --errors-only
 ```
 
-**`--export`** points at the serdes export directory containing cards (in `collections/`).
+**`--export`** points at the serdes export directory containing entities (cards in `collections/`).
 
 **`--schema-dir`** points at the directory containing database schema entries. This is the directory with database subdirectories directly:
 
@@ -60,7 +60,7 @@ Validates card queries using MLv2 (`metabase.lib`). Catches:
               TOTAL.yaml
 ```
 
-**`--errors-only`** outputs just errors to stdout, one block per failing card:
+**`--errors-only`** outputs just errors to stdout, one block per failing entity:
 
 ```
 card: Number of Orders (entity_id: 8EdazRgPwfxdiltp7NCjS)
@@ -83,9 +83,9 @@ Fast Malli-based validation that YAML files are well-formed. No query processing
 ## All CLI Options
 
 ```
---checker CHECKER    Which checker to run: cards, structural
---export PATH        Path to serdes export directory (cards/collections)
---schema-dir PATH    Database schema directory (required for cards checker)
+--checker CHECKER    Which checker to run: semantic, structural
+--export PATH        Path to serdes export directory
+--schema-dir PATH    Database schema directory (required for semantic checker)
 --output PATH        Write raw results to a file
 --errors-only        Output only errors to stdout (for LLM consumption)
 --help               Show help
@@ -103,13 +103,13 @@ clj -X:dev:test:ee:ee-dev :module enterprise/checker
 
 - **`checker.source`** — `MetadataSource` protocol (resolve-database, resolve-table, resolve-field, resolve-card) and `CompositeSource` for combining db and card sources
 - **`checker.store`** — File index, ID registry, entity caches. Holds the source, assigns synthetic IDs, loads entities lazily
-- **`checker.checker`** — Query validation engine. Builds a `MetadataProvider` from a store, runs `lib/query` and `lib/find-bad-refs`
+- **`checker.checker`** — Semantic validation engine. Builds a `MetadataProvider` from a store, runs `lib/query` and `lib/find-bad-refs`
 - **`checker.native`** — Native SQL validation via sql-parsing and sql-tools
 - **`checker.structural`** — Malli schema validation, typo detection
 - **`checker.cli`** — CLI entrypoint, argument parsing
 - **`checker.format.serdes`** — Serdes directory layout: file walking, index building, `MetadataSource` implementation
 
-## How Card Checking Works
+## How Semantic Checking Works
 
 1. Build a file index by walking the serdes directory tree
 2. Create a `MetadataSource` backed by the index (loads YAML lazily on resolve)

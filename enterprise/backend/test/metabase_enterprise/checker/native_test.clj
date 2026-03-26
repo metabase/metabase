@@ -2,7 +2,7 @@
   "Tests for native SQL validation in the checker module."
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase-enterprise.checker.checker :as checker]
+   [metabase-enterprise.checker.semantic :as checker]
    [metabase-enterprise.checker.source :as source]))
 
 (set! *warn-on-reflection* true)

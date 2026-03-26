@@ -2,13 +2,13 @@
   "CLI entrypoints for the checker module.
 
    Invoked from metabase.core.bootstrap:
-     java -jar metabase.jar --mode checker --checker cards --export /path/to/export --schema-dir /path/to/schemas
+     java -jar metabase.jar --mode checker --checker semantic --export /path/to/export --schema-dir /path/to/schemas
      java -jar metabase.jar --mode checker --checker structural --export /path/to/export"
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.tools.cli :as cli]
-   [metabase-enterprise.checker.checker :as checker]
+   [metabase-enterprise.checker.semantic :as checker]
    [metabase-enterprise.checker.structural :as structural]))
 
 (set! *warn-on-reflection* true)
@@ -33,11 +33,11 @@
       (not (.isDirectory f))
       (fail! (str "Not a directory: " path)))))
 
-(defn- run-cards-checker
-  "Run the cards checker."
+(defn- run-semantic-checker
+  "Run the semantic checker — validates that references resolve and queries make sense."
   [export-dir {:keys [output errors-only schema-dir]}]
   (when-not schema-dir
-    (fail! "Missing --schema-dir option (required for cards checker)"))
+    (fail! "Missing --schema-dir option (required for semantic checker)"))
   (validate-directory! schema-dir)
   (let [{:keys [results]} (try
                             (checker/check export-dir schema-dir)
@@ -58,9 +58,9 @@
           (spit output (pr-str results))
           (println "Results written to:" output))
         ;; Print summary
-        (println "Card Check Results")
-        (println "==================")
-        (println "Total cards:" (:total summary))
+        (println "Semantic Check Results")
+        (println "=====================")
+        (println "Total entities:" (:total summary))
         (println "  OK:" (:ok summary))
         (println "  Errors:" (:errors summary))
         (println "  Unresolved refs:" (:unresolved summary))
@@ -109,15 +109,15 @@
 
 (def ^:private checkers
   "Available checkers."
-  {"cards"      run-cards-checker
+  {"semantic"   run-semantic-checker
    "structural" run-structural-checker})
 
 (def ^:private cli-spec
   "CLI options for checker mode."
   [[nil "--mode MODE" "Mode (handled by bootstrap, included here for completeness)"]
-   [nil "--checker CHECKER" "Which checker to run (cards, structural)"]
-   [nil "--export PATH" "Path to serdes export directory (cards/dashboards)"]
-   [nil "--schema-dir PATH" "Path to database schema directory (required for cards checker)"]
+   [nil "--checker CHECKER" "Which checker to run (semantic, structural)"]
+   [nil "--export PATH" "Path to serdes export directory"]
+   [nil "--schema-dir PATH" "Path to database schema directory (required for semantic checker)"]
    [nil "--output PATH" "Path to output file for results"]
    [nil "--errors-only" "Output only errors to stdout (concise format for LLM consumption)"]
    ["-h" "--help" "Show this help"]])
@@ -127,7 +127,7 @@
        "Options:\n"
        summary
        "\n\nAvailable checkers:\n"
-       "  cards       - Validate card queries using MLv2\n"
+       "  semantic    - Validate references resolve and queries are correct\n"
        "  structural  - Validate YAML structure against schemas"))
 
 (defn -main

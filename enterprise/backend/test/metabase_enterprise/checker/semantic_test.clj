@@ -1,12 +1,12 @@
-(ns metabase-enterprise.checker.checker-test
-  "Tests for the CI checker.
+(ns metabase-enterprise.checker.semantic-test
+  "Tests for the semantic checker.
 
    Uses real YAML fixture files from test_resources/yaml_checks for most tests.
    Uses in-memory sources for edge cases like unresolved refs."
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer [deftest is testing]]
-   [metabase-enterprise.checker.checker :as checker]
+   [metabase-enterprise.checker.semantic :as checker]
    [metabase-enterprise.checker.format.serdes :as serdes-format]
    [metabase-enterprise.checker.source :as source]
    [metabase-enterprise.checker.store :as store]))
@@ -374,7 +374,7 @@
 
 (comment
   ;; Run all tests
-  (clojure.test/run-tests 'metabase-enterprise.checker.checker-test)
+  (clojure.test/run-tests 'metabase-enterprise.checker.semantic-test)
 
   ;; Check fixtures path
   (fixtures-path)
