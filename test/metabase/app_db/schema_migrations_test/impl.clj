@@ -236,3 +236,59 @@
     ~migration-range
     (fn [~migrate!-binding]
       ~@body)))
+
+;;; ------------------------------------------------ Range filter tests ------------------------------------------------
+
+(defn- migrations-run
+  "Return the set of migration IDs that have been executed against `conn`."
+  [^java.sql.Connection conn]
+  (let [table-name (liquibase/changelog-table-name conn)]
+    (into #{} (map :id) (jdbc/query {:connection conn} [(format "SELECT id FROM %s" table-name)]))))
+
+(deftest run-migrations-in-range!-boundary-test
+  (testing "inclusive start + inclusive end (defaults)"
+    (with-temp-empty-app-db [conn :h2]
+      (run-migrations-in-range! conn ["v00.00-000" "v45.00-002"])
+      (let [ran (migrations-run conn)]
+        (is (contains? ran "v00.00-000") "start should be included (inclusive)")
+        (is (contains? ran "v45.00-002") "end should be included (inclusive)"))))
+
+  (testing "exclusive end excludes the endpoint"
+    (with-temp-empty-app-db [conn :h2]
+      ;; Run v00.00-000 through v45.00-002 with exclusive end — v45.00-002 should NOT be run
+      (run-migrations-in-range! conn ["v00.00-000" "v45.00-002"] {:inclusive-end? false})
+      (let [ran (migrations-run conn)]
+        (is (contains? ran "v00.00-000") "start should be included (inclusive by default)")
+        (is (not (contains? ran "v45.00-002")) "end should be excluded (exclusive)")
+        (is (contains? ran "v45.00-001") "migration before end should be included"))))
+
+  (testing "exclusive start excludes the start point"
+    (with-temp-empty-app-db [conn :h2]
+      ;; First run all migrations up through v45.00-001 so the DB has the required schema
+      (run-migrations-in-range! conn ["v00.00-000" "v45.00-001"])
+      ;; Now run from v45.00-001 exclusive to v45.00-011 inclusive
+      (run-migrations-in-range! conn ["v45.00-001" "v45.00-011"] {:inclusive-start? false})
+      (let [ran (migrations-run conn)]
+        (is (contains? ran "v45.00-001") "v45.00-001 was run in the first batch")
+        (is (contains? ran "v45.00-002") "v45.00-002 should be included (between exclusive start and end)")
+        (is (contains? ran "v45.00-011") "end should be included (inclusive by default)"))))
+
+  (testing "nil end-id runs through the end of the changelog"
+    (with-temp-empty-app-db [conn :h2]
+      ;; Use the very first migration as start with no end — should run everything
+      (run-migrations-in-range! conn ["v00.00-000" nil])
+      (let [ran (migrations-run conn)]
+        (is (contains? ran "v00.00-000") "start should be included")
+        (is (> (count ran) 10) "should have run many migrations with no upper bound"))))
+
+  (testing "unknown start-id throws"
+    (with-temp-empty-app-db [conn :h2]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"Migration ID not found in changelog"
+                            (run-migrations-in-range! conn ["v99.bogus-999" "v45.00-002"])))))
+
+  (testing "unknown end-id throws"
+    (with-temp-empty-app-db [conn :h2]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"Migration ID not found in changelog"
+                            (run-migrations-in-range! conn ["v00.00-000" "v99.bogus-999"]))))))
