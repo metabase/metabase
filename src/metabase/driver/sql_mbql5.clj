@@ -51,11 +51,7 @@
                            (sql.qp/needs-cte-for-duplicate-cols? columns-metadata)
                            (assoc :with [[[sql.qp/source-query-alias {:columns (mapv #(h2x/identifier :field %) desired-aliases)}]
                                           prev-hsql]]
-                                  :from [[table-alias]])
-
-                           ;; Clear the default select if it's just :* so add-default-select can recompute it
-                           (= (:select stage-hsql) [[:*]])
-                           (dissoc :select))]
+                                  :from [[table-alias]]))]
             [(#'sql.qp/add-default-select driver cur-hsql) stage])
           [stage-hsql stage])))
     [nil nil]
