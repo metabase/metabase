@@ -3,7 +3,6 @@ import { getIn } from "icepick";
 import { normalize } from "normalizr";
 import _ from "underscore";
 
-import { delay } from "metabase/utils/promise";
 import {
   setRequestError,
   setRequestLoaded,
@@ -11,6 +10,7 @@ import {
   setRequestPromise,
   setRequestUnloaded,
 } from "metabase/redux/requests";
+import { delay } from "metabase/utils/delay";
 
 // convenience
 export { combineReducers, compose } from "@reduxjs/toolkit";

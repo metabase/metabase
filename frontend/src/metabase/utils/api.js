@@ -5,9 +5,9 @@ import querystring from "querystring";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { isTest } from "metabase/env";
 import { PLUGIN_API, PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
+import { delay } from "metabase/utils/delay";
 import { IFRAMED_IN_SELF, isWithinIframe } from "metabase/utils/iframe";
 import { getTraceparentHeader } from "metabase/utils/otel";
-import { delay } from "metabase/utils/promise";
 
 const ONE_SECOND = 1000;
 const MAX_RETRIES = 10;

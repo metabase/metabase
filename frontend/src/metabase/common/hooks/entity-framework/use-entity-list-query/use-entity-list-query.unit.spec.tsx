@@ -15,7 +15,7 @@ import {
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Databases } from "metabase/entities/databases";
 import { Tables } from "metabase/entities/tables";
-import { delay } from "metabase/utils/promise";
+import { delay } from "metabase/utils/delay";
 import { useDispatch } from "metabase/utils/redux";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Table from "metabase-lib/v1/metadata/Table";
