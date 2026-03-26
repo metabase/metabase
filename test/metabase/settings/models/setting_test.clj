@@ -1892,3 +1892,19 @@
       ;; now explicitly clear the setting — deprecated value should not resurface
       (test-setting-with-deprecated-name! nil)
       (is (nil? (test-setting-with-deprecated-name))))))
+
+;;; ----------------------------------------- deprecated-name env+DB interaction -----------------------------------------
+
+(deftest deprecated-name-env-var-takes-precedence-over-db-test
+  (testing "When the deprecated env var and deprecated DB key are both set, the env var wins (checked first)"
+    (mt/with-temp-env-var-value! [mb-old-test-setting-name "ENV_LEGACY"]
+      (with-deprecated-setting-in-db [:old-test-setting-name "DB_LEGACY"]
+        (is (= "ENV_LEGACY" (test-setting-with-deprecated-name))))))
+  (testing "When the deprecated env var is set and primary DB key is also set, primary DB wins"
+    (mt/with-temp-env-var-value! [mb-old-test-setting-name "ENV_LEGACY"]
+      (mt/with-temporary-setting-values [test-setting-with-deprecated-name "DB_PRIMARY"]
+        (is (= "DB_PRIMARY" (test-setting-with-deprecated-name))))))
+  (testing "When the primary env var is set and deprecated DB key exists, primary env var wins"
+    (mt/with-temp-env-var-value! [mb-test-setting-with-deprecated-name "ENV_PRIMARY"]
+      (with-deprecated-setting-in-db [:old-test-setting-name "DB_LEGACY"]
+        (is (= "ENV_PRIMARY" (test-setting-with-deprecated-name)))))))

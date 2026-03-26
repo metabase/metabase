@@ -556,7 +556,10 @@
     (when (and (db-is-set-up?) (allows-site-wide-values? setting))
       (or (not-empty (db-or-cache-value* (setting-name setting)))
           (when-let [deprecated-name (:deprecated-name setting)]
-            (not-empty (db-or-cache-value* (setting-name deprecated-name))))))))
+            (when-let [v (not-empty (db-or-cache-value* (setting-name deprecated-name)))]
+              (log/warnf "Deprecated setting key %s found in database; rename it to %s."
+                         (setting-name deprecated-name) (setting-name setting))
+              v))))))
 
 (defonce ^:private ^ReentrantLock init-lock (ReentrantLock.))
 
@@ -1361,8 +1364,8 @@
   A keyword naming a previous version of this setting whose env var and database key are checked as a fallback when
   the primary source is not set. For example, `:deprecated-name :my-old-setting` means `MB_MY_OLD_SETTING` will be
   tried when `MB_MY_NEW_SETTING` is absent, and the `my-old-setting` database key will be tried when `my-new-setting`
-  has no value. A deprecation warning is logged at startup when the env var fallback is in use. The setting must allow
-  env var reading (`:can-read-from-env? true`, the default). (Default: `nil`).
+  has no value. A deprecation warning is logged when a fallback value is found. The env-var fallback only applies
+  when `:can-read-from-env?` is true (the default). (Default: `nil`).
 
   ###### `:deprecated`
 
