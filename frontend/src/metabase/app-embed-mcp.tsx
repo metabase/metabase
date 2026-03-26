@@ -11,8 +11,7 @@ EMBEDDING_SDK_CONFIG.isMcpApp = true;
 
 // TODO: change this header to "embedding-mcp" as we need to
 //       exclude this from actual embedded analytics.
-EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader = "embedding-sdk-react";
-
+EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader = "embedding-simple";
 EMBEDDING_SDK_CONFIG.enableEmbeddingSettingKey = "enable-embedding-simple";
 EMBEDDING_SDK_CONFIG.tokenFeatureKey = "embedding_simple";
 
@@ -25,6 +24,7 @@ import { McpUiAppRoute } from "metabase/embedding/mcp/McpUiAppRoute";
 import api from "metabase/lib/api";
 
 // Set session token immediately so all SDK API calls include X-Metabase-Session.
+// @ts-expect-error -- this is ONLY set in the MCP Apps route!
 const { instanceUrl = "", sessionToken = "" } = window.metabaseConfig ?? {};
 
 if (instanceUrl) {

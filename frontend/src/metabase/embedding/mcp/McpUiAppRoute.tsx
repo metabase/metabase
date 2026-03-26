@@ -10,10 +10,7 @@ import { refreshCurrentUser } from "metabase/redux/user";
 import type { Card } from "metabase-types/api";
 
 import { useMcpApp } from "./hooks/useMcpApp";
-import {
-  buildMcpAppsTheme,
-  useInjectMcpAppsStyling,
-} from "./hooks/useMcpTheme";
+import { buildMcpAppsTheme } from "./hooks/useMcpTheme";
 
 const store = getSdkStore();
 
@@ -27,8 +24,6 @@ const SimpleLoader = () => (
 export function McpUiAppRoute() {
   const { query, hostContext } = useMcpApp();
 
-  // The OSS no-op initAuth never loads user or settings. Do it ourselves so
-  // selectors like getTokenFeature has populated settings.
   const [isSettingsReady, setIsSettingsReady] = useState(false);
 
   const { instanceUrl } = window.metabaseConfig ?? { instanceUrl: "" };
@@ -69,14 +64,14 @@ export function McpUiAppRoute() {
     [hostCssVariables, scheme],
   );
 
+  // The OSS no-op initAuth never loads user or settings. Do it ourselves so
+  // selectors like getTokenFeature has populated settings.
   useEffect(() => {
     Promise.all([
       store.dispatch(refreshCurrentUser()),
       store.dispatch(refreshSiteSettings()),
     ]).then(() => setIsSettingsReady(true));
   }, []);
-
-  useInjectMcpAppsStyling(hostCssVariables);
 
   const isReady = !!(
     instanceUrl &&
