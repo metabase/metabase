@@ -1,6 +1,7 @@
 (ns metabase.mq.queue.appdb
   "Database-backed implementation of the message queue using the application database."
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.models.interface :as mi]
    [metabase.mq.analytics :as mq.analytics]
    [metabase.mq.impl :as mq.impl]
@@ -19,15 +20,24 @@
 (defn- queue-max-retries []
   ((requiring-resolve 'metabase.mq.settings/queue-max-retries)))
 
+(defn- for-update-clause
+  "Returns the FOR UPDATE clause for the current app DB.
+  Uses SKIP LOCKED on PostgreSQL and MySQL to avoid blocking on rows locked by other nodes.
+  Falls back to plain FOR UPDATE on H2."
+  []
+  (if (#{:postgres :mysql} (mdb/db-type))
+    [:update :skip-locked]
+    [:update]))
+
 (def ^:private owner-id (str (random-uuid)))
 (def ^:private poll-state (mq.polling/make-poll-state))
 
 ;;; ------------------------------------------- Fetch -------------------------------------------
 
 (defn- fetch!
-  "Fetches the next pending message from the given queue names.
-  Returns a map with :bundle-id, :queue, and :messages keys, or nil if no messages are available.
-  Selects the oldest pending row, marks it as 'processing', and returns it — all within one transaction."
+  "Fetches the oldest pending row for each of the given queue names.
+  Returns a seq of maps with :bundle-id, :queue, and :messages keys, or nil if no messages are available.
+  Selects one row per queue, marks them all as 'processing', and returns them — all within one transaction."
   [queue-names]
   (when (seq queue-names)
     (let [exclusive-names (q.impl/exclusive-queue-names)]
@@ -45,24 +55,28 @@
                                 (remove #(contains? blocked-queues (name %)) queue-names)
                                 queue-names)]
           (when (seq fetchable-names)
-            (when-let [row (t2/query-one
-                            conn
-                            {:select   [:*]
-                             :from     [:queue_message_batch]
-                             :where    [:and
-                                        [:in :queue_name (map name fetchable-names)]
-                                        [:= :status "pending"]]
-                             :order-by [[:id :asc]]
-                             :limit    1
-                             :for      [:update]})]
-              (t2/update! :queue_message_batch
-                          (:id row)
-                          {:status_heartbeat (mi/now)
-                           :status           "processing"
-                           :owner            owner-id})
-              {:bundle-id (:id row)
-               :queue     (keyword "queue" (:queue_name row))
-               :messages  (json/decode (:messages row))})))))))
+            ;; Fetch the oldest pending row per queue in a single query, locking them for update
+            (let [name-list (mapv name fetchable-names)
+                  rows      (t2/query conn {:select [:*]
+                                            :from   [:queue_message_batch]
+                                            :where  [:in :id {:select   [[[:min :id]]]
+                                                              :from     [:queue_message_batch]
+                                                              :where    [:and
+                                                                         [:in :queue_name name-list]
+                                                                         [:= :status "pending"]]
+                                                              :group-by [:queue_name]}]
+                                            :for    (for-update-clause)})]
+              (when (seq rows)
+                (t2/query conn {:update [:queue_message_batch]
+                                :set    {:status_heartbeat (mi/now)
+                                         :status           "processing"
+                                         :owner            owner-id}
+                                :where  [:in :id (mapv :id rows)]})
+                (mapv (fn [row]
+                        {:bundle-id (:id row)
+                         :queue     (keyword "queue" (:queue_name row))
+                         :messages  (json/decode (:messages row))})
+                      rows)))))))))
 
 ;; Stale processing recovery
 (def ^:private stale-processing-timeout-ms
@@ -132,16 +146,20 @@
 ;;; ------------------------------------------- Polling -------------------------------------------
 
 (defn- poll-iteration!
-  "One iteration of the polling loop: run periodic tasks, then try to process a batch."
+  "One iteration of the polling loop: run periodic tasks, then try to process batches.
+  Fetches one pending row per available queue and submits each for delivery.
+  Returns true if any work was found."
   []
   (mq.polling/periodically! last-stale-check-ms  (* 60 1000)       "stale batch recovery"  recover-stale-processing-batches!)
   (mq.polling/periodically! last-heartbeat-ms     (* 2 60 1000)     "heartbeat update"      update-heartbeats!)
   (mq.polling/periodically! last-cleanup-ms       (* 24 60 60 1000) "failed batch cleanup"  cleanup-failed-batches!)
   (mq.polling/periodically! last-depth-gauge-ms   (* 30 1000)       "queue depth gauge"     update-depth-gauges!)
-  (let [available-queues (remove mq.impl/channel-busy? (listener/queue-names))]
-    (when (seq available-queues)
-      (when-let [{:keys [bundle-id queue messages]} (fetch! available-queues)]
-        (mq.impl/submit-delivery! queue messages bundle-id :queue.backend/appdb {:bundle-id bundle-id})))))
+  (boolean
+   (when-let [available-queues (seq (remove mq.impl/channel-busy? (listener/queue-names)))]
+     (when-let [batches (seq (fetch! available-queues))]
+       (doseq [{:keys [bundle-id queue messages]} batches]
+         (mq.impl/submit-delivery! queue messages bundle-id :queue.backend/appdb {:bundle-id bundle-id}))
+       true))))
 
 (defmethod q.backend/start! :queue.backend/appdb [_]
   (mq.polling/start-polling! poll-state "Queue" 5000 poll-iteration!))

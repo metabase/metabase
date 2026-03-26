@@ -51,23 +51,25 @@
           (testing "Returns nil if no queues are defined"
             (binding [listener/*listeners* (atom {})]
               (is (nil? (#'q.appdb/fetch! (listener/queue-names))))))
-          (testing "Returns finds a row for a valid queue"
-            (let [{:keys [bundle-id queue messages]} (#'q.appdb/fetch! (listener/queue-names))]
-              (is (pos-int? bundle-id))
-              (is (= queue1 queue))
-              (is (= ["data1"] messages))
-              (testing "Fetched row gets marked as processing"
-                (let [updated-row (t2/select-one :queue_message_batch :id bundle-id)]
-                  (is (= "processing" (:status updated-row)))
-                  (is (not= (:created_at updated-row) (:status_heartbeat updated-row)))
-                  (is (= 0 (:failures updated-row)))
-                  (is (= @#'q.appdb/owner-id (:owner updated-row)))))))
-          (testing "Later calls don't re-pull processing rows"
-            (let [{:keys [bundle-id queue messages]} (#'q.appdb/fetch! (listener/queue-names))]
-              (is (pos-int? bundle-id))
-              (is (= queue2 queue))
-              (is (= ["data2"] messages))))
-          (testing "When everything valid is pending, return nil"
+          (testing "Fetches one row per queue in a single call"
+            (let [results (#'q.appdb/fetch! (listener/queue-names))
+                  by-queue (into {} (map (juxt :queue identity)) results)]
+              (is (= 2 (count results)))
+              (testing "queue1 row"
+                (let [{:keys [bundle-id messages]} (get by-queue queue1)]
+                  (is (pos-int? bundle-id))
+                  (is (= ["data1"] messages))
+                  (testing "Fetched row gets marked as processing"
+                    (let [updated-row (t2/select-one :queue_message_batch :id bundle-id)]
+                      (is (= "processing" (:status updated-row)))
+                      (is (not= (:created_at updated-row) (:status_heartbeat updated-row)))
+                      (is (= 0 (:failures updated-row)))
+                      (is (= @#'q.appdb/owner-id (:owner updated-row)))))))
+              (testing "queue2 row"
+                (let [{:keys [bundle-id messages]} (get by-queue queue2)]
+                  (is (pos-int? bundle-id))
+                  (is (= ["data2"] messages))))))
+          (testing "When everything valid is processing, return nil"
             (is (nil? (#'q.appdb/fetch! (listener/queue-names))))))
         (finally
           (t2/delete! :queue_message_batch :queue_name [:in [(name queue1) (name queue2) (name invalid-queue)]]))))))
@@ -83,7 +85,9 @@
             (t2/insert! :queue_message_batch
                         {:queue_name (name exclusive-q)
                          :messages   (json/encode ["exclusive-msg1"])})
-            (let [{:keys [queue messages]} (#'q.appdb/fetch! (listener/queue-names))]
+            (let [results (#'q.appdb/fetch! (listener/queue-names))
+                  {:keys [queue messages]} (first results)]
+              (is (= 1 (count results)))
               (is (= exclusive-q queue))
               (is (= ["exclusive-msg1"] messages))))
 
@@ -99,14 +103,17 @@
             (t2/insert! :queue_message_batch
                         {:queue_name (name normal-q)
                          :messages   (json/encode ["normal-msg1"])})
-            (let [{:keys [queue messages]} (#'q.appdb/fetch! (listener/queue-names))]
+            (let [results (#'q.appdb/fetch! (listener/queue-names))
+                  {:keys [queue messages]} (first results)]
+              (is (= 1 (count results)))
               (is (= normal-q queue))
               (is (= ["normal-msg1"] messages))))
 
           (testing "After exclusive processing completes, next message can be fetched"
             ;; Mark the processing row as done by deleting it (simulating bundle-successful!)
             (t2/delete! :queue_message_batch :queue_name (name exclusive-q) :status "processing")
-            (let [{:keys [queue messages]} (#'q.appdb/fetch! (listener/queue-names))]
+            (let [results (#'q.appdb/fetch! (listener/queue-names))
+                  {:keys [queue messages]} (first results)]
               (is (= exclusive-q queue))
               (is (= ["exclusive-msg2"] messages)))))
         (finally
