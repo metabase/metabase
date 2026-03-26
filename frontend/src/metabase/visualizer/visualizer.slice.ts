@@ -10,7 +10,6 @@ import _ from "underscore";
 
 import { cardApi } from "metabase/api";
 import { createAsyncThunk, createThunkAction } from "metabase/utils/redux";
-import { copy } from "metabase/utils/utils";
 import { isCartesianChart } from "metabase/visualizations";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type {
@@ -146,7 +145,7 @@ const initializeFromState = async (
       })
       .flat(),
   );
-  return copy(initialState);
+  return structuredClone(initialState);
 };
 
 export const initializeFromCard = async (
@@ -222,7 +221,7 @@ export const addDataSource = createAsyncThunk(
 
     return maybeCombineDataset(
       {
-        ...copy(state),
+        ...structuredClone(state),
         settings,
       },
       settings,
@@ -581,9 +580,11 @@ const visualizerSlice = createSlice({
         const nextState = action.payload;
         if (nextState) {
           state.display = nextState.display;
-          state.columns = copy(nextState.columns);
-          state.columnValuesMapping = copy(nextState.columnValuesMapping);
-          state.settings = copy(nextState.settings);
+          state.columns = structuredClone(nextState.columns);
+          state.columnValuesMapping = structuredClone(
+            nextState.columnValuesMapping,
+          );
+          state.settings = structuredClone(nextState.settings);
         }
       })
       .addCase(fetchCard.pending, (state, action) => {

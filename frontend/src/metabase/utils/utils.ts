@@ -49,11 +49,6 @@ export function propertiesEqual(
   return true;
 }
 
-export function copy(a: unknown) {
-  // FIXME: ugghhhhhhhhh
-  return JSON.parse(JSON.stringify(a));
-}
-
 /**
  * Converts a metabase version to a list of numeric components, it converts pre-release
  * components to numbers and pads the numeric part to 4 numbers to make comparison easier
