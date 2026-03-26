@@ -5,6 +5,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.metabot.agent.core :as metabot.agent]
+   [metabase.metabot.config :as metabot.config]
    [metabase.metabot.context :as metabot.context]
    [metabase.util.malli.schema :as ms]))
 
@@ -89,6 +90,7 @@
    _query-params
 
    {:keys [instructions references]} :- generate-content-body-schema]
+  (metabot.config/check-metabot-enabled!)
   (let [context      (assoc
                       (metabot.context/create-context {:capabilities #{"permission:write_sql_queries"}})
                       :references references)

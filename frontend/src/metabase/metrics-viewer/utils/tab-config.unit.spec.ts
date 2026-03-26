@@ -38,7 +38,6 @@ describe("getTabConfig", () => {
         autoCreate: true,
         matchMode: "aggregate",
         fixedId: "time",
-        fixedLabel: "Time",
         defaultDisplayType: "line",
         availableDisplayTypes: [
           { type: "line", icon: "line" },
@@ -56,7 +55,6 @@ describe("getTabConfig", () => {
         autoCreate: true,
         matchMode: "aggregate",
         fixedId: "geo",
-        fixedLabel: "Location",
         defaultDisplayType: "map",
         availableDisplayTypes: [
           { type: "map", icon: "pinmap" },

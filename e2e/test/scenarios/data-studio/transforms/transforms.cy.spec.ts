@@ -668,6 +668,7 @@ LIMIT
     });
 
     it("should show the metabot button", () => {
+      H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
       visitTransformListPage();
       cy.button("Create a transform").click();
       H.popover().findByText("Query builder").click();
@@ -2589,10 +2590,9 @@ LIMIT
       cy.intercept("GET", "/api/transform/*").as("transformReload");
       cy.findByTestId("transform-history-list")
         .findByText(/created this/)
-        .parent()
-        .within(() => {
-          cy.findByTestId("question-revert-button").click();
-        });
+        .closest('[data-testid="revision-history-event"]')
+        .findByTestId("question-revert-button")
+        .click();
       cy.wait(["@revert", "@transformReload"]);
 
       cy.log("Verify transform was reverted");

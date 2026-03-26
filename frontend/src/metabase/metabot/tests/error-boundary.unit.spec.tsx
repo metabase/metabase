@@ -32,7 +32,8 @@ jest.mock("../components/MetabotChat", () => {
 });
 
 function setup() {
-  mockSettings({
+  const settings = mockSettings({
+    "llm-metabot-configured?": true,
     "token-features": createMockTokenFeatures({ metabot_v3: true }),
   });
 
@@ -57,6 +58,7 @@ function setup() {
       storeInitialState: createMockState({
         currentUser: createMockUser(),
         metabot: metabotState,
+        settings,
       }),
     },
   );

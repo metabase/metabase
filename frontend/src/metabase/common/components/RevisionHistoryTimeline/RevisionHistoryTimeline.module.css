@@ -1,0 +1,54 @@
+.root {
+  --icon-size: 24px;
+
+  position: relative;
+}
+
+.event:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  top: calc(var(--mantine-spacing-md) + var(--icon-size) / 2);
+  bottom: calc(-1 * var(--mantine-spacing-md) - var(--icon-size) / 2);
+  left: calc(var(--mantine-spacing-lg) + var(--icon-size) / 2 - 1px);
+  border-inline-start: 2px dotted var(--mb-color-text-tertiary);
+}
+
+.event {
+  display: flex;
+  align-items: flex-start;
+  position: relative;
+  z-index: 0;
+  transition: background 150ms ease;
+  padding: var(--mantine-spacing-md) var(--mantine-spacing-lg)
+    var(--mantine-spacing-md)
+    calc(
+      var(--mantine-spacing-lg) + var(--icon-size) + var(--mantine-spacing-md)
+    );
+}
+
+.event:hover {
+  background: var(--mb-color-background-hover);
+  border-radius: var(--mantine-radius-lg);
+}
+
+.event:hover .title {
+  color: var(--mb-color-text-hover);
+}
+
+.revertButton {
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+
+.event:hover .revertButton {
+  opacity: 1;
+  color: var(--mb-color-text-hover);
+}
+
+.iconCircle {
+  position: absolute;
+  left: var(--mantine-spacing-lg);
+  z-index: 1;
+  border-radius: 50%;
+  flex-shrink: 0;
+}

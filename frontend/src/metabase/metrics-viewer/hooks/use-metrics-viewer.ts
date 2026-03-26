@@ -283,8 +283,8 @@ export function useMetricsViewer({
           names.push(dimensionInfo.displayName);
         }
       }
-      const label = resolveCommonTabLabel(names, tab.label);
-      return label !== tab.label ? { ...tab, label } : tab;
+      const label = resolveCommonTabLabel(names);
+      return label != null && label !== tab.label ? { ...tab, label } : tab;
     });
   }, [state.tabs, state.definitions]);
 
