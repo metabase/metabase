@@ -31,6 +31,8 @@ The Agent API supports:
 - Inspecting their fields
 - Constructing and executing queries
 
+If you want to connect an MCP-compatible AI client (like Claude Desktop) without writing custom code, see the [MCP server](./mcp.md), which builds on this API.
+
 ## Agent API endpoints and reference
 
 Check out the API endpoints: [/api/agent](../api.html#tag/apiagent).
@@ -76,6 +78,7 @@ X-Metabase-Session: <session-token>
 
 ## Further reading
 
+- [MCP server](./mcp.md)
 - [Agent API complete reference](https://github.com/metabase/metabase/blob/master/src/metabase/agent_api/reference.md)
 - [Metabase Agent API demo](https://github.com/metabase/metabase-agent-api-demo)
 - [Metabase API docs](../api.html)
