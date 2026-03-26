@@ -17,19 +17,31 @@
   Returns `{:model-exports {module => sorted-set-of-models}
             :model-imports {module => sorted-set-of-models}}`
 
-  `:model-exports` for module M = models owned by M that are referenced by at least one other module.
-  `:model-imports` for module M = models owned by other modules that M references."
+  `:model-exports` for module M = models owned by M that are referenced by at least one non-bypass module.
+  `:model-imports` for module M = models owned by other modules that M references.
+
+  Modules with `:model-imports :bypass` are excluded: they don't need computed imports, and their
+  references don't drive exports (models used only by bypass modules need not be exported)."
   []
-  (let [ownership   (deps-graph/model-ownership)
+  (let [config      (deps-graph/kondo-config)
+        ownership   (deps-graph/model-ownership)
         module-refs (deps-graph/model-references-by-module)
-        all-modules (set (keys (deps-graph/kondo-config)))
+        all-modules (set (keys config))
+        bypass-modules (into #{}
+                             (keep (fn [[mod mod-config]]
+                                     (when (= (:model-imports mod-config) :bypass)
+                                       mod)))
+                             config)
         ;; {:model/X => #{modules that reference it}} — inverted index for fast export lookups
+        ;; Only non-bypass modules drive exports.
         model->referencing-modules
         (reduce-kv (fn [acc mod models]
-                     (reduce (fn [acc model]
-                               (update acc model (fnil conj #{}) mod))
-                             acc
-                             models))
+                     (if (contains? bypass-modules mod)
+                       acc
+                       (reduce (fn [acc model]
+                                 (update acc model (fnil conj #{}) mod))
+                               acc
+                               models)))
                    {}
                    module-refs)]
     {:model-exports
@@ -45,6 +57,7 @@
      :model-imports
      (into (sorted-map)
            (for [mod all-modules
+                 :when (not (contains? bypass-modules mod))
                  :let [imported (into (sorted-set)
                                       (for [model (get module-refs mod)
                                             :let [defining-mod (get ownership model)]
