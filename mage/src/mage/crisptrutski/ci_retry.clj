@@ -205,11 +205,12 @@
 
 (defn ci-retry!
   "Poll checks for a PR, rerun failures up to 3 times."
-  [{:keys [arguments]}]
+  [{:keys [arguments options]}]
   (let [pr-number (or (first arguments)
                       (get-current-branch-pr)
                       (do (log-err "No PR number given and no PR found for current branch.")
-                          (System/exit 1)))]
+                          (System/exit 1)))
+        detailed? (:summarize-failures options)]
     (log-info (format "Watching CI for PR #%s (max %d retries for failures)" pr-number max-retries))
     (loop [attempt 0]
       (let [checks   (poll-until-done pr-number)
@@ -225,18 +226,19 @@
                                max-retries (count failures)))
               (doseq [check (sort-by :name failures)]
                 (log-err (format "  %s → %s" (:name check) (:link check))))
-              (log-info "Fetching failure details from job logs…")
-              (let [details (fetch-failure-details failures)]
-                (if (seq details)
-                  (doseq [[check-name test-failures] (sort-by key details)]
-                    (log-err (format "  %s:" check-name))
-                    (doseq [{:keys [test link]} test-failures]
-                      (if test
-                        (log-err (format "    %s" test))
-                        (log-err "    (unknown test)"))
-                      (when link
-                        (log-err (format "      ⤷ %s" link)))))
-                  (log-warn "No test failure details found in job logs.")))
+              (when detailed?
+                (log-info "Fetching failure details from job logs…")
+                (let [details (fetch-failure-details failures)]
+                  (if (seq details)
+                    (doseq [[check-name test-failures] (sort-by key details)]
+                      (log-err (format "  %s:" check-name))
+                      (doseq [{:keys [test link]} test-failures]
+                        (if test
+                          (log-err (format "    %s" test))
+                          (log-err "    (unknown test)"))
+                        (when link
+                          (log-err (format "      ⤷ %s" link)))))
+                    (log-warn "No test failure details found in job logs."))))
               (System/exit 1))
 
           (empty? run-ids)

@@ -602,7 +602,9 @@
   {:doc "Poll CI checks for a PR, rerun failed jobs up to 3 times."
    :requires [[mage.crisptrutski.ci-retry :as ci-retry]]
    :examples [["./bin/mage -crisptrutski-ci-retry" "Watch current branch's PR"]
-              ["./bin/mage -crisptrutski-ci-retry 12345" "Watch PR #12345"]]
+              ["./bin/mage -crisptrutski-ci-retry 12345" "Watch PR #12345"]
+              ["./bin/mage -crisptrutski-ci-retry -s" "Include failing test names and trunk links"]]
+   :options [["-s" "--summarize-failures" "Show failing test names and trunk links on final failure (fetches full job logs, may be slow)"]]
    :arg-schema [:or [:tuple] [:tuple [:string {:name "pr-number"}]]]
    :task (task! (ci-retry/ci-retry! parsed))}
 
