@@ -20,6 +20,10 @@ For detailed guidance on writing and reviewing code and documentation, see the s
 - **[docs-write](.claude/skills/docs-write/SKILL.md)** - Documentation writing with Metabase style guide
 - **[docs-review](.claude/skills/docs-review/SKILL.md)** - Documentation review checklist
 
+## Serialization
+
+- **[serialization-format](.claude/skills/serialization-format/SKILL.md)** - Generate and understand Metabase serialized YAML data ([reference](.claude/skills/serialization-format/reference.md))
+
 ## Frontend
 
 - **[analytics-events](.claude/skills/analytics-events/SKILL.md)** - Add product analytics events to track user interactions
