@@ -116,10 +116,14 @@
                      (str/includes? line "##[error]")))
         (reset! in-report? false))
       (when @in-report?
+        ;; 📦 lines mark a test group — use as fallback test identifier
+        (when (str/includes? line "📦")
+          (reset! current-test (str/trim (str/replace line #"📦\s*" ""))))
+        ;; Clojure test namespace — more specific, overrides group name
         (when-let [test-name (and (re-find #"metabase[\w.-]+-test/" line)
-                                  (not (str/includes? line "📦"))
                                   (re-find #"metabase[\w.-]+-test/[\w-]+" line))]
           (reset! current-test test-name))
+        ;; Trunk link — associate with current test and reset
         (when-let [link (and (str/includes? line "trunk.io")
                              (re-find #"https://app\.trunk\.io/\S+" line))]
           (swap! results conj {:test @current-test :link link})
@@ -178,16 +182,17 @@
       (when-not checks
         (log-err "Failed to fetch checks")
         (System/exit 1))
-      (let [n-pending (count (filter #(#{"PENDING" "IN_PROGRESS" "QUEUED"} (:state %)) checks))
-            n-failed  (count (failed-checks checks))
-            n-passed  (count (filter #(= "SUCCESS" (:state %)) checks))]
+      (let [n-queued   (count (filter #(= "QUEUED" (:state %)) checks))
+            n-pending  (count (filter #(#{"PENDING" "IN_PROGRESS"} (:state %)) checks))
+            n-failed   (count (failed-checks checks))
+            n-passed   (count (filter #(= "SUCCESS" (:state %)) checks))]
         (if (checks-done? checks)
           (do
             (log-ok (format "All checks complete — %d passed, %d failed" n-passed n-failed))
             checks)
           (do
-            (log-info (format "Waiting… %d pending, %d failed, %d passed"
-                              n-pending n-failed n-passed))
+            (log-info (format "Waiting… %d queued, %d pending, %d failed, %d passed"
+                              n-queued n-pending n-failed n-passed))
             (Thread/sleep poll-interval-ms)
             (recur)))))))
 
@@ -253,5 +258,12 @@
                                 (count failures) (count run-ids)))
               (doseq [check (sort-by :name failures)]
                 (log-warn (format "  %s" (:name check))))
+              (when detailed?
+                (let [details (fetch-failure-details failures)]
+                  (doseq [[check-name test-failures] (sort-by key details)]
+                    (log-warn (format "  %s:" check-name))
+                    (doseq [{:keys [test link]} test-failures]
+                      (when link
+                        (log-warn (format "    %s → %s" (or test "(unknown test)") link))))))))
               (rerun-failed! run-ids)
               (recur (inc attempt))))))))
