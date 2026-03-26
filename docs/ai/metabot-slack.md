@@ -39,7 +39,7 @@ If you already have a Slack integration from before this feature existed, your S
 
 ### 4. Connect your Slack account to Metabase
 
-To chat with Metabot, people will need to link their Slack account to their Metabase account. The first time you message Metabot, it kicks off an OAuth flow that connects the two accounts.
+To chat with Metabot, people will need to link their Slack account to their Metabase account. The first time you message Metabot, it kicks off an OAuth flow that connects the two accounts. This connection lets Metabot use your Metabase permissions, so Metabot will only see data you're allowed to see.
 
 ## Chatting with Metabot in Slack
 
@@ -49,7 +49,7 @@ To chat with Metabot, people will need to link their Slack account to their Meta
 
 ### Clearing context
 
-Metabot remembers the full context of a thread. To clear context and start a fresh conversation, either begin a new DM or @mention Metabot in a new thread in a channel.
+Metabot remembers the context of a thread. To clear context and start a fresh conversation, either begin a new DM or @mention Metabot in a new thread in a channel.
 
 ## Notes on privacy
 
