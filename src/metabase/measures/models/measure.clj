@@ -2,7 +2,6 @@
   "A Measure is a saved MBQL 'macro', expanding to an `:aggregation` clause. It is tied to a table and contains
    exactly one aggregation expression."
   (:require
-   [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -190,8 +189,8 @@
   [:name (serdes/hydrated-hash :table) :created_at])
 
 (defmethod serdes/dependencies "Measure" [{:keys [definition table_id]}]
-  (set/union #{(serdes/table->path table_id)}
-             (serdes/mbql-deps definition)))
+  (cond-> (serdes/mbql-deps definition)
+    table_id (conj (serdes/table->path table_id))))
 
 (defmethod serdes/storage-path "Measure" [measure _ctx]
   (let [{:keys [id label]} (-> measure serdes/path last)]

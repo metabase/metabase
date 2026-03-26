@@ -1324,7 +1324,7 @@
    (concat
     (mapcat serdes/mbql-deps parameter_mappings)
     (serdes/parameters-deps parameters)
-    [[{:model "Database" :id database_id}]]
+    (when database_id [[{:model "Database" :id database_id}]])
     (when table_id #{(serdes/table->path table_id)})
     (when source_card_id #{[{:model "Card" :id source_card_id}]})
     (when collection_id #{[{:model "Collection" :id collection_id}]})

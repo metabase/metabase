@@ -2,7 +2,6 @@
   "A Segment is a saved MBQL 'macro', expanding to a `:filter` subclause. It is passed in as a `:filter` subclause but is
   replaced by the `expand-macros` middleware with the appropriate clauses."
   (:require
-   [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -151,17 +150,20 @@
 
 (defn- migrated-segment-definition
   [{:keys [definition], table-id :table_id}]
-  (let [database-id (t2/select-one-fn :db_id :model/Table :id table-id)]
+  (let [database-id (when table-id
+                      (t2/select-one-fn :db_id :model/Table :id table-id))]
     (normalize-segment-definition definition table-id database-id)))
 
 (t2/define-before-insert :model/Segment
   [{:keys [definition] :as segment}]
-  (let [segment (cond-> segment
-                  (some? definition) (assoc :definition (migrated-segment-definition segment)))]
-    (when (seq (:definition segment))
-      (lib/check-segment-overwrite nil (:definition segment)))
+  (let [normalized-def (when (some? definition)
+                         (migrated-segment-definition segment))
+        segment        (cond-> segment
+                         normalized-def (assoc :definition normalized-def))]
+    (when (seq normalized-def)
+      (lib/check-segment-overwrite nil normalized-def))
     (cond-> segment
-      (seq (:definition segment)) (assoc :table_id (lib/primary-source-table-id (:definition segment))))))
+      (seq normalized-def) (assoc :table_id (lib/primary-source-table-id normalized-def)))))
 
 (t2/define-before-update :model/Segment [{:keys [id] :as segment}]
   ;; throw an Exception if someone tries to update creator_id
@@ -217,8 +219,8 @@
   [:name (serdes/hydrated-hash :table) :created_at])
 
 (defmethod serdes/dependencies "Segment" [{:keys [definition table_id]}]
-  (set/union #{(serdes/table->path table_id)}
-             (serdes/mbql-deps definition)))
+  (cond-> (serdes/mbql-deps definition)
+    table_id (conj (serdes/table->path table_id))))
 
 (defmethod serdes/storage-path "Segment" [segment _ctx]
   (let [{:keys [id label]} (-> segment serdes/path last)]
