@@ -78,6 +78,19 @@
       (is (= :error (:status result)))
       (is (re-find #"Branch error:" (:message result))))))
 
+(deftest import!-unparseable-yaml-should-not-silently-succeed-test
+  (testing "import! should fail when a YAML file in the snapshot is unparseable, not silently skip it"
+    (let [task-id   (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
+          ;; A valid collection + a card with unparseable YAML (malformed syntax)
+          bad-yaml  "name: Bad Card\nentity_id: bad-card-entity0001\ndataset_query: [invalid\n"
+          files     {"main" {"collections/coll01xxxxxxxxxxxxx_test/coll01xxxxxxxxxxxxx_test.yaml"
+                             (test-helpers/generate-collection-yaml "coll01xxxxxxxxxxxxx" "Test")
+                             "collections/coll01xxxxxxxxxxxxx_test/cards/bad-card-entity0001.yaml"
+                             bad-yaml}}
+          result    (impl/import! (source.p/snapshot (test-helpers/create-mock-source :initial-files files)) task-id)]
+      (is (= :error (:status result))
+          "Import should fail when a YAML file cannot be parsed, not silently skip it"))))
+
 (deftest import!-handles-generic-errors-test
   (testing "import! handles generic errors"
     (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
