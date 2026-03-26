@@ -43,7 +43,7 @@
   [snapshot {:keys [path-filters root-dependencies]}]
   (cond->> (ingestable/->IngestableSnapshot (cond-> snapshot
                                               (seq path-filters) (->WrappingSnapshot path-filters))
-                                            (atom nil))
+                                            (atom nil) (atom []))
     (seq root-dependencies) (ingestable/wrap-root-dep-ingestable root-dependencies)))
 
 (defn- remote-sync-path
