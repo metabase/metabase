@@ -1932,12 +1932,11 @@
           (let [db    (ts/create! :model/Database :name "my-db")
                 table (ts/create! :model/Table :name "customers" :db_id (:id db))
                 user  (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
-                query (pmbql-query (:id db) (:id table))
                 _card (ts/create! :model/Card
                                   :collection_id nil
                                   :creator_id    (:id user)
                                   :name          "Example Card"
-                                  :dataset_query query
+                                  :dataset_query (pmbql-query (:id db) (:id table))
                                   :display       :line)]
             (reset! serialized (into [] (serdes.extract/extract {})))))
 
@@ -1973,9 +1972,7 @@
                                          :name "Test Transform"
                                          :description "A test transform"
                                          :collection_id (:id coll)
-                                         :source {:query {:database (:id db)
-                                                          :type     "query"
-                                                          :query    {:source-table (:id table)}}
+                                         :source {:query (pmbql-query (:id db) (:id table))
                                                   :type "query"}
                                          :target {:database (:id db)
                                                   :type "table"
