@@ -1,5 +1,3 @@
-import { useEffect } from "react";
-
 import type { MetabaseTheme } from "embedding-sdk-package";
 import type { MetabaseColor } from "metabase/embedding-sdk/theme";
 import type { ResolvedColorScheme } from "metabase/lib/color-scheme";
@@ -39,15 +37,4 @@ export function buildMcpAppsTheme(
   }
 
   return { preset, colors };
-}
-
-export function useInjectMcpAppsStyling(
-  hostCssVariables: Record<string, string>,
-) {
-  // Apply the host's CSS variables to the document root so we can
-  useEffect(() => {
-    Object.entries(hostCssVariables).forEach(([key, value]) => {
-      document.documentElement.style.setProperty(key, value);
-    });
-  }, [hostCssVariables]);
 }
