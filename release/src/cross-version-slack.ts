@@ -10,7 +10,6 @@ export interface FailureResult {
   phase: "migration" | "e2e";
   source: string;
   target: string;
-  detail: string;
   jobUrl?: string;
 }
 
@@ -45,7 +44,7 @@ export const parseJobName = (
 
 /**
  * Build a list of FailureResults from failed jobs and artifact data.
- * Each failed job becomes a result. Artifact data enriches with phase/detail.
+ * Each failed job becomes a result. Artifact data enriches with phase.
  */
 export const buildFailureResults = (
   failedJobs: FailedJob[],
@@ -58,7 +57,6 @@ export const buildFailureResults = (
         phase: "e2e" as const,
         source: "?",
         target: "?",
-        detail: job.name,
         jobUrl: job.url,
       };
     }
@@ -67,14 +65,13 @@ export const buildFailureResults = (
     const artifact = artifactData.get(key);
 
     if (artifact) {
-      return { ...artifact, jobUrl: job.url };
+      return { phase: artifact.phase, source: artifact.source, target: artifact.target, jobUrl: job.url };
     }
 
     return {
       phase: "e2e" as const,
       source: parsed.source,
       target: parsed.target,
-      detail: "check job logs for details",
       jobUrl: job.url,
     };
   });

@@ -41,7 +41,6 @@ describe("cross-version-slack", () => {
             phase: "migration",
             source: "HEAD",
             target: "v1.59.x",
-            detail: "migrate down failed",
           },
         ],
       ]);
@@ -81,7 +80,6 @@ describe("cross-version-slack", () => {
           phase: "e2e",
           source: "v1.58.x",
           target: "HEAD",
-          detail: "e2e tests failed",
           jobUrl: "https://job/2",
         },
       ];

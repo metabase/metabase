@@ -153,7 +153,7 @@ jobs:
               return;
             }
 
-            // Load artifact data for enrichment (phase/detail)
+            // Load artifact data for enrichment (phase)
             const resultsDir = 'failure-results';
             const artifactData = new Map();
             if (fs.existsSync(resultsDir)) {
@@ -170,7 +170,12 @@ jobs:
 
             const failures = buildFailureResults(failedJobs, artifactData);
             const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${context.runId}`;
-            await sendCrossVersionSlackNotification(failures, runUrl, process.env.SLACK_BOT_TOKEN);
+            const slackBotToken = process.env.SLACK_BOT_TOKEN;
+            if (!slackBotToken) {
+              console.log('SLACK_BOT_TOKEN is not set; skipping Slack notification.');
+              return;
+            }
+            await sendCrossVersionSlackNotification(failures, runUrl, slackBotToken);
             console.log('Slack notification sent');
 
   # Manual test for workflow_dispatch
