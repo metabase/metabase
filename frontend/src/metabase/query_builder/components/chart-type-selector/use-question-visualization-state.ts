@@ -2,12 +2,14 @@ import { useCallback } from "react";
 import _ from "underscore";
 
 import visualizations from "metabase/visualizations";
+import { isCustomVizDisplay } from "metabase/visualizations/custom-viz-plugins";
 import { sanitizeResultData } from "metabase/visualizations/shared/utils/data";
 import type Question from "metabase-lib/v1/Question";
 import {
   type CardDisplayType,
   type Dataset,
   isCardDisplayType,
+  isVirtualCardDisplayType,
 } from "metabase-types/api";
 
 import { groupVisualizationsBySensibility } from "./sensibility-grouping";
@@ -56,9 +58,13 @@ export const getSensibleVisualizations = ({
   result,
 }: GetSensibleVisualizationsProps) => {
   const availableVizTypes = Array.from(visualizations.entries())
-    .filter(([_display, config]) => !config.hidden)
-    .map(([vizType]) => vizType)
-    .filter(isCardDisplayType);
+    .filter(
+      ([display, config]) =>
+        !config.hidden &&
+        !isCustomVizDisplay(display) &&
+        (isCardDisplayType(display) || !isVirtualCardDisplayType(display)),
+    )
+    .map(([vizType]) => vizType as CardDisplayType);
 
   const orderedVizTypes = _.union(DEFAULT_VIZ_ORDER, availableVizTypes);
 
