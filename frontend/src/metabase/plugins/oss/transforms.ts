@@ -12,6 +12,11 @@ export type TransformPickerItem = OmniPickerItem & {
   model: "transform";
 };
 
+export type ValidationResult = {
+  isValid: boolean;
+  errorMessage?: string;
+};
+
 export type TransformsPlugin = {
   isEnabled: boolean;
   TransformsUpsellPage: ComponentType;

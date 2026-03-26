@@ -9,6 +9,7 @@ import { useHasTokenFeature } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import { getShouldShowPythonTransformsUpsell } from "metabase/transforms/selectors";
 import { Button, Center, Icon, Loader, Menu, Tooltip } from "metabase/ui";
 
@@ -39,6 +40,8 @@ export const CreateTransformMenu = () => {
   const isRemoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );
+
+  const shouldShowImportDbtOption = useSelector(getUserIsAdmin);
 
   const handlePythonClick = () => {
     dispatch(push(Urls.newPythonTransform())); // Route will show upsell modal if feature is not enabled
@@ -124,6 +127,16 @@ export const CreateTransformMenu = () => {
               >
                 {t`Copy of a saved question`}
               </Menu.Item>
+              {shouldShowImportDbtOption && (
+                <Menu.Item
+                  leftSection={<Icon name="sync" />}
+                  onClick={() => {
+                    dispatch(push(Urls.importDbtTransforms()));
+                  }}
+                >
+                  {t`Import from dbt`}
+                </Menu.Item>
+              )}
               <Menu.Divider />
               <Menu.Item
                 leftSection={<Icon name="folder" />}

@@ -6,6 +6,7 @@ import {
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
 
+import { ImportDbtTransformsPage } from "./pages/ImportDbtTransformsPage";
 import { JobListPage } from "./pages/JobListPage";
 import { JobPage } from "./pages/JobPage";
 import { NewJobPage } from "./pages/NewJobPage";
@@ -30,6 +31,7 @@ export function getDataStudioTransformRoutes() {
       </Route>
       <Route>
         <IndexRoute component={TransformListPage} />
+        <Route path="import/dbt" component={ImportDbtTransformsPage} />
         <Route path="jobs" component={JobListPage} />
         <Route path="jobs/new" component={NewJobPage} />
         <Route path="jobs/:jobId" component={JobPage} />

@@ -6,6 +6,7 @@
    [metabase.api.util.handlers :as handlers]
    [metabase.request.core :as request]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms-rest.api.transform-import]
    [metabase.transforms-rest.api.transform-job]
    [metabase.transforms-rest.api.transform-tag]
    [metabase.transforms.core :as transforms.core]
@@ -19,6 +20,7 @@
    [toucan2.core :as t2]))
 
 (comment metabase.transforms-rest.api.transform-job/keep-me
+         metabase.transforms-rest.api.transform-import/keep-me
          metabase.transforms-rest.api.transform-tag/keep-me)
 
 (set! *warn-on-reflection* true)
@@ -340,6 +342,10 @@
 (def ^{:arglists '([request respond raise])} transform-tag-routes
   "`/api/transform-tag` routes."
   (api.macros/ns-handler 'metabase.transforms-rest.api.transform-tag +auth))
+
+(def ^{:arglists '([request respond raise])} transform-import-routes
+  "`/api/transform-job` routes."
+  (api.macros/ns-handler 'metabase.transforms-rest.api.transform-import +auth))
 
 (def ^{:arglists '([request respond raise])} transform-job-routes
   "`/api/transform-job` routes."

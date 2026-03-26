@@ -3,6 +3,7 @@ import type {
   CreateTransformRequest,
   Dataset,
   GetInspectorLensRequest,
+  ImportDbtTransformsRequest,
   InspectorDiscoveryResponse,
   InspectorLens,
   ListTransformRunsRequest,
@@ -198,6 +199,15 @@ export const transformApi = Api.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [listTag("transform"), listTag("table")]),
     }),
+    importDbtTransforms: builder.mutation<void, ImportDbtTransformsRequest>({
+      query: (body) => ({
+        method: "POST",
+        url: `/api/transform-import`,
+        body,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [listTag("transform")]),
+    }),
     resetCheckpoint: builder.mutation<void, TransformId>({
       query: (id) => ({
         method: "POST",
@@ -250,4 +260,5 @@ export const {
   useDeleteTransformTargetMutation,
   useResetCheckpointMutation,
   useRunInspectorQueryQuery,
+  useImportDbtTransformsMutation,
 } = transformApi;
