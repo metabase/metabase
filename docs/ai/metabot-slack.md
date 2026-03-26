@@ -57,7 +57,7 @@ If you ask Metabot a question in a public channel, _everyone_ in that channel ca
 
 ### Feedback
 
-Please provide feedback. Hit the thumbs up or down when Metabot gets it right.
+When you submit feedback, the form you send may contain sensitive data from your conversation.
 
 ## Further reading
 
