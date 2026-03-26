@@ -30,6 +30,12 @@
 (defn- make-test-source []
   (serdes-format/make-source (fixtures-path)))
 
+(defn- check-all [source]
+  (checker/check-cards source (serdes-format/source-index source) (serdes-format/all-card-ids source)))
+
+(defn- check-specific [source card-ids]
+  (checker/check-cards source (serdes-format/source-index source) card-ids))
+
 ;;; ===========================================================================
 ;;; Tests Using Real YAML Files
 ;;; ===========================================================================
@@ -48,7 +54,7 @@
 (deftest simple-mbql-query-test
   (testing "Simple MBQL query on orders table validates successfully"
     (let [source (make-test-source)
-          results (serdes-format/check source)
+          results (check-all source)
           result (get results "simple-orders")]
       (is (some? result) "Card should be found")
       (is (= "Simple Orders" (:name result)) "Card name should match")
@@ -61,7 +67,7 @@
 (deftest native-query-test
   (testing "Native SQL query validates successfully"
     (let [source (make-test-source)
-          results (serdes-format/check source)
+          results (check-all source)
           result (get results "native-orders")]
       (is (some? result) "Card should be found")
       (is (= "Native Orders" (:name result)) "Card name should match")
@@ -71,7 +77,7 @@
 (deftest mbql-with-joins-test
   (testing "MBQL query with joins validates successfully"
     (let [source (make-test-source)
-          results (serdes-format/check source)
+          results (check-all source)
           result (get results "orders-with-products")]
       (is (some? result) "Card should be found")
       (is (= "Orders With Products" (:name result)) "Card name should match")
@@ -85,7 +91,7 @@
 (deftest all-cards-checked-test
   (testing "All cards in fixtures are checked"
     (let [source (make-test-source)
-          results (serdes-format/check source)]
+          results (check-all source)]
       (is (= 5 (count results)) "Should check all 5 cards")
       (is (contains? results "simple-orders"))
       (is (contains? results "native-orders"))
@@ -113,7 +119,7 @@
 (deftest schemaless-query-test
   (testing "Query on schema-less database validates successfully"
     (let [source (make-test-source)
-          results (serdes-format/check source)
+          results (check-all source)
           result (get results "schemaless-query")]
       (is (some? result) "Card should be found")
       (is (= "Schemaless Query" (:name result)) "Card name should match")
@@ -131,8 +137,8 @@
 (deftest fk-in-field-metadata-test
   (testing "FK target in field metadata is resolved to integer ID"
     (let [source (make-test-source)
-          enumerators (serdes-format/make-enumerators source)
-          store (store/make-store source enumerators)
+          index (serdes-format/source-index source)
+          store (store/make-store source index)
           provider (checker/make-provider store)
           ;; Get the product_id field which has FK to products.id
           fields (metabase.lib.metadata.protocols/metadatas
@@ -146,7 +152,7 @@
 (deftest fk-in-result-metadata-test
   (testing "FK target in card result_metadata is resolved to integer ID"
     (let [source (make-test-source)
-          results (serdes-format/check source)
+          results (check-all source)
           result (get results "orders-with-fk")]
       (is (some? result) "Card should be found")
       (is (= "Orders With FK" (:name result)) "Card name should match")
@@ -176,13 +182,14 @@
     (resolve-card [_ entity-id]
       (get cards entity-id))))
 
-(defn- make-memory-enumerators
-  "Create enumerators for an in-memory source."
+(defn- make-memory-index
+  "Create a file index for an in-memory source.
+   Values are :memory since resolution goes through the source, not files."
   [{:keys [databases tables fields cards]}]
-  {:databases #(keys databases)
-   :tables    #(keys tables)
-   :fields    #(keys fields)
-   :cards     #(keys cards)})
+  {:database (zipmap (keys databases) (repeat :memory))
+   :table    (zipmap (keys tables) (repeat :memory))
+   :field    (zipmap (keys fields) (repeat :memory))
+   :card     (zipmap (keys cards) (repeat :memory))})
 
 (deftest unresolved-table-in-card-test
   (testing "Card referencing nonexistent table is detected"
@@ -196,8 +203,8 @@
                                                          :type "query"
                                                          :query {:source-table ["Test Database" "public" "orders"]}}}}}
           source (make-memory-source entities)
-          enumerators (make-memory-enumerators entities)
-          results (checker/check-cards source enumerators ["test-card"])
+          index (make-memory-index entities)
+          results (checker/check-cards source index ["test-card"])
           result (get results "test-card")]
       (is (some? result) "Card should be found")
       (is (= "Test Card" (:name result)) "Card name should match")
@@ -216,8 +223,8 @@
                                                          :type "query"
                                                          :query {:source-table ["Nonexistent Database" "public" "orders"]}}}}}
           source (make-memory-source entities)
-          enumerators (make-memory-enumerators entities)
-          results (checker/check-cards source enumerators ["test-card"])
+          index (make-memory-index entities)
+          results (checker/check-cards source index ["test-card"])
           result (get results "test-card")]
       (is (some? result) "Card should be found")
       (is (= "Test Card" (:name result)) "Card name should match")
@@ -229,7 +236,7 @@
 (deftest check-specific-cards-test
   (testing "Can check specific cards by entity-id"
     (let [source (make-test-source)
-          results (serdes-format/check-cards source ["simple-orders" "native-orders"])]
+          results (check-specific source ["simple-orders" "native-orders"])]
       (is (= 2 (count results)) "Should only check 2 cards")
       (is (contains? results "simple-orders"))
       (is (contains? results "native-orders"))
@@ -323,8 +330,8 @@
                                                                              ["Test DB" "PUBLIC" "ORDERS" "NONEXISTENT_FIELD"]
                                                                              {:base-type :type/Text}]]}}}}}
           source (make-memory-source entities)
-          enumerators (make-memory-enumerators entities)
-          results (checker/check-cards source enumerators ["bad-field"])
+          index (make-memory-index entities)
+          results (checker/check-cards source index ["bad-field"])
           result (get results "bad-field")]
       (is (some? result))
       ;; Should NOT have an :error (query should build successfully with sentinel)
@@ -350,8 +357,8 @@
                                                                          :alias "n"
                                                                          :condition [:= 1 1]}]}}}}}
           source (make-memory-source entities)
-          enumerators (make-memory-enumerators entities)
-          results (checker/check-cards source enumerators ["bad-join"])
+          index (make-memory-index entities)
+          results (checker/check-cards source index ["bad-join"])
           result (get results "bad-join")]
       (is (some? result))
       ;; Should NOT have an :error (query should build with sentinel)
@@ -374,4 +381,4 @@
 
   ;; Manually check all cards in fixtures
   (def source (make-test-source))
-  (serdes-format/check source))
+  (check-all source))

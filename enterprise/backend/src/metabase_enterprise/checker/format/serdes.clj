@@ -278,10 +278,7 @@
   (.-export-dir source))
 
 ;;; ===========================================================================
-;;; Enumeration (serdes-specific)
-;;;
-;;; These functions know how to list entities from the file index.
-;;; Not part of the MetadataSource protocol - enumeration is format-specific.
+;;; Enumeration
 ;;; ===========================================================================
 
 (defn all-card-ids
@@ -304,28 +301,3 @@
   [^SerdesSource source]
   (keys (:field (.-index source))))
 
-(defn make-enumerators
-  "Create enumerators map for use with checker/check-cards."
-  [source]
-  {:databases #(all-database-names source)
-   :tables    #(all-table-paths source)
-   :fields    #(all-field-paths source)
-   :cards     #(all-card-ids source)})
-
-;;; ===========================================================================
-;;; High-level API
-;;; ===========================================================================
-
-(defn check
-  "Check all cards in a serdes export directory.
-   Returns map of entity-id -> result."
-  [^SerdesSource source]
-  (let [checker (requiring-resolve 'metabase-enterprise.checker.checker/check-cards)]
-    (checker source (make-enumerators source) (all-card-ids source))))
-
-(defn check-cards
-  "Check specific cards in a serdes export.
-   Returns map of entity-id -> result."
-  [^SerdesSource source card-ids]
-  (let [checker (requiring-resolve 'metabase-enterprise.checker.checker/check-cards)]
-    (checker source (make-enumerators source) card-ids)))

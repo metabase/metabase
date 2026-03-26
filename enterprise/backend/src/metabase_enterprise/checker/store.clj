@@ -1,9 +1,10 @@
 (ns metabase-enterprise.checker.store
-  "Checker store — source + ID registry + entity caches.
+  "Checker store — source + file index + ID registry + entity caches.
 
    The store is an atom holding:
    - A MetadataSource for resolving entities from disk/memory
-   - Enumerator thunks for listing all entities by kind
+   - A file index of all known refs by kind
+   - A fields-by-table index for efficient table→fields lookup
    - A bidirectional ID registry (portable refs ↔ synthetic integer IDs)
    - Entity caches (raw data with :id stamped on)
 
@@ -15,24 +16,71 @@
 (set! *warn-on-reflection* true)
 
 ;;; ===========================================================================
+;;; Index utilities
+;;; ===========================================================================
+
+(defn- build-fields-by-table
+  "Build a map of table-path → set-of-field-paths from a field index.
+   Field paths are [db schema table field]; table path is the first 3 elements."
+  [field-index]
+  (reduce-kv (fn [m field-path _file]
+               (let [table-path (subvec field-path 0 3)]
+                 (update m table-path (fnil conj #{}) field-path)))
+             {}
+             field-index))
+
+;;; ===========================================================================
 ;;; Store creation
 ;;; ===========================================================================
 
 (defn make-store
   "Create a fresh store for a checking session.
 
-   `enumerators` is a map of thunks returning sets of all entities of each kind:
-   :databases → (fn [] #{\"db-name\" ...})
-   :tables    → (fn [] #{[\"db\" \"schema\" \"table\"] ...})
-   :fields    → (fn [] #{[\"db\" \"schema\" \"table\" \"field\"] ...})
-   :cards     → (fn [] #{\"entity-id\" ...})"
-  [source enumerators]
-  (atom {:source      source
-         :enumerators enumerators
-         :id-counter  0
-         :ref->id     {}                ; {kind {ref id}}
-         :id->ref     {}                ; {kind {id ref}}
-         :entities    {}})) ; {kind {ref data}}
+   `source` is a MetadataSource for resolving entities.
+   `index` is a file index: `{kind {ref file-path}}` where kind is
+   :database, :table, :field, :card."
+  [source index]
+  (atom {:source          source
+         :index           index
+         :fields-by-table (build-fields-by-table (:field index))
+         :id-counter      0
+         :ref->id         {}                ; {kind {ref id}}
+         :id->ref         {}                ; {kind {id ref}}
+         :entities        {}}))             ; {kind {ref data}}
+
+;;; ===========================================================================
+;;; Index queries
+;;; ===========================================================================
+
+(defn all-refs
+  "All known refs of a given kind from the file index."
+  [store kind]
+  (keys (get-in @store [:index kind])))
+
+(defn all-database-names
+  "All database names from the file index."
+  [store]
+  (all-refs store :database))
+
+(defn all-table-paths
+  "All table paths from the file index."
+  [store]
+  (all-refs store :table))
+
+(defn all-field-paths
+  "All field paths from the file index."
+  [store]
+  (all-refs store :field))
+
+(defn all-card-ids
+  "All card entity-ids from the file index."
+  [store]
+  (all-refs store :card))
+
+(defn fields-for-table
+  "Field paths belonging to a specific table path."
+  [store table-path]
+  (get-in @store [:fields-by-table table-path]))
 
 ;;; ===========================================================================
 ;;; ID registry — assign synthetic integer IDs to portable refs
@@ -62,11 +110,6 @@
   [store kind ref]
   (get-in @store [:ref->id kind ref]))
 
-(defn all-refs
-  "All refs of a given kind that have been assigned IDs."
-  [store kind]
-  (keys (get-in @store [:ref->id kind])))
-
 ;;; ===========================================================================
 ;;; Entity loading — lazy load from source, cache with assigned IDs
 ;;; ===========================================================================
@@ -75,11 +118,6 @@
   "Get the MetadataSource from the store."
   [store]
   (:source @store))
-
-(defn enumerator
-  "Get the enumerator thunk for a given kind."
-  [store kind]
-  (get-in @store [:enumerators kind]))
 
 (defn cached-entity
   "Look up a cached entity by kind and ref. Returns nil if not cached."

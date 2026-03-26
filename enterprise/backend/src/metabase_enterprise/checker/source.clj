@@ -1,5 +1,5 @@
 (ns metabase-enterprise.checker.source
-  "Protocol for metadata sources.
+  "MetadataSource protocol and CompositeSource.
 
    A MetadataSource resolves portable references to entity data. It answers
    'does this reference exist?' and 'give me the data for this reference'.
@@ -13,9 +13,8 @@
    The checker assigns integer IDs; sources just say 'yes this exists, here's the data'
    or 'no, this reference is unresolved'.
 
-   Enumeration (listing all cards, all tables, etc.) is NOT part of this protocol.
-   That's format-specific - serdes iterates a file index, an API would call a list
-   endpoint, tests pass in specific IDs. The checker doesn't need to enumerate.")
+   CompositeSource delegates db/table/field resolution to one source and card
+   resolution to another. Used when --schema-dir and --export are separate.")
 
 (defprotocol MetadataSource
   "Resolve portable references to entity data."

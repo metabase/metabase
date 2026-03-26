@@ -5,15 +5,19 @@
    Works with any MetadataSource implementation.
 
    Architecture:
-   1. A *store* (checker.store) holds a MetadataSource, entity caches, and a
-      bidirectional ID registry that maps portable refs ↔ synthetic integer IDs.
+   1. A *store* (checker.store) holds a MetadataSource, a file index for
+      enumeration, a bidirectional ID registry (portable refs ↔ synthetic
+      integer IDs), and entity caches.
    2. Entities are loaded lazily from the source and cached with assigned IDs.
    3. A MetadataProvider backed by the store serves lib/query.
    4. lib/query and lib/find-bad-refs validate the cards.
-   5. checker.native validates native SQL using sql-parsing and sql-tools."
+   5. checker.native validates native SQL using sql-parsing and sql-tools.
+   6. Unresolved refs get sentinel IDs so queries can still be constructed
+      and lib/find-bad-refs can report the issue with context."
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [metabase-enterprise.checker.format.serdes :as serdes]
    [metabase-enterprise.checker.native :as native]
    [metabase-enterprise.checker.source :as source]
    [metabase-enterprise.checker.store :as store]
@@ -28,20 +32,23 @@
 ;;; ===========================================================================
 ;;; Reference resolution — resolve portable refs to IDs, collecting failures
 ;;;
-;;; Resolution functions take the store and an `unresolved` atom (or nil).
-;;; When a ref can't be resolved, it's conj'd onto the atom for the caller
-;;; to inspect.
+;;; Resolution functions take the store and a `!failures` atom (or nil).
+;;; When a ref can't be resolved, a failure map is conj'd onto the atom
+;;; for the caller to inspect. The failure maps look like:
+;;;   {:type :field :path ["DB" "schema" "table" "field"]}
+;;;   {:type :table :path ["DB" "schema" "table"]}
+;;;   {:type :database :name "DB"}
 ;;; ===========================================================================
 
 (defn- resolve-ref
   "Try to resolve `ref` of `kind`. Returns integer ID or nil.
-   On failure, appends to `unresolved` atom (if provided).
+   On failure, appends failure-info to `!failures` atom (if provided).
 
    When `sentinel?` is true, assigns a sentinel ID for unresolved refs instead
    of returning nil. This allows query construction to proceed so that
    lib/find-bad-refs can report the issue. The sentinel ID has no backing
    metadata in the provider, so lib will flag it."
-  [store kind ref unresolved failure-info & {:keys [sentinel?]}]
+  [store kind ref !failures failure-info & {:keys [sentinel?]}]
   (when ref
     (or (store/ref->id store kind ref)
         (let [resolve-fn (case kind
@@ -51,29 +58,29 @@
                            :card     source/resolve-card)]
           (when (resolve-fn (store/source store) ref)
             (store/get-or-assign! store kind ref)))
-        (do (when unresolved (swap! unresolved conj failure-info))
+        (do (when !failures (swap! !failures conj failure-info))
             (when sentinel?
               ;; Assign an ID so the query can be constructed, but no metadata
               ;; will exist for this ID — lib/find-bad-refs will catch it.
               (store/get-or-assign! store kind ref))))))
 
 (defn- resolve-field-path
-  ([store unresolved field-path]
-   (resolve-ref store :field field-path unresolved {:type :field :path field-path}))
-  ([store unresolved field-path sentinel?]
-   (resolve-ref store :field field-path unresolved {:type :field :path field-path} :sentinel? sentinel?)))
+  ([store !failures field-path]
+   (resolve-ref store :field field-path !failures {:type :field :path field-path}))
+  ([store !failures field-path sentinel?]
+   (resolve-ref store :field field-path !failures {:type :field :path field-path} :sentinel? sentinel?)))
 
 (defn- resolve-table-path
-  ([store unresolved table-path]
-   (resolve-ref store :table table-path unresolved {:type :table :path table-path}))
-  ([store unresolved table-path sentinel?]
-   (resolve-ref store :table table-path unresolved {:type :table :path table-path} :sentinel? sentinel?)))
+  ([store !failures table-path]
+   (resolve-ref store :table table-path !failures {:type :table :path table-path}))
+  ([store !failures table-path sentinel?]
+   (resolve-ref store :table table-path !failures {:type :table :path table-path} :sentinel? sentinel?)))
 
-(defn- resolve-db-name [store unresolved db-name]
-  (resolve-ref store :database db-name unresolved {:type :database :name db-name}))
+(defn- resolve-db-name [store !failures db-name]
+  (resolve-ref store :database db-name !failures {:type :database :name db-name}))
 
-(defn- resolve-card-entity-id [store unresolved entity-id]
-  (resolve-ref store :card entity-id unresolved {:type :card :entity-id entity-id}))
+(defn- resolve-card-entity-id [store !failures entity-id]
+  (resolve-ref store :card entity-id !failures {:type :card :entity-id entity-id}))
 
 ;;; ---------------------------------------------------------------------------
 ;;; SerdesImportResolver — bridges store-based resolution into import-mbql
@@ -81,27 +88,27 @@
 
 (defn- make-import-resolver
   "Build a `SerdesImportResolver` that resolves against `store`,
-   collecting failures in `unresolved` (an atom, or nil to discard).
+   collecting failures in `!failures` (an atom, or nil to discard).
 
    When `sentinel?` is true, unresolved field/table refs get sentinel IDs
    instead of nil, allowing query construction to proceed."
-  [store unresolved & {:keys [sentinel?]}]
+  [store !failures & {:keys [sentinel?]}]
   (reify resolve/SerdesImportResolver
     (import-fk [_ eid model]
       (case model
-        (Card Segment Measure) (resolve-card-entity-id store unresolved eid)
-        (do (when unresolved
-              (swap! unresolved conj {:type :unknown :model model :entity-id eid}))
+        (Card Segment Measure) (resolve-card-entity-id store !failures eid)
+        (do (when !failures
+              (swap! !failures conj {:type :unknown :model model :entity-id eid}))
             nil)))
     (import-fk-keyed [_ portable model field]
       (case [model field]
-        [:model/Database :name] (resolve-db-name store unresolved portable)
-        (do (when unresolved
-              (swap! unresolved conj {:type :keyed-lookup :model model :field field :value portable}))
+        [:model/Database :name] (resolve-db-name store !failures portable)
+        (do (when !failures
+              (swap! !failures conj {:type :keyed-lookup :model model :field field :value portable}))
             nil)))
     (import-user [_ _email] nil)
-    (import-table-fk [_ path] (resolve-table-path store unresolved path sentinel?))
-    (import-field-fk [_ path] (resolve-field-path store unresolved path sentinel?))))
+    (import-table-fk [_ path] (resolve-table-path store !failures path sentinel?))
+    (import-field-fk [_ path] (resolve-field-path store !failures path sentinel?))))
 
 ;;; ===========================================================================
 ;;; Data conversion — entity maps from source → lib metadata maps
@@ -130,7 +137,7 @@
 
 (defn- ->field-metadata
   "Convert a cached field entity to lib metadata. Resolves FK targets if present."
-  [store unresolved data]
+  [store !failures data]
   (cond-> {:lib/type        :metadata/column
            :id              (:id data)
            :table-id        (:table_id data)
@@ -144,24 +151,24 @@
            :visibility-type (some-> (:visibility_type data) keyword)
            :position        (:position data)}
     (vector? (:fk_target_field_id data))
-    (as-> m (if-let [fk-id (resolve-field-path store unresolved (:fk_target_field_id data))]
+    (as-> m (if-let [fk-id (resolve-field-path store !failures (:fk_target_field_id data))]
               (assoc m :fk-target-field-id fk-id)
               m))))
 
 (defn- field-ref-has-nil? [ref]
   (and (vector? ref) (= :field (first ref)) (nil? (second ref))))
 
-(defn- convert-result-metadata-column [resolver store unresolved col]
+(defn- convert-result-metadata-column [resolver store !failures col]
   (binding [resolve/*import-resolver* resolver]
     (cond-> col
       (vector? (:id col))
-      (as-> c (if-let [id (resolve-field-path store unresolved (:id col))]
+      (as-> c (if-let [id (resolve-field-path store !failures (:id col))]
                 (assoc c :id id) (dissoc c :id)))
       (vector? (:table_id col))
-      (as-> c (if-let [id (resolve-table-path store unresolved (:table_id col))]
+      (as-> c (if-let [id (resolve-table-path store !failures (:table_id col))]
                 (assoc c :table_id id) (dissoc c :table_id)))
       (vector? (:fk_target_field_id col))
-      (as-> c (if-let [id (resolve-field-path store unresolved (:fk_target_field_id col))]
+      (as-> c (if-let [id (resolve-field-path store !failures (:fk_target_field_id col))]
                 (assoc c :fk_target_field_id id) (dissoc c :fk_target_field_id)))
       (:field_ref col)
       (as-> c (let [ref (resolve/import-mbql (:field_ref col))]
@@ -171,31 +178,31 @@
   "Convert a dataset query from serdes format, resolving paths to IDs.
    Uses sentinel IDs for unresolved refs so the query can be constructed
    even when some fields/tables don't exist in the schema."
-  [store unresolved query]
+  [store !failures query]
   (when query
     (let [db-name (:database query)
-          db-id   (when (string? db-name) (resolve-db-name store unresolved db-name))
+          db-id   (when (string? db-name) (resolve-db-name store !failures db-name))
           query   (if db-id (assoc query :database db-id) query)
-          resolver (make-import-resolver store unresolved :sentinel? true)]
+          resolver (make-import-resolver store !failures :sentinel? true)]
       (binding [resolve/*import-resolver* resolver]
         (resolve/import-mbql query)))))
 
 (defn- ->card-metadata
   "Convert a cached card entity to lib metadata. Returns the metadata map with
-   ::unresolved-refs and ::unresolved-database keys when resolution fails."
+   ::resolution-failures and ::missing-database keys when resolution fails."
   [store data]
-  (let [unresolved (atom [])
-        resolver   (make-import-resolver store unresolved)
+  (let [!failures (atom [])
+        resolver   (make-import-resolver store !failures)
         table-id   (when-let [t (:table_id data)]
                      (if (vector? t)
-                       (resolve-table-path store unresolved t)
+                       (resolve-table-path store !failures t)
                        t))
         db-name    (get-in data [:dataset_query :database])
-        db-id      (when (string? db-name) (resolve-db-name store unresolved db-name))
-        dataset-query   (convert-dataset-query store unresolved (:dataset_query data))
+        db-id      (when (string? db-name) (resolve-db-name store !failures db-name))
+        dataset-query   (convert-dataset-query store !failures (:dataset_query data))
         result-metadata (when-let [cols (seq (:result_metadata data))]
                           (->> cols
-                               (map (partial convert-result-metadata-column resolver store unresolved))
+                               (map (partial convert-result-metadata-column resolver store !failures))
                                (lib/normalize [:sequential ::lib.schema.metadata/lib-or-legacy-column])))]
     (cond-> {:lib/type        :metadata/card
              :id              (:id data)
@@ -205,9 +212,9 @@
              :result-metadata result-metadata
              :archived        (:archived data)}
       db-id              (assoc :database-id db-id)
-      (not db-id)        (assoc ::unresolved-database db-name)
+      (not db-id)        (assoc ::missing-database db-name)
       table-id           (assoc :table-id table-id)
-      (seq @unresolved)  (assoc ::unresolved-refs (vec (distinct @unresolved))))))
+      (seq @!failures)   (assoc ::resolution-failures (vec (distinct @!failures))))))
 
 ;;; ===========================================================================
 ;;; MetadataProvider — serves lib/query from the store
@@ -217,7 +224,7 @@
 (deftype SourceMetadataProvider [store]
   lib.metadata.protocols/MetadataProvider
   (database [_this]
-    (when-let [db-name (first ((store/enumerator store :databases)))]
+    (when-let [db-name (first (store/all-database-names store))]
       (when-let [data (store/load-database! store db-name)]
         (->database-metadata data))))
 
@@ -232,7 +239,7 @@
                :let [data (store/load-table! store path)]
                :when data]
            (->table-metadata data))
-         (for [path ((store/enumerator store :tables))
+         (for [path (store/all-table-paths store)
                :let [data (store/load-table! store path)]
                :when data]
            (->table-metadata data))))
@@ -249,18 +256,15 @@
            (->field-metadata store nil data))
 
          table-id
-         (let [[db schema tbl] (store/id->ref store :table table-id)]
-           (when db
-             (for [fpath ((store/enumerator store :fields))
-                   :when (and (= db (first fpath))
-                              (= schema (second fpath))
-                              (= tbl (nth fpath 2)))
+         (let [table-path (store/id->ref store :table table-id)]
+           (when table-path
+             (for [fpath (store/fields-for-table store table-path)
                    :let [data (store/load-field! store fpath)]
                    :when data]
                (->field-metadata store nil data))))
 
          :else
-         (for [path ((store/enumerator store :fields))
+         (for [path (store/all-field-paths store)
                :let [data (store/load-field! store path)]
                :when data]
            (->field-metadata store nil data))))
@@ -274,7 +278,7 @@
                :let [data (store/load-card! store eid)]
                :when data]
            (->card-metadata store data))
-         (for [eid ((store/enumerator store :cards))
+         (for [eid (store/all-card-ids store)
                :let [data (store/load-card! store eid)]
                :when data]
            (->card-metadata store data))))
@@ -346,12 +350,12 @@
   (let [data     (store/load-card! store entity-id)
         card-id  (:id data)
         card-meta (->card-metadata store data)]
-    (if-let [missing-db (::unresolved-database card-meta)]
+    (if-let [missing-db (::missing-database card-meta)]
       {:card-id    card-id
        :name       (:name data)
        :entity-id  entity-id
        :unresolved (into [{:type :database :name missing-db}]
-                         (::unresolved-refs card-meta))
+                         (::resolution-failures card-meta))
        :error      (str "Unknown database: " missing-db)}
       (try
         (let [card      (lib.metadata/card provider card-id)
@@ -375,22 +379,22 @@
                    :name       (:name data)
                    :entity-id  entity-id
                    :refs       refs
-                   :unresolved (::unresolved-refs card-meta)
+                   :unresolved (::resolution-failures card-meta)
                    :bad-refs   bad-refs}
             (seq native-errors) (assoc :native-errors native-errors)))
         (catch Exception e
           {:card-id    card-id
            :name       (:name data)
            :entity-id  entity-id
-           :unresolved (::unresolved-refs card-meta)
+           :unresolved (::resolution-failures card-meta)
            :error      (.getMessage e)})))))
 
 (defn check-cards
   "Check multiple cards from source. Returns map of entity-id → result.
 
-   `enumerators` is a map of thunks for listing entities (see [[make-store]])."
-  [source enumerators card-ids]
-  (let [store    (store/make-store source enumerators)
+   `index` is a file index: `{kind {ref file-path}}` (see store/make-store)."
+  [source index card-ids]
+  (let [store    (store/make-store source index)
         provider (make-provider store)]
     (into {}
           (for [eid card-ids]
@@ -485,24 +489,17 @@
       (.write w (str (format-result entry) "\n\n"))))
   (println "Results written to:" output-file))
 
-(defn- make-source-and-enumerators
+(defn- make-source-and-index
   "Build a composite source (db schemas from `schema-dir`, cards from `export-dir`)
-   and the matching enumerators map."
+   and a merged file index."
   [export-dir schema-dir]
-  (let [serdes-source   (requiring-resolve 'metabase-enterprise.checker.format.serdes/make-source)
-        serdes-db       (requiring-resolve 'metabase-enterprise.checker.format.serdes/make-database-source)
-        serdes-db-names (requiring-resolve 'metabase-enterprise.checker.format.serdes/all-database-names)
-        serdes-tables   (requiring-resolve 'metabase-enterprise.checker.format.serdes/all-table-paths)
-        serdes-fields   (requiring-resolve 'metabase-enterprise.checker.format.serdes/all-field-paths)
-        serdes-cards    (requiring-resolve 'metabase-enterprise.checker.format.serdes/all-card-ids)
-        db-source   (serdes-db schema-dir)
-        card-source (serdes-source export-dir)
+  (let [db-source   (serdes/make-database-source schema-dir)
+        card-source (serdes/make-source export-dir)
         src         (source/composite-source db-source card-source)
-        enums       {:databases #(serdes-db-names db-source)
-                     :tables    #(serdes-tables db-source)
-                     :fields    #(serdes-fields db-source)
-                     :cards     #(serdes-cards card-source)}]
-    {:source src :enumerators enums :card-source card-source}))
+        db-index    (serdes/source-index db-source)
+        card-index  (serdes/source-index card-source)
+        index       (merge db-index (select-keys card-index [:card]))]
+    {:source src :index index :card-source card-source}))
 
 (defn check
   "Check cards in an export directory against database schemas.
@@ -513,14 +510,13 @@
 
    Returns a map with :results and :source."
   ([export-dir schema-dir]
-   (let [{:keys [source enumerators card-source]} (make-source-and-enumerators export-dir schema-dir)
-         all-card-ids (requiring-resolve 'metabase-enterprise.checker.format.serdes/all-card-ids)
-         card-ids     (all-card-ids card-source)]
-     {:results (check-cards source enumerators card-ids)
+   (let [{:keys [source index card-source]} (make-source-and-index export-dir schema-dir)
+         card-ids (serdes/all-card-ids card-source)]
+     {:results (check-cards source index card-ids)
       :source  source}))
   ([export-dir schema-dir entity-ids]
-   (let [{:keys [source enumerators]} (make-source-and-enumerators export-dir schema-dir)]
-     {:results (check-cards source enumerators entity-ids)
+   (let [{:keys [source index]} (make-source-and-index export-dir schema-dir)]
+     {:results (check-cards source index entity-ids)
       :source  source})))
 
 (comment

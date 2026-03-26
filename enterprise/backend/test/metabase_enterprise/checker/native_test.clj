@@ -20,12 +20,12 @@
     (resolve-field [_ field-path] (get fields field-path))
     (resolve-card [_ entity-id] (get cards entity-id))))
 
-(defn- make-memory-enumerators
+(defn- make-memory-index
   [{:keys [databases tables fields cards]}]
-  {:databases #(keys databases)
-   :tables    #(keys tables)
-   :fields    #(keys fields)
-   :cards     #(keys cards)})
+  {:database (zipmap (keys databases) (repeat :memory))
+   :table    (zipmap (keys tables) (repeat :memory))
+   :field    (zipmap (keys fields) (repeat :memory))
+   :card     (zipmap (keys cards) (repeat :memory))})
 
 ;;; ===========================================================================
 ;;; Integration: native errors surface through check-card
@@ -47,8 +47,8 @@
                                                        :type "native"
                                                        :native {:query "SELLECT * FROM ORDERS"}}}}}
           source (make-memory-source entities)
-          enums  (make-memory-enumerators entities)
-          results (checker/check-cards source enums ["bad-sql"])
+          index  (make-memory-index entities)
+          results (checker/check-cards source index ["bad-sql"])
           result (get results "bad-sql")]
       (is (some? result))
       ;; Bad syntax should produce either :error (parse failure) or :native-errors
@@ -76,8 +76,8 @@
                                                          :type "native"
                                                          :native {:query "SELECT ID, TOTAL FROM ORDERS"}}}}}
           source (make-memory-source entities)
-          enums  (make-memory-enumerators entities)
-          results (checker/check-cards source enums ["good-sql"])
+          index  (make-memory-index entities)
+          results (checker/check-cards source index ["good-sql"])
           result (get results "good-sql")]
       (is (some? result))
       (is (nil? (:error result)) (str "Should not error: " (:error result)))
