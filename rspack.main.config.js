@@ -109,7 +109,15 @@ const config = {
     // Per-entry filename override: no content hash so embed-mcp.html can reference it by a stable name.
     // The script URL in embed-mcp.html must be absolute (Claude Desktop renders from a ui:// URI),
     // so we can't use HtmlWebpackPlugin injection here.
-    "app-embed-mcp": { import: "./app-embed-mcp.tsx", filename: "app-embed-mcp.js" },
+    // runtime: false embeds the webpack runtime directly into this chunk so it is a
+    // self-contained standalone script (no separate runtime.js / vendor.js needed).
+    // embed-mcp.html is served as a Mustache template without HtmlWebpackPlugin injection,
+    // so we cannot rely on the shared runtime chunk being loaded first.
+    "app-embed-mcp": {
+      import: "./app-embed-mcp.tsx",
+      filename: "app-embed-mcp.js",
+      runtime: false,
+    },
     "vendor-styles": "./css/vendor.css",
     styles: "./css/index.module.css",
   },
@@ -228,25 +236,24 @@ const config = {
   optimization: {
     runtimeChunk: "single",
     splitChunks: {
+      // Exclude app-embed-mcp: it is served from a Mustache template without HtmlWebpackPlugin,
+      // so it must be a self-contained standalone bundle with no external chunk dependencies.
+      chunks: (chunk) => chunk.name !== "app-embed-mcp",
       cacheGroups: {
         vendors: {
           test: /[\\/]node_modules[\\/](?!(sql-formatter|jspdf|html2canvas|html2canvas-pro)[\\/])/,
-          chunks: "all",
           name: "vendor",
         },
         sqlFormatter: {
           test: /[\\/]node_modules[\\/]sql-formatter[\\/]/,
-          chunks: "all",
           name: "sql-formatter",
         },
         jspdf: {
           test: /[\\/]node_modules[\\/]jspdf[\\/]/,
-          chunks: "all",
           name: "jspdf",
         },
         html2canvas: {
           test: /[\\/]node_modules[\\/](html2canvas|html2canvas-pro)[\\/]/,
-          chunks: "all",
           name: "html2canvas",
         },
       },
