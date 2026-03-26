@@ -10,9 +10,26 @@
 
 (set! *warn-on-reflection* true)
 
-(def successful-login? sso.test-helpers/successful-login?)
-(def call-with-login-attributes-cleared! sso.test-helpers/call-with-login-attributes-cleared!)
-(def do-with-other-sso-types-disabled! sso.test-helpers/do-with-other-sso-types-disabled!)
+(def successful-login?
+  "Return true if the response indicates a successful user login."
+  sso.test-helpers/successful-login?)
+
+(def call-with-login-attributes-cleared!
+  "Execute thunk and ensure login_attributes are cleared afterward."
+  sso.test-helpers/call-with-login-attributes-cleared!)
+
+(defn do-with-other-sso-types-disabled!
+  "Execute `thunk` with LDAP, SAML, JWT, and Slack Connect SSO types disabled.
+   Useful when testing a specific SSO provider in isolation.
+
+   This EE version disables all SSO types including EE-only SAML and JWT."
+  [thunk]
+  (mt/with-temporary-setting-values
+    [ldap-enabled          false
+     saml-enabled          false
+     jwt-enabled           false
+     slack-connect-enabled false]
+    (thunk)))
 
 ;;; -------------------------------------------------- SAML Setup --------------------------------------------------
 
