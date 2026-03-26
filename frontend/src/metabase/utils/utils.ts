@@ -29,19 +29,6 @@ export function equals(a: unknown, b: unknown) {
   return _.isEqual(a, b);
 }
 
-export function propertiesEqual(
-  a: Record<string, unknown>,
-  b: Record<string, unknown>,
-  properties = [...Object.keys(a), ...Object.keys(b)],
-) {
-  for (const property of properties) {
-    if (a[property] !== b[property]) {
-      return false;
-    }
-  }
-  return true;
-}
-
 /**
  * Converts a metabase version to a list of numeric components, it converts pre-release
  * components to numbers and pads the numeric part to 4 numbers to make comparison easier
