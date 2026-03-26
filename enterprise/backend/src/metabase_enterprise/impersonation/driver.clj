@@ -50,6 +50,35 @@
    (when (and db-or-id (premium-features/enable-advanced-permissions?))
      (t2/exists? :model/ConnectionImpersonation :db_id (u/id db-or-id)))))
 
+;;; ----------------------------------------- Request-scoped cache -----------------------------------------
+
+(def ^:dynamic *impersonation-cache*
+  "When bound to an atom (via [[with-impersonation-cache]]), caches impersonation lookups so they aren't
+  repeated across calls within the same scope. nil outside of a cached context."
+  nil)
+
+(defn- cached
+  "Look up `k` in [[*cache*]], computing `(f)` on miss. Passes through to `(f)` when `*cache*` is unbound."
+  [k f]
+  (if-not *impersonation-cache*
+    (f)
+    (let [v (get @*impersonation-cache* k ::miss)]
+      (if (identical? v ::miss)
+        (let [result (f)]
+          (swap! *impersonation-cache* assoc k result)
+          result)
+        v))))
+
+(defmacro with-impersonation-cache
+  "Bind an impersonation lookup cache for the duration of `body`. Repeated calls to
+  [[connection-impersonation-role]] and [[enforced-impersonations-for-db]] within the same
+  cache scope will reuse results for the same user+db combination."
+  [& body]
+  `(binding [*impersonation-cache* (atom {})]
+     ~@body))
+
+;;; ----------------------------------------------------------------------------------------------------------
+
 (defn enforced-impersonations-for-db
   "Returns the connection impersonation policies which should be enforced for the provided DB for the current user, if
   one exists. Returns `nil` if no policies exist, or none should be enforced for the current user.
@@ -59,50 +88,56 @@
   Note: this returns a list of policies. Typically a user should only be in one group with an impersonation policy at a time,
   but there may be policies in multiple groups if they use the same user attribute."
   [db-or-id]
-  (let [group-ids           (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id api/*current-user-id*)
-        conn-impersonations (when (seq group-ids)
-                              (t2/select :model/ConnectionImpersonation
-                                         :group_id [:in group-ids]
-                                         :db_id (u/the-id db-or-id)))]
-    (when (and (seq conn-impersonations) (sandboxed? db-or-id))
-      (throw (ex-info (tru "Conflicting sandboxing and impersonation policies found.")
-                      {:user-id api/*current-user-id*
-                       :database-id (u/id db-or-id)})))
-    (when (and (seq conn-impersonations)
-               (enforce-impersonations? db-or-id conn-impersonations group-ids))
-      conn-impersonations)))
+  (cached [::enforced-impersonations api/*current-user-id* (u/the-id db-or-id)]
+          (fn []
+            (let [group-ids           (cached [::group-ids api/*current-user-id*]
+                                              (fn [] (t2/select-fn-set :group_id :model/PermissionsGroupMembership
+                                                                       :user_id api/*current-user-id*)))
+                  conn-impersonations (when (seq group-ids)
+                                        (t2/select :model/ConnectionImpersonation
+                                                   :group_id [:in group-ids]
+                                                   :db_id (u/the-id db-or-id)))]
+              (when (and (seq conn-impersonations) (sandboxed? db-or-id))
+                (throw (ex-info (tru "Conflicting sandboxing and impersonation policies found.")
+                                {:user-id api/*current-user-id*
+                                 :database-id (u/id db-or-id)})))
+              (when (and (seq conn-impersonations)
+                         (enforce-impersonations? db-or-id conn-impersonations group-ids))
+                conn-impersonations)))))
 
 (defn connection-impersonation-role
   "Fetches the database role that should be used for the current user, if connection impersonation is in effect.
   Returns `nil` if connection impersonation should not be used for the current user. Throws an exception if multiple
   conflicting connection impersonation policies are found, or the role is not a single string."
   [database-or-id]
-  (when (and database-or-id (not api/*is-superuser?*))
-    (let [conn-impersonations  (enforced-impersonations-for-db database-or-id)
-          role-attributes      (set (map :attribute conn-impersonations))]
-      (when conn-impersonations
-        (when (> (count role-attributes) 1)
-          (throw (ex-info (tru "Multiple conflicting connection impersonation policies found for current user")
-                          {:user-id api/*current-user-id*
-                           :conn-impersonations conn-impersonations})))
-        (when (not-empty role-attributes)
-          (let [conn-impersonation (first conn-impersonations)
-                role-attribute     (:attribute conn-impersonation)
-                user-attributes    (api/current-user-attributes)
-                role               (get user-attributes role-attribute)]
-            (cond
-              (nil? role)
-              (throw (ex-info (tru "User does not have attribute required for connection impersonation.")
-                              {:user-id api/*current-user-id*
-                               :conn-impersonations conn-impersonations}))
+  (cached [::impersonation-role api/*current-user-id* (u/the-id database-or-id)]
+          (fn []
+            (when (and database-or-id (not api/*is-superuser?*))
+              (let [conn-impersonations  (enforced-impersonations-for-db database-or-id)
+                    role-attributes      (set (map :attribute conn-impersonations))]
+                (when conn-impersonations
+                  (when (> (count role-attributes) 1)
+                    (throw (ex-info (tru "Multiple conflicting connection impersonation policies found for current user")
+                                    {:user-id api/*current-user-id*
+                                     :conn-impersonations conn-impersonations})))
+                  (when (not-empty role-attributes)
+                    (let [conn-impersonation (first conn-impersonations)
+                          role-attribute     (:attribute conn-impersonation)
+                          user-attributes    (api/current-user-attributes)
+                          role               (get user-attributes role-attribute)]
+                      (cond
+                        (nil? role)
+                        (throw (ex-info (tru "User does not have attribute required for connection impersonation.")
+                                        {:user-id api/*current-user-id*
+                                         :conn-impersonations conn-impersonations}))
 
-              (or (not (string? role))
-                  (str/blank? role))
-              (throw (ex-info (tru "Connection impersonation attribute is invalid: role must be a single non-empty string.")
-                              {:user-id api/*current-user-id*
-                               :conn-impersonations conn-impersonations}))
-              :else
-              role)))))))
+                        (or (not (string? role))
+                            (str/blank? role))
+                        (throw (ex-info (tru "Connection impersonation attribute is invalid: role must be a single non-empty string.")
+                                        {:user-id api/*current-user-id*
+                                         :conn-impersonations conn-impersonations}))
+                        :else
+                        role)))))))))
 
 (defenterprise hash-input-for-impersonation
   "Returns a hash-key for FieldValues if the current user uses impersonation for the database."

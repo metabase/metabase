@@ -320,23 +320,26 @@
   all valid options."
   [card-id :- ::lib.schema.id/card
    export-format
-   & {:keys [parameters constraints context dashboard-id dashcard-id middleware qp make-run ignore-cache]
+   & {:keys [parameters constraints context dashboard-id dashcard-id middleware qp make-run ignore-cache
+             prefetched-card prefetched-dash-viz]
       :or   {constraints (qp.constraints/default-query-constraints)
              context     :question
              ;; param `make-run` can be used to control how the query is ran, e.g. if you need to customize the `context`
              ;; passed to the QP
              make-run    process-query-for-card-default-run-fn}}]
   {:pre [(pos-int? card-id) (u/maybe? sequential? parameters)]}
-  (let [card       (api/read-check (t2/select-one [:model/Card :id :name :dataset_query :database_id :collection_id
-                                                   :type :result_metadata :visualization_settings :display
-                                                   :cache_invalidated_at :entity_id :created_at :card_schema
-                                                   :parameters]
-                                                  :id card-id))
+  (let [card       (api/read-check (or prefetched-card
+                                       (t2/select-one [:model/Card :id :name :dataset_query :database_id :collection_id
+                                                       :type :result_metadata :visualization_settings :display
+                                                       :cache_invalidated_at :entity_id :created_at :card_schema
+                                                       :parameters]
+                                                      :id card-id)))
         parameters (some-> parameters parameters.schema/normalize-parameters-without-adding-default-types)
         parameters (enrich-parameters-from-card parameters (combined-parameters-and-template-tags card))
-        dash-viz   (when (and (not= context :question)
-                              dashcard-id)
-                     (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id))
+        dash-viz   (if (and (not= context :question) dashcard-id)
+                     (or prefetched-dash-viz
+                         (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id))
+                     prefetched-dash-viz)
         card-viz   (:visualization_settings card)
         merged-viz (m/deep-merge card-viz dash-viz)
         ;; We need to check this here because dashcards don't get selected until this point
