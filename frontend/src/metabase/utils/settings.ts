@@ -1,59 +1,11 @@
-import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
-import { numberToWord } from "metabase/utils/utils";
 import type {
   ColorSettings,
   PasswordComplexity,
   SettingKey,
   Settings,
 } from "metabase-types/api";
-
-const n2w = (n: number) => numberToWord(n);
-
-const PASSWORD_COMPLEXITY_CLAUSES = {
-  total: {
-    test: ({ total = 0 }, password = "") => password.length >= total,
-    description: ({ total = 0 }) =>
-      ngettext(
-        msgid`at least ${n2w(total)} character long`,
-        `at least ${n2w(total)} characters long`,
-        total,
-      ),
-  },
-  lower: {
-    test: makeRegexTest("lower", /[a-z]/g),
-    description: ({ lower = 0 }) =>
-      ngettext(
-        msgid`${n2w(lower)} lower case letter`,
-        `${n2w(lower)} lower case letters`,
-        lower,
-      ),
-  },
-  upper: {
-    test: makeRegexTest("upper", /[A-Z]/g),
-    description: ({ upper = 0 }) =>
-      ngettext(
-        msgid`${n2w(upper)} upper case letter`,
-        `${n2w(upper)} upper case letters`,
-        upper,
-      ),
-  },
-  digit: {
-    test: makeRegexTest("digit", /[0-9]/g),
-    description: ({ digit = 0 }) =>
-      ngettext(msgid`${n2w(digit)} number`, `${n2w(digit)} numbers`, digit),
-  },
-  special: {
-    test: makeRegexTest("special", /[^a-zA-Z0-9]/g),
-    description: ({ special = 0 }) =>
-      ngettext(
-        msgid`${n2w(special)} special character`,
-        `${n2w(special)} special characters`,
-        special,
-      ),
-  },
-};
 
 type SettingListener = (value: any) => void;
 
@@ -245,34 +197,6 @@ class MetabaseSettings {
   }
 
   /**
-   * Returns a description of password complexity requirements.
-   * Optionally takes a password and returns a description only including the requirements not met.
-   */
-  passwordComplexityDescription(password = "") {
-    const requirements = this.passwordComplexityRequirements();
-    const descriptions: Record<string, string> = {};
-
-    for (const [name, clause] of Object.entries(PASSWORD_COMPLEXITY_CLAUSES)) {
-      if (!clause.test(requirements, password)) {
-        descriptions[name] = clause.description(requirements);
-      }
-    }
-
-    const { total, ...rest } = descriptions;
-    const includes = Object.values(rest).join(", ");
-
-    if (total && includes) {
-      return t`must be ${total} and include ${includes}.`;
-    } else if (total) {
-      return t`must be ${total}.`;
-    } else if (includes) {
-      return t`must include ${includes}.`;
-    } else {
-      return null;
-    }
-  }
-
-  /**
    * @deprecated use getSetting(state, "subscription-allowed-domains")
    */
   subscriptionAllowedDomains(): string[] {
@@ -288,11 +212,6 @@ class MetabaseSettings {
   applicationColors(): ColorSettings {
     return this.get("application-colors" as SettingKey) as ColorSettings;
   }
-}
-
-function makeRegexTest(property: string, regex: RegExp) {
-  return (requirements: Record<string, any>, password = "") =>
-    (password.match(regex) || []).length >= (requirements[property] || 0);
 }
 
 // window is not defined for static charts SSR

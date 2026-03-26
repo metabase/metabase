@@ -8,7 +8,7 @@ import { FormInput } from "metabase/common/components/FormInput";
 import { FormSubmitButton } from "metabase/common/components/FormSubmitButton";
 import { Form, FormProvider } from "metabase/forms";
 import * as Errors from "metabase/utils/errors";
-import MetabaseSettings from "metabase/utils/settings";
+import { passwordComplexityDescription } from "metabase/utils/password";
 
 import type { ResetPasswordData } from "../../types";
 
@@ -46,7 +46,7 @@ export const ResetPasswordForm = ({
   }, []);
 
   const passwordDescription = useMemo(() => {
-    return MetabaseSettings.passwordComplexityDescription();
+    return passwordComplexityDescription();
   }, []);
 
   const validationContext = useMemo(
