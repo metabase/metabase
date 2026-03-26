@@ -1959,7 +1959,7 @@
               (is (= :query (:query_type card))))))))))
 
 (deftest transform-minimal-required-properties-test
-  (testing "Transform deserialized with only: entity_id, name, description, collection_id, source, target"
+  (testing "Transform deserialized with only: entity_id, name, source, target"
     (mt/with-premium-features #{:transforms-basic}
       (let [serialized (atom nil)]
         (ts/with-dbs [source-db dest-db]
@@ -1982,8 +1982,8 @@
 
           (let [minimal (mapv (fn [entity]
                                 (if (= "Transform" (-> entity :serdes/meta last :model))
-                                  (select-keys entity [:serdes/meta :entity_id :name :description
-                                                       :collection_id :source :target])
+                                  (select-keys entity [:serdes/meta :entity_id :name
+                                                       :source :target])
                                   entity))
                               @serialized)]
             (ts/with-db dest-db
