@@ -9,6 +9,7 @@
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.transforms :as agent-transforms]
    [metabase.metabot.tools.transforms.write :as transforms-write]
+   [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]))
 
 ;;; ----------------------------------- write tool integration tests --------------------------------------------------
@@ -28,44 +29,46 @@
       (is (= "transform_suggestion" (-> result :data-parts first :data-type))))))
 
 (deftest write-transform-python-tool-test
-  (testing "creates new Python transform with correct body, source tables, and output message"
-    (let [memory-atom (atom {:state {}})
-          result (binding [shared/*memory-atom* memory-atom]
-                   (agent-transforms/write-transform-python-tool
-                    {:edit_action {:mode "replace" :new_content "import common\ndef transform(t): return t"}
-                     :transform_name "Python Transform"
-                     :database_id (mt/id)
-                     :source_tables [{:alias "t" :table_id 10 :schema "PUBLIC" :database_id (mt/id)}]}))]
-      (is (= "import common\ndef transform(t): return t"
-             (get-in result [:structured-output :transform :source :body])))
-      (is (= [{:alias "t" :table_id 10 :schema "PUBLIC" :database_id (mt/id)}]
-             (get-in result [:structured-output :transform :source :source-tables])))
-      (is (= "transform_suggestion" (-> result :data-parts first :data-type))))))
+  (when (premium-features/has-feature? :transforms-python)
+    (testing "creates new Python transform with correct body, source tables, and output message"
+      (let [memory-atom (atom {:state {}})
+            result (binding [shared/*memory-atom* memory-atom]
+                     (agent-transforms/write-transform-python-tool
+                      {:edit_action {:mode "replace" :new_content "import common\ndef transform(t): return t"}
+                       :transform_name "Python Transform"
+                       :database_id (mt/id)
+                       :source_tables [{:alias "t" :table_id 10 :schema "PUBLIC" :database_id (mt/id)}]}))]
+        (is (= "import common\ndef transform(t): return t"
+               (get-in result [:structured-output :transform :source :body])))
+        (is (= [{:alias "t" :table_id 10 :schema "PUBLIC" :database_id (mt/id)}]
+               (get-in result [:structured-output :transform :source :source-tables])))
+        (is (= "transform_suggestion" (-> result :data-parts first :data-type)))))))
 
 (deftest write-transform-tool-nil-transform-id-test
-  (testing "SQL: nil transform_id creates fresh transform with nil :id and does not store in memory"
-    (let [memory-atom (atom {:state {:transforms {}}})
-          result (binding [shared/*memory-atom* memory-atom]
-                   (agent-transforms/write-transform-sql-tool
-                    {:transform_id nil
-                     :edit_action {:mode "replace" :new_content "SELECT 1"}
-                     :transform_name "Fresh SQL"
-                     :database_id (mt/id)}))]
-      (is (nil? (get-in result [:structured-output :transform :id])))
-      (is (empty? (get-in @memory-atom [:state :transforms])))
-      (is (= "transform_suggestion" (-> result :data-parts first :data-type)))))
-  (testing "Python: nil transform_id creates fresh transform with nil :id and does not store in memory"
-    (let [memory-atom (atom {:state {:transforms {}}})
-          result (binding [shared/*memory-atom* memory-atom]
-                   (agent-transforms/write-transform-python-tool
-                    {:transform_id nil
-                     :edit_action {:mode "replace" :new_content "import common\ndef transform(): pass"}
-                     :transform_name "Fresh Python"
-                     :database_id (mt/id)
-                     :source_tables [{:alias "t" :table_id 1 :schema "PUBLIC" :database_id (mt/id)}]}))]
-      (is (nil? (get-in result [:structured-output :transform :id])))
-      (is (empty? (get-in @memory-atom [:state :transforms])))
-      (is (= "transform_suggestion" (-> result :data-parts first :data-type))))))
+  (when (premium-features/has-feature? :transforms-python)
+    (testing "SQL: nil transform_id creates fresh transform with nil :id and does not store in memory"
+      (let [memory-atom (atom {:state {:transforms {}}})
+            result (binding [shared/*memory-atom* memory-atom]
+                     (agent-transforms/write-transform-sql-tool
+                      {:transform_id nil
+                       :edit_action {:mode "replace" :new_content "SELECT 1"}
+                       :transform_name "Fresh SQL"
+                       :database_id (mt/id)}))]
+        (is (nil? (get-in result [:structured-output :transform :id])))
+        (is (empty? (get-in @memory-atom [:state :transforms])))
+        (is (= "transform_suggestion" (-> result :data-parts first :data-type)))))
+    (testing "Python: nil transform_id creates fresh transform with nil :id and does not store in memory"
+      (let [memory-atom (atom {:state {:transforms {}}})
+            result (binding [shared/*memory-atom* memory-atom]
+                     (agent-transforms/write-transform-python-tool
+                      {:transform_id nil
+                       :edit_action {:mode "replace" :new_content "import common\ndef transform(): pass"}
+                       :transform_name "Fresh Python"
+                       :database_id (mt/id)
+                       :source_tables [{:alias "t" :table_id 1 :schema "PUBLIC" :database_id (mt/id)}]}))]
+        (is (nil? (get-in result [:structured-output :transform :id])))
+        (is (empty? (get-in @memory-atom [:state :transforms])))
+        (is (= "transform_suggestion" (-> result :data-parts first :data-type)))))))
 
 ;;; ----------------------------------- dependency check integration tests -------------------------------------------
 
