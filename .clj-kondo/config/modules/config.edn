@@ -169,6 +169,11 @@
               util}
    :model-imports #{:model/User}}
 
+  agent-lib
+  {:team "Metabot"
+   :uses #{lib
+           util}}
+
   analytics
   {:team "UX West"
    :api  #{metabase.analytics.api
@@ -1063,7 +1068,8 @@
            legacy-mbql
            types
            util}
-   :friends #{legacy-mbql         ;; Reuses internal schemas and a few helper functions. Deeply coupled to MBQL.
+   :friends #{agent-lib            ;; Structured MBQL builder; needs direct access to lib internals.
+              legacy-mbql         ;; Reuses internal schemas and a few helper functions. Deeply coupled to MBQL.
               lib-be              ;; BE-specific extension of lib; tight coupling is acceptable.
               query-processor     ;; Necessarily manipulates MBQL; better to pull most logic into a new module.
               source-swap         ;; Manipulates MBQL queries; tight coupling with lib is expected.
