@@ -16,7 +16,7 @@
 (def default-jwt-idp-uri "http://test.idp.metabase.com")
 
 (defn- current-epoch-seconds []
-  (int (/ (System/currentTimeMillis) 1000)))
+  (quot (System/currentTimeMillis) 1000))
 
 (defn sign-jwt
   "Sign a JWT with the test secret. Automatically adds `iat` claim if not present."
