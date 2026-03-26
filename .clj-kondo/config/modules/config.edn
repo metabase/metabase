@@ -147,6 +147,7 @@
    :friends #{enterprise/agent-api}
    :uses    #{api
               auth-identity
+              lib
               metabot
               query-processor
               request
@@ -222,6 +223,7 @@
            metabase.api.docs
            metabase.api.init
            metabase.api.macros
+           metabase.api.macros.defendpoint.tools-manifest
            metabase.api.macros.scope
            metabase.api.open-api
            metabase.api.routes.common
@@ -545,6 +547,10 @@
                     :model/NotificationHandler
                     :model/NotificationRecipient
                     :model/NotificationSubscription
+                    :model/OAuthAccessToken
+                    :model/OAuthAuthorizationCode
+                    :model/OAuthClient
+                    :model/OAuthRefreshToken
                     :model/ParameterCard
                     :model/Permissions
                     :model/PermissionsGroup
@@ -814,7 +820,7 @@
    :model-imports #{:model/Card :model/Collection :model/Dashboard :model/Table :model/User}}
 
   driver
-  {:team "Querying"
+  {:team "Querying Platform"
    :api  #{metabase.driver
            metabase.driver.common
            metabase.driver.common.parameters
@@ -867,7 +873,7 @@
    :model-imports #{:model/Database :model/Field :model/Table}}
 
   driver-api
-  {:team "Querying"
+  {:team "Querying Platform"
    :api  #{metabase.driver-api.core}
    :uses #{actions
            api
@@ -1047,7 +1053,7 @@
    :model-imports #{:model/Card :model/Dashboard :model/MetabotMessage :model/QueryExecution :model/User}}
 
   legacy-mbql
-  {:team "Querying"
+  {:team "Querying Platform"
    :api  #{metabase.legacy-mbql.normalize
            metabase.legacy-mbql.schema
            metabase.legacy-mbql.util}
@@ -1056,7 +1062,7 @@
            util}}
 
   lib
-  {:team "Querying"
+  {:team "Querying Platform"
    :api  #{metabase.lib.core
            metabase.lib.equality
            metabase.lib.init
@@ -1100,7 +1106,7 @@
               }}
 
   lib-be
-  {:team "Querying"
+  {:team "Querying Platform"
    :api  #{metabase.lib-be.core
            metabase.lib-be.init}
    :uses #{lib
@@ -1132,7 +1138,8 @@
 
   llm
   {:team "Metabot"
-   :api  #{metabase.llm.api
+   :api  #{metabase.llm.anthropic
+           metabase.llm.api
            metabase.llm.init
            metabase.llm.settings}
    :uses #{analytics
@@ -1174,8 +1181,20 @@
            util}
    :model-exports #{:model/LoginHistory}}
 
+  mcp
+  {:team "Metabot"
+   :api  #{metabase.mcp.api}
+   :uses #{agent-api
+           api
+           config
+           oauth-server
+           request
+           server
+           system
+           util}}
+
   measures
-  {:team "Querying"
+  {:team "Graphy"
    :api  #{metabase.measures.api}
    :uses #{api
            events
@@ -1194,8 +1213,6 @@
   {:team    "Metabot"
    :api     #{metabase.metabot.api
               metabase.metabot.api.entity-analysis
-              metabase.metabot.api.sql-fixer
-              metabase.metabot.api.sql-generation
               metabase.metabot.init}
    :friends #{agent-api
               enterprise/metabot
@@ -1212,7 +1229,6 @@
               documents
               driver
               internal-stats
-              legacy-mbql
               lib
               lib-be
               llm
@@ -1272,7 +1288,7 @@
    :model-imports #{:model/Card :model/Field :model/Measure}}
 
   model-persistence
-  {:team "Querying"
+  {:team "Graphy"
    :api  #{metabase.model-persistence.api
            metabase.model-persistence.core
            metabase.model-persistence.init}
@@ -1352,7 +1368,7 @@
            util}}
 
   native-query-snippets
-  {:team "Querying"
+  {:team "Graphy"
    :api  #{metabase.native-query-snippets.api
            metabase.native-query-snippets.core}
    :uses #{api
@@ -1412,9 +1428,25 @@
                     :model/DashboardTab
                     :model/User}}
 
+  oauth-server
+  {:team "UX West"
+   :api  #{metabase.oauth-server.api
+           metabase.oauth-server.core
+           metabase.oauth-server.init}
+   :uses #{api
+           appearance
+           models
+           settings
+           system
+           util}
+   :model-exports #{:model/OAuthAccessToken
+                    :model/OAuthAuthorizationCode
+                    :model/OAuthClient
+                    :model/OAuthRefreshToken}}
+
   ;; TODO -- too many API namespaces
   parameters
-  {:team "Querying"
+  {:team "Graphy"
    :api  #{metabase.parameters.chain-filter
            metabase.parameters.core
            metabase.parameters.custom-values
@@ -1599,7 +1631,7 @@
                     :model/User}}
 
   queries
-  {:team "Querying"
+  {:team "Graphy"
    :api  #{metabase.queries.core
            metabase.queries.init
            metabase.queries.models.query ; TODO FIXME
@@ -1654,7 +1686,7 @@
                     :model/User}}
 
   queries-rest
-  {:team "Querying"
+  {:team "Querying Platform"
    :api  #{metabase.queries-rest.api}
    :uses #{analyze
            api
@@ -1697,7 +1729,7 @@
    :model-imports #{:model/Card :model/Field}}
 
   query-processor
-  {:team    "Querying"
+  {:team    "Querying Platform"
    :friends #{driver-api
               enterprise/cache
               enterprise/sandbox
@@ -1837,7 +1869,8 @@
            metabase.search.ingestion
            metabase.search.init
            metabase.search.scoring
-           metabase.search.spec}
+           metabase.search.spec
+           metabase.search.task.search-index}
    :uses #{analytics
            api
            app-db
@@ -1864,13 +1897,13 @@
    :model-imports #{:model/Card :model/Collection :model/Dashboard :model/Table :model/User}}
 
   secrets
-  {:team "Querying"
+  {:team "Graphy"
    :api  #{metabase.secrets.core}
    :uses #{api driver models premium-features util}
    :model-exports #{:model/Secret}}
 
   segments
-  {:team "Querying"
+  {:team "Graphy"
    :api  #{metabase.segments.api
            metabase.segments.schema}
    :uses #{api
@@ -1903,6 +1936,7 @@
            embedding
            initialization-status
            lib-be
+           oauth-server
            premium-features
            query-processor
            request
@@ -2192,7 +2226,7 @@
            util}}
 
   transforms
-  {:team "Querying"
+  {:team "Graphy"
    :api  #{metabase.transforms.core
            metabase.transforms.feature-gating
            metabase.transforms.init
@@ -2229,7 +2263,7 @@
                     :model/User}}
 
   transforms-base
-  {:team "Querying"
+  {:team "Graphy"
    :api  #{metabase.transforms-base.init
            metabase.transforms-base.interface
            metabase.transforms-base.util}
@@ -2277,13 +2311,13 @@
                     :model/WorkspaceMergeTransform}}
 
   types
-  {:team "Querying"
+  {:team "Querying Platform"
    :api  #{metabase.types.core
            metabase.types.init}
    :uses #{util}}
 
   upload
-  {:team "Querying"
+  {:team "Graphy"
    :api  #{metabase.upload.api
            metabase.upload.core
            metabase.upload.db
@@ -2528,7 +2562,7 @@
    :uses #{util}}
 
   xrays
-  {:team "Querying"
+  {:team "Graphy"
    :api  #{metabase.xrays.api
            metabase.xrays.core
            metabase.xrays.init}
@@ -2770,7 +2804,7 @@
    :uses :any}
 
   enterprise/dashboard-subscription-filters
-  {:team "Querying"
+  {:team "Graphy"
    :api  #{}
    :uses #{premium-features}}
 
@@ -2913,7 +2947,7 @@
            util}}
 
   enterprise/impersonation
-  {:team "Querying"
+  {:team "Graphy"
    :api  #{metabase-enterprise.impersonation.api}
    :uses #{api
            audit-app
@@ -2942,11 +2976,13 @@
            premium-features}
    :model-imports #{:model/Card :model/Collection :model/Table}}
 
+
   enterprise/metabot
   {:team    "Metabot"
    :api     #{}
    :friends #{enterprise/agent-api
               slackbot
+              mcp
               metabot}
    :uses    #{api
               lib-be
@@ -2957,6 +2993,7 @@
               enterprise/dependencies
               enterprise/transforms-python}
    :model-imports #{:model/Card :model/Transform}}
+
 
   enterprise/permission-debug
   {:team "UX West"
@@ -3116,7 +3153,7 @@
    :model-imports #{:model/Card :model/Collection :model/ModelIndex}}
 
   enterprise/serialization
-  {:team "Querying"
+  {:team "Graphy"
    :api  #{metabase-enterprise.serialization.api
            metabase-enterprise.serialization.cmd
            metabase-enterprise.serialization.core
@@ -3139,7 +3176,7 @@
    :model-imports #{:model/Card :model/Collection :model/Dashboard :model/User}}
 
   enterprise/snippet-collections
-  {:team "Querying"
+  {:team "Graphy"
    :api  #{}
    :uses #{models
            native-query-snippets
@@ -3215,7 +3252,7 @@
    :model-imports #{:model/Collection :model/User}}
 
   enterprise/transforms
-  {:team "Querying"
+  {:team "Graphy"
    :api  #{metabase-enterprise.transforms.api}
    :uses #{premium-features
            enterprise/transforms-inspector}}
@@ -3237,7 +3274,7 @@
    :model-imports #{:model/Database :model/Field :model/Table :model/Transform}}
 
   enterprise/transforms-python
-  {:team "Querying"
+  {:team "Graphy"
    :api  #{metabase-enterprise.transforms-python.api
            metabase-enterprise.transforms-python.core
            metabase-enterprise.transforms-python.init
@@ -3306,7 +3343,7 @@
                     :model/Transform}}
 
   enterprise/writable-connection
-  {:team "Querying"
+  {:team "Graphy"
    :api  #{}
    :uses #{premium-features}}}
 

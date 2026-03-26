@@ -421,7 +421,7 @@ describe("command palette", () => {
       H.commandPaletteInput().should("exist").type("Me");
       cy.findByText("New metric").should("be.visible").click();
 
-      cy.location("pathname").should("eq", "/metric/query");
+      cy.location("pathname").should("eq", "/metric/new");
     });
   });
 

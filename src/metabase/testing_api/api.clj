@@ -17,6 +17,8 @@
    [metabase.lib.schema.test-spec :as lib.schema.test-spec]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.core :as search]
+   [metabase.search.ingestion :as search.ingestion]
+   [metabase.search.task.search-index :as task.search-index]
    [metabase.util.date-2 :as u.date]
    [metabase.util.files :as u.files]
    [metabase.util.json :as json]
@@ -58,6 +60,8 @@
   "Snapshot the database for testing purposes."
   [{snapshot-name :name} :- [:map
                              [:name ms/NonBlankString]]]
+  (task.search-index/wait-for-init!)
+  (search.ingestion/wait-for-idle!)
   (save-snapshot! snapshot-name)
   nil)
 
@@ -136,7 +140,7 @@
   ;; reset the system clock, in case `/set-time` was called without cleanup
   (alter-var-root #'java-time.clock/*clock* (constantly nil))
   (restore-snapshot! snapshot-name)
-  (search/async-reindex!)
+  (search/sync-from-restored-db!)
   nil)
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

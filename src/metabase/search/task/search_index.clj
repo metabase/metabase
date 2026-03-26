@@ -39,6 +39,16 @@
   (when (search/supports-index?)
     (search/async-reindex!)))
 
+;; Atom holding a promise that is delivered when the background init thread finishes.
+;; nil when no init has been started — [[wait-for-init!]] returns immediately in that case.
+(defonce ^:private init-promise (atom nil))
+
+(defn wait-for-init!
+  "Block until the background search index initialization has completed.
+   No-op if init has not been started (e.g. in unit tests)."
+  []
+  (some-> @init-promise deref))
+
 (defmethod startup/def-startup-logic! ::SearchIndexInit [_]
   (when (search/supports-index?)
     (search/async-init!)))

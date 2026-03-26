@@ -3,6 +3,7 @@
   (:require
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.metabot.config :as metabot.config]
    [metabase.metabot.core :as metabot]))
 
 (set! *warn-on-reflection* true)
@@ -25,6 +26,7 @@
                                                                                                                         [:description {:optional true} [:maybe :string]]
                                                                                                                         [:timestamp :string]]]]]]]
 
+  (metabot.config/check-metabot-enabled!)
   (let [chart-data {:image_base64 image_base64
                     :chart {:name name
                             :description description}

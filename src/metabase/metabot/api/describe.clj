@@ -3,6 +3,7 @@
   (:require
    [metabase.analyze.query-results :as qr]
    [metabase.api.macros :as api.macros]
+   [metabase.metabot.config :as metabot.config]
    [metabase.metabot.tasks.describe-dashboard :refer [describe-dashboard]]
    [metabase.metabot.tasks.describe-question :refer [describe-question]]
    [metabase.parameters.schema :as parameters.schema]
@@ -28,6 +29,7 @@
             [:collection_position    {:optional true} [:maybe ms/PositiveInt]]
             [:result_metadata        {:optional true} [:maybe qr/ResultsMetadata]]
             [:cache_ttl              {:optional true} [:maybe ms/PositiveInt]]]]
+  (metabot.config/check-metabot-enabled!)
   {:summary (describe-question body)})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -38,4 +40,5 @@
   "Provide a summary of a dashboard."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
+  (metabot.config/check-metabot-enabled!)
   {:summary (describe-dashboard id)})

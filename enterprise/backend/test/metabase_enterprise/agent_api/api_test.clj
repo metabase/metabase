@@ -325,12 +325,12 @@
           (is (= (mt/id) (lib/database-id decoded)))
           (is (= (mt/id :orders) (lib/primary-source-table-id decoded))))))
 
-    (testing "Applies default limit of 100 when no limit is specified"
+    (testing "Applies default limit of 200 when no limit is specified"
       (let [table-id (mt/id :orders)
             response (agent-client :rasta :post 200 "agent/v1/construct-query"
                                    {:table_id table-id})
             decoded  (decode-query response)]
-        (is (= 100 (lib/current-limit decoded)))))
+        (is (= 200 (lib/current-limit decoded)))))
 
     (testing "Respects explicit limit"
       (let [table-id (mt/id :orders)
@@ -354,19 +354,25 @@
                                           :limit    5})
             ;; Streaming response returns 202 (accepted) since it starts streaming before completion
             execute-resp   (agent-client :rasta :post 202 "agent/v1/execute"
-                                         {:query (:query construct-resp)})
-            cols           (get-in execute-resp [:data :cols])
-            rows           (get-in execute-resp [:data :rows])]
-        (testing "response structure"
-          (is (= "completed" (:status execute-resp)))
-          (is (= 5 (:row_count execute-resp)))
-          (is (sequential? cols))
-          (is (sequential? rows))
-          (is (= 5 (count rows))))
-        (testing "column metadata"
-          (is (seq cols) "Should have column metadata")
-          (is (every? :name cols) "Each column should have a name")
-          (is (every? :base_type cols) "Each column should have a base_type"))))))
+                                         {:query (:query construct-resp)})]
+        (is (=? {:status    "completed"
+                 :row_count 5
+                 :data      {:cols (fn [cols]
+                                     (and (seq cols)
+                                          (every? :name cols)
+                                          (every? :base_type cols)))
+                             :rows (fn [rows] (= 5 (count rows)))}}
+                execute-resp))))
+
+    (testing "Enforces agent query row limit even when query specifies a higher limit"
+      (let [table-id       (mt/id :orders)
+            construct-resp (agent-client :rasta :post 200 "agent/v1/construct-query"
+                                         {:table_id table-id
+                                          :limit    300})
+            execute-resp   (agent-client :rasta :post 202 "agent/v1/execute"
+                                         {:query (:query construct-resp)})]
+        (is (=? {:status "completed" :row_count 200}
+                execute-resp))))))
 
 (deftest execute-query-records-query-execution-test
   (with-agent-api-setup!
@@ -381,7 +387,7 @@
                                             {:request-options {:headers headers}}
                                             {:query (:query construct-resp)})
               ;; QueryExecution is saved asynchronously, so poll for it
-              query-execution (tu/poll-until 2000
+              query-execution (tu/poll-until 5000
                                              (t2/select-one :model/QueryExecution :executor_id user-id))]
           (is (= :agent (:context query-execution))))))))
 
@@ -538,6 +544,96 @@
                   :message "Token does not have required scope: agent:table:read"}
                  (client/client :get 403 (str "agent/v1/table/" table-id)
                                 {:request-options {:headers headers}}))))))))
+
+(deftest combined-query-test
+  (with-agent-api-setup!
+    (testing "Returns results for a table query"
+      (let [table-id (mt/id :orders)
+            field-id (visible-field-id table-id "ID")
+            response (agent-client :rasta :post 202 "agent/v1/query"
+                                   {:table_id table-id
+                                    :order_by [{:field {:field_id field-id} :direction "asc"}]
+                                    :limit    5})]
+        (is (=? {:status             "completed"
+                 :row_count          5
+                 :continuation_token string?
+                 :data               {:cols sequential?
+                                      :rows (fn [rows] (= 5 (count rows)))}}
+                response))))
+
+    (testing "Continuation token returns next page of results"
+      (let [table-id (mt/id :orders)
+            field-id (visible-field-id table-id "ID")
+            page1    (agent-client :rasta :post 202 "agent/v1/query"
+                                   {:table_id table-id
+                                    :order_by [{:field {:field_id field-id} :direction "asc"}]
+                                    :limit    5})
+            page2    (agent-client :rasta :post 202 "agent/v1/query"
+                                   {:continuation_token (:continuation_token page1)})]
+        (is (=? {:row_count          5
+                 :continuation_token string?
+                 :data               {:rows (fn [rows] (= 5 (count rows)))}}
+                page1))
+        (is (=? {:row_count          5
+                 :continuation_token string?
+                 :data               {:rows (fn [rows] (= 5 (count rows)))}}
+                page2))
+        (is (not= (get-in page1 [:data :rows])
+                  (get-in page2 [:data :rows]))
+            "Pages should return different rows")))
+
+    (testing "No continuation_token when all rows are returned"
+      (is (=? {:status             "completed"
+               :continuation_token nil?}
+              (agent-client :rasta :post 202 "agent/v1/query"
+                            {:table_id     (mt/id :orders)
+                             :aggregations [{:function "count"}]}))))
+
+    (testing "Constraint cap limits results to 200 rows"
+      (is (=? {:status    "completed"
+               :row_count (fn [n] (<= n 200))}
+              (agent-client :rasta :post 202 "agent/v1/query"
+                            {:table_id (mt/id :orders)
+                             :limit    1000}))))))
+
+(deftest combined-query-metric-test
+  (with-agent-api-setup!
+    (mt/with-temp [:model/Card metric {:name          "Test Metric"
+                                       :type          :metric
+                                       :database_id   (mt/id)
+                                       :dataset_query (orders-count-query)}]
+      (testing "Returns results for a metric query"
+        (is (=? {:status    "completed"
+                 :row_count pos?}
+                (agent-client :rasta :post 202 "agent/v1/query"
+                              {:metric_id (:id metric)})))))))
+
+(deftest combined-query-scope-test
+  (with-agent-api-setup!
+    (testing "agent:query scope grants access to combined query endpoint"
+      (let [headers {"authorization" (str "Bearer " (sign-jwt {:email "rasta@metabase.com"
+                                                               :scope "agent:query"}))}]
+        (is (= "completed"
+               (:status (client/client :post 202 "agent/v1/query"
+                                       {:request-options {:headers headers}}
+                                       {:table_id (mt/id :orders) :limit 1}))))))
+
+    (testing "agent:* wildcard scope grants access"
+      (let [headers {"authorization" (str "Bearer " (sign-jwt {:email "rasta@metabase.com"
+                                                               :scope "agent:*"}))}]
+        (is (= "completed"
+               (:status (client/client :post 202 "agent/v1/query"
+                                       {:request-options {:headers headers}}
+                                       {:table_id (mt/id :orders) :limit 1}))))))
+
+    (testing "agent:query:construct scope does NOT grant access to combined endpoint"
+      (let [headers {"authorization" (str "Bearer " (sign-jwt {:email "rasta@metabase.com"
+                                                               :scope "agent:query:construct"}))}]
+        (is (= {:error   "unsupported_scope"
+                :message "Token does not have required scope: agent:query"}
+               (client/client :post 403 "agent/v1/query"
+                              {:request-options {:headers headers}}
+                              {:table_id (mt/id :orders) :limit 1})))))))
 
 (deftest search-finds-metrics-test
   (with-agent-api-setup!

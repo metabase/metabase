@@ -25,6 +25,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.number :as u.number]
    [metabase.util.performance :as perf :refer [every? some mapv empty? #?(:clj doseq) #?(:clj for)]]
    [metabase.util.time :as u.time]))
@@ -541,7 +542,7 @@
     (lib.options/ensure-uuid (into [tag {} (lib.common/->op-arg column)]
                                    (map lib.common/->op-arg args)))))
 
-(def ^:private FilterParts
+(mr/def ::filter-parts
   [:map
    [:lib/type [:= :mbql/filter-parts]]
    [:operator :keyword]
@@ -549,7 +550,7 @@
    [:column [:maybe [:ref ::lib.schema.metadata/column]]]
    [:args [:sequential :any]]])
 
-(mu/defn filter-parts :- FilterParts
+(mu/defn filter-parts :- ::filter-parts
   "Return the parts of the filter clause `a-filter-clause` in query `query` at stage `stage-number`.
   Might obsolete [[filter-operator]]."
   ([query a-filter-clause]

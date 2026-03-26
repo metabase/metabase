@@ -88,6 +88,7 @@ export const DataGridRow = <TData,>({
         return (
           <div
             key={cell.id}
+            role="gridcell"
             aria-selected={selection.isCellSelected(cell)}
             data-column-id={column.origin.id}
             data-selectable-cell={isSelectable ? "" : undefined}

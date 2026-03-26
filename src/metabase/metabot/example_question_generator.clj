@@ -1,9 +1,6 @@
 (ns metabase.metabot.example-question-generator
   "Native Clojure generator for example questions (prompts) for Metabot.
 
-  Replaces the Python ai-service `/v1/example-question-generation/batch` endpoint
-  when `use-native-agent` is true.
-
   Architecture mirrors the Python service:
   - Separate LLM call per table/metric (not one batch prompt)
   - Two distinct prompt templates: table.jinja → table.selmer, metric.jinja → metric.selmer
@@ -161,11 +158,11 @@
 (defn generate-example-questions
   "Generate example questions natively using LLM via OpenRouter.
 
-  Accepts the same payload shape as `metabot.client/generate-example-questions`:
+  Accepts a payload of the shape:
     {:tables  [{:name ... :fields [...]}]
      :metrics [{:name ... :queryable-dimensions [...]}]}
 
-  Returns the same shape:
+  Returns:
     {:table_questions  [{:questions [...]}]
      :metric_questions [{:questions [...]}]}"
   [payload]
