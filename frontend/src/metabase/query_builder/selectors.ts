@@ -52,7 +52,6 @@ import type {
   DatasetColumn,
   DatasetQuery,
   Field,
-  RowValue,
   Series,
   Timeline,
   TimelineEvent,
@@ -366,17 +365,18 @@ export const getPKColumnIndex = createSelector(
 export const getPKRowIndexMap = createSelector(
   [getFirstQueryResult, getPKColumnIndex],
   (result, PKColumnIndex) => {
-    const map = new Map<RowValue, number>();
     if (!result || !result.data || !Number.isSafeInteger(PKColumnIndex)) {
-      return map;
+      return {};
     }
     const { rows } = result.data;
     if (PKColumnIndex < 0) {
       return rows.map((_, index) => index);
     }
+    const map: Record<ObjectId, number> = {};
     rows.forEach((row, index) => {
-      const PKValue = row[PKColumnIndex];
-      map.set(PKValue, index);
+      // TODO(romeovs): ObjectId should probably be RowValue
+      const PKValue = row[PKColumnIndex] as ObjectId;
+      map[PKValue] = index;
     });
     return map;
   },
@@ -547,11 +547,11 @@ export const getZoomedObjectRowIndex = createSelector(
     const parsedObjectId =
       typeof objectId === "string" ? parseInt(objectId) : objectId;
 
-    if (PKRowIndexMap instanceof Map) {
-      return PKRowIndexMap.get(parsedObjectId);
+    if (Array.isArray(PKRowIndexMap)) {
+      return PKRowIndexMap[parsedObjectId];
     }
 
-    return PKRowIndexMap[parsedObjectId];
+    return PKRowIndexMap[parsedObjectId] ?? PKRowIndexMap[objectId];
   },
 );
 
@@ -609,6 +609,7 @@ export const getZoomRow = createSelector(
     ) {
       return;
     }
+
     return queryResults[0].data.rows[rowIndex];
   },
 );
