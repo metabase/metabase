@@ -433,6 +433,21 @@
 
 (defmethod make-spec :default [_ _] nil)
 
+(defmulti default-spec-values
+  "Return a map of default values for serialized fields. During export, fields whose values match their defaults
+  are omitted from the output. During import, missing fields are filled in with these defaults.
+
+  By default all fields are assumed to default to `nil`, so you only need to specify non-nil defaults here.
+
+  Example:
+  (defmethod serdes/default-spec-values \"Dashboard\" [_]
+    {:archived false
+     :auto_apply_filters true})"
+  {:arglists '([model-name])}
+  identity)
+
+(defmethod default-spec-values :default [_] {})
+
 (defmulti extract-all
   "Entry point for extracting all entities of a particular model:
   `(extract-all \"ModelName\" {opts...})`
@@ -478,9 +493,12 @@
   - Replace any foreign keys with portable values (eg. entity IDs, or a user ID with their email, etc.)"
   [model-name opts instance]
   (try
-    (let [spec (make-spec model-name opts)]
+    (let [spec     (make-spec model-name opts)
+          defaults (default-spec-values model-name)]
       (assert spec (str "No serialization spec defined for model " model-name))
-      (-> (select-keys instance (:copy spec))
+      (-> (into {}
+                (remove (fn [[k v]] (= v (get defaults k))))
+                (select-keys instance (:copy spec)))
           ;; won't assoc if `generate-path` returned `nil`
           (m/assoc-some :serdes/meta (generate-path model-name instance))
           (into (for [[k transform] (:transform spec)
@@ -490,7 +508,8 @@
                             f         (:export transform)
                             f-context (:export-with-context transform)
                             res       (if f (f input) (f-context instance k input))]
-                      :when (not= res ::skip)]
+                      :when (and (not= res ::skip)
+                                 (not= res (get defaults export-k)))]
                   (do
                     (when-not (contains? instance k)
                       (throw (ex-info (format "Key %s not found, make sure it was hydrated" k)
