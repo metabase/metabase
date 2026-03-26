@@ -5,11 +5,9 @@ import { merge, updateIn } from "icepick";
 import _ from "underscore";
 
 import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
+import { getSortedTimelines } from "metabase/common/utils/timelines";
 import { cleanIndexFlags } from "metabase/entities/model-indexes/actions";
 import { Timelines } from "metabase/entities/timelines";
-import { parseTimestamp } from "metabase/utils/time-dayjs";
-import { getSortedTimelines } from "metabase/utils/timelines";
-import { isNotNull } from "metabase/utils/types";
 import {
   isQuestionDirty,
   isQuestionRunnable,
@@ -21,6 +19,8 @@ import {
 } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
+import { parseTimestamp } from "metabase/utils/time-dayjs";
+import { isNotNull } from "metabase/utils/types";
 import {
   extractRemappings,
   getVisualizationTransformed,

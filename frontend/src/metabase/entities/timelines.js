@@ -12,12 +12,15 @@ import {
 } from "metabase/api";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import {
+  getDefaultTimeline,
+  getTimelineName,
+} from "metabase/common/utils/timelines";
+import { TimelineSchema } from "metabase/schema";
+import {
   createEntity,
   entityCompatibleQuery,
   undo,
 } from "metabase/utils/entities";
-import { getDefaultTimeline, getTimelineName } from "metabase/utils/timelines";
-import { TimelineSchema } from "metabase/schema";
 
 import { TimelineEvents } from "./timeline-events";
 
