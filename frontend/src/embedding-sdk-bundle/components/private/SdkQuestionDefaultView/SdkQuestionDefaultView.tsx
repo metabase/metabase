@@ -66,6 +66,11 @@ export interface SdkQuestionDefaultViewProps extends FlexibleSizeProps {
    * Determines whether the chart type selector and corresponding settings button are shown. Only relevant when using the default layout.
    */
   withChartTypeSelector?: boolean;
+
+  /**
+   * Determines whether the editor button is shown. Only relevant when using the default layout.
+   */
+  withEditorButton?: boolean;
 }
 
 export const SdkQuestionDefaultView = ({
@@ -75,6 +80,7 @@ export const SdkQuestionDefaultView = ({
   style,
   title,
   withChartTypeSelector,
+  withEditorButton = true,
 }: SdkQuestionDefaultViewProps): ReactElement => {
   const { isLocaleLoading } = useLocale();
   const {
@@ -265,7 +271,9 @@ export const SdkQuestionDefaultView = ({
                   <QuestionAlertsButton />
                 </>
               )}
-              <EditorButton isOpen={isEditorOpen} onClick={toggleEditor} />
+              {withEditorButton && (
+                <EditorButton isOpen={isEditorOpen} onClick={toggleEditor} />
+              )}
             </RenderIfHasContent>
           </RenderIfHasContent>
         )}
