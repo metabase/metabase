@@ -166,7 +166,7 @@
         params (:params msg)]
     (try
       (case method
-        "notifications/initialized" nil
+        "notifications/initialized" (do (mark-session-initialized! session-id) nil)
         "tools/list"                (handle-tools-list id params token-scopes)
         "tools/call"                (handle-tools-call id params token-scopes)
         "resources/list"            (handle-resources-list id params)
@@ -271,6 +271,9 @@
       ;; All other requests require a valid session (400 for missing header, 404 for invalid)
       (some? @session-err) @session-err
 
+      (nil? (session-for-user session-id user-id))
+      (json-response 404 (jsonrpc-error nil -32600 "Session not found"))
+
       :else
       (let [messages  (if batch? body [body])
             results   (mapv #(dispatch-request % session-id (:token-scopes request)) messages)
@@ -318,7 +321,8 @@
   (let [session-id (get-in request [:headers "mcp-session-id"])
         session-err (session-error-response session-id)]
     (or session-err
-        {:status 200 :headers {"Content-Type" "application/json"} :body ""})))
+        (do (delete-session! session-id)
+            {:status 200 :headers {"Content-Type" "application/json"} :body ""}))))
 
 ;;; ---------------------------------------------------- Handler ---------------------------------------------------
 
