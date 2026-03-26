@@ -9,9 +9,7 @@ import {
   measureTextHeight,
   measureTextWidth,
 } from "metabase/lib/measure-text";
-import visualizations, {
-  registerVisualization,
-} from "metabase/visualizations";
+import visualizations, { registerVisualization } from "metabase/visualizations";
 import type { Visualization } from "metabase/visualizations/types/visualization";
 import type {
   CustomVizPluginRuntime,
