@@ -89,7 +89,8 @@
   [[conn-binding db-type] & body]
   `(do-with-temp-empty-app-db ~db-type (fn [~(vary-meta conn-binding assoc :tag 'java.sql.Connection)] ~@body)))
 
-(defn- range-description [start-id end-id {:keys [inclusive-start? inclusive-end?]}]
+(defn- range-description [start-id end-id {:keys [inclusive-start? inclusive-end?]
+                                           :or   {inclusive-start? true inclusive-end? true}}]
   (let [inclusive-exclusive #(if % "inclusive" "exclusive")]
     (if end-id
       (format "between %s (%s) and %s (%s)"
@@ -216,11 +217,11 @@
   e.g.
 
     ;; example test for migrations 100-105
-    (test-migrations [100 105] [migrate!]
-      ;; (Migrations 1-99 are ran automatically before body is invoked)
+    (test-migrations [\"v45.00-001\" \"v45.00-005\"] [migrate!]
+      ;; (Migrations before v45.00-001 are ran automatically before body is invoked)
       ;; 1. Load data
       (create-some-users!)
-      ;; 2. Run migrations 100-105
+      ;; 2. Run migrations v45.00-001 through v45.00-005
       (migrate!)
       ;; 3. Do some test assertions
       (is (= ...)))
