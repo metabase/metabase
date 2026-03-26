@@ -2651,7 +2651,6 @@
    :api  #{}
    :uses #{driver
            premium-features
-           sso
            enterprise/advanced-config
            enterprise/scim
            enterprise/semantic-search
