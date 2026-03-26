@@ -598,6 +598,14 @@
              [nil "--fresh" "Recreate containers from scratch"]]
    :task (task! (jds-dev-env/dev-env! parsed))}
 
+  -crisptrutski-ci-retry
+  {:doc "Poll CI checks for a PR, rerun failed jobs up to 3 times."
+   :requires [[mage.crisptrutski.ci-retry :as ci-retry]]
+   :examples [["./bin/mage -crisptrutski-ci-retry" "Watch current branch's PR"]
+              ["./bin/mage -crisptrutski-ci-retry 12345" "Watch PR #12345"]]
+   :arg-schema [:or [:tuple] [:tuple [:string {:name "pr-number"}]]]
+   :task (task! (ci-retry/ci-retry! parsed))}
+
   -bgrabow-ci-test-repl
   {:doc "Start a REPL replicating a CI test job environment (Docker + env vars)"
    :examples [["./bin/mage -bgrabow-ci-test-repl" "Interactive selection with fzf"]
