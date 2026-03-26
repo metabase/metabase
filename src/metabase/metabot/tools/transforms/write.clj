@@ -66,30 +66,30 @@ def transform():
 ")
 
 (defn- source-for-transform-type
-  [source-type source-database source-tables]
+  [source-type database-id source-tables]
   (case source-type
-    :sql (let [mp (lib-be/application-database-metadata-provider source-database)]
+    :sql (let [mp (lib-be/application-database-metadata-provider database-id)]
            {:type "query"
             :query (lib/native-query mp fresh-sql-template)})
     :python {:type "python"
              :body fresh-python-template
-             :source-database source-database
+             :source-database database-id
              :source-tables source-tables}
     (throw (ex-info "Unexpected source-type `%s`"
                     {:source-type source-type}))))
 
 (defn create-fresh-transform
   "Create a fresh transform structure with the given source type."
-  [source-type transform-name transform-description source-database source-tables]
+  [source-type transform-name transform-description database-id source-tables]
   {:id nil
    :name (or transform-name (str "New " (name source-type) " Transform"))
    :description (or transform-description "")
    :target {:type "table"
             :name ""
-            :database source-database
+            :database database-id
             :schema nil}
    :source (source-for-transform-type
-            source-type source-database source-tables)})
+            source-type database-id source-tables)})
 
 ;;; Write Transform SQL Tool
 
@@ -111,7 +111,7 @@ def transform():
   - :structured-output - The suggested transform
   - :data-parts - Transform suggestion data part for streaming"
   [{:keys [transform_id edit_action thinking transform_name transform_description
-           source_database source_tables memory-atom context]}]
+           database_id source_tables memory-atom context]}]
   (log/info "Writing SQL transform" {:transform-id transform_id
                                      :edit-mode (:mode edit_action)
                                      :has-context (some? context)})
@@ -129,7 +129,7 @@ def transform():
                             ;; Create fresh transform
                             :else
                             (create-fresh-transform :sql transform_name transform_description
-                                                    source_database source_tables))
+                                                    database_id source_tables))
 
         _ (when (and transform_id (nil? current-transform))
             (throw (ex-info (str "Transform with ID " transform_id " not found. "
@@ -139,9 +139,6 @@ def transform():
 
         current-sql (some-> (get-in current-transform [:source :query])
                             lib/raw-native-query)
-        _ (when-not (string? (not-empty current-sql))
-            (throw (ex-info "Failed to extract query string."
-                            {:transform current-transform})))
 
         ;; Apply edits based on mode
         new-sql (case (:mode edit_action)
@@ -159,7 +156,7 @@ def transform():
                               true (update-in [:source :query] lib/with-native-query new-sql)
                               transform_name (assoc :name transform_name)
                               transform_description (assoc :description transform_description)
-                              source_database (assoc-in [:source :database] source_database))]
+                              database_id (assoc-in [:source :database] database_id))]
 
     ;; Store in memory if we have an ID
     (when (and transform_id memory-atom)

@@ -168,7 +168,7 @@
                     :thinking thinking
                     :transform_name transform_name
                     :transform_description transform_description
-                    :source_database database_id
+                    :database_id database_id
                     :source_tables source_tables
                     :memory-atom shared/*memory-atom*
                     :context (shared/current-context)})

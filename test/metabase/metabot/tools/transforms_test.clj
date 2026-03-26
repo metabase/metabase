@@ -4,10 +4,12 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
    [metabase.metabot.tools.dependencies :as deps]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.transforms :as agent-transforms]
-   [metabase.metabot.tools.transforms.write :as transforms-write]))
+   [metabase.metabot.tools.transforms.write :as transforms-write]
+   [metabase.test :as mt]))
 
 ;;; ----------------------------------- write tool integration tests --------------------------------------------------
 
@@ -18,9 +20,10 @@
                    (agent-transforms/write-transform-sql-tool
                     {:edit_action {:mode "replace" :new_content "SELECT id FROM orders"}
                      :transform_name "Orders Transform"
-                     :database_id 5}))]
+                     :database_id (mt/id)}))]
       (is (= "SELECT id FROM orders"
-             (get-in result [:structured-output :transform :source :query :native :query])))
+             (some-> (get-in result [:structured-output :transform :source :query])
+                     lib/raw-native-query)))
       (is (= "Transform SQL updated successfully." (:output result)))
       (is (= "transform_suggestion" (-> result :data-parts first :data-type))))))
 
