@@ -36,6 +36,11 @@
                     {:tool-var   tool-var
                      :metadata   (meta tool-var)
                      :errors     (me/humanize (mu/explain tool-var-schema tool-var))})))
+  (when-let [required-scope (:scope (meta tool-var))]
+    (when-not (scope/registered-scope? required-scope)
+      (throw (ex-info (str "Tool has unregistered scope: " required-scope)
+                      {:tool-var tool-var
+                       :scope    required-scope}))))
   true)
 
 (mu/defn ^:private register-profile!

@@ -19,6 +19,7 @@
   - metabase://dashboard/{id} - Dashboard details"
   (:require
    [clojure.string :as str]
+   [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.field-stats :as field-stats]
    [metabase.metabot.tools.shared.instructions :as instructions]
@@ -270,7 +271,7 @@
      :output formatted}))
 
 (mu/defn ^{:tool-name "read_resource"
-           :scope     "agent:resource:read"}
+           :scope     scope/agent-resource-read}
   read-resource-tool
   "Read detailed information about Metabase resources via URI patterns.
 

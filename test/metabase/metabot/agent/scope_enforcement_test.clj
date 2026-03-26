@@ -27,11 +27,11 @@
         ;; since filter-by-scope is private. Instead, we test the scope
         ;; matching behavior that filter-by-scope relies on.
         sql-tool    (with-meta (fn [_] {:output "sql"})
-                      {:tool-name "create_sql" :schema [:=> [:cat :map] :map] :scope "agent:sql:create"})
+                               {:tool-name "create_sql" :schema [:=> [:cat :map] :map] :scope "agent:sql:create"})
         search-tool (with-meta (fn [_] {:output "search"})
-                      {:tool-name "search" :schema [:=> [:cat :map] :map] :scope "agent:search"})
+                               {:tool-name "search" :schema [:=> [:cat :map] :map] :scope "agent:search"})
         no-scope    (with-meta (fn [_] {:output "legacy"})
-                      {:tool-name "legacy" :schema [:=> [:cat :map] :map]})]
+                               {:tool-name "legacy" :schema [:=> [:cat :map] :map]})]
 
     (testing "with unrestricted scope, all tools pass"
       (binding [scope/*current-user-scope* scope/unrestricted]
@@ -58,9 +58,9 @@
 
 (deftest wrapped-tool-scope-enforcement-test
   (let [tool-var    (with-meta (fn [_args] {:output "success"})
-                      {:tool-name "test_tool"
-                       :schema    [:=> [:cat :map] :map]
-                       :scope     "agent:sql:create"})
+                               {:tool-name "test_tool"
+                                :schema    [:=> [:cat :map] :map]
+                                :scope     "agent:sql:create"})
         tools-map   {"test_tool" tool-var}
         memory-atom (atom {})
         wrapped     (tools/wrap-tools-with-state tools-map memory-atom nil)
@@ -93,8 +93,8 @@
 
 (deftest wrapped-tool-no-scope-test
   (let [tool-var    (with-meta (fn [_args] {:output "no-scope-tool"})
-                      {:tool-name "legacy_tool"
-                       :schema    [:=> [:cat :map] :map]})
+                               {:tool-name "legacy_tool"
+                                :schema    [:=> [:cat :map] :map]})
         tools-map   {"legacy_tool" tool-var}
         memory-atom (atom {})
         wrapped     (tools/wrap-tools-with-state tools-map memory-atom nil)

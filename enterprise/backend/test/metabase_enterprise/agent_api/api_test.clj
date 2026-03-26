@@ -528,7 +528,7 @@
         (let [headers {"authorization" (str "Bearer " (sign-jwt {:email "rasta@metabase.com"
                                                                  :scope "agent:search"}))}]
           (is (= {:error   "unsupported_scope"
-                  :message "Token does not have required scope: agent:table:read"}
+                  :message "Insufficient scope for this operation."}
                  (client/client :get 403 (str "agent/v1/table/" table-id)
                                 {:request-options {:headers headers}})))))
 
@@ -543,7 +543,7 @@
         (let [headers {"authorization" (str "Bearer " (sign-jwt {:email "rasta@metabase.com"
                                                                  :scope ""}))}]
           (is (= {:error   "unsupported_scope"
-                  :message "Token does not have required scope: agent:table:read"}
+                  :message "Insufficient scope for this operation."}
                  (client/client :get 403 (str "agent/v1/table/" table-id)
                                 {:request-options {:headers headers}}))))))))
 

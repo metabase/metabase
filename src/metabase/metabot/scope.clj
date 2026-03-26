@@ -1,50 +1,120 @@
 (ns metabase.metabot.scope
-  "Scope-based authorization for Metabot tools.
+  "Metabot-specific scope declarations and permission-to-scope mapping.
 
-  Each tool declares a required scope string (e.g. `\"agent:sql:create\"`).
-  The `*current-user-scope*` dynamic var holds the set of scopes granted to
-  the current user. `scope-matches?` checks whether a required scope is
-  satisfied by the granted set, supporting hierarchical wildcards on the
-  grant side (e.g. `\"agent:sql:*\"` covers `\"agent:sql:create\"`)."
+  Generic scope infrastructure (registry, matching, `defscope`) lives in
+  [[metabase.api-scope.core]]. This namespace declares the concrete `agent:*`
+  scopes used by metabot tools and maps metabot permission types to wildcard
+  scope grants."
   (:require
-   [clojure.string :as str]
+   [metabase.api-scope.core :as api-scope]
    [metabase.metabot.models.metabot-permissions :as metabot-permissions]
    [metabase.users.models.user :as user]
+   [metabase.util.i18n :refer [deferred-tru]]
+   [potemkin :as p]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-(def unrestricted
-  "A scope set that satisfies any required scope. Use only when explicitly
-  granting full access (e.g. superuser context). This is distinct from
-  category wildcards like `\"agent:*\"`, which only cover scopes under
-  the `agent` prefix."
-  #{"*"})
+;; Re-export generic scope API so existing consumers can keep requiring metabot.scope
+(p/import-vars
+ [metabase.api-scope.core
+  registered-scope?
+  all-scopes
+  scope-description
+  unrestricted
+  scope-matches?])
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; Scope declarations
+;;; ──────────────────────────────────────────────────────────────────
+
+;; SQL
+(api-scope/defscope agent-sql-create "agent:sql:create"
+  (deferred-tru "Create SQL queries"))
+(api-scope/defscope agent-sql-edit "agent:sql:edit"
+  (deferred-tru "Edit SQL queries"))
+(api-scope/defscope agent-sql-read "agent:sql:read"
+  (deferred-tru "Read and clarify SQL queries"))
+
+;; Notebook / Query
+(api-scope/defscope agent-notebook-create "agent:notebook:create"
+  (deferred-tru "Create notebook queries"))
+(api-scope/defscope agent-query-construct "agent:query:construct"
+  (deferred-tru "Construct queries"))
+(api-scope/defscope agent-query-execute "agent:query:execute"
+  (deferred-tru "Execute queries"))
+
+;; Transforms
+(api-scope/defscope agent-transforms-read "agent:transforms:read"
+  (deferred-tru "View transforms"))
+(api-scope/defscope agent-transforms-write "agent:transforms:write"
+  (deferred-tru "Create and edit transforms"))
+
+;; Snippets
+(api-scope/defscope agent-snippets-read "agent:snippets:read"
+  (deferred-tru "View SQL snippets"))
+
+;; Dashboard
+(api-scope/defscope agent-dashboard-create "agent:dashboard:create"
+  (deferred-tru "Create dashboards"))
+(api-scope/defscope agent-dashboard-subscribe "agent:dashboard:subscribe"
+  (deferred-tru "Subscribe to dashboard alerts"))
+
+;; Document
+(api-scope/defscope agent-document-read "agent:document:read"
+  (deferred-tru "View documents"))
+(api-scope/defscope agent-document-create "agent:document:create"
+  (deferred-tru "Create documents"))
+
+;; Visualization
+(api-scope/defscope agent-viz-read "agent:viz:read"
+  (deferred-tru "Analyze charts and visualizations"))
+(api-scope/defscope agent-viz-create "agent:viz:create"
+  (deferred-tru "Create charts and visualizations"))
+(api-scope/defscope agent-viz-edit "agent:viz:edit"
+  (deferred-tru "Edit charts and visualizations"))
+(api-scope/defscope agent-viz-navigate "agent:viz:navigate"
+  (deferred-tru "Navigate to visualizations"))
+
+;; Alert
+(api-scope/defscope agent-alert-create "agent:alert:create"
+  (deferred-tru "Create alerts"))
+
+;; Search
+(api-scope/defscope agent-search "agent:search"
+  (deferred-tru "Search for content"))
+
+;; Metadata
+(api-scope/defscope agent-metadata-read "agent:metadata:read"
+  (deferred-tru "View database metadata"))
+
+;; Resource
+(api-scope/defscope agent-resource-read "agent:resource:read"
+  (deferred-tru "View resources"))
+
+;; Todo
+(api-scope/defscope agent-todo-read "agent:todo:read"
+  (deferred-tru "View todos"))
+(api-scope/defscope agent-todo-write "agent:todo:write"
+  (deferred-tru "Create and edit todos"))
+
+;; Table
+(api-scope/defscope agent-table-read "agent:table:read"
+  (deferred-tru "View table metadata and field values"))
+
+;; Metric
+(api-scope/defscope agent-metric-read "agent:metric:read"
+  (deferred-tru "View metric definitions"))
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; Metabot-specific scope state
+;;; ──────────────────────────────────────────────────────────────────
 
 (def ^:dynamic *current-user-scope*
   "Set of scope strings granted to the current user. Defaults to `#{}` (no
   permissions granted). Bind this in the request path once scope resolution
   is wired up."
   #{})
-
-(defn scope-matches?
-  "Check if `granted-scopes` (a set of strings) satisfies `required-scope`
-  (a string). Supports hierarchical wildcards on the grant side:
-  `\"agent:sql:*\"` covers `\"agent:sql:create\"`.
-
-  Returns true when:
-  - `granted-scopes` contains `required-scope` exactly, or
-  - `granted-scopes` contains `\"*\"` (unrestricted), or
-  - `granted-scopes` contains a wildcard prefix that covers `required-scope`."
-  [granted-scopes required-scope]
-  (boolean
-   (or (contains? granted-scopes required-scope)
-       (contains? granted-scopes "*")
-       (some (fn [scope]
-               (and (str/ends-with? scope ":*")
-                    (str/starts-with? required-scope
-                                      (subs scope 0 (dec (count scope))))))
-             granted-scopes))))
 
 (def ^:dynamic *current-user-metabot-permissions*
   "Map of metabot permission type to value for the current user.

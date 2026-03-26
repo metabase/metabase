@@ -1,6 +1,7 @@
 (ns metabase.metabot.tools.document
   "Document-generation specific tool wrappers."
   (:require
+   [metabase.metabot.scope :as scope]
    [metabase.metabot.table-utils :as table-utils]
    [metabase.metabot.tools.construct :as construct-tools]
    [metabase.metabot.tools.shared :as shared]
@@ -83,7 +84,7 @@
       (ex-message e))))
 
 (mu/defn ^{:tool-name "document_schema_collect"
-           :scope     "agent:document:read"}
+           :scope     scope/agent-document-read}
   document-schema-collect-tool
   "Collects the schema of a database in order to construct a SQL query.
 
@@ -137,7 +138,7 @@
                    [:chart_type chart-type-enum]]]])
 
 (mu/defn ^{:tool-name "document_construct_sql_chart"
-           :scope     "agent:document:create"}
+           :scope     scope/agent-document-create}
   document-construct-sql-chart-tool
   "Construct SQL-backed chart draft payload for document insertion."
   [{:keys [database_id name description analysis approach sql viz_settings]} :- sql-chart-schema]
@@ -187,7 +188,7 @@
                    [:chart_type chart-type-enum]]]])
 
 (mu/defn ^{:tool-name "document_construct_model_chart"
-           :scope     "agent:document:create"}
+           :scope     scope/agent-document-create}
   document-construct-model-chart-tool
   "Construct notebook/model-backed chart draft payload for document insertion."
   [{:keys [name description query viz_settings]} :- model-chart-schema]

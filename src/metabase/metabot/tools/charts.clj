@@ -4,6 +4,7 @@
    [medley.core :as m]
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
    [metabase.metabot.tools.charts.edit :as edit-chart-tools]
    [metabase.metabot.tools.shared :as shared]
@@ -33,7 +34,7 @@
                    [:chart_type chart-type-enum]]]])
 
 (mu/defn ^{:tool-name "create_chart"
-           :scope     "agent:viz:create"}
+           :scope     scope/agent-viz-create}
   create-chart-tool
   "Create a chart from a query.
 
@@ -62,7 +63,7 @@
                        [:chart_type chart-type-enum]]]])
 
 (mu/defn ^{:tool-name "edit_chart"
-           :scope     "agent:viz:edit"}
+           :scope     scope/agent-viz-edit}
   edit-chart-tool
   "Edit an existing chart's visualization type.
 

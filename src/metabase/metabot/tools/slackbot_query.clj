@@ -4,6 +4,7 @@
   instead of creating charts. Does not save or navigate."
   (:require
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.construct :as construct]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
@@ -20,7 +21,7 @@
     [:maybe [:enum "table" "bar" "line" "pie" "area" "row" "scatter" "funnel"]]]])
 
 (mu/defn ^{:tool-name "construct_notebook_query"
-           :scope     "agent:notebook:create"}
+           :scope     scope/agent-notebook-create}
   slackbot-construct-notebook-query-tool
   "Construct a notebook query from a metric, model, or table. The query results will be rendered as a visualization in Slack."
   [{:keys [_reasoning query title display]} :- slackbot-query-schema]

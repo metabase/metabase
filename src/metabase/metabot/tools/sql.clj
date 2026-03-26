@@ -2,6 +2,7 @@
   "SQL tool wrappers."
   (:require
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.instructions :as instructions]
@@ -79,7 +80,7 @@
    [:sql_query :string]])
 
 (mu/defn ^{:tool-name    "create_sql_query"
-           :scope        "agent:sql:create"
+           :scope        scope/agent-sql-create
            :capabilities #{:permission-write-sql-queries}}
   create-sql-query-tool
   "Create a new SQL query."
@@ -109,7 +110,7 @@
         {:output (str "Failed to create SQL query: " (or (ex-message e) "Unknown error"))}))))
 
 (mu/defn ^{:tool-name    "create_sql_query"
-           :scope        "agent:sql:create"
+           :scope        scope/agent-sql-create
            :capabilities #{:permission-write-sql-queries}}
   create-sql-query-code-edit-tool
   "Create a new SQL query and update the code editor buffer."
@@ -148,7 +149,7 @@
                          [:replace_all {:optional true} [:maybe :boolean]]]]]])
 
 (mu/defn ^{:tool-name    "edit_sql_query"
-           :scope        "agent:sql:edit"
+           :scope        scope/agent-sql-edit
            :capabilities #{:permission-write-sql-queries}}
   edit-sql-query-tool
   "Edit an existing SQL query using structured edits."
@@ -180,7 +181,7 @@
         {:output (str "Failed to edit SQL query: " (or (ex-message e) "Unknown error"))}))))
 
 (mu/defn ^{:tool-name    "edit_sql_query"
-           :scope        "agent:sql:edit"
+           :scope        scope/agent-sql-edit
            :capabilities #{:permission-write-sql-queries}}
   edit-sql-query-code-edit-tool
   "Edit an existing SQL query and update the code editor buffer."
@@ -218,7 +219,7 @@
    [:new_query :string]])
 
 (mu/defn ^{:tool-name    "replace_sql_query"
-           :scope        "agent:sql:edit"
+           :scope        scope/agent-sql-edit
            :capabilities #{:permission-write-sql-queries}}
   replace-sql-query-tool
   "Replace the SQL content of an existing query entirely."
@@ -250,7 +251,7 @@
         {:output (str "Failed to replace SQL query: " (or (ex-message e) "Unknown error"))}))))
 
 (mu/defn ^{:tool-name    "replace_sql_query"
-           :scope        "agent:sql:edit"
+           :scope        scope/agent-sql-edit
            :capabilities #{:permission-write-sql-queries}}
   replace-sql-query-code-edit-tool
   "Replace an SQL query and update the code editor buffer."

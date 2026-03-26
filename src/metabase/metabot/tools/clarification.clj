@@ -2,6 +2,7 @@
   "Clarification tool wrappers."
   (:require
    [clojure.string :as str]
+   [metabase.metabot.scope :as scope]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
@@ -37,7 +38,7 @@
          (str "\n\nOptions:\n" (str/join "\n" (map #(str "- " %) options))))))
 
 (mu/defn ^{:tool-name "ask_for_sql_clarification"
-           :scope     "agent:sql:read"}
+           :scope     scope/agent-sql-read}
   ask-for-sql-clarification-tool
   "Ask the user for clarification about their SQL query request.
 
