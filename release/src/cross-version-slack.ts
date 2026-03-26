@@ -7,10 +7,11 @@
 import { WebClient } from "@slack/web-api";
 
 export interface FailureResult {
-  phase: "migration" | "e2e";
+  phase: "migration" | "e2e" | "unknown";
   source: string;
   target: string;
   detail: string;
+  jobUrl?: string;
 }
 
 interface SlackBlock {
@@ -29,9 +30,72 @@ export interface SlackPayload {
   attachments: SlackAttachment[];
 }
 
-// Red for migration failures, yellow for e2e-only
+export interface FailedJob {
+  name: string;
+  url: string;
+}
+
+// Red for migration failures, yellow for e2e-only/unknown
 const COLOR_MIGRATION = "#f85149";
 const COLOR_E2E = "#ffce33";
+
+/**
+ * Parse source and target versions from a matrix job name.
+ * e.g. "test-matrix (HEAD, v1.59.x)" -> { source: "HEAD", target: "v1.59.x" }
+ */
+export const parseJobName = (
+  name: string,
+): { source: string; target: string } | null => {
+  const match = name.match(/\(([^,]+),\s*([^)]+)\)/);
+  if (!match) {
+    return null;
+  }
+  return { source: match[1], target: match[2] };
+};
+
+/**
+ * Build a list of FailureResults from failed jobs and optional artifact data.
+ * Each failed job becomes a result. Artifact data enriches with phase/detail.
+ */
+export const buildFailureResults = (
+  failedJobs: FailedJob[],
+  artifactData: Map<string, FailureResult>,
+): FailureResult[] => {
+  return failedJobs.map(job => {
+    const parsed = parseJobName(job.name);
+    if (!parsed) {
+      return {
+        phase: "unknown" as const,
+        source: "?",
+        target: "?",
+        detail: job.name,
+        jobUrl: job.url,
+      };
+    }
+
+    const key = `${parsed.source}-${parsed.target}`;
+    const artifact = artifactData.get(key);
+
+    if (artifact) {
+      return { ...artifact, jobUrl: job.url };
+    }
+
+    return {
+      phase: "unknown" as const,
+      source: parsed.source,
+      target: parsed.target,
+      detail: "check job logs for details",
+      jobUrl: job.url,
+    };
+  });
+};
+
+const formatFailureItem = (f: FailureResult): string => {
+  const versions = f.jobUrl
+    ? `<${f.jobUrl}|${f.source} → ${f.target}>`
+    : `${f.source} → ${f.target}`;
+  return `• ${versions} — ${f.detail}`;
+};
 
 export const buildSlackPayload = (
   failures: FailureResult[],
@@ -39,13 +103,12 @@ export const buildSlackPayload = (
 ): SlackPayload => {
   const migration = failures.filter(f => f.phase === "migration");
   const e2e = failures.filter(f => f.phase === "e2e");
+  const unknown = failures.filter(f => f.phase === "unknown");
 
   const attachmentBlocks: SlackBlock[] = [];
 
   if (migration.length > 0) {
-    const items = migration
-      .map(f => `• ${f.source} → ${f.target} — ${f.detail}`)
-      .join("\n");
+    const items = migration.map(formatFailureItem).join("\n");
     attachmentBlocks.push({
       type: "section",
       text: {
@@ -56,14 +119,23 @@ export const buildSlackPayload = (
   }
 
   if (e2e.length > 0) {
-    const items = e2e
-      .map(f => `• ${f.source} → ${f.target} — ${f.detail}`)
-      .join("\n");
+    const items = e2e.map(formatFailureItem).join("\n");
     attachmentBlocks.push({
       type: "section",
       text: {
         type: "mrkdwn",
         text: `:test_tube: *E2E failures*\n${items}`,
+      },
+    });
+  }
+
+  if (unknown.length > 0) {
+    const items = unknown.map(formatFailureItem).join("\n");
+    attachmentBlocks.push({
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: `:warning: *Other failures*\n${items}`,
       },
     });
   }

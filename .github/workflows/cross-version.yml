@@ -139,22 +139,43 @@ jobs:
           script: |
             const fs = require('fs');
             const path = require('path');
-            const { sendCrossVersionSlackNotification } = require('${{ github.workspace }}/release/dist/index.cjs');
+            const { buildFailureResults, sendCrossVersionSlackNotification } = require('${{ github.workspace }}/release/dist/index.cjs');
 
+            // Get all failed jobs from the GitHub API
+            const { owner, repo } = context.repo;
+            const jobInfo = await github.rest.actions.listJobsForWorkflowRun({
+              owner,
+              repo,
+              run_id: context.runId,
+              per_page: 100,
+            });
+
+            const failedJobs = jobInfo.data.jobs
+              .filter(job => job.status === 'completed' && job.conclusion === 'failure' && job.name.startsWith('test-matrix'))
+              .map(job => ({ name: job.name, url: job.html_url }));
+
+            if (failedJobs.length === 0) {
+              console.log('No failed test-matrix jobs found');
+              return;
+            }
+
+            // Load artifact data for enrichment (phase/detail)
             const resultsDir = 'failure-results';
-            const failures = [];
+            const artifactData = new Map();
             if (fs.existsSync(resultsDir)) {
               for (const file of fs.readdirSync(resultsDir)) {
                 if (!file.endsWith('.json')) continue;
                 try {
-                  failures.push(JSON.parse(fs.readFileSync(path.join(resultsDir, file), 'utf8')));
+                  const result = JSON.parse(fs.readFileSync(path.join(resultsDir, file), 'utf8'));
+                  artifactData.set(`${result.source}-${result.target}`, result);
                 } catch (e) {
                   console.log(`Skipping malformed result: ${file}`);
                 }
               }
             }
 
-            const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
+            const failures = buildFailureResults(failedJobs, artifactData);
+            const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${context.runId}`;
             // TEMP: using bot-testing channel instead of engineering-ci
             await sendCrossVersionSlackNotification(failures, runUrl, process.env.SLACK_BOT_TOKEN, 'bot-testing');
             console.log('Slack notification sent');
