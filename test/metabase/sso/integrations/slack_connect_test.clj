@@ -1,11 +1,11 @@
-(ns metabase-enterprise.sso.integrations.slack-connect-test
+(ns metabase.sso.integrations.slack-connect-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase-enterprise.sso.test-setup :as sso.test-setup]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.sso.oidc.state :as oidc.state]
    [metabase.sso.settings :as sso-settings]
+   [metabase.sso.test-helpers :as sso.test-helpers]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
@@ -66,7 +66,7 @@
 
 (deftest sso-prereqs-test
   (with-test-encryption!
-    (sso.test-setup/do-with-other-sso-types-disabled!
+    (sso.test-helpers/do-with-other-sso-types-disabled!
      (fn []
        (testing "SSO requests fail if Slack Connect hasn't been configured or enabled"
          (mt/with-temporary-setting-values
@@ -108,7 +108,7 @@
 (deftest redirect-test
   (testing "with Slack Connect configured, a GET request should result in a redirect to Slack"
     (with-test-encryption!
-      (sso.test-setup/with-slack-default-setup!
+      (sso.test-helpers/with-slack-default-setup!
         (with-successful-oidc!
           (let [result (mt/client-full-response :get 302 "/auth/sso/slack-connect"
                                                 {:request-options {:redirect-strategy :none}}
@@ -133,7 +133,7 @@
 (deftest multiple-sso-methods-test
   (testing "with SAML and Slack Connect configured, a GET request to /auth/sso/slack-connect should redirect to Slack"
     (with-test-encryption!
-      (sso.test-setup/with-slack-default-setup!
+      (sso.test-helpers/with-slack-default-setup!
         (mt/with-temporary-setting-values
           [saml-enabled true
            saml-identity-provider-uri "http://test.idp.metabase.com"
@@ -149,7 +149,7 @@
 
 (deftest post-not-allowed-test
   (testing "slack-connect is no longer available via the old POST /auth/sso multimethod dispatch"
-    (sso.test-setup/with-slack-default-setup!
+    (sso.test-helpers/with-slack-default-setup!
       ;; The old endpoint returned 405 via the defmethod sso-post :slack-connect.
       ;; Now that slack-connect has been removed from the multimethod dispatch and
       ;; uses dedicated GET routes, POSTing with preferred_method=slack-connect
@@ -163,7 +163,7 @@
 (deftest callback-state-validation-test
   (testing "callback should fail if state cookie is missing"
     (with-test-encryption!
-      (sso.test-setup/with-slack-default-setup!
+      (sso.test-helpers/with-slack-default-setup!
         (let [response (mt/client-full-response :get 401 "/auth/sso/slack-connect/callback"
                                                 {:request-options {:redirect-strategy :none}}
                                                 :code "test-code"
@@ -174,7 +174,7 @@
 (deftest callback-state-validation-csrf-test
   (testing "callback with mismatched state should indicate possible CSRF attack"
     (with-test-encryption!
-      (sso.test-setup/with-slack-default-setup!
+      (sso.test-helpers/with-slack-default-setup!
         (with-successful-oidc!
         ;; First, initiate auth to set state cookie
           (let [init-response (mt/client-full-response :get 302 "/auth/sso/slack-connect"
@@ -196,7 +196,7 @@
 (deftest happy-path-callback-test
   (testing "successful callback with valid code and state"
     (with-test-encryption!
-      (sso.test-setup/with-slack-default-setup!
+      (sso.test-helpers/with-slack-default-setup!
         (with-successful-oidc!
         ;; First, initiate auth to set state cookie
           (let [init-response (mt/client-full-response :get 302 "/auth/sso/slack-connect"
@@ -212,7 +212,7 @@
                                                                      :headers {"Cookie" cookie-header}}}
                                                   :code "test-code"
                                                   :state "test-state")]
-            (is (sso.test-setup/successful-login? response))
+            (is (sso.test-helpers/successful-login? response))
             (is (= default-redirect-uri (get-in response [:headers "Location"])))))))))
 
 ;;; -------------------------------------------------- Link-Only Mode Tests --------------------------------------------------
@@ -220,7 +220,7 @@
 (deftest link-only-mode-requires-session-test
   (testing "link-only mode should require authenticated session for initial request"
     (with-test-encryption!
-      (sso.test-setup/with-slack-default-setup!
+      (sso.test-helpers/with-slack-default-setup!
         (mt/with-temporary-setting-values
           [slack-connect-authentication-mode "link-only"]
           (let [response (mt/client-full-response :get 401 "/auth/sso/slack-connect"
@@ -231,7 +231,7 @@
 (deftest link-only-mode-with-session-test
   (testing "link-only mode should work with authenticated session"
     (with-test-encryption!
-      (sso.test-setup/with-slack-default-setup!
+      (sso.test-helpers/with-slack-default-setup!
         (mt/with-temporary-setting-values
           [slack-connect-authentication-mode "link-only"]
           (with-successful-oidc!
@@ -245,7 +245,7 @@
 
 (deftest no-open-redirect-test
   (testing "Check that we prevent open redirects to untrusted sites"
-    (sso.test-setup/with-slack-default-setup!
+    (sso.test-helpers/with-slack-default-setup!
       (doseq [redirect-uri ["https://badsite.com"
                             "//badsite.com"
                             "https:///badsite.com"]]
@@ -259,7 +259,7 @@
 (deftest create-new-account-test
   (testing "A new account will be created for a Slack user we haven't seen before"
     (with-test-encryption!
-      (sso.test-setup/with-slack-default-setup!
+      (sso.test-helpers/with-slack-default-setup!
         (mt/with-model-cleanup [:model/User]
           (with-successful-oidc!
             (t2/delete! :model/User :email "example@slack.com")
@@ -281,7 +281,7 @@
                                                       :code "test-code"
                                                       :state "test-state")]
               ;; Complete callback
-                (is (sso.test-setup/successful-login? response))
+                (is (sso.test-helpers/successful-login? response))
                 (let [new-user (t2/select-one :model/User :email "example@slack.com")]
                   (testing "new user"
                     (is
@@ -308,7 +308,7 @@
 (deftest create-new-slack-user-no-user-provisioning-test
   (testing "When user provisioning is disabled, throw an error if we attempt to create a new user."
     (with-test-encryption!
-      (sso.test-setup/with-slack-default-setup!
+      (sso.test-helpers/with-slack-default-setup!
         (mt/with-temporary-setting-values [slack-connect-user-provisioning-enabled false
                                            site-name "test"]
           (with-successful-oidc!
@@ -336,7 +336,7 @@
 
 (deftest authentication-mode-validation-test
   (testing "authentication mode setting only accepts valid values"
-    ;; Don't use sso.test-setup/with-slack-default-setup! here because it sets env vars
+    ;; Don't use sso.test-helpers/with-slack-default-setup! here because it sets env vars
     ;; which take precedence over DB values when reading settings.
     ;; This test only needs to verify the setter validates input correctly.
     (mt/with-temporary-setting-values
