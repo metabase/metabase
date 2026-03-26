@@ -107,6 +107,15 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            release
+            .github
+
+      - name: Prepare release scripts
+        uses: ./.github/actions/prepare-release-scripts
+
       - name: Download failure results
         uses: actions/download-artifact@v4
         continue-on-error: true
@@ -123,16 +132,15 @@ jobs:
           script: |
             const fs = require('fs');
             const path = require('path');
-            const resultsDir = 'failure-results';
+            const { buildSlackPayload } = require('${{ github.workspace }}/release/dist/index.cjs');
 
-            const failures = { migration: [], e2e: [] };
+            const resultsDir = 'failure-results';
+            const failures = [];
             if (fs.existsSync(resultsDir)) {
               for (const file of fs.readdirSync(resultsDir)) {
                 if (!file.endsWith('.json')) continue;
                 try {
-                  const result = JSON.parse(fs.readFileSync(path.join(resultsDir, file), 'utf8'));
-                  const category = result.phase === 'migration' ? 'migration' : 'e2e';
-                  failures[category].push(result);
+                  failures.push(JSON.parse(fs.readFileSync(path.join(resultsDir, file), 'utf8')));
                 } catch (e) {
                   console.log(`Skipping malformed result: ${file}`);
                 }
@@ -140,50 +148,7 @@ jobs:
             }
 
             const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
-            const sections = [];
-
-            if (failures.migration.length > 0) {
-              const items = failures.migration
-                .map(f => `• ${f.source} → ${f.target} — ${f.detail}`)
-                .join('\n');
-              sections.push({
-                type: 'section',
-                text: { type: 'mrkdwn', text: `:rotating_light: *Migration failures*\n${items}` },
-              });
-            }
-
-            if (failures.e2e.length > 0) {
-              const items = failures.e2e
-                .map(f => `• ${f.source} → ${f.target} — ${f.detail}`)
-                .join('\n');
-              sections.push({
-                type: 'section',
-                text: { type: 'mrkdwn', text: `:test_tube: *E2E failures*\n${items}` },
-              });
-            }
-
-            if (sections.length === 0) {
-              sections.push({
-                type: 'section',
-                text: { type: 'mrkdwn', text: 'One or more matrix jobs failed. Check the workflow run for details.' },
-              });
-            }
-
-            sections.push({
-              type: 'context',
-              elements: [{ type: 'mrkdwn', text: `<${runUrl}|View full run>` }],
-            });
-
-            const payload = {
-              blocks: [
-                {
-                  type: 'header',
-                  text: { type: 'plain_text', text: ':warning: Cross-version tests failing', emoji: true },
-                },
-                ...sections,
-              ],
-            };
-
+            const payload = buildSlackPayload(failures, runUrl);
             core.setOutput('json', JSON.stringify(payload));
 
       - name: Notify Slack
