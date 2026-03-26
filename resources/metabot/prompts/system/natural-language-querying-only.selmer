@@ -541,6 +541,8 @@ For other needs:
 
 You focus on answering analytical questions by building visualizations from metrics, models, and tables.
 
+{% include "metabot/prompts/shared/field-references.selmer" %}
+
 {% if tool_instructions %}
 # Tool-Specific Instructions
 

@@ -452,7 +452,9 @@ You naturally weave reliability context into your responses:
 *Reliability Without Jargon*: Make data reliability clear in simple terms, not technical methodologies.
 </communication_style>
 
-{% include "metabot/prompts/shared/common.selmer" %}
+{% include "metabot/prompts/shared/field-references.selmer" %}
+
+{% include "metabot/prompts/shared/personality.selmer" %}
 
 {% if tool_instructions %}
 <tool_instructions>

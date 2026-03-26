@@ -74,17 +74,26 @@
 
   Note: Unlike searchable-text, transformation functions in search-terms
   (e.g., explode-camel-case) are NOT applied. Transformations like camel-case
-  explosion are specific to full-text search optimization."
-  [m]
-  (let [search-terms (:search-terms (search.spec/spec (:model m)))
-        field-keys   (cond-> search-terms (map? search-terms) keys)
-        header       (str "[" (:model m) "]")
-        fields        (keep (fn [k]
+  explosion are specific to full-text search optimization.
+
+  Optional `extra-fields` map can provide additional computed fields to include
+  in the embedding (e.g., source_tables from function attrs)."
+  ([m] (embeddable-text m nil))
+  ([m extra-fields]
+   (let [search-terms (:search-terms (search.spec/spec (:model m)))
+         field-keys   (cond-> search-terms (map? search-terms) keys)
+         header       (str "[" (:model m) "]")
+         fields       (keep (fn [k]
                               (let [v (get m k)]
                                 (when (not (str/blank? (str v)))
                                   (str (name k) ": " (str/trim (str v))))))
-                            field-keys)]
-    (str header "\n" (str/join "\n" fields))))
+                            field-keys)
+         extra        (keep (fn [[k v]]
+                              (when (and v (not (str/blank? (str v))))
+                                (str (name k) ": " (str/trim (str v)))))
+                            extra-fields)
+         all-fields   (concat fields extra)]
+     (str header "\n" (str/join "\n" all-fields)))))
 
 (defn- search-term-columns
   "Extract column names from search-terms spec for SQL query generation"
@@ -123,6 +132,7 @@
 (defn- ->document [m]
   (let [spec (search.spec/spec (:model m))
         fn-results (execute-all-function-attrs spec m)
+        extra-embedding-fields {:source_tables (:source_table_names fn-results)}
         sql-results (-> m
                         (perf/select-keys
                          (into [:model] search.spec/attr-columns))
@@ -131,7 +141,7 @@
                          :display_data (display-data m)
                          :legacy_input (dissoc m :pinned :view_count :last_viewed_at :native_query)
                          :searchable_text (searchable-text m)
-                         :embeddable_text (embeddable-text m)))]
+                         :embeddable_text (embeddable-text m extra-embedding-fields)))]
     (merge fn-results sql-results)))
 
 (defn- attrs->select-items [attrs]

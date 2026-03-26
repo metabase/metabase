@@ -3,6 +3,7 @@
   is a historical name, but is the same thing; both terms are used interchangeably in the backend codebase."
   (:require
    [clojure.set :as set]
+   [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
    [metabase.analytics.core :as analytics]
@@ -1397,6 +1398,36 @@
     (when query-text
       (subs query-text 0 (min (count query-text) search/max-searchable-value-length)))))
 
+(defn- extract-source-table-names
+  "Extract source table names for embedding. Returns schema.table format, comma-separated.
+  For MBQL queries, uses lib/all-source-table-ids. For native SQL, parses with sql-tools.
+  Note: Uses requiring-resolve for sql-tools to avoid circular dependency."
+  [{:keys [dataset_query database_id]}]
+  (when (and dataset_query database_id)
+    (try
+      (let [query ((:out lib-be/transform-query) dataset_query)]
+        (if (lib/native-only-query? query)
+          ;; Native SQL: parse with sql-tools (dynamically resolved to avoid cycle)
+          (when-let [sql-text (:native (lib/query-stage query 0))]
+            (let [driver                 (t2/select-one-fn :engine :model/Database database_id)
+                  referenced-tables-raw  (requiring-resolve 'metabase.sql-tools.core/referenced-tables-raw)
+                  tables                 (referenced-tables-raw driver sql-text)]
+              (when (seq tables)
+                (->> tables
+                     (map #(if (:schema %) (str (:schema %) "." (:table %)) (:table %)))
+                     sort
+                     (str/join ", ")))))
+          ;; MBQL: use lib/all-source-table-ids
+          (when-let [table-ids (seq (lib/all-source-table-ids query))]
+            (let [tables (t2/select [:model/Table :name :schema] :id [:in table-ids])]
+              (->> tables
+                   (map #(if (:schema %) (str (:schema %) "." (:name %)) (:name %)))
+                   sort
+                   (str/join ", "))))))
+      (catch Exception e
+        (log/debug e "Failed to extract source table names")
+        nil))))
+
 (defn ^:private base-search-spec
   []
   {:model        :model/Card
@@ -1423,7 +1454,9 @@
                   :non-temporal-dim-ids {:fn extract-non-temporal-dimension-ids
                                          :fields [:dataset_query]}
                   :has-temporal-dim     {:fn has-temporal-dimension?
-                                         :fields [:dataset_query]}}
+                                         :fields [:dataset_query]}
+                  :source-table-names   {:fn extract-source-table-names
+                                         :fields [:dataset_query :database_id]}}
    :search-terms [:name :description]
    :render-terms {:archived-directly          true
                   :collection-authority_level :collection.authority_level

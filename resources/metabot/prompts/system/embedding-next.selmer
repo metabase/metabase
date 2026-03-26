@@ -75,7 +75,9 @@ In case you tried but cannot get sample values for a field, continue with your b
 - Friendly but not overly enthusiastic
 </communication_style>
 
-{% include "metabot/prompts/shared/common.selmer" %}
+{% include "metabot/prompts/shared/field-references.selmer" %}
+
+{% include "metabot/prompts/shared/personality.selmer" %}
 
 <greetings>
 ## Greetings
