@@ -1070,7 +1070,7 @@
 
 (defmulti breakout-options-index
   "Returns the index of options in a breakout clause."
-  {:added "0.60.0", :arglists '([driver breakouts])}
+  {:added "0.60.0", :arglists '([driver])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -1594,11 +1594,21 @@
 
 ;;; -------------------------------------------------- aggregation ---------------------------------------------------
 
+(defmulti aggregation-name
+  "Returns the name of an aggregation clause."
+  {:added "0.60.0" :arglists '([driver inner-query ag-clause])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod aggregation-name :sql
+  [_driver inner-query ag-clause]
+  (driver-api/aggregation-name inner-query ag-clause))
+
 (defmethod apply-top-level-clause [:sql :aggregation]
   [driver _top-level-clause honeysql-form {aggregations :aggregation, :as inner-query}]
   (let [honeysql-ags (vec (for [ag   aggregations
                                 :let [ag-expr  (->honeysql driver ag)
-                                      ag-name  (driver-api/aggregation-name inner-query ag)
+                                      ag-name  (aggregation-name driver inner-query ag)
                                       ag-alias (->honeysql driver (h2x/identifier
                                                                    :field-alias
                                                                    (driver/escape-alias driver ag-name)))]]
