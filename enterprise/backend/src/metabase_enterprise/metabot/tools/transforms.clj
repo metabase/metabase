@@ -45,7 +45,7 @@
   Keep `import common` at the top of the file even if it is currently unused."
   :feature :none
   [{:keys [transform_id edit_action thinking transform_name transform_description
-           source_database source_tables]}
+           database_id source_tables]}
    :- tools.transforms/write-transform-python-schema]
   (try
     (tools.transforms/add-output
@@ -55,7 +55,7 @@
        :thinking thinking
        :transform_name transform_name
        :transform_description transform_description
-       :source_database source_database
+       :source_database database_id
        :source_tables source_tables
        :memory-atom shared/*memory-atom*
        :context (shared/current-context)})
