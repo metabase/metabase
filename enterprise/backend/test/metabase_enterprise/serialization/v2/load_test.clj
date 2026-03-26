@@ -1870,100 +1870,97 @@
                  #"source-only-db|not found|Failed"
                  (serdes.load/load-metabase! (ingestion-in-memory @serialized))))))))))
 
-(deftest segment-computed-fields-not-required-test
-  (testing "Segment can be deserialized without table_id (computed from definition)"
+(deftest segment-minimal-required-properties-test
+  (testing "Segment deserialized with only: entity_id, name, definition, creator_id"
     (let [serialized (atom nil)]
       (ts/with-dbs [source-db dest-db]
         (ts/with-db source-db
-          (let [db    (ts/create! :model/Database :name "my-db")
-                table (ts/create! :model/Table :name "customers" :db_id (:id db))
-                field (ts/create! :model/Field :name "age" :table_id (:id table))
-                user  (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
+          (let [db       (ts/create! :model/Database :name "my-db")
+                table    (ts/create! :model/Table :name "customers" :db_id (:id db))
+                field    (ts/create! :model/Field :name "age" :table_id (:id table))
+                user     (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
                 _segment (ts/create! :model/Segment :table_id (:id table) :name "Minors"
                                      :definition (pmbql-segment-definition (:id db) (:id table) (:id field))
                                      :creator_id (:id user))]
             (reset! serialized (into [] (serdes.extract/extract {})))))
 
-        (testing "table_id not required when computable from definition"
-          (let [without-computed (mapv (fn [entity]
-                                         (if (= "Segment" (-> entity :serdes/meta last :model))
-                                           (dissoc entity :table_id)
-                                           entity))
-                                       @serialized)]
-            (ts/with-db dest-db
-              (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
-              (serdes.load/load-metabase! (ingestion-in-memory without-computed))
-              (let [segment (t2/select-one :model/Segment :name "Minors")
-                    table   (t2/select-one :model/Table :name "customers")]
-                (is (some? segment))
-                (is (= (:id table) (:table_id segment)))))))))))
+        (let [minimal (mapv (fn [entity]
+                              (if (= "Segment" (-> entity :serdes/meta last :model))
+                                (select-keys entity [:serdes/meta :entity_id :name :definition :creator_id])
+                                entity))
+                            @serialized)]
+          (ts/with-db dest-db
+            (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
+            (serdes.load/load-metabase! (ingestion-in-memory minimal))
+            (let [segment (t2/select-one :model/Segment :name "Minors")
+                  table   (t2/select-one :model/Table :name "customers")]
+              (is (some? segment))
+              (is (= (:id table) (:table_id segment))))))))))
 
-(deftest measure-computed-fields-not-required-test
-  (testing "Measure can be deserialized without table_id (computed from definition)"
+(deftest measure-minimal-required-properties-test
+  (testing "Measure deserialized with only: entity_id, name, definition, creator_id"
     (let [serialized (atom nil)]
       (ts/with-dbs [source-db dest-db]
         (ts/with-db source-db
-          (let [db    (ts/create! :model/Database :name "my-db")
-                table (ts/create! :model/Table :name "sales" :db_id (:id db))
-                field (ts/create! :model/Field :name "amount" :table_id (:id table))
-                user  (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
+          (let [db       (ts/create! :model/Database :name "my-db")
+                table    (ts/create! :model/Table :name "sales" :db_id (:id db))
+                field    (ts/create! :model/Field :name "amount" :table_id (:id table))
+                user     (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
                 _measure (ts/create! :model/Measure :table_id (:id table) :name "Total Sales"
                                      :definition (pmbql-measure-definition (:id db) (:id table) (:id field))
                                      :creator_id (:id user))]
             (reset! serialized (into [] (serdes.extract/extract {})))))
 
-        (testing "table_id not required when computable from definition"
-          (let [without-computed (mapv (fn [entity]
-                                         (if (= "Measure" (-> entity :serdes/meta last :model))
-                                           (dissoc entity :table_id)
-                                           entity))
-                                       @serialized)]
-            (ts/with-db dest-db
-              (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
-              (serdes.load/load-metabase! (ingestion-in-memory without-computed))
-              (let [measure (t2/select-one :model/Measure :name "Total Sales")
-                    table   (t2/select-one :model/Table :name "sales")]
-                (is (some? measure))
-                (is (= (:id table) (:table_id measure)))))))))))
+        (let [minimal (mapv (fn [entity]
+                              (if (= "Measure" (-> entity :serdes/meta last :model))
+                                (select-keys entity [:serdes/meta :entity_id :name :definition :creator_id])
+                                entity))
+                            @serialized)]
+          (ts/with-db dest-db
+            (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
+            (serdes.load/load-metabase! (ingestion-in-memory minimal))
+            (let [measure (t2/select-one :model/Measure :name "Total Sales")
+                  table   (t2/select-one :model/Table :name "sales")]
+              (is (some? measure))
+              (is (= (:id table) (:table_id measure))))))))))
 
-(deftest card-computed-fields-not-required-test
-  (testing "Card can be deserialized without database_id, table_id, source_card_id, query_type (computed from dataset_query)"
+(deftest card-minimal-required-properties-test
+  (testing "Card deserialized with only: entity_id, name, display, dataset_query, visualization_settings, creator_id"
     (let [serialized (atom nil)]
       (ts/with-dbs [source-db dest-db]
         (ts/with-db source-db
-          (let [coll  (ts/create! :model/Collection :name "pop! minis")
-                db    (ts/create! :model/Database :name "my-db")
+          (let [db    (ts/create! :model/Database :name "my-db")
                 table (ts/create! :model/Table :name "customers" :db_id (:id db))
                 user  (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
                 query (pmbql-query (:id db) (:id table))
                 _card (ts/create! :model/Card
-                                  :collection_id (:id coll)
+                                  :collection_id nil
                                   :creator_id    (:id user)
                                   :name          "Example Card"
                                   :dataset_query query
                                   :display       :line)]
             (reset! serialized (into [] (serdes.extract/extract {})))))
 
-        (testing "database_id, table_id, source_card_id, query_type not required when computable from dataset_query"
-          (let [without-computed (mapv (fn [entity]
-                                         (if (= "Card" (-> entity :serdes/meta last :model))
-                                           (dissoc entity :database_id :table_id :source_card_id :query_type)
-                                           entity))
-                                       @serialized)]
-            (ts/with-db dest-db
-              (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
-              (serdes.load/load-metabase! (ingestion-in-memory without-computed))
-              (let [card  (t2/select-one :model/Card :name "Example Card")
-                    db    (t2/select-one :model/Database :name "my-db")
-                    table (t2/select-one :model/Table :name "customers")]
-                (is (some? card))
-                (is (= (:id db) (:database_id card)))
-                (is (= (:id table) (:table_id card)))
-                (is (nil? (:source_card_id card)))
-                (is (= :query (:query_type card)))))))))))
+        (let [minimal (mapv (fn [entity]
+                              (if (= "Card" (-> entity :serdes/meta last :model))
+                                (select-keys entity [:serdes/meta :entity_id :name :display :dataset_query
+                                                     :visualization_settings :creator_id])
+                                entity))
+                            @serialized)]
+          (ts/with-db dest-db
+            (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
+            (serdes.load/load-metabase! (ingestion-in-memory minimal))
+            (let [card  (t2/select-one :model/Card :name "Example Card")
+                  db    (t2/select-one :model/Database :name "my-db")
+                  table (t2/select-one :model/Table :name "customers")]
+              (is (some? card))
+              (is (= (:id db) (:database_id card)))
+              (is (= (:id table) (:table_id card)))
+              (is (nil? (:source_card_id card)))
+              (is (= :query (:query_type card))))))))))
 
-(deftest transform-computed-fields-not-required-test
-  (testing "Transform can be deserialized without source_database_id (computed from source)"
+(deftest transform-minimal-required-properties-test
+  (testing "Transform deserialized with only: entity_id, name, description, collection_id, source, target"
     (mt/with-premium-features #{:transforms-basic}
       (let [serialized (atom nil)]
         (ts/with-dbs [source-db dest-db]
@@ -1986,16 +1983,16 @@
                                                   :name "target_table"})]
               (reset! serialized (into [] (serdes.extract/extract {})))))
 
-          (testing "source_database_id not required when computable from source"
-            (let [without-computed (mapv (fn [entity]
-                                           (if (= "Transform" (-> entity :serdes/meta last :model))
-                                             (dissoc entity :source_database_id)
-                                             entity))
-                                         @serialized)]
-              (ts/with-db dest-db
-                (t2/delete! :model/TransformTag)
-                (serdes.load/load-metabase! (ingestion-in-memory without-computed))
-                (let [transform (t2/select-one :model/Transform :name "Test Transform")
-                      db        (t2/select-one :model/Database :name "my-db")]
-                  (is (some? transform))
-                  (is (= (:id db) (:source_database_id transform))))))))))))
+          (let [minimal (mapv (fn [entity]
+                                (if (= "Transform" (-> entity :serdes/meta last :model))
+                                  (select-keys entity [:serdes/meta :entity_id :name :description
+                                                       :collection_id :source :target])
+                                  entity))
+                              @serialized)]
+            (ts/with-db dest-db
+              (t2/delete! :model/TransformTag)
+              (serdes.load/load-metabase! (ingestion-in-memory minimal))
+              (let [transform (t2/select-one :model/Transform :name "Test Transform")
+                    db        (t2/select-one :model/Database :name "my-db")]
+                (is (some? transform))
+                (is (= (:id db) (:source_database_id transform)))))))))))
