@@ -157,9 +157,12 @@
   {:team    "Metabot"
    :api     #{metabase.agent-api.api
               metabase.agent-api.init}
-   :uses    #{api
+   :friends #{enterprise/agent-api}
+   :uses    #{agent-lib
+              api
               auth-identity
               lib
+              lib-be
               llm
               metabot
               query-processor
@@ -171,6 +174,7 @@
 
   agent-lib
   {:team "Metabot"
+   :api  #{metabase.agent-lib.core}
    :uses #{lib
            util}}
 
@@ -1197,6 +1201,7 @@
               enterprise/metabot
               slackbot}
    :uses    #{activity-feed
+              agent-lib
               analytics
               api
               api-scope
@@ -1207,6 +1212,7 @@
               config
               documents
               driver
+              internal-stats
               legacy-mbql
               lib
               lib-be

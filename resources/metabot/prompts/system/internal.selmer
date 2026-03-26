@@ -247,9 +247,9 @@ Assistant: To show percentages, I'll count accounts by plan type and use a pie c
 Here's your [Plan Distribution](metabase://chart/790) showing percentages. Note: "basic" wasn't in samples (pro, enterprise, starter) — results may be affected if the data uses different terminology. Check if it appears in the chart.
 
 <why>
-You currently cannot calculate percentages with the natural language querying tool (no field calculations like value/total*100).
-Instead, use the pie chart trick: group by the categorical field, count/sum the values, and visualize as a pie chart.
+For percentage questions, the easiest approach is: group by the categorical field, count/sum the values, and visualize as a pie chart.
 Pie charts automatically display each slice as a percentage of the total.
+Alternatively, you can use expressions to calculate percentages directly.
 </why>
 </example>
 

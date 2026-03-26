@@ -5,18 +5,19 @@
    [clojure.string :as str]
    [malli.core :as mc]
    [metabase.agent-api.validation :as agent-api.validation]
+   [metabase.agent-lib.core :as agent-lib]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.macros.scope :as scope]
    [metabase.api.routes.common :as api.routes.common]
    [metabase.auth-identity.core :as auth-identity]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.metabot.core :as metabot]
-   [metabase.metabot.tools.deftool :as deftool]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.field-stats :as field-stats]
-   [metabase.metabot.tools.filters :as metabot-filters]
    [metabase.metabot.tools.search :as metabot-search]
+   [metabase.metabot.tools.util :as tools.u]
    [metabase.metabot.util :as metabot.u]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.streaming :as qp.streaming]
@@ -550,14 +551,80 @@
   [:map
    [:query ms/NonBlankString]])
 
-(defn- construct-query*
-  "Shared query construction: encodes args, calls the appropriate tool fn, returns the raw lib query."
+(defn- body->program
+  "Convert a construct-query request body into an agent-lib program.
+  Maps the legacy table_id/metric_id + filters/aggregations format into the
+  unified program format with source and operations."
   [body]
-  (if (:table_id body)
-    (let [args (mc/encode ::construct-query-table-request body deftool/request-transformer)]
-      (:query (check-tool-result (metabot-filters/query-datasource args))))
-    (let [args (mc/encode ::construct-query-metric-request body deftool/request-transformer)]
-      (:query (check-tool-result (metabot-filters/query-metric args))))))
+  (let [source (cond
+                 (:table_id body)  {:type "table"  :id (:table_id body)}
+                 (:metric_id body) {:type "metric" :id (:metric_id body)})
+        ops    (cond-> []
+                 ;; filters → ["filter", clause] for each
+                 (seq (:filters body))
+                 (into (map (fn [{:keys [field_id operation value values segment_id bucket]}]
+                              (if segment_id
+                                ["filter" ["segment" segment_id]]
+                                (let [field-ref (if bucket
+                                                  ["with-temporal-bucket" ["field" (parse-long field_id)] bucket]
+                                                  ["field" (parse-long field_id)])]
+                                  (cond
+                                    (seq values) ["filter" [operation field-ref values]]
+                                    (some? value) ["filter" [operation field-ref value]]
+                                    :else         ["filter" [operation field-ref]])))))
+                       (:filters body))
+
+                 ;; aggregations
+                 (seq (:aggregations body))
+                 (into (map (fn [{:keys [field_id function measure_id]}]
+                              (if measure_id
+                                ["aggregate" ["measure" measure_id]]
+                                (if field_id
+                                  ["aggregate" [function ["field" (parse-long field_id)]]]
+                                  ["aggregate" [function]]))))
+                       (:aggregations body))
+
+                 ;; group_by → breakout
+                 (seq (:group_by body))
+                 (into (map (fn [{:keys [field_id field_granularity]}]
+                              (if field_granularity
+                                ["breakout" ["with-temporal-bucket" ["field" (parse-long field_id)] field_granularity]]
+                                ["breakout" ["field" (parse-long field_id)]])))
+                       (:group_by body))
+
+                 ;; fields → with-fields
+                 (seq (:fields body))
+                 (conj ["with-fields" (mapv (fn [{:keys [field_id]}]
+                                              ["field" (parse-long field_id)])
+                                            (:fields body))])
+
+                 ;; order_by
+                 (seq (:order_by body))
+                 (into (map (fn [{:keys [field direction]}]
+                              (let [field-ref ["field" (parse-long (:field_id field))]]
+                                (if (= direction "desc")
+                                  ["order-by" field-ref "desc"]
+                                  ["order-by" field-ref]))))
+                       (:order_by body))
+
+                 ;; limit
+                 (:limit body)
+                 (conj ["limit" (:limit body)]))]
+    {:source source :operations ops}))
+
+(defn- construct-query*
+  "Shared query construction: converts body to program, evaluates via agent-lib, returns the raw pMBQL query."
+  [body]
+  (let [program     (body->program body)
+        database-id (if (:table_id body)
+                      (:db_id (tools.u/get-table (:table_id body) :db_id))
+                      (:database_id (tools.u/get-card (:metric_id body))))
+        mp          (lib-be/application-database-metadata-provider database-id)
+        context     {:source-entity       {:model (if (:table_id body) "table" "metric")
+                                           :id    (or (:table_id body) (:metric_id body))}
+                     :referenced-entities []
+                     :surrounding-tables  []}]
+    (agent-lib/evaluate-program program mp context)))
 
 (defn- construct-table-query
   "Build a query from a table using the provided query components."

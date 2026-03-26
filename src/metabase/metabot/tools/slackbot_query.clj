@@ -14,7 +14,7 @@
 (def ^:private slackbot-query-schema
   [:map {:closed true}
    [:reasoning :string]
-   [:query construct/construct-query-schema]
+   [:program construct/construct-program-schema]
    [:title {:optional true} [:maybe :string]]
    [:display {:optional true
               :description "Visualization type for displaying the query results in Slack. Required in practice whenever the user asks for a chart or graph, and it must match any requested chart type. Valid values: 'table', 'bar', 'line', 'pie', 'area', 'row', 'scatter', 'funnel'. Use requested chart types like 'line', 'bar', 'area', 'pie', 'scatter', 'funnel', 'row', or 'table' when they fit the query. Omitting this field falls back to Metabase's default table display, so do not omit it for chart or graph requests. Only omit it when you intentionally want a plain table and the user did not request a chart type."}
@@ -24,9 +24,9 @@
            :scope     scope/agent-notebook-create}
   slackbot-construct-notebook-query-tool
   "Construct a notebook query from a metric, model, or table. The query results will be rendered as a visualization in Slack."
-  [{:keys [_reasoning query title display]} :- slackbot-query-schema]
+  [{:keys [_reasoning program title display]} :- slackbot-query-schema]
   (try
-    (let [query-result (construct/execute-query query)
+    (let [query-result (construct/execute-program program)
           structured   (or (:structured-output query-result) (:structured_output query-result))]
       (if (and structured (:query-id structured) (:query structured))
         (let [metabase-link (streaming/query->question-url (:query structured))

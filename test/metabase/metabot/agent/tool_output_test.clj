@@ -274,10 +274,10 @@
                                                       :database_id   (mt/id)
                                                       :name          "Test Metric For Fields"
                                                       :type          :metric}]
-            ;; Use the card-field-id-prefix format: c<id>-<index>
+            ;; Use real field ID — first filterable column of the metric
             ;; Temp metrics may not have fingerprints, so field metadata may be "No metadata available"
             ;; — still a valid formatted string, just not XML-wrapped
-            (let [field-id (str "c" metric-id "-0")
+            (let [field-id (mt/id :orders :total)
                   result   (metadata-tools/get-field-values-tool
                             {:data_source "metric"
                              :source_id   metric-id
@@ -297,9 +297,10 @@
                                                      :database_id   (mt/id)
                                                      :name          "Test Model For Fields"
                                                      :type          :model}]
+            ;; Use real field ID — first returned column of the model
             ;; Temp models may not have fingerprints, so we accept either
             ;; <field-metadata> XML or "No metadata available" fallback
-            (let [field-id (str "c" model-id "-0")
+            (let [field-id (mt/id :orders :id)
                   result   (metadata-tools/get-field-values-tool
                             {:data_source "model"
                              :source_id   model-id

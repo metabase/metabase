@@ -1,156 +1,216 @@
-**IMPORTANT TERMINOLOGY:**
+**Program format:**
 
-Understand the difference between these terms (they are often confused):
+The `program` parameter is a structured query program with two keys:
+- `source`: identifies the data source
+- `operations`: an ordered array of operations to apply
 
-1. **METRICS** = Higher-level business KPIs that combine aggregation + filters + time dimension
-   - These are standalone, queryable entities using `QueryMetric`
-   - Include the core calculation, any required filters, and often a primary time dimension
-   - Can be projected onto different dimensions (x-axis, y-axis) and filtered
-   - Example: "Monthly Revenue from Premium Customers", "Trial Conversion Rate"
-   - Think of them as complete, business-facing numbers you track on dashboards
+```json
+{
+  "source": {"type": "table", "id": 42},
+  "operations": [
+    ["filter", ["time-interval", ["field", 305], -12, "month"]],
+    ["aggregate", ["sum", ["field", 302]]],
+    ["breakout", ["with-temporal-bucket", ["field", 305], "month"]],
+    ["order-by", ["field", 305]],
+    ["limit", 100]
+  ]
+}
+```
 
-2. **MEASURES** = Named aggregation formulas ONLY (no filters, no dimensions)
-   - These are NOT standalone - they're just aggregation formulas defined on specific tables/models
-   - They are "macros for official aggregations" that live alongside columns
-   - Use them in `AggregateDataSource` queries via `MeasureAggregation`
-   - Example: `count(orders)`, `sum(revenue)`, `avg(time_to_resolution)` on a specific table
-   - They replace custom field aggregations like `{"field_id": "8", "function": "avg"}`
-   - Key difference from metrics: measures are JUST the aggregation, no filters or dimensions
+**Source types:**
+- `{"type": "table", "id": 42}` — Query a database table
+- `{"type": "metric", "id": 10}` — Query a pre-defined metric (has built-in aggregation)
+- `{"type": "card", "id": 5}` — Query a saved question or model
 
-3. **SEGMENTS** = Pre-defined filter conditions on tables/models
-   - These are business-defined filters that identify meaningful data subsets
-   - They live on tables/models alongside measures and columns
-   - Can be used in ALL query types: metric, raw, aggregate
-   - Use them in filters via `segment_id`
-   - Example: "Active Customers" segment, "High Value Orders" segment
-   - They replace custom filters like `{"filter_type": "multi_value", "field_id": "...", ...}`
+**IMPORTANT**: Always prefer metrics over tables when a relevant metric exists. Metrics are business-validated calculations.
 
-4. **AGGREGATIONS** = The mathematical operations (sum, count, avg, min, max)
-   - Can be custom (via custom aggregation formula) or pre-defined (via measures)
+---
 
-**Choosing the right query type:**
+## Operations reference
 
-There are 3 query types based on what data source and operations you need:
+Each operation is an array: `["operation-name", arg1, arg2, ...]`. Operations are applied in order.
 
-1. **QueryMetric** - For pre-existing Metabase METRICS
-   - Use when: A saved metric already exists that answers the user's question
-   - Source: `metric_id` (e.g., "Total Revenue" metric, "Active Users" metric)
-   - Capabilities: Filter and group by dimensions
-   - **Segments**: Can use pre-defined segments when filtering metrics
-     - Metrics may expose which segments are valid for filtering via their details
-     - Use `segment_id` in the filters array when available
-     - Example: Filter "Revenue" metric by "Premium Customers" segment
-   - Sorting: Use `sort_order` within aggregations (metrics already have built-in aggregations)
-   - Note: Don't rebuild metrics from scratch - always use existing metrics when available
-   - For multiple metrics: Make separate tool calls, one per metric
+### Top-level operations
 
-2. **AggregateDataSource** - For computing aggregations on models/tables
-   - Use when: You need custom aggregations (sum, count, avg, etc.) not covered by existing metrics
-   - Source: `model_id` or `table_id`
-   - Capabilities: Aggregate, filter, group by fields
-   - Sorting: Use `sort_order` within each aggregation
-   - Available fields: All fields from source + related tables (auto-joined)
-   - Note: No `order_by` parameter - sorting is only via aggregation `sort_order`
-   - **Measures & Segments**: Tables/models may have pre-defined measures and segments
-     - **Measures**: Named aggregation formulas ONLY (no filters, no dimensions)
-       - Think "macros for official aggregations" like count(orders), sum(revenue), avg(price)
-       - They live on tables/models alongside columns
-       - Use `measure_id` instead of a field aggregation when available
-       - Example: `{"measure_id": 5}` instead of `{"field_id": "8", "function": "avg"}`
-       - Remember: MEASURES ≠ METRICS! Measures are just aggregation formulas, Metrics are complete KPIs
-     - **Segments**: Pre-defined filter conditions for business-defined data subsets
-       - They live on tables/models alongside columns and measures
-       - Example: "Active Customers", "High Value Orders", "Premium Tier Users"
-       - Use `segment_id` instead of custom filters when available
-       - Example: `{"segment_id": 10}` instead of custom field filters
-     - **IMPORTANT**: Always prefer measures/segments over custom aggregations/filters when available
-       - They encapsulate official business definitions and ensure consistency
-       - Check table/model metadata for available measures and segments before creating custom queries
-   - ⚠️ **CRITICAL**: Filters apply ONLY to raw data BEFORE aggregation (WHERE clause, not HAVING)
-     - You CANNOT filter on aggregated results like count, sum, avg
-     - Example: Cannot filter "where count > 1" or "where sum > 10000"
-     - Solution: Return all results sorted by aggregation with a reasonable limit
+| Operation | Syntax | Description |
+|-----------|--------|-------------|
+| filter | `["filter", clause]` | Add a filter condition |
+| aggregate | `["aggregate", aggregation]` | Add an aggregation (sum, count, avg, etc.) |
+| breakout | `["breakout", breakout-form]` | Group results by a dimension |
+| with-fields | `["with-fields", [field-refs...]]` | Select specific fields to return |
+| expression | `["expression", "Name", expr]` | Define a custom calculated column |
+| order-by | `["order-by", orderable]` or `["order-by", orderable, "desc"]` | Sort results |
+| limit | `["limit", 10]` | Limit number of rows |
+| join | `["join", join-clause]` | Join another table |
+| append-stage | `["append-stage"]` | Start a new query stage (required before filtering on aggregation results) |
 
-3. **RawDataSource** - For listing individual records
-   - Use when: You need to see individual rows/records (not aggregated/summarized)
-   - Source: `model_id` or `table_id`
-   - Capabilities: Select fields, filter, sort, limit
-   - **Segments**: Can use pre-defined segments for filtering
-     - Use `segment_id` instead of custom filters when available
-     - Example: List all records in "Active Customers" segment
-   - Sorting: Use `order_by` to sort by any field
-   - Available fields: All fields from source + related tables (auto-joined)
-   - Note: No aggregations - this returns row-level data
+### Field references
 
-**Temporal grouping (`field_granularity` for `group_by`):**
-When grouping by date/time fields, specify how to group:
-- `year`: 2024-01-15T12:13:14 → 2024
-- `quarter`: 2024-01-15T12:13:14 → 2024-Q1
-- `month`: 2024-01-15T12:13:14 → 2024-01
-- `week`: 2024-01-15T12:13:14 → 2024-W03
-- `day`: 2024-01-15T12:13:14 → 2024-01-15
-- `day-of-week`: 2024-01-15T12:13:14 → 2 (Monday)
-- `hour`: 2024-01-15T12:13:14 → 2024-01-15T12
-- `minute`: 2024-01-15T12:13:14 → 2024-01-15T12:13
-- `second`: 2024-01-15T12:13:14 → 2024-01-15T12:13:14
+- `["field", 302]` — Reference a field by its integer ID (from entity details)
+- `["expression-ref", "Net Amount"]` — Reference a custom expression by name
+- `["aggregation-ref", 0]` — Reference an aggregation result by index (0-based)
 
-**Temporal filtering (`bucket` for date/time filters):**
-When filtering date/time fields, specify which component to filter on - e.g. given a datetime value of 2024-01-15T12:13:14:
-- `year-of-era`: Extract year → 2024
-- `quarter-of-year`: Extract quarter → 1
-- `month-of-year`: Extract month → 1
-- `week-of-year`: Extract week → 3
-- `day-of-month`: Extract day → 15
-- `day-of-week`: Extract weekday → 2 (Monday)
-- `hour-of-day`: Extract hour → 12
-- `minute-of-hour`: Extract minute → 13
-- `second-of-minute`: Extract second → 14
+### Temporal bucketing
 
-**Note:** Filter values for temporal buckets must be integers (e.g., `year-of-era` with `values=[2024]` and `quarter-of-year` with `values=[1, 2, 3]` would filter for Q1-Q3 of 2024).
+Wrap a field reference to apply temporal grouping:
+- `["with-temporal-bucket", ["field", 305], "month"]`
 
+Valid buckets: `year`, `quarter`, `month`, `week`, `day`, `hour`, `minute`, `second`, `day-of-week`, `day-of-month`, `month-of-year`, `quarter-of-year`, `hour-of-day`
 
-**Filtering Rules:**
-- **Segment filters (`segment`):** Use pre-defined segments when available.
-  - Must use `segment_id` field: `{"filter_type": "segment", "segment_id": 10}`
-  - Preferred over custom filters when available for business consistency
-- **Multi-value filters (`multi_value`):** Use for operations that support multiple values (combined with OR).
-  - Allowed operations: `=`, `!=`, `starts-with`, `ends-with`, `contains`, `does-not-contain`
-  - Must use `values` list (even for single values like operation `= 'USA'`, use `values=['USA']`)
-- **Single-value filters (`single_value`):** Use for comparison operations that require exactly one value.
-  - Allowed operations: `>`, `>=`, `<`, `<=`
-  - Must use `value` field.
-- **No-value filters (`no_value`):** Use for checks that don't require a value.
-  - Allowed operations: `is-null`, `not-null`, `is-empty`, `not-empty`, `is-true`, `is-false`
+### Filter operators
 
-**Visualization:**
-You must provide a `visualization.chart_type` value that matches the query data:
+**Comparison:**
+- `["=", ["field", 301], "value"]` — Equals
+- `["!=", ["field", 301], "value"]` — Not equals
+- `["<", ["field", 302], 100]` — Less than
+- `["<=", ["field", 302], 100]` — Less than or equal
+- `[">", ["field", 302], 100]` — Greater than
+- `[">=", ["field", 302], 100]` — Greater than or equal
+- `["between", ["field", 302], 10, 100]` — Between two values (inclusive)
 
-For aggregations and metrics:
-- Time series data (grouped by date/time) → `line` or `area` chart
-- Categorical aggregations (grouped by category) → `bar` chart
-- Percentage breakdowns/proportions → `pie` chart
-- Single numeric result → `scalar`
+**String:**
+- `["contains", ["field", 303], "text"]` — Contains substring
+- `["does-not-contain", ["field", 303], "text"]` — Does not contain
+- `["starts-with", ["field", 303], "prefix"]` — Starts with
+- `["ends-with", ["field", 303], "suffix"]` — Ends with
 
-**For raw data queries:**
-- Individual records without aggregation → `table`
+**Null/empty checks:**
+- `["is-null", ["field", 301]]` — Is null
+- `["not-null", ["field", 301]]` — Is not null
+- `["is-empty", ["field", 303]]` — Is empty string
+- `["not-empty", ["field", 303]]` — Is not empty
 
-**Important:** Don't default to `table` for aggregated data. Use visual charts (bar, line, pie) to show aggregations effectively.
+**Set membership:**
+- `["in", ["field", 301], [1, 2, 3]]` — Value is in list
+- `["not-in", ["field", 301], [1, 2, 3]]` — Value is not in list
 
-Note: Metabase will automatically map data to chart aesthetics (axes, labels). You only choose the chart type.
+**Temporal:**
+- `["time-interval", ["field", 305], -30, "day"]` — Relative time window (last 30 days)
+- `["time-interval", ["field", 305], -12, "month"]` — Last 12 months
+- `["time-interval", ["field", 305], 0, "month"]` — Current month
+- `["time-interval", ["field", 305], -1, "year"]` — Last year
 
-**Limitations:**
-- **No post-aggregation filtering (HAVING clause)**: Cannot filter on count, sum, avg, etc.
-  - ❌ "Find items appearing more than once" → Cannot filter count > 1
-  - ✅ Instead: Group by item, count, sort descending, limit 100 (frequent items appear at top)
-- No joins, unions, subqueries, or combining multiple sources
-- No field calculations (e.g., field_a / field_b, field_a + field_b)
-- No window functions, cohort analysis, or advanced analytics
-- Filters are combined with AND logic; values within a filter use OR logic
+**Logical combinators:**
+- `["and", clause1, clause2]` — Both conditions must be true
+- `["or", clause1, clause2]` — Either condition can be true
+- `["not", clause]` — Negate a condition
 
-**When NOT to use this tool:**
-- Post-aggregation filtering needed (e.g., "categories where total sales > $10k")
-- Joins or complex SQL required
-- Field calculations or transformations needed
-- User explicitly requests SQL
+**Segments (pre-defined filters):**
+- `["segment", 5]` — Apply a pre-defined segment by ID
 
-**Use SQL tools instead for these cases.**
+### Aggregation operators
+
+- `["count"]` — Count all rows
+- `["sum", ["field", 302]]` — Sum of a field
+- `["avg", ["field", 302]]` — Average
+- `["min", ["field", 302]]` — Minimum
+- `["max", ["field", 302]]` — Maximum
+- `["distinct", ["field", 301]]` — Count distinct values
+- `["count-where", clause]` — Count rows matching a condition
+- `["sum-where", ["field", 302], clause]` — Sum field for rows matching condition
+- `["median", ["field", 302]]` — Median
+- `["percentile", ["field", 302], 0.95]` — Percentile
+- `["measure", 5]` — Use a pre-defined measure by ID
+
+### Expression operators (for custom calculations)
+
+**Arithmetic:** `["+", a, b]`, `["-", a, b]`, `["*", a, b]`, `["/", a, b]`
+**Math:** `["abs", x]`, `["ceil", x]`, `["floor", x]`, `["round", x]`, `["power", x, n]`, `["sqrt", x]`, `["log", x]`, `["exp", x]`
+**String:** `["concat", a, b]`, `["substring", s, start, len]`, `["replace", s, old, new]`, `["upper", s]`, `["lower", s]`, `["trim", s]`, `["length", s]`
+**Conditional:** `["case", [[condition1, result1], [condition2, result2]], default]`
+**Coalesce:** `["coalesce", a, b]` — First non-null value
+**Date:** `["get-year", ["field", 305]]`, `["get-month", ...]`, `["get-day", ...]`, `["get-quarter", ...]`, `["get-hour", ...]`, `["datetime-add", ["field", 305], 1, "month"]`, `["datetime-diff", field1, field2, "day"]`
+
+### Joins
+
+```json
+["join", ["join-clause", ["table", 43],
+          ["with-join-conditions", [["=", ["field", 301], ["field", 401]]]],
+          ["with-join-strategy", "left-join"]]]
+```
+
+**Note:** If a related table's fields are already available through implicit joins (shown in entity details), use those field IDs directly without an explicit join. Only use explicit joins for self-joins, custom conditions, or when implicit access doesn't work.
+
+---
+
+## Key patterns
+
+### Post-aggregation filtering (HAVING equivalent)
+
+To filter on aggregation results, use `append-stage` to start a new stage:
+
+```json
+{
+  "source": {"type": "table", "id": 42},
+  "operations": [
+    ["aggregate", ["count"]],
+    ["breakout", ["field", 303]],
+    ["append-stage"],
+    ["filter", [">", ["aggregation-ref", 0], 10]]
+  ]
+}
+```
+
+### Custom expressions
+
+```json
+{
+  "source": {"type": "table", "id": 42},
+  "operations": [
+    ["expression", "Net Amount", ["-", ["field", 302], ["field", 306]]],
+    ["with-fields", [["field", 301], ["expression-ref", "Net Amount"]]],
+    ["order-by", ["expression-ref", "Net Amount"], "desc"],
+    ["limit", 20]
+  ]
+}
+```
+
+### Ordering by aggregation
+
+```json
+{
+  "source": {"type": "table", "id": 42},
+  "operations": [
+    ["aggregate", ["sum", ["field", 302]]],
+    ["breakout", ["field", 303]],
+    ["order-by", ["desc", ["aggregation-ref", 0]]],
+    ["limit", 10]
+  ]
+}
+```
+
+### Metric query with filters
+
+```json
+{
+  "source": {"type": "metric", "id": 10},
+  "operations": [
+    ["filter", ["time-interval", ["field", 305], -12, "month"]],
+    ["breakout", ["with-temporal-bucket", ["field", 305], "month"]]
+  ]
+}
+```
+
+---
+
+## Visualization
+
+You must provide a `visualization.chart_type` value:
+
+**For aggregations and metrics:**
+- Time series (grouped by date/time) -> `line` or `area`
+- Categorical aggregations -> `bar`
+- Percentage breakdowns -> `pie`
+- Single numeric result -> `scalar`
+
+**For raw data:** `table`
+
+**Important:** Don't default to `table` for aggregated data. Use visual charts to show aggregations effectively.
+Metabase will automatically map data to chart aesthetics. You only choose the chart type.
+
+---
+
+## When NOT to use this tool
+
+- User explicitly requests SQL -> Use SQL tools
+- Complex multi-source analysis requiring raw SQL -> Use SQL tools

@@ -14,21 +14,18 @@ Base path: /api/agent
   (e.g., "Total Revenue"). Metrics are stored in collections and can be used
   as a data source in the API. They have a fixed aggregation, but can be
   filtered and grouped by their queryable dimensions. Use /v1/metric/{id} to
-  inspect a metric's dimensions, and POST /v1/construct-query with `metric_id`
+  inspect a metric's dimensions, and POST /v1/construct-query with a program
   to query one.
 - **Measures**: Lightweight, reusable aggregation expressions (e.g.,
   `SUM(total)`) associated with a specific table. Unlike metrics, measures are
   not standalone queries — they are building blocks that can be referenced in
-  table queries via `measure_id` in the aggregations array. Discover available
+  table queries via `["measure", id]` in operations. Discover available
   measures for a table via GET /v1/table/{id}?with-measures=true.
 - **Segments**: Pre-defined filter conditions (e.g., "Active Users") that can
-  be applied to queries by referencing their segment_id.
-- **Field IDs**: Opaque string identifiers for columns, formatted as
-  `<prefix><entity-id>-<column-index>`. Prefix is `t` for table fields and
-  `c` for metric fields. Example: `t42-3` means the column at index 3 of table 42.
-  Field IDs are returned by the table/metric detail endpoints and must be used
-  as-is in query construction. They are positional — always fetch current
-  entity details before constructing queries.
+  be applied to queries by referencing `["segment", id]` in filter operations.
+- **Field IDs**: Integer identifiers for database columns. These are the real
+  database field IDs returned by the table/metric detail endpoints. Use them
+  in `["field", id]` references when constructing queries.
 
 ## Authentication
 
@@ -92,8 +89,7 @@ lacks access to a table or metric, the API returns 403.
 
 Query parameters on GET endpoints use kebab-case (e.g., `with-fields`,
 `with-related-tables`). JSON request and response bodies use snake_case (e.g.,
-`table_id`, `field_id`, `field_granularity`). This applies consistently across
-all endpoints.
+`table_id`, `field_id`). This applies consistently across all endpoints.
 
 ## Endpoints
 
@@ -133,7 +129,7 @@ Response:
   "description": "All customer orders",
   "fields": [
     {
-      "field_id": "t42-0",
+      "field_id": 301,
       "name": "ID",
       "display_name": "ID",
       "description": "Primary key",
@@ -141,6 +137,13 @@ Response:
       "semantic_type": "type/PK",
       "database_type": "BIGINT",
       "field_values": [1, 2, 3]
+    },
+    {
+      "field_id": 302,
+      "name": "TOTAL",
+      "type": "number",
+      "description": "Order total",
+      "database_type": "FLOAT"
     }
   ],
   "related_tables": [
@@ -158,7 +161,7 @@ Response:
       "id": 10,
       "type": "metric",
       "name": "Total Revenue",
-      "default_time_dimension_field_id": "c10-2"
+      "default_time_dimension_field_id": 305
     }
   ],
   "measures": [
@@ -191,11 +194,11 @@ Response:
   "id": 10,
   "name": "Total Revenue",
   "description": "Sum of order totals",
-  "default_time_dimension_field_id": "c10-2",
+  "default_time_dimension_field_id": 305,
   "verified": true,
   "queryable_dimensions": [
     {
-      "field_id": "c10-0",
+      "field_id": 305,
       "name": "CREATED_AT",
       "display_name": "Created At",
       "base_type": "type/DateTime"
@@ -208,14 +211,15 @@ Response:
 ### GET /v1/table/{id}/field/{field-id}/values
 ### GET /v1/metric/{id}/field/{field-id}/values
 
-Get statistics and sample values for a field. Accepts optional `limit` query
+Get statistics and sample values for a field. The `field-id` is the integer
+field ID from the detail endpoints. Accepts optional `limit` query
 parameter (default: 30).
 
 Response:
 
 ```json
 {
-  "field_id": "t42-3",
+  "field_id": 302,
   "statistics": {
     "distinct_count": 200,
     "percent_null": 0.02,
@@ -281,38 +285,47 @@ Response:
 
 ### POST /v1/construct-query
 
-Construct a query from a table or metric. Returns a base64-encoded query to
-pass to /v1/execute.
+Construct a query using a structured program. Returns a base64-encoded query
+to pass to /v1/execute.
 
-**Important**: Field IDs used here must come from the detail endpoints
+**Important**: Field IDs used in operations must come from the detail endpoints
 (/v1/table/{id} or /v1/metric/{id}). Always fetch entity details first.
 
-#### Table query request
+The request uses a program format with a source and an array of operations.
+Each operation is an array: `["operation-name", arg1, arg2, ...]`.
 
-All fields except `table_id` are optional:
+#### Request format
 
 ```json
 {
   "table_id": 42,
-  "filters": [],
-  "fields": [{"field_id": "t42-0"}, {"field_id": "t42-1"}],
-  "aggregations": [{"field_id": "t42-3", "function": "sum"}],
-  "group_by": [{"field_id": "t42-5", "field_granularity": "month"}],
-  "order_by": [{"field": {"field_id": "t42-1"}, "direction": "desc"}],
+  "filters": [
+    {"field_id": "302", "operation": "greater-than", "value": 100}
+  ],
+  "aggregations": [
+    {"function": "sum", "field_id": "302"}
+  ],
+  "group_by": [
+    {"field_id": "305", "field_granularity": "month"}
+  ],
+  "order_by": [
+    {"field": {"field_id": "302"}, "direction": "desc"}
+  ],
   "limit": 100
 }
 ```
 
-#### Metric query request
-
-Metrics have a pre-defined aggregation, so only filters and group_by are
-supported:
+Or for metrics:
 
 ```json
 {
   "metric_id": 10,
-  "filters": [{"field_id": "c10-2", "operation": "greater-than", "value": "2024-01-01"}],
-  "group_by": [{"field_id": "c10-2", "field_granularity": "month"}]
+  "filters": [
+    {"field_id": "305", "operation": "greater-than", "value": "2024-01-01"}
+  ],
+  "group_by": [
+    {"field_id": "305", "field_granularity": "month"}
+  ]
 }
 ```
 
@@ -344,95 +357,53 @@ Filters are polymorphic. The required fields depend on the operation.
 | is-false             | Boolean is false       |
 
 ```json
-{"field_id": "t42-0", "operation": "is-not-null"}
+{"field_id": "301", "operation": "is-not-null"}
 ```
 
-**Temporal filters** — for date/datetime fields. Optional `bucket` specifies
-temporal bucketing granularity for the comparison. Accepts both truncation
-units (`minute`, `hour`, `day`, `week`, `month`, `quarter`, `year`) and
-extraction units (`day-of-week`, `day-of-month`, `day-of-year`,
-`week-of-year`, `month-of-year`, `quarter-of-year`, `hour-of-day`,
-`minute-of-hour`, `second-of-minute`). Note: this is a broader set of
-values than `field_granularity` in group_by, which only accepts truncation
-units.
+**Comparison filters** — single value:
 
 | Operation             | Description                     |
 |-----------------------|---------------------------------|
 | equals                | Equals value                    |
 | not-equals            | Does not equal value            |
-| greater-than          | After (dates) / greater than    |
-| greater-than-or-equal | On or after / greater or equal  |
-| less-than             | Before (dates) / less than      |
-| less-than-or-equal    | On or before / less or equal    |
+| greater-than          | Greater than                    |
+| greater-than-or-equal | Greater than or equal           |
+| less-than             | Less than                       |
+| less-than-or-equal    | Less than or equal              |
 
 ```json
-{"field_id": "t42-5", "operation": "greater-than", "value": "2024-01-01"}
+{"field_id": "302", "operation": "greater-than", "value": 100}
 ```
 
 For multiple values, use `values` (array) instead of `value`:
 
 ```json
-{"field_id": "t42-5", "operation": "equals", "values": ["2024-01-01", "2024-06-01"]}
+{"field_id": "302", "operation": "equals", "values": [10, 20, 30]}
 ```
-
-**Temporal extraction filters** — filter by date component:
-
-| Operation              | Value type |
-|------------------------|------------|
-| year-equals            | int        |
-| year-not-equals        | int        |
-| quarter-equals         | int (1-4)  |
-| quarter-not-equals     | int        |
-| month-equals           | int (1-12) |
-| month-not-equals       | int        |
-| day-of-week-equals     | int (1-7)  |
-| day-of-week-not-equals | int        |
-| hour-equals            | int (0-23) |
-| hour-not-equals        | int        |
-| minute-equals          | int (0-59) |
-| minute-not-equals      | int        |
-| second-equals          | int (0-59) |
-| second-not-equals      | int        |
-
-```json
-{"field_id": "t42-5", "operation": "month-equals", "value": 12}
-```
-
-For multiple values: `{"field_id": "t42-5", "operation": "month-equals", "values": [1, 2, 3]}`
 
 **String filters**:
 
 | Operation           | Description                          |
 |---------------------|--------------------------------------|
-| equals              | Exact match                          |
-| not-equals          | Does not match                       |
 | string-contains     | Contains substring                   |
 | string-not-contains | Does not contain substring           |
 | string-starts-with  | Starts with prefix                   |
 | string-ends-with    | Ends with suffix                     |
 
 ```json
-{"field_id": "t42-2", "operation": "string-contains", "value": "acme"}
+{"field_id": "303", "operation": "string-contains", "value": "acme"}
 ```
 
-For multiple values: `{"field_id": "t42-2", "operation": "equals", "values": ["A", "B"]}`
+**Temporal filters** — optional `bucket` for temporal bucketing:
 
-**Numeric filters**:
-
-| Operation             | Description            |
-|-----------------------|------------------------|
-| equals                | Equals value           |
-| not-equals            | Does not equal value   |
-| greater-than          | Greater than           |
-| greater-than-or-equal | Greater than or equal  |
-| less-than             | Less than              |
-| less-than-or-equal    | Less than or equal     |
+Truncation units: `minute`, `hour`, `day`, `week`, `month`, `quarter`, `year`.
+Extraction units: `day-of-week`, `day-of-month`, `day-of-year`,
+`week-of-year`, `month-of-year`, `quarter-of-year`, `hour-of-day`,
+`minute-of-hour`, `second-of-minute`.
 
 ```json
-{"field_id": "t42-3", "operation": "greater-than", "value": 100}
+{"field_id": "305", "operation": "greater-than", "value": "2024-01-01", "bucket": "day"}
 ```
-
-For multiple values: `{"field_id": "t42-3", "operation": "equals", "values": [10, 20, 30]}`
 
 #### Aggregations
 
@@ -448,46 +419,34 @@ Field-based aggregation — `function` is required:
 | sum            | Sum                        |
 
 ```json
-{"field_id": "t42-3", "function": "sum"}
+{"field_id": "302", "function": "sum"}
 ```
 
-For `count`, omit `field_id` (count operates on rows, not a specific field):
+For `count`, omit `field_id`:
 
 ```json
 {"function": "count"}
 ```
 
-To sort by an aggregation result, use `sort_order` on the aggregation itself
-(not `order_by`):
-
-```json
-{"field_id": "t42-3", "function": "sum", "sort_order": "desc"}
-```
-
 Measure-based aggregation — uses a pre-defined measure:
 
 ```json
-{"measure_id": 5, "sort_order": "asc"}
+{"measure_id": 5}
 ```
 
 #### Group by
 
 ```json
-{"field_id": "t42-5", "field_granularity": "month"}
+{"field_id": "305", "field_granularity": "month"}
 ```
 
-`field_granularity` is optional and controls temporal grouping granularity.
-Valid values: `minute`, `hour`, `day`, `week`, `month`, `quarter`, `year`,
-`day-of-week`. Note: this is a smaller set than the `bucket` field on
-filters, which also accepts extraction units like `day-of-month` and
-`hour-of-day`.
+`field_granularity` is optional. Valid values: `minute`, `hour`, `day`,
+`week`, `month`, `quarter`, `year`, `day-of-week`.
 
 #### Order by
 
-Order by a field (not an aggregation — use `sort_order` for that):
-
 ```json
-{"field": {"field_id": "t42-1"}, "direction": "desc"}
+{"field": {"field_id": "302"}, "direction": "desc"}
 ```
 
 ### POST /v1/execute
