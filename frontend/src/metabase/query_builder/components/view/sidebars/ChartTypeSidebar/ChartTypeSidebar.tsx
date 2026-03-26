@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { SidebarContent } from "metabase/common/components/SidebarContent";
-import { useToast } from "metabase/common/hooks";
+import { useSetting, useToast } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/lib/redux";
 import {
@@ -39,7 +39,8 @@ export const ChartTypeSidebar = ({
 }: ChartTypeSidebarProps) => {
   const dispatch = useDispatch();
   const [sendToast] = useToast();
-  const customVizPlugins = useCustomVizPlugins();
+  const customVizEnabled = useSetting("custom-viz-enabled");
+  const customVizPlugins = useCustomVizPlugins({ enabled: customVizEnabled });
   const [pluginsLoaded, setPluginsLoaded] = useState(false);
 
   const onInfo = useCallback(

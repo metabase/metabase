@@ -248,7 +248,7 @@ export function buildRawSeriesFromDefinitions(
     return { series: [], cardIdToDimensionId: {} };
   }
 
-  const vizSettings = DISPLAY_TYPE_REGISTRY[display].getSettings(
+  const baseSettings = DISPLAY_TYPE_REGISTRY[display].getSettings(
     firstSettingsEntry.def,
     firstSettingsEntry.dimension,
   );
@@ -289,7 +289,7 @@ export function buildRawSeriesFromDefinitions(
 
     const singleSeries: SingleSeries = {
       card: createSeriesCard(cardId, name, display, {
-        ...vizSettings,
+        ...baseSettings,
         ...computeColorVizSettings({
           displayType: display,
           seriesKey,

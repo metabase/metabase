@@ -5,7 +5,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.metabot.client :as metabot.client]
+   [metabase.metabot.example-question-generator :as metabot.example-question-generator]
    [metabase.metabot.suggested-prompts :as metabot.suggested-prompts]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -66,7 +66,7 @@
                                                          :tables :table_questions})))]
                       ;; --------------------------- Generating sample prompts ---------------------------
             (testing "should generate prompt suggestions for metabot"
-              (with-redefs [metabot.client/generate-example-questions prompt-generator]
+              (with-redefs [metabot.example-question-generator/generate-example-questions prompt-generator]
                           ;; Trigger prompt generation by calling the regenerate endpoint
                 (mt/user-http-request :crowberto :post 204
                                       (format "metabot/metabot/%d/prompt-suggestions/regenerate" metabot-id)))
@@ -143,7 +143,7 @@
                       (mt/user-http-request :rasta :post 403 url)
                       (is (= remaining-prompt-ids (current-prompt-ids))))
                     (testing "admin users are allowed"
-                      (with-redefs [metabot.client/generate-example-questions prompt-generator]
+                      (with-redefs [metabot.example-question-generator/generate-example-questions prompt-generator]
                         (mt/user-http-request :crowberto :post 204 url)))))
 
                 (let [new-prompt-ids (current-prompt-ids)]
