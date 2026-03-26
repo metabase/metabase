@@ -11,9 +11,9 @@
    [metabase.metabot.agent.messages :as messages]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.agent.streaming :as streaming]
-   [metabase.metabot.agent.tools :as agent-tools]
    [metabase.metabot.self :as self]
    [metabase.metabot.settings :as metabot.settings]
+   [metabase.metabot.tools :as tools]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -227,7 +227,7 @@
   [memory context profile tools iteration tracking-opts link-registry-atom]
   (let [model        (:model profile)
         system-msg   (messages/build-system-message context profile tools)
-        input-parts  (-> (messages/build-message-history memory)
+        input-parts  (-> (messages/build-message-history context memory)
                          (invert-links @link-registry-atom))
         llm-opts     (cond-> {}
                        (:required-tool-call? profile) (assoc :tool-choice "required"))]
@@ -376,7 +376,7 @@
                          (memory/load-todos-from-state seeded)
                          (memory/load-link-registry-from-state seeded))
         memory-atom  (atom memory)
-        tools        (agent-tools/wrap-tools-with-state base-tools memory-atom metabot-id)]
+        tools        (tools/wrap-tools-with-state base-tools memory-atom metabot-id)]
     (log/info "Starting agent" {:profile  profile-id
                                 :tools    (count tools)
                                 :max-iter (:max-iterations profile)
@@ -435,14 +435,14 @@
           parts-atom         (atom [])
           link-registry-atom (atom (get-in memory [:state :link-registry] {}))
           llm-call           (call-llm memory context profile tools iteration tracking-opts link-registry-atom)
-          xf         (comp (accumulate-usage-xf usage-atom)
-                           (u/tee-xf parts-atom))
+          xf                 (comp (accumulate-usage-xf usage-atom)
+                                   (u/tee-xf parts-atom))
           ;; We use `reduce` instead of `transduce` because rf is the outer reducing
           ;; function (e.g. aisdk-line-xf wrapping streaming-writer-rf) whose completion
           ;; arity emits a finish message — that must only fire once, at the end of the
           ;; entire agent loop, not after every iteration.
-          result'    (reduce (xf rf) result llm-call)
-          parts      @parts-atom]
+          result'            (reduce (xf rf) result llm-call)
+          parts              @parts-atom]
       ;; Sync link registry back to memory after streaming completes
       (swap! memory-atom assoc-in [:state :link-registry] @link-registry-atom)
       ;; Capture response for debug log

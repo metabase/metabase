@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.metabot.agent.user-context :as user-context]
    [metabase.metabot.tools.entity-details :as entity-details]
-   [metabase.metabot.tools.llm-representations :as llm-rep]
+   [metabase.metabot.tools.shared.llm-representations :as llm-rep]
    [metabase.test :as mt]))
 
 (deftest format-current-time-test

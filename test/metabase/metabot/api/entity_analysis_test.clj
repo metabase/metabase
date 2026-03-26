@@ -1,12 +1,12 @@
 (ns metabase.metabot.api.entity-analysis-test
   (:require
    [clojure.test :refer :all]
-   [metabase.metabot.client :as metabot-client]
+   [metabase.metabot.core :as metabot]
    [metabase.test :as mt]))
 
 (deftest analyze-chart-test
   (testing "POST /api/ai-entity-analysis/analyze-chart"
-    (with-redefs [metabot-client/analyze-chart (constantly {:analysis "This chart shows a steady increase in sales over time, with a notable peak in Q4."})]
+    (with-redefs [metabot/analyze-chart (constantly {:analysis "This chart shows a steady increase in sales over time, with a notable peak in Q4."})]
       (let [response (mt/user-http-request :rasta :post 200 "ai-entity-analysis/analyze-chart"
                                            {:image_base64 "base64encodedimage"
                                             :name "Sales Trend"
