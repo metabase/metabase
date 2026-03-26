@@ -73,7 +73,6 @@ describe("cross-version-slack", () => {
           phase: "migration",
           source: "HEAD",
           target: "v1.59.x",
-          detail: "migrate down failed",
           jobUrl: "https://job/1",
         },
         {
@@ -106,7 +105,6 @@ describe("cross-version-slack", () => {
           phase: "migration",
           source: "HEAD",
           target: "v1.59.x",
-          detail: "migrate down failed",
         },
       ];
 
