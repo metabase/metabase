@@ -160,7 +160,9 @@ config:
                          (str "MB_JETTY_PORT = \"" (port-for :jetty slot) "\"")
                          (str "MB_FRONTEND_DEV_PORT = \"" (port-for :frontend-dev slot) "\"")
                          (str "NREPL_PORT = \"" (port-for :nrepl slot) "\"")
-                         (str "SOCKET_REPL_PORT = \"" (port-for :socket-repl slot) "\"")]
+                         (str "SOCKET_REPL_PORT = \"" (port-for :socket-repl slot) "\"")
+                         (str "PLAYWRIGHT_DAEMON_SESSION_DIR = \"" u/project-root-directory "/.fixbot/playwright/sessions\"")
+                         (str "PLAYWRIGHT_DAEMON_SOCKETS_DIR = \"" u/project-root-directory "/.fixbot/playwright/sockets\"")]
                   (= app-db-kw :postgres)
                   (conj (str "MB_DB_TYPE = \"postgres\"")
                         (str "MB_DB_CONNECTION_URI = \"jdbc:postgresql://localhost:"

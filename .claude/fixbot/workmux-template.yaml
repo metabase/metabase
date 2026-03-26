@@ -12,7 +12,7 @@ post_create:
   - cp {{SOURCE_REPO}}/bb.edn bb.edn
 
   - sed "s|{{pwd}}|$(pwd)|;s|{{tmpdir}}|${TMPDIR%/}|" .claude/fixbot/settings.local-template.json > .claude/settings.local.json
-  - mkdir -p .fixbot
+  - mkdir -p .fixbot/playwright/sessions .fixbot/playwright/sockets
   - echo '{{ISSUE_ID}} | {{ISSUE_URL}}' > .fixbot/issue.txt
   - rm -f .claude/commands/fixbot*.md
   - cp .claude/fixbot/commands/*.md .claude/commands/
@@ -21,6 +21,7 @@ post_create:
   - MB_PREMIUM_EMBEDDING_TOKEN={{MB_PREMIUM_EMBEDDING_TOKEN}} LINEAR_API_KEY={{LINEAR_API_KEY}} ./bin/mage -fixbot-dev-env --app-db {{APP_DB}}
   - mise trust mise.local.toml
   - bun install
+  - playwright-cli install --skills
 
 pre_remove:
   - ./bin/mage -fixbot-dev-env --down

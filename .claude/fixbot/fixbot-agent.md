@@ -78,7 +78,8 @@ The agent should follow this workflow:
 2. Read `CLAUDE.md` in the project root for project-level instructions, skill references, test commands, and tool preferences
 3. Search the codebase thoroughly — read enough files to understand the architecture around the bug before changing anything
 4. Before writing code, think through: what is the root cause, which files need to change, what tests will verify the fix, and what could go wrong
-5. Only ask the user if the expected *product behavior* is genuinely ambiguous — they know Metabase well but don't want to hear about implementation details
+5. If the issue involves UI behavior, use `playwright-cli` to reproduce it in the browser once the backend is ready — seeing what the user sees often reveals more than reading code alone
+6. Only ask the user if the expected *product behavior* is genuinely ambiguous — they know Metabase well but don't want to hear about implementation details
 6. Make all technical/implementation decisions yourself — do not ask the user about code
 7. **Do not wait for servers to start.** The backend takes several minutes to boot. Start coding and writing tests immediately. Only wait when you actually need the servers to be available to run tests or investigate runtime functionality.
 
@@ -99,6 +100,7 @@ Before asking the user to test, review your own changes thoroughly:
 5. Only proceed to Phase 4 when the review is clean and all tests pass
 
 #### Phase 4: Verify
+0. **Self-verify first (for UI-related fixes):** If the fix touches frontend code or UI behavior, use `playwright-cli` to navigate to the affected page and confirm the fix works in the browser before involving the user. Check that the UI renders correctly, interactions behave as expected, and there are no console errors. If self-verification fails, go back to Phase 2. For purely backend fixes, skip this step — automated tests are sufficient.
 1. Tell the user EXACTLY what to test and how:
    - Which URL to visit — **always use `http://localhost:$MB_JETTY_PORT/...`** (the backend port), never the frontend dev server port
    - What steps to reproduce
@@ -193,6 +195,66 @@ Use nREPL for:
 - Checking compilation
 
 **REPL expression rules**: Send one expression per eval call. Multi-expression evals frequently timeout. Split into separate (parallel if independent) calls. Test/dev namespaces (`metabase.test`, `dev`, enterprise test namespaces) are available natively on the classpath.
+
+### Browser Automation with Playwright CLI
+
+`playwright-cli` is available for interacting with the running Metabase instance in a real browser. It is a tool for **manual exploration and testing** — useful for understanding UI issues, troubleshooting rendering/interaction problems, and self-validating fixes before asking the user to verify.
+
+**This is optional.** For purely backend fixes where the issue and verification are API-level or logic-level, you don't need the browser at all — automated tests and nREPL are sufficient. Use playwright-cli when the issue involves UI behavior, when you need to see what the user sees, or when the user reports something that doesn't match what you'd expect from the code.
+
+**Core workflow:**
+1. `playwright-cli open` — launch the browser
+2. `playwright-cli goto http://localhost:$MB_JETTY_PORT` — navigate to Metabase (always use the backend port)
+3. `playwright-cli snapshot` — capture page state and get element refs (you MUST do this before any interaction)
+4. Interact: `click <ref>`, `fill <ref> <text>`, `type <text>`, `select <ref> <val>`, etc.
+5. `playwright-cli snapshot` again — verify the result
+6. `playwright-cli close` — close the browser when done
+
+**Key commands:**
+- `open [url]` — open the browser (optionally navigate to a URL)
+- `goto <url>` — navigate to a URL
+- `snapshot` — capture page snapshot with element refs — **always snapshot before interacting**
+- `click <ref>` — click an element by ref
+- `fill <ref> <text>` — fill text into an input field (clears first)
+- `type <text>` — type text into the focused element (appends)
+- `select <ref> <val>` — select a dropdown option
+- `eval <func> [ref]` — evaluate JavaScript on the page or an element
+- `console` — list browser console messages (useful for debugging)
+- `network` — list network requests (useful for debugging API calls)
+- `close` — close the browser
+
+**Login and navigate:**
+```bash
+playwright-cli open http://localhost:$MB_JETTY_PORT/auth/login
+playwright-cli cookie-set metabase.SESSION "<session-token>" --domain=localhost
+playwright-cli goto http://localhost:$MB_JETTY_PORT/question/1
+```
+
+Get a session token by calling the API:
+```bash
+curl -s -X POST http://localhost:$MB_JETTY_PORT/api/session \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"admin@example.com","password":"admin123"}' | jq -r '.id'
+```
+
+Alternatively, you can log in via the UI: `snapshot` the login page, `fill` the email and password fields, and `click` the sign-in button.
+
+**"Start exploring" modal:** Metabase shows this modal on first native question view. `snapshot` to find the button ref and `click` to dismiss it.
+
+**Chart interaction:** Hover on the `img` element ref from `snapshot` to see tooltips. Check the bottom of the snapshot YAML output for tooltip table rows.
+
+**When to use:**
+- **Phase 1 (Understand):** If the issue involves UI behavior, reproduce it in the browser to see exactly what the user sees
+- **Phase 4 (Verify):** Before asking the user to test, self-verify the fix by navigating to the affected page and confirming it works. Still ask the user for final sign-off — your browser check supplements but does not replace user acceptance testing.
+- **Troubleshooting:** When API responses look correct but the user reports UI problems, use the browser to see what's actually rendering
+
+**Rules:**
+- Always `snapshot` before interacting — you need element refs to click/fill/select
+- Always use `http://localhost:$MB_JETTY_PORT` (the backend port), never the frontend dev server port
+- Close the browser when you're done to free resources
+- If a page takes time to load, `snapshot` again after a few seconds to get the updated state
+- `run-code` takes a single expression — no semicolons. Use separate calls or chain with shell `&&`
+- Use `playwright-cli resize <w> <h>` to resize the viewport, not `run-code` with `page.setViewportSize()`
 
 ### Server Logs
 
