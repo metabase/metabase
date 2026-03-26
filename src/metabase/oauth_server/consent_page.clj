@@ -51,7 +51,7 @@
   "Return `color` if it looks like a safe CSS color value (hex or named color),
    otherwise return the default brand color. Prevents CSS injection via `h/raw` interpolation."
   [color]
-  (if (and (string? color) (re-matches #"#[0-9a-fA-F]{3}([0-9a-fA-F]{3}([0-9a-fA-F]{2})?)?|[a-zA-Z]+" color))
+  (if (and (string? color) (re-matches #"#[0-9a-fA-F]{3}([0-9a-fA-F]([0-9a-fA-F]{2}([0-9a-fA-F]{2})?)?)?|[a-zA-Z]+" color))
     color
     default-brand-color))
 
