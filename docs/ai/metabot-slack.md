@@ -7,14 +7,14 @@ summary: Chat with Metabot directly in Slack to ask questions about your data, g
 
 ![Metabot in Slack](./metabot-slack.png)
 
-Metabot works directly in Slack, so people can ask questions about their data without switching to Metabase. Direct message Metabot for private analysis, or mention @Metabot in a channel to collaborate with your team.
+[Metabot](/docs/ai/metabot.md) works directly in Slack, so people can ask questions about their data without switching to Metabase. Direct message Metabot for private analysis, or mention @Metabot in a channel to collaborate with your team.
 
 ## What Metabot can do
 
-- **Find existing content**: Search your Metabase for questions, dashboards, models, and more. Metabot links you directly to the content in Metabase.
+- **Find existing content**: Search your Metabase for questions, dashboards, models, and more. Metabot links you directly to the content in your Metabase.
 - **Answer questions**: Create ad-hoc queries from natural language to answer your questions on the spot.
 - **Show charts and tables**: Render static visualizations or tabular results in Slack. Metabot picks the format, though advanced visualization settings aren't available in Slack. You can copy table results or download them as TSV.
-- **Work with CSVs**: Upload a CSV to Metabase, then ask follow-up questions about the data.
+- **Work with CSVs**: [Upload a CSV](../databases/uploads.md) to Metabase, then ask follow-up questions about the data.
 - **Manage notifications**: Create [subscriptions](../dashboards/subscriptions.md) and [alerts](../questions/alerts.md) from within a channel. Metabot can find an answer and subscribe you to it in one go, though it won't create new saved questions to subscribe to.
 
 ## Set up Metabot in Slack
@@ -27,8 +27,6 @@ Make sure [Metabot is set up](./settings.md) on your Metabase.
 
 This is the basic Slack integration that lets Metabase send alerts and subscriptions to Slack channels. Follow the setup guide in [Set up Slack](../configuring-metabase/slack.md#create-your-slack-app).
 
-Make sure [encryption at rest](../databases/encrypting-details-at-rest.md) is enabled, which is required for storing Slack credentials securely. If encryption isn't set up, the UI will link you to the relevant docs.
-
 ### 3. Enable natural language questions
 
 This setting lets people chat with Metabot in Slack.
@@ -39,11 +37,7 @@ If you already have a Slack integration from before this feature existed, your S
 
 ### 4. Connect your Slack account to Metabase
 
-Each person needs to link their Slack account to their Metabase account before they can chat with Metabot. The first time you message Metabot, it kicks off an OAuth flow that connects the two accounts.
-
-## Answers are visible to everyone in your Slack channel
-
-If you ask Metabot a question in a public channel, _everyone_ in that channel can see the response. So even though Metabot respects your Metabase [permissions](../permissions/introduction.md) (Metabot can only see what you see), be thoughtful about questions that could surface sensitive data to others that may lack your permissions.
+To chat with Metabot, people will need to link their Slack account to their Metabase account. The first time you message Metabot, it kicks off an OAuth flow that connects the two accounts.
 
 ## Use Metabot in Slack
 
@@ -54,6 +48,16 @@ If you ask Metabot a question in a public channel, _everyone_ in that channel ca
 ## Clearing context
 
 Metabot remembers the full context of a thread. To clear context and start a fresh conversation, either begin a new DM or @mention Metabot in a new thread in a channel.
+
+## Notes on privacy
+
+### Answers are visible to everyone in your Slack channel
+
+If you ask Metabot a question in a public channel, _everyone_ in that channel can see the response. So even though Metabot respects your Metabase [permissions](../permissions/introduction.md) (Metabot can only see what you see), be thoughtful about questions that could surface sensitive data to others that may lack your permissions.
+
+### Feedback
+
+Please provide feedback. Hit the thumbs up or down when Metabot gets it right.
 
 ## Further reading
 
