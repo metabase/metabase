@@ -1,6 +1,10 @@
+import type { CurrencyStyle } from "./currency";
+
+export type TimeEnabled = "minutes" | "milliseconds" | "seconds";
+
 export interface TimeOnlyOptions {
   local?: boolean;
-  time_enabled?: "minutes" | "milliseconds" | "seconds" | null;
+  time_enabled?: TimeEnabled | null;
   time_format?: string;
   time_style?: string;
 }
@@ -8,9 +12,12 @@ export interface TimeOnlyOptions {
 export interface OptionsType extends TimeOnlyOptions {
   click_behavior?: any;
   clicked?: any;
+  collapseNewlines?: boolean;
   column?: any;
   column_title?: string;
   compact?: boolean;
+  currency?: string;
+  currency_style?: CurrencyStyle;
   date_abbreviate?: boolean;
   date_format?: string;
   date_separator?: string;
@@ -33,11 +40,10 @@ export interface OptionsType extends TimeOnlyOptions {
   removeYear?: boolean;
   rich?: boolean;
   scale?: number;
-  stringifyNull?: boolean;
   show_mini_bar?: boolean;
+  stringifyNull?: boolean;
   suffix?: string;
   type?: string;
   view_as?: string | null;
   weekday_enabled?: boolean;
-  collapseNewlines?: boolean;
 }

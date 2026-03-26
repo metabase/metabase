@@ -28,7 +28,7 @@ To persist models for faster loading, you'll need to turn on model persistence f
 
 1. [Your Metabase](#turn-on-model-persistence-for-your-metabase)
 2. [Individual databases](#turn-on-model-persistence-for-each-database)
-3. [(Optional) individual models](#turn-on-model-persistence-for-individual-models)
+3. [individual models](#turn-on-model-persistence-for-individual-models)
 
 ### Turn on model persistence for your Metabase
 
@@ -36,7 +36,7 @@ To turn on model persistence for your Metabase, go to **Admin** > **Performance*
 
 You can set models to refresh based on one of the default frequencies (every 1 hour, 2 hours, etc.), or select the **Custom** option to use [cron syntax](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html) to specify your own update frequency.
 
-The cron scheduler uses the [Report Timezone](../configuring-metabase/localization.md#report-timezone) if selected. Otherwise the scheduler will use the System Timezone (which defaults to GMT in [Metabase Cloud](https://www.metabase.com/cloud/)).
+The cron scheduler uses the [default instance report Timezone](../configuring-metabase/localization.md#set-default-instance-report-timezone) if selected. Otherwise the scheduler will use the System Timezone (which defaults to GMT in [Metabase Cloud](https://www.metabase.com/cloud/)).
 
 We recommend scheduling your models to refresh on a frequency that makes sense with how often your source tables update with new data.
 
@@ -53,6 +53,8 @@ Once you've turned on model persistence for your Metabase, you'll need to set it
 3. Create the schema in your database---make sure you use the exact schema name from step 1. For example, if you're running PostgreSQL as your data warehouse, you'd create the schema by running `CREATE SCHEMA IF NOT EXISTS schema_name`, with `schema_name` being whatever Metabase showed you in the info icon.
 
 4. Ensure that the credentials Metabase uses to connect to your data warehouse can manage and write to that schema.
+
+By default, new models on the database will _not_ b persisted. You need to [Turn on model persistence for individual models](#turn-on-model-persistence-for-individual-models).
 
 ## Turn on model persistence for individual models
 

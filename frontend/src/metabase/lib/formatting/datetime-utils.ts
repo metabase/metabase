@@ -12,10 +12,10 @@ type UNITS_WITH_DAY_TYPE = (typeof UNITS_WITH_DAY)[number];
 const UNITS_WITH_HOUR_SET = new Set(UNITS_WITH_HOUR);
 const UNITS_WITH_DAY_SET = new Set(UNITS_WITH_DAY);
 
-export const hasDay = (unit: DatetimeUnit) =>
+export const hasDay = (unit: DatetimeUnit | undefined) =>
   unit == null || UNITS_WITH_DAY_SET.has(unit as UNITS_WITH_DAY_TYPE);
 
-export const hasHour = (unit: DatetimeUnit) =>
+export const hasHour = (unit: DatetimeUnit | undefined) =>
   unit == null || UNITS_WITH_HOUR_SET.has(unit as UNITS_WITH_HOUR_TYPE);
 
 export function getTimeFormatFromStyle(

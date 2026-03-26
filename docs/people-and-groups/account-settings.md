@@ -7,11 +7,11 @@ redirect_from:
 
 # Account settings
 
-To access your account settings, click the **grid** icon in the top right corner, then click your **profile name and email.**
+To access your account settings, click the **profile or grid icon** in the top right corner, then click your **profile name and email.**
 
 ## Account profile
 
-You can set your first and last names, change your email address, and set your language. See our list of [supported languages](../configuring-metabase/localization.md). If you use SSO to log into your Metabase (e.g., your Google account), you won't be able to edit these settings in Metabase.
+You can set your first and last names, change your email address, and set your language. See our list of [supported languages](../configuring-metabase/localization.md).
 
 ## Theme
 

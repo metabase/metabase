@@ -3,8 +3,8 @@ import { type ReactNode, useState } from "react";
 import { t } from "ttag";
 
 import DataStudioLogo from "assets/img/data-studio-logo.svg";
-import { UpsellGem } from "metabase/admin/upsells/components/UpsellGem";
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import { isMac } from "metabase/lib/browser";
@@ -261,13 +261,15 @@ function DataStudioTab({
       openDelay={TOOLTIP_OPEN_DELAY}
       disabled={showLabel}
     >
-      <Box
+      <Flex
         className={cx(S.tab, { [S.selected]: isSelected })}
         component={ForwardRefLink}
         to={to}
-        p="0.5rem"
+        p="sm"
+        gap="sm"
         bdrs="md"
         aria-label={label}
+        justify={showLabel ? "start" : "center"}
       >
         <FixedSizeIcon name={icon} display="block" className={S.icon} />
         {showLabel && <Text lh="sm">{label}</Text>}
@@ -279,7 +281,7 @@ function DataStudioTab({
             {effectiveRightSection}
           </Box>
         )}
-      </Box>
+      </Flex>
     </Tooltip>
   );
 }
@@ -302,10 +304,9 @@ function DataStudioNavbarToggle({
   return (
     <Flex
       align="center"
-      justify="space-between"
+      justify={isNavbarOpened ? "space-between" : "center"}
       mb="0.75rem"
       mt="sm"
-      mr="0.125rem"
     >
       <Group gap="sm">
         <Box

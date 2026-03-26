@@ -5,10 +5,18 @@
    [metabase-enterprise.workspaces.common :as ws.common]
    [metabase-enterprise.workspaces.execute :as ws.execute]
    [metabase-enterprise.workspaces.impl :as ws.impl]
+   [metabase-enterprise.workspaces.query-processor.middleware :as ws.qp.middleware]
    [metabase-enterprise.workspaces.test-util :as ws.tu]
+   [metabase.driver :as driver]
+   [metabase.driver.sql.util :as sql.u]
+   [metabase.lib.core :as lib]
+   [metabase.lib.test-metadata :as meta]
+   [metabase.query-processor.compile :as qp.compile]
+   [metabase.sql-tools.core :as sql-tools]
    [metabase.test :as mt]
    [metabase.transforms.test-util :as transforms.tu]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import (clojure.lang ExceptionInfo)))
 
 (set! *warn-on-reflection* true)
 
@@ -49,25 +57,49 @@
             (is (=? [{:workspace_id      (:id workspace)
                       :global_table      output-table
                       :global_schema     nil
-                      :global_table_id   nil
+                      :global_table_id   pos-int?
                       :isolated_schema   string?
                       :isolated_table    string?
                       :isolated_table_id number?}]
                     (t2/select :model/WorkspaceOutput :workspace_id (:id workspace) :ref_id (:ref_id ws-transform))))))
 
-        (testing "app DB records are rolled back"
-          ;; TransformRun is +1 because cascade delete was removed in d1e940e66b5
-          (is (= (update before :xfrun inc)
+        (testing "no app DB records are created (transforms-base/execute! skips TransformRun)"
+          (is (= before
                  {:xf    (t2/count :model/Transform)
                   :xfrun (t2/count :model/TransformRun)})))))))
 
-(deftest dry-run-workspace-transform-test
+(deftest dry-run-workspace-transform-with-template-tags-test
+  (testing "Dry-running a workspace transform with template tags succeeds"
+    (ws.tu/with-resources! [{:keys [workspace-id workspace-map]}
+                            {:workspace {:definitions {:x1 []}}}]
+      (let [ref-id       (workspace-map :x1)
+            workspace    (t2/select-one :model/Workspace workspace-id)
+            ;; Update the transform source to use template tags
+            native-query (-> (lib/native-query (mt/metadata-provider)
+                                               "SELECT {{num}} as id")
+                             (lib/with-template-tags
+                               {"num" {:id           "num"
+                                       :name         "num"
+                                       :display-name "Num"
+                                       :type         :number
+                                       :default      "1"}}))
+            _            (t2/update! :model/WorkspaceTransform
+                                     {:workspace_id workspace-id :ref_id ref-id}
+                                     {:source {:type "query" :query native-query}})
+            ws-transform (t2/select-one :model/WorkspaceTransform :workspace_id workspace-id :ref_id ref-id)
+            graph        (ws.impl/get-or-calculate-graph! workspace)]
+        (is (=? {:status :succeeded
+                 :data   {:rows [[1]]}}
+                (mt/with-current-user (mt/user->id :crowberto)
+                  (ws.impl/dry-run-transform workspace graph ws-transform))))))))
+
+(deftest dry-run-sql-workspace-transform-test
   (testing "Dry-running a workspace transform returns rows without persisting"
     (let [workspace    (ws.tu/create-ready-ws! "Dry-Run Test Workspace")
           db-id        (:database_id workspace)
           body         {:name   "Dry-Run Transform"
                         :source {:type  "query"
-                                 :query (mt/native-query {:query "SELECT 1 as id, 'hello' as name UNION ALL SELECT 2, 'world' ORDER BY 1"})}
+                                 :query (mt/native-query {:query "SELECT * FROM (SELECT 1 as id, 'hello' as name UNION ALL SELECT 2, 'world') t ORDER BY 1"})}
                         :target {:type     "table"
                                  :database db-id
                                  :schema   nil
@@ -99,7 +131,7 @@
             db-id        (:database_id workspace)
             body         {:name   "Python Dry-Run Transform"
                           :source {:type          "python"
-                                   :source-tables {}
+                                   :source-tables []
                                    :body          (str "import pandas as pd\n"
                                                        "\n"
                                                        "def transform():\n"
@@ -130,86 +162,53 @@
 
 (deftest remap-python-source-test
   (let [remap-python-source #'ws.execute/remap-python-source]
-    (testing "remaps to table ID when mapping has :id"
+    (testing "remaps entry via triple lookup when mapping has :id"
       (let [table-mapping {[1 "public" "orders"] {:db-id  1
                                                   :schema "ws_isolated_123"
                                                   :table  "orders_isolated"
                                                   :id     456}}
             source        {:type          "python"
                            :body          "import pandas as pd"
-                           :source-tables {"orders" {:database_id 1
-                                                     :schema      "public"
-                                                     :table       "orders"
-                                                     :table_id    123}}}]
-        (is (= {:type          "python"
-                :body          "import pandas as pd"
-                :source-tables {"orders" 456}}
-               (remap-python-source table-mapping source)))))
+                           :source-tables [{:alias "orders" :database_id 1
+                                            :schema "public" :table "orders" :table_id 123}]}]
+        (is (= [{:alias "orders" :database_id 1
+                 :schema "ws_isolated_123" :table "orders_isolated" :table_id 456}]
+               (:source-tables (remap-python-source table-mapping source))))))
 
-    (testing "remaps to map format when mapping has nil :id"
-      (let [table-mapping {[1 "public" "orders"] {:db-id  1
-                                                  :schema "ws_isolated_123"
-                                                  :table  "orders_isolated"
-                                                  :id     nil}}
-            source        {:type          "python"
-                           :body          "import pandas as pd"
-                           :source-tables {"orders" {:database_id 1
-                                                     :schema      "public"
-                                                     :table       "orders"
-                                                     :table_id    123}}}]
-        (is (= {:type          "python"
-                :body          "import pandas as pd"
-                :source-tables {"orders" {:database_id 1
-                                          :schema      "ws_isolated_123"
-                                          :table       "orders_isolated"}}}
-               (remap-python-source table-mapping source)))))
-
-    (testing "leaves source-tables unchanged when no mapping exists"
-      (let [table-mapping {}
-            source        {:type          "python"
-                           :body          "import pandas as pd"
-                           :source-tables {"orders" {:database_id 1
-                                                     :schema      "public"
-                                                     :table       "orders"
-                                                     :table_id    123}}}]
-        (is (= source (remap-python-source table-mapping source)))))
-
-    (testing "remaps legacy integer to table ID when mapping has :id"
+    (testing "remaps entry via table_id lookup"
       (let [table-mapping {123 {:db-id  1
                                 :schema "ws_isolated_123"
                                 :table  "orders_isolated"
                                 :id     456}}
             source        {:type          "python"
                            :body          "import pandas as pd"
-                           :source-tables {"orders" 123}}]
-        (is (= {:type          "python"
-                :body          "import pandas as pd"
-                :source-tables {"orders" 456}}
-               (remap-python-source table-mapping source)))))
+                           :source-tables [{:alias "orders" :table_id 123 :database_id 1 :schema "public"}]}]
+        (is (= [{:alias "orders" :database_id 1
+                 :schema "ws_isolated_123" :table "orders_isolated" :table_id 456}]
+               (:source-tables (remap-python-source table-mapping source))))))
 
-    (testing "remaps legacy integer to map format when mapping has nil :id"
-      (let [table-mapping {123 {:db-id  1
-                                :schema "ws_isolated_123"
-                                :table  "orders_isolated"
-                                :id     nil}}
+    (testing "remaps without table_id when mapping has nil :id"
+      (let [table-mapping {[1 "public" "orders"] {:db-id  1
+                                                  :schema "ws_isolated_123"
+                                                  :table  "orders_isolated"
+                                                  :id     nil}}
             source        {:type          "python"
                            :body          "import pandas as pd"
-                           :source-tables {"orders" 123}}]
-        (is (= {:type          "python"
-                :body          "import pandas as pd"
-                :source-tables {"orders" {:database_id 1
-                                          :schema      "ws_isolated_123"
-                                          :table       "orders_isolated"}}}
-               (remap-python-source table-mapping source)))))
+                           :source-tables [{:alias "orders" :database_id 1
+                                            :schema "public" :table "orders" :table_id 123}]}]
+        (is (= [{:alias "orders" :database_id 1
+                 :schema "ws_isolated_123" :table "orders_isolated" :table_id 123}]
+               (:source-tables (remap-python-source table-mapping source))))))
 
-    (testing "leaves legacy integer table-id unchanged when no mapping exists"
+    (testing "leaves source-tables unchanged when no mapping exists"
       (let [table-mapping {}
             source        {:type          "python"
                            :body          "import pandas as pd"
-                           :source-tables {"orders" 123}}]
+                           :source-tables [{:alias "orders" :database_id 1
+                                            :schema "public" :table "orders" :table_id 123}]}]
         (is (= source (remap-python-source table-mapping source)))))
 
-    (testing "handles mixed formats with mappings for both"
+    (testing "handles multiple entries with mappings"
       (let [table-mapping {[1 "public" "orders"] {:db-id  1
                                                   :schema "ws_isolated_123"
                                                   :table  "orders_isolated"
@@ -220,18 +219,16 @@
                                                    :id     999}}
             source        {:type          "python"
                            :body          "import pandas as pd"
-                           :source-tables {"orders"    {:database_id 1
-                                                        :schema      "public"
-                                                        :table       "orders"
-                                                        :table_id    123}
-                                           "customers" 789}}]
-        (is (= {:type          "python"
-                :body          "import pandas as pd"
-                :source-tables {"orders"    456
-                                "customers" 999}}
-               (remap-python-source table-mapping source)))))
+                           :source-tables [{:alias "orders" :database_id 1
+                                            :schema "public" :table "orders" :table_id 123}
+                                           {:alias "customers" :table_id 789 :database_id 1 :schema "public"}]}]
+        (is (= [{:alias "orders" :database_id 1
+                 :schema "ws_isolated_123" :table "orders_isolated" :table_id 456}
+                {:alias "customers" :database_id 1
+                 :schema "ws_isolated_123" :table "customers_isolated" :table_id 999}]
+               (:source-tables (remap-python-source table-mapping source))))))
 
-    (testing "prefers table_id lookup over triple lookup for map format"
+    (testing "prefers table_id lookup over triple lookup"
       (let [table-mapping {123                    {:db-id  1
                                                    :schema "ws_isolated_123"
                                                    :table  "orders_by_id"
@@ -242,14 +239,11 @@
                                                   :id     789}}
             source        {:type          "python"
                            :body          "import pandas as pd"
-                           :source-tables {"orders" {:database_id 1
-                                                     :schema      "public"
-                                                     :table       "orders"
-                                                     :table_id    123}}}]
-        (is (= {:type          "python"
-                :body          "import pandas as pd"
-                :source-tables {"orders" 456}}
-               (remap-python-source table-mapping source)))))
+                           :source-tables [{:alias "orders" :database_id 1
+                                            :schema "public" :table "orders" :table_id 123}]}]
+        (is (= [{:alias "orders" :database_id 1
+                 :schema "ws_isolated_123" :table "orders_by_id" :table_id 456}]
+               (:source-tables (remap-python-source table-mapping source))))))
 
     (testing "falls back to triple lookup when table_id not in mapping"
       (let [table-mapping {[1 "public" "orders"] {:db-id  1
@@ -258,51 +252,105 @@
                                                   :id     456}}
             source        {:type          "python"
                            :body          "import pandas as pd"
-                           :source-tables {"orders" {:database_id 1
-                                                     :schema      "public"
-                                                     :table       "orders"
-                                                     :table_id    999}}}]
-        (is (= {:type          "python"
-                :body          "import pandas as pd"
-                :source-tables {"orders" 456}}
-               (remap-python-source table-mapping source)))))))
+                           :source-tables [{:alias "orders" :database_id 1
+                                            :schema "public" :table "orders" :table_id 999}]}]
+        (is (= [{:alias "orders" :database_id 1
+                 :schema "ws_isolated_123" :table "orders_isolated" :table_id 456}]
+               (:source-tables (remap-python-source table-mapping source))))))
 
-(deftest remap-sql-source-test
-  (let [remap-sql-source #'ws.execute/remap-sql-source
-        make-source      (fn [sql] {:type "query", :query {:database 1, :type :native, :stages [{:native sql}]}})]
-    ;; Test cases as [label, table-mapping, input-sql, expected-sql]
+    (testing "keeps original values when mapping has nil :id"
+      (let [table-mapping {123 {:db-id  1
+                                :schema "ws_isolated_123"
+                                :table  "orders_isolated"
+                                :id     nil}}
+            source        {:type          "python"
+                           :body          "import pandas as pd"
+                           :source-tables [{:alias "orders" :database_id 1
+                                            :schema "public" :table "orders" :table_id 123}]}]
+        (is (= [{:alias "orders" :database_id 1
+                 :schema "ws_isolated_123" :table "orders_isolated" :table_id 123}]
+               (:source-tables (remap-python-source table-mapping source))))))
+
+    (testing "entry with no matching mapping is left unchanged"
+      (let [table-mapping {999 {:db-id 1 :schema "ws" :table "t" :id 456}}
+            source        {:type          "python"
+                           :body          "import pandas as pd"
+                           :source-tables [{:alias "orders" :database_id 1
+                                            :schema "public" :table "orders" :table_id 123}]}]
+        (is (= [{:alias "orders" :database_id 1
+                 :schema "public" :table "orders" :table_id 123}]
+               (:source-tables (remap-python-source table-mapping source))))))))
+
+(defn- sql-tools-quote
+  "Quote an identifier using the same pipeline as the workspace middleware.
+   Pre-quotes with sql.u/quote-name (triggering was_quoted in the sql-tools backend),
+   then feeds through sql-tools/replace-names to get the final dialect-specific quoting
+   (e.g., brackets for SQL Server, backticks for MySQL, double quotes for ANSI)."
+  [s]
+  (let [pre-quoted (sql.u/quote-name driver/*driver* :table s)
+        result     (sql-tools/replace-names
+                    driver/*driver*
+                    "SELECT * FROM __placeholder__"
+                    {:tables {{:table "__placeholder__"} pre-quoted}}
+                    {:allow-unused? true})]
+    (second (re-find #"(?i)SELECT \* FROM (.+)" result))))
+
+(deftest workspace-sql-remapping-test
+  (let [db-id (mt/id)
+        ;; The middleware quotes replacement identifiers to preserve case for drivers like Snowflake.
+        ;; The final quoting style depends on the sql-tools backend dialect (not HoneySQL),
+        ;; so we derive it from the same pipeline the middleware uses.
+        q     sql-tools-quote]
     (doseq [[label table-mapping input-sql expected-sql]
             [["remaps qualified table reference to isolated table"
-              {[1 "public" "orders"] {:db-id 1, :schema "ws_isolated_123", :table "public__orders", :id 456}}
+              {[db-id "public" "orders"] {:db-id db-id :schema "ws_isolated_123" :table "public__orders" :id 456}}
               "SELECT * FROM public.orders"
-              "SELECT * FROM ws_isolated_123.public__orders"]
+              (str "SELECT * FROM " (q "ws_isolated_123") "." (q "public__orders"))]
 
              ["remaps unqualified table reference using nil-schema mapping"
-              {[1 nil "orders"] {:db-id 1, :schema "ws_isolated_123", :table "public__orders", :id 456}}
+              {[db-id nil "orders"] {:db-id db-id :schema "ws_isolated_123" :table "public__orders" :id 456}}
               "SELECT * FROM orders"
-              "SELECT * FROM ws_isolated_123.public__orders"]
+              (str "SELECT * FROM " (q "ws_isolated_123") "." (q "public__orders"))]
 
-             ;; This is what build-remapping creates for unqualified input tables
              ["qualifies unqualified input table reference (no isolation, just adds schema)"
-              {[1 nil "orders"] {:db-id 1, :schema "public", :table "orders", :id 123}}
+              {[db-id nil "orders"] {:db-id db-id :schema "public" :table "orders" :id 123}}
               "SELECT * FROM orders"
-              "SELECT * FROM public.orders"]
+              (str "SELECT * FROM " (q "public") "." (q "orders"))]
 
              ["leaves unmapped tables unchanged"
-              {[1 nil "other_table"] {:db-id 1, :schema "public", :table "other_table", :id 999}}
+              {[db-id nil "other_table"] {:db-id db-id :schema "public" :table "other_table" :id 789}}
               "SELECT * FROM orders"
               "SELECT * FROM orders"]
 
              ;; Note: macaw only renames tables in FROM/JOIN clauses, not table qualifiers in column references.
-             ;; The output SQL is semantically valid since `orders` resolves to `public.orders` in scope.
+             ;; The output SQL is semantically valid since orders resolves to public.orders in scope.
              ["handles multiple tables in same query"
-              {[1 nil "orders"]   {:db-id 1, :schema "public", :table "orders", :id 123}
-               [1 nil "products"] {:db-id 1, :schema "public", :table "products", :id 456}}
+              {[db-id nil "orders"]   {:db-id db-id :schema "public" :table "orders" :id 123}
+               [db-id nil "products"] {:db-id db-id :schema "public" :table "products" :id 124}}
               "SELECT * FROM orders JOIN products ON orders.product_id = products.id"
-              "SELECT * FROM public.orders JOIN public.products ON orders.product_id = products.id"]]]
+              (str "SELECT * FROM " (q "public") "." (q "orders")
+                   " JOIN " (q "public") "." (q "products")
+                   " ON orders.product_id = products.id")]
+
+             ["ignores numeric keys in table-mapping"
+              {123 {:db-id db-id :schema "ws_isolated_123" :table "public__orders" :id 456}}
+              "SELECT * FROM orders"
+              "SELECT * FROM orders"]]]
       (testing label
-        (is (= (make-source expected-sql)
-               (remap-sql-source table-mapping (make-source input-sql))))))))
+        (let [query    {:type "query", :query (lib/native-query (mt/metadata-provider) input-sql)}
+              source   (#'ws.execute/attach-table-remapping table-mapping query)
+              compiled (qp.compile/compile (:query source))]
+          (is (= expected-sql (:query compiled))))))))
+
+(deftest workspace-mbql-remapping-throws-test
+  (testing "workspace remapping throws on MBQL queries (not yet supported)"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (assoc-in [:middleware :workspace-remapping]
+                              {:tables {{:schema "public" :table "orders"}
+                                        {:schema "ws_isolated" :table "public__orders"}}}))]
+      (is (thrown-with-msg? ExceptionInfo
+                            #"Workspace remapping is currently only supported for native queries"
+                            (ws.qp.middleware/apply-workspace-remapping query))))))
 
 (deftest run-transform-marks-not-stale-on-success
   (testing "Successful transform run marks definition_changed=false"

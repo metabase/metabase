@@ -152,9 +152,9 @@ export type MetabotDocumentInfo = {
 };
 
 export type MetabotTransformInfo =
-  | ({ type: "transform" } & Transform) // edit
-  | ({ type: "transform" } & SuggestedTransform) // edit saved suggested
-  | ({ type: "transform" } & DraftTransform); // edit unsaved suggested
+  | ({ type: "transform"; error?: string } & Transform) // edit
+  | ({ type: "transform"; error?: string } & SuggestedTransform) // edit saved suggested
+  | ({ type: "transform"; error?: string } & DraftTransform); // edit unsaved suggested
 
 export type MetabotEntityInfo =
   | MetabotCardInfo
@@ -187,6 +187,28 @@ export type MetabotAgentResponse = {
   conversation_id: string;
   state: any;
 };
+
+export type MetabotProvider =
+  | "metabase"
+  | "anthropic"
+  | "openai"
+  | "openrouter";
+
+export interface MetabotSettingsResponse {
+  value: string | null;
+  "api-key-error"?: string | null;
+  models: {
+    id: string;
+    display_name: string;
+    group?: string | null;
+  }[];
+}
+
+export interface UpdateMetabotSettingsRequest {
+  provider: MetabotProvider;
+  model?: string;
+  "api-key"?: string | null;
+}
 
 /* Metabot - Suggested Prompts */
 
@@ -277,3 +299,17 @@ export type MetabotTodoItem = {
   status: "pending" | "in_progress" | "completed" | "cancelled";
   priority: "high" | "medium" | "low";
 };
+
+/* Metabot v3 - Slack Settings */
+
+export type MetabotSlackSettings =
+  | {
+      "slack-connect-client-id": string;
+      "slack-connect-client-secret": string;
+      "metabot-slack-signing-secret": string;
+    }
+  | {
+      "slack-connect-client-id": null;
+      "slack-connect-client-secret": null;
+      "metabot-slack-signing-secret": null;
+    };

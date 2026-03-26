@@ -3,6 +3,7 @@
    [malli.core :as mc]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.api.common :as api]
+   [metabase.channel.template.handlebars :as handlebars]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
@@ -96,7 +97,10 @@
    [:multi {:dispatch (comp keyword :type)}
     [:email/handlebars-resource
      [:map
-      [:path string?]]]
+      [:path [:and
+              string?
+              [:fn {:error/message "invalid template path"}
+               handlebars/valid-template-path?]]]]]
     [:email/handlebars-text
      [:map
       [:body string?]]]]])
@@ -110,6 +114,26 @@
     [:channel/email
      [:map
       [:details ::ChannelTemplateEmailDetails]]]
+    [::mc/default :any]]])
+
+(mr/def ::ChannelTemplateEmailDetailsUserProvided
+  "Email template details schema for API-provided templates. Only handlebars-text is allowed;
+  handlebars-resource is restricted to internal use only."
+  [:map
+   [:type    (ms/enum-keywords-and-strings :email/handlebars-text)]
+   [:subject string?]
+   [:recipient-type {:optional true} (ms/enum-keywords-and-strings :cc :bcc)]
+   [:body    string?]])
+
+(mr/def ::ChannelTemplateUserProvided
+  "Channel Template schema for API-provided templates. Does not allow handlebars-resource."
+  [:merge
+   [:map
+    [:channel_type [:fn #(= "channel" (-> % keyword namespace))]]]
+   [:multi {:dispatch :channel_type}
+    [:channel/email
+     [:map
+      [:details ::ChannelTemplateEmailDetailsUserProvided]]]
     [::mc/default :any]]])
 
 (defn- check-valid-channel-template

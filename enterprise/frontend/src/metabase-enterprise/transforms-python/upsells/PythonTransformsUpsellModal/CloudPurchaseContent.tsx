@@ -2,7 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { trackUpsellClicked } from "metabase/admin/upsells/components/analytics";
+import { trackUpsellClicked } from "metabase/common/components/upsells/components/analytics";
 import type { BillingPeriod } from "metabase/data-studio/upsells/types";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
@@ -30,8 +30,8 @@ export const CloudPurchaseContent = (props: CloudPurchaseContentProps) => {
 
   const handleCloudPurchase = useCallback(async () => {
     trackUpsellClicked({ location: LOCATION, campaign: CAMPAIGN });
+
     settingUpModalHandlers.open();
-    handleModalClose();
     try {
       await purchaseCloudAddOn({
         product_type: "transforms-advanced",
@@ -41,7 +41,9 @@ export const CloudPurchaseContent = (props: CloudPurchaseContentProps) => {
       sendErrorToast(
         t`It looks like something went wrong. Please refresh the page and try again.`,
       );
+    } finally {
       settingUpModalHandlers.close();
+      handleModalClose();
     }
   }, [
     handleModalClose,

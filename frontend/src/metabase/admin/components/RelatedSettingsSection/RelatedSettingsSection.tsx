@@ -39,7 +39,7 @@ export function RelatedSettingsSection({
   );
 }
 
-const RelatedSettingCard = ({
+export const RelatedSettingCard = ({
   icon,
   name,
   to,

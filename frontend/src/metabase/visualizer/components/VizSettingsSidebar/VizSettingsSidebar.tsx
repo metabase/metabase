@@ -43,9 +43,12 @@ export function VizSettingsSidebar({ className }: { className?: string }) {
         handleChangeSettings,
         true,
       );
-      return widgets.filter(
-        (widget) => !HIDDEN_SETTING_WIDGETS.includes(widget.id),
-      );
+      return widgets.filter((widget) => {
+        return (
+          typeof widget.id !== "string" ||
+          !HIDDEN_SETTING_WIDGETS.includes(widget.id)
+        );
+      });
     } catch (error) {
       setError(error as Error);
       return [];

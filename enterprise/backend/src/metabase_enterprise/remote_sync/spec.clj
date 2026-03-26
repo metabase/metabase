@@ -62,6 +62,8 @@
                        Only entities matching these conditions are eligible for sync
                        (export, import cleanup, removal). Example: {:built_in_type nil}
                        to exclude built-in items from sync.
+   - :export-conditions  - Optional. Overrides :conditions for export queries. Falls back to :conditions.
+   - :removal-conditions - Optional. Overrides :conditions for removal/cleanup. Falls back to :conditions.
    - :removal        - Removal/cleanup configuration:
                        :statuses   - Set of statuses to check for removal (e.g., #{\"removed\" \"delete\"})
                        :scope-key  - Optional key for scoping deletions (e.g., :collection_id, :id).
@@ -313,7 +315,7 @@
     :archived-key   nil  ; no archived field
     :tracking       {:select-fields  [:path]
                      :field-mappings {:model_name :path}}
-    :conditions     {:entity_id [:not= transforms-python/builtin-entity-id]}  ; exclude built-in common.py from sync
+    :removal-conditions {:entity_id [:not= transforms-python/builtin-entity-id]}  ; protect built-in common.py from deletion
     :removal        {:statuses               #{"removed" "delete"}  ; no scope-key = global deletion
                      :all-on-setting-disable :remote-sync-transforms}
     :export-scope   :all  ; query for all instances
@@ -329,6 +331,18 @@
     (= enabled? :library-synced) (rs-settings/library-is-remote-synced?)
     (keyword? enabled?)         (boolean (setting/get-value-of-type :boolean enabled?))
     :else                       false))
+
+(defn export-conditions
+  "Returns conditions to apply when querying entities for export.
+   Uses :export-conditions if present, else falls back to :conditions."
+  [spec]
+  (or (:export-conditions spec) (:conditions spec)))
+
+(defn removal-conditions
+  "Returns conditions to apply when removing unsynced entities.
+   Uses :removal-conditions if present, else falls back to :conditions."
+  [spec]
+  (or (:removal-conditions spec) (:conditions spec)))
 
 (defn enabled-specs
   "Returns a map of model-key -> spec for all currently enabled specs."
@@ -506,17 +520,16 @@
 
 (defn- has-unsynced-entities-for-feature?
   "Returns true if any model in the feature group has local entities not tracked in RemoteSyncObject.
-   Excludes built-in TransformTags and the built-in PythonLibrary from the count since they are
-   system-created and not user data. Namespace collections are not checked here because they are
+   Excludes entities filtered by export-conditions (e.g., built-in TransformTags) from the count since
+   they are system-created and not user data. Namespace collections are not checked here because they are
    organizational containers, not user data that would be lost on import."
   [specs-for-feature]
   (some (fn [[_ spec]]
           (let [model-key (:model-key spec)
                 model-type (:model-type spec)
-                ;; Exclude built-in entities from count (they are system-created, not user data)
-                local-count (case model-key
-                              :model/TransformTag   (t2/count model-key :built_in_type nil)
-                              :model/PythonLibrary  (t2/count model-key :entity_id [:not= transforms-python/builtin-entity-id])
+                conditions (export-conditions spec)
+                local-count (if conditions
+                              (apply t2/count model-key (into [] cat conditions))
                               (t2/count model-key))
                 synced-count (t2/count :model/RemoteSyncObject :model_type model-type)]
             (and (pos? local-count)
@@ -957,9 +970,10 @@
 (defn- build-bulk-removal-paths
   "Builds removal paths for ALL entities of a spec's model type.
    Used when the controlling setting is disabled (sentinel RSO has 'delete' status).
-   Respects :conditions from the spec to exclude ineligible entities."
+   Respects :removal-conditions (or :conditions) from the spec to exclude ineligible entities."
   [spec ctx]
-  (let [{:keys [model-type model-key conditions]} spec]
+  (let [{:keys [model-type model-key]} spec
+        conditions (removal-conditions spec)]
     (for [entity (if conditions
                    (apply t2/select model-key (into [] cat conditions))
                    (t2/select model-key))
@@ -1178,17 +1192,18 @@
     nil))
 
 (defmethod query-export-roots :setting
-  [{:keys [export-scope model-key model-type conditions] :as spec}]
+  [{:keys [export-scope model-key model-type] :as spec}]
   (when (spec-enabled? spec)
-    (case export-scope
-      :root-only
-      (apply t2/select-fn-set (juxt (constantly model-type) :id) model-key
-             :collection_id nil
-             (into [] cat conditions))
-      :all
-      (apply t2/select-fn-set (juxt (constantly model-type) :id) model-key
-             (into [] cat conditions))
-      nil)))
+    (let [conditions (export-conditions spec)]
+      (case export-scope
+        :root-only
+        (apply t2/select-fn-set (juxt (constantly model-type) :id) model-key
+               :collection_id nil
+               (into [] cat conditions))
+        :all
+        (apply t2/select-fn-set (juxt (constantly model-type) :id) model-key
+               (into [] cat conditions))
+        nil))))
 
 (defmethod query-export-roots :published-table [_] nil)
 (defmethod query-export-roots :parent-table [_] nil)

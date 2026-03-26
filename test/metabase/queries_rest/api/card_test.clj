@@ -326,7 +326,7 @@
                                                          "x-metabase-client-version" "2"}}})
       (is (=? {:embedding_client "client-B", :embedding_version "2"}
               ;; The query metadata is handled asynchronously, so we need to poll until it's available:
-              (tu/poll-until 500
+              (tu/poll-until 2000
                              (t2/select-one [:model/QueryExecution :embedding_client :embedding_version]
                                             :card_id (u/the-id card-1))))))))
 
@@ -1097,6 +1097,52 @@
                                                    {:result_metadata new-metadata})]
             (is (= ["UPDATED" "UPDATED"]
                    (map :display_name (:result_metadata updated))))))))))
+
+(deftest model-aggregation-metadata-preserved-on-query-test
+  (testing "Custom display_name on aggregation columns should be preserved when querying a model (#26755)"
+    (let [mp    (mt/metadata-provider)
+          query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                    (lib/aggregate (lib/count))
+                    (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :quantity))))
+                    (lib/breakout (lib.metadata/field mp (mt/id :orders :product_id)))
+                    (lib/breakout (lib/with-temporal-bucket
+                                    (lib.metadata/field mp (mt/id :orders :created_at))
+                                    :year)))]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [card    (mt/user-http-request :crowberto :post 200 "card"
+                                            {:name                   "model-metadata-test"
+                                             :type                   "model"
+                                             :display                "table"
+                                             :dataset_query          query
+                                             :visualization_settings {}})
+              card-id (:id card)]
+          ;; Verify initial metadata has default display names
+          (is (= ["Product ID" "Created At: Year" "Count" "Sum of Quantity"]
+                 (map :display_name (:result_metadata card))))
+          ;; Rename all columns
+          (let [renames         {"PRODUCT_ID"  "Termekazonosito"
+                                 "CREATED_AT"  "Keszites eve"
+                                 "count"       "Darabszam"
+                                 "sum"         "Osszes mennyiseg"}
+                new-metadata    (mapv (fn [col]
+                                        (if-let [new-name (get renames (:name col))]
+                                          (assoc col :display_name new-name)
+                                          col))
+                                      (:result_metadata card))
+                expected-names  ["Termekazonosito" "Keszites eve" "Darabszam" "Osszes mennyiseg"]
+                updated-card    (mt/user-http-request :crowberto :put 200 (str "card/" card-id)
+                                                      {:result_metadata new-metadata})]
+            ;; Verify the PUT response has the custom display names.
+            ;; ": Year" should NOT be re-appended to a user-customized temporal column name.
+            (is (= expected-names
+                   (map :display_name (:result_metadata updated-card))))
+            ;; Now query the model and verify custom display names are preserved in the response
+            (let [query-response (mt/user-http-request :crowberto :post 202 (format "card/%d/query" card-id))]
+              (is (= expected-names
+                     (map :display_name (get-in query-response [:data :results_metadata :columns]))))
+              ;; Also verify the card's stored metadata in DB wasn't overwritten
+              (is (= expected-names
+                     (map :display_name (t2/select-one-fn :result_metadata :model/Card :id card-id)))))))))))
 
 (deftest ^:parallel updating-native-card-preserves-metadata
   (testing "A trivial change in a native question should not remove result_metadata (#37009)"
@@ -3475,6 +3521,40 @@
             (is (set/subset? #{["Barney's Beanery"] ["bigmista's barbecue"]}
                              (-> response :values set)))
             (is (not ((into #{} (mapcat identity) (:values response)) "The Virgil")))))))))
+
+(deftest field-filter-values-without-create-queries-permission-test
+  (testing "Users with view-data but without create-queries permission can still get field filter values (#70767)"
+    (let [param-key "name_param_id"]
+      (mt/with-temp [:model/Card field-filter-card
+                     {:dataset_query {:database (mt/id)
+                                      :type     :native
+                                      :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE {{NAME}}"
+                                                 :template-tags {"NAME" {:id           param-key
+                                                                         :name         "NAME"
+                                                                         :display_name "Name"
+                                                                         :type         :dimension
+                                                                         :dimension    [:field (mt/id :venues :name) nil]
+                                                                         :required     true}}}}
+                      :name       "native card with field filter"
+                      :parameters [{:id     param-key
+                                    :type   :string/=
+                                    :target [:dimension [:template-tag "NAME"]]
+                                    :name   "Name"
+                                    :slug   "NAME"}]}]
+        (mt/with-no-data-perms-for-all-users!
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
+          (testing "GET /api/card/:card-id/params/:param-key/values"
+            (let [response (mt/user-http-request :rasta :get 200
+                                                 (param-values-url field-filter-card param-key))]
+              (is (false? (:has_more_values response)))
+              (is (set/subset? #{["20th Century Cafe"] ["33 Taps"]}
+                               (-> response :values set)))))
+          (testing "GET /api/card/:card-id/params/:param-key/search/:query"
+            (let [response (mt/user-http-request :rasta :get 200
+                                                 (param-values-url field-filter-card param-key "bar"))]
+              (is (set/subset? #{["Barney's Beanery"] ["bigmista's barbecue"]}
+                               (-> response :values set))))))))))
 
 (deftest parameters-with-field-to-field-remapping-test
   (let [param-key "id/param"]

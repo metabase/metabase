@@ -31,7 +31,7 @@ import {
   ComparisonList,
 } from "./SmartScalarSettingsWidgets.styled";
 
-type SmartScalarComparisonWidgetProps = {
+export type SmartScalarComparisonWidgetProps = {
   onChange: (setting: SmartScalarComparison[]) => void;
   options: ComparisonMenuOption[];
   comparableColumns: DatasetColumn[];

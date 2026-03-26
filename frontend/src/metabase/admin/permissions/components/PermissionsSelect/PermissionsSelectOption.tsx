@@ -1,8 +1,8 @@
-import type { ReactNode } from "react";
 import { useState } from "react";
 
-import type { ColorName } from "metabase/lib/colors/types";
-import { Icon, type IconName, Tooltip } from "metabase/ui";
+import { Icon, Tooltip } from "metabase/ui";
+
+import type { PermissionOption } from "../../types";
 
 import {
   IconContainer,
@@ -10,12 +10,9 @@ import {
   PermissionsSelectOptionRoot,
 } from "./PermissionsSelectOption.styled";
 
-interface PermissionsSelectOptionProps {
-  label: ReactNode;
-  icon: IconName;
-  iconColor: ColorName;
+interface PermissionsSelectOptionProps extends Omit<PermissionOption, "value"> {
   className?: string;
-  hint?: string;
+  hint?: string | null;
 }
 
 export function PermissionsSelectOption({

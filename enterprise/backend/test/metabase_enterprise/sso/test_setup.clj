@@ -8,6 +8,7 @@
    [metabase.config.core :as config]
    [metabase.premium-features.token-check :as token-check]
    [metabase.request.core :as request]
+   [metabase.server.instance :as server.instance]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.random :as u.random]
@@ -40,13 +41,14 @@
         (t2/update! :model/User {:email "rasta@metabase.com"} {:first_name "Rasta" :last_name "Toucan" :sso_source nil})))))
 
 (defn do-with-other-sso-types-disabled!
-  "Execute `thunk` with LDAP, SAML, and JWT SSO types disabled.
+  "Execute `thunk` with LDAP, SAML, JWT, and Slack Connect SSO types disabled.
    Useful when testing a specific SSO provider in isolation."
   [thunk]
   (mt/with-temporary-setting-values
-    [ldap-enabled false
-     saml-enabled false
-     jwt-enabled  false]
+    [ldap-enabled          false
+     saml-enabled          false
+     jwt-enabled           false
+     slack-connect-enabled false]
     (thunk)))
 
 ;;; -------------------------------------------------- SAML Setup --------------------------------------------------
@@ -91,6 +93,16 @@
   "Default JWT secret for tests. Note: this is regenerated on each test run."
   (u.random/secure-hex 32))
 
+(defn- localhost-site-url
+  "Return a valid localhost site URL for tests, even when no Jetty server is running.
+   The CLI test runner often executes without a live server instance, so `server-port`
+   can be nil in that mode."
+  []
+  (str "http://localhost:"
+       (or (server.instance/server-port)
+           (config/config-str :mb-jetty-port)
+           3000)))
+
 (defn call-with-default-jwt-config!
   "Execute `f` with default JWT configuration set up."
   [f]
@@ -100,7 +112,7 @@
         [jwt-enabled              true
          jwt-identity-provider-uri default-jwt-idp-uri
          jwt-shared-secret        default-jwt-secret
-         site-url                 (format "http://localhost:%s" (config/config-str :mb-jetty-port))]
+         site-url                 (localhost-site-url)]
         (mt/with-premium-features current-features
           (f))))))
 
@@ -136,7 +148,7 @@
          slack-connect-client-secret            default-slack-client-secret
          slack-connect-authentication-mode      "sso"
          slack-connect-user-provisioning-enabled true
-         site-url                               (format "http://localhost:%s" (config/config-str :mb-jetty-port))]
+         site-url                               (localhost-site-url)]
         (mt/with-premium-features current-features
           (f))))))
 
@@ -158,7 +170,7 @@
     (mt/with-additional-premium-features #{:sso-oidc}
       (mt/with-temporary-setting-values
         [oidc-providers [default-oidc-provider]
-         site-url       (format "http://localhost:%s" (config/config-str :mb-jetty-port))]
+         site-url       (localhost-site-url)]
         (mt/with-premium-features current-features
           (f))))))
 

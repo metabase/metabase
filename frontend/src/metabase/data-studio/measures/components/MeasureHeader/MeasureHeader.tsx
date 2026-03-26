@@ -48,7 +48,7 @@ export function MeasureHeader({
             readOnly={readOnly}
           />
         }
-        icon="sum"
+        icon="ruler"
         menu={
           <MeasureMoreMenu
             previewUrl={previewUrl}

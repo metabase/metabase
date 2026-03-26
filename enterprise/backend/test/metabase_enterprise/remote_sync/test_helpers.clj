@@ -535,6 +535,36 @@ serdes/meta:
           entity-id
           (str/replace (u/lower-case-en name) #"\s+" "_")))
 
+(defn generate-python-transform-yaml
+  "Generate YAML content for a python transform with old map-format source-tables.
+  Used to test backward compatibility when importing legacy format data.
+  `source-tables-yaml` should be a YAML string representing the source-tables map,
+  e.g. \"{orders: 123, products: 456}\"."
+  [entity-id name db-name source-tables-yaml & {:keys [collection-id]}]
+  (format "name: %s
+description: null
+entity_id: %s
+collection_id: %s
+created_at: '2024-08-28T09:46:18.671622Z'
+creator_id: rasta@metabase.com
+source_database_id: %s
+source:
+  type: python
+  body: 'import pandas as pd'
+  source-tables: %s
+target:
+  type: table
+  database: %s
+  name: test_output
+  schema: PUBLIC
+serdes/meta:
+- id: %s
+  label: %s
+  model: Transform
+"
+          name entity-id (or collection-id "null") db-name source-tables-yaml db-name
+          entity-id (str/replace (u/lower-case-en name) #"\s+" "_")))
+
 (defn generate-transform-yaml
   "Generate YAML content for a transform with the given `entity-id` and `name`.
   Optionally accepts `:collection-id` for transforms inside a collection."

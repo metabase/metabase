@@ -4,6 +4,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.cache.models.cache-config :as cache-config]
    [metabase.config.core :as config]
+   [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.util.cron :as u.cron]
@@ -97,6 +98,35 @@
                                     "question"  :model/Card)
                                   :id [:in ids]))))
 
+(mr/def ::cache-config-item
+  [:map
+   [:model    cache-config/CachingModel]
+   [:model_id ms/IntGreaterThanOrEqualToZero]
+   [:strategy [:map [:type :keyword]]]
+   [:name       {:optional true} [:maybe :string]]
+   [:collection {:optional true} [:maybe [:map
+                                          [:id   ms/PositiveInt]
+                                          [:name [:maybe :string]]
+                                          [:authority_level {:optional true} [:maybe :string]]
+                                          [:type {:optional true} [:maybe :string]]]]]])
+
+(mr/def ::cache-config-list-response
+  [:map
+   [:data  [:sequential ::cache-config-item]]
+   [:total {:optional true} ms/IntGreaterThanOrEqualToZero]
+   [:limit  {:optional true} [:maybe ms/PositiveInt]]
+   [:offset {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]])
+
+(mr/def ::cache-config-store-response
+  [:map [:id ms/PositiveInt]])
+
+(mr/def ::cache-invalidate-response
+  [:map
+   [:status [:enum 200 404]]
+   [:body   [:map
+             [:count   :int]
+             [:message :string]]]])
+
 (defn- check-cache-access [model id]
   (if (or (nil? id)
           ;; sometimes its a sequence and we're going to check for settings access anyway
@@ -104,17 +134,11 @@
           (zero? id))
     ;; if you're not accessing a concrete entity, you have to be an admin
     (api/check-superuser)
-    (api/write-check (case model
-                       "database" :model/Database
-                       "dashboard" :model/Dashboard
-                       "question" :model/Card)
-                     id)))
+    ;; Use CacheConfig's can-write? which checks collection permissions directly,
+    ;; bypassing the remote-sync content lock on Dashboards/Cards.
+    (api/check-403 (mi/can-write? (t2/instance :model/CacheConfig {:model model :model_id id})))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/"
+(api.macros/defendpoint :get "/" :- ::cache-config-list-response
   "Return cache configuration. Supports pagination via `limit` and `offset` query parameters,
    and sorting via `sort_column` and `sort_direction`."
   [_route-params
@@ -143,11 +167,7 @@
        :offset offset}
       {:data data})))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :put "/"
+(api.macros/defendpoint :put "/" :- ::cache-config-store-response
   "Store cache configuration."
   [_route-params
    _query-params
@@ -159,11 +179,7 @@
   (check-cache-access model model_id)
   {:id (cache-config/store! api/*current-user-id* config)})
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/"
+(api.macros/defendpoint :delete "/" :- :nil
   "Delete cache configurations."
   [_route-params
    _query-params
@@ -175,11 +191,7 @@
   (cache-config/delete! api/*current-user-id* model model_id)
   nil)
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/invalidate"
+(api.macros/defendpoint :post "/invalidate" :- ::cache-invalidate-response
   "Invalidate cache entries.
 
   Use it like `/api/cache/invalidate?database=1&dashboard=15` (any number of database/dashboard/question can be

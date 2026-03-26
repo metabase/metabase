@@ -51,7 +51,7 @@ const renderTriggersTable = (triggers?: Trigger[]) => {
 
 interface JobTriggersModalProps {
   params: {
-    jobKey: string;
+    jobKey?: string;
   };
   onClose: () => void;
 }

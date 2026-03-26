@@ -7,7 +7,7 @@ on:
 
 jobs:
   notify-querying-on-call:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     if: |
       (github.event.label.name == 'Priority:P0' || github.event.label.name == 'Priority:P1' || github.event.label.name == '.Escalation') &&

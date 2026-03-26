@@ -1,6 +1,5 @@
 import * as Tippy from "@tippyjs/react";
 import cx from "classnames";
-import * as React from "react";
 import { useMemo } from "react";
 import * as ReactIs from "react-is";
 
@@ -122,6 +121,6 @@ export function Tooltip({
       />
     );
   } else {
-    return <React.Fragment>{children}</React.Fragment>;
+    return <>{children}</>;
   }
 }

@@ -19,6 +19,9 @@ const {
   getBannerOptions,
 } = require("./frontend/build/shared/rspack/get-banner-options");
 const {
+  CssVarsDeclarationPlugin,
+} = require("./frontend/build/shared/rspack/plugins/CssVarsDeclarationPlugin/css-vars-declaration-plugin");
+const {
   RESOLVE_ALIASES,
 } = require("./frontend/build/shared/rspack/resolve-aliases");
 const { SVGO_CONFIG } = require("./frontend/build/shared/rspack/svgo-config");
@@ -367,6 +370,10 @@ if (isDevMode) {
     new WebpackNotifierPlugin({
       excludeWarnings: true,
       skipFirstNotification: true,
+    }),
+    new CssVarsDeclarationPlugin({
+      frontendSrcPath: __dirname + "/frontend/src",
+      rootPath: __dirname,
     }),
   );
 }

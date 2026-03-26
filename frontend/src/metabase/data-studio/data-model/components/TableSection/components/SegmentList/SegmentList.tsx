@@ -2,6 +2,7 @@ import { t } from "ttag";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { trackSegmentCreateStarted } from "metabase/data-studio/analytics";
 import { getUserCanWriteSegments } from "metabase/data-studio/selectors";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -44,6 +45,12 @@ export function SegmentList({ table }: SegmentListProps) {
             py="xs"
             size="xs"
             leftSection={<Icon name="add" />}
+            onClick={() =>
+              trackSegmentCreateStarted(
+                "data_studio_segments",
+                Number(table.id),
+              )
+            }
           >{t`New segment`}</Button>
         </Group>
       )}

@@ -104,6 +104,14 @@ Administrators can see and edit the contents of every user's personal collection
 
 A personal collection works just like any other collection except that its permissions are fixed and cannot be changed. If a sub-collection within a personal collection is moved to a different collection, the sub-collection will inherit the permissions of its new parent collection.
 
+### Library collection
+
+See [Data Studio > Library](../data-studio/library.md)
+
+### External collections
+
+See [Tenants > External collections](../embedding/tenants.md#collection-types)
+
 ## Further reading
 
 - [Working with collection permissions][collection-permissions].

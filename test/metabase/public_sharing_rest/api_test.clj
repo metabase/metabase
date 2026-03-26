@@ -8,7 +8,6 @@
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.analytics.stats :as stats]
-   [metabase.config.core :as config]
    [metabase.dashboards-rest.api-test :as api.dashboard-test]
    [metabase.parameters.chain-filter-test :as chain-filter-test]
    [metabase.parameters.custom-values :as custom-values]
@@ -19,6 +18,7 @@
    [metabase.query-processor.card-test :as qp.card-test]
    [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
    [metabase.query-processor.pivot.test-util :as api.pivots]
+   [metabase.server.instance :as server.instance]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
    [metabase.test.util :as tu]
@@ -537,7 +537,7 @@
       (mt/with-temp [:model/Card {uuid :public_uuid} (card-with-date-field-filter)]
         ;; make sure the URL doesn't include /api/ at the beginning like it normally would
         (binding [client/*url-prefix* ""]
-          (mt/with-temporary-setting-values [site-url (str "http://localhost:" (config/config-str :mb-jetty-port) client/*url-prefix*)]
+          (mt/with-temporary-setting-values [site-url (str "http://localhost:" (server.instance/server-port) client/*url-prefix*)]
             (is (= "count\n107\n"
                    (client/real-client :get 200 (str "public/question/" uuid ".csv")
                                        :parameters (json/encode [{:id     "_DATE_"

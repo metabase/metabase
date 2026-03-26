@@ -77,7 +77,9 @@ export function getVisualization(display: VisualizationDisplay | null) {
   return display ? visualizations.get(display) : defaultVisualization;
 }
 
-export function getVisualizationRaw(series: SeriesLike) {
+export function getVisualizationRaw(
+  series: SeriesLike,
+): Visualization | undefined {
   return visualizations.get(series[0].card.display);
 }
 

@@ -1140,11 +1140,7 @@ describe("issue 55487", () => {
   it("should be able open object details on browser forward navigation (metabase#55487)", () => {
     H.visitQuestion(ORDERS_QUESTION_ID);
 
-    cy.findByTestId("table-body")
-      .get("[data-index='4']")
-      .within(() => {
-        cy.get("[data-column-id='ID']").click();
-      });
+    cy.findByTestId("table-body").find("[data-column-id='ID']").eq(4).click();
 
     cy.findByTestId("object-detail").should("be.visible");
 
@@ -1279,48 +1275,39 @@ SELECT 2 AS ID, 3 AS USER_ID
         { wrapId: true, visitQuestion: true },
       );
     });
+    const findDataRows = () => {
+      return H.tableInteractiveBody()
+        .findByTestId("center-center-quadrant")
+        .findAllByRole("row");
+    };
+    const findUserIdCell = (rowIndex: number) => {
+      return findDataRows()
+        .should("have.length.gt", 0)
+        .eq(rowIndex)
+        .find("[data-column-id='USER_ID']")
+        .first();
+    };
 
-    cy.findByTestId("table-root")
-      .findAllByRole("row")
-      .first()
-      .within(() => {
-        cy.get("[data-column-id='USER_ID']").click();
-      });
+    findUserIdCell(0).click();
+
     H.popover().within(() => {
       cy.findByText("View Models with no User").should("be.visible").click();
     });
-    cy.findByTestId("table-body").within(() => {
-      cy.findAllByRole("row").should("have.length", 1);
-      cy.findAllByRole("row")
-        .first()
-        .within(() => {
-          cy.get("[data-column-id='USER_ID']").within(() => {
-            cy.get("[data-testid=cell-data]").should("not.exist");
-          });
-        });
-    });
+
+    findDataRows().should("have.length", 1);
+
+    findUserIdCell(0).find("[data-testid=cell-data]").should("not.exist");
 
     H.visitQuestion("@questionId");
 
-    cy.findByTestId("table-root")
-      .findAllByRole("row")
-      .eq(1)
-      .within(() => {
-        cy.get("[data-column-id='USER_ID']").click();
-      });
+    findUserIdCell(1).click();
+
     H.popover().within(() => {
       cy.findByText("View this User's Models").should("be.visible").click();
     });
-    cy.findByTestId("table-body").within(() => {
-      cy.findAllByRole("row").should("have.length", 1);
-      cy.findAllByRole("row")
-        .first()
-        .within(() => {
-          cy.get("[data-column-id='USER_ID']").within(() => {
-            cy.get("[data-testid=cell-data]").should("have.text", "3");
-          });
-        });
-    });
+
+    findDataRows().should("have.length", 1);
+    findUserIdCell(0).should("have.text", "3");
   });
 });
 

@@ -1,8 +1,10 @@
 import { t } from "ttag";
 
-import { currency } from "cljs/metabase.util.currency";
+import { currency as currencyCljs } from "cljs/metabase.util.currency";
 
-export interface CurrencyInfo {
+export const currency: [Currency["symbol"], Currency][] = currencyCljs;
+
+export type Currency = {
   symbol: string;
   name: string;
   symbol_native: string;
@@ -10,7 +12,7 @@ export interface CurrencyInfo {
   rounding: number;
   code: string;
   name_plural: string;
-}
+};
 
 export interface CurrencyOption {
   name: string;
@@ -30,7 +32,7 @@ export interface CompactCurrencyOptions {
 }
 
 const getCurrencyMapCache = (() => {
-  let currencyMapCache: Record<string, CurrencyInfo>;
+  let currencyMapCache: Record<string, Currency>;
 
   return () => {
     if (!currencyMapCache) {
@@ -41,11 +43,21 @@ const getCurrencyMapCache = (() => {
   };
 })();
 
-export function getCurrencySymbol(currencyCode: string): string {
+export function getCurrencySymbol(currencyCode: string | undefined): string {
+  if (!currencyCode) {
+    return "$";
+  }
+
   return getCurrencyMapCache()[currencyCode]?.symbol || currencyCode || "$";
 }
 
-export function getCurrencyNarrowSymbol(currencyCode: string): string {
+export function getCurrencyNarrowSymbol(
+  currencyCode: string | undefined,
+): string {
+  if (!currencyCode) {
+    return "$";
+  }
+
   return (
     getCurrencyMapCache()[currencyCode]?.symbol_native || currencyCode || "$"
   );
@@ -97,9 +109,13 @@ export function getCurrencyStyleOptions(
 }
 
 export function getCurrency(
-  currency: string,
-  currencyStyle: CurrencyStyle,
-): string {
+  currency: string | undefined,
+  currencyStyle: CurrencyStyle | undefined,
+): string | null {
+  if (!currency || !currencyStyle) {
+    return null;
+  }
+
   try {
     return (0)
       .toLocaleString("en", {
@@ -115,7 +131,7 @@ export function getCurrency(
 }
 
 export function getCurrencyOptions(): CurrencyOption[] {
-  return currency.map(([, currency]: [string, CurrencyInfo]) => ({
+  return currency.map(([, currency]) => ({
     name: currency.name,
     value: currency.code,
   }));

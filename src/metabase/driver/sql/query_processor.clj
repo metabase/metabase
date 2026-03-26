@@ -19,7 +19,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :as perf :refer [some mapv every? select-keys empty? not-empty]]
+   [metabase.util.performance :as perf :refer [empty? every? mapv not-empty select-keys some]]
    [toucan2.pipeline :as t2.pipeline])
   (:import
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
@@ -30,9 +30,9 @@
 (def source-query-alias
   "Alias to use for source queries, e.g.:
 
-    SELECT source.*
-    FROM ( SELECT * FROM some_table ) source"
-  "source")
+    SELECT __mb_source.*
+    FROM ( SELECT * FROM some_table ) __mb_source"
+  "__mb_source")
 
 (def ^:dynamic *inner-query*
   "The INNER query currently being processed, for situations where we need to refer back to it."
@@ -902,15 +902,24 @@
           ;; https://linear.app/metabase-inc/issue/ENG-8766/[epic]-field-refs-overhaul
           field-metadata       (when (integer? id-or-name)
                                  (driver-api/field (driver-api/metadata-provider) id-or-name))
-          allow-casting?       (and field-metadata
-                                    (or (pos-int? (driver-api/qp.add.source-table options))
-                                        (:qp/allow-coercion-for-columns-without-integer-qp.add.source-table options))
+          allow-casting?       (and (or (:qp/native-sandbox-column.force-coercion-strategy options)
+                                        (and field-metadata
+                                             (or (pos-int? (driver-api/qp.add.source-table options))
+                                                 (:qp/allow-coercion-for-columns-without-integer-qp.add.source-table options))))
                                     (not (:qp/ignore-coercion options)))
           ;; preserve metadata attached to the original field clause, for example BigQuery temporal type information.
           identifier           (-> (apply h2x/identifier :field
                                           (concat source-table-aliases (->honeysql driver [::nfc-path source-nfc-path]) [source-alias]))
                                    (with-meta (meta field-clause)))
           identifier           (->honeysql driver identifier)
+          ;; If no field-metadata is available, but a coercion strategy must be applied, synthesize enough
+          ;; `field-metadata` to be able to cast it correctly.
+          field-metadata       (or field-metadata
+                                   (when allow-casting?
+                                     (-> options
+                                         (select-keys [:base-type :effetive-type])
+                                         (assoc :coercion-strategy
+                                                (:qp/native-sandbox-column.force-coercion-strategy options)))))
           casted-field         (cast-field-if-needed driver field-metadata identifier)
           database-type        (or (h2x/database-type casted-field)
                                    (:database-type field-metadata))
@@ -998,7 +1007,7 @@
           (keep (fn [[direction expr]]
                   (if (aggregation? expr)
                     (let [[_aggregation index] expr
-                          agg (unwrap-aggregation-option (aggregations index))]
+                          agg                  (unwrap-aggregation-option (aggregations index))]
                       (when-not (contains-clause? #{:cum-count :cum-sum :offset} agg)
                         [(->honeysql driver agg) direction]))
                     [(->honeysql driver expr) direction])))
@@ -1008,28 +1017,32 @@
   "Order by the first breakout, then partition by all the other ones. See #42003 and
   https://metaboat.slack.com/archives/C05MPF0TM3L/p1714084449574689 for more info."
   [driver inner-query]
-  (let [breakouts (remove
-                   (comp driver-api/qp.util.transformations.nest-breakouts.externally-remapped-field
-                         #(nth % 2))
-                   (:breakout inner-query))
-        group-bys (:group-by (apply-top-level-clause driver :breakout {} inner-query))
+  (let [breakouts            (into []
+                                   (remove
+                                    (comp driver-api/qp.util.transformations.nest-breakouts.externally-remapped-field
+                                          #(nth % 2)))
+                                   (:breakout inner-query))
+        group-bys            (:group-by (apply-top-level-clause driver :breakout {} inner-query))
         finest-temp-breakout (driver-api/finest-temporal-breakout-index breakouts 2)
-        partition-exprs (when (> (count breakouts) 1)
-                          (if finest-temp-breakout
-                            (m/remove-nth finest-temp-breakout group-bys)
-                            (butlast group-bys)))
-        order-bys (over-order-bys driver (:aggregation inner-query)
-                                  (remove
-                                   (comp driver-api/qp.util.transformations.nest-breakouts.externally-remapped-field
-                                         #(nth % 2)
-                                         second)
-                                   (:order-by inner-query)))]
+        partition-exprs      (when (> (count breakouts) 1)
+                               (if finest-temp-breakout
+                                 (m/remove-nth finest-temp-breakout group-bys)
+                                 (butlast group-bys)))
+        order-bys            (remove
+                              (comp driver-api/qp.util.transformations.nest-breakouts.externally-remapped-field
+                                    #(nth % 2)
+                                    second)
+                              (:order-by inner-query))
+        order-bys            (over-order-bys driver
+                                             (:aggregation inner-query)
+                                             order-bys)]
     (merge
      (when (seq partition-exprs)
        {:partition-by (mapv (fn [expr]
                               [expr])
                             partition-exprs)})
-     {:order-by order-bys})))
+     (when (seq order-bys)
+       {:order-by order-bys}))))
 
 (defn- window-aggregation-over-expr-for-query-without-breakouts [driver inner-query]
   (when-let [order-bys (not-empty (:order-by (apply-top-level-clause driver :order-by {} inner-query)))]
@@ -1046,14 +1059,15 @@
              window-aggregation-over-expr-for-query-with-breakouts
 
              (seq (:order-by *inner-query*))
-             window-aggregation-over-expr-for-query-without-breakouts
-
-             :else
-             (throw (ex-info (tru "Window function requires either breakouts or order by in the query")
-                             {:type  driver-api/qp.error-type.invalid-query
-                              :query *inner-query*})))
-         m (f driver *inner-query*)]
-     (-> [:over [expr (merge m additional-hsql)]]
+             window-aggregation-over-expr-for-query-without-breakouts)
+         m (when f
+             (-> (f driver *inner-query*)
+                 (merge additional-hsql)))]
+     (-> (if (seq m)
+           [:over [expr m]]
+           (do
+             (log/debug "OVER contains no GROUP BYs or ORDER BYs, falling back to returning NULL")
+             [:inline nil]))
          (h2x/with-database-type-info (h2x/database-type expr))))))
 
 (defn- format-rows-unbounded-preceding [_clause _args]
@@ -1452,16 +1466,25 @@
     ;; -> [[::h2x/identifier ...] [[::h2x/identifier ...]]]
     ;; -> SELECT date_extract(\"x\", 'month') AS \"x\"
 
-  `clause` will be wrapped in a ::cast if ::add-cast is found in the `clause` options
+    `clause` will be wrapped in a ::cast if ::add-cast is found in the `clause` options
 
     ;; Honey SQL 2
     (as [:expression \"x\" {:base-type :type/Boolean, ::add-cast :bit}])
     ;; -> [[::h2x/typed [:cast ... [:raw \"bit\"]] {:database-type \"bit\"}] [[::h2x/identifier ...]]]
-    ;; -> SELECT CAST(1 AS bit) AS \"x\""
+    ;; -> SELECT CAST(1 AS bit) AS \"x\"
+
+    `clause` will be wrapped in a ::case if ::wrap-in-case is found in the `clause` options
+
+    ;; Honey SQL 2
+    (as [:expression \"x\" {:base-type :type/Boolean, ::wrap-in-case true}])
+    ;; -> [:case [:> ... ...] [:inline 1] :else [:inline 0]]
+    ;; -> SELECT CASE WHEN ... > ... THEN 1 ELSE 0 END AS \"x\""
   [driver clause & _unique-name-fn]
-  (let [cast-type     (-> clause driver-api/field-options ::add-cast)
-        wrap-cast     #(vector ::cast % cast-type)
-        maybe-cast    #(cond-> % cast-type wrap-cast)
+  (let [{cast-type ::add-cast
+         wrap-in-case? ::wrap-in-case} (driver-api/field-options clause)
+        maybe-cast    #(cond-> %
+                         wrap-in-case? (as-> <> (vector ::wrap-in-case <>))
+                         cast-type     (as-> <> (vector ::cast <> cast-type)))
         honeysql-form (->honeysql driver (maybe-cast clause))
         field-alias   (field-clause->alias driver clause)]
     (if field-alias
@@ -2009,7 +2032,7 @@
 (defn- apply-source-query
   "Handle a `:source-query` clause by adding a recursive `SELECT` or native query. If the source query has ambiguous
   column names, use a `WITH` statement to rename the source columns. At the time of this writing, all source queries
-  are aliased as `source`."
+  are aliased as `__mb_source`."
   [driver honeysql-form {{:keys [native params] persisted :persisted-info/native :as source-query} :source-query
                          source-metadata :source-metadata}]
   (let [table-alias (->honeysql driver (h2x/identifier :table-alias source-query-alias))
@@ -2034,7 +2057,7 @@
     (merge
      honeysql-form
      (if needs-columns?
-        ;; HoneySQL cannot expand [::h2x/identifier :table "source"] in the with alias.
+        ;; HoneySQL cannot expand [::h2x/identifier :table "__mb_source"] in the with alias.
         ;; This is ok since we control the alias.
        {:with [[[source-query-alias {:columns (mapv #(h2x/identifier :field %) desired-aliases)}]
                 source-clause]]

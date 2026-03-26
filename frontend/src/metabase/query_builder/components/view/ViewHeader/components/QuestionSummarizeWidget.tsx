@@ -1,4 +1,3 @@
-import cx from "classnames";
 import { t } from "ttag";
 
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
@@ -13,14 +12,12 @@ interface QuestionSummarizeWidgetProps {
   isShowingSummarySidebar: boolean;
   onEditSummary: () => void;
   onCloseSummary: () => void;
-  className?: string;
 }
 
 export function QuestionSummarizeWidget({
   isShowingSummarySidebar,
   onEditSummary,
   onCloseSummary,
-  className,
 }: QuestionSummarizeWidgetProps) {
   const handleClick = () => {
     if (isShowingSummarySidebar) {
@@ -47,7 +44,12 @@ export function QuestionSummarizeWidget({
       leftSection={<Icon name="sum" />}
       onClick={handleClick}
       data-active={isShowingSummarySidebar}
-      className={cx(className, ViewTitleHeaderS.SummarizeButton)}
+      className={ViewTitleHeaderS.SummarizeButton}
+      classNames={{
+        root: ViewTitleHeaderS.ActionButtonRoot,
+        label: ViewTitleHeaderS.ActionButtonLabel,
+        section: ViewTitleHeaderS.ActionButtonSection,
+      }}
     >
       {t`Summarize`}
     </Button>

@@ -38,6 +38,7 @@ const metabotRetryResponse = `0:"Retry: Here is the [question link](${adHocQuest
 describe("scenarios > embedding-sdk > metabot-question", () => {
   const setup = (response: string) => {
     signInAsAdminAndEnableEmbeddingSdk();
+    H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
 
     H.mockMetabotResponse({
       statusCode: 200,
@@ -313,10 +314,32 @@ describe("scenarios > embedding-sdk > metabot-question", () => {
   });
 });
 
+describe("scenarios > embedding-sdk > metabot-question > enablement", () => {
+  it("should show an error when embedded-metabot-enabled? is false", () => {
+    signInAsAdminAndEnableEmbeddingSdk();
+    H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
+
+    cy.log("Disable embedded metabot");
+    H.updateEnterpriseSettings({ "embedded-metabot-enabled?": false });
+
+    cy.signOut();
+    mockAuthProviderAndJwtSignIn();
+
+    mountSdkContent(<MetabotQuestion />);
+
+    getSdkRoot().within(() => {
+      cy.findByText("Metabot is not enabled for embedded analytics.").should(
+        "be.visible",
+      );
+      cy.findByTestId("metabot-question-container").should("not.exist");
+    });
+  });
+});
+
 const mockSuggestedPrompts = () => {
   cy.intercept(
     "GET",
-    "/api/ee/metabot-v3/metabot/2/prompt-suggestions?limit=3&sample=true",
+    "/api/metabot/metabot/2/prompt-suggestions?limit=3&sample=true",
     {
       statusCode: 200,
       body: {

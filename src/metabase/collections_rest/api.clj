@@ -27,8 +27,9 @@
    [metabase.queries.core :as queries]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
+   [metabase.tracing.core :as tracing]
    [metabase.transforms.feature-gating :as transforms.gating]
-   [metabase.transforms.util :as transforms.util]
+   [metabase.transforms.util :as transforms.u]
    [metabase.upload.core :as upload]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -488,7 +489,7 @@
 
 (defmethod collection-children-query :transform
   [_model collection {:keys [pinned-state]}]
-  (let [enabled-types (transforms.util/enabled-source-types-for-user)]
+  (let [enabled-types (transforms.u/enabled-source-types-for-user)]
     {:select [:id :collection_id :name [(h2x/literal "transform") :model] :description :entity_id]
      :from   [[:transform :transform]]
      :where  [:and
@@ -1102,11 +1103,13 @@
                              ;; :total_count
                              :limit  (if (zero? limit) 1 limit)
                              :offset offset))
-        rows        (mdb/query limit-query)
+        rows        (tracing/with-span :db-app "db-app.collection-items-query" {:collection/id (:id collection)}
+                      (mdb/query limit-query))
         res         {:total  (->> rows first :total_count)
                      :data   (if (= limit 0)
                                []
-                               (post-process-rows options collection rows))
+                               (tracing/with-span :db-app "db-app.collection-items-post-process" {:collection/id (:id collection)}
+                                 (post-process-rows options collection rows)))
                      :models models}
         limit-res   (assoc res
                            :limit  (request/limit)

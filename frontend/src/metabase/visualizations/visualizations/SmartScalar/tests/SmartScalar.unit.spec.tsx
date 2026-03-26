@@ -7,6 +7,7 @@ import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/setting
 import registerVisualizations from "metabase/visualizations/register";
 import type { Series } from "metabase-types/api";
 import type { Insight } from "metabase-types/api/insight";
+import { createMockSingleSeries } from "metabase-types/api/mocks";
 
 import {
   PREVIOUS_VALUE_COMPARISON,
@@ -142,9 +143,22 @@ describe("SmartScalar", () => {
     });
 
     it("shouldn't throw an error getting settings for single-column data", () => {
-      const card = { display: "smartscalar", visualization_settings: {} };
-      const data = { cols: [NumberColumn({ name: "Count" })], rows: [[100]] };
-      expect(() => getSettingsWidgetsForSeries([{ card, data }])).not.toThrow();
+      expect(() =>
+        getSettingsWidgetsForSeries(
+          [
+            createMockSingleSeries(
+              { display: "smartscalar", visualization_settings: {} },
+              {
+                data: {
+                  cols: [NumberColumn({ name: "Count" })],
+                  rows: [[100]],
+                },
+              },
+            ),
+          ],
+          jest.fn(),
+        ),
+      ).not.toThrow();
     });
 
     it("shouldn't render compact if normal formatting is <=6 characters", () => {

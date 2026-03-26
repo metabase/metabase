@@ -58,6 +58,75 @@ databaseChangeLog:
             columnDataType: int
 
   - changeSet:
+      id: v59.2025-12-03T17:08:36
+      author: nvoxland
+      comment: Add collection_id column to transform table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            changeSetExecuted:
+              id: v58.2025-12-03T17:08:36
+              author: nvoxland
+              changeLogFile: migrations/058_update_migrations.yaml
+        - not:
+            columnExists:
+              tableName: transform
+              columnName: collection_id
+      changes:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: collection_id
+                  type: int
+                  remarks: The collection the transform is in
+
+  - changeSet:
+      id: v59.2025-12-03T17:08:37
+      author: nvoxland
+      comment: Add index on transform.collection_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            changeSetExecuted:
+              id: v58.2025-12-03T17:08:37
+              author: nvoxland
+              changeLogFile: migrations/058_update_migrations.yaml
+        - not:
+            indexExists:
+              tableName: transform
+              indexName: idx_transform_collection_id
+      changes:
+        - createIndex:
+            tableName: transform
+            indexName: idx_transform_collection_id
+            columns:
+              - column:
+                  name: collection_id
+
+  - changeSet:
+      id: v59.2025-12-03T17:08:38
+      author: nvoxland
+      comment: Add fk_transform_collection_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            changeSetExecuted:
+              id: v58.2025-12-03T17:08:38
+              author: nvoxland
+              changeLogFile: migrations/058_update_migrations.yaml
+        - not:
+            foreignKeyConstraintExists:
+              foreignKeyName: fk_transform_collection_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: transform
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_transform_collection_id
+
+  - changeSet:
       id: v59.2025-12-04T12:00:00
       author: metabase
       comment: Create measure table for saved aggregation expressions
@@ -204,6 +273,85 @@ databaseChangeLog:
             constraintName: fk_measure_ref_creator_id
 
   - changeSet:
+      id: v59.2025-12-30T22:48:02
+      author: edpaget
+      comment: Add remote_sync_object.model_table_id for parent table reference
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            changeSetExecuted:
+              id: v58.2025-12-30T22:48:02
+              author: edpaget
+              changeLogFile: migrations/058_update_migrations.yaml
+        - not:
+            columnExists:
+              tableName: remote_sync_object
+              columnName: model_table_id
+      changes:
+        - addColumn:
+            tableName: remote_sync_object
+            columns:
+              - column:
+                  name: model_table_id
+                  type: int
+                  remarks: Parent table ID for Field/Segment/Table models
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v59.2025-12-30T22:48:03
+      author: edpaget
+      comment: Add remote_sync_object.model_table_name for parent table name
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            changeSetExecuted:
+              id: v58.2025-12-30T22:48:03
+              author: edpaget
+              changeLogFile: migrations/058_update_migrations.yaml
+        - not:
+            columnExists:
+              tableName: remote_sync_object
+              columnName: model_table_name
+      changes:
+        - addColumn:
+            tableName: remote_sync_object
+            columns:
+              - column:
+                  name: model_table_name
+                  type: varchar(255)
+                  remarks: Parent table name for Field/Segment/Table models
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v59.2026-01-05T12:00:00
+      author: metasasha
+      comment: Add is_data_analyst column to core_user table for analyst role
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            changeSetExecuted:
+              id: v58.2026-01-05T12:00:00
+              author: metasasha
+              changeLogFile: migrations/058_update_migrations.yaml
+        - not:
+            columnExists:
+              tableName: core_user
+              columnName: is_data_analyst
+      changes:
+        - addColumn:
+            tableName: core_user
+            columns:
+              - column:
+                  name: is_data_analyst
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: Indicates if the user has data analyst privileges for Data Studio
+                  constraints:
+                    nullable: false
+
+  - changeSet:
       id: v59.2026-01-06T10:00:00
       author: gantoreno
       comment: Add owner_user_id column to transform table
@@ -228,7 +376,6 @@ databaseChangeLog:
                   name: owner_email
                   type: ${text.type}
                   remarks: An optional email address of the owner of this transform (for external owners), exclusive with owner_user_id
-
 
   - changeSet:
       id: v59.2026-01-06T10:00:02
@@ -281,7 +428,6 @@ databaseChangeLog:
                   type: int
                   remarks: The user ID who triggered this run (owner for scheduled runs, current user for manual runs)
 
-
   - changeSet:
       id: v59.2026-01-06T10:00:06
       author: gantoreno
@@ -306,7 +452,6 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_transform_run_user_id
             onDelete: SET NULL
-
 
   - changeSet:
       id: v59.2026-01-07T00:00:01
@@ -398,6 +543,87 @@ databaseChangeLog:
             columns:
               - column:
                   name: result
+
+  - changeSet:
+      id: v59.2026-01-09T11:30:00
+      author: johnswanson
+      comment: |
+        Migration `v58.2026-01-09T12:00:00` had an issue for some customers (where a user-defined Data Analysts group
+        already existed). We need to replace this migration with a new one, but don't want the old migration to still
+        exist in the `databasechangelog`, to avoid incorrectly reporting that the latest migration is a `v58`
+        migration (if someone downgrades to v57).
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            changeSetExecuted:
+              id: v58.2026-01-09T11:30:00
+              author: johnswanson
+              changeLogFile: migrations/058_update_migrations.yaml
+      changes:
+        - sql:
+            dbms: postgres,h2
+            sql: >-
+              DELETE FROM databasechangelog WHERE id = 'v58.2026-01-09T12:00:00';
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DELETE FROM DATABASECHANGELOG WHERE id = 'v58.2026-01-09T12:00:00';
+      rollback: # not needed
+
+  - changeSet:
+      id: v59.2026-01-09T11:30:01
+      author: johnswanson
+      comment: Create data-analyst magic permissions group, handling name conflicts
+      validCheckSum: ANY
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            changeSetExecuted:
+              id: v58.2026-01-09T11:30:01
+              author: johnswanson
+              changeLogFile: migrations/058_update_migrations.yaml
+        - sqlCheck:
+            expectedResult: 0
+            sql: SELECT COUNT(*) FROM permissions_group WHERE magic_group_type = 'data-analyst'
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO permissions_group (name, magic_group_type)
+              SELECT
+                CASE WHEN EXISTS (SELECT 1 FROM permissions_group WHERE name = 'Data Analysts')
+                THEN 'Metabase Data Analysts'
+                ELSE 'Data Analysts'
+                END,
+                'data-analyst'
+      rollback:
+        - sql:
+            sql: DELETE FROM permissions_group WHERE magic_group_type = 'data-analyst';
+
+  - changeSet:
+      id: v59.2026-01-09T12:00:01
+      author: johnswanson
+      comment: Grant read permissions on existing Library collections to Data Analysts group
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            changeSetExecuted:
+              id: v58.2026-01-09T12:00:01
+              author: johnswanson
+              changeLogFile: migrations/058_update_migrations.yaml
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO permissions (group_id, object)
+              SELECT pg.id, '/collection/' || c.id || '/'
+              FROM permissions_group pg, collection c
+              WHERE pg.magic_group_type = 'data-analyst'
+                AND c.type IN ('library', 'library-data', 'library-metrics')
+      rollback:
+        - sql:
+            # We can safely delete ALL permissions for this group because it will be deleted in the rollback above
+            sql: >-
+              DELETE FROM permissions
+              WHERE group_id IN (SELECT id FROM permissions_group WHERE magic_group_type = 'data-analyst');
 
   - changeSet:
       id: v59.2026-01-16T00:00:00
@@ -785,6 +1011,66 @@ databaseChangeLog:
             relativeToChangelogFile: true
 
   - changeSet:
+      id: v59.2026-01-23T05:55:14
+      author: johnswanson
+      comment: Fix missing perm_value/perm_type/collection_id from v58.2026-01-09T12:00:01
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            changeSetExecuted:
+              id: v58.2026-01-23T05:55:14
+              author: johnswanson
+              changeLogFile: migrations/058_update_migrations.yaml
+      rollback: # not needed
+      changes:
+        - sql:
+            dbms: postgres
+            sql: >-
+              UPDATE permissions p
+              SET perm_value = 'read-and-write',
+                  perm_type = 'perms/collection-access',
+                  collection_id = c.id
+              FROM permissions_group pg, collection c
+              WHERE p.group_id = pg.id
+                AND pg.magic_group_type = 'data-analyst'
+                AND p.object = '/collection/' || c.id || '/'
+                AND c.type IN ('library', 'library-data', 'library-metrics')
+                AND p.perm_value IS NULL
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE permissions p
+              JOIN permissions_group pg ON p.group_id = pg.id
+              JOIN collection c ON p.object = CONCAT('/collection/', c.id, '/')
+              SET p.perm_value = 'read-and-write',
+                  p.perm_type = 'perms/collection-access',
+                  p.collection_id = c.id
+              WHERE pg.magic_group_type = 'data-analyst'
+                AND c.type IN ('library', 'library-data', 'library-metrics')
+                AND p.perm_value IS NULL
+        - sql:
+            dbms: h2
+            sql: >-
+              UPDATE permissions p
+              SET (perm_value, perm_type, collection_id) = (
+                SELECT 'read-and-write', 'perms/collection-access', c.id
+                FROM permissions_group pg, collection c
+                WHERE p.group_id = pg.id
+                  AND pg.magic_group_type = 'data-analyst'
+                  AND p.object = '/collection/' || c.id || '/'
+                  AND c.type IN ('library', 'library-data', 'library-metrics')
+              )
+              WHERE p.perm_value IS NULL
+                AND EXISTS (
+                  SELECT 1
+                  FROM permissions_group pg, collection c
+                  WHERE p.group_id = pg.id
+                    AND pg.magic_group_type = 'data-analyst'
+                    AND p.object = '/collection/' || c.id || '/'
+                    AND c.type IN ('library', 'library-data', 'library-metrics')
+                )
+
+  - changeSet:
       id: v59.2026-01-23T12:00:00
       author: bronsa
       comment: Insert default common.py entry in python_library if not exists
@@ -878,7 +1164,6 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_transform_run_transform_id
             onDelete: SET NULL
-
 
   - changeSet:
       id: v59.2026-01-27T12:00:00
@@ -2873,7 +3158,6 @@ databaseChangeLog:
                     nullable: true
       rollback:
 
-
   - changeSet:
       id: v59.2026-01-31T12:01:23
       author: christruter
@@ -3015,458 +3299,6 @@ databaseChangeLog:
                   constraints:
                     nullable: false
 
-  # ---------- Group 15: Normalize workspace_input (BOT-955) ----------
-  # Drop and recreate workspace_input with new schema (without ref_id / transform_version).
-  # Create workspace_input_transform join table for the m2m relationship.
-  # Truncate analysis tables so they repopulate on next workspace load.
-
-  - changeSet:
-      id: v59.2026-02-09T12:00:00
-      author: qnkhuat
-      comment: Drop workspace_input table to recreate with normalized schema
-      preConditions:
-        - onFail: MARK_RAN
-        - tableExists:
-            tableName: workspace_input
-        - columnExists:
-            tableName: workspace_input
-            columnName: ref_id
-      changes:
-        - dropTable:
-            tableName: workspace_input
-      rollback:
-        - createTable:
-            tableName: workspace_input
-            remarks: External tables that workspace transforms consume from source databases
-            columns:
-              - column:
-                  name: id
-                  type: int
-                  autoIncrement: true
-                  constraints:
-                    primaryKey: true
-                    nullable: false
-              - column:
-                  name: workspace_id
-                  type: int
-                  constraints:
-                    nullable: false
-              - column:
-                  name: db_id
-                  type: int
-                  constraints:
-                    nullable: false
-              - column:
-                  name: schema
-                  type: varchar(254)
-                  constraints:
-                    nullable: true
-              - column:
-                  name: table
-                  type: varchar(254)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: table_id
-                  type: int
-                  constraints:
-                    nullable: true
-              - column:
-                  name: ref_id
-                  type: char(36)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: access_granted
-                  type: ${boolean.type}
-                  defaultValueBoolean: false
-                  constraints:
-                    nullable: false
-              - column:
-                  name: transform_version
-                  type: bigint
-                  defaultValueNumeric: 0
-                  constraints:
-                    nullable: false
-              - column:
-                  name: created_at
-                  type: ${timestamp_type}
-                  constraints:
-                    nullable: false
-              - column:
-                  name: updated_at
-                  type: ${timestamp_type}
-                  constraints:
-                    nullable: false
-        # Recreate FKs that Group 7 changesets added, so their auto-rollback
-        # (dropForeignKeyConstraint) succeeds when rolling back further.
-        - addForeignKeyConstraint:
-            baseTableName: workspace_input
-            baseColumnNames: workspace_id
-            constraintName: fk_workspace_input_workspace_id
-            referencedTableName: workspace
-            referencedColumnNames: id
-            onDelete: CASCADE
-        - addForeignKeyConstraint:
-            baseTableName: workspace_input
-            baseColumnNames: table_id
-            constraintName: fk_workspace_input_table_id
-            referencedTableName: metabase_table
-            referencedColumnNames: id
-            onDelete: SET NULL
-
-  - changeSet:
-      id: v59.2026-02-09T12:00:01
-      author: qnkhuat
-      comment: Create workspace_input with normalized schema (no ref_id or transform_version)
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - tableExists:
-                tableName: workspace_input
-      changes:
-        - createTable:
-            tableName: workspace_input
-            remarks: External tables that workspace transforms consume from source databases
-            columns:
-              - column:
-                  name: id
-                  type: int
-                  autoIncrement: true
-                  constraints:
-                    primaryKey: true
-                    nullable: false
-              - column:
-                  name: workspace_id
-                  type: int
-                  remarks: FK to workspace
-                  constraints:
-                    nullable: false
-              - column:
-                  name: db_id
-                  type: int
-                  remarks: Database containing the source table
-                  constraints:
-                    nullable: false
-              - column:
-                  name: schema
-                  type: varchar(254)
-                  remarks: Schema of the source table (nullable for DBs without schemas)
-                  constraints:
-                    nullable: true
-              - column:
-                  name: table
-                  type: varchar(254)
-                  remarks: Name of the source table
-                  constraints:
-                    nullable: false
-              - column:
-                  name: table_id
-                  type: int
-                  remarks: FK to metabase_table if table exists and is synced
-                  constraints:
-                    nullable: true
-              - column:
-                  name: access_granted
-                  type: ${boolean.type}
-                  remarks: Whether read access has been granted to the workspace user
-                  defaultValueBoolean: false
-                  constraints:
-                    nullable: false
-              - column:
-                  name: created_at
-                  type: ${timestamp_type}
-                  remarks: Timestamp when the input was created
-                  constraints:
-                    nullable: false
-              - column:
-                  name: updated_at
-                  type: ${timestamp_type}
-                  remarks: Timestamp when the input was last updated
-                  constraints:
-                    nullable: false
-
-  - changeSet:
-      id: v59.2026-02-09T12:00:02
-      author: qnkhuat
-      comment: Add index on workspace_input.workspace_id
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - indexExists:
-                tableName: workspace_input
-                indexName: idx_workspace_input_workspace_id
-      changes:
-        - createIndex:
-            tableName: workspace_input
-            indexName: idx_workspace_input_workspace_id
-            columns:
-              - column:
-                  name: workspace_id
-
-  - changeSet:
-      id: v59.2026-02-09T12:00:03
-      author: qnkhuat
-      comment: Add index on workspace_input.table_id
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - indexExists:
-                tableName: workspace_input
-                indexName: idx_workspace_input_table_id
-      changes:
-        - createIndex:
-            tableName: workspace_input
-            indexName: idx_workspace_input_table_id
-            columns:
-              - column:
-                  name: table_id
-
-  - changeSet:
-      id: v59.2026-02-09T12:00:04
-      author: qnkhuat
-      comment: Add FK from workspace_input.workspace_id to workspace with CASCADE
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - foreignKeyConstraintExists:
-                foreignKeyName: fk_workspace_input_workspace_id
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: workspace_input
-            baseColumnNames: workspace_id
-            constraintName: fk_workspace_input_workspace_id
-            referencedTableName: workspace
-            referencedColumnNames: id
-            onDelete: CASCADE
-
-  - changeSet:
-      id: v59.2026-02-09T12:00:05
-      author: qnkhuat
-      comment: Add FK from workspace_input.table_id to metabase_table with SET NULL
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - foreignKeyConstraintExists:
-                foreignKeyName: fk_workspace_input_table_id
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: workspace_input
-            baseColumnNames: table_id
-            constraintName: fk_workspace_input_table_id
-            referencedTableName: metabase_table
-            referencedColumnNames: id
-            onDelete: SET NULL
-
-  - changeSet:
-      id: v59.2026-02-09T12:00:06
-      author: qnkhuat
-      comment: Add unique constraint on workspace_input (workspace_id, db_id, schema, table)
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - indexExists:
-                tableName: workspace_input
-                indexName: uq_workspace_input_table
-      changes:
-        - addUniqueConstraint:
-            tableName: workspace_input
-            columnNames: workspace_id, db_id, schema, table
-            constraintName: uq_workspace_input_table
-
-  - changeSet:
-      id: v59.2026-02-09T12:00:07
-      author: qnkhuat
-      comment: Create workspace_input_transform join table for m2m between workspace_input and workspace_transform
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - tableExists:
-                tableName: workspace_input_transform
-      changes:
-        - createTable:
-            tableName: workspace_input_transform
-            remarks: Join table linking workspace inputs to the transforms that depend on them
-            columns:
-              - column:
-                  name: id
-                  type: int
-                  autoIncrement: true
-                  constraints:
-                    primaryKey: true
-                    nullable: false
-              - column:
-                  name: workspace_input_id
-                  type: int
-                  remarks: FK to workspace_input
-                  constraints:
-                    nullable: false
-              - column:
-                  name: workspace_id
-                  type: int
-                  remarks: FK to workspace (denormalized for query convenience)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: ref_id
-                  type: char(36)
-                  remarks: ref_id of the workspace_transform that depends on this input
-                  constraints:
-                    nullable: false
-              - column:
-                  name: transform_version
-                  type: bigint
-                  remarks: The analysis_version of the transform when this row was created
-                  defaultValueNumeric: 0
-                  constraints:
-                    nullable: false
-              - column:
-                  name: created_at
-                  type: ${timestamp_type}
-                  remarks: Timestamp when the link was created
-                  defaultValueComputed: current_timestamp
-                  constraints:
-                    nullable: false
-
-  - changeSet:
-      id: v59.2026-02-09T12:00:08
-      author: qnkhuat
-      comment: Add index on workspace_input_transform.workspace_input_id
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - indexExists:
-                tableName: workspace_input_transform
-                indexName: idx_workspace_input_transform_input_id
-      changes:
-        - createIndex:
-            tableName: workspace_input_transform
-            indexName: idx_workspace_input_transform_input_id
-            columns:
-              - column:
-                  name: workspace_input_id
-
-  - changeSet:
-      id: v59.2026-02-09T12:00:09
-      author: qnkhuat
-      comment: Add composite index on workspace_input_transform (workspace_id, ref_id)
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - indexExists:
-                tableName: workspace_input_transform
-                indexName: idx_workspace_input_transform_ws_ref
-      changes:
-        - createIndex:
-            tableName: workspace_input_transform
-            indexName: idx_workspace_input_transform_ws_ref
-            columns:
-              - column:
-                  name: workspace_id
-              - column:
-                  name: ref_id
-
-  - changeSet:
-      id: v59.2026-02-09T12:00:10
-      author: qnkhuat
-      comment: Add FK from workspace_input_transform.workspace_input_id to workspace_input with CASCADE
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - foreignKeyConstraintExists:
-                foreignKeyName: fk_wit_workspace_input_id
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: workspace_input_transform
-            baseColumnNames: workspace_input_id
-            constraintName: fk_wit_workspace_input_id
-            referencedTableName: workspace_input
-            referencedColumnNames: id
-            onDelete: CASCADE
-
-  - changeSet:
-      id: v59.2026-02-09T12:00:11
-      author: qnkhuat
-      comment: Add FK from workspace_input_transform.workspace_id to workspace with CASCADE
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - foreignKeyConstraintExists:
-                foreignKeyName: fk_wit_workspace_id
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: workspace_input_transform
-            baseColumnNames: workspace_id
-            constraintName: fk_wit_workspace_id
-            referencedTableName: workspace
-            referencedColumnNames: id
-            onDelete: CASCADE
-
-  - changeSet:
-      id: v59.2026-02-09T12:00:12
-      author: qnkhuat
-      comment: Add unique constraint on workspace_input_transform (workspace_input_id, workspace_id, ref_id, transform_version)
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - indexExists:
-                tableName: workspace_input_transform
-                indexName: uq_workspace_input_transform_versioned
-      changes:
-        - addUniqueConstraint:
-            tableName: workspace_input_transform
-            columnNames: workspace_input_id, workspace_id, ref_id, transform_version
-            constraintName: uq_workspace_input_transform_versioned
-
-  - changeSet:
-      id: v59.2026-02-09T12:00:13
-      author: qnkhuat
-      comment: Truncate workspace_graph so analysis will re-run
-      changes:
-        - delete:
-            tableName: workspace_graph
-      rollback:
-
-  - changeSet:
-      id: v59.2026-02-09T12:00:14
-      author: qnkhuat
-      comment: Truncate workspace_output so analysis will re-run
-      changes:
-        - delete:
-            tableName: workspace_output
-      rollback:
-
-  - changeSet:
-      id: v59.2026-02-16T12:00:00
-      author: bronsa
-      comment: Usage analytics; Remove logs column from v_tasks view
-      changes:
-        - sqlFile:
-            dbms: postgresql
-            path: instance_analytics_views/tasks/v5/postgres-tasks.sql
-            relativeToChangelogFile: true
-        - sqlFile:
-            dbms: mysql,mariadb
-            path: instance_analytics_views/tasks/v5/mysql-tasks.sql
-            relativeToChangelogFile: true
-        - sqlFile:
-            dbms: h2
-            path: instance_analytics_views/tasks/v5/h2-tasks.sql
-            relativeToChangelogFile: true
-      rollback:
-        - sqlFile:
-            dbms: postgresql
-            path: instance_analytics_views/tasks/v4/postgres-tasks.sql
-            relativeToChangelogFile: true
-        - sqlFile:
-            dbms: mysql,mariadb
-            path: instance_analytics_views/tasks/v4/mysql-tasks.sql
-            relativeToChangelogFile: true
-        - sqlFile:
-            dbms: h2
-            path: instance_analytics_views/tasks/v4/h2-tasks.sql
-            relativeToChangelogFile: true
-
   - changeSet:
       id: v59.2026-02-16T18:00:00
       author: galdre
@@ -3493,86 +3325,162 @@ databaseChangeLog:
             columnName: write_data_details
 
   - changeSet:
-      id: v59.2026-02-17T12:00:00
-      author: bronsa
-      comment: Add query_execution.transform_id for inspector query attribution
+      id: v59.2026-03-04T00:00:00
+      author: rileythompson
+      comment: Fix ClickHouse upload DB schema name and models
       changes:
-        - addColumn:
-            tableName: query_execution
-            columns:
-              - column:
-                  name: transform_id
-                  type: int
-                  remarks: The ID of the Transform associated with this query execution, if any.
+        - customChange:
+            class: "metabase.app_db.custom_migrations.FixClickHouseUploadDBSchemaNames"
 
   - changeSet:
-      id: v59.2026-02-17T12:00:01
-      author: bronsa
-      comment: Index query_execution.transform_id
+      id: v59.2026-03-11T00:00:00
+      author: christruter
+      comment: >-
+        Clean up old v58 changeset rows from databasechangelog left behind when
+        migrations were moved to v59. These stale rows block downgrade to older versions.
       changes:
-        - createIndex:
-            tableName: query_execution
-            indexName: idx_query_execution_transform_id
-            columns:
-              - column:
-                  name: transform_id
+        - sql:
+            sql: >-
+              DELETE FROM ${databasechangelog.name} WHERE id IN (
+                'v58.2025-12-03T17:08:36',
+                'v58.2025-12-03T17:08:37',
+                'v58.2025-12-03T17:08:38',
+                'v58.2025-12-30T22:48:02',
+                'v58.2025-12-30T22:48:03',
+                'v58.2026-01-05T12:00:00',
+                'v58.2026-01-09T11:30:00',
+                'v58.2026-01-09T11:30:01',
+                'v58.2026-01-09T12:00:01',
+                'v58.2026-01-23T05:55:14',
+                'v58.2026-01-27T13:00:00'
+              );
+      rollback: # nothing to undo - these rows should not exist in v59
 
   - changeSet:
-      id: v59.2026-02-17T12:01:02
-      author: bronsa
-      comment: Add query_execution.lens_id for inspector query attribution
+      id: v59.2026-03-12T12:00:00
+      author: wotbrew
+      comment: Add last_checkpoint_value to transform table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: transform
+                columnName: last_checkpoint_value
       changes:
         - addColumn:
-            tableName: query_execution
+            tableName: transform
             columns:
               - column:
-                  name: lens_id
-                  type: varchar(254)
-                  remarks: The ID of the inspector lens associated with this query execution, if any.
-
-  - changeSet:
-      id: v59.2026-02-17T12:01:03
-      author: bronsa
-      comment: Add query_execution.lens_params for inspector query attribution
-      changes:
-        - addColumn:
-            tableName: query_execution
-            columns:
-              - column:
-                  name: lens_params
+                  name: last_checkpoint_value
                   type: ${text.type}
-                  remarks: JSON-encoded parameters of the inspector lens associated with this query execution, if any.
+                  remarks: Serialized checkpoint watermark value for incremental transforms, temporal as ISO8601
+                  constraints:
+                    nullable: true
 
   - changeSet:
-      id: v59.2026-02-17T12:01:04
+      id: v59.2026-03-13T00:00:00
       author: bronsa
-      comment: Updated view v_query_log v4 - add transform_id, lens_id, lens_params
+      comment: Remove legacy incremental transform strategies that use checkpoint-filter instead of checkpoint-filter-field-id
       changes:
-        - sqlFile:
-            dbms: postgresql
-            path: instance_analytics_views/query_log/v4/postgres-query_log.sql
-            relativeToChangelogFile: true
-        - sqlFile:
-            dbms: mysql,mariadb
-            path: instance_analytics_views/query_log/v4/mysql-query_log.sql
-            relativeToChangelogFile: true
-        - sqlFile:
-            dbms: h2
-            path: instance_analytics_views/query_log/v4/h2-query_log.sql
-            relativeToChangelogFile: true
-      rollback:
-        - sqlFile:
-            dbms: postgresql
-            path: instance_analytics_views/query_log/v2/postgres-query_log.sql
-            relativeToChangelogFile: true
-        - sqlFile:
-            dbms: mysql,mariadb
-            path: instance_analytics_views/query_log/v3/mysql-query_log.sql
-            relativeToChangelogFile: true
-        - sqlFile:
-            dbms: h2
-            path: instance_analytics_views/query_log/v2/h2-query_log.sql
-            relativeToChangelogFile: true
+        - customChange:
+            class: "metabase.app_db.custom_migrations.RemoveLegacyIncrementalStrategies"
+
+  - changeSet:
+      id: v59.2026-03-13T00:00:01
+      author: bronsa
+      comment: Add checkpoint_filter_field_id column to transform_run
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: transform_run
+                columnName: checkpoint_filter_field_id
+      changes:
+        - addColumn:
+            tableName: transform_run
+            columns:
+              - column:
+                  name: checkpoint_filter_field_id
+                  type: int
+                  remarks: The field ID used for incremental checkpoint filtering
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v59.2026-03-13T00:00:02
+      author: bronsa
+      comment: Add checkpoint_lo_value column to transform_run
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: transform_run
+                columnName: checkpoint_lo_value
+      changes:
+        - addColumn:
+            tableName: transform_run
+            columns:
+              - column:
+                  name: checkpoint_lo_value
+                  type: ${text.type}
+                  remarks: The low checkpoint value for this run (exclusive lower bound)
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v59.2026-03-13T00:00:03
+      author: bronsa
+      comment: Add checkpoint_hi_value column to transform_run
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: transform_run
+                columnName: checkpoint_hi_value
+      changes:
+        - addColumn:
+            tableName: transform_run
+            columns:
+              - column:
+                  name: checkpoint_hi_value
+                  type: ${text.type}
+                  remarks: The high checkpoint value for this run (inclusive upper bound)
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v59.2026-03-17T10:30:03
+      author: nvoxland
+      comment: When rolling back, make sure any transform permissions that were added are removed. Because 58 doesn't know about them and errors
+      changes:
+        - output:
+            message: Placeholder for managing transform permissions on rollback
+            target: STDOUT
+      rollback: delete from data_permissions where perm_type='perms/transforms';
+
+
+
+  - changeSet:
+      id: v59.2026-03-17T13:00:00
+      author: bronsa
+      comment: Drop medallion names for data_layer enum use (hidden, internal instead)
+      preConditions:
+        - onFail: MARK_RAN
+        - and:
+            - not:
+                changeSetExecuted:
+                  id: v58.2026-01-27T13:00:00
+                  author: wotbrew
+                  changeLogFile: migrations/058_update_migrations.yaml
+            - not:
+                changeSetExecuted:
+                  id: v59.2026-01-27T13:00:00
+                  author: wotbrew
+                  changeLogFile: migrations/059_update_migrations.yaml
+      runInTransaction: false
+      changes:
+        - customChange:
+            class: "metabase.app_db.custom_migrations.DropMedallionNamesForDataLayer"
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

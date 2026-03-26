@@ -28,21 +28,27 @@ function createProps(
   model: SuggestionModel,
   entity: SmartLinkEntity | { id: number; label?: string },
   label?: string,
+  updateAttributes?: NodeViewProps["updateAttributes"],
 ) {
   const node = { attrs: { entityId: entity.id, model, label } };
-  return { node } as unknown as NodeViewProps;
+  return {
+    node,
+    updateAttributes: updateAttributes ?? jest.fn(),
+  } as unknown as NodeViewProps;
 }
 
 function setup({
   entity,
   model,
   label,
+  updateAttributes,
 }: {
   model: SuggestionModel;
   entity: SmartLinkEntity;
   label?: string;
+  updateAttributes?: NodeViewProps["updateAttributes"];
 }) {
-  const props = createProps(model, entity, label);
+  const props = createProps(model, entity, label, updateAttributes);
   renderWithProviders(<SmartLinkComponent {...props} />);
 }
 
@@ -60,6 +66,25 @@ describe("SmartLink", () => {
       // Eventually updates to network data
       expect(await screen.findByText("Network Card Name")).toBeInTheDocument();
       expect(screen.queryByText("Cached Card Name")).not.toBeInTheDocument();
+    });
+
+    it("updates missing labels for pasted smart links", async () => {
+      const card = createMockCard({ id: 123, name: "Network Card Name" });
+      const updateAttributes = jest.fn();
+
+      setupCardEndpoints(card);
+      setup({
+        model: "card",
+        entity: card,
+        label: undefined,
+        updateAttributes,
+      });
+
+      await waitFor(() => {
+        expect(updateAttributes).toHaveBeenCalledWith({
+          label: "Network Card Name",
+        });
+      });
     });
   });
 

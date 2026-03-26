@@ -345,6 +345,11 @@ describe("scenarios > organization > timelines > collection", () => {
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("New timeline").click();
       cy.findByLabelText("Name").type("Launches");
+
+      cy.findByLabelText("Default icon").click();
+      H.popover().findByText("Cake").should("be.visible").click();
+      cy.findByLabelText("Default icon").should("have.value", "Cake");
+
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Create").click();
       cy.wait("@createTimeline");

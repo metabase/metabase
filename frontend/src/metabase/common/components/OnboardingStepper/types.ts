@@ -22,12 +22,30 @@ export interface OnboardingStepperProps {
   onChange?: (value: string | null) => void;
 }
 
+export interface OnboardingStepperHandle {
+  /**
+   * Navigate to the next incomplete step after the current position.
+   * Falls back to next step in sequence if all remaining steps are complete.
+   * Stays on current step if already at the last step.
+   */
+  goToNextIncompleteStep: () => void;
+
+  /**
+   * Navigate to the next step in sequence, regardless of completion status.
+   * Useful when the user is reconfiguring a completed step.
+   */
+  goToNextStep: () => void;
+}
+
 export interface OnboardingStepperStepProps {
   /** Unique identifier for this step */
   stepId: string;
 
   /** Title displayed in the step header */
   title: string;
+
+  /** Whether to hide the step title on step active */
+  hideTitleOnActive?: boolean;
 
   /** Content to show when the step is active */
   children: ReactNode;

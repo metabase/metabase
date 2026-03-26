@@ -2,7 +2,7 @@ import Color from "color";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { color as colorHex } from "metabase/lib/colors";
+import { color as colorHex } from "metabase/ui/colors";
 import { ChartSettingSegmentsEditor } from "metabase/visualizations/components/settings/ChartSettingSegmentsEditor";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { segmentIsValid } from "metabase/visualizations/lib/utils";
@@ -10,10 +10,7 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-import type {
-  VisualizationDefinition,
-  VisualizationSettingsDefinitions,
-} from "metabase/visualizations/types";
+import type { VisualizationDefinition } from "metabase/visualizations/types";
 import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
 
 import { isGaugeSegmentsArray } from "./types";
@@ -51,7 +48,7 @@ export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
     }),
     "gauge.range": {
       // currently not exposed in settings, just computed from gauge.segments
-      getDefault(series, vizSettings) {
+      getDefault(_series, vizSettings) {
         const gaugeSegments = vizSettings["gauge.segments"];
         const segments = isGaugeSegmentsArray(gaugeSegments)
           ? gaugeSegments.filter((segment) => segmentIsValid(segment))
@@ -90,7 +87,10 @@ export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
       },
       widget: ChartSettingSegmentsEditor,
       persistDefault: true,
-      noPadding: true,
+      getWrapperStyle: () => ({
+        marginLeft: 0,
+        marginRight: 0,
+      }),
     },
-  } as VisualizationSettingsDefinitions,
+  },
 };

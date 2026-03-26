@@ -26,7 +26,6 @@ import type {
   ChartDataset,
   DataKey,
   Datum,
-  Extent,
   LabelFormatter,
   SeriesExtents,
   SeriesFormatters,
@@ -35,7 +34,10 @@ import type {
 import type { ShowWarning } from "metabase/visualizations/echarts/types";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import { getCartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import type {
+  ComputedVisualizationSettings,
+  Extent,
+} from "metabase/visualizations/types";
 import {
   type DatasetColumn,
   type RawSeries,
@@ -271,7 +273,7 @@ const getYAxisSplit = (
   const auto: DataKey[] = [];
 
   seriesModels.forEach((seriesModel) => {
-    const seriesSettings = settings.series(
+    const seriesSettings = settings.series?.(
       seriesModel.legacySeriesSettingsObjectKey,
     );
     const axis = seriesSettings?.axis;

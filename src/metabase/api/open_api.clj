@@ -349,13 +349,13 @@
                          :version (:tag config/mb-version-info)
                          :license {:name "AGPL-3.0"
                                    :url  "https://www.gnu.org/licenses/agpl-3.0.html"}}
-               ;; Apply session auth to all endpoints by default
+               ;; Apply API key authentication to all endpoints by default
                :security [{"ApiKeyAuth" []}])
         (assoc-in [:components :securitySchemes]
                   {"ApiKeyAuth" {:type        "apiKey"
                                  :in          "header"
-                                 :name        "X-Metabase-Session"
-                                 :description "Session token obtained from /api/session endpoint"}}))))
+                                 :name        "X-API-Key"
+                                 :description "API key for authentication"}}))))
 
 #_:clj-kondo/ignore
 (comment

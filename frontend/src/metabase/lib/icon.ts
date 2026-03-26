@@ -2,6 +2,7 @@ import { getLibraryCollectionType } from "metabase/data-studio/utils";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import type { IconName } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors";
 import { getIconForVisualizationType } from "metabase/visualizations";
 import type {
   CardType,
@@ -11,8 +12,6 @@ import type {
   SearchModel,
   VisualizationDisplay,
 } from "metabase-types/api";
-
-import type { ColorName } from "./colors/types";
 
 export type IconModel =
   | SearchModel
@@ -54,6 +53,7 @@ export const modelIconMap: Record<IconModel, IconName> = {
   model: "model",
   card: "table2",
   segment: "segment",
+  measure: "ruler",
   metric: "metric",
   snippet: "snippet",
   nativequerysnippet: "snippet",

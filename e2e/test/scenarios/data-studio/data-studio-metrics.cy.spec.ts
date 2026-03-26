@@ -23,6 +23,12 @@ describe("scenarios > data studio > library > metrics", () => {
     H.DataStudio.Library.newButton().click();
     H.popover().findByText("Metric").click();
 
+    cy.log("Verify metric_create_started event was tracked");
+    H.expectUnstructuredSnowplowEvent({
+      event: "metric_create_started",
+      triggered_from: "data_studio_library",
+    });
+
     H.DataStudio.Metrics.queryEditor().should("be.visible");
     H.DataStudio.Metrics.saveButton().should("be.disabled");
 
@@ -39,7 +45,7 @@ describe("scenarios > data studio > library > metrics", () => {
 
     H.modal().within(() => {
       cy.findByText("Save your metric").should("be.visible");
-      cy.findByLabelText("Name").type("Total Revenue");
+      cy.findByLabelText("Name").clear().type("Total Revenue");
       cy.findByLabelText("Description").type(
         "Sum of all order totals across the store",
       );
@@ -49,19 +55,33 @@ describe("scenarios > data studio > library > metrics", () => {
 
     cy.wait("@createCard");
 
+    cy.log("Verify metric_created event was tracked");
+    H.expectUnstructuredSnowplowEvent({
+      event: "metric_created",
+      triggered_from: "data_studio",
+      result: "success",
+    });
+
     cy.log("Verify metric overview page");
     cy.url().should("match", /\/data-studio\/library\/metrics\/\d+$/);
 
-    H.DataStudio.Metrics.overviewPage().within(() => {
+    H.DataStudio.Metrics.aboutPage().within(() => {
       cy.findAllByText("Total Revenue").should("have.length", 2); // breadcrumbs + header
       cy.findByText("Sum of all order totals across the store").should(
         "be.visible",
       );
+    });
+
+    H.DataStudio.Metrics.aboutPageDescriptionSidebar().within(() => {
+      cy.findByText("Last edited by Bobby Tables").should("be.visible");
+
       cy.findByText("Sample Database").should("be.visible");
-      cy.findByText("PUBLIC").should("be.visible");
+
       cy.findByText("Orders").should("be.visible");
-      cy.findByText("Creator and last editor").should("be.visible");
-      cy.findAllByText(/by Bobby Tables/).should("be.visible");
+      cy.findByText("Source table").should("be.visible");
+
+      cy.findByText("Dependencies").should("be.visible");
+      cy.findByText("Dependents").should("be.visible");
     });
 
     cy.log("Ensure chart is visible");
@@ -99,12 +119,12 @@ describe("scenarios > data studio > library > metrics", () => {
       .click();
 
     cy.log("Verify metric overview page displays correct data");
-    H.DataStudio.Metrics.overviewPage()
+    H.DataStudio.Metrics.aboutPage()
       .findByDisplayValue("Trusted Orders Metric")
       .should("be.visible");
 
     cy.log("Update the metric name");
-    H.DataStudio.Metrics.overviewPage()
+    H.DataStudio.Metrics.aboutPage()
       .findByDisplayValue("Trusted Orders Metric")
       .clear()
       .type("Updated Orders Metric{enter}");
@@ -112,7 +132,7 @@ describe("scenarios > data studio > library > metrics", () => {
     cy.wait("@updateCard");
 
     cy.log("Verify updated name appears in overview");
-    H.DataStudio.Metrics.overviewPage()
+    H.DataStudio.Metrics.aboutPage()
       .findByDisplayValue("Updated Orders Metric")
       .should("be.visible");
 
@@ -189,7 +209,7 @@ describe("scenarios > data studio > library > metrics", () => {
       .click();
 
     cy.log("Verify metric is loaded before archiving");
-    H.DataStudio.Metrics.overviewPage()
+    H.DataStudio.Metrics.aboutPage()
       .findByDisplayValue("Trusted Orders Metric")
       .should("be.visible");
 
@@ -232,7 +252,7 @@ describe("scenarios > data studio > library > metrics", () => {
       .should("be.visible");
   });
 
-  it("should view metric in question view via more menu", () => {
+  it("should view metric in the metrics explorer view via more menu", () => {
     cy.log("Navigate to Data Studio Library");
     cy.visit("/data-studio/library");
 
@@ -242,18 +262,16 @@ describe("scenarios > data studio > library > metrics", () => {
       .click();
 
     cy.log("Verify metric is loaded");
-    H.DataStudio.Metrics.overviewPage()
+    H.DataStudio.Metrics.aboutPage()
       .findByDisplayValue("Trusted Orders Metric")
       .should("be.visible");
 
     cy.log("Verify View link opens in new tab");
     H.DataStudio.Metrics.moreMenu().click();
-    H.popover()
-      .findByText("View")
-      .closest("a")
+    H.DataStudio.Metrics.exploreLink()
       .should("have.attr", "target", "_blank")
       .should("have.attr", "href")
-      .and("match", /\/metric\/\d+/);
+      .and("match", /\/explore\?metricId=\d+/);
   });
 
   it("should duplicate metric via more menu", () => {
@@ -266,7 +284,7 @@ describe("scenarios > data studio > library > metrics", () => {
       .click();
 
     cy.log("Verify metric is loaded");
-    H.DataStudio.Metrics.overviewPage()
+    H.DataStudio.Metrics.aboutPage()
       .findByDisplayValue("Trusted Orders Metric")
       .should("be.visible");
 
@@ -296,7 +314,7 @@ describe("scenarios > data studio > library > metrics", () => {
     H.modal().should("not.exist");
 
     cy.log("Verify duplicate metric is created");
-    H.DataStudio.Metrics.overviewPage()
+    H.DataStudio.Metrics.aboutPage()
       .findAllByText("Trusted Orders Metric - Duplicate")
       .should("have.length", 2); // breadcrumbs + header
 
@@ -318,7 +336,7 @@ describe("scenarios > data studio > library > metrics", () => {
       .click();
 
     cy.log("Verify metric is loaded");
-    H.DataStudio.Metrics.overviewPage()
+    H.DataStudio.Metrics.aboutPage()
       .findByDisplayValue("Trusted Orders Metric")
       .should("be.visible");
 
@@ -339,6 +357,58 @@ describe("scenarios > data studio > library > metrics", () => {
     H.DataStudio.Library.libraryPage()
       .findByText("Trusted Orders Metric")
       .should("not.exist");
+  });
+
+  describe("analytics events", () => {
+    it("should track metric_create_started and metric_created from browse metrics", () => {
+      cy.visit("/browse/metrics");
+
+      cy.log("Click the plus button to create a new metric");
+      cy.findByRole("link", { name: "Create a new metric" }).click();
+
+      cy.log("Verify metric_create_started event was tracked");
+      H.expectUnstructuredSnowplowEvent({
+        event: "metric_create_started",
+        triggered_from: "browse_metrics",
+      });
+
+      cy.log("Verify we're on the new metric page");
+      cy.url().should("match", /\/metric\/new/);
+
+      cy.findByPlaceholderText(/Search for tables/).type("Orders");
+      H.popover()
+        .findAllByRole("menuitem", { name: /Orders/ })
+        .should("have.length.gte", 1);
+      H.popover()
+        .findAllByRole("menuitem", { name: /Orders/ })
+        .first()
+        .click();
+      cy.findByRole("button", { name: "Save" }).click();
+      cy.findByRole("dialog").findByRole("button", { name: "Save" }).click();
+
+      cy.log("Verify metric_created event was tracked");
+      H.expectUnstructuredSnowplowEvent({
+        event: "metric_created",
+      });
+    });
+
+    it("should track metric_create_started from command palette", () => {
+      cy.visit("/");
+
+      cy.log("Open command palette and create metric");
+      H.openCommandPalette();
+      H.commandPaletteSearch("metric", false);
+      cy.findByRole("option", { name: /New metric/ }).click();
+
+      cy.log("Verify metric_create_started event was tracked");
+      H.expectUnstructuredSnowplowEvent({
+        event: "metric_create_started",
+        triggered_from: "command_palette",
+      });
+
+      cy.log("Verify we're on the new metric page");
+      cy.url().should("match", /\/metric\/new/);
+    });
   });
 
   describe("caching", () => {

@@ -416,9 +416,17 @@
     ;;
     ;; this SHOULD NOT get propagated to subsequent stages!
     [:lib/breakout? {:optional true} [:maybe :boolean]]
-
-    ;; ID of the Card this came from, if this came from Card results metadata. Mostly used for creating column groups.
+    ;;
+    ;; ID of the Card this came from, if this column originally came from a Card (Saved Question or Model). Mostly
+    ;; used for creating column groups. AFAIK this should get propagated indefinitely -- Cam
     [:lib/card-id {:optional true} [:maybe ::lib.schema.id/card]]
+    ;;
+    ;; Whether this column originally was introduced by a Model. Model metadata has special rules, for example because
+    ;; `:display-name` can be user-edited we should be careful not to recalculate it unnecessarily. See for
+    ;; example [[metabase.query-processor.model-test/preserve-model-display-names-test]].
+    ;;
+    ;; This key should get propagated indefinitely.
+    [:lib/from-model? {:optional true} [:maybe :boolean]]
     ;;
     ;; this stuff is adapted from [[metabase.query-processor.util.add-alias-info]]. It is included in
     ;; the [[metabase.lib.metadata.calculation/metadata]]
@@ -508,7 +516,23 @@
     ;; stage. [[metabase.lib.metadata.result-metadata/super-broken-legacy-field-ref]] uses this to know to force Field
     ;; ID refs for QP `:field_ref` in results metadata to preserve historic behavior to avoid breaking legacy viz
     ;; settings that use it as a key.
-    [:qp/implicit-field? {:optional true} [:maybe :boolean]]]
+    [:qp/implicit-field? {:optional true} [:maybe :boolean]]
+    ;;
+    ;; Coercion strategies (eg. UNIX seconds -> :type/DateTime) are configured on :model/Fields in the Admin UI, and
+    ;; reflected on refs to that field on the *first* stage of an MBQL query or a join, where the column first appears
+    ;; in the query. After the column passes through a stage boundary, it's no longer marked with the coercion strategy
+    ;; to avoid double-coercion.
+    ;;
+    ;; *However*, when a table is sandboxed by a native query, and it has fields which need coercion, the SQL subquery
+    ;; does not do the coercion (it's supposed to be a drop-in replacement for the table) but then the MBQL refs to its
+    ;; columns are not in the first stage anymore! So the sandboxing middleware sets this flag to the
+    ;; `:coercion-strategy`, along with `:qp/native-sandbox-column.propagate-coercion? true` (see below). Lib will
+    ;; propagate the coercion strategy through *exactly one* stage boundary, so it can get from the SQL first stage to
+    ;; the earliest MBQL stage, where the coercion will get applied correctly. See QUE2-376 or #69867 for more details.
+    [:qp/native-sandbox-column.force-coercion-strategy {:optional true} :keyword]
+    ;;
+    ;; See above about `:qp/native-sandbox-column.force-coercion-strategy`.
+    [:qp/native-sandbox-column.propagate-coercion? {:optional true} :boolean]]
    ;;
    ;; Additional constraints
    ;;

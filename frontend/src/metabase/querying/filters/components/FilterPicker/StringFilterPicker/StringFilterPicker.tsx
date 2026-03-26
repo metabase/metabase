@@ -2,10 +2,6 @@ import type { FormEvent } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import {
-  type OperatorType,
-  useStringFilter,
-} from "metabase/querying/filters/hooks/use-string-filter";
 import { Box, Checkbox, Flex, MultiAutocomplete } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -15,6 +11,9 @@ import { FilterPickerHeader } from "../FilterPickerHeader";
 import { StringFilterValuePicker } from "../FilterValuePicker";
 import { COMBOBOX_PROPS, WIDTH } from "../constants";
 import type { FilterChangeOpts, FilterPickerWidgetProps } from "../types";
+
+import { useStringFilter } from "./hooks";
+import type { OperatorType } from "./types";
 
 export function StringFilterPicker({
   autoFocus,

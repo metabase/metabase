@@ -16,12 +16,14 @@ export function DefaultRequiredValueControl({
   tag,
   parameter,
   isEmbeddedDisabled,
+  parametersAreUserVisible = true,
   onChangeDefaultValue,
   onChangeRequired,
 }: {
   tag: TemplateTag;
   parameter: Parameter;
   isEmbeddedDisabled: boolean;
+  parametersAreUserVisible?: boolean;
   onChangeDefaultValue: (value: any) => void;
   onChangeRequired: (value: boolean) => void;
 }) {
@@ -38,24 +40,22 @@ export function DefaultRequiredValueControl({
   return (
     <div>
       <ContainerLabel id={`default-value-label-${tag.id}`}>
-        {getLabel(tag)}
+        {getLabel(tag, parametersAreUserVisible)}
         {isMissing && <ErrorSpan> ({t`required`})</ErrorSpan>}
       </ContainerLabel>
 
       <Flex gap="xs" direction="column">
-        {parameter && (
-          <div aria-labelledby={`default-value-label-${tag.id}`}>
-            <DefaultParameterValueWidget
-              parameter={parameterWithoutDefault}
-              value={tag.default}
-              setValue={onChangeDefaultValue}
-              isEditing
-              commitImmediately
-              mimicMantine
-              placeholder={placeholder}
-            />
-          </div>
-        )}
+        <div aria-labelledby={`default-value-label-${tag.id}`}>
+          <DefaultParameterValueWidget
+            parameter={parameterWithoutDefault}
+            value={tag.default}
+            setValue={onChangeDefaultValue}
+            isEditing
+            commitImmediately
+            mimicMantine
+            placeholder={placeholder}
+          />
+        </div>
 
         <RequiredParamToggle
           uniqueId={tag.id}
@@ -80,14 +80,18 @@ export function DefaultRequiredValueControl({
               </Text>
             </>
           }
+          parametersAreUserVisible={parametersAreUserVisible}
         />
       </Flex>
     </div>
   );
 }
 
-function getLabel(tag: TemplateTag) {
-  return tag.type === "temporal-unit"
-    ? t`Default parameter widget value`
-    : t`Default filter widget value`;
+function getLabel(tag: TemplateTag, parametersAreUserVisible: boolean) {
+  if (parametersAreUserVisible) {
+    return tag.type === "temporal-unit"
+      ? t`Default parameter widget value`
+      : t`Default filter widget value`;
+  }
+  return t`Default value`;
 }

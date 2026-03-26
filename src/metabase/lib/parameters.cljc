@@ -110,6 +110,31 @@
                  opts)
     nil))
 
+(mu/defn parameter-target-stage-number :- :int
+  "Return the stage-number from a parameter target's dimension options,
+   or 0 (first stage) if not specified."
+  [target :- ::lib.schema.parameter/target]
+  (or (some-> target parameter-target-dimension-options :stage-number)
+      0))
+
+(mu/defn update-parameter-target-field-ref :- ::lib.schema.parameter/target
+  "If parameter `:target` wraps a legacy `:field` ref, convert it to pMBQL, apply `(apply f field-ref args)`, convert
+  the result back to legacy, and place it back in the target. If there is no `:field` ref, returns target unchanged."
+  [target :- ::lib.schema.parameter/target
+   f & args]
+  (if-let [field-ref (parameter-target-field-ref target)]
+    (let [new-legacy-ref (-> (apply f field-ref args)
+                             lib.convert/->legacy-MBQL)]
+      (case (first target)
+        :dimension (let [[tag _ref opts] target]
+                     (cond-> [tag new-legacy-ref]
+                       opts (conj opts)))
+        :variable  (let [[tag _ref] target]
+                     [tag new-legacy-ref])
+        :field     new-legacy-ref
+        target))
+    target))
+
 (mu/defn update-parameter-target-dimension-options :- ::lib.schema.parameter/target
   "If parameter `:target` is a `:dimension` pseudo-clause, update the options map associated with it, if any. If it is
   not a `:dimension` psuedo-clause, this function no-ops."

@@ -21,12 +21,12 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util.unique-name-generator]
    [metabase.permissions.core :as perms]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.api :as api.dataset]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.pivot.test-util :as qp.pivot.test-util]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
@@ -690,7 +690,7 @@
 (deftest databricks-stack-trace-test
   (testing "exceptions with stacktraces should have the stacktrace removed"
     (mt/test-driver :databricks
-      (let [res (mt/user-http-request :rasta :post 202 "dataset"
+      (let [res (mt/user-http-request :rasta :post 400 "dataset"
                                       (lib/native-query (mt/metadata-provider)
                                                         "asdf;"))]
         (is (= {:error_type "invalid-query"

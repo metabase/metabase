@@ -15,7 +15,6 @@ import type {
 } from "metabase/common/components/Pickers/MiniPicker/types";
 import { isEmbedding } from "metabase/embedding/config";
 import { useDispatch, useSelector, useStore } from "metabase/lib/redux";
-import type { QueryEditorDatabasePickerItem } from "metabase/querying/editor/types";
 import { loadCard, loadMetadataForTable } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getIsTenantUser } from "metabase/selectors/user";
@@ -27,6 +26,7 @@ import {
 } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { TableId } from "metabase-types/api";
 
+import type { QueryEditorDatabasePickerItem } from "../../../editor/types";
 import {
   type NotebookContextType,
   useNotebookContext,
@@ -245,6 +245,10 @@ function ModernDataPicker({
         }}
         shouldHide={shouldHide}
         shouldShowLibrary={shouldShowLibrary}
+        menuDropdownProps={{
+          mt: "xl",
+          ml: "-1rem",
+        }}
       />
       {isOpened && isBrowsing && (
         <DataPickerModal

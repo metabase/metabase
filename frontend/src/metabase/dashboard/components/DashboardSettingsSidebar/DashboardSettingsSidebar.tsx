@@ -82,7 +82,9 @@ const DashboardSidesheetBody = ({
   const canWrite = dashboard.can_write && !dashboard.archived;
 
   const isCacheable = isDashboardCacheable(dashboard);
-  const showCaching = canWrite && PLUGIN_CACHING.isGranularCachingEnabled();
+  const showCaching =
+    (dashboard.can_set_cache_policy ?? canWrite) &&
+    PLUGIN_CACHING.isGranularCachingEnabled();
 
   if (dashboard.archived) {
     return null;

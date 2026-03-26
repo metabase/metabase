@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import type { Editor } from "@tiptap/core";
 import { useState } from "react";
 
+import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
@@ -11,7 +12,6 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { PLUGIN_METABOT } from "metabase/plugins";
 import { Input } from "metabase/ui";
 import registerVisualizations from "metabase/visualizations/register";
 import { type RecentItem, isRecentTableItem } from "metabase-types/api";
@@ -439,18 +439,13 @@ describe("CommandSuggestion", () => {
     });
 
     describe("when metabot is disabled", () => {
-      beforeEach(() => {
-        PLUGIN_METABOT.isEnabled = jest.fn(() => false);
-      });
-
       it("should show all available commands except Metabot", async () => {
-        const settings = mockSettings({
-          "token-features": createMockTokenFeatures({
-            metabot_v3: false,
+        setup({
+          settings: mockSettings({
+            "metabot-enabled?": false,
+            "llm-metabot-configured?": false,
           }),
         });
-
-        setup({ settings });
 
         expect(screen.queryByText("Ask Metabot")).not.toBeInTheDocument();
         await expectStandardCommandsToBePresent();
@@ -459,17 +454,19 @@ describe("CommandSuggestion", () => {
 
     describe("when metabot is enabled", () => {
       beforeEach(() => {
-        PLUGIN_METABOT.isEnabled = jest.fn(() => true);
+        mockSettings({
+          "token-features": createMockTokenFeatures({ metabot_v3: true }),
+        });
+        setupEnterprisePlugins();
       });
 
       it("should show all available commands including Metabot", async () => {
-        const settings = mockSettings({
-          "token-features": createMockTokenFeatures({
-            metabot_v3: true,
+        setup({
+          settings: mockSettings({
+            "metabot-enabled?": true,
+            "llm-metabot-configured?": true,
           }),
         });
-
-        setup({ settings });
 
         expect(screen.getByText("Ask Metabot")).toBeInTheDocument();
         await expectStandardCommandsToBePresent();

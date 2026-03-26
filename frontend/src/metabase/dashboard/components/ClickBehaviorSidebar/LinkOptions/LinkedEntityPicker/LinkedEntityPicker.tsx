@@ -11,7 +11,7 @@ import {
 import { useDashboardQuery } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import {
-  ClickMappingsConnected,
+  ClickMappings,
   clickTargetObjectType,
 } from "metabase/dashboard/components/ClickMappings";
 import { getDashboard } from "metabase/dashboard/selectors";
@@ -157,7 +157,7 @@ function TargetClickMappings({
   return (
     <div className={CS.pt1}>
       <Heading>{getTargetClickMappingsHeading(checkNotNull(object))}</Heading>
-      <ClickMappingsConnected
+      <ClickMappings
         object={object}
         dashcard={dashcard}
         isDashboard={isDashboard}

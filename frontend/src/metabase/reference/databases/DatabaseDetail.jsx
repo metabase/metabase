@@ -13,11 +13,11 @@ import Detail from "metabase/reference/components/Detail";
 import { EditHeader } from "metabase/reference/components/EditHeader";
 import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
 import * as actions from "metabase/reference/reference";
+import { getShallowFields as getFields } from "metabase/selectors/metadata";
 
 import {
   getDatabase,
   getError,
-  getFields,
   getIsEditing,
   getIsFormulaExpanded,
   getLoading,

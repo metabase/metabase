@@ -25,7 +25,8 @@
   google-auth-enabled
   ldap-enabled
   send-new-sso-user-admin-email?
-  sso-enabled?])
+  sso-enabled?
+  sso-source-enabled?])
 
 #_{:clj-kondo/ignore [:missing-docstring]}
 (p/import-def metabase.sso.ldap.default-implementation/UserInfo LDAPUserInfo)

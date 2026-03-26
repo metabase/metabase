@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { isPivotGroupColumn } from "metabase/lib/data_grid";
+import { isPivotGroupColumn } from "metabase/visualizations/lib/data_grid";
 import { isDate, isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,

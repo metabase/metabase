@@ -44,6 +44,7 @@
     :model/QueryTable
     :model/RemoteSyncObject
     :model/RemoteSyncTask
+    :model/ReplacementRun
     :model/SearchIndexMetadata
     :model/SemanticSearchTokenTracking
     :model/SupportAccessGrantLog

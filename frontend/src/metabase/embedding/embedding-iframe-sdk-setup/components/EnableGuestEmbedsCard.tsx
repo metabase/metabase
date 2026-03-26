@@ -15,7 +15,7 @@ export const EnableGuestEmbedsCard = () => {
 
   return (
     <EnableEmbeddingCard
-      embeddingType="guest embeds"
+      embeddingType="guest-embeds"
       isEnabled={isGuestEmbedsEnabled}
       termsAccepted={isGuestEmbedsTermsAccepted}
       settingsToUpdate={{

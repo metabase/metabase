@@ -14,7 +14,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -30,7 +29,7 @@
   [query-or-clause]
   (let [found? (volatile! false)
         check-clause (fn [x]
-                       (when (lib.util/clause-of-type? x :metric)
+                       (when (lib/clause-of-type? x :metric)
                          (vreset! found? true))
                        nil)]
     (if (map? query-or-clause)
@@ -73,7 +72,7 @@
   Measure definitions are MBQL 5 queries with a single stage containing one aggregation."
   [{:keys [definition]}]
   (when-let [aggregation (-> definition :stages first :aggregation first)]
-    (lib.util/fresh-uuids aggregation)))
+    (lib/fresh-uuids aggregation)))
 
 (mu/defn- expand-measures-in-stage :- ::lib.schema/stage
   "Replace :measure clauses in a stage with their actual aggregation expressions."

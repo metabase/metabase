@@ -6,6 +6,7 @@ import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Button, Divider, Group, Text } from "metabase/ui";
 import { usePurchaseCloudAddOnMutation } from "metabase-enterprise/api";
 import { TransformsSettingUpModal } from "metabase-enterprise/transforms/upsells/components/TransformsSettingUpModal";
+import { Urls } from "metabase-enterprise/urls";
 
 import type { TransformTier } from "./TierSelection";
 
@@ -30,6 +31,7 @@ export const PricingSummary = (props: PricingSummaryProps) => {
       await purchaseCloudAddOn({
         product_type: productType,
       }).unwrap();
+      window.location.href = Urls.transformList(); // On success, do a full-page redirect to transforms list
     } catch {
       sendErrorToast(
         t`It looks like something went wrong. Please refresh the page and try again.`,

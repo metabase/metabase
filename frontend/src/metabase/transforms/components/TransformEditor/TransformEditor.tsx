@@ -113,6 +113,7 @@ export function TransformEditor({
           />
         ))
       }
+      parametersAreUserVisible={false}
     />
   );
 }

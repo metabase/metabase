@@ -36,8 +36,10 @@ import type {
   MiniPickerSchemaItem,
   MiniPickerTableItem,
 } from "../types";
+import { getOurAnalytics } from "../utils";
 
 import { MiniPickerItem } from "./MiniPickerItem";
+import styles from "./MiniPickerItem.module.css";
 
 export function MiniPickerItemList() {
   const { path, searchQuery } = useMiniPickerContext();
@@ -131,20 +133,22 @@ function RootItemList() {
           }}
         />
       )) ?? <MiniPickerListLoader />}
-      <MiniPickerItem
-        name={rootCollectionError ? t`Collections` : t`Our analytics`}
-        model="collection"
-        isFolder
-        onClick={() => {
-          setPath([
-            {
-              model: "collection",
-              id: "root" as any, // cmon typescript, trust me
-              name: rootCollectionError ? t`Collections` : t`Our analytics`,
-            },
-          ]);
-        }}
-      />
+      {!isHidden(getOurAnalytics()) && (
+        <MiniPickerItem
+          name={rootCollectionError ? t`Collections` : t`Our analytics`}
+          model="collection"
+          isFolder
+          onClick={() => {
+            setPath([
+              {
+                model: "collection",
+                id: "root" as any, // cmon typescript, trust me
+                name: rootCollectionError ? t`Collections` : t`Our analytics`,
+              },
+            ]);
+          }}
+        />
+      )}
     </ItemList>
   );
 }
@@ -364,6 +368,10 @@ function SearchItemList({ query }: { query: string }) {
                 onChange(item);
               }}
               rightSection={<LocationInfo item={item} />}
+              classNames={{
+                itemLabel: styles.leftSection,
+                itemSection: styles.rightSection,
+              }}
             />
           );
         })}
@@ -419,10 +427,10 @@ const LocationInfo = ({ item }: { item: MiniPickerPickableItem }) => {
       });
 
   return (
-    <Flex gap="xs" align="center">
-      {iconProps && <Icon {...iconProps} size={12} />}
-      <Text size="sm" c="text-secondary">
-        <Ellipsified maw="18rem">{itemText}</Ellipsified>
+    <Flex gap="xs" align="center" ml="auto" style={{ overflow: "hidden" }}>
+      {iconProps && <Icon {...iconProps} size={12} miw={12} />}
+      <Text size="sm" c="text-secondary" miw="0">
+        <Ellipsified>{itemText}</Ellipsified>
       </Text>
     </Flex>
   );

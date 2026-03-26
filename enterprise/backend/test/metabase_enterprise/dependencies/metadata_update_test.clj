@@ -3,6 +3,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer [deftest is testing]]
    [java-time.api :as t]
+   [metabase-enterprise.dependencies.async :as async]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.events :as deps.events]
    [metabase-enterprise.dependencies.findings :as deps.findings]
@@ -132,10 +133,11 @@
                                      [:model/Card :id :result_metadata :card_schema]
                                      :id [:in [parent-id child-id grandchild-id]])))
             (t2/update! :model/Card parent-id {:dataset_query (lib/query mp orders)})
-            (events/publish-event! :event/card-update
-                                   {:object (assoc parent-card :dataset_query (lib/query mp orders))
-                                    :previous-object parent-card
-                                    :user-id api/*current-user-id*})
+            (with-redefs [async/submit! (fn [f] (f))]
+              (events/publish-event! :event/card-update
+                                     {:object (assoc parent-card :dataset_query (lib/query mp orders))
+                                      :previous-object parent-card
+                                      :user-id api/*current-user-id*}))
             (is (= #{9}
                    (t2/select-fn-set (comp count :result_metadata)
                                      [:model/Card :id :result_metadata :card_schema]
@@ -156,10 +158,11 @@
                                               :to_entity_type :card
                                               :to_entity_id parent-id}]
             (t2/update! :model/Card child-id {:result_metadata nil})
-            (events/publish-event! :event/card-update
-                                   {:object (assoc parent-card :dataset_query native-query)
-                                    :previous-object parent-card
-                                    :user-id api/*current-user-id*})
+            (with-redefs [async/submit! (fn [f] (f))]
+              (events/publish-event! :event/card-update
+                                     {:object (assoc parent-card :dataset_query native-query)
+                                      :previous-object parent-card
+                                      :user-id api/*current-user-id*}))
             (is (= nil
                    (t2/select-one-fn :result_metadata
                                      [:model/Card :id :result_metadata :card_schema]
@@ -191,10 +194,11 @@
                                                 [0 :display_name]
                                                 "new-name")]
               (t2/update! :model/Card parent-id {:result_metadata new-result-metadata})
-              (events/publish-event! :event/card-update
-                                     {:object (assoc parent-card :result_metadata new-result-metadata)
-                                      :previous-object parent-card
-                                      :user-id api/*current-user-id*})
+              (with-redefs [async/submit! (fn [f] (f))]
+                (events/publish-event! :event/card-update
+                                       {:object (assoc parent-card :result_metadata new-result-metadata)
+                                        :previous-object parent-card
+                                        :user-id api/*current-user-id*}))
               (is (= #{[child-id "new-name"] [grandchild-id "new-name"]}
                      (t2/select-fn-set (juxt :id #(get-in % [:result_metadata 0 :display_name]))
                                        [:model/Card :id :result_metadata :card_schema]
@@ -233,10 +237,11 @@
               (t2/update! :model/Card parent-id {:result_metadata new-parent-metadata})
               (t2/update! :model/Card child-id {:result_metadata new-child-metadata})
               (t2/update! :model/Card grandchild-id {:result_metadata new-grandchild-metadata})
-              (events/publish-event! :event/card-update
-                                     {:object (assoc parent-card :result_metadata new-parent-metadata)
-                                      :previous-object parent-card
-                                      :user-id api/*current-user-id*})
+              (with-redefs [async/submit! (fn [f] (f))]
+                (events/publish-event! :event/card-update
+                                       {:object (assoc parent-card :result_metadata new-parent-metadata)
+                                        :previous-object parent-card
+                                        :user-id api/*current-user-id*}))
               (is (= #{[child-id "child-name"] [grandchild-id "grandchild-name"]}
                      (t2/select-fn-set (juxt :id #(get-in % [:result_metadata 0 :display_name]))
                                        [:model/Card :id :result_metadata :card_schema]
@@ -274,10 +279,11 @@
               (t2/update! :model/Card parent-id {:result_metadata new-parent-metadata})
               (t2/update! :model/Card child-id {:result_metadata new-child-metadata})
               (t2/update! :model/Card grandchild-id {:result_metadata nil})
-              (events/publish-event! :event/card-update
-                                     {:object (assoc parent-card :result_metadata new-parent-metadata)
-                                      :previous-object parent-card
-                                      :user-id api/*current-user-id*})
+              (with-redefs [async/submit! (fn [f] (f))]
+                (events/publish-event! :event/card-update
+                                       {:object (assoc parent-card :result_metadata new-parent-metadata)
+                                        :previous-object parent-card
+                                        :user-id api/*current-user-id*}))
               (is (= nil
                      (t2/select-one-fn #(get-in % [:result_metadata 0 :display_name])
                                        [:model/Card :id :result_metadata :card_schema]

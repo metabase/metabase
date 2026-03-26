@@ -1,4 +1,3 @@
-import type * as React from "react";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
@@ -14,7 +13,11 @@ import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { Flex } from "metabase/ui";
 import type { RowValue } from "metabase-types/api";
 
-import { getOptionDisplayName, optionMatchesFilter } from "../ListField/utils";
+import {
+  getOptionDisplayName,
+  normalizeValuesToOptionKeys,
+  optionMatchesFilter,
+} from "../ListField/utils";
 
 import {
   EmptyStateContainer,
@@ -49,9 +52,13 @@ const SingleSelectListField = ({
   isLoading,
   checkedColor,
 }: SingleSelectListFieldProps) => {
-  const [selectedValue, setSelectedValue] = useState(value?.[0]);
+  const normalizedValue = useMemo(
+    () => normalizeValuesToOptionKeys(value, options),
+    [value, options],
+  );
+  const [selectedValue, setSelectedValue] = useState(normalizedValue?.[0]);
   const [addedOptions, setAddedOptions] = useState<Option[]>(() =>
-    createOptionsFromValuesWithoutOptions(value, options),
+    createOptionsFromValuesWithoutOptions(normalizedValue, options),
   );
   const tc = useTranslateContent();
   const sortByTranslation =

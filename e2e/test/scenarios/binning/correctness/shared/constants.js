@@ -38,7 +38,7 @@ export const TIME_OPTIONS = {
   },
   "Hour of day": {
     selected: "by hour of day",
-    representativeValues: ["12:00 AM", "2:00 AM", "12:00 PM", "8:00 PM"],
+    representativeValues: ["12:00 AM", "3:00 AM", "12:00 PM", "8:00 PM"],
     isHiddenByDefault: true,
   },
   "Day of week": {

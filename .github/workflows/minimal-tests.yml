@@ -11,7 +11,7 @@ concurrency:
 jobs:
   # Only run if the PR has the minimal-tests label
   check-label:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 1
     outputs:
       should-run: ${{ steps.check.outputs.result }}
@@ -29,7 +29,7 @@ jobs:
   postgres-app-db-test:
     needs: check-label
     if: needs.check-label.outputs.should-run == 'true'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     env:
       CI: "true"
@@ -80,7 +80,7 @@ jobs:
   postgres-driver-test:
     needs: check-label
     if: needs.check-label.outputs.should-run == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     env:
       CI: "true"
@@ -128,7 +128,7 @@ jobs:
   frontend-unit-tests:
     needs: check-label
     if: needs.check-label.outputs.should-run == 'true'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     env:
       JEST_JUNIT_OUTPUT_DIR: ./target/junit
@@ -163,7 +163,7 @@ jobs:
       - postgres-app-db-test
       - postgres-driver-test
       - frontend-unit-tests
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     name: minimal-tests-result
     if: always() && !cancelled()

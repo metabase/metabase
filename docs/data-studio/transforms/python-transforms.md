@@ -24,9 +24,12 @@ Python-based transforms require a dedicated [Python execution environment](#set-
 
 To execute Python transforms, you'll need a _Python runner_ - a dedicated environment for running Python code.
 
-If you're on Metabase Cloud, get the **Transforms add-on**, and you're good to go.
+- If you're on Metabase Cloud, get the **Transforms add-on** with **SQL + Python** option, and you're good to go.
 
-If you're self-hosting Metabase, you'll need to set up a self-hosted Python runner, see [Python runner](python-runner.md).
+- If you're self-hosting Metabase, you'll need to:
+
+  1.  Get the **Advanced transforms** add-on for your subscription in Metabase Store [store.metabase.com](https://store.metabase.com).
+  2.  Set up a self-hosted Python runner, see [Python runner](python-runner.md).
 
 ## Create a Python transform
 
@@ -117,9 +120,7 @@ To make a Python transform incremental:
 
 1. Go to the transform's page in **Data studio > Transforms**.
 2. Switch to **Settings** tab.
-3. In **Column to check for new values**, select the column that Metabase should check to determine which values are new. See [Prerequisites for incremental transforms](./transforms-overview.md#prerequisites-for-incremental-transforms) for more information on the requirements for that column.
-
-   Unlike [Query transforms](./query-transforms.md), where you select an _output_ column as the column to check for new values, with Python transforms, you have to select a column from the _input_ tables as the column to check for new values.
+3. In **Column to check for new values**, select the column in one of the source tables that Metabase should check to determine which values are new. Only some columns are eligible. See [prerequisites for incremental transforms](./transforms-overview.md#prerequisites-for-incremental-transforms).
 
 ## Current limitations of Python transforms
 

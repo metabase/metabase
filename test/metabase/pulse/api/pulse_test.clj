@@ -16,7 +16,7 @@
    [metabase.pulse.models.pulse-test :as pulse-test]
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.queries-rest.api.card-test :as api.card-test]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.http-client :as client]
@@ -1297,8 +1297,7 @@
                    (get-in [:channels :slack :fields]))))))
 
     (testing "When slack is not configured, `form_input` returns no channels"
-      (mt/with-temporary-setting-values [slack-token nil
-                                         slack-app-token nil]
+      (mt/with-temporary-setting-values [channel.settings/slack-app-token nil]
         (is (empty?
              (-> (mt/user-http-request :rasta :get 200 "pulse/form_input")
                  (get-in [:channels :slack :fields])

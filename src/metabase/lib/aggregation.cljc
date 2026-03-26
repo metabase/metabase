@@ -76,7 +76,7 @@
 (defmethod lib.metadata.calculation/describe-top-level-key-method :aggregation
   [query stage-number _k]
   (when-let [ags (not-empty (:aggregation (lib.util/query-stage query stage-number)))]
-    (lib.util/join-strings-with-conjunction
+    (i18n/join-strings-with-conjunction
      (i18n/tru "and")
      (for [aggregation ags]
        (lib.metadata.calculation/display-name query stage-number aggregation :long)))))
@@ -373,7 +373,7 @@
                                   (assoc :lib/source      :source/aggregations
                                          :lib/source-uuid (lib.options/uuid aggregation))))))))))
 
-(def ^:private OperatorWithColumns
+(mr/def ::operator-with-columns
   [:merge
    ::lib.schema.aggregation/operator
    [:map
@@ -392,10 +392,10 @@
 
 (mu/defn aggregation-operator-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
   "Returns the columns for which `aggregation-operator` is applicable."
-  [aggregation-operator :- OperatorWithColumns]
+  [aggregation-operator :- ::operator-with-columns]
   (:columns aggregation-operator))
 
-(mu/defn available-aggregation-operators :- [:maybe [:sequential OperatorWithColumns]]
+(mu/defn available-aggregation-operators :- [:maybe [:sequential ::operator-with-columns]]
   "Returns the available aggregation operators for the stage with `stage-number` of `query`.
   If `stage-number` is omitted, uses the last stage."
   ([query]
@@ -442,16 +442,16 @@
     column]
    (lib.options/ensure-uuid [(:short aggregation-operator) {} (lib.common/->op-arg column)])))
 
-(def ^:private SelectedOperatorWithColumns
+(mr/def ::selected-operator-with-columns
   [:merge
    ::lib.schema.aggregation/operator
    [:map
     [:columns {:optional true} [:sequential ::lib.schema.metadata/column]]
     [:selected? {:optional true} :boolean]]])
 
-(mu/defn selected-aggregation-operators :- [:maybe [:sequential SelectedOperatorWithColumns]]
+(mu/defn selected-aggregation-operators :- [:maybe [:sequential ::selected-operator-with-columns]]
   "Mark the operator and the column (if any) in `agg-operators` selected by `agg-clause`."
-  [agg-operators :- [:maybe [:sequential OperatorWithColumns]]
+  [agg-operators :- [:maybe [:sequential ::operator-with-columns]]
    agg-clause]
   (when (seq agg-operators)
     (let [[op _ agg-col] agg-clause
@@ -487,7 +487,7 @@
 
   ([query        :- ::lib.schema/query
     stage-number :- :int
-    ag-index     :- ::lib.schema.common/int-greater-than-or-equal-to-zero]
+    ag-index     :- nat-int?]
    (if-let [[_ {ag-uuid :lib/uuid}] (get (:aggregation (lib.util/query-stage query stage-number)) ag-index)]
      (lib.options/ensure-uuid [:aggregation {} ag-uuid])
      (throw (ex-info (str "Undefined aggregation " ag-index)
@@ -502,7 +502,7 @@
     [:aggregation 0]"
   [query        :- ::lib.schema/query
    stage-number :- :int
-   index        :- ::lib.schema.common/int-greater-than-or-equal-to-zero]
+   index        :- nat-int?]
   (let [ags (aggregations query stage-number)]
     (when (> (clojure.core/count ags) index)
       (nth ags index))))
@@ -510,11 +510,11 @@
 (mu/defn aggregable-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
   "Returns the columns that can be used in aggregation expressions."
   ([query :- ::lib.schema/query
-    aggregation-position :- [:maybe ::lib.schema.common/int-greater-than-or-equal-to-zero]]
+    aggregation-position :- [:maybe nat-int?]]
    (aggregable-columns query -1 aggregation-position))
   ([query :- ::lib.schema/query
     stage-number :- :int
-    aggregation-position :- [:maybe ::lib.schema.common/int-greater-than-or-equal-to-zero]]
+    aggregation-position :- [:maybe nat-int?]]
    (let [agg-cols (aggregations-metadata query stage-number)
          columns (into (vec (lib.metadata.calculation/visible-columns query stage-number))
                        (cond->> agg-cols

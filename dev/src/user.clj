@@ -65,7 +65,9 @@
 (def cli-spec [["-h" "--help" "Show this help text"]
                ["-H" "--hot" "Enable hot reloading"] ;
                ["-p" "--port PORT" "Port to run the nREPL server on"
-                :default 50605
+                :default (if-let [p (env/env :nrepl-port)]
+                           (Integer/parseInt p)
+                           50605)
                 :parse-fn #(Integer/parseInt %)]])
 
 (defn -main

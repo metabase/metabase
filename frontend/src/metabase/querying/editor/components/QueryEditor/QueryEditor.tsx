@@ -33,6 +33,7 @@ type QueryEditorProps = {
   topBarInnerContent?: ReactNode;
   height?: string | number;
   extraEditorButton?: ReactNode;
+  parametersAreUserVisible?: boolean;
 };
 
 export function QueryEditor({
@@ -49,6 +50,7 @@ export function QueryEditor({
   topBarInnerContent,
   height = "100%",
   extraEditorButton,
+  parametersAreUserVisible = true,
 }: QueryEditorProps) {
   const {
     question,
@@ -182,6 +184,7 @@ export function QueryEditor({
               openSnippetModalWithSelectedText
             }
             onChangeQuery={onChangeQuery}
+            parametersAreUserVisible={parametersAreUserVisible}
           />
         )}
         {!isNative && uiState.sidebarType === "native-query" && (

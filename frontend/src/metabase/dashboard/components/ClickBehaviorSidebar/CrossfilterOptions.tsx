@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { ClickMappingsConnected } from "metabase/dashboard/components/ClickMappings";
+import { ClickMappings } from "metabase/dashboard/components/ClickMappings/ClickMappings";
 import type {
   ClickBehavior,
   Dashboard,
@@ -14,7 +14,7 @@ interface Props {
   dashboard: Dashboard;
   dashcard: DashboardCard;
   clickBehavior: ClickBehavior;
-  updateSettings: (settings: ClickBehavior) => void;
+  updateSettings: (settings: Partial<ClickBehavior>) => void;
 }
 
 export function CrossfilterOptions({
@@ -28,7 +28,7 @@ export function CrossfilterOptions({
       <Heading
         className={CS.textMedium}
       >{t`Pick one or more filters to update`}</Heading>
-      <ClickMappingsConnected
+      <ClickMappings
         object={dashboard}
         dashcard={dashcard}
         isDashboard

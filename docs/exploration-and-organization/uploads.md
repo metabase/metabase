@@ -6,7 +6,7 @@ title: Uploading data
 
 If an admin has [set up uploads](../databases/uploads.md), you can upload CSV data by clicking on the **Upload** icon in the top right of the collection page.
 
-![Upload CSV data](../databases/images/upload-icon.png).
+![Upload CSV data](../databases/images/upload-icon.png)
 
 ## Create, append, or replace models with uploads
 

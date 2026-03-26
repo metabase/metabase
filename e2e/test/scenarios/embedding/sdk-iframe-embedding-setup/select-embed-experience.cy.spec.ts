@@ -26,6 +26,7 @@ describe(suiteTitle, () => {
 
     H.updateSetting("enable-embedding-simple", true);
     H.updateSetting("enable-embedding-static", true);
+    H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
 
     cy.intercept("GET", "/api/dashboard/*").as("dashboard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
@@ -157,6 +158,14 @@ describe(suiteTitle, () => {
       cy.log("simulate an empty activity log");
       cy.intercept("GET", "/api/activity/recents?*", { recents: [] }).as(
         "emptyRecentItems",
+      );
+
+      // The embed wizard calls the search API to find recently created
+      // dashboards. Without this, the snapshot's admin-owned dashboards
+      // would be returned and selected as the default.
+      cy.log("simulate that there are no recently created dashboards");
+      cy.intercept("GET", "/api/search?*", { data: [], total: 0 }).as(
+        "emptySearch",
       );
     });
 

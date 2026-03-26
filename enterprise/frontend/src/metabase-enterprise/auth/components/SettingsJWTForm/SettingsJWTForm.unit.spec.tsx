@@ -3,6 +3,7 @@ import fetchMock from "fetch-mock";
 
 import {
   findRequests,
+  setupGenerateRandomTokenEndpoint,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
   setupUpdateSettingsEndpoint,
@@ -10,7 +11,7 @@ import {
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { createMockGroup, createMockSettings } from "metabase-types/api/mocks";
 
-import { type JWTFormValues, SettingsJWTForm } from "./SettingsJWTForm";
+import { SettingsJWTForm } from "./SettingsJWTForm";
 
 const GROUPS = [
   createMockGroup(),
@@ -20,16 +21,25 @@ const GROUPS = [
   createMockGroup({ id: 5, name: "flamingos" }),
 ];
 
-const setup = async (
-  settingValues?: Partial<JWTFormValues> & {
-    "jwt-enabled"?: boolean;
-    "use-tenants"?: boolean;
-  },
-) => {
-  const settings = createMockSettings(settingValues);
-  setupSettingsEndpoints([]);
-  setupPropertiesEndpoints(settings);
+const setup = async ({
+  jwtEnabled,
+  useTenants,
+}: {
+  jwtEnabled?: boolean;
+  useTenants?: boolean;
+} = {}) => {
+  setupSettingsEndpoints([
+    { key: "use-tenants", value: useTenants ?? false },
+    { key: "jwt-enabled", value: jwtEnabled ?? false },
+  ]);
+  setupPropertiesEndpoints(
+    createMockSettings({
+      "use-tenants": useTenants,
+      "jwt-enabled": jwtEnabled,
+    }),
+  );
   setupUpdateSettingsEndpoint();
+  setupGenerateRandomTokenEndpoint("1234abcd");
 
   fetchMock.get("path:/api/permissions/group", GROUPS);
 
@@ -48,7 +58,6 @@ describe("SettingsJWTForm", () => {
     "jwt-attribute-firstname": "John",
     "jwt-attribute-lastname": "Doe",
     "jwt-attribute-groups": "grouper",
-    "jwt-attribute-tenant": null,
     "jwt-enabled": true,
     "jwt-group-sync": true,
   };
@@ -60,12 +69,15 @@ describe("SettingsJWTForm", () => {
       await screen.findByRole("textbox", { name: /JWT Identity Provider URI/ }),
       ATTRS["jwt-identity-provider-uri"],
     );
+    await userEvent.click(
+      await screen.findByRole("button", { name: /Set up key/ }),
+    );
+    await userEvent.clear(await screen.findByLabelText(/New secret key/));
     await userEvent.type(
-      await screen.findByRole("textbox", {
-        name: /String used by the JWT signing key/,
-      }),
+      await screen.findByLabelText(/New secret key/),
       ATTRS["jwt-shared-secret"],
     );
+    await userEvent.click(await screen.findByRole("button", { name: /Done/ }));
     await userEvent.type(
       await screen.findByRole("textbox", { name: /Email attribute/ }),
       ATTRS["jwt-attribute-email"],
@@ -106,17 +118,11 @@ describe("SettingsJWTForm", () => {
   });
 
   it("should show tenant attribute when tenanting is on", async () => {
-    await setup({ "use-tenants": true });
+    await setup({ useTenants: true });
 
     await userEvent.type(
       await screen.findByRole("textbox", { name: /JWT Identity Provider URI/ }),
       ATTRS["jwt-identity-provider-uri"],
-    );
-    await userEvent.type(
-      await screen.findByRole("textbox", {
-        name: /String used by the JWT signing key/,
-      }),
-      ATTRS["jwt-shared-secret"],
     );
 
     await userEvent.type(
@@ -137,7 +143,7 @@ describe("SettingsJWTForm", () => {
   });
 
   it("User provisioning should not appear if JWT has not been enabled", async () => {
-    await setup({ "jwt-enabled": false });
+    await setup({ jwtEnabled: false });
 
     const saveButton = await screen.findByRole("button", {
       name: "Save and enable",
@@ -148,7 +154,7 @@ describe("SettingsJWTForm", () => {
   });
 
   it("User provisioning should appear if JWT has been enabled", async () => {
-    await setup({ "jwt-enabled": true });
+    await setup({ jwtEnabled: true });
 
     const saveButton = await screen.findByRole("button", {
       name: "Save changes",

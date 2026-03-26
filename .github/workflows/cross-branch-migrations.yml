@@ -25,7 +25,7 @@ concurrency:
 
 jobs:
   migrations-h2-ee:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     env:
       CI: 'true'
@@ -38,24 +38,24 @@ jobs:
           base-ref: ${{ env.BASE_REF }}
           head-ref: ${{ env.HEAD_REF }}
 
-  migrations-postgres-12-ee:
-    runs-on: ubuntu-22.04
+  migrations-postgres-14-ee:
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     env:
       CI: 'true'
       MB_DB_TYPE: postgres
       MB_DB_PORT: 5432
       MB_DB_HOST: localhost
-      MB_DB_DBNAME: circle_test
-      MB_DB_USER: circle_test
+      MB_DB_DBNAME: mb_test
+      MB_DB_USER: mb_test
     services:
       postgres:
-        image: postgres:12-alpine
+        image: postgres:14-alpine
         ports:
           - "5432:5432"
         env:
-          POSTGRES_USER: circle_test
-          POSTGRES_DB: circle_test
+          POSTGRES_USER: mb_test
+          POSTGRES_DB: mb_test
           POSTGRES_HOST_AUTH_METHOD: trust
     steps:
       - uses: actions/checkout@v4
@@ -65,23 +65,23 @@ jobs:
           head-ref: ${{ env.HEAD_REF }}
 
   migrations-postgres-latest-ee:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     env:
       CI: 'true'
       MB_DB_TYPE: postgres
       MB_DB_PORT: 5432
       MB_DB_HOST: localhost
-      MB_DB_DBNAME: circle_test
-      MB_DB_USER: circle_test
+      MB_DB_DBNAME: mb_test
+      MB_DB_USER: mb_test
     services:
       postgres:
-        image: circleci/postgres:latest
+        image: postgres:latest
         ports:
           - "5432:5432"
         env:
-          POSTGRES_USER: circle_test
-          POSTGRES_DB: circle_test
+          POSTGRES_USER: mb_test
+          POSTGRES_DB: mb_test
           POSTGRES_HOST_AUTH_METHOD: trust
     steps:
       - uses: actions/checkout@v4
@@ -90,21 +90,24 @@ jobs:
           base-ref: ${{ env.BASE_REF }}
           head-ref: ${{ env.HEAD_REF }}
 
-  migrations-mysql-8-0-ee:
-    runs-on: ubuntu-22.04
+  migrations-mysql-8-4-ee:
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     env:
       CI: 'true'
       MB_DB_TYPE: mysql
       MB_DB_HOST: localhost
       MB_DB_PORT: 3306
-      MB_DB_DBNAME: circle_test
+      MB_DB_DBNAME: mb_test
       MB_DB_USER: root
     services:
       mysql:
-        image: cimg/mysql:8.0
+        image: mysql:8.4
         ports:
           - "3306:3306"
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: true
+          MYSQL_DATABASE: mb_test
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/cross-branch-migration-test
@@ -113,14 +116,14 @@ jobs:
           head-ref: ${{ env.HEAD_REF }}
 
   migrations-mysql-latest-ee:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     env:
       CI: 'true'
       MB_DB_TYPE: mysql
       MB_DB_HOST: localhost
       MB_DB_PORT: 3306
-      MB_DB_DBNAME: circle_test
+      MB_DB_DBNAME: mb_test
       MB_DB_USER: root
       MB_MYSQL_TEST_USER: root
     services:
@@ -128,7 +131,7 @@ jobs:
         image: mysql:latest
         env:
           MYSQL_ALLOW_EMPTY_PASSWORD: true
-          MYSQL_DATABASE: circle_test
+          MYSQL_DATABASE: mb_test
         ports:
           - "3306:3306"
     steps:
@@ -138,21 +141,24 @@ jobs:
           base-ref: ${{ env.BASE_REF }}
           head-ref: ${{ env.HEAD_REF }}
 
-  migrations-mariadb-10-2-ee:
-    runs-on: ubuntu-22.04
+  migrations-mariadb-10-6-ee:
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     env:
       CI: 'true'
       MB_DB_TYPE: mysql
       MB_DB_HOST: localhost
       MB_DB_PORT: 3306
-      MB_DB_DBNAME: circle_test
+      MB_DB_DBNAME: mb_test
       MB_DB_USER: root
     services:
       mariadb:
-        image: circleci/mariadb:10.2.23
+        image: metabase/mariadb:10.6 # https://github.com/metabase/metabase-mariadb-docker-image
         ports:
           - "3306:3306"
+        env:
+          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: true
+          MARIADB_DATABASE: mb_test
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/cross-branch-migration-test
@@ -161,20 +167,23 @@ jobs:
           head-ref: ${{ env.HEAD_REF }}
 
   migrations-mariadb-latest-ee:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     env:
       CI: 'true'
       MB_DB_TYPE: mysql
       MB_DB_HOST: localhost
       MB_DB_PORT: 3306
-      MB_DB_DBNAME: circle_test
+      MB_DB_DBNAME: mb_test
       MB_DB_USER: root
     services:
       mariadb:
-        image: circleci/mariadb:latest
+        image: mariadb:latest
         ports:
           - "3306:3306"
+        env:
+          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: true
+          MARIADB_DATABASE: mb_test
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/cross-branch-migration-test

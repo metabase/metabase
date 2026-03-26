@@ -11,6 +11,7 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.task-history.core :as task-history]
    [metabase.task.core :as task]
+   [metabase.tracing.core :as tracing]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -44,18 +45,21 @@
   [model time-column]
   (when-not (infinite? (audit-app.settings/audit-max-retention-days))
     (let [table-name (name (t2/table-name model))]
-      (try
-        (log/infof "Cleaning up %s table" table-name)
-        (loop [total-rows-deleted 0]
-          (let [batch-rows-deleted (truncate-table-batched! table-name time-column)]
-            ;; Only try to delete another batch if the last batch was full
-            (if (= batch-rows-deleted (audit-app.settings/audit-table-truncation-batch-size))
-              (recur (+ total-rows-deleted (long batch-rows-deleted)))
-              (if (not= total-rows-deleted 0)
-                (log/infof "%s cleanup successful, %d rows were deleted" table-name total-rows-deleted)
-                (log/infof "%s cleanup successful, no rows were deleted" table-name)))))
-        (catch Throwable e
-          (log/errorf e "%s cleanup failed" table-name))))))
+      (tracing/with-span :tasks "task.audit-cleanup.table" {:audit/table       table-name
+                                                            :audit/time-column (name time-column)
+                                                            :db/type           (name (mdb/db-type))}
+        (try
+          (log/infof "Cleaning up %s table" table-name)
+          (loop [total-rows-deleted 0]
+            (let [batch-rows-deleted (truncate-table-batched! table-name time-column)]
+              ;; Only try to delete another batch if the last batch was full
+              (if (= batch-rows-deleted (audit-app.settings/audit-table-truncation-batch-size))
+                (recur (+ total-rows-deleted (long batch-rows-deleted)))
+                (if (not= total-rows-deleted 0)
+                  (log/infof "%s cleanup successful, %d rows were deleted" table-name total-rows-deleted)
+                  (log/infof "%s cleanup successful, no rows were deleted" table-name)))))
+          (catch Throwable e
+            (log/errorf e "%s cleanup failed" table-name)))))))
 
 (defenterprise audit-models-to-truncate
   "List of models to truncate. OSS implementation only truncates `query_execution` table."

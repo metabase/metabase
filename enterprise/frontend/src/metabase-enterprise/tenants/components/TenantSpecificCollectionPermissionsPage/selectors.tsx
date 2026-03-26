@@ -7,11 +7,13 @@ import { COLLECTION_OPTIONS } from "metabase/admin/permissions/constants/collect
 import { Messages } from "metabase/admin/permissions/constants/messages";
 import type {
   CollectionIdProps,
-  CollectionPermissionEditorType,
   CollectionSidebarType,
 } from "metabase/admin/permissions/selectors/collection-permissions";
 import { getPermissionWarningModal } from "metabase/admin/permissions/selectors/confirmations";
-import type { DataPermissionValue } from "metabase/admin/permissions/types";
+import type {
+  DataPermissionValue,
+  PermissionEditorType,
+} from "metabase/admin/permissions/types";
 import { findCollectionById } from "metabase/common/utils/collections";
 import {
   Collections,
@@ -135,7 +137,7 @@ export const getTenantSpecificCollectionsPermissionEditor = createSelector(
   getTenantSpecificCollectionsPermissions,
   getTenantSpecificCollectionEntity,
   Groups.selectors.getList,
-  (permissions, collection, groups): CollectionPermissionEditorType => {
+  (permissions, collection, groups): PermissionEditorType | null => {
     if (!permissions || collection == null) {
       return null;
     }

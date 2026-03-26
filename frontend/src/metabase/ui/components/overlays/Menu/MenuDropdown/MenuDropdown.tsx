@@ -1,22 +1,25 @@
 import type { MenuDropdownProps } from "@mantine/core";
 import { Menu } from "@mantine/core";
-import type { ReactNode } from "react";
-import { useEffect } from "react";
+import type { ReactNode, Ref } from "react";
+import { forwardRef, useEffect } from "react";
 
 import { useSequencedContentCloseHandler } from "metabase/common/hooks/use-sequenced-content-close-handler";
 import { PreventEagerPortal } from "metabase/ui";
 
 // hack to prevent parent TippyPopover from closing when selecting a Menu.Item
 // remove when TippyPopover is no longer used
-export function MenuDropdown({ children, ...props }: MenuDropdownProps) {
+export const MenuDropdown = forwardRef(function MenuDropdown(
+  { children, ...props }: MenuDropdownProps,
+  ref: Ref<HTMLDivElement>,
+) {
   return (
     <PreventEagerPortal {...props}>
-      <Menu.Dropdown {...props} data-element-id="mantine-popover">
+      <Menu.Dropdown {...props} data-element-id="mantine-popover" ref={ref}>
         <MenuDropdownContent>{children}</MenuDropdownContent>
       </Menu.Dropdown>
     </PreventEagerPortal>
   );
-}
+});
 
 interface MenuDropdownContentProps {
   children?: ReactNode;

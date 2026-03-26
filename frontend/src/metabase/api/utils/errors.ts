@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-type ErrorPayload =
+export type ErrorPayload =
   | { message: string }
   | { error: string }
   | { error_message: string }

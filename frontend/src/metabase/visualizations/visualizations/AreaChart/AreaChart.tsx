@@ -10,14 +10,10 @@ import {
   getCartesianChartDefinition,
 } from "metabase/visualizations/visualizations/CartesianChart/chart-definition";
 
-import type {
-  VisualizationProps,
-  VisualizationSettingsDefinitions,
-} from "../../types";
+import type { VisualizationDefinition, VisualizationProps } from "../../types";
 
-Object.assign(
-  AreaChart,
-  getCartesianChartDefinition({
+const AreaViz: Omit<VisualizationDefinition, "isSensible" | "checkRenderable"> =
+  {
     getUiName: () => t`Area`,
     identifier: "area",
     iconName: "area",
@@ -27,9 +23,10 @@ Object.assign(
     defaultSize: getDefaultSize("area"),
     settings: {
       ...COMBO_CHARTS_SETTINGS_DEFINITIONS,
-    } as any as VisualizationSettingsDefinitions,
-  }),
-);
+    },
+  };
+
+Object.assign(AreaChart, getCartesianChartDefinition(AreaViz));
 
 export function AreaChart(props: VisualizationProps) {
   return <CartesianChart {...props} />;

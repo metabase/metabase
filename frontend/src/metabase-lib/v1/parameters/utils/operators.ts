@@ -12,7 +12,7 @@ import type { Parameter, ParameterMappingOptions } from "metabase-types/api";
 
 import { getIsMultiSelect } from "./parameter-values";
 
-type OperatorType = "date" | "number" | "string";
+type OperatorType = "date" | "number" | "string" | "id";
 export type ParameterSectionId =
   | "date"
   | "temporal-unit"
@@ -27,7 +27,11 @@ export function getOperatorDisplayName(
   operatorType: OperatorType,
   sectionName?: string,
 ) {
-  if (operatorType === "date" || operatorType === "number") {
+  if (
+    operatorType === "date" ||
+    operatorType === "number" ||
+    operatorType === "id"
+  ) {
     return option.name;
   } else if (operatorType === "string" && option.operator === "=") {
     return sectionName;

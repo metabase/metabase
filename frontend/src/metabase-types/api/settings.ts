@@ -280,7 +280,7 @@ const tokenStatusFeatures = [
   "sso-ldap",
   "sso-saml",
   "sso",
-  "transforms",
+  "transforms-basic",
   "transforms-python",
   "upload-management",
   "whitelabel",
@@ -335,6 +335,7 @@ export const tokenFeatures = [
   "sso_ldap",
   "sso_oidc",
   "sso_saml",
+  "sso_slack",
   "session_timeout_config",
   "whitelabel",
   "serialization",
@@ -345,10 +346,10 @@ export const tokenFeatures = [
   "upload_management",
   "collection_cleanup",
   "cache_preemptive",
-  "metabot_v3",
   "ai_sql_fixer",
   "ai_sql_generation",
   "ai_entity_analysis",
+  "metabot_v3",
   "database_routing",
   "development_mode",
   "etl_connections",
@@ -357,12 +358,13 @@ export const tokenFeatures = [
   "remote_sync",
   "dependencies",
   "semantic_search",
-  "transforms",
   "transforms-python",
+  "transforms-basic",
   "library",
   "support-users",
   "tenants",
   "workspaces",
+  "writable_connection",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
@@ -449,7 +451,7 @@ interface InstanceSettings {
   "example-dashboard-id": number | null;
   "has-sample-database?"?: boolean; // Careful! This can be undefined during setup!
   "instance-creation": string;
-  "llm-sql-generation-enabled": boolean;
+  "llm-anthropic-api-key-configured?": boolean;
   "read-only-mode": boolean;
   "search-typeahead-enabled": boolean;
   "show-homepage-data": boolean;
@@ -476,6 +478,7 @@ export type EmbeddingHomepageStatus =
 interface AdminSettings {
   "active-users-count"?: number;
   "custom-geojson-enabled": boolean;
+  "encryption-enabled": boolean;
   "deprecation-notice-version"?: string;
   "disable-cors-on-localhost": boolean;
   "embedding-secret-key"?: string;
@@ -499,13 +502,16 @@ interface AdminSettings {
   "setup-license-active-at-setup": boolean;
   "embedding-hub-test-embed-snippet-created": boolean;
   "embedding-hub-production-embed-snippet-created": boolean;
+  "embedding-hub-sso-auth-manual-tested": boolean;
   "store-url": string;
   gsheets: Partial<GdrivePayload>;
   "license-token-missing-banner-dismissal-timestamp"?: Array<string>;
 }
 interface SettingsManagerSettings {
   "bcc-enabled?": boolean;
-  "ee-openai-api-key"?: string;
+  "llm-openai-api-key"?: string;
+  "llm-anthropic-api-key"?: string | null;
+  "llm-openrouter-api-key"?: string | null;
   "openai-api-key": string | null;
   "openai-available-models"?: OpenAiModel[];
   "openai-model": string | null;
@@ -513,7 +519,6 @@ interface SettingsManagerSettings {
   "session-cookie-samesite": SessionCookieSameSite;
   "slack-app-token": string | null;
   "slack-bug-report-channel": string | null;
-  "slack-token": string | null;
   "slack-token-valid?": boolean;
 }
 
@@ -538,7 +543,7 @@ interface PublicSettings {
   "custom-homepage": boolean;
   "custom-homepage-dashboard": DashboardId | null;
   "development-mode?": boolean;
-  "ee-ai-features-enabled"?: boolean;
+  "llm-metabot-configured?"?: boolean | null;
   "email-configured?": boolean;
   "embedding-app-origin": string | null;
   "embedding-app-origins-sdk": string | null;
@@ -586,6 +591,8 @@ interface PublicSettings {
   "report-timezone-short": string;
   "session-cookies": boolean | null;
   "setup-token": string | null;
+  "metabot-enabled?": boolean;
+  "embedded-metabot-enabled?": boolean;
   "show-metabase-links": boolean;
   "show-metabot": boolean;
   "show-google-sheets-integration": boolean;
@@ -595,6 +602,7 @@ interface PublicSettings {
   "snowplow-url": string;
   "start-of-week": DayOfWeekId;
   "token-features": TokenFeatures;
+  "tracing-enabled": boolean;
   "transforms-enabled": boolean;
   version: Version;
   "version-info-last-checked": string | null;
@@ -704,9 +712,10 @@ export interface EnterpriseSettings extends Settings {
   "no-object-illustration"?: IllustrationSettingValue;
   "no-object-illustration-custom"?: string;
   "landing-page"?: string;
-  "ee-ai-features-enabled"?: boolean;
-  "ee-openai-api-key"?: string;
-  "ee-openai-model"?: string;
+  "llm-openai-api-key"?: string;
+  "llm-openai-model"?: string;
+  "llm-metabot-configured?"?: boolean | null;
+  "llm-openrouter-api-key"?: string | null;
   "session-timeout": TimeoutValue | null;
   "search-engine": SearchEngineSettingValue | null;
   "scim-enabled"?: boolean | null;
@@ -746,6 +755,7 @@ export interface EnterpriseSettings extends Settings {
   "database-replication-connections"?: DatabaseReplicationConnections | null;
   "embedding-hub-test-embed-snippet-created": boolean;
   "embedding-hub-production-embed-snippet-created": boolean;
+  "embedding-hub-sso-auth-manual-tested": boolean;
   "python-runner-url"?: string | null;
   "python-runner-api-token"?: string | null;
   "python-storage-s-3-endpoint"?: string | null;
@@ -758,8 +768,13 @@ export interface EnterpriseSettings extends Settings {
   "python-storage-s-3-path-style-access"?: boolean | null;
   "python-runner-timeout-seconds"?: number | null;
   "python-runner-test-run-timeout-seconds"?: number | null;
+  "llm-metabot-provider"?: string | null;
   "llm-anthropic-api-key"?: string | null;
   "llm-anthropic-model": string;
+  "metabot-slack-signing-secret"?: string | null;
+  "slack-connect-enabled"?: boolean | null;
+  "slack-connect-client-id"?: string | null;
+  "slack-connect-client-secret"?: string | null;
   /**
    * @deprecated
    */
