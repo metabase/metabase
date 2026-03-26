@@ -47,6 +47,15 @@
   :export?    true
   :doc        false)
 
+(defsetting metabot-system-prompt
+  (deferred-tru "Custom system prompt for Metabot.")
+  :type       :string
+  :default    ""
+  :visibility :admin
+  :encryption :no
+  :export?    true
+  :doc        false)
+
 (defsetting embedded-metabot-enabled?
   (deferred-tru "Whether Metabot is enabled for embedding.")
   :type       :boolean
