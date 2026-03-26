@@ -1,9 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
+import { InteractiveQuestion } from "embedding-sdk-bundle/components/public/InteractiveQuestion";
+import { getSdkStore } from "embedding-sdk-bundle/store";
 import type { MetabaseTheme } from "embedding-sdk-bundle/types/theme";
-import { InteractiveQuestion, MetabaseProvider } from "embedding-sdk-package";
 import { b64_to_utf8 } from "metabase/lib/encoding";
 import type { Card } from "metabase-types/api";
+
+const store = getSdkStore();
 
 declare global {
   interface Window {
@@ -249,10 +253,15 @@ export function McpUiAppRoute() {
 
   const padding = `${Math.max(safeAreaInsets.top, 0)}px ${Math.max(safeAreaInsets.right, 0)}px ${Math.max(safeAreaInsets.bottom, 0)}px ${Math.max(safeAreaInsets.left, 0)}px`;
 
+  if (!instanceUrl) {
+    return null;
+  }
+
   return (
-    <MetabaseProvider
+    <ComponentProvider
       authConfig={{ metabaseInstanceUrl: instanceUrl, sessionToken }}
       theme={theme}
+      reduxStore={store}
     >
       <div
         style={{
@@ -269,6 +278,6 @@ export function McpUiAppRoute() {
           />
         )}
       </div>
-    </MetabaseProvider>
+    </ComponentProvider>
   );
 }
