@@ -20,12 +20,21 @@
 
 (set! *warn-on-reflection* true)
 
+(defonce ^:private additional-tool-namespaces
+  (atom {}))
+
+(defn register-tool-namespace!
+  "Register an additional namespace and its URL prefix for MCP tool discovery.
+   Used by EE modules to expose their endpoints as MCP tools."
+  [ns-sym prefix]
+  (swap! additional-tool-namespaces assoc ns-sym prefix))
+
 (defn- generate-manifest
   "Generate tools manifest from agent API endpoint metadata."
   []
   (tools-manifest/generate-tools-manifest
-   {'metabase.agent-api.api                    "/api/agent"
-    'metabase-enterprise.agent-api.workspace "/api/agent/v1/workspace"}))
+   (merge {'metabase.agent-api.api "/api/agent"}
+          @additional-tool-namespaces)))
 
 (def ^:private manifest-delay
   (delay (generate-manifest)))

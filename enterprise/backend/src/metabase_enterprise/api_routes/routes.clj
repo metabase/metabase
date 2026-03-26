@@ -41,9 +41,13 @@
    [metabase.agent-api.api :as agent-api]
    [metabase.api.macros :as api.macros]
    [metabase.api.util.handlers :as handlers]
+   [metabase.mcp.tools :as mcp.tools]
    [metabase.util.i18n :refer [deferred-tru]]))
 
 (comment metabase-enterprise.advanced-config.api.logs/keep-me)
+
+(mcp.tools/register-tool-namespace!
+ 'metabase-enterprise.agent-api.workspace "/api/agent/v1/workspace")
 
 (def ^:private required-feature->message
   {:advanced-permissions       (deferred-tru "Advanced Permissions")
