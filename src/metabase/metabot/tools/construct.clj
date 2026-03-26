@@ -21,6 +21,12 @@
 
 ;;; ------------------------------------------------ Schema ------------------------------------------------
 
+(def ^:private source-entity-schema
+  "Schema for source_entity — identifies the primary data source."
+  [:map
+   [:type [:enum "table" "model" "question" "metric"]]
+   [:id :int]])
+
 (def construct-program-schema
   "Schema for the program parameter of construct_notebook_query.
   Intentionally loose — agent-lib validates and repairs internally."
@@ -38,30 +44,36 @@
 (def ^:private construct-notebook-query-args-schema
   [:map {:closed true}
    [:reasoning {:optional true} :string]
+   [:source_entity source-entity-schema]
+   [:referenced_entities {:optional true} [:maybe [:sequential source-entity-schema]]]
    [:program construct-program-schema]
    [:visualization {:optional true} construct-visualization-schema]])
 
 ;;; ---------------------------------------- Source resolution ----------------------------------------
 
 (defn- resolve-source-database-id
-  "Resolve the database ID for a program source."
+  "Resolve the database ID for a source_entity."
   [{:keys [type id]}]
   (case type
-    "table"            (:db_id (tools.u/get-table id :db_id))
-    ("card" "dataset") (:database_id (tools.u/get-card id))
-    "metric"           (:database_id (tools.u/get-card id))
-    (throw (ex-info (str "Unsupported source type: " type)
+    "table"                (:db_id (tools.u/get-table id :db_id))
+    ("model" "question")   (:database_id (tools.u/get-card id))
+    "metric"               (:database_id (tools.u/get-card id))
+    (throw (ex-info (str "Unsupported source_entity type: " type)
                     {:agent-error? true :status-code 400}))))
 
+(defn- source-entity->model-str
+  "Map source_entity type to the model string used by agent-lib evaluation context."
+  [type]
+  (case type
+    "table"              "table"
+    ("model" "question") "card"
+    "metric"             "metric"
+    type))
+
 (defn- build-evaluation-context
-  "Build the EvaluationContext for agent-lib from a program source."
-  [source metadata-provider]
-  (let [{:keys [type id]} source
-        model-str (case type
-                    "table"            "table"
-                    ("card" "dataset") "card"
-                    "metric"           "metric"
-                    type)
+  "Build the EvaluationContext for agent-lib from source_entity and referenced_entities."
+  [{:keys [type id] :as source-entity} referenced-entities metadata-provider]
+  (let [model-str (source-entity->model-str type)
         ;; Get surrounding tables for join context
         surrounding-tables (when (= type "table")
                              (let [table-query (lib/query metadata-provider (lib.metadata/table metadata-provider id))]
@@ -72,12 +84,15 @@
                                     (mapv (fn [tid] {:id tid})))))
         ;; Source metadata for the runtime 'source binding
         source-metadata (case type
-                          "table"            (lib.metadata/table metadata-provider id)
-                          ("card" "dataset") (lib.metadata/card metadata-provider id)
-                          "metric"           (lib.metadata/card metadata-provider id)
+                          "table"              (lib.metadata/table metadata-provider id)
+                          ("model" "question") (lib.metadata/card metadata-provider id)
+                          "metric"             (lib.metadata/card metadata-provider id)
                           nil)]
     {:source-entity       {:model model-str :id id}
-     :referenced-entities []
+     :referenced-entities (or (mapv (fn [{:keys [type id]}]
+                                      {:model (source-entity->model-str type) :id id})
+                                    referenced-entities)
+                              [])
      :surrounding-tables  (or surrounding-tables [])
      :source-metadata     source-metadata}))
 
@@ -96,11 +111,10 @@
   "Execute a structured program via agent-lib.
   Returns the raw result map with :structured-output.
   Shared between construct-notebook-query-tool and slackbot-construct-notebook-query-tool."
-  [program]
-  (let [source      (:source program)
-        database-id (resolve-source-database-id source)
+  [source-entity referenced-entities program]
+  (let [database-id (resolve-source-database-id source-entity)
         mp          (lib-be/application-database-metadata-provider database-id)
-        context     (build-evaluation-context source mp)
+        context     (build-evaluation-context source-entity referenced-entities mp)
         pmbql-query (agent-lib/evaluate-program program mp context)
         query-id    (u/generate-nano-id)]
     {:structured-output {:query-id       query-id
@@ -145,14 +159,14 @@
            :scope     scope/agent-notebook-create}
   construct-notebook-query-tool
   "Construct and visualize a notebook query from a metric, model, or table."
-  [{:keys [_reasoning program visualization]} :- construct-notebook-query-args-schema]
+  [{:keys [_reasoning source_entity referenced_entities program visualization]} :- construct-notebook-query-args-schema]
   (try
     (let [;; LLM sometimes nests visualization inside program — pull it out
           effective-viz            (or visualization (:visualization program))
           normalized-visualization (some-> effective-viz (update-keys (comp keyword u/->kebab-case-en name)))
           chart-type              (or (chart-type->keyword (:chart-type normalized-visualization))
-                                     :table)
-          query-result            (execute-program (dissoc program :visualization))
+                                      :table)
+          query-result            (execute-program source_entity referenced_entities (dissoc program :visualization))
           structured              (or (:structured-output query-result) (:structured_output query-result))]
       (if (and structured (:query-id structured) (:query structured))
         (let [chart-result (create-chart-tools/create-chart

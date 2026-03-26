@@ -183,6 +183,7 @@
   [:map {:closed true}
    [:name :string]
    [:description :string]
+   [:source_entity [:map [:type :string] [:id :int]]]
    [:program :map]
    [:viz_settings [:map {:closed true}
                    [:chart_type chart-type-enum]]]])
@@ -191,11 +192,12 @@
            :scope     scope/agent-document-create}
   document-construct-model-chart-tool
   "Construct notebook/model-backed chart draft payload for document insertion."
-  [{:keys [name description program viz_settings]} :- model-chart-schema]
+  [{:keys [name description source_entity program viz_settings]} :- model-chart-schema]
   (try
     (let [chart-type (get viz_settings :chart_type)
           result     (construct-tools/construct-notebook-query-tool
-                      {:program program
+                      {:source_entity source_entity
+                       :program program
                        :visualization {:chart_type chart-type}})
           structured (or (:structured-output result) (:structured_output result))
           query-id   (:query-id structured)

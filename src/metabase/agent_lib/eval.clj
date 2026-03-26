@@ -9,6 +9,7 @@
    [metabase.agent-lib.runtime :as runtime]
    [metabase.agent-lib.validate :as validate]
    [metabase.agent-lib.validate.walker :as walker]
+   [metabase.lib.core :as lib]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
@@ -27,6 +28,23 @@
         args (eval.walker/evaluate-args evaluate-node query op-path op raw-args)]
     (eval.invoke/invoke-helper! runtime op-path op (into [query] args))))
 
+(defn- program-has-breakouts?
+  "True when the program's operations include at least one explicit breakout."
+  [program]
+  (some (fn [[op]]
+          (= "breakout" (when (string? op) op)))
+        (:operations program)))
+
+(defn- strip-default-breakouts
+  "Remove default breakouts from a metric source query when the program supplies its own.
+  Metrics include a default time dimension breakout in their query definition. When the
+  agent explicitly specifies breakout operations, these should replace — not augment — the
+  defaults."
+  [source-query program]
+  (if (and (mbql/query? source-query) (program-has-breakouts? program))
+    (lib/remove-all-breakouts source-query)
+    source-query))
+
 (defn- evaluate-program*
   [runtime context path program program-depth]
   (when (> program-depth walker/max-program-nesting)
@@ -43,9 +61,10 @@
                                                     runtime
                                                     (conj path :source)
                                                     (:source program))
-        source-query    (if (mbql/query? resolved-source)
-                          resolved-source
-                          (eval.invoke/invoke-helper! runtime (conj path :source) 'query [resolved-source]))
+        source-query    (-> (if (mbql/query? resolved-source)
+                              resolved-source
+                              (eval.invoke/invoke-helper! runtime (conj path :source) 'query [resolved-source]))
+                            (strip-default-breakouts program))
         final-query     (reduce (fn [query [op-idx operation]]
                                   (let [op-path (into path [:operations op-idx])
                                         op      (runtime/op-symbol (first operation))]

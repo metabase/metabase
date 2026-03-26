@@ -11,13 +11,12 @@
    [metabase.api.macros.scope :as scope]
    [metabase.api.routes.common :as api.routes.common]
    [metabase.auth-identity.core :as auth-identity]
-   [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.metabot.core :as metabot]
+   [metabase.metabot.tools.construct :as metabot-construct]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.field-stats :as field-stats]
    [metabase.metabot.tools.search :as metabot-search]
-   [metabase.metabot.tools.util :as tools.u]
    [metabase.metabot.util :as metabot.u]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.streaming :as qp.streaming]
@@ -556,75 +555,68 @@
   Maps the legacy table_id/metric_id + filters/aggregations format into the
   unified program format with source and operations."
   [body]
-  (let [source (cond
-                 (:table_id body)  {:type "table"  :id (:table_id body)}
-                 (:metric_id body) {:type "metric" :id (:metric_id body)})
-        ops    (cond-> []
+  (let [ops (cond-> []
                  ;; filters → ["filter", clause] for each
-                 (seq (:filters body))
-                 (into (map (fn [{:keys [field_id operation value values segment_id bucket]}]
-                              (if segment_id
-                                ["filter" ["segment" segment_id]]
-                                (let [field-ref (if bucket
-                                                  ["with-temporal-bucket" ["field" (parse-long field_id)] bucket]
-                                                  ["field" (parse-long field_id)])]
-                                  (cond
-                                    (seq values) ["filter" [operation field-ref values]]
-                                    (some? value) ["filter" [operation field-ref value]]
-                                    :else         ["filter" [operation field-ref]])))))
-                       (:filters body))
+              (seq (:filters body))
+              (into (map (fn [{:keys [field_id operation value values segment_id bucket]}]
+                           (if segment_id
+                             ["filter" ["segment" segment_id]]
+                             (let [field-ref (if bucket
+                                               ["with-temporal-bucket" ["field" (parse-long field_id)] bucket]
+                                               ["field" (parse-long field_id)])]
+                               (cond
+                                 (seq values) ["filter" [operation field-ref values]]
+                                 (some? value) ["filter" [operation field-ref value]]
+                                 :else         ["filter" [operation field-ref]])))))
+                    (:filters body))
 
                  ;; aggregations
-                 (seq (:aggregations body))
-                 (into (map (fn [{:keys [field_id function measure_id]}]
-                              (if measure_id
-                                ["aggregate" ["measure" measure_id]]
-                                (if field_id
-                                  ["aggregate" [function ["field" (parse-long field_id)]]]
-                                  ["aggregate" [function]]))))
-                       (:aggregations body))
+              (seq (:aggregations body))
+              (into (map (fn [{:keys [field_id function measure_id]}]
+                           (if measure_id
+                             ["aggregate" ["measure" measure_id]]
+                             (if field_id
+                               ["aggregate" [function ["field" (parse-long field_id)]]]
+                               ["aggregate" [function]]))))
+                    (:aggregations body))
 
                  ;; group_by → breakout
-                 (seq (:group_by body))
-                 (into (map (fn [{:keys [field_id field_granularity]}]
-                              (if field_granularity
-                                ["breakout" ["with-temporal-bucket" ["field" (parse-long field_id)] field_granularity]]
-                                ["breakout" ["field" (parse-long field_id)]])))
-                       (:group_by body))
+              (seq (:group_by body))
+              (into (map (fn [{:keys [field_id field_granularity]}]
+                           (if field_granularity
+                             ["breakout" ["with-temporal-bucket" ["field" (parse-long field_id)] field_granularity]]
+                             ["breakout" ["field" (parse-long field_id)]])))
+                    (:group_by body))
 
                  ;; fields → with-fields
-                 (seq (:fields body))
-                 (conj ["with-fields" (mapv (fn [{:keys [field_id]}]
-                                              ["field" (parse-long field_id)])
-                                            (:fields body))])
+              (seq (:fields body))
+              (conj ["with-fields" (mapv (fn [{:keys [field_id]}]
+                                           ["field" (parse-long field_id)])
+                                         (:fields body))])
 
                  ;; order_by
-                 (seq (:order_by body))
-                 (into (map (fn [{:keys [field direction]}]
-                              (let [field-ref ["field" (parse-long (:field_id field))]]
-                                (if (= direction "desc")
-                                  ["order-by" field-ref "desc"]
-                                  ["order-by" field-ref]))))
-                       (:order_by body))
+              (seq (:order_by body))
+              (into (map (fn [{:keys [field direction]}]
+                           (let [field-ref ["field" (parse-long (:field_id field))]]
+                             (if (= direction "desc")
+                               ["order-by" field-ref "desc"]
+                               ["order-by" field-ref]))))
+                    (:order_by body))
 
                  ;; limit
-                 (:limit body)
-                 (conj ["limit" (:limit body)]))]
-    {:source source :operations ops}))
+              (:limit body)
+              (conj ["limit" (:limit body)]))]
+    {:source {:type "context" :ref "source"} :operations ops}))
 
 (defn- construct-query*
   "Shared query construction: converts body to program, evaluates via agent-lib, returns the raw pMBQL query."
   [body]
-  (let [program     (body->program body)
-        database-id (if (:table_id body)
-                      (:db_id (tools.u/get-table (:table_id body) :db_id))
-                      (:database_id (tools.u/get-card (:metric_id body))))
-        mp          (lib-be/application-database-metadata-provider database-id)
-        context     {:source-entity       {:model (if (:table_id body) "table" "metric")
-                                           :id    (or (:table_id body) (:metric_id body))}
-                     :referenced-entities []
-                     :surrounding-tables  []}]
-    (agent-lib/evaluate-program program mp context)))
+  (let [source-entity (cond
+                        (:table_id body)  {:type "table"  :id (:table_id body)}
+                        (:metric_id body) {:type "metric" :id (:metric_id body)})
+        program       (body->program body)
+        result        (metabot-construct/execute-program source-entity nil program)]
+    (get-in result [:structured-output :query])))
 
 (defn- construct-table-query
   "Build a query from a table using the provided query components."

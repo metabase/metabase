@@ -117,7 +117,7 @@
   (testing "construct_notebook_query evaluates a program and creates a chart"
     (let [program-captured (atom nil)
           chart-called     (atom nil)]
-      (with-redefs [construct/execute-program (fn [program]
+      (with-redefs [construct/execute-program (fn [_source-entity _referenced-entities program]
                                                 (reset! program-captured program)
                                                 {:structured-output {:query-id "q-1"
                                                                      :query {:database 1}
@@ -134,14 +134,14 @@
                                                                     :url "/question#hash"}]})]
         (let [result (agent-tools/construct-notebook-query-tool
                       {:reasoning "check seats"
-                       :program {:source     {:type "table" :id 6}
+                       :source_entity {:type "table" :id 6}
+                       :program {:source     {:type "context" :ref "source"}
                                  :operations [["filter" ["=" ["field" 301] "a"]]
                                               ["with-fields" [["field" 301]]]
                                               ["order-by" ["field" 301] "desc"]
                                               ["limit" 10]]}
                        :visualization {:chart_type "table"}})]
-          (is (= "table" (get-in @program-captured [:source :type])))
-          (is (= 6 (get-in @program-captured [:source :id])))
+          (is (= "context" (get-in @program-captured [:source :type])))
           (is (= 4 (count (:operations @program-captured))))
           (is (= "c-1" (get-in result [:structured-output :chart-id])))
           (is (= "q-1" (get-in result [:structured-output :query-id])))

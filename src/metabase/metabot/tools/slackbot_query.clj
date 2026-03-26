@@ -14,6 +14,8 @@
 (def ^:private slackbot-query-schema
   [:map {:closed true}
    [:reasoning :string]
+   [:source_entity [:map [:type :string] [:id :int]]]
+   [:referenced_entities {:optional true} [:maybe [:sequential [:map [:type :string] [:id :int]]]]]
    [:program construct/construct-program-schema]
    [:title {:optional true} [:maybe :string]]
    [:display {:optional true
@@ -24,12 +26,12 @@
            :scope     scope/agent-notebook-create}
   slackbot-construct-notebook-query-tool
   "Construct a notebook query from a metric, model, or table. The query results will be rendered as a visualization in Slack."
-  [{:keys [_reasoning program title display]} :- slackbot-query-schema]
+  [{:keys [_reasoning source_entity referenced_entities program title display]} :- slackbot-query-schema]
   (try
-    (let [query-result (construct/execute-program program)
+    (let [query-result (construct/execute-program source_entity referenced_entities program)
           structured   (or (:structured-output query-result) (:structured_output query-result))]
       (if (and structured (:query-id structured) (:query structured))
-        (let [metabase-link (streaming/query->question-url (:query structured))
+        (let [metabase-link (streaming/query->question-url (:query structured) display)
               adhoc-viz-value (cond-> {:query (:query structured)
                                        :link  metabase-link}
                                 title   (assoc :title title)
