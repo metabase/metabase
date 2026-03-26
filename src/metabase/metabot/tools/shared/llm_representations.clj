@@ -3,6 +3,7 @@
    Matches Python AI Service patterns exactly for consistency."
   (:require
    [clojure.string :as str]
+   [metabase.lib.schema :as lib.schema]
    [metabase.metabot.agent.prompts :as prompts]
    [metabase.metabot.tmpl :as te]
    [metabase.util :as u]
@@ -244,7 +245,9 @@
    as query-type \"sql\"."
   [{:keys [query-type result-type query-id database database_id query query-content result]}]
   (let [qtype (or query-type
-                  (when (= :native (:type query)) "sql")
+                  (when (or (= :native (:type query))
+                            (lib.schema/native-only-query? query))
+                    "sql")
                   (when result-type (name result-type))
                   "unknown")]
     (render-llm-template
