@@ -53,6 +53,105 @@
   (when link
     (second (re-find #"/actions/runs/(\d+)" link))))
 
+(defn- extract-job-id
+  "Extract the job ID from a GitHub Actions check link URL."
+  [link]
+  (when link
+    (second (re-find #"job/(\d+)" link))))
+
+(defn- job-logs-raw
+  "Fetch raw logs for a specific job ID with retries."
+  [job-id]
+  (loop [attempt 1
+         delay-ms 1000]
+    (let [result (try
+                   (let [proc (p/process {:out :string :err :string}
+                                         "gh" "api"
+                                         (format "repos/%s/actions/jobs/%s/logs" repo job-id))
+                         result (deref proc 60000 ::timeout)]
+                     (when (= ::timeout result)
+                       (p/destroy-tree proc))
+                     (when (and (not= ::timeout result)
+                                (zero? (:exit result)))
+                       (:out result)))
+                   (catch Exception _ nil))]
+      (if result
+        result
+        (when (< attempt 3)
+          (Thread/sleep delay-ms)
+          (recur (inc attempt) (* delay-ms 2)))))))
+
+(defn- strip-ansi [s]
+  (str/replace s #"\x1b\[[0-9;]*m" ""))
+
+(defn- strip-timestamp [line]
+  (str/replace line #"^\d{4}-\d{2}-\d{2}T[\d:.]+Z " ""))
+
+(defn- tail-lines
+  "Take the last n lines of a string. Avoids holding the full split in memory
+   by scanning backwards for newlines."
+  [s n]
+  (loop [pos (count s)
+         found 0]
+    (if (or (zero? pos) (>= found n))
+      (subs s (if (zero? pos) 0 (inc pos)))
+      (recur (str/last-index-of s \newline (dec pos))
+             (inc found)))))
+
+(defn- parse-test-failures
+  "Parse trunk report section from job logs.
+   Only scans the last 2000 lines where the trunk report lives.
+   Returns vec of {:test \"ns/name\" :link \"https://app.trunk.io/...\"} maps."
+  [logs]
+  (let [lines (->> (str/split-lines (strip-ansi (tail-lines logs 2000)))
+                   (map strip-timestamp))
+        in-report? (atom false)
+        current-test (atom nil)
+        results (atom [])]
+    (doseq [line lines]
+      (when (str/includes? line "📚")
+        (reset! in-report? true))
+      (when (and @in-report?
+                 (or (str/includes? line "Post job cleanup")
+                     (str/includes? line "##[error]")))
+        (reset! in-report? false))
+      (when @in-report?
+        (when-let [test-name (and (re-find #"metabase[\w.-]+-test/" line)
+                                  (not (str/includes? line "📦"))
+                                  (re-find #"metabase[\w.-]+-test/[\w-]+" line))]
+          (reset! current-test test-name))
+        (when-let [link (and (str/includes? line "trunk.io")
+                             (re-find #"https://app\.trunk\.io/\S+" line))]
+          (swap! results conj {:test @current-test :link link})
+          (reset! current-test nil))))
+    ;; Deduplicate by test name
+    (->> @results
+         (group-by :test)
+         vals
+         (map first)
+         vec)))
+
+(defn- fetch-failure-details
+  "Fetch logs for failed checks in parallel and extract test names + trunk links.
+   Returns map of check-name → [{:test :link}]."
+  [checks]
+  (let [checks-with-jobs (->> checks
+                              (keep (fn [check]
+                                      (when-let [job-id (extract-job-id (:link check))]
+                                        (assoc check :job-id job-id)))))
+        futures (mapv (fn [check]
+                        [check (future (some-> (:job-id check) job-logs-raw))])
+                      checks-with-jobs)]
+    (->> futures
+         (keep (fn [[check fut]]
+                 (try
+                   (when-let [logs (deref fut 60000 nil)]
+                     (let [failures (parse-test-failures logs)]
+                       (when (seq failures)
+                         [(:name check) failures])))
+                   (catch Exception _ nil))))
+         (into {}))))
+
 (defn- checks-done?
   "True when no checks are still pending/running."
   [checks]
@@ -126,6 +225,18 @@
                                max-retries (count failures)))
               (doseq [check (sort-by :name failures)]
                 (log-err (format "  %s → %s" (:name check) (:link check))))
+              (log-info "Fetching failure details from job logs…")
+              (let [details (fetch-failure-details failures)]
+                (if (seq details)
+                  (doseq [[check-name test-failures] (sort-by key details)]
+                    (log-err (format "  %s:" check-name))
+                    (doseq [{:keys [test link]} test-failures]
+                      (if test
+                        (log-err (format "    %s" test))
+                        (log-err "    (unknown test)"))
+                      (when link
+                        (log-err (format "      ⤷ %s" link)))))
+                  (log-warn "No test failure details found in job logs.")))
               (System/exit 1))
 
           (empty? run-ids)
