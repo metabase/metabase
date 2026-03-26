@@ -219,7 +219,7 @@ describe("scenarios > metrics > editing", () => {
       H.MetricPage.queryEditor().should("be.visible");
       addBreakout({ tableName: "Product", columnName: "Created At" });
       H.MetricPage.saveButton().click();
-      cy.wait("@updateCard");
+      H.MetricPage.saveButton().should("not.exist");
       H.MetricPage.aboutTab().click();
       verifyLineAreaBarChart({
         xAxis: "Product → Created At: Month",
