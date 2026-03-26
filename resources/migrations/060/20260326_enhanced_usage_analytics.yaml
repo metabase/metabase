@@ -40,7 +40,7 @@ databaseChangeLog:
   - changeSet:
       id: v60.2026-03-26T00:00:02
       author: bgrabow
-      comment: Add embedding_hostname column to view_log for PII-gated analytics
+      comment: Add embedding_hostname column to view_log for embedding analytics
       changes:
         - addColumn:
             tableName: view_log
@@ -48,14 +48,14 @@ databaseChangeLog:
               - column:
                   name: embedding_hostname
                   type: varchar(512)
-                  remarks: Hostname from Origin header, populated when collect-analytics-pii is enabled
+                  remarks: Hostname from Origin header, PII
                   constraints:
                     nullable: true
 
   - changeSet:
       id: v60.2026-03-26T00:00:03
       author: bgrabow
-      comment: Add embedding_path column to view_log for PII-gated analytics
+      comment: Add embedding_path column to view_log for embedding analytics
       changes:
         - addColumn:
             tableName: view_log
@@ -63,14 +63,14 @@ databaseChangeLog:
               - column:
                   name: embedding_path
                   type: varchar(2048)
-                  remarks: Path from Referer header (query params stripped), populated when collect-analytics-pii is enabled
+                  remarks: Path from Referer header (query params stripped), PII
                   constraints:
                     nullable: true
 
   - changeSet:
       id: v60.2026-03-26T00:00:04
       author: bgrabow
-      comment: Add sanitized_user_agent column to view_log for PII-gated analytics
+      comment: Add sanitized_user_agent column to view_log for usage analytics
       changes:
         - addColumn:
             tableName: view_log
@@ -78,14 +78,14 @@ databaseChangeLog:
               - column:
                   name: sanitized_user_agent
                   type: varchar(512)
-                  remarks: User-Agent header, populated when collect-analytics-pii is enabled
+                  remarks: User-Agent header, PII
                   constraints:
                     nullable: true
 
   - changeSet:
       id: v60.2026-03-26T00:00:05
       author: bgrabow
-      comment: Add ip_address column to view_log for PII-gated analytics
+      comment: Add ip_address column to view_log for usage analytics
       changes:
         - addColumn:
             tableName: view_log
@@ -93,7 +93,7 @@ databaseChangeLog:
               - column:
                   name: ip_address
                   type: varchar(45)
-                  remarks: Client IP address, populated when collect-analytics-pii is enabled
+                  remarks: Client IP address, PII
                   constraints:
                     nullable: true
 
@@ -124,7 +124,7 @@ databaseChangeLog:
               - column:
                   name: auth_method
                   type: varchar(32)
-                  remarks: Authentication method used (e.g. password, jwt, saml, api-key, public, guest)
+                  remarks: Authentication method used (e.g. jwt, saml, api-key, public, guest)
                   constraints:
                     nullable: true
 
@@ -191,7 +191,7 @@ databaseChangeLog:
   - changeSet:
       id: v60.2026-03-26T00:00:12
       author: bgrabow
-      comment: Add embedding_hostname column to query_execution for PII-gated analytics
+      comment: Add embedding_hostname column to query_execution for embedding analytics
       changes:
         - addColumn:
             tableName: query_execution
@@ -199,14 +199,14 @@ databaseChangeLog:
               - column:
                   name: embedding_hostname
                   type: varchar(512)
-                  remarks: Hostname from Origin header, populated when collect-analytics-pii is enabled
+                  remarks: Hostname from Origin header, PII
                   constraints:
                     nullable: true
 
   - changeSet:
       id: v60.2026-03-26T00:00:13
       author: bgrabow
-      comment: Add embedding_path column to query_execution for PII-gated analytics
+      comment: Add embedding_path column to query_execution for embedding analytics
       changes:
         - addColumn:
             tableName: query_execution
@@ -214,14 +214,14 @@ databaseChangeLog:
               - column:
                   name: embedding_path
                   type: varchar(2048)
-                  remarks: Path from Referer header (query params stripped), populated when collect-analytics-pii is enabled
+                  remarks: Path from Referer header (query params stripped), PII
                   constraints:
                     nullable: true
 
   - changeSet:
       id: v60.2026-03-26T00:00:14
       author: bgrabow
-      comment: Add sanitized_user_agent column to query_execution for PII-gated analytics
+      comment: Add sanitized_user_agent column to query_execution for embedding analytics
       changes:
         - addColumn:
             tableName: query_execution
@@ -229,14 +229,14 @@ databaseChangeLog:
               - column:
                   name: sanitized_user_agent
                   type: varchar(512)
-                  remarks: User-Agent header, populated when collect-analytics-pii is enabled
+                  remarks: User-Agent header, PII
                   constraints:
                     nullable: true
 
   - changeSet:
       id: v60.2026-03-26T00:00:15
       author: bgrabow
-      comment: Add ip_address column to query_execution for PII-gated analytics
+      comment: Add ip_address column to query_execution for embedding analytics
       changes:
         - addColumn:
             tableName: query_execution
@@ -244,7 +244,7 @@ databaseChangeLog:
               - column:
                   name: ip_address
                   type: varchar(45)
-                  remarks: Client IP address, populated when collect-analytics-pii is enabled
+                  remarks: Client IP address, PII
                   constraints:
                     nullable: true
 
