@@ -4,9 +4,9 @@ import { useListRevisionsQuery, useRevertRevisionMutation } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { RevisionHistoryTimeline } from "metabase/common/components/RevisionHistoryTimeline";
 import { getTimelineEvents } from "metabase/common/components/RevisionHistoryTimeline/utils";
-import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { getUser } from "metabase/selectors/user";
+import { useSelector } from "metabase/utils/redux";
 import type { Card } from "metabase-types/api";
 
 interface MetricActivityTimelineProps {

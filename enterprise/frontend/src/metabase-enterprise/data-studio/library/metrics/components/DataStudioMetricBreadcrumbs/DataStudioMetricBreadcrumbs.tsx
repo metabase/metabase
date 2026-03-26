@@ -1,7 +1,7 @@
 import { Link } from "metabase/common/components/Link";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs/DataStudioBreadcrumbs";
 import { useCollectionPath } from "metabase/data-studio/common/hooks/use-collection-path/useCollectionPath";
-import * as Urls from "metabase/lib/urls";
+import * as Urls from "metabase/utils/urls";
 import type { Card } from "metabase-types/api";
 
 interface DataStudioMetricBreadcrumbsProps {

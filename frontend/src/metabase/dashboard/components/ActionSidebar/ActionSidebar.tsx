@@ -11,8 +11,8 @@ import { Sidebar } from "metabase/common/components/Sidebar";
 import CS from "metabase/css/core/index.css";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { Form, FormProvider, FormSelect, FormTextInput } from "metabase/forms";
-import { checkNotNull } from "metabase/lib/types";
 import { Box, Button, Divider, Flex, Modal, Stack, Title } from "metabase/ui";
+import { checkNotNull } from "metabase/utils/types";
 import type { ActionDashboardCard } from "metabase-types/api";
 
 const settings = checkNotNull(ActionViz.settings);
