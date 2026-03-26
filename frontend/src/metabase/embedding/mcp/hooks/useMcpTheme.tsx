@@ -58,32 +58,27 @@ function resolveConcreteColor(
     return valueOrCssVariable;
   }
 
+  // Transform light-dark(...) values to concrete colors
+  // before sending them to the SDK.
   if (valueOrCssVariable.startsWith("light-dark(")) {
     return resolveLightDark(valueOrCssVariable, scheme);
   }
 
-  if (!valueOrCssVariable.startsWith("var(")) {
-    return valueOrCssVariable;
+  // Transform var(...) values to concrete colors
+  // before sending them to the SDK.
+  if (valueOrCssVariable.startsWith("var(")) {
+    const container = document.createElement("div");
+    container.style.color = valueOrCssVariable;
+    document.body.appendChild(container);
+
+    const resolved = getComputedStyle(container).color;
+    document.body.removeChild(container);
+
+    return resolved || valueOrCssVariable;
   }
 
-  const container = document.createElement("div");
-
-  // Set color-scheme so the browser resolves light-dark() correctly.
-  container.style.colorScheme = scheme;
-  container.style.color = valueOrCssVariable;
-  document.body.appendChild(container);
-
-  const resolved = getComputedStyle(container).color;
-  document.body.removeChild(container);
-
-  const value = resolved || valueOrCssVariable;
-
-  // Fallback: if the browser returned light-dark() unresolved, parse it manually.
-  if (value.startsWith("light-dark(")) {
-    return resolveLightDark(value, scheme);
-  }
-
-  return value;
+  // Plain color value, return as-is.
+  return valueOrCssVariable;
 }
 
 export function buildMcpAppsTheme(
