@@ -559,9 +559,9 @@
       (or (not-empty (db-or-cache-value* (setting-name setting)))
           (when-let [deprecated-name (:deprecated-name setting)]
             (when-let [v (not-empty (db-or-cache-value* (setting-name deprecated-name)))]
-              (let [dep-key (setting-name deprecated-name)]
-                (when-not (contains? @deprecated-db-key-warned dep-key)
-                  (swap! deprecated-db-key-warned conj dep-key)
+              (let [dep-key (setting-name deprecated-name)
+                    [old-warned _] (swap-vals! deprecated-db-key-warned conj dep-key)]
+                (when-not (contains? old-warned dep-key)
                   (log/warnf "Deprecated setting key %s found in database; rename it to %s."
                              dep-key (setting-name setting))))
               v))))))
