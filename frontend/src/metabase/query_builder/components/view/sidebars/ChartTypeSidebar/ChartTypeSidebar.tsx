@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { SidebarContent } from "metabase/common/components/SidebarContent";
@@ -25,10 +25,7 @@ import {
 } from "metabase/visualizations/custom-viz-plugins";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type {
-  CardDisplayType,
-  CustomVizPluginRuntime,
-} from "metabase-types/api";
+import type { CardDisplayType } from "metabase-types/api";
 
 export type ChartTypeSidebarProps = Pick<
   UseQuestionVisualizationStateProps,
@@ -44,6 +41,36 @@ export const ChartTypeSidebar = ({
   const [sendToast] = useToast();
   const customVizEnabled = useSetting("custom-viz-enabled");
   const customVizPlugins = useCustomVizPlugins({ enabled: customVizEnabled });
+  const [pluginsLoaded, setPluginsLoaded] = useState(false);
+
+  const onInfo = useCallback(
+    (message: string) => sendToast({ message }),
+    [sendToast],
+  );
+
+  // Eagerly load all custom viz plugins so they register in the
+  // visualizations Map and can be rendered by ChartTypeOption.
+  useEffect(() => {
+    if (!customVizPlugins || customVizPlugins.length === 0) {
+      setPluginsLoaded(true);
+      return;
+    }
+
+    let cancelled = false;
+    Promise.all(
+      customVizPlugins.map((plugin) =>
+        loadCustomVizPlugin(plugin, undefined, onInfo),
+      ),
+    ).then(() => {
+      if (!cancelled) {
+        setPluginsLoaded(true);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [customVizPlugins, onInfo]);
 
   const onUpdateQuestion = (newQuestion: Question) => {
     if (question) {
@@ -58,7 +85,8 @@ export const ChartTypeSidebar = ({
 
   const { sensibleVisualizations, nonSensibleVisualizations } = useMemo(
     () => getSensibleVisualizations({ result }),
-    [result],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- recompute after plugins are loaded
+    [result, pluginsLoaded],
   );
 
   const { selectedVisualization, updateQuestionVisualization } =
@@ -70,20 +98,6 @@ export const ChartTypeSidebar = ({
   const handleSelectVisualization = (display: CardDisplayType) => {
     updateQuestionVisualization(display);
   };
-
-  const handleSelectCustomVizPlugin = useCallback(
-    async (plugin: CustomVizPluginRuntime) => {
-      const identifier = await loadCustomVizPlugin(
-        plugin,
-        undefined,
-        (message) => sendToast({ message }),
-      );
-      if (identifier) {
-        updateQuestionVisualization(identifier as CardDisplayType);
-      }
-    },
-    [sendToast, updateQuestionVisualization],
-  );
 
   const onOpenVizSettings = () => {
     dispatch(
@@ -106,7 +120,6 @@ export const ChartTypeSidebar = ({
         sensibleVisualizations={sensibleVisualizations}
         nonSensibleVisualizations={nonSensibleVisualizations}
         customVizPlugins={customVizPlugins}
-        onSelectCustomVizPlugin={handleSelectCustomVizPlugin}
         onOpenSettings={onOpenVizSettings}
         gap={0}
         w="100%"

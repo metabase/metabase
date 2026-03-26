@@ -1,6 +1,5 @@
 import cx from "classnames";
 
-import { checkNotNull } from "metabase/lib/types";
 import { ActionIcon, Center, Icon, Stack, Text } from "metabase/ui";
 import visualizations from "metabase/visualizations";
 import type { CardDisplayType } from "metabase-types/api";
@@ -20,8 +19,12 @@ export const ChartTypeOption = ({
   onSelectVisualization,
   onOpenSettings,
 }: ChartTypeOptionProps) => {
-  const visualization = checkNotNull(visualizations.get(visualizationType));
+  const visualization = visualizations.get(visualizationType);
   const isSelected = selectedVisualization === visualizationType;
+
+  const iconUrl = visualization?.iconUrl;
+  const displayName = visualization?.getUiName() ?? visualizationType;
+  const iconName = visualization?.iconName;
 
   return (
     <Center pos="relative" data-testid="chart-type-option">
@@ -30,7 +33,7 @@ export const ChartTypeOption = ({
         gap="xs"
         role="option"
         aria-selected={isSelected}
-        data-testid={`${visualization.getUiName()}-container`}
+        data-testid={`${displayName}-container`}
       >
         <ActionIcon
           w="3.125rem"
@@ -50,13 +53,25 @@ export const ChartTypeOption = ({
             ChartTypeOptionS.BorderedButton,
             ChartTypeOptionS.VisualizationButton,
           )}
-          data-testid={`${visualization.getUiName()}-button`}
+          data-testid={`${displayName}-button`}
         >
-          <Icon
-            name={visualization.iconName}
-            c={isSelected ? "white" : "brand"}
-            size={20}
-          />
+          {iconUrl ? (
+            <img
+              src={iconUrl}
+              alt={displayName}
+              width={20}
+              height={20}
+              style={
+                isSelected ? { filter: "brightness(0) invert(1)" } : undefined
+              }
+            />
+          ) : (
+            <Icon
+              name={iconName ?? "unknown"}
+              c={isSelected ? "white" : "brand"}
+              size={20}
+            />
+          )}
         </ActionIcon>
 
         {isSelected && onOpenSettings && (
@@ -86,7 +101,7 @@ export const ChartTypeOption = ({
           color={isSelected ? "brand" : "text-secondary"}
           data-testid="chart-type-option-label"
         >
-          {visualization.getUiName()}
+          {displayName}
         </Text>
       </Stack>
     </Center>

@@ -57,7 +57,7 @@
   "Throw a 400 if custom visualizations are not enabled."
   []
   (api/check (custom-viz.settings/custom-viz-enabled?)
-    [400 (tru "Custom visualizations are not enabled. Set the MB_CUSTOM_VIZ_ENABLED environment variable to true.")]))
+             [400 (tru "Custom visualizations are not enabled. Set the MB_CUSTOM_VIZ_ENABLED environment variable to true.")]))
 
 ;; TODO: this should be guarded automatically through a custom mi/to-json defmethod
 (defn- strip-token
@@ -103,9 +103,9 @@
   [_route-params
    _query-params
    {:keys [repo_url access_token pinned_version]} :- [:map
-                                                       [:repo_url       ms/NonBlankString]
-                                                       [:access_token   {:optional true} [:maybe :string]]
-                                                       [:pinned_version {:optional true} [:maybe :string]]]]
+                                                      [:repo_url       ms/NonBlankString]
+                                                      [:access_token   {:optional true} [:maybe :string]]
+                                                      [:pinned_version {:optional true} [:maybe :string]]]]
   (check-custom-viz-enabled)
   (api/check-superuser)
   (let [identifier (git/parse-repo-name repo_url)
