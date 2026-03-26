@@ -94,10 +94,6 @@
 (def ^:private timestamp-migration-id-re
   #"^v(\d{2,})\.(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})$")
 
-;; Assigns sequential numbers to hex-style migration IDs (e.g. v60.f8c3be) in the order they're
-;; first seen, which matches file order since Liquibase reads changesets sequentially.
-(def ^:private hex->ordinal (atom {}))
-
 (defn- migration->number [id]
   (if (integer? id)
     id
@@ -113,13 +109,6 @@
                                    ^OffsetDateTime (u.date/with-time-zone-same-instant (t/zone-id "UTC"))
                                    .toInstant .getEpochSecond)]
             (parse-double (format "%d.%d" (* (parse-long major-version) 100) unix-timestamp))))
-        ;; v60.f8c3be style hex IDs -- ordered by first-seen position, not by hex value
-        (when-let [[_ major-version] (re-matches #"^v(\d{2,})\.([0-9a-fA-F]{6})$" id)]
-          (let [ordinal (or (get @hex->ordinal id)
-                            (get (swap! hex->ordinal #(assoc % id (or (get % id) (count %))))
-                                 id))]
-            (+ (* (Integer/parseUnsignedInt major-version) 100)
-               (/ (double ordinal) 1000.0))))
         (throw (ex-info (format "Invalid migration ID: %s" id) {:id id})))))
 
 (deftest migration->number-test
