@@ -1,5 +1,5 @@
 name: Build CLJS
-description: "Compile ClojureScript with content-hash caching to avoid redundant builds"
+description: "Compile ClojureScript with per-commit caching to share builds across CI jobs"
 inputs:
   mode:
     description: "Build mode: 'dev' (default) or 'release'"
@@ -17,13 +17,6 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Hash CLJS sources
-      id: cljs-hash
-      shell: bash
-      run: |
-        SOURCES_HASH=${{ hashFiles('src/**/*.cljs', 'src/**/*.cljc', 'shadow-cljs.edn', 'deps.edn') }}
-        echo "key=cljs-${{ inputs.mode }}-${{ inputs.node-env || 'default' }}-${{ runner.os }}-${SOURCES_HASH}" >> $GITHUB_OUTPUT
-
     - name: Restore CLJS build cache
       id: cljs-cache
       uses: actions/cache@v4
@@ -31,7 +24,7 @@ runs:
         path: |
           target/cljs_release
           target/cljs_dev
-        key: ${{ steps.cljs-hash.outputs.key }}
+        key: cljs-${{ inputs.mode }}-${{ inputs.node-env || 'default' }}-${{ runner.os }}-${{ github.sha }}
 
     - name: Compile CLJS
       if: steps.cljs-cache.outputs.cache-hit != 'true'
