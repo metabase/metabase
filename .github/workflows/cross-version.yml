@@ -75,7 +75,7 @@ jobs:
       - name: Run cross-version test
         env:
           CURRENT_VERSION: ${{ vars.CURRENT_VERSION }}
-          RESULT_FILE: ${{ runner.temp }}/cross-version-result.json
+          RESULT_FILE: ${{ runner.temp }}/cross-version-result-${{ matrix.source }}-${{ matrix.target }}.json
         run: |
           cd cross-version
           ./test.sh --source "${{ matrix.source }}" --target "${{ matrix.target }}"
@@ -85,7 +85,7 @@ jobs:
         if: failure()
         with:
           name: failure-result-${{ matrix.source }}-${{ matrix.target }}
-          path: ${{ runner.temp }}/cross-version-result.json
+          path: ${{ runner.temp }}/cross-version-result-${{ matrix.source }}-${{ matrix.target }}.json
           if-no-files-found: ignore
 
       - name: Upload Cypress Artifacts upon failure

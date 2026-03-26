@@ -55,7 +55,7 @@ describe("cross-version-slack", () => {
       expect(results[0].jobUrl).toBe("https://job/1");
     });
 
-    it("falls back to unknown when no artifact exists", () => {
+    it("defaults to e2e phase when no artifact exists", () => {
       const failedJobs: FailedJob[] = [
         { name: "test-matrix (v1.58.x, HEAD)", url: "https://job/2" },
       ];
@@ -63,7 +63,7 @@ describe("cross-version-slack", () => {
       const results = buildFailureResults(failedJobs, new Map());
 
       expect(results).toHaveLength(1);
-      expect(results[0].phase).toBe("unknown");
+      expect(results[0].phase).toBe("e2e");
       expect(results[0].source).toBe("v1.58.x");
       expect(results[0].target).toBe("HEAD");
       expect(results[0].detail).toBe("check job logs for details");
@@ -79,13 +79,11 @@ describe("cross-version-slack", () => {
       const results = buildFailureResults(failedJobs, new Map());
 
       expect(results).toHaveLength(3);
-      expect(results[2].phase).toBe("unknown");
-      expect(results[2].detail).toBe("something-else");
     });
   });
 
   describe("buildSlackPayload", () => {
-    it("categorizes migration and e2e failures separately", () => {
+    it("creates one attachment per failure with correct colors", () => {
       const failures: FailureResult[] = [
         {
           phase: "migration",
@@ -102,16 +100,19 @@ describe("cross-version-slack", () => {
       ];
 
       const payload = buildSlackPayload(failures, RUN_URL);
-      const blocks = payload.attachments[0].blocks;
 
-      expect(blocks).toHaveLength(3); // migration + e2e + context
-      expect(blocks[0].text?.text).toContain("Migration failures");
-      expect(blocks[0].text?.text).toContain("migrate down failed");
-      expect(blocks[1].text?.text).toContain("E2E failures");
-      expect(blocks[1].text?.text).toContain("e2e tests failed after upgrade");
+      expect(payload.attachments).toHaveLength(2);
+      expect(payload.attachments[0].color).toBe("#f85149"); // red
+      expect(payload.attachments[0].blocks[0].text?.text).toContain(
+        "Migration failures",
+      );
+      expect(payload.attachments[1].color).toBe("#ffce33"); // yellow
+      expect(payload.attachments[1].blocks[0].text?.text).toContain(
+        "E2E failures",
+      );
     });
 
-    it("shows only migration section when there are no e2e failures", () => {
+    it("includes changeset detail in migration failure", () => {
       const failures: FailureResult[] = [
         {
           phase: "migration",
@@ -123,78 +124,20 @@ describe("cross-version-slack", () => {
       ];
 
       const payload = buildSlackPayload(failures, RUN_URL);
-      const blocks = payload.attachments[0].blocks;
 
-      expect(blocks).toHaveLength(2); // migration + context
-      expect(blocks[0].text?.text).toContain("Migration failures");
-      expect(blocks[0].text?.text).toContain("not rolled back");
-    });
-
-    it("shows only e2e section when there are no migration failures", () => {
-      const failures: FailureResult[] = [
-        {
-          phase: "e2e",
-          source: "v1.58.x",
-          target: "HEAD",
-          detail: "e2e tests failed after upgrade",
-        },
-      ];
-
-      const payload = buildSlackPayload(failures, RUN_URL);
-      const blocks = payload.attachments[0].blocks;
-
-      expect(blocks).toHaveLength(2); // e2e + context
-      expect(blocks[0].text?.text).toContain("E2E failures");
-    });
-
-    it("shows unknown failures in a separate section", () => {
-      const failures: FailureResult[] = [
-        {
-          phase: "unknown",
-          source: "HEAD",
-          target: "v1.58.x",
-          detail: "check job logs for details",
-        },
-      ];
-
-      const payload = buildSlackPayload(failures, RUN_URL);
-      const blocks = payload.attachments[0].blocks;
-
-      expect(blocks).toHaveLength(2); // unknown + context
-      expect(blocks[0].text?.text).toContain("Other failures");
+      expect(payload.attachments).toHaveLength(1);
+      expect(payload.attachments[0].blocks[0].text?.text).toContain(
+        "not rolled back",
+      );
     });
 
     it("shows generic message when no failures exist", () => {
       const payload = buildSlackPayload([], RUN_URL);
-      const blocks = payload.attachments[0].blocks;
 
-      expect(blocks).toHaveLength(2); // generic + context
-      expect(blocks[0].text?.text).toContain(
+      expect(payload.attachments).toHaveLength(1);
+      expect(payload.attachments[0].blocks[0].text?.text).toContain(
         "One or more matrix jobs failed",
       );
-    });
-
-    it("groups multiple failures of the same type", () => {
-      const failures: FailureResult[] = [
-        {
-          phase: "migration",
-          source: "HEAD",
-          target: "v1.57.x",
-          detail: "migrate down failed",
-        },
-        {
-          phase: "migration",
-          source: "HEAD",
-          target: "v1.58.x",
-          detail: "migrate down failed",
-        },
-      ];
-
-      const payload = buildSlackPayload(failures, RUN_URL);
-      const migrationBlock = payload.attachments[0].blocks[0];
-
-      expect(migrationBlock.text?.text).toContain("v1.57.x");
-      expect(migrationBlock.text?.text).toContain("v1.58.x");
     });
 
     it("includes job URLs as links when provided", () => {
@@ -204,24 +147,44 @@ describe("cross-version-slack", () => {
           source: "HEAD",
           target: "v1.59.x",
           detail: "migrate down failed",
-          jobUrl: "https://github.com/metabase/metabase/actions/runs/123/job/456",
+          jobUrl:
+            "https://github.com/metabase/metabase/actions/runs/123/job/456",
         },
       ];
 
       const payload = buildSlackPayload(failures, RUN_URL);
-      const block = payload.attachments[0].blocks[0];
 
-      expect(block.text?.text).toContain("<https://github.com/metabase/metabase/actions/runs/123/job/456|HEAD → v1.59.x>");
+      expect(payload.attachments[0].blocks[0].text?.text).toContain(
+        "<https://github.com/metabase/metabase/actions/runs/123/job/456|HEAD → v1.59.x>",
+      );
     });
 
-    it("includes a link to the workflow run", () => {
-      const payload = buildSlackPayload([], RUN_URL);
-      const blocks = payload.attachments[0].blocks;
-      const contextBlock = blocks[blocks.length - 1];
+    it("appends 'View full run' to the last attachment", () => {
+      const failures: FailureResult[] = [
+        {
+          phase: "migration",
+          source: "HEAD",
+          target: "v1.57.x",
+          detail: "migrate down failed",
+        },
+        {
+          phase: "e2e",
+          source: "v1.58.x",
+          target: "HEAD",
+          detail: "e2e tests failed",
+        },
+      ];
 
-      expect(contextBlock.type).toBe("context");
-      expect(contextBlock.elements?.[0].text).toContain(RUN_URL);
-      expect(contextBlock.elements?.[0].text).toContain("View full run");
+      const payload = buildSlackPayload(failures, RUN_URL);
+
+      // First attachment: no context block
+      expect(payload.attachments[0].blocks).toHaveLength(1);
+      // Last attachment: has context block
+      const lastAttachment =
+        payload.attachments[payload.attachments.length - 1];
+      const lastBlock = lastAttachment.blocks[lastAttachment.blocks.length - 1];
+      expect(lastBlock.type).toBe("context");
+      expect(lastBlock.elements?.[0].text).toContain("View full run");
     });
 
     it("always starts with a header block", () => {
@@ -235,54 +198,6 @@ describe("cross-version-slack", () => {
           emoji: true,
         },
       });
-    });
-
-    it("uses red color when there are migration failures", () => {
-      const failures: FailureResult[] = [
-        {
-          phase: "migration",
-          source: "HEAD",
-          target: "v1.57.x",
-          detail: "migrate down failed",
-        },
-      ];
-
-      const payload = buildSlackPayload(failures, RUN_URL);
-      expect(payload.attachments[0].color).toBe("#f85149");
-    });
-
-    it("uses yellow color for e2e-only failures", () => {
-      const failures: FailureResult[] = [
-        {
-          phase: "e2e",
-          source: "v1.58.x",
-          target: "HEAD",
-          detail: "e2e tests failed after upgrade",
-        },
-      ];
-
-      const payload = buildSlackPayload(failures, RUN_URL);
-      expect(payload.attachments[0].color).toBe("#ffce33");
-    });
-
-    it("uses red color when both migration and e2e failures exist", () => {
-      const failures: FailureResult[] = [
-        {
-          phase: "migration",
-          source: "HEAD",
-          target: "v1.57.x",
-          detail: "migrate down failed",
-        },
-        {
-          phase: "e2e",
-          source: "v1.58.x",
-          target: "HEAD",
-          detail: "e2e tests failed after upgrade",
-        },
-      ];
-
-      const payload = buildSlackPayload(failures, RUN_URL);
-      expect(payload.attachments[0].color).toBe("#f85149");
     });
   });
 });

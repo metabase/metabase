@@ -7,7 +7,7 @@
 import { WebClient } from "@slack/web-api";
 
 export interface FailureResult {
-  phase: "migration" | "e2e" | "unknown";
+  phase: "migration" | "e2e";
   source: string;
   target: string;
   detail: string;
@@ -35,7 +35,7 @@ export interface FailedJob {
   url: string;
 }
 
-// Red for migration failures, yellow for e2e-only/unknown
+// Red for migration failures, yellow for e2e
 const COLOR_MIGRATION = "#f85149";
 const COLOR_E2E = "#ffce33";
 
@@ -54,7 +54,7 @@ export const parseJobName = (
 };
 
 /**
- * Build a list of FailureResults from failed jobs and optional artifact data.
+ * Build a list of FailureResults from failed jobs and artifact data.
  * Each failed job becomes a result. Artifact data enriches with phase/detail.
  */
 export const buildFailureResults = (
@@ -65,7 +65,7 @@ export const buildFailureResults = (
     const parsed = parseJobName(job.name);
     if (!parsed) {
       return {
-        phase: "unknown" as const,
+        phase: "e2e" as const,
         source: "?",
         target: "?",
         detail: job.name,
@@ -81,7 +81,7 @@ export const buildFailureResults = (
     }
 
     return {
-      phase: "unknown" as const,
+      phase: "e2e" as const,
       source: parsed.source,
       target: parsed.target,
       detail: "check job logs for details",
@@ -97,65 +97,51 @@ const formatFailureItem = (f: FailureResult): string => {
   return `• ${versions} — ${f.detail}`;
 };
 
+const labelForPhase = (phase: "migration" | "e2e"): string =>
+  phase === "migration"
+    ? ":rotating_light: *Migration failures*"
+    : ":test_tube: *E2E failures*";
+
+const colorForPhase = (phase: "migration" | "e2e"): string =>
+  phase === "migration" ? COLOR_MIGRATION : COLOR_E2E;
+
 export const buildSlackPayload = (
   failures: FailureResult[],
   runUrl: string,
 ): SlackPayload => {
-  const migration = failures.filter(f => f.phase === "migration");
-  const e2e = failures.filter(f => f.phase === "e2e");
-  const unknown = failures.filter(f => f.phase === "unknown");
-
-  const attachmentBlocks: SlackBlock[] = [];
-
-  if (migration.length > 0) {
-    const items = migration.map(formatFailureItem).join("\n");
-    attachmentBlocks.push({
-      type: "section",
-      text: {
-        type: "mrkdwn",
-        text: `:rotating_light: *Migration failures*\n${items}`,
+  const attachments: SlackAttachment[] = failures.map(f => ({
+    color: colorForPhase(f.phase),
+    blocks: [
+      {
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: `${labelForPhase(f.phase)}\n${formatFailureItem(f)}`,
+        },
       },
+    ],
+  }));
+
+  if (attachments.length === 0) {
+    attachments.push({
+      color: COLOR_E2E,
+      blocks: [
+        {
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: "One or more matrix jobs failed. Check the workflow run for details.",
+          },
+        },
+      ],
     });
   }
 
-  if (e2e.length > 0) {
-    const items = e2e.map(formatFailureItem).join("\n");
-    attachmentBlocks.push({
-      type: "section",
-      text: {
-        type: "mrkdwn",
-        text: `:test_tube: *E2E failures*\n${items}`,
-      },
-    });
-  }
-
-  if (unknown.length > 0) {
-    const items = unknown.map(formatFailureItem).join("\n");
-    attachmentBlocks.push({
-      type: "section",
-      text: {
-        type: "mrkdwn",
-        text: `:warning: *Other failures*\n${items}`,
-      },
-    });
-  }
-
-  if (attachmentBlocks.length === 0) {
-    attachmentBlocks.push({
-      type: "section",
-      text: {
-        type: "mrkdwn",
-        text: "One or more matrix jobs failed. Check the workflow run for details.",
-      },
-    });
-  }
-
-  attachmentBlocks.push({
+  // Add "View full run" to the last attachment
+  attachments[attachments.length - 1].blocks.push({
     type: "context",
     elements: [{ type: "mrkdwn", text: `<${runUrl}|View full run>` }],
   });
-
-  const color = migration.length > 0 ? COLOR_MIGRATION : COLOR_E2E;
 
   return {
     blocks: [
@@ -168,7 +154,7 @@ export const buildSlackPayload = (
         },
       },
     ],
-    attachments: [{ color, blocks: attachmentBlocks }],
+    attachments,
   };
 };
 
