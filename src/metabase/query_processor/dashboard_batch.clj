@@ -10,6 +10,7 @@
    [metabase.events.core :as events]
    [metabase.lib-be.metadata.jvm :as lib-be.jvm]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.dashboard :as qp.dashboard]
@@ -200,12 +201,17 @@
           current-user-id        api/*current-user-id*
           current-user-perms     @api/*current-user-permissions-set*
           metadata-cache         lib-be.jvm/*metadata-provider-cache*
+          ;; Pre-warm metadata providers so worker threads don't all race to fetch database metadata.
+          _                      (doseq [db-id (distinct (vals card-db-ids))]
+                                   (lib.metadata/database (lib-be.jvm/application-database-metadata-provider db-id)))
           ;; Request-scoped caches for cross-card deduplication of EE permission/routing lookups.
           ;; Each EE namespace owns its own cache var; we create atoms here and convey them to threads.
           impersonation-cache-var (resolve 'metabase-enterprise.impersonation.driver/*impersonation-cache*)
           routing-cache-var       (resolve 'metabase-enterprise.database-routing.common/*routing-cache*)
+          cache-strategy-cache-var (resolve 'metabase-enterprise.cache.strategies/*cache-strategy-cache*)
           impersonation-cache     (when impersonation-cache-var (atom {}))
-          routing-cache           (when routing-cache-var (atom {}))]
+          routing-cache           (when routing-cache-var (atom {}))
+          cache-strategy-cache    (when cache-strategy-cache-var (atom {}))]
       ;; Fire dashboard-queried event once
       (events/publish-event! :event/dashboard-queried {:object-id dashboard-id :user-id current-user-id})
       ;; Store user parameter values once
@@ -249,8 +255,9 @@
                                      (let [bindings (cond-> {#'api/*current-user-id*                current-user-id
                                                              #'api/*current-user-permissions-set*   (atom current-user-perms)
                                                              #'lib-be.jvm/*metadata-provider-cache* metadata-cache}
-                                                      impersonation-cache-var (assoc impersonation-cache-var impersonation-cache)
-                                                      routing-cache-var       (assoc routing-cache-var routing-cache))]
+                                                      impersonation-cache-var  (assoc impersonation-cache-var impersonation-cache)
+                                                      routing-cache-var        (assoc routing-cache-var routing-cache)
+                                                      cache-strategy-cache-var (assoc cache-strategy-cache-var cache-strategy-cache))]
                                        (with-bindings bindings
                                          {:dashcard-id dashcard-id
                                           :card-id     card-id

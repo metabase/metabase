@@ -224,8 +224,9 @@
             (testing (format "per-card: %d DB calls, batch: %d DB calls" per-card-total batch-total)
               (is (< batch-total per-card-total)
                   "batch endpoint should use fewer DB calls than individual card queries")
-              ;; With batch-fetch and request-scoped caching, 3 cards on the same DB should stay well
-              ;; under 80 AppDB calls total. Bump this ceiling if legitimate new queries are added.
+              ;; With batch-fetch, request-scoped caching (permissions, routing, cache strategy),
+              ;; and pre-warmed metadata providers, 3 cards on the same DB should stay under 80
+              ;; AppDB calls. Bump this ceiling if legitimate new queries are added.
               (is (<= batch-total 80)
                   (format "batch call count regression: expected ≤80, got %d" batch-total)))))))))
 
@@ -258,6 +259,7 @@
             (testing (format "3-card batch: %d, 5-card batch: %d, marginal: %.1f per card"
                              batch-3 batch-5 marginal-cost)
               ;; The marginal cost of each additional card in batch mode should be significantly
-              ;; lower than the ~55 queries/card cost of individual requests
-              (is (< marginal-cost 40)
+              ;; lower than the ~55 queries/card cost of individual requests.
+              ;; With cache-strategy caching and deferred view-log, marginal cost is ~7/card.
+              (is (< marginal-cost 15)
                   (format "marginal per-card cost too high: %.1f" marginal-cost)))))))))
