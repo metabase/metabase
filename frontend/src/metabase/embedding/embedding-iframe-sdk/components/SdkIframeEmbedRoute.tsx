@@ -94,7 +94,6 @@ export const SdkIframeEmbedRoute = () => {
     isGuest: embedSettings.isGuest,
     metabaseInstanceUrl: embedSettings.instanceUrl,
     apiKey: embedSettings.apiKey,
-    sessionToken: embedSettings.sessionToken,
   } as MetabaseAuthConfig;
 
   return (
