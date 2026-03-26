@@ -38,50 +38,95 @@
        (mc/into-schema (mc/type node) (mc/properties node) children (mc/options node))))
    {::mc/walk-refs true ::mc/walk-schema-refs true}))
 
-(defn- maybe-optional-keys
-  "Apply `mut/optional-keys` if the schema is map-like (has entries after deref).
-   Non-map schemas (e.g. `:enum`, `:string`) are returned unchanged."
+(defn- collect-root-maps
+  "Walk the root of a malli schema tree using a worklist, collecting leaf `:map` schemas.
+   Composite nodes (`:and`, `:or`, `:multi`) are expanded and their children enqueued.
+   Other non-map nodes (e.g. `:schema` wrappers) are deref'd and re-enqueued.
+
+   Returns a vector of `{:schema <map-schema> :optional? <bool>}` where `:optional?` is true
+   when the schema was reached through an `:or` or `:multi` branch (meaning all its keys
+   should become optional in the merged result).
+
+   Tracks already-deref'd schemas to detect cycles — composite types (`:and`, `:or`, `:multi`)
+   and `:map` always terminate, so only the deref fallback path needs cycle detection.
+
+   Only the outermost composite schemas are consumed — nested `anyOf`/`allOf` within `:map`
+   properties are preserved since LLM clients handle them fine."
   [schema]
-  (if (mc/-entry-schema? (mc/deref-all schema))
-    (mut/optional-keys schema)
-    schema))
+  (loop [worklist [{:schema schema :optional? false}]
+         results  []
+         seen     #{}]
+    (if (empty? worklist)
+      results
+      (let [{:keys [schema optional?]} (first worklist)
+            remaining                   (subvec worklist 1)]
+        (case (mc/type schema)
+          :map
+          (recur remaining (conj results {:schema schema :optional? optional?}) seen)
+
+          :and
+          (recur (into remaining
+                       (mapv (fn [child] {:schema child :optional? optional?})
+                             (mc/children schema)))
+                 results seen)
+
+          :or
+          (recur (into remaining
+                       (mapv (fn [child] {:schema child :optional? true})
+                             (mc/children schema)))
+                 results seen)
+
+          :multi
+          (recur (into remaining
+                       (mapv (fn [[_k _props child]] {:schema child :optional? true})
+                             (mc/children schema)))
+                 results seen)
+
+          ;; For other types (e.g. :schema wrapper), try deref and re-enqueue.
+          ;; Track by identity to detect cycles (e.g. recursive schema refs).
+          (let [derefed (mc/deref schema)]
+            (cond
+              ;; Cycle detected: emit an empty :map as a safe fallback (-> {"type":"object"}).
+              ;; In practice inline-malli-refs already breaks cycles via :any, so this is a safety net.
+              (contains? seen schema)
+              (recur remaining
+                     (conj results {:schema (mc/schema [:map]) :optional? optional?})
+                     seen)
+
+              ;; Deref made progress: re-enqueue the dereferenced schema.
+              (not (identical? derefed schema))
+              (recur (conj remaining {:schema derefed :optional? optional?})
+                     results (conj seen schema))
+
+              ;; Can't simplify (non-map leaf like :enum): keep as-is.
+              :else
+              (recur remaining (conj results {:schema schema :optional? optional?}) seen))))))))
 
 (defn- flatten-root-schema
-  "Iteratively simplify the root of a malli schema until it is a `:map`.
-   Only the outermost composite schemas are flattened — nested `anyOf`/`allOf` are preserved
-   since LLM clients handle them fine within properties.
+  "Flatten the root of a malli schema into a single `:map` for MCP inputSchema compatibility.
+   Only the outermost composite schemas (`:and`, `:or`, `:multi`) are consumed — nested
+   `anyOf`/`allOf` within `:map` properties are preserved.
 
-   - `:and`   → `:merge` then deref (flattens the `[:map ...] [:map {:encode/...}]` pattern)
-   - `:or`    → `:union` with all entries optional, then deref (merges branches, no required)
-   - `:multi` → same as `:or` but extracts schemas from `[dispatch-key props schema]` triples
+   Collects all leaf `:map` schemas from the root composite tree, marks keys as optional
+   when reached through `:or`/`:multi` branches, then merges everything into one `:map`.
 
    Returns the schema unchanged if it is already a `:map` or cannot be simplified."
   [schema]
-  (loop [s schema
-         fuel 10]
-    (if (or (= :map (mc/type s)) (zero? fuel))
-      s
-      (recur
-       (case (mc/type s)
-         :and
-         (mc/deref (mc/into-schema :merge (mc/properties s) (mc/children s) (mc/options s)))
-
-         :or
-         (mc/deref (mc/into-schema :union (mc/properties s)
-                                   (mapv (comp maybe-optional-keys flatten-root-schema)
-                                         (mc/children s))
-                                   (mc/options s)))
-
-         :multi
-         (mc/deref (mc/into-schema :union (dissoc (mc/properties s) :dispatch)
-                                   (mapv (fn [[_k _props schema]]
-                                           (maybe-optional-keys (flatten-root-schema schema)))
-                                         (mc/children s))
-                                   (mc/options s)))
-
-         ;; For any other type (e.g. :schema wrapper), try deref
-         (mc/deref s))
-       (dec fuel)))))
+  (let [leaves (collect-root-maps schema)]
+    (case (count leaves)
+      0 schema
+      1 (let [{:keys [schema optional?]} (first leaves)]
+          (cond-> schema
+            (and optional? (mc/-entry-schema? (mc/deref-all schema))) mut/optional-keys))
+      ;; Multiple leaves: merge via :union with optional-keys where needed
+      (mc/deref
+       (mc/into-schema :union nil
+                       (mapv (fn [{:keys [schema optional?]}]
+                               (cond-> schema
+                                 (and optional? (mc/-entry-schema? (mc/deref-all schema)))
+                                 mut/optional-keys))
+                             leaves)
+                       (mc/options schema))))))
 
 (defn- prefer-tool-descriptions
   "Pre-process a malli schema so that `:tool/description` takes precedence over `:description`
