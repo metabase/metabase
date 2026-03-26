@@ -124,15 +124,16 @@ jobs:
           path: failure-results
           merge-multiple: true
 
-      - name: Build Slack payload
-        id: payload
+      - name: Notify Slack
         continue-on-error: true
         uses: actions/github-script@v7
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
         with:
           script: |
             const fs = require('fs');
             const path = require('path');
-            const { buildSlackPayload } = require('${{ github.workspace }}/release/dist/index.cjs');
+            const { sendCrossVersionSlackNotification } = require('${{ github.workspace }}/release/dist/index.cjs');
 
             const resultsDir = 'failure-results';
             const failures = [];
@@ -148,18 +149,8 @@ jobs:
             }
 
             const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
-            const payload = buildSlackPayload(failures, runUrl);
-            core.setOutput('json', JSON.stringify(payload));
-
-      - name: Notify Slack
-        if: steps.payload.outcome == 'success'
-        continue-on-error: true
-        uses: slackapi/slack-github-action@70cd7be8e40a46e8b0eced40b0de447bdb42f68e # v1.26.0
-        with:
-          payload: ${{ steps.payload.outputs.json }}
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.CROSS_VERSION_SLACK_WEBHOOK_URL }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+            await sendCrossVersionSlackNotification(failures, runUrl, process.env.SLACK_BOT_TOKEN);
+            console.log('Slack notification sent');
 
   # Manual test for workflow_dispatch
   test-manual:

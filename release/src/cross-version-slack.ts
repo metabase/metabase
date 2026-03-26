@@ -1,9 +1,10 @@
 /**
  * Slack notification helpers for cross-version migration test failures.
  *
- * Pure functions that build Slack Block Kit payloads from structured
- * failure results. Used by the cross-version workflow's notify job.
+ * buildSlackPayload is a pure function (for testability).
+ * sendCrossVersionSlackNotification handles the posting via @slack/web-api.
  */
+import { WebClient } from "@slack/web-api";
 
 export interface FailureResult {
   phase: "migration" | "e2e";
@@ -85,4 +86,20 @@ export const buildSlackPayload = (
       ...sections,
     ],
   };
+};
+
+export const sendCrossVersionSlackNotification = async (
+  failures: FailureResult[],
+  runUrl: string,
+  slackBotToken: string,
+  channel = "engineering-ci",
+): Promise<void> => {
+  const slack = new WebClient(slackBotToken);
+  const { blocks } = buildSlackPayload(failures, runUrl);
+
+  await slack.chat.postMessage({
+    channel,
+    text: "Cross-version tests failing",
+    blocks,
+  });
 };
