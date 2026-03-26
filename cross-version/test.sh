@@ -35,9 +35,12 @@ error() { echo -e "${RED}[cross-version]${NC} $*" >&2; }
 write_failure() {
   local phase="$1"  # "migration" or "e2e"
   local detail="$2" # human-readable detail
-  cat > "$RESULT_FILE" <<EOJSON
-{"phase":"${phase}","source":"${SOURCE_VERSION}","target":"${TARGET_VERSION}","detail":"${detail}"}
-EOJSON
+  jq -n \
+    --arg phase "$phase" \
+    --arg source "$SOURCE_VERSION" \
+    --arg target "$TARGET_VERSION" \
+    --arg detail "$detail" \
+    '{phase:$phase, source:$source, target:$target, detail:$detail}' > "$RESULT_FILE"
   log "Wrote failure result to $RESULT_FILE"
 }
 
@@ -234,19 +237,19 @@ migrate_down_step() {
   # Check for errors - Metabase returns 0 even on partial rollback failures
   if [[ $exit_code -ne 0 ]]; then
     error "migrate down failed with exit code $exit_code"
-    MIGRATE_DOWN_FAILURE_DETAIL=$(echo "$output" | grep -o "not rolled back.*" | head -1)
+    MIGRATE_DOWN_FAILURE_DETAIL=$(echo "$output" | grep -o "not rolled back.*" | head -1 || true)
     return 1
   fi
 
   if echo "$output" | grep -q "ERROR.*liquibase\|RollbackFailedException\|Command failed with exception"; then
     error "migrate down encountered errors (check logs above)"
-    MIGRATE_DOWN_FAILURE_DETAIL=$(echo "$output" | grep -o "not rolled back.*" | head -1)
+    MIGRATE_DOWN_FAILURE_DETAIL=$(echo "$output" | grep -o "not rolled back.*" | head -1 || true)
     return 1
   fi
 
   if echo "$output" | grep -q "not rolled back"; then
     error "migrate down had changesets that were not rolled back (check logs above)"
-    MIGRATE_DOWN_FAILURE_DETAIL=$(echo "$output" | grep -o "not rolled back.*" | head -1)
+    MIGRATE_DOWN_FAILURE_DETAIL=$(echo "$output" | grep -o "not rolled back.*" | head -1 || true)
     return 1
   fi
 }
