@@ -11,7 +11,7 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.util :as lib.util]
-   [metabase.query-processor.util.add-alias-info :as-alias add]
+   [metabase.query-processor.util.add-alias-info :as add]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [mapv get-in]]))

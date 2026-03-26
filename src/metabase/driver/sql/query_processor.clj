@@ -2185,7 +2185,7 @@
   to use this function in your own implementations of [[driver/mbql->native]], if you want to apply changes to the
   same version of the query that we will ultimately be compiling.
 
-  Wants a `:lib/query` MBQL 5 query as input. Always returns an MBQL 4 **inner query**, for historical reasons."
+  Wants a `:lib/query` MBQL 5 query as input. Returns an MBQL 4 **inner query**, for historical reasons, or MBQL 5 **stages**."
   {:changelog-test/ignore true, :arglists '([driver mbql5-query]), :added "0.42.0"}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
