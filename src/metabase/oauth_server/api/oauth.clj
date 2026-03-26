@@ -36,7 +36,7 @@
            :same-site :strict
            :path      "/oauth/authorize"
            :max-age   max-age}
-    (str/starts-with? (system/site-url) "https")
+    (some-> (system/site-url) (str/starts-with? "https"))
     (assoc :secure true)))
 
 (defn- canonical-params-string
@@ -217,7 +217,7 @@
      :body    {:error "unauthorized"}}
     (or (when-let [provider (oauth-server/get-provider)]
           (let [cookie-token (get-in request [:cookies csrf-cookie-name :value])
-                form-token   (str (:csrf_token body))
+                form-token   (some-> (:csrf_token body) str)
                 auth-params  (select-keys body oauth-param-keys)
                 params-sig   (some-> (:params_sig body) str)]
             (if (or (str/blank? cookie-token)
