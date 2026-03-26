@@ -61,6 +61,7 @@ describe("MetabotEmbed", () => {
         storeInitialState: createMockState({
           settings: mockSettings({
             "metabot-enabled?": true,
+            "llm-metabot-configured?": true,
           }),
         }),
       });

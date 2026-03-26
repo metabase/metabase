@@ -42,7 +42,9 @@ export const useMeasureColumnWidths = <TData, TValue>(
 ) => {
   const measureColumnWidths = useCallback(
     (onMeasured: (columnSizingState: ColumnSizingState) => void) => {
-      const measureRoot = createMeasurementContainer();
+      const measureRoot = createMeasurementContainer({
+        fontSize: theme?.fontSize,
+      });
       let measureRootTree: Root | undefined = undefined;
 
       const onMeasureHeaderRender = (div: HTMLDivElement) => {

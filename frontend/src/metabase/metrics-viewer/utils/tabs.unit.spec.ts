@@ -6,34 +6,32 @@ import { buildDimensionPickerSections } from "./dimension-picker";
 import { resolveCommonTabLabel } from "./tabs";
 
 describe("resolveCommonTabLabel", () => {
-  it("returns fallback for empty array", () => {
-    expect(resolveCommonTabLabel([], "Time")).toBe("Time");
+  it("returns null for empty array", () => {
+    expect(resolveCommonTabLabel([])).toBeNull();
   });
 
   it("returns the name when only one is provided", () => {
-    expect(resolveCommonTabLabel(["Created At"], "Time")).toBe("Created At");
+    expect(resolveCommonTabLabel(["Created At"])).toBe("Created At");
   });
 
   it("returns the name when all names are identical", () => {
-    expect(resolveCommonTabLabel(["Created At", "Created At"], "Time")).toBe(
+    expect(resolveCommonTabLabel(["Created At", "Created At"])).toBe(
       "Created At",
     );
   });
 
   it("returns the most frequent name", () => {
     expect(
-      resolveCommonTabLabel(["Created At", "Order Date", "Created At"], "Time"),
+      resolveCommonTabLabel(["Created At", "Order Date", "Created At"]),
     ).toBe("Created At");
   });
 
   it("returns the first name when tied", () => {
-    expect(resolveCommonTabLabel(["State", "Category"], "Location")).toBe(
-      "State",
-    );
+    expect(resolveCommonTabLabel(["State", "Category"])).toBe("State");
   });
 
   it("returns the first name when two different names are tied", () => {
-    expect(resolveCommonTabLabel(["Created At", "Order Date"], "Time")).toBe(
+    expect(resolveCommonTabLabel(["Created At", "Order Date"])).toBe(
       "Created At",
     );
   });

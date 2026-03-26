@@ -424,6 +424,10 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
   });
 
   describe("<metabase-metabot>", () => {
+    beforeEach(() => {
+      H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
+    });
+
     it("should handle scrolling gracefully (metabase#67399)", () => {
       const question = `
       Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
@@ -465,9 +469,9 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
         cy.log("metabot chat should be interactive");
         cy.findByText("Ask questions to AI.").should("be.visible");
         cy.findByPlaceholderText("Ask AI a question...").type("Foo{enter}");
-        cy.findByText(
-          "Sorry, an error occurred: No OpenRouter API key is set. If this persists, please contact your administrator.",
-        ).should("be.visible");
+        cy.findByText(/Sorry, an error occurred:.*If this persists/).should(
+          "be.visible",
+        );
 
         cy.log(
           "uses sidebar layout by default when no layout attribute is provided",

@@ -1,6 +1,10 @@
 // Re-export all plugins from OSS modules (excluding reinitialize functions to avoid conflicts)
 export { PLUGIN_API } from "./oss/api";
-export { PLUGIN_AUDIT, type InsightsLinkProps } from "./oss/audit";
+export {
+  PLUGIN_AUDIT,
+  type InsightsLinkProps,
+  type InsightsMenuItemProps,
+} from "./oss/audit";
 export {
   PLUGIN_AUTH_PROVIDERS,
   PLUGIN_LDAP_FORM_FIELDS,
@@ -70,7 +74,6 @@ export {
   type PublishTablesModalProps,
   type UnpublishTablesModalProps,
 } from "./oss/library";
-export { PLUGIN_METABOT, type PluginMetabotType } from "./oss/metabot";
 export { PLUGIN_MODEL_PERSISTENCE } from "./oss/model-persistence";
 export {
   PLUGIN_MODERATION,
@@ -172,7 +175,6 @@ import { reinitialize as reinitializeEmbeddingIframeSdkSetup } from "./oss/embed
 import { reinitialize as reinitializeEmbeddingSdk } from "./oss/embedding-sdk";
 import { reinitialize as reinitializeEntities } from "./oss/entities";
 import { reinitialize as reinitializeLibrary } from "./oss/library";
-import { reinitialize as reinitializeMetabot } from "./oss/metabot";
 import { reinitialize as reinitializeModelPersistence } from "./oss/model-persistence";
 import { reinitialize as reinitializeModeration } from "./oss/moderation";
 import { reinitialize as reinitializePermissions } from "./oss/permissions";
@@ -213,7 +215,6 @@ export function reinitialize() {
   reinitializeEntities();
   reinitializeLibrary();
   reinitializeModelPersistence();
-  reinitializeMetabot();
   reinitializeModeration();
   reinitializePermissions();
   reinitializeRemoteSync();
