@@ -121,7 +121,7 @@
         (u/assoc-default :effective-type (:base-type col))
         ;; add original display name IF not already present AND we have a value
         (->> (lib.normalize/normalize ::lib.schema.metadata/column))
-        (update :lib/column-key lib.column-key/from-card card-id))))
+        (lib.column-key/from-card metadata-providerable card-id))))
 
 (mu/defn ->card-metadata-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
   "Massage possibly-legacy Card results metadata into MLv2 ColumnMetadata.

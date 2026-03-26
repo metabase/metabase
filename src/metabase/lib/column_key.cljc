@@ -59,15 +59,6 @@
    :column.implicit/fk-column     (->key fk-column-or-key)
    :column.implicit/target-column (->key target-column-or-key)})
 
-(mu/defn from-card
-  "Given a `inner-column-or-key` for a column as seen inside a card and the `card-id`, wrap up the inner column key
-  as coming from the card."
-  [inner-column-or-key :- [:or ::lib.schema.metadata/column ::lib.schema.column-key/column-key]
-   card-id             :- [:maybe ::lib.schema.id/card]]
-  (cond-> {:lib/type                 :column/key
-           :column.card/inner-column (->key inner-column-or-key)}
-    card-id (assoc :column.card/card-id card-id)))
-
 (mu/defn opaque-on-card
   "Given a column or its `:lib/desired-column-alias` stage-unique string alias, returns the placeholder column key for
   a column from a card whose definition we don't know at present."
@@ -80,6 +71,17 @@
                                         (lib.join.util/desired-alias metadata-providerable column-or-alias)
                                         (throw (ex-info "Failed to identify the unique alias for an opaque column"
                                                         {:column-or-alias column-or-alias})))})
+
+(mu/defn from-card :- ::lib.schema.metadata/column
+  "Given **the complete `column-metadata`** for a column returned by a card, and the ID of the card, add the
+  `:lib/column-key` for the opaque column coming from the card.
+  as coming from the card."
+  [column-metadata       :- ::lib.schema.metadata/column
+   metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   card-id               :- [:maybe ::lib.schema.id/card]]
+  (let [column-key (cond-> (opaque-on-card metadata-providerable column-metadata)
+                     card-id (assoc :column.card/card-id card-id))]
+    (assoc column-metadata :lib/column-key column-key)))
 
 (mu/defn breakout-key :- ::lib.schema.column-key/column-key
   "Given a breakout clause like `[:field ...]`, construct its column key."

@@ -197,16 +197,15 @@
                                  :source-card card-id}]}
           own-fields (for [field (lib.metadata/fields (lib.tu/metadata-provider-with-mock-cards) (meta/id :orders))]
                        (-> field
-                           (assoc :lib/source :source/card)
-                           (update :lib/column-key lib.column-key/from-card card-id)))
+                           (assoc :lib/source :source/card :lib/card-id card-id)
+                           (lib.column-key/from-card query card-id)))
           implicit-via (fn [table-id fk-field-id]
-                         (let [fk-column-key (-> fk-field-id
-                                                 lib.column-key/field-key
-                                                 (lib.column-key/from-card card-id))]
+                         (let [fk-column (-> (lib.metadata/field query fk-field-id)
+                                             (lib.column-key/from-card query card-id))]
                            (for [field (lib.metadata/fields (lib.tu/metadata-provider-with-mock-cards) table-id)]
                              (-> field
                                  (assoc :lib/source :source/implicitly-joinable)
-                                 (update :lib/column-key lib.column-key/implicitly-joined-via fk-column-key)))))]
+                                 (update :lib/column-key lib.column-key/implicitly-joined-via fk-column)))))]
       (testing "implicitly joinable columns"
         (testing "are included by visible-columns"
           (is (=? (->> (concat own-fields

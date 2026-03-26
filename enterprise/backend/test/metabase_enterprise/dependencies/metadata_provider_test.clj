@@ -22,9 +22,9 @@
                                             [$subtotal $created-at]))
                                 (dissoc :result-metadata)))
       (is (=? [(-> (meta/field-metadata :orders :subtotal)
-                   (update :lib/column-key lib.column-key/from-card (:id card)))
+                   (lib.column-key/from-card mp (:id card)))
                (-> (meta/field-metadata :orders :created-at)
-                   (update :lib/column-key lib.column-key/from-card (:id card)))]
+                   (lib.column-key/from-card mp (:id card)))]
               (->> (lib.metadata/card mp (:id card))
                    (lib/query mp)
                    lib/returned-columns))))))

@@ -1738,10 +1738,10 @@
                                       (lib.metadata.calculation/visible-columns query)
                                       (lib.metadata.calculation/returned-columns query)))
 
-(defn- column-key-from-card [inner-column-key card-id]
-  {:lib/type                 :column/key
-   :column.card/card-id      card-id
-   :column.card/inner-column inner-column-key})
+(defn- column-key-from-card [column-alias card-id]
+  {:lib/type                        :column/key
+   :column.card/card-id             card-id
+   :column.card.opaque/column-alias column-alias})
 
 (defn- column-key-as-joined [inner-column-key join-clause]
   {:lib/type                   :column/key
@@ -1765,20 +1765,22 @@
           provider       (lib.tu/metadata-provider-with-cards-for-queries meta/metadata-provider [card-query])
           card-id        1
           query          (lib/query provider (lib.metadata/card provider card-id))
-          order-cols     (for [col (meta/fields :orders)]
-                           (-> (meta/field-metadata :orders col)
+          order-cols     (for [col-key (meta/fields :orders)
+                               :let [col (meta/field-metadata :orders col-key)]]
+                           (-> col
                                (assoc :lib/source :source/card)
-                               (update :lib/column-key column-key-from-card card-id)
+                               (assoc :lib/column-key
+                                      (column-key-from-card
+                                       ((some-fn :lib/desired-column-alias :lib/source-column-alias :name) col)
+                                       card-id))
                                (dissoc :id :table-id)))
           join-cols      [(-> (meta/field-metadata :products :category)
                               (assoc :lib/source              :source/card
                                      :lib/original-join-alias "Products")
                               (update :lib/column-key column-key-as-joined (first (lib/joins card-query)))
-                              (update :lib/column-key column-key-from-card card-id)
+                              (assoc :lib/column-key (column-key-from-card "Products__CATEGORY" card-id))
                               (dissoc :id :table-id))]
-          user-id-key    (-> (meta/field-metadata :orders :user-id)
-                             :lib/column-key
-                             (column-key-from-card card-id))
+          user-id-key    (column-key-from-card "USER_ID" card-id)
           implicit-cols  (for [col (meta/fields :people)]
                            (-> (meta/field-metadata :people col)
                                (assoc :lib/source :source/implicitly-joinable)

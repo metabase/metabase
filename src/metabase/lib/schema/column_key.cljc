@@ -70,26 +70,17 @@
    [:lib/type [:= :column/key]]
    [:column.native/unique-name :string]])
 
-(mr/def ::from-card
-  "Columns from cards are always wrapped up with the card's ID and the inner column's key.
+(mr/def ::opaque-card
+  "A leaf column key for a column coming from a `:source-card`. Cards are treated as opaque in the lib, and the columns
+  are given aliases that are unique on the card. The `card-id` + `alias` pair is unique within the stage, as required
+  for column keys.
 
-  Usually this doesn't matter, but model overrides and other things make the column inside the card and outside it
-  distinct from each other. They also get different aliasing especially when joined."
+  When a card's definition gets inlined, these opaque leaf keys can be replaced 1-1 with the *inner* column keys from
+  the card's query."
   [:map {:decode/normalize lib.schema.common/normalize-map}
    [:lib/type [:= :column/key]]
    ;; Optional for testing - some queries are analyzed as cards without having an ID.
    [:column.card/card-id {:optional true} ::lib.schema.id/card]
-   [:column.card/inner-column [:ref ::column-key]]])
-
-(mr/def ::opaque-card
-  "Sometimes for a column from a card, we only have its column name and not its complete picture. It's impractical to
-  backfill these perfectly, but all we need in practice is a stage-unique placeholder that can be overwritten later,
-  i.e. when inlining the card's definition.
-
-  Note that this is intended to be used as the *inner* column key of a column on a card. When that card is used from
-  somewhere else, this will be wrapped in a [[::from-card]] like any other inner column."
-  [:map {:decode/normalize lib.schema.common/normalize-map}
-   [:lib/type [:= :column/key]]
    [:column.card.opaque/column-alias [:ref :metabase.lib.schema.metadata/desired-column-alias]]])
 
 (mr/def ::expression
@@ -126,7 +117,6 @@
    ::explicitly-joined
    ::implicitly-joined
    ::native
-   ::from-card
    ::opaque-card
    ::expression
    ::aggregation

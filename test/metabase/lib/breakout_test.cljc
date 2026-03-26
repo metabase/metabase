@@ -283,22 +283,21 @@
                     :base-type                    :type/Text}]
                   (lib/breakoutable-columns query))))))))
 
-(defn- from-card [column-key]
-  {:lib/type                 :column/key
-   :column.card/card-id      1
-   :column.card/inner-column column-key})
-
 (deftest ^:parallel breakoutable-columns-source-card-test
   (doseq [[varr user-id-col-key count-col-key] [[#'lib.tu/query-with-source-card
-                                                 (from-card {:lib/type                :column/key
-                                                             :column.breakout/uuid    string?})
-                                                 (from-card {:lib/type                :column/key
-                                                             :column.aggregation/uuid string?})]
+                                                 {:lib/type                        :column/key
+                                                  :column.card/card-id             1
+                                                  :column.card.opaque/column-alias "USER_ID"}
+                                                 {:lib/type                        :column/key
+                                                  :column.card/card-id             1
+                                                  :column.card.opaque/column-alias "count"}]
                                                 [#'lib.tu/query-with-source-card-with-result-metadata
-                                                 (from-card {:lib/type                        :column/key
-                                                             :column.card.opaque/column-alias "USER_ID"})
-                                                 (from-card {:lib/type                        :column/key
-                                                             :column.card.opaque/column-alias "count"})]]
+                                                 {:lib/type                        :column/key
+                                                  :column.card/card-id             1
+                                                  :column.card.opaque/column-alias "USER_ID"}
+                                                 {:lib/type                        :column/key
+                                                  :column.card/card-id             1
+                                                  :column.card.opaque/column-alias "count"}]]
           :let [query (@varr)]]
     (testing (str (pr-str varr) \newline (lib.util/format "Query =\n%s" (u/pprint-to-str query)))
       (let [columns (lib/breakoutable-columns query)]

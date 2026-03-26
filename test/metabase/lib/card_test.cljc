@@ -77,8 +77,8 @@
                                    :source-card (:id metadata)}]}]
         (is (=? (for [col (get-in (lib.tu/mock-cards) [:venues :result-metadata])]
                   (-> col
-                      (assoc :lib/source :source/card)
-                      (update :lib/column-key lib.column-key/from-card (:id metadata))
+                      (assoc :lib/source :source/card, :lib/card-id (:id metadata))
+                      (lib.column-key/from-card query (:id metadata))
                       (dissoc :fk-target-field-id)))
                 (lib/returned-columns query)))))))
 
@@ -110,9 +110,14 @@
   (for [col (meta/fields table)]
     (meta/field-metadata table col)))
 
-(defn- from-card [card-id cols]
+(defn- column-from-card [column metadata-providerable card-id]
+  (-> column
+      (assoc :lib/source :source/card, :lib/card-id card-id)
+      (lib.column-key/from-card metadata-providerable card-id)))
+
+(defn- from-card [metadata-providerable card-id cols]
   (->> (from :source/card cols)
-       (map #(update % :lib/column-key lib.column-key/from-card card-id))))
+       (map #(column-from-card % metadata-providerable card-id))))
 
 (defn- sort-cols [cols]
   (sort-by (juxt :id :name :lib/join-alias :lib/desired-column-alias) cols))
@@ -124,16 +129,13 @@
                            meta/metadata-provider
                            {:cards [(assoc (:orders (lib.tu/mock-cards)) :dataset-query (lib.tu/venues-query))]})
                           (:orders (lib.tu/mock-cards)))
-          user-id-key    (-> (meta/id :orders :user-id)
-                             lib.column-key/field-key
-                             (lib.column-key/from-card (:id (:orders (lib.tu/mock-cards)))))
-          product-id-key (-> (meta/id :orders :product-id)
-                             lib.column-key/field-key
-                             (lib.column-key/from-card (:id (:orders (lib.tu/mock-cards)))))]
+          card-id        (:id (:orders (lib.tu/mock-cards)))
+          user-id-key    (column-from-card (meta/field-metadata :orders :user-id)    venues-query card-id)
+          product-id-key (column-from-card (meta/field-metadata :orders :product-id) venues-query card-id)]
       (is (=? (->> (cols-of :orders)
                    sort-cols)
               (sort-cols (get-in (lib.tu/mock-cards) [:orders :result-metadata]))))
-      (is (=? (->> (concat (from-card (:id (:orders (lib.tu/mock-cards))) (cols-of :orders))
+      (is (=? (->> (concat (from-card venues-query (:id (:orders (lib.tu/mock-cards))) (cols-of :orders))
                            (implicitly-joined user-id-key    (cols-of :people))
                            (implicitly-joined product-id-key (cols-of :products)))
                    sort-cols)
