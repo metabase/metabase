@@ -3064,5 +3064,6 @@
             (is (= "computed" (:data_authority provisional)))
             (is (= "New Target Table" (:display_name provisional)))))
         (testing "Workspace caches invalidated"
-          (is (= 2 (:graph_version (t2/select-one :workspace :id ws-id))))
-          (is (= 2 (:analysis_version (first (t2/select :workspace_transform :workspace_id ws-id))))))))))
+          ;; Both BackfillTransformTargetTables and BackfillTransformTargetTableId bump these
+          (is (= 3 (:graph_version (t2/select-one :workspace :id ws-id))))
+          (is (= 3 (:analysis_version (first (t2/select :workspace_transform :workspace_id ws-id))))))))))
