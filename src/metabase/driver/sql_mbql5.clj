@@ -65,13 +65,15 @@
   [driver stages]
   (stages->honeysql driver stages))
 
+(defn- predicates->honeysql [driver predicates]
+  (let [predicates (mapv #(sql.qp/->honeysql driver %) predicates)]
+    (if (= 1 (count predicates))
+      (first predicates)
+      (into [:and] predicates))))
+
 (defmethod sql.qp/apply-top-level-clause [:sql-mbql5 :filters]
   [driver _ honeysql-form {:keys [filters]}]
-  (let [compiled-filters (mapv (partial sql.qp/->honeysql driver) filters)
-        where-clause (if (= 1 (count compiled-filters))
-                       (first compiled-filters)
-                       (into [:and] compiled-filters))]
-    (sql.helpers/where honeysql-form where-clause)))
+  (sql.helpers/where honeysql-form (predicates->honeysql driver filters)))
 
 (defmethod sql.qp/join-source :sql-mbql5
   [driver {:keys [stages]}]
@@ -83,9 +85,7 @@
     (assert (string? join-alias))
     [[(sql.qp/join-source driver join)
       [(sql.qp/->honeysql driver (h2x/identifier :table-alias join-alias))]]
-     (if (= (count conditions) 1)
-       (sql.qp/->honeysql driver (first conditions))
-       (into [:and] (mapv (partial sql.qp/->honeysql driver) conditions)))]))
+     (predicates->honeysql driver conditions)]))
 
 (defn- agg-by-id [aggs agg-uuid]
   (m/find-first #(= (lib.options/uuid %) agg-uuid) aggs))
