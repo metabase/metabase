@@ -46,8 +46,9 @@
   (let [session-key (:session-key opts)]
     (stencil/render-file
      "frontend_client/embed-mcp.html"
-     {:instanceUrl  (json/encode (site-url))
-      :sessionToken (when session-key (json/encode session-key))})))
+     {:instanceUrl     (json/encode (site-url))
+      :instanceUrlRaw  (site-url)
+      :sessionToken    (when session-key (json/encode session-key))})))
 
 (defn list-resources
   "Return the list of available MCP resources."
