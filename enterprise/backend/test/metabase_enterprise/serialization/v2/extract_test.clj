@@ -67,28 +67,28 @@
 
       (testing "a top-level collection is extracted correctly"
         (let [ser (serdes/extract-one "Collection" {} (t2/select-one :model/Collection :id coll-id))]
-          (is (=? {:serdes/meta       [{:model "Collection" :id coll-eid :label coll-slug}]
-                   :personal_owner_id nil
-                   :parent_id         nil}
+          (is (=? {:serdes/meta [{:model "Collection" :id coll-eid :label coll-slug}]}
                   ser))
+          (is (not (contains? ser :personal_owner_id)))
+          (is (not (contains? ser :parent_id)))
           (is (not (contains? ser :location)))
           (is (not (contains? ser :id)))))
 
       (testing "a nested collection is extracted with the right parent_id"
         (let [ser (serdes/extract-one "Collection" {} (t2/select-one :model/Collection :id child-id))]
-          (is (=? {:serdes/meta       [{:model "Collection" :id child-eid :label child-slug}]
-                   :personal_owner_id nil
-                   :parent_id         coll-eid}
+          (is (=? {:serdes/meta [{:model "Collection" :id child-eid :label child-slug}]
+                   :parent_id  coll-eid}
                   ser))
+          (is (not (contains? ser :personal_owner_id)))
           (is (not (contains? ser :location)))
           (is (not (contains? ser :id)))))
 
       (testing "personal collections are extracted with email as key"
         (let [ser (serdes/extract-one "Collection" {} (t2/select-one :model/Collection :id pc-id))]
           (is (=? {:serdes/meta       [{:model "Collection" :id pc-eid :label pc-slug}]
-                   :parent_id         nil
                    :personal_owner_id "mark@direstrai.ts"}
                   ser))
+          (is (not (contains? ser :parent_id)))
           (is (not (contains? ser :location)))
           (is (not (contains? ser :id)))))
 
@@ -1310,10 +1310,9 @@
                     {:model "Table"      :id "Schemaless Table"}
                     {:model "Field"      :id "A Field"}]}
                  (set (serdes/dependencies ser))))))
-      (testing "Nullable transformations stay as nulls"
+      (testing "Nullable transformations are omitted"
         (let [ser (serdes/extract-one "Card" {} (t2/select-one :model/Card :id card-id-2))]
-          (is (=? {:made_public_by_id nil}
-                  ser)))))))
+          (is (not (contains? ser :made_public_by_id))))))))
 
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest selective-serialization-basic-test
@@ -2227,9 +2226,9 @@
               (is (=? {:serdes/meta [{:model "TransformTag"
                                       :id custom-tag-eid}]
                        :name "custom-etl"
-                       :built_in_type nil
                        :created_at string?}
                       ser))
+              (is (not (contains? ser :built_in_type)))
               (is (not (contains? ser :id)))
               (is (empty? (serdes/dependencies ser)))))
 
@@ -2432,9 +2431,9 @@
                        :name "Custom ETL Job"
                        :description "Custom data processing job"
                        :schedule "0 0 2 * * ? *"
-                       :built_in_type nil
                        :created_at string?}
                       ser))
+              (is (not (contains? ser :built_in_type)))
               (is (not (contains? ser :id)))
               (testing "job has multiple associated tags in correct order"
                 (is (= 2 (count (:job_tags ser))))
