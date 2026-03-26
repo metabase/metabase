@@ -60,11 +60,11 @@ function collectAllDimensionEntries(
       }
 
       entries.push({
-        dimension: info.dimension,
+        dimension: info.dimensionMetadata,
         id,
         label: info.displayName,
-        icon: getDimensionIcon(info.dimension),
-        tabType: info.type,
+        icon: getDimensionIcon(info.dimensionMetadata),
+        tabType: info.dimensionType,
         group: info.group,
         sourceId,
       });

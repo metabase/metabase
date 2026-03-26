@@ -9,7 +9,7 @@
    [metabase.lib.core :as lib]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.entity-details :as entity-details]
-   [metabase.metabot.tools.llm-representations :as llm-rep]
+   [metabase.metabot.tools.shared.llm-representations :as llm-rep]
    [metabase.util :as u]
    [metabase.util.log :as log])
   (:import

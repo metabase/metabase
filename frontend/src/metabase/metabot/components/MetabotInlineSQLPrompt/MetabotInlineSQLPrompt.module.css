@@ -15,12 +15,6 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
-.tableBar {
-  border-bottom: 1px dashed var(--mb-color-border);
-  margin: 0 -0.75rem;
-  padding: 0 0.75rem 0.5rem;
-}
-
 .inputContainer {
   min-height: 1.5rem;
 }

@@ -30,7 +30,7 @@ function shouldPropagateDashboardParameters({
 }: {
   cardId?: number;
   deserializedCard: Card;
-  originalCard?: Card;
+  originalCard?: Card | null;
 }): boolean {
   if (cardId && deserializedCard.parameters) {
     return true;
@@ -105,7 +105,7 @@ export async function propagateDashboardParameters({
 }: {
   card: Card;
   deserializedCard: Card; // DashCard (has dashboardId and dashcardId)
-  originalCard?: Card;
+  originalCard?: Card | null;
   dispatch: Dispatch;
 }) {
   const cardId = card.id;

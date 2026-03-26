@@ -34,6 +34,7 @@ type MetricsViewerVisualizationProps = {
   tab: MetricsViewerTabState;
   onTabUpdate: (updates: Partial<MetricsViewerTabState>) => void;
   cardIdToDimensionId: Record<CardId, MetricSourceId>;
+  interactive?: boolean;
 };
 
 export function MetricsViewerVisualization({
@@ -47,19 +48,22 @@ export function MetricsViewerVisualization({
   tab,
   onTabUpdate,
   cardIdToDimensionId,
+  interactive = true,
 }: MetricsViewerVisualizationProps) {
   const { ref, width } = useElementSize();
   const cols = getGridColumns(width, rawSeries.length);
 
   const clickActionsMode = useMemo(
     () =>
-      new MetricsViewerClickActionsMode({
-        definitions,
-        tab,
-        onTabUpdate,
-        cardIdToDimensionId,
-      }),
-    [cardIdToDimensionId, definitions, onTabUpdate, tab],
+      interactive
+        ? new MetricsViewerClickActionsMode({
+            definitions,
+            tab,
+            onTabUpdate,
+            cardIdToDimensionId,
+          })
+        : undefined,
+    [cardIdToDimensionId, definitions, interactive, onTabUpdate, tab],
   );
 
   return (
@@ -86,7 +90,7 @@ export function MetricsViewerVisualization({
                   rawSeries={[series]}
                   isQueryBuilder={false}
                   hideLegend
-                  onBrush={onBrush}
+                  onBrush={interactive ? onBrush : undefined}
                   mode={clickActionsMode}
                   onChangeCardAndRun={noop}
                   autoAdjustSettings
@@ -102,7 +106,7 @@ export function MetricsViewerVisualization({
             rawSeries={rawSeries}
             isQueryBuilder={false}
             hideLegend
-            onBrush={onBrush}
+            onBrush={interactive ? onBrush : undefined}
             mode={clickActionsMode}
             onChangeCardAndRun={noop}
           />

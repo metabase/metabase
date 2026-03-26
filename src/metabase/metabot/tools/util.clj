@@ -238,7 +238,6 @@
                             (when api/*current-user-id*
                               (collection/visible-collection-filter-clause :collection_id))]}]
     (cond-> base-query
-
       ;; Prioritize verified content.
       (premium-features/has-feature? :content-verification)
       (assoc
