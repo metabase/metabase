@@ -22,7 +22,10 @@ import {
 import { getCurrentDocument } from "metabase/documents/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import MetabotThinkingStyles from "metabase/metabot/components/MetabotChat/MetabotThinking.module.css";
-import { useMetabotEnabledEmbeddingAware } from "metabase/metabot/hooks";
+import {
+  useMetabotEnabledEmbeddingAware,
+  useMetabotName,
+} from "metabase/metabot/hooks";
 import { Box, Button, Flex, Icon, Text, Tooltip } from "metabase/ui";
 import type { Card, MetabotGenerateContentRequest } from "metabase-types/api";
 
@@ -155,6 +158,7 @@ export const MetabotComponent = memo(
     const [errorText, setErrorText] = useState("");
     const [queryMetabot] = useLazyMetabotGenerateContentQuery();
     const isMetabotEnabled = useMetabotEnabledEmbeddingAware();
+    const metabotName = useMetabotName();
 
     const handleRunMetabot = async () => {
       const serializePrompt =
@@ -181,7 +185,7 @@ export const MetabotComponent = memo(
 
       if (error || !data?.draft_card) {
         setErrorText(
-          data?.error || t`There was a problem connecting to Metabot`,
+          data?.error || t`There was a problem connecting to ${metabotName}`,
         );
         return;
       }
@@ -189,7 +193,7 @@ export const MetabotComponent = memo(
       const nodePosition = getPos();
 
       if (nodePosition == null) {
-        setErrorText(t`Could not find Metabot block`);
+        setErrorText(t`Could not find ${metabotName} block`);
         return;
       }
 
@@ -248,7 +252,7 @@ export const MetabotComponent = memo(
         {
           type: "paragraph",
           content: padWithUnstyledText(
-            createTextNode(t`Created with Metabot`, [
+            createTextNode(t`Created with ${metabotName}`, [
               { type: "bold" },
               { type: "italic" },
             ]),
@@ -282,10 +286,10 @@ export const MetabotComponent = memo(
 
     const tooltip = useMemo(() => {
       if (!isMetabotEnabled) {
-        return t`Metabot is disabled`;
+        return t`${metabotName} is disabled`;
       }
       return isLoading ? t`Stop generating` : null;
-    }, [isMetabotEnabled, isLoading]);
+    }, [isMetabotEnabled, isLoading, metabotName]);
 
     return (
       <NodeViewWrapper>
@@ -327,7 +331,7 @@ export const MetabotComponent = memo(
               hidden={!!node.content.content.length}
               contentEditable={false}
             >
-              {t`Ask Metabot to generate a chart for you, and use @ to select a specific Database to use`}
+              {t`Ask ${metabotName} to generate a chart for you, and use @ to select a specific Database to use`}
             </Box>
             <NodeViewContent
               contentEditable={isLoading ? false : undefined}

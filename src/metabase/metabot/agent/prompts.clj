@@ -11,6 +11,7 @@
    [clojure.java.io :as io]
    [metabase.metabot.models.metabot-permissions :as metabot-permissions]
    [metabase.metabot.scope :as scope]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.util.log :as log]
    [selmer.parser :as selmer]))
 
@@ -227,7 +228,8 @@
                                      metabot-permissions/perm-type-defaults)
             has-sql?             (= :yes (:permission/metabot-sql-generation perms))
             has-nql?             (= :yes (:permission/metabot-nql perms))
-            template-context     {:current_time             current-time
+            template-context     {:metabot_name              (metabot.settings/metabot-name)
+                                  :current_time             current-time
                                   :current_user_info        current-user-info
                                   :first_day_of_week        first-day-of-week
                                   :sql_dialect              sql-dialect
@@ -243,7 +245,7 @@
       ;; Fallback if template not found
       (do
         (log/error "System prompt template not found:" template-name)
-        "You are Metabot, a data analysis assistant for Metabase."))))
+        (str "You are " (metabot.settings/metabot-name) ", a data analysis assistant for Metabase.")))))
 
 (defn inject-context
   "Prepends a formatted context to a string, message."

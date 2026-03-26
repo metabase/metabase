@@ -6,6 +6,7 @@ import * as Urls from "metabase/lib/urls";
 import {
   useMetabotAgent,
   useMetabotEnabledEmbeddingAware,
+  useMetabotName,
 } from "metabase/metabot/hooks";
 import { getLocation } from "metabase/selectors/routing";
 import { ActionIcon, Icon, Tooltip } from "metabase/ui";
@@ -15,6 +16,7 @@ import { trackMetabotChatOpened } from "../analytics";
 export const MetabotDataStudioButton = () => {
   const isMetabotEnabled = useMetabotEnabledEmbeddingAware();
   const metabot = useMetabotAgent("omnibot");
+  const metabotName = useMetabotName();
   const location = useSelector(getLocation);
 
   if (!isMetabotEnabled) {
@@ -32,8 +34,8 @@ export const MetabotDataStudioButton = () => {
   };
 
   const label = disabled
-    ? `Metabot can't be viewed on this page`
-    : t`Chat with Metabot (${METAKEY}+E)`;
+    ? t`${metabotName} can't be viewed on this page`
+    : t`Chat with ${metabotName} (${METAKEY}+E)`;
 
   return (
     <Tooltip label={label}>
