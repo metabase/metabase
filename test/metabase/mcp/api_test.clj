@@ -170,18 +170,28 @@
       (is (= 200 (:status delete-response)))
       (is (= 200 (:status post-response))))))
 
+(def ^:private all-tool-names
+  #{"construct_query"
+    "create_dashboard"
+    "create_question"
+    "execute_query"
+    "get_metric"
+    "get_metric_field_values"
+    "get_table"
+    "get_table_field_values"
+    "query"
+    "search"
+    "visualize_query"})
+
 (deftest tools-list-test
-  (testing "tools/list returns the 10 agent tools"
+  (testing "tools/list returns the agent and UI tools"
     (let [[session-id _] (initialize!)
           response (mcp-request (jsonrpc-request "tools/list")
                                 {"mcp-session-id" session-id})
           tools (get-in response [:body :result :tools])]
       (is (= 200 (:status response)))
       (is (pos? (count tools)))
-      (is (= #{"search" "get_table" "get_metric" "get_table_field_values"
-               "get_metric_field_values" "construct_query" "execute_query" "query"
-               "create_question" "create_dashboard"}
-             (set (map :name tools))))
+      (is (= all-tool-names (set (map :name tools))))
       (testing "each tool has a description and inputSchema"
         (doseq [tool tools]
           (is (string? (:description tool)))
@@ -475,15 +485,16 @@
 
 (def ^:private smoke-tested-tools
   "Tools exercised by `tools-call-smoke-test`. New tools must be added here (and
-   below) — the test compares this set against `mcp.tools/list-tools` and fails
-   when they diverge, ensuring no tool ships without a basic invocation check."
+   below) — the test compares this set against the Agent API-backed tools and
+   fails when they diverge, ensuring no Agent API tool ships without a basic
+   invocation check."
   #{"get_table" "get_table_field_values" "get_metric" "get_metric_field_values"
     "search" "construct_query" "query" "execute_query"
     "create_question" "create_dashboard"})
 
 (deftest tools-call-smoke-test
-  (testing "every registered tool is exercised by the smoke test"
-    (is (= (set (map :name (mcp.tools/list-tools nil)))
+  (testing "every Agent API-backed tool is exercised by the smoke test"
+    (is (= (disj (set (map :name (mcp.tools/list-tools nil))) "visualize_query")
            smoke-tested-tools)
         "Add the missing tool to `smoke-tested-tools` and the call sequence below."))
   (testing "every tool returns a successful response with valid parameters"
@@ -530,6 +541,14 @@
             (finally
               (when-let [qid @question-id] (t2/delete! :model/Card :id qid))
               (when-let [did @dash-id]     (t2/delete! :model/Dashboard :id did)))))))))
+
+(deftest tools-call-visualize-query-direct-test
+  (testing "visualize_query returns UI structured content"
+    (let [result (mcp.tools/call-tool nil "visualize_query" {:query "card__1"})]
+      (is (not (:isError result)))
+      (is (=? {:content           [{:type "text" :text "Visualizing query..."}]
+               :structuredContent {:query "card__1"}}
+              result)))))
 
 (deftest tools-call-execute-query-test
   (testing "execute_query returns a streaming response captured as MCP text content"
@@ -630,6 +649,14 @@
 
 (def ^:private scoped-test-uri "test://mcp/api-test/scoped")
 
+(defn- dispatch-initialized-request [msg token-scopes]
+  (let [session-id (str (random-uuid))]
+    (#'mcp.api/mark-session-initialized! session-id)
+    (try
+      (#'mcp.api/dispatch-request msg session-id token-scopes)
+      (finally
+        (#'mcp.api/delete-session! session-id)))))
+
 (defn- with-scoped-test-resource! [f]
   (let [registry @#'mcp.resources/registry
         snapshot @registry]
@@ -645,13 +672,12 @@
       (finally
         (reset! registry snapshot)))))
 
-(deftest resources-read-scope-denied-test
+(deftest ui-resource-read-not-found-test
   (testing "resources/read returns -32602 \"Resource not found\" when caller lacks the required scope"
     (with-scoped-test-resource!
       (fn []
-        (let [response (#'mcp.api/dispatch-request
+        (let [response (dispatch-initialized-request
                         (jsonrpc-request "resources/read" {:uri scoped-test-uri})
-                        "session-id"
                         #{"agent:other"})]
           (is (=? {:jsonrpc "2.0"
                    :id      1
@@ -661,9 +687,8 @@
   (testing "resources/read for a scoped resource succeeds when the caller has a matching scope"
     (with-scoped-test-resource!
       (fn []
-        (let [response (#'mcp.api/dispatch-request
+        (let [response (dispatch-initialized-request
                         (jsonrpc-request "resources/read" {:uri scoped-test-uri})
-                        "session-id"
                         #{"agent:search"})]
           (is (=? {:result {:contents [{:uri  scoped-test-uri
                                         :text "secret body"}]}}
@@ -697,7 +722,7 @@
 (deftest tools-list-scope-filtering-test
   (testing "tools/list with unrestricted scopes returns all tools"
     (let [tools (mcp.tools/list-tools #{::scope/unrestricted})]
-      (is (= 10 (count tools)))))
+      (is (= all-tool-names (set (map :name tools))))))
 
   (testing "tools/list with specific scope only returns matching tools"
     (let [tools     (mcp.tools/list-tools #{"agent:search"})
@@ -708,13 +733,13 @@
       (is (not (contains? tool-names "get_table")))
       (is (not (contains? tool-names "construct_query")))))
 
-  (testing "tools/list with wildcard scope matches all agent tools"
+  (testing "tools/list with wildcard scope matches all agent and UI tools"
     (let [tools (mcp.tools/list-tools #{"agent:*"})]
-      (is (= 10 (count tools)))))
+      (is (= all-tool-names (set (map :name tools))))))
 
   (testing "tools/list with nil scopes returns all tools"
     (let [tools (mcp.tools/list-tools nil)]
-      (is (= 10 (count tools)))))
+      (is (= all-tool-names (set (map :name tools))))))
 
   (testing "tools/list with empty scopes does not return all tools"
     (let [tools (mcp.tools/list-tools #{})]
@@ -766,6 +791,29 @@
       (is (=? {:isError true} result))
       (is (str/includes? (-> result :content first :text) "Insufficient scope")
           "Scope enforcement error from defendpoint middleware"))))
+
+(deftest check-resource-access-test
+  (testing "returns :ok for a known URI with matching scope"
+    (is (= :ok (mcp.resources/check-resource-access "ui://metabase/visualize-query.html" #{"agent:visualize"}))))
+  (testing "returns :ok with wildcard scope"
+    (is (= :ok (mcp.resources/check-resource-access "ui://metabase/visualize-query.html" #{"agent:*"}))))
+  (testing "returns :scope-denied for a known URI with non-matching scope"
+    (is (= :scope-denied (mcp.resources/check-resource-access "ui://metabase/visualize-query.html" #{"agent:search"}))))
+  (testing "returns :scope-denied for a known URI with empty scopes"
+    (is (= :scope-denied (mcp.resources/check-resource-access "ui://metabase/visualize-query.html" #{}))))
+  (testing "returns :not-found for an unknown URI"
+    (is (= :not-found (mcp.resources/check-resource-access "ui://metabase/nonexistent.html" #{"agent:*"})))))
+
+(deftest resources-read-scope-denied-test
+  (testing "resources/read returns -32602 for unknown URI"
+    (let [[session-id _] (initialize!)
+          response (mcp-request (jsonrpc-request "resources/read"
+                                                 {:uri "ui://metabase/nonexistent.html"})
+                                {"mcp-session-id" session-id})]
+      (is (= 200 (:status response)))
+      (is (= -32602 (get-in response [:body :error :code])))
+      (is (= "Resource not found"
+             (get-in response [:body :error :message]))))))
 
 (deftest agent-api-preserves-token-scopes-test
   (testing "scoped token restrictions are enforced by the Agent API layer (defense-in-depth)"

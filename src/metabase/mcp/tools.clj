@@ -8,6 +8,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
    [metabase.config.core :as config]
+   [metabase.mcp.resources :as mcp.resources]
    [metabase.mcp.scope :as mcp.scope]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.util :as u]
@@ -43,12 +44,8 @@
     (into []
           (comp (filter #(mcp.scope/matches? token-scopes (:scope %)))
                 (map (fn [tool]
-                       (cond-> {:name        (:name tool)
-                                :title       (:title tool)
-                                :description (:description tool)
-                                :inputSchema (:inputSchema tool)}
-                         (:annotations tool) (assoc :annotations (:annotations tool))))))
-          tools)))
+                       (select-keys tool [:name :title :description :inputSchema :annotations :_meta]))))
+          (concat tools (mcp.resources/list-ui-tools)))))
 
 (defn- build-tool-index
   "Build name->tool lookup from manifest tools."
@@ -216,9 +213,15 @@
    `defendpoint` middleware.
    Returns MCP content on success, or error content on failure."
   [token-scopes tool-name arguments]
-  (if-let [tool-def (get (tool-index) tool-name)]
-    (try
-      (dispatch-via-agent-api tool-def arguments token-scopes)
-      (catch Exception e
-        (error-content (or (ex-message e) "Internal error"))))
-    (error-content (str "Unknown tool: " tool-name))))
+  (if-let [ui-tool (some #(when (= tool-name (:name %)) %) (mcp.resources/list-ui-tools))]
+    (if-not (mcp.scope/matches? token-scopes (:scope ui-tool))
+      (error-content (str "Insufficient scope to call tool: " tool-name))
+      ((:response-fn ui-tool) arguments))
+    (if-let [tool-def (get (tool-index) tool-name)]
+      (if-not (mcp.scope/matches? token-scopes (:scope tool-def))
+        (error-content (str "Insufficient scope to call tool: " tool-name))
+        (try
+          (dispatch-via-agent-api tool-def arguments token-scopes)
+          (catch Exception e
+            (error-content (or (ex-message e) "Internal error")))))
+      (error-content (str "Unknown tool: " tool-name)))))

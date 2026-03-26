@@ -152,6 +152,7 @@ export const _SdkQuestion = ({
   style,
   title,
   withChartTypeSelector = true,
+  withEditorButton = true,
   onVisualizationChange,
 }: SdkQuestionProps): JSX.Element | null => {
   const drillThroughQuestionProps: DrillThroughQuestionProps = {
@@ -161,6 +162,7 @@ export const _SdkQuestion = ({
     style,
     title,
     withChartTypeSelector,
+    withEditorButton,
     isSaveEnabled,
     targetCollection,
     entityTypes,
@@ -213,6 +215,7 @@ export const _SdkQuestion = ({
             style={style}
             title={title}
             withChartTypeSelector={withChartTypeSelector}
+            withEditorButton={withEditorButton}
           />
         )}
       </SdkQuestionProvider>
