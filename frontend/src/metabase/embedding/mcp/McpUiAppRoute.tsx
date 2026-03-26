@@ -1,6 +1,5 @@
 import { type CSSProperties, useEffect, useMemo, useState } from "react";
 
-import { SdkLoader } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
 import { getSdkStore } from "embedding-sdk-bundle/store";
@@ -84,7 +83,7 @@ export function McpUiAppRoute() {
     padding: `${Math.max(safeAreaInsets.top, 0)}px ${Math.max(safeAreaInsets.right, 0)}px ${Math.max(safeAreaInsets.bottom, 0)}px ${Math.max(safeAreaInsets.left, 0)}px`,
   };
 
-  if (!instanceUrl) {
+  if (!instanceUrl || !hostContext || !isSettingsReady || !deserializedCard) {
     return null;
   }
 
@@ -95,15 +94,11 @@ export function McpUiAppRoute() {
       reduxStore={store}
     >
       <div style={containerStyle}>
-        {isSettingsReady && deserializedCard ? (
-          <SdkQuestion
-            deserializedCard={deserializedCard}
-            isSaveEnabled={false}
-            height="100%"
-          />
-        ) : (
-          <SdkLoader />
-        )}
+        <SdkQuestion
+          deserializedCard={deserializedCard}
+          isSaveEnabled={false}
+          height="100%"
+        />
       </div>
     </ComponentProvider>
   );
