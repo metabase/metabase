@@ -8,10 +8,7 @@ import {
 import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { GroupMappingsWidget } from "metabase/admin/settings/components/widgets/GroupMappingsWidget";
 import { getExtraFormFieldProps } from "metabase/admin/settings/utils";
-import {
-  useGetAdminSettingsDetailsQuery,
-  useGetSettingsQuery,
-} from "metabase/api";
+import { useGetAdminSettingsDetailsQuery } from "metabase/api";
 import { useAdminSetting } from "metabase/api/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
@@ -46,19 +43,20 @@ export const SettingsJWTForm = () => {
     isLoading: isLoadingDetails,
     refetch: refetchSettingDetails,
   } = useGetAdminSettingsDetailsQuery();
-  const { data: settingValues, isLoading: isLoadingValues } =
-    useGetSettingsQuery();
   const { value: jwtEnabled, updateSettings } = useAdminSetting("jwt-enabled");
 
   const handleSubmit = async (values: Partial<JWTFormValues>) => {
+    const { "jwt-shared-secret": jwtSecret, ...rest } = values;
+    const settingsToUpdate: Partial<JWTFormValues> = { ...rest };
+
     // jwt-shared-secret may be initialized with the obfuscated value from /api/setting.
     // Only send it to the backend if it's a newly generated plaintext value.
-    const { "jwt-shared-secret": jwtSecret, ...rest } = values;
+    if (jwtSecret != null && !isObfuscatedValue(jwtSecret)) {
+      settingsToUpdate["jwt-shared-secret"] = jwtSecret;
+    }
+
     const result = await updateSettings({
-      ...rest,
-      ...(jwtSecret != null && !isObfuscatedValue(jwtSecret)
-        ? { "jwt-shared-secret": jwtSecret }
-        : {}),
+      ...settingsToUpdate,
       "jwt-enabled": true,
       toast: false,
     });
@@ -70,15 +68,17 @@ export const SettingsJWTForm = () => {
     }
   };
 
-  if (isLoadingDetails || isLoadingValues) {
+  if (isLoadingDetails) {
     return <LoadingAndErrorWrapper loading />;
   }
 
-  if (!settingDetails || !settingValues) {
+  if (!settingDetails) {
     return (
       <LoadingAndErrorWrapper error={t`Error loading JWT configuration`} />
     );
   }
+
+  const usingTenants = settingDetails["use-tenants"]?.value;
 
   return (
     <SettingsPageWrapper title={t`JWT`}>
@@ -94,7 +94,7 @@ export const SettingsJWTForm = () => {
       )}
       <SettingsSection>
         <FormProvider
-          initialValues={getFormValues(settingValues, settingDetails)}
+          initialValues={getFormValues(settingDetails)}
           onSubmit={handleSubmit}
           enableReinitialize
         >
@@ -155,7 +155,7 @@ export const SettingsJWTForm = () => {
                       settingDetails?.["jwt-attribute-groups"],
                     )}
                   />
-                  {settingValues["use-tenants"] && (
+                  {usingTenants && (
                     <FormTextInput
                       name="jwt-attribute-tenant"
                       label={t`Tenant assignment attribute`}
@@ -170,7 +170,6 @@ export const SettingsJWTForm = () => {
                 <GroupMappingsWidget
                   setting={{ key: "jwt-group-sync" }}
                   onChange={handleSubmit}
-                  settingValues={settingValues}
                   mappingSetting="jwt-group-mappings"
                   groupHeading={t`Group Name`}
                   groupPlaceholder={t`Group Name`}
@@ -192,13 +191,11 @@ export const SettingsJWTForm = () => {
   );
 };
 
-const getFormValues = (
-  allSettings: EnterpriseSettings,
-  settingDetails: SettingDefinitionMap,
-): JWTFormValues => {
-  const jwtSettings = _.pick(allSettings, [
+const getFormValues = (settingDetails: SettingDefinitionMap): JWTFormValues => {
+  const jwtSettings = _.pick(settingDetails, [
     "jwt-user-provisioning-enabled?",
     "jwt-identity-provider-uri",
+    "jwt-shared-secret",
     "jwt-group-sync",
     "jwt-attribute-email",
     "jwt-attribute-firstname",
@@ -207,24 +204,16 @@ const getFormValues = (
     "jwt-attribute-tenant",
   ]);
 
-  if (jwtSettings["jwt-user-provisioning-enabled?"] == null) {
+  if (!jwtSettings["jwt-user-provisioning-enabled?"]?.value) {
     // cast empty to false
-    jwtSettings["jwt-user-provisioning-enabled?"] = false;
+    jwtSettings["jwt-user-provisioning-enabled?"] = {
+      ...jwtSettings["jwt-user-provisioning-enabled?"],
+      value: false,
+    };
   }
 
-  // Read jwt-shared-secret from /api/setting (settingDetails) which already returns obfuscated
-  // values for sensitive settings, so we never need to expose the plaintext in session-properties.
-  const jwtSecretValue =
-    (settingDetails["jwt-shared-secret"]?.value as string | null) ?? null;
-
   // cast undefined to null
-  return {
-    ...(_.mapObject(jwtSettings, (val) => val ?? null) as Omit<
-      JWTFormValues,
-      "jwt-shared-secret"
-    >),
-    "jwt-shared-secret": jwtSecretValue,
-  };
+  return _.mapObject(jwtSettings, (val) => val?.value ?? null) as JWTFormValues;
 };
 
 const isObfuscatedValue = (value: string | null | undefined): boolean =>
