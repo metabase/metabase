@@ -9,9 +9,11 @@ import {
   useMetabotName,
 } from "metabase/metabot/hooks";
 import { getLocation } from "metabase/selectors/routing";
-import { ActionIcon, Icon, Tooltip } from "metabase/ui";
+import { ActionIcon, Tooltip } from "metabase/ui";
 
 import { trackMetabotChatOpened } from "../analytics";
+
+import { MetabotIcon } from "./MetabotIcon";
 
 export const MetabotDataStudioButton = () => {
   const isMetabotEnabled = useMetabotEnabledEmbeddingAware();
@@ -46,11 +48,7 @@ export const MetabotDataStudioButton = () => {
         aria-label={label}
         onClick={handleClick}
       >
-        <Icon
-          c={disabled ? undefined : "text-primary"}
-          name="metabot"
-          size={16}
-        />
+        <MetabotIcon c={disabled ? undefined : "text-primary"} size={16} />
       </ActionIcon>
     </Tooltip>
   );

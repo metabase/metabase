@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg?component";
 import { useGetSuggestedMetabotPromptsQuery } from "metabase/api";
+import { useSetting } from "metabase/common/hooks";
 import { MetabotResetLongChatButton } from "metabase/metabot/components/MetabotChat/MetabotResetLongChatButton";
 import {
   ActionIcon,
@@ -45,6 +46,7 @@ export const MetabotChat = ({
 }) => {
   const metabot = useMetabotAgent(config.agentId);
   const metabotName = useMetabotName();
+  const showIllustrations = useSetting("metabot-show-illustrations");
 
   const hasMessages =
     metabot.messages.length > 0 || metabot.errorMessages.length > 0;
@@ -117,7 +119,9 @@ export const MetabotChat = ({
               justify="center"
               data-testid="metabot-empty-chat-info"
             >
-              <Box component={EmptyDashboardBot} w="6rem" />
+              {showIllustrations && (
+                <Box component={EmptyDashboardBot} w="6rem" />
+              )}
               <Text c="text-tertiary" maw="12rem" ta="center" lh="lg">
                 {config.emptyText ??
                   t`I can help you explore your metrics and models.`}

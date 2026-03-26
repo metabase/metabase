@@ -39,6 +39,15 @@
   :export?    true
   :doc        false)
 
+(defsetting metabot-show-illustrations
+  (deferred-tru "Whether to show Metabot illustrations in the UI.")
+  :type       :boolean
+  :default    true
+  :visibility :public
+  :encryption :no
+  :export?    true
+  :doc        false)
+
 (defsetting metabot-tone
   (deferred-tru "The tone for Metabot responses.")
   :type       :string

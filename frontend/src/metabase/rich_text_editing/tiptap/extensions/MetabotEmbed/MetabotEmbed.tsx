@@ -22,6 +22,7 @@ import {
 import { getCurrentDocument } from "metabase/documents/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import MetabotThinkingStyles from "metabase/metabot/components/MetabotChat/MetabotThinking.module.css";
+import { MetabotIcon } from "metabase/metabot/components/MetabotIcon";
 import {
   useMetabotEnabledEmbeddingAware,
   useMetabotName,
@@ -317,11 +318,11 @@ export const MetabotComponent = memo(
                 onClick={() => deleteNode()}
               >
                 <Icon name="close" data-hide-on-print />
-                <Icon name="metabot" data-show-on-print />
+                <MetabotIcon data-show-on-print />
               </Button>
             ) : (
               <Box p="md">
-                <Icon name="metabot" />
+                <MetabotIcon />
               </Box>
             )}
           </Box>

@@ -595,6 +595,7 @@ interface PublicSettings {
   "metabot-enabled?": boolean;
   "metabot-name": string;
   "metabot-icon": string | null;
+  "metabot-show-illustrations": boolean;
   "embedded-metabot-enabled?": boolean;
   "show-metabase-links": boolean;
   "show-metabot": boolean;

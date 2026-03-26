@@ -11,6 +11,7 @@ import {
   Flex,
   Icon,
   Stack,
+  Switch,
   Text,
   Tooltip,
 } from "metabase/ui";
@@ -20,6 +21,11 @@ const IMAGE_SIZE_LIMIT = 1024 * 1024; // 1MB limit
 export function MetabotIconField() {
   const { value: metabotIcon, updateSetting: updateIcon } =
     useAdminSetting("metabot-icon");
+  const {
+    value: showIllustrations,
+    updateSetting: updateShowIllustrations,
+    isLoading: isLoadingIllustrations,
+  } = useAdminSetting("metabot-show-illustrations");
 
   // Icon upload
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -134,6 +140,23 @@ export function MetabotIconField() {
           </Tooltip>
         )}
       </Flex>
+      {!isDefaultIcon && (
+        <Switch
+          label={t`Show Metabot illustrations`}
+          description={t`Show default Metabot illustrations throughout the app.`}
+          checked={!!showIllustrations}
+          onChange={(e) =>
+            updateShowIllustrations({
+              key: "metabot-show-illustrations",
+              value: e.currentTarget.checked,
+            })
+          }
+          disabled={isLoadingIllustrations}
+          size="sm"
+          w="auto"
+          mb="sm"
+        />
+      )}
     </Stack>
   );
 }

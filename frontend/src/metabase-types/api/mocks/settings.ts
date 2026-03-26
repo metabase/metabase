@@ -370,6 +370,7 @@ export const createMockSettings = (
   "metabot-enabled?": true,
   "metabot-name": "Metabot",
   "metabot-icon": "metabot",
+  "metabot-show-illustrations": true,
   "embedded-metabot-enabled?": true,
   "show-metabase-links": true,
   "show-metabot": true,

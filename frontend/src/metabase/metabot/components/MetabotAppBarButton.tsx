@@ -6,9 +6,11 @@ import {
   useMetabotEnabledEmbeddingAware,
   useMetabotName,
 } from "metabase/metabot/hooks";
-import { ActionIcon, type ActionIconProps, Icon, Tooltip } from "metabase/ui";
+import { ActionIcon, type ActionIconProps, Tooltip } from "metabase/ui";
 
 import { trackMetabotChatOpened } from "../analytics";
+
+import { MetabotIcon } from "./MetabotIcon";
 
 interface MetabotAppBarButtonProps extends ActionIconProps {
   className?: string;
@@ -50,7 +52,7 @@ export function MetabotAppBarButton({
         onClick={handleClick}
         {...rest}
       >
-        <Icon name="metabot" />
+        <MetabotIcon />
       </ActionIcon>
     </Tooltip>
   );
