@@ -10,6 +10,7 @@
   Actual tests using this code live in [[metabase.app-db.schema-migrations-test]]."
   (:require
    [clojure.java.jdbc :as jdbc]
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as mdb]
@@ -266,14 +267,17 @@
     (with-temp-empty-app-db [conn :h2]
       ;; First run all migrations up through v45.00-001 so the DB has the required schema
       (run-migrations-in-range! conn ["v00.00-000" "v45.00-001"])
-      ;; Now run from v45.00-001 exclusive to v45.00-011 inclusive
-      (run-migrations-in-range! conn ["v45.00-001" "v45.00-011"] {:inclusive-start? false})
-      (let [ran (migrations-run conn)]
-        (is (contains? ran "v45.00-001") "v45.00-001 was run in the first batch")
-        (is (contains? ran "v45.00-002") "v45.00-002 should be included (between exclusive start and end)")
-        (is (contains? ran "v45.00-011") "end should be included (inclusive by default)"))))
+      (let [ran-before (migrations-run conn)]
+        ;; Now run from v45.00-001 exclusive to v45.00-011 inclusive
+        (run-migrations-in-range! conn ["v45.00-001" "v45.00-011"] {:inclusive-start? false})
+        (let [ran-after  (migrations-run conn)
+              newly-ran  (set/difference ran-after ran-before)]
+          (is (not (contains? newly-ran "v45.00-001")) "v45.00-001 should NOT be re-run (exclusive start)")
+          (is (contains? newly-ran "v45.00-002") "v45.00-002 should be included (between exclusive start and end)")
+          (is (contains? newly-ran "v45.00-011") "end should be included (inclusive by default)")))))
 
   (testing "nil end-id runs through the end of the changelog"
+    ;; This runs the entire migration history, so mark it ^:long to exclude from fast feedback loops
     (with-temp-empty-app-db [conn :h2]
       ;; Use the very first migration as start with no end — should run everything
       (run-migrations-in-range! conn ["v00.00-000" nil])
