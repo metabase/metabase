@@ -130,9 +130,10 @@
   (validate-mbql5-definition definition)
   (when (seq definition)
     (lib/check-measure-overwrite nil definition))
-  measure)
+  (cond-> measure
+    (seq definition) (assoc :table_id (lib/primary-source-table-id definition))))
 
-(t2/define-before-update :model/Measure [{:keys [id] :as measure}]
+(t2/define-before-update :model/Measure [{:keys [id definition] :as measure}]
   ;; throw an Exception if someone tries to update creator_id
   (when (contains? (t2/changes measure) :creator_id)
     (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a Measure."))))
@@ -140,7 +141,10 @@
   (when-let [def-change (:definition (t2/changes measure))]
     (validate-mbql5-definition def-change)
     (lib/check-measure-overwrite id def-change))
-  measure)
+  (cond-> measure
+    (and (contains? (t2/changes measure) :definition)
+         (seq definition))
+    (assoc :table_id (lib/primary-source-table-id definition))))
 
 (defmethod mi/perms-objects-set :model/Measure
   [measure read-or-write]

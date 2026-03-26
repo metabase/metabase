@@ -354,9 +354,7 @@
    ;; YAML file and break tests like [[metabase-enterprise.serialization.v2.e2e.yaml-test/e2e-storage-ingestion-test]].
    ;; The root cause of this issue is that we're generating Cards that have a different Database ID or Table ID from
    ;; what's actually in their query -- we need to fix [[metabase.test.generate]], but I'm not sure how to do that
-   (when (and (seq query)
-              (map? query)
-              (not mi/*deserializing?*))
+   (when (and (seq query) (map? query))
      (merge
       ;; This used to be conditional on not nilling source-card-id, changed due to #68080.
       {:source_card_id (source-card-id query)}

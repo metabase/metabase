@@ -160,7 +160,8 @@
                   (some? definition) (assoc :definition (migrated-segment-definition segment)))]
     (when (seq (:definition segment))
       (lib/check-segment-overwrite nil (:definition segment)))
-    segment))
+    (cond-> segment
+      (seq (:definition segment)) (assoc :table_id (lib/primary-source-table-id (:definition segment))))))
 
 (t2/define-before-update :model/Segment [{:keys [id] :as segment}]
   ;; throw an Exception if someone tries to update creator_id
@@ -171,7 +172,8 @@
     (let [normalized-def (migrated-segment-definition (assoc segment :definition def-change))]
       (when (seq normalized-def)
         (lib/check-segment-overwrite id normalized-def))
-      (assoc segment :definition normalized-def))
+      (cond-> (assoc segment :definition normalized-def)
+        (seq normalized-def) (assoc :table_id (lib/primary-source-table-id normalized-def))))
     segment))
 
 (defmethod mi/perms-objects-set :model/Segment
