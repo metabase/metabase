@@ -78,7 +78,6 @@
    :name                    :text
    :native-query            nil
    :official-collection     :boolean
-   :source-table-names      nil
    :pinned                  :boolean
    :updated-at              :timestamp
    :verified                :boolean
@@ -112,8 +111,7 @@
          :non-temporal-dim-ids
          :has-temporal-dim
          :is-published
-         :source-type
-         :source-table-names])
+         :source-type])
        distinct
        vec))
 
