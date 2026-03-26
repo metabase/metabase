@@ -88,12 +88,25 @@
                            (into #{} (map (fn [s] [(:dashboardcard_id s) (:card_id s)])) series-rows)))]
     (into primary-pairs series-pairs)))
 
-(defn- batch-fetch-card-database-ids
-  "Fetch database_id for all requested cards in a single query. Returns {card-id database-id}."
+(def ^:private card-columns-for-query
+  "Columns needed by [[metabase.query-processor.card/process-query-for-card]]."
+  [:id :name :dataset_query :database_id :collection_id :type :result_metadata
+   :visualization_settings :display :cache_invalidated_at :entity_id :created_at
+   :card_schema :parameters])
+
+(defn- batch-fetch-cards
+  "Fetch all card data needed for query processing in a single query. Returns {card-id card-instance}."
   [card-ids]
   (into {}
-        (map (fn [row] [(:id row) (:database_id row)]))
-        (t2/select [:model/Card :id :database_id :card_schema] :id [:in (set card-ids)])))
+        (map (fn [card] [(:id card) card]))
+        (t2/select (into [:model/Card] card-columns-for-query) :id [:in (set card-ids)])))
+
+(defn- batch-fetch-dashcard-viz
+  "Fetch visualization_settings for all dashcards in a single query. Returns {dashcard-id viz-settings}."
+  [dashcard-ids]
+  (into {}
+        (map (fn [dc] [(:id dc) (:visualization_settings dc)]))
+        (t2/select [:model/DashboardCard :id :visualization_settings] :id [:in (set dashcard-ids)])))
 
 ;;; ---------------------------------------- Per-Card Query Execution ----------------------------------------
 
@@ -119,18 +132,20 @@
 (defn- run-single-card-query
   "Execute a single card query synchronously. Returns either a result map or an error map."
   [{:keys [dashboard-id card-id dashcard-id dashboard-param-id->param parameters
-           ignore-cache context]
+           ignore-cache context prefetched-card prefetched-dash-viz]
     :or   {context :dashboard}}]
   (try
     (let [resolved-params (resolve-params-for-card card-id dashcard-id dashboard-param-id->param parameters)
-          options         {:dashboard-id dashboard-id
-                           :card-id      card-id
-                           :dashcard-id  dashcard-id
-                           :parameters   resolved-params
-                           :ignore-cache (boolean ignore-cache)
-                           :constraints  (qp.constraints/default-query-constraints)
-                           :context      context
-                           :make-run     batch-make-run}]
+          options         (cond-> {:dashboard-id dashboard-id
+                                   :card-id      card-id
+                                   :dashcard-id  dashcard-id
+                                   :parameters   resolved-params
+                                   :ignore-cache (boolean ignore-cache)
+                                   :constraints  (qp.constraints/default-query-constraints)
+                                   :context      context
+                                   :make-run     batch-make-run}
+                            prefetched-card     (assoc :prefetched-card prefetched-card)
+                            prefetched-dash-viz (assoc :prefetched-dash-viz prefetched-dash-viz))]
       (binding [qp.card/*allow-arbitrary-mbql-parameters* true]
         (qp.card/process-query-for-card card-id :api options)))
     (catch Throwable e
@@ -177,12 +192,20 @@
                                    (api/check-404 false))
           ;; Batch validate membership
           valid-pairs            (batch-validate-card-membership dashboard-id cards)
-          ;; Batch fetch database IDs for permission checks
-          card-db-ids            (batch-fetch-card-database-ids (map :card-id cards))
+          ;; Batch fetch card data and dashcard viz settings for all cards at once
+          card-id->card          (batch-fetch-cards (map :card-id cards))
+          card-db-ids            (into {} (map (fn [[id card]] [id (:database_id card)])) card-id->card)
+          dashcard-id->viz       (batch-fetch-dashcard-viz (map :dashcard-id cards))
           ;; Current user info for binding conveyance
           current-user-id        api/*current-user-id*
           current-user-perms     @api/*current-user-permissions-set*
-          metadata-cache         lib-be.jvm/*metadata-provider-cache*]
+          metadata-cache         lib-be.jvm/*metadata-provider-cache*
+          ;; Request-scoped caches for cross-card deduplication of EE permission/routing lookups.
+          ;; Each EE namespace owns its own cache var; we create atoms here and convey them to threads.
+          impersonation-cache-var (resolve 'metabase-enterprise.impersonation.driver/*impersonation-cache*)
+          routing-cache-var       (resolve 'metabase-enterprise.database-routing.common/*routing-cache*)
+          impersonation-cache     (when impersonation-cache-var (atom {}))
+          routing-cache           (when routing-cache-var (atom {}))]
       ;; Fire dashboard-queried event once
       (events/publish-event! :event/dashboard-queried {:object-id dashboard-id :user-id current-user-id})
       ;; Store user parameter values once
@@ -223,19 +246,24 @@
           ;; Run queries via claypoole — results stream in completion order
           (doseq [result (cp/upmap pool
                                    (fn [{:keys [dashcard-id card-id]}]
-                                     (binding [api/*current-user-id*                current-user-id
-                                               api/*current-user-permissions-set*   (atom current-user-perms)
-                                               lib-be.jvm/*metadata-provider-cache* metadata-cache]
-                                       {:dashcard-id dashcard-id
-                                        :card-id     card-id
-                                        :result      (run-single-card-query
-                                                      {:dashboard-id              dashboard-id
-                                                       :card-id                   card-id
-                                                       :dashcard-id               dashcard-id
-                                                       :dashboard-param-id->param dashboard-param-id->param
-                                                       :parameters                parameters
-                                                       :ignore-cache              ignore-cache
-                                                       :context                   context})}))
+                                     (let [bindings (cond-> {#'api/*current-user-id*                current-user-id
+                                                             #'api/*current-user-permissions-set*   (atom current-user-perms)
+                                                             #'lib-be.jvm/*metadata-provider-cache* metadata-cache}
+                                                      impersonation-cache-var (assoc impersonation-cache-var impersonation-cache)
+                                                      routing-cache-var       (assoc routing-cache-var routing-cache))]
+                                       (with-bindings bindings
+                                         {:dashcard-id dashcard-id
+                                          :card-id     card-id
+                                          :result      (run-single-card-query
+                                                        {:dashboard-id              dashboard-id
+                                                         :card-id                   card-id
+                                                         :dashcard-id               dashcard-id
+                                                         :dashboard-param-id->param dashboard-param-id->param
+                                                         :parameters                parameters
+                                                         :ignore-cache              ignore-cache
+                                                         :context                   context
+                                                         :prefetched-card           (get card-id->card card-id)
+                                                         :prefetched-dash-viz       (get dashcard-id->viz dashcard-id)})})))
                                    (or to-query []))]
             (when-not (a/poll! canceled-chan)
               (let [{:keys [dashcard-id card-id result]} result]

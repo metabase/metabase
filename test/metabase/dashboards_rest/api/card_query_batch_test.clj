@@ -223,4 +223,41 @@
                                  (call-count))]
             (testing (format "per-card: %d DB calls, batch: %d DB calls" per-card-total batch-total)
               (is (< batch-total per-card-total)
-                  "batch endpoint should use fewer DB calls than individual card queries"))))))))
+                  "batch endpoint should use fewer DB calls than individual card queries")
+              ;; With batch-fetch and request-scoped caching, 3 cards on the same DB should stay well
+              ;; under 80 AppDB calls total. Bump this ceiling if legitimate new queries are added.
+              (is (<= batch-total 80)
+                  (format "batch call count regression: expected ≤80, got %d" batch-total)))))))))
+
+(deftest batch-query-scaling-test
+  (testing "batch endpoint's per-card marginal cost is lower than individual requests"
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card          {c1 :id} {:database_id (mt/id) :dataset_query (mt/mbql-query orders {:limit 1})}
+                     :model/Card          {c2 :id} {:database_id (mt/id) :dataset_query (mt/mbql-query people {:limit 1})}
+                     :model/Card          {c3 :id} {:database_id (mt/id) :dataset_query (mt/mbql-query products {:limit 1})}
+                     :model/Card          {c4 :id} {:database_id (mt/id) :dataset_query (mt/mbql-query reviews {:limit 1})}
+                     :model/Card          {c5 :id} {:database_id (mt/id) :dataset_query (mt/mbql-query orders {:limit 2})}
+                     :model/Dashboard     {d :id}  {}
+                     :model/DashboardCard _        {:dashboard_id d :card_id c1}
+                     :model/DashboardCard _        {:dashboard_id d :card_id c2}
+                     :model/DashboardCard _        {:dashboard_id d :card_id c3}
+                     :model/DashboardCard _        {:dashboard_id d :card_id c4}
+                     :model/DashboardCard _        {:dashboard_id d :card_id c5}]
+        (binding [qp.dashboard-batch/*thread-pool* :serial]
+          (let [batch-3 (t2/with-call-count [call-count]
+                          (batch-request d {:cards (take 3 (map (fn [dc] {:dashcard_id (:id dc) :card_id (:card_id dc)})
+                                                                (t2/select [:model/DashboardCard :id :card_id]
+                                                                           :dashboard_id d
+                                                                           {:order-by [[:id :asc]]
+                                                                            :limit    3})))})
+                          (call-count))
+                batch-5 (t2/with-call-count [call-count]
+                          (batch-request d)
+                          (call-count))
+                marginal-cost (/ (- batch-5 batch-3) 2.0)]
+            (testing (format "3-card batch: %d, 5-card batch: %d, marginal: %.1f per card"
+                             batch-3 batch-5 marginal-cost)
+              ;; The marginal cost of each additional card in batch mode should be significantly
+              ;; lower than the ~55 queries/card cost of individual requests
+              (is (< marginal-cost 40)
+                  (format "marginal per-card cost too high: %.1f" marginal-cost)))))))))
