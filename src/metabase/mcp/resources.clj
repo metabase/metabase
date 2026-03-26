@@ -22,7 +22,7 @@
 
 (defn- csp-config []
   (let [url (site-url)]
-    {:connectDomains  [url "ws://localhost:3000" "ws://0.0.0.0:8080" "wss://*.claudemcpcontent.com:*"]
+    {:connectDomains  [url]
      :resourceDomains [url]
      :frameDomains    [url]}))
 
