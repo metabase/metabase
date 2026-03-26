@@ -5,6 +5,7 @@ import { t } from "ttag";
 import { ExpandingContent } from "metabase/common/components/ExpandingContent";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
+import { isTouchDevice } from "metabase/lib/browser";
 import { Box, Flex } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
@@ -101,7 +102,11 @@ export function NotebookStep({
   return (
     <ExpandingContent isInitiallyOpen={!isLastOpened} isOpen>
       <Box
-        className={cx(CS.hoverParent, CS.hoverVisibility, S.StepRoot)}
+        className={cx(
+          !isTouchDevice() && CS.hoverParent,
+          !isTouchDevice() && CS.hoverVisibility,
+          S.StepRoot,
+        )}
         data-testid={step.testID}
       >
         <Box w={`${(11 / 12) * 100}%`} maw="75rem">

@@ -1,5 +1,4 @@
 import type { DataPickerValue } from "metabase/common/components/Pickers/DataPicker";
-import { useTouchClickFix } from "metabase/common/hooks/use-touch-click-fix";
 import { useDispatch } from "metabase/lib/redux";
 import { setUIControls } from "metabase/query_builder/actions";
 import { Box } from "metabase/ui";
@@ -41,7 +40,6 @@ export const Notebook = ({
   dataPickerOptions,
 }: NotebookProps) => {
   const dispatch = useDispatch();
-  const touchFixRef = useTouchClickFix<HTMLDivElement>();
 
   const handleUpdateQuestion = (question: Question): Promise<void> => {
     dispatch(setUIControls({ isModifiedFromNotebook: true }));
@@ -50,7 +48,7 @@ export const Notebook = ({
 
   return (
     <NotebookProvider modelsFilterList={modelsFilterList}>
-      <Box ref={touchFixRef} pos="relative" p={{ base: "1rem", sm: "2rem" }}>
+      <Box pos="relative" p={{ base: "1rem", sm: "2rem" }}>
         <NotebookStepList
           updateQuestion={handleUpdateQuestion}
           question={question}
