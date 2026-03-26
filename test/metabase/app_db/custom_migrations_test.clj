@@ -2625,10 +2625,10 @@
             (is (zero? (t2/count :notification :payload_type "notification/card")))))))))
 
 (deftest migrate-clickhouse-details-to-multi-db-test
-  (testing "v57.2025-08-22T00:16:00: migrate clickhouse db details to use `enable-multiple-db` with db filters"
+  (testing "v57.2025-08-23T16:00:00: migrate clickhouse db details to use `enable-multiple-db` with db filters"
     (encryption-test/with-secret-key "dont-tell-anyone-about-this"
       (impl/test-migrations
-       ["v57.2025-08-22T00:16:00"] [migrate!]
+       ["v57.2025-08-23T16:00:00"] [migrate!]
         (letfn [(insert-clickhouse-db [name details]
                   (let [details (merge {:host "localhost"
                                         :port 8123
