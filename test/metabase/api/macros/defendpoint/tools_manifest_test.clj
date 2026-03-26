@@ -81,6 +81,126 @@
       (is (= #{:x :y} (set (keys (:properties jss)))))
       (is (= [:x] (:required jss))))))
 
+(deftest ^:parallel deeply-nested-root-flattening-test
+  (testing ":and wrapping :and is fully flattened"
+    (let [jss (tools-manifest/malli->json-schema
+               [:and
+                [:and [:map [:a :int]] [:map [:b :string]]]
+                [:map [:c :boolean]]])]
+      (is (= "object" (:type jss)))
+      (is (= #{:a :b :c} (set (keys (:properties jss)))))
+      (is (not (contains? jss :allOf)))))
+  (testing ":or wrapping :or is fully flattened"
+    (let [jss (tools-manifest/malli->json-schema
+               [:or
+                [:or [:map [:a :int]] [:map [:b :string]]]
+                [:map [:c :boolean]]])]
+      (is (= "object" (:type jss)))
+      (is (= #{:a :b :c} (set (keys (:properties jss)))))
+      (is (not (contains? jss :anyOf)))
+      (is (nil? (:required jss))
+          "all entries optional after :or flattening")))
+  (testing ":and wrapping :or flattens both layers"
+    (let [jss (tools-manifest/malli->json-schema
+               [:and
+                [:or [:map [:a :int]] [:map [:b :string]]]
+                [:map [:c :boolean]]])]
+      (is (= "object" (:type jss)))
+      (is (= #{:a :b :c} (set (keys (:properties jss)))))
+      (is (not (contains? jss :allOf)))
+      (is (not (contains? jss :anyOf)))))
+  (testing ":or wrapping :and — flattens :and children"
+    (let [jss (tools-manifest/malli->json-schema
+               [:or
+                [:and [:map [:a :int]] [:map [:b :string]]]
+                [:map [:c :boolean]]])]
+      (is (= "object" (:type jss)))
+      (is (= #{:a :b :c} (set (keys (:properties jss)))))
+      (is (not (contains? jss :anyOf)))
+      (is (not (contains? jss :allOf)))
+      (is (nil? (:required jss))
+          "all entries optional — :or makes everything optional")))
+  (testing "triple-nested :and → :or → :and fully flattens"
+    (let [jss (tools-manifest/malli->json-schema
+               [:and
+                [:or
+                 [:and [:map [:a :int]] [:map [:b :string]]]
+                 [:map [:c :boolean]]]
+                [:map [:d :keyword]]])]
+      (is (= "object" (:type jss)))
+      (is (= #{:a :b :c :d} (set (keys (:properties jss)))))
+      (is (not (contains? jss :allOf)))
+      (is (not (contains? jss :anyOf)))))
+  (testing ":or wrapping :or wrapping :and — flattening through multiple layers"
+    (let [jss (tools-manifest/malli->json-schema
+               [:or
+                [:or
+                 [:and [:map [:a :int]] [:map [:b :string]]]
+                 [:map [:c :boolean]]]
+                [:map [:d :keyword]]])]
+      (is (= "object" (:type jss)))
+      (is (= #{:a :b :c :d} (set (keys (:properties jss)))))
+      (is (not (contains? jss :anyOf)))
+      (is (nil? (:required jss))))))
+
+(deftest ^:parallel nested-composite-within-properties-preserved-test
+  (testing ":or inside a property value is preserved as anyOf"
+    (let [jss (tools-manifest/malli->json-schema
+               [:map [:x [:or :int :string]]])]
+      (is (= "object" (:type jss)))
+      (is (contains? (get-in jss [:properties :x]) :anyOf)
+          "nested :or should remain as anyOf inside a property")))
+  (testing ":and inside a property value is preserved as allOf"
+    (let [jss (tools-manifest/malli->json-schema
+               [:map [:x [:and :int [:fn pos?]]]])]
+      (is (= "object" (:type jss)))
+      ;; :and with non-map children stays as allOf or gets simplified by malli,
+      ;; but the root schema should still be a flat object
+      (is (= [:x] (:required jss)))))
+  (testing "root :or flattened but nested :or within property preserved"
+    (let [jss (tools-manifest/malli->json-schema
+               [:or
+                [:map [:a :int] [:nested [:or :string :boolean]]]
+                [:map [:b :keyword]]])]
+      (is (= "object" (:type jss))
+          "root :or should be flattened to object")
+      (is (= #{:a :b :nested} (set (keys (:properties jss)))))
+      (is (not (contains? jss :anyOf))
+          "root-level anyOf should be gone")
+      (is (contains? (get-in jss [:properties :nested]) :anyOf)
+          "nested :or within a property should be preserved as anyOf")))
+  (testing "root :and flattened but nested :or within property preserved"
+    (let [jss (tools-manifest/malli->json-schema
+               [:and
+                [:map [:a :int] [:choice [:or :string :boolean]]]
+                [:map [:b :keyword]]])]
+      (is (= "object" (:type jss)))
+      (is (= #{:a :b :choice} (set (keys (:properties jss)))))
+      (is (not (contains? jss :allOf)))
+      (is (contains? (get-in jss [:properties :choice]) :anyOf)
+          "nested :or within property preserved even when root :and is flattened"))))
+
+(deftest ^:parallel multi-root-flattening-test
+  (testing ":multi at root is flattened with all entries optional"
+    (let [jss (tools-manifest/malli->json-schema
+               [:multi {:dispatch :type}
+                [:a [:map [:type [:= :a]] [:a-field :int]]]
+                [:b [:map [:type [:= :b]] [:b-field :string]]]])]
+      (is (= "object" (:type jss)))
+      (is (= #{:type :a-field :b-field} (set (keys (:properties jss)))))
+      (is (nil? (:required jss))
+          "all entries optional after :multi → union")))
+  (testing ":and wrapping :multi flattens both layers"
+    (let [jss (tools-manifest/malli->json-schema
+               [:and
+                [:multi {:dispatch :type}
+                 [:a [:map [:type [:= :a]] [:x :int]]]
+                 [:b [:map [:type [:= :b]] [:y :string]]]]
+                [:map [:z :boolean]]])]
+      (is (= "object" (:type jss)))
+      (is (= #{:type :x :y :z} (set (keys (:properties jss)))))
+      (is (not (contains? jss :allOf))))))
+
 (deftest ^:parallel endpoint->tool-definition-test
   (testing "Basic endpoint conversion"
     (let [form   {:method          :get
@@ -226,10 +346,10 @@
         "manifest should not have top-level $defs")))
 
 (deftest ^:parallel refs-are-inlined-in-manifest-test
-  (testing "malli->json-schema with :or produces flat object, no $ref or anyOf"
+  (testing "malli->json-schema with :or of mixed types preserves anyOf but inlines refs"
     (let [jss (tools-manifest/malli->json-schema [:or ::ref-target-a ::ref-target-b])]
-      (is (= "object" (:type jss)))
-      (is (not (contains? jss :anyOf)))
+      (is (contains? jss :anyOf)
+          "non-map :or branches stay as anyOf")
       (is (not (re-find #"\$ref" (pr-str jss))))))
   (testing "generate-tools-manifest output has no $ref or $defs anywhere"
     (let [manifest (test-manifest)
