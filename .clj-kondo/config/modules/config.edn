@@ -768,6 +768,7 @@
            metabase.lib.schema.expression
            metabase.lib.schema.expression.temporal
            metabase.lib.schema.expression.window
+           metabase.lib.schema.filter
            metabase.lib.schema.id
            metabase.lib.schema.info
            metabase.lib.schema.join
