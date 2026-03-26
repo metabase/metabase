@@ -233,6 +233,7 @@
                         ;; This must happen after parsing to ensure form-encoding round-trips don't cause mismatches.
                         parsed-params (select-keys parsed oauth-param-keys)]
                     (if (or (str/blank? params-sig)
+                            (not (re-matches #"[a-fA-F0-9]+" params-sig))
                             (not (verify-oauth-params-signature cookie-token parsed-params params-sig)))
                       {:status  403
                        :headers {"Content-Type" "application/json"}

@@ -410,6 +410,79 @@
                             :csrf-cookie csrf-cookie)]
           (is (= "csrf_validation_failed" (:error (:body response)))))))))
 
+(deftest authorize-decision-params-tampered-test
+  (testing "POST /oauth/authorize/decision with modified scope returns 403 params_tampered"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [client       (create-test-client!)
+              client-id    (:client_id client)
+              consent-resp (get-consent-page! :crowberto client-id)
+              consent-body (:body consent-resp)
+              csrf-token   (extract-csrf-token-from-consent consent-body)
+              csrf-cookie  (extract-csrf-cookie consent-resp)
+              params-sig   (extract-params-sig-from-consent consent-body)
+              response     (form-post-decision!
+                            :crowberto
+                            {:approved      "true"
+                             :csrf_token    csrf-token
+                             :params_sig    params-sig
+                             :client_id     client-id
+                             :redirect_uri  "https://example.com/callback"
+                             :response_type "code"
+                             :scope         "profile"
+                             :state         "tampered-state"}  ;; tampered state
+                            403
+                            :csrf-cookie csrf-cookie)]
+          (is (= "params_tampered" (:error (:body response)))))))))
+
+(deftest authorize-decision-missing-params-sig-test
+  (testing "POST /oauth/authorize/decision with missing params_sig returns 403 params_tampered"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [client       (create-test-client!)
+              client-id    (:client_id client)
+              consent-resp (get-consent-page! :crowberto client-id)
+              consent-body (:body consent-resp)
+              csrf-token   (extract-csrf-token-from-consent consent-body)
+              csrf-cookie  (extract-csrf-cookie consent-resp)
+              response     (form-post-decision!
+                            :crowberto
+                            {:approved      "true"
+                             :csrf_token    csrf-token
+                             ;; no params_sig
+                             :client_id     client-id
+                             :redirect_uri  "https://example.com/callback"
+                             :response_type "code"
+                             :scope         "profile"
+                             :state         "test-state"}
+                            403
+                            :csrf-cookie csrf-cookie)]
+          (is (= "params_tampered" (:error (:body response)))))))))
+
+(deftest authorize-decision-non-hex-params-sig-test
+  (testing "POST /oauth/authorize/decision with non-hex params_sig returns 403 params_tampered"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [client       (create-test-client!)
+              client-id    (:client_id client)
+              consent-resp (get-consent-page! :crowberto client-id)
+              consent-body (:body consent-resp)
+              csrf-token   (extract-csrf-token-from-consent consent-body)
+              csrf-cookie  (extract-csrf-cookie consent-resp)
+              response     (form-post-decision!
+                            :crowberto
+                            {:approved      "true"
+                             :csrf_token    csrf-token
+                             :params_sig    "zzzz-not-hex!"
+                             :client_id     client-id
+                             :redirect_uri  "https://example.com/callback"
+                             :response_type "code"
+                             :scope         "profile"
+                             :state         "test-state"}
+                            403
+                            :csrf-cookie csrf-cookie)]
+          (is (= "params_tampered" (:error (:body response)))))))))
+
 (deftest authorize-decision-unauthenticated-test
   (testing "POST /oauth/authorize/decision without session returns 401"
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
