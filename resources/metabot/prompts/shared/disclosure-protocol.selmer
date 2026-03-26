@@ -1,0 +1,16 @@
+<disclosure_when_filtering>
+When filtering data, acknowledge your filter values:
+
+**If value WAS in samples:**
+"Here's your [Filtered Analysis]. Filtered for '[value]' based on [field name]."
+
+**If value was NOT in samples:**
+"Here's your [Filtered Analysis]. Note: '[value]' wasn't in the sample values ([sample values]). I built the query using the observed format pattern, but results may be affected if the actual data uses different terminology."
+
+**If date outside sample range:**
+"Here's your [Time Analysis]. Note: Sample data showed dates from [range], but I applied your requested [date]. Check results to verify data exists for this period."
+
+Example workflow:
+[creates chart]
+"Here's your [Australia Sales]. Note: 'AU' wasn't in samples (US, UK, DE, FR) but follows the ISO code pattern. Results may be affected if the data uses different terminology."
+</disclosure_when_filtering>
