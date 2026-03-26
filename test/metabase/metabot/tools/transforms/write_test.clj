@@ -126,6 +126,7 @@
     (let [memory-atom (atom {:state {}})
           result (transforms-write/write-transform-sql
                   {:edit_action {:mode "replace" :new_content "SELECT 1"}
+                   :database_id (mt/id)
                    :transform_name "Test"
                    :memory-atom memory-atom})]
       (is (contains? result :data-parts))
@@ -139,18 +140,21 @@
 
 (deftest memory-storage-test
   (testing "stores updated transform in memory when transform_id provided"
-    (let [existing-transform {:id 1 :name "Existing" :source {:query {:native {:query "SELECT 1"}}}}
+    (let [mp (mt/metadata-provider)
+          existing-transform {:id 1 :name "Existing" :source {:query (lib/native-query mp "SELECT 1")}}
           memory-atom (atom {:state {:transforms {"1" existing-transform}}})
           _ (transforms-write/write-transform-sql
              {:transform_id 1
               :edit_action {:mode "replace" :new_content "SELECT 2"}
               :memory-atom memory-atom})]
-      (is (= "SELECT 2" (get-in @memory-atom [:state :transforms "1" :source :query :native :query])))))
+      (is (= "SELECT 2" (some-> (get-in @memory-atom [:state :transforms "1" :source :query])
+                                lib/raw-native-query)))))
 
   (testing "does not store in memory when no transform_id"
     (let [memory-atom (atom {:state {:transforms {}}})
           _ (transforms-write/write-transform-sql
              {:edit_action {:mode "replace" :new_content "SELECT 1"}
+              :database_id (mt/id)
               :transform_name "New"
               :memory-atom memory-atom})]
       (is (empty? (get-in @memory-atom [:state :transforms]))))))
