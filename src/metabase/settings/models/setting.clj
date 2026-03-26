@@ -278,8 +278,9 @@
    ;; This is only valid for database-local settings.
    [:enabled-for-db? [:maybe ifn?]]
 
-   ;; A previous name for this setting whose env var (e.g. MB_OLD_NAME) is checked
-   ;; as a fallback when the primary env var is not set. Logs a warning when used.
+   ;; A previous name for this setting whose env var (e.g. MB_OLD_NAME) and database
+   ;; key are checked as a fallback when the primary source is not set. Logs a warning
+   ;; when the env var fallback is in use.
    [:deprecated-name [:maybe :keyword]]])
 
 (defonce ^{:doc "Map of loaded defsettings"}
@@ -524,9 +525,6 @@
   (binding [*disable-init* true]
     (get setting-definition-or-name)))
 
-(defn- db-value [setting-definition-or-name]
-  (t2/select-one-fn :value :model/Setting :key (setting-name setting-definition-or-name)))
-
 (def ^:private db-is-set-up-var (atom nil))
 
 (defn- db-is-set-up? []
@@ -535,23 +533,30 @@
               (reset! db-is-set-up-var (requiring-resolve 'metabase.app-db.core/db-is-set-up?)))]
     (if f (f) false)))
 
+(defn- db-or-cache-value*
+  "Look up a single setting key in the DB or cache. Returns the raw (possibly empty) string, or nil."
+  ^String [setting-name-str]
+  (if config/*disable-setting-cache*
+    (t2/select-one-fn :value :model/Setting :key setting-name-str)
+    (do
+      ;; gotcha - returns immediately if another process is restoring it, i.e. before it's been populated
+      (setting.cache/restore-cache-if-needed!)
+      (let [cache (setting.cache/cache)]
+        (if (nil? cache)
+          ;; nil if we returned early above, and the cache is still being restored - in that case hit the db
+          (t2/select-one-fn :value :model/Setting :key setting-name-str)
+          (core/get cache setting-name-str))))))
+
 (defn- db-or-cache-value
-  "Get the value, if any, of `setting-definition-or-name` from the DB (using / restoring the cache as needed)."
+  "Get the value, if any, of `setting-definition-or-name` from the DB (using / restoring the cache as needed).
+  When the primary key is absent and the setting has a `:deprecated-name`, the deprecated key is checked as a fallback."
   ^String [setting-definition-or-name]
-  (let [setting  (resolve-setting setting-definition-or-name)]
+  (let [setting (resolve-setting setting-definition-or-name)]
     ;; cannot use db (and cache populated from db) if db is not set up
     (when (and (db-is-set-up?) (allows-site-wide-values? setting))
-      (not-empty
-       (if config/*disable-setting-cache*
-         (db-value setting)
-         (do
-            ;; gotcha - returns immediately if another process is restoring it, i.e. before it's been populated
-           (setting.cache/restore-cache-if-needed!)
-           (let [cache (setting.cache/cache)]
-             (if (nil? cache)
-                ;; nil if we returned early above, and the cache is still being restored - in that case hit the db
-               (db-value setting)
-               (core/get cache (setting-name setting-definition-or-name))))))))))
+      (or (not-empty (db-or-cache-value* (setting-name setting)))
+          (when-let [deprecated-name (:deprecated-name setting)]
+            (not-empty (db-or-cache-value* (setting-name deprecated-name))))))))
 
 (defonce ^:private ^ReentrantLock init-lock (ReentrantLock.))
 
@@ -834,7 +839,13 @@
             ;; write to DB
             (cond
               (nil? new-value)
-              (t2/delete! (t2/table-name :model/Setting) :key setting-name)
+              (do
+                (t2/delete! (t2/table-name :model/Setting) :key setting-name)
+                ;; also clear the deprecated-name key so that fallback doesn't resurface an old value
+                (when-let [deprecated-name (:deprecated-name setting)]
+                  (let [deprecated-key (core/name deprecated-name)]
+                    (t2/delete! (t2/table-name :model/Setting) :key deprecated-key)
+                    (setting.cache/update-cache! deprecated-key nil))))
 
               ;; if there's a value in the cache then the row already exists in the DB; update that
               (contains? (setting.cache/cache) setting-name)
@@ -1140,10 +1151,6 @@
         (throw (ex-info (tru "Setting {0} uses :enabled-for-db?, but is not limited to only database-local values"
                              setting-name)
                         {:setting setting})))
-      (when (and (:deprecated-name <>) (not (:can-read-from-env? <>)))
-        (throw (ex-info (tru "Setting {0} uses :deprecated-name but has :can-read-from-env? set to false"
-                             setting-name)
-                        {:setting <>})))
       (swap! registered-settings assoc setting-name <>))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1351,10 +1358,11 @@
 
   ###### `:deprecated-name`
 
-  A keyword naming a previous version of this setting whose env var should be checked as a fallback when the primary
-  env var is not set. For example, `:deprecated-name :my-old-setting` means `MB_MY_OLD_SETTING` will be tried when
-  `MB_MY_NEW_SETTING` is absent. A deprecation warning is logged at startup when the fallback is in use. The setting
-  must allow env var reading (`:can-read-from-env? true`, the default). (Default: `nil`).
+  A keyword naming a previous version of this setting whose env var and database key are checked as a fallback when
+  the primary source is not set. For example, `:deprecated-name :my-old-setting` means `MB_MY_OLD_SETTING` will be
+  tried when `MB_MY_NEW_SETTING` is absent, and the `my-old-setting` database key will be tried when `my-new-setting`
+  has no value. A deprecation warning is logged at startup when the env var fallback is in use. The setting must allow
+  env var reading (`:can-read-from-env? true`, the default). (Default: `nil`).
 
   ###### `:deprecated`
 
