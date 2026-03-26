@@ -142,7 +142,7 @@ async function setup({
 
   jest
     .spyOn(cardActions, "loadCard")
-    .mockReturnValue(Promise.resolve({ ...card }));
+    .mockReturnValue(Promise.resolve({ ...card } as Card));
 
   return baseSetup({ location, params, ...opts });
 }
@@ -441,7 +441,7 @@ describe("QB Actions > initializeQB", () => {
 
         jest
           .spyOn(cardActions, "loadCard")
-          .mockReturnValueOnce(Promise.resolve({ ...originalCard }));
+          .mockReturnValueOnce(Promise.resolve({ ...originalCard } as Card));
 
         return setup({ card: q, ...opts });
       }
