@@ -4,6 +4,11 @@
  * document.body, where em values would resolve against the body's font-size
  * instead of the embedding SDK root's font-size.
  *
+ * Only em values are converted — rem values are left as-is because they always
+ * resolve against the root <html> element regardless of DOM position, so they
+ * produce the same px result in both the measurement container and the actual
+ * rendered table.
+ *
  * The conversion is only performed when baseFontSize is in px, since we can
  * only do reliable arithmetic with known absolute units.
  */
@@ -11,12 +16,18 @@ export function resolveFontSizeToPx(
   fontSize: string,
   baseFontSize?: string,
 ): string {
-  if (
-    !baseFontSize ||
-    !baseFontSize.endsWith("px") ||
-    !fontSize.endsWith("em") ||
-    fontSize.endsWith("rem")
-  ) {
+  const isEmFont = fontSize.endsWith("em") && !fontSize.endsWith("rem");
+
+  if (!isEmFont) {
+    return fontSize;
+  }
+
+  if (!baseFontSize || !baseFontSize.endsWith("px")) {
+    console.warn(
+      `resolveFontSizeToPx: cannot convert "${fontSize}" to px — ` +
+        `baseFontSize ${baseFontSize ? `"${baseFontSize}" is not in px` : "is not provided"}. ` +
+        `Column width measurement may be inaccurate.`,
+    );
     return fontSize;
   }
 
@@ -24,6 +35,10 @@ export function resolveFontSizeToPx(
   const baseValue = parseFloat(baseFontSize);
 
   if (isNaN(emValue) || isNaN(baseValue)) {
+    console.warn(
+      `resolveFontSizeToPx: cannot parse "${fontSize}" or "${baseFontSize}" as numbers. ` +
+        `Column width measurement may be inaccurate.`,
+    );
     return fontSize;
   }
 
