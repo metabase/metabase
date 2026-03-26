@@ -43,6 +43,13 @@ export function stringifyHashOptions(options: querystring.ParsedUrlQueryInput) {
   return querystring.stringify(options).replace(/=true\b/g, "");
 }
 
+export function isTouchDevice() {
+  return (
+    typeof window !== "undefined" &&
+    ("ontouchstart" in window || navigator.maxTouchPoints > 0)
+  );
+}
+
 export function isMac() {
   const { platform = "" } = navigator;
   return Boolean(platform.match(/^Mac/));
