@@ -54,8 +54,8 @@ export const setQueryBuilderMode =
     }
   };
 
-export const ON_EDIT_SUMMARY = "metabase/qb/ON_EDIT_SUMMARY";
-export const onEditSummary = createAction(ON_EDIT_SUMMARY);
+export const EDIT_SUMMARY = "metabase/qb/EDIT_SUMMARY";
+export const editSummary = createAction(EDIT_SUMMARY);
 
 export const ON_CLOSE_SUMMARY = "metabase/qb/ON_CLOSE_SUMMARY";
 export const onCloseSummary = createAction(ON_CLOSE_SUMMARY);

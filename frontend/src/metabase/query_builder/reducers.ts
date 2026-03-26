@@ -51,11 +51,11 @@ import {
   CLOSE_SIDEBARS,
   CLOSE_TIMELINES,
   DESELECT_TIMELINE_EVENTS,
+  EDIT_SUMMARY,
   HIDE_TIMELINE_EVENTS,
   INITIALIZE_QB,
   LOAD_OBJECT_DETAIL_FK_REFERENCES,
   ON_CLOSE_SUMMARY,
-  ON_EDIT_SUMMARY,
   OPEN_AI_QUESTION_ANALYSIS_SIDEBAR,
   OPEN_CHART_SETTINGS,
   OPEN_CHART_TYPE,
@@ -253,7 +253,7 @@ export const uiControls = createReducer<QueryBuilderUIControls>(
         ...state,
         isModifiedFromNotebook: false,
       }))
-      .addCase(ON_EDIT_SUMMARY, (state) => ({
+      .addCase(EDIT_SUMMARY, (state) => ({
         ...state,
         ...UI_CONTROLS_SIDEBAR_DEFAULTS,
         isShowingSummarySidebar: true,
