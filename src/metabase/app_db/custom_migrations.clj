@@ -2106,11 +2106,32 @@
        ["copper" "bronze" "silver" "gold"]
        [:case [:= :data_layer "hidden"] "copper" :else "bronze"]))))
 
+(defn- find-table-id
+  "Find a metabase_table by db-id, schema, and name using case-insensitive matching,
+   preferring an exact case match when one exists."
+  [db-id schema table-name]
+  (:id (first (t2/query {:select   [:id]
+                         :from     [:metabase_table]
+                         :where    [:and
+                                    [:= :db_id db-id]
+                                    (if (some? schema)
+                                      [:= [:lower :schema] [:lower schema]]
+                                      [:is :schema nil])
+                                    [:= [:lower :name] [:lower table-name]]]
+                         :order-by [[[:case
+                                      [:and
+                                       [:= :name table-name]
+                                       (if (some? schema)
+                                         [:= :schema schema]
+                                         [:is :schema nil])]
+                                      0
+                                      :else 1]
+                                     :asc]]
+                         :limit    1}))))
+
 (define-migration BackfillTransformTargetTables
   ;; For each transform that has a target (database, schema, name), ensure a metabase_table row exists.
   ;; If the table already exists (active or inactive), do nothing. Otherwise, insert a transform target row.
-  ;;
-  ;; Similarly, backfill workspace_output rows missing global_table_id or isolated_table_id.
   (let [;; Reproduces humanization/name->human-readable-name :simple (can't call library code in migrations)
         acronyms  #{"id" "url" "ip" "uid" "uuid" "guid"}
         cap-word  (fn [word]
@@ -2126,29 +2147,6 @@
                                                        :when (not (str/blank? part))]
                                                    (cap-word part)))]
                         (if (str/blank? result) s result))))
-        find-table-id-sensitive (fn [db-id schema table-name]
-                                  (:id (first (t2/query {:select [:id]
-                                                         :from   [:metabase_table]
-                                                         :where  [:and
-                                                                  [:= :db_id db-id]
-                                                                  (if (some? schema)
-                                                                    [:= :schema schema]
-                                                                    [:is :schema nil])
-                                                                  [:= :name table-name]]
-                                                         :limit  1}))))
-        find-table-id-insensitive (fn [db-id schema table-name]
-                                    (:id (first (t2/query {:select [:id]
-                                                           :from   [:metabase_table]
-                                                           :where  [:and
-                                                                    [:= :db_id db-id]
-                                                                    (if (some? schema)
-                                                                      [:= [:lower :schema] [:lower schema]]
-                                                                      [:is :schema nil])
-                                                                    [:= [:lower :name] [:lower table-name]]]
-                                                           :limit  1}))))
-        find-table-id (fn [db-id schema table-name]
-                        (or (find-table-id-sensitive db-id schema table-name)
-                            (find-table-id-insensitive db-id schema table-name)))
         upsert-table! (fn [db-id schema table-name]
                         (or (find-table-id db-id schema table-name)
                             (try
@@ -2167,7 +2165,7 @@
                               (find-table-id db-id schema table-name)
                               (catch Exception _
                                 (find-table-id db-id schema table-name)))))]
-    ;; 1. Backfill for transforms: create provisional tables for targets that don't exist
+    ;; Create provisional tables for transform targets that don't exist yet
     (run! (fn [{:keys [target target_db_id]}]
             (let [target-map (json-out target false)]
               (when-let [table-name (get target-map "name")]
@@ -2176,93 +2174,35 @@
                   (upsert-table! db-id schema table-name)))))
           (t2/reducible-query {:select [:target :target_db_id]
                                :from   [:transform]
-                               :where  [:not= :target_db_id nil]}))
-    ;; 2-5. Backfill workspace_output and workspace_output_external rows missing table FKs
-    (let [backfill-table-fk! (fn [from-table schema-col table-col fk-col]
-                               (run! (fn [{:keys [id db_id] :as row}]
-                                       (when-let [table-id (upsert-table! db_id (get row schema-col) (get row table-col))]
-                                         (t2/query {:update from-table
-                                                    :set    {fk-col table-id}
-                                                    :where  [:= :id id]})))
-                                     (t2/reducible-query {:select [:id :db_id schema-col table-col]
-                                                          :from   [from-table]
-                                                          :where  [:= fk-col nil]})))]
-      (backfill-table-fk! :workspace_output :global_schema :global_table :global_table_id)
-      (backfill-table-fk! :workspace_output :isolated_schema :isolated_table :isolated_table_id)
-      (backfill-table-fk! :workspace_output_external :global_schema :global_table :global_table_id)
-      (backfill-table-fk! :workspace_output_external :isolated_schema :isolated_table :isolated_table_id))
-    ;; 6-7. Backfill workspace_input and workspace_input_external rows missing table_id
-    (doseq [from-table [:workspace_input :workspace_input_external]]
-      (run! (fn [{:keys [id db_id schema table]}]
-              (when-let [table-id (find-table-id db_id schema table)]
-                (t2/query {:update from-table
-                           :set    {:table_id table-id}
-                           :where  [:= :id id]})))
-            (t2/reducible-query {:select [:id :db_id :schema :table]
-                                 :from   [from-table]
-                                 :where  [:= :table_id nil]})))))
+                               :where  [:not= :target_db_id nil]})))
+  ;; Invalidate workspace caches so the app re-analyzes and backfills workspace_ table FKs lazily
+  (t2/query {:update :workspace_transform
+             :set    {:analysis_version [:+ :analysis_version 1]
+                      :definition_changed true}})
+  (t2/query {:update :workspace
+             :set    {:graph_version [:+ :graph_version 1]}}))
 
 (define-migration BackfillTransformTargetTableId
   ;; For each transform with a non-null target_db_id, extract the table_id from the target JSON column.
   ;; If table_id is present in the JSON, use it directly.
   ;; If table_id is missing but name is present, look up the table by (db_id, schema, name).
-  ;;
-  ;; Phase 1: Try case-sensitive match (fast, uses indexes).
-  ;; Phase 2: Fall back to case-insensitive match for any remaining.
-  (let [find-table-id-sensitive (fn [db-id schema table-name]
-                                  (:id (first (t2/query {:select [:id]
-                                                         :from   [:metabase_table]
-                                                         :where  [:and
-                                                                  [:= :db_id db-id]
-                                                                  (if (some? schema)
-                                                                    [:= :schema schema]
-                                                                    [:is :schema nil])
-                                                                  [:= :name table-name]]
-                                                         :limit  1}))))
-        find-table-id-insensitive (fn [db-id schema table-name]
-                                    (:id (first (t2/query {:select   [:id]
-                                                           :from     [:metabase_table]
-                                                           :where    [:and
-                                                                      [:= :db_id db-id]
-                                                                      (if (some? schema)
-                                                                        [:= [:lower :schema] [:lower schema]]
-                                                                        [:is :schema nil])
-                                                                      [:= [:lower :name] [:lower table-name]]]
-                                                           :limit    1}))))
-        unresolved   (volatile! (transient []))
-        backfill-one (fn [{:keys [id target target_db_id]}]
-                       (let [target-map (json-out target false)
-                             table-id   (or (get target-map "table_id")
-                                            (when-let [table-name (get target-map "name")]
-                                              (find-table-id-sensitive target_db_id (get target-map "schema") table-name)))]
-                         (if table-id
-                           (t2/query {:update :transform
-                                      :set    {:target_table_id table-id}
-                                      :where  [:= :id id]})
-                           ;; Remember transforms that need case-insensitive fallback
-                           (vswap! unresolved conj! id))))
-        select-transforms {:select [:id :target :target_db_id]
-                           :from   [:transform]
-                           :where  [:and
-                                    [:not= :target_db_id nil]
-                                    [:= :target_table_id nil]]}]
-    ;; Phase 1: stream transforms, resolve with case-sensitive lookup
-    (run! backfill-one (t2/reducible-query select-transforms))
-    ;; Phase 2: case-insensitive fallback for unresolved transforms
-    (let [remaining-ids (persistent! @unresolved)]
-      (when (seq remaining-ids)
-        (run! (fn [{:keys [id target target_db_id]}]
-                (let [target-map (json-out target false)]
-                  (when-let [table-name (get target-map "name")]
-                    (when-let [table-id (find-table-id-insensitive target_db_id (get target-map "schema") table-name)]
-                      (t2/query {:update :transform
-                                 :set    {:target_table_id table-id}
-                                 :where  [:= :id id]})))))
-              (t2/reducible-query {:select [:id :target :target_db_id]
-                                   :from   [:transform]
-                                   :where  [:and
-                                            [:in :id remaining-ids]
-                                            [:= :target_table_id nil]]})))))
-  ;; Invalidate workspace graph caches so they recalculate with target_table_id
+  (run! (fn [{:keys [id target target_db_id]}]
+          (let [target-map (json-out target false)
+                table-id   (or (get target-map "table_id")
+                               (when-let [table-name (get target-map "name")]
+                                 (find-table-id target_db_id (get target-map "schema") table-name)))]
+            (when table-id
+              (t2/query {:update :transform
+                         :set    {:target_table_id table-id}
+                         :where  [:= :id id]}))))
+        (t2/reducible-query {:select [:id :target :target_db_id]
+                             :from   [:transform]
+                             :where  [:and
+                                      [:not= :target_db_id nil]
+                                      [:= :target_table_id nil]]}))
+  ;; Invalidate workspace caches so they recalculate with target_table_id
+  (t2/query {:update :workspace_transform
+             :set    {:analysis_version [:+ :analysis_version 1]
+                      :definition_changed true}})
   (t2/query {:update :workspace
              :set    {:graph_version [:+ :graph_version 1]}}))
