@@ -26,6 +26,7 @@
                          {:channel (name channel)}
                          (- before-count (count messages))))
     (when (seq messages)
+      (swap! @(requiring-resolve 'metabase.mq.impl/last-activity*) assoc channel (System/nanoTime))
       (publish-buffer/buffered-publish! channel messages)
       (mq.analytics/inc! :metabase-mq/messages-published
                          {:transport (namespace channel) :channel (name channel)}

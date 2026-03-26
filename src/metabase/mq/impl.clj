@@ -21,6 +21,15 @@
   "Shared thread pool for processing messages off backend poll threads."
   (atom nil))
 
+(def ^:private last-activity*
+  "channel keyword → nanoTime of last publish or handler completion."
+  (atom {}))
+
+(defn last-activity
+  "Returns the nanoTime of the last publish or handler completion for the given channel, or nil."
+  [channel]
+  (get @last-activity* channel))
+
 (defn channel-busy?
   "Returns true if the given channel has an active handler running."
   [channel]
@@ -70,6 +79,7 @@
    processed messages may be re-delivered. Queue listeners MUST be idempotent.
    The :dedup-fn option on listeners helps mitigate duplicate processing on retry."
   [channel message-bundles messages]
+  (swap! last-activity* assoc channel (System/nanoTime))
   (mq.analytics/inc! :metabase-mq/messages-received
                      {:transport (namespace channel) :channel (name channel)}
                      (count messages))

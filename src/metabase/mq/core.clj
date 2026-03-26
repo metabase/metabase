@@ -77,6 +77,7 @@
   put]
 
  [mq.impl
+  last-activity
   shutdown!]
 
  [q.impl

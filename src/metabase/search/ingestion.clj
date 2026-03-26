@@ -297,3 +297,28 @@
     (let [serialized (mapv (fn [[model where]] [model (pr-str where)]) updates)]
       (mq/with-queue :queue/search-reindex [q]
         (mq/put q serialized)))))
+
+(defn wait-for-idle!
+  "Block until the search reindex queue has settled — no publishes or handler completions
+  for `settle-ms` (default 500ms). Gives up after `timeout-ms` (default 30s).
+  Uses an in-memory activity timestamp rather than polling the database."
+  [& {:keys [settle-ms timeout-ms poll-ms]
+      :or   {settle-ms 500, timeout-ms 30000, poll-ms 50}}]
+  (let [deadline-ms (+ (System/currentTimeMillis) timeout-ms)
+        channel     :queue/search-reindex]
+    (loop []
+      (let [now-ms  (System/currentTimeMillis)
+            last-ns (mq/last-activity channel)
+            idle-ms (if last-ns
+                      (/ (double (- (System/nanoTime) last-ns)) 1e6)
+                      (double settle-ms))]
+        (cond
+          (>= now-ms deadline-ms)
+          (log/warn "wait-for-idle! timed out waiting for search reindex queue to settle")
+
+          (>= idle-ms settle-ms)
+          nil ;; settled
+
+          :else
+          (do (Thread/sleep (long poll-ms))
+              (recur)))))))
