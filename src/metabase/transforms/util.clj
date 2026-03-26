@@ -42,7 +42,7 @@
 
 (set! *warn-on-reflection* true)
 
-(declare get-source-range-params save-run-checkpoint-range!)
+(declare get-source-range-params save-run-checkpoint-range! save-watermark!)
 
 (defn qualified-table-name
   "Return the name of the target table of a transform as a possibly qualified symbol."
@@ -195,6 +195,7 @@
             ret (binding [qp.pipeline/*canceled-chan* cancel-chan]
                   (canceling/chan-start-run! run-id cancel-chan)
                   (run-transform! cancel-chan source-range-params))]
+        (save-watermark! (:id transform) source-range-params)
         (transform-run/succeed-started-run! run-id)
         (assoc ret :source-range-params source-range-params)))
     (catch Throwable t
@@ -683,19 +684,14 @@
 (mu/defn handle-transform-complete!
   "Handles followup tasks for when a transform has completed.
 
-  Specifically, this syncs the target db, publishes a `:event/transform-run-complete` event,
-  and saves the watermark for incremental transforms."
-  [& {:keys [run-id transform source-range-params db]}
+  Specifically, this syncs the target db and publishes a `:event/transform-run-complete` event."
+  [& {:keys [run-id transform db]}
    :- [:map
        [:run-id ::transforms.schema/run-id]
        [:transform ::transforms.schema/transform]
-       [:source-range-params {:optional true} [:maybe ::transforms.schema/source-range-params]]
        [:db [:fn {:error/message "Must a t2 database object"} #(= (t2/model %) :model/Database)]]]]
   (let [target (:target transform)]
     (transforms.instrumentation/with-stage-timing [run-id [:import :table-sync]]
-      ;; Save watermark if source-range-params available
-      (when source-range-params
-        (save-watermark! (:id transform) source-range-params))
       (when-let [table (sync-target! target db)]
         (t2/update! :model/Table (:id table) {:transform_id (:id transform)}))
       ;; This event must be published only after the sync is complete - the new table needs to be in AppDB.
