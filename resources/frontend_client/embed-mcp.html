@@ -6,9 +6,17 @@
     <title>Metabase</title>
 
     <style>
+      :root {
+        /* Allow light-dark() to work */
+        color-scheme: light dark;
+      }
+
       body {
         margin: 0;
         height: 500px;
+        background: var(--color-background-primary);
+        color: var(--color-text-primary);
+        font-family: var(--font-sans);
       }
     </style>
 
