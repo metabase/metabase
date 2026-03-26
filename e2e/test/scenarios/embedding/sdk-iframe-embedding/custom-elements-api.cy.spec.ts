@@ -302,6 +302,8 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
         <metabase-question question-id="${questionId}" drills />
         `);
 
+        cy.wait("@getCardQuery");
+
         // Wait for the table to finish rendering before interacting,
         // as column auto-sizing can cause re-renders that detach elements.
         H.getSimpleEmbedIframeContent()
@@ -312,7 +314,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
           .findAllByText("37.65")
           .first()
           .should("be.visible")
-          .click();
+          .click({ force: true });
         H.getSimpleEmbedIframeContent()
           .findByText(/Filter by this value/)
           .should("be.visible");
