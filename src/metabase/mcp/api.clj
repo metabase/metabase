@@ -73,16 +73,6 @@
     (cleanup-embedding-sessions! session))
   (swap! sessions dissoc session-id))
 
-(defn- session-for-user
-  "Return session state when the session exists, is unexpired, and belongs to
-   `user-id`; otherwise return nil."
-  [session-id user-id]
-  (when-let [session (get @sessions session-id)]
-    (if (>= (u/since-ms (:timer session)) session-ttl-ms)
-      (do (delete-session! session-id) nil)
-      (when (= user-id (:user-id session))
-        session))))
-
 (defn- session-initialized? [session-id]
   (get-in @sessions [session-id :initialized?]))
 
@@ -270,9 +260,6 @@
 
       ;; All other requests require a valid session (400 for missing header, 404 for invalid)
       (some? @session-err) @session-err
-
-      (nil? (session-for-user session-id user-id))
-      (json-response 404 (jsonrpc-error nil -32600 "Session not found"))
 
       :else
       (let [messages  (if batch? body [body])
