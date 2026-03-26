@@ -19,8 +19,7 @@ import {
 const IMAGE_SIZE_LIMIT = 1024 * 1024; // 1MB limit
 
 export function MetabotIconField() {
-  const { value: metabotIcon, updateSetting: updateIcon } =
-    useAdminSetting("metabot-icon");
+  const { value: metabotIcon, updateSetting } = useAdminSetting("metabot-icon");
   const {
     value: showIllustrations,
     updateSetting: updateShowIllustrations,
@@ -59,7 +58,11 @@ export function MetabotIconField() {
       }
       setIconError("");
       setIconFileName(file.name);
-      await updateIcon({ key: "metabot-icon", value: dataUri });
+      await updateSetting({
+        key: "metabot-icon",
+        value: dataUri,
+        toast: false,
+      });
     };
     reader.readAsDataURL(file);
   }
@@ -70,7 +73,7 @@ export function MetabotIconField() {
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
-    await updateIcon({ key: "metabot-icon", value: null });
+    await updateSetting({ key: "metabot-icon", value: null, toast: false });
   }
 
   return (

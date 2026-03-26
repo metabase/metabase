@@ -13,18 +13,6 @@ import {
   type MetabotModelSize,
 } from "metabase-types/api";
 
-export const getModelOptions = (): Array<{
-  value: MetabotModelSize;
-  label: string;
-}> => {
-  return [
-    { value: "default", label: t`Default` },
-    { value: "small", label: t`Small` },
-    { value: "medium", label: t`Medium` },
-    { value: "large", label: t`Large` },
-  ];
-};
-
 export const getAIToolItems = (): Array<{ key: AIToolKey; label: string }> => {
   return [
     { key: AIToolKey.Metabot, label: t`Metabot` },

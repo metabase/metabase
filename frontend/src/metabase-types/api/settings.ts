@@ -506,7 +506,6 @@ interface AdminSettings {
   "store-url": string;
   gsheets: Partial<GdrivePayload>;
   "license-token-missing-banner-dismissal-timestamp"?: Array<string>;
-  "metabot-tone": string;
 }
 interface SettingsManagerSettings {
   "bcc-enabled?": boolean;
@@ -595,7 +594,9 @@ interface PublicSettings {
   "metabot-enabled?": boolean;
   "metabot-name": string;
   "metabot-icon": string | null;
+  "metabot-tone": string;
   "metabot-show-illustrations": boolean;
+  "metabot-system-prompt": string | null;
   "embedded-metabot-enabled?": boolean;
   "show-metabase-links": boolean;
   "show-metabot": boolean;

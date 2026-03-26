@@ -26,11 +26,11 @@ export function MetabotCustomizationPage() {
   const [toneInput, setToneInput] = useState<string>(metabotTone ?? "");
 
   const debouncedSaveName = useDebouncedCallback((value: string) => {
-    updateName({ key: "metabot-name", value });
+    updateName({ key: "metabot-name", value, toast: false });
   }, SAVE_DEBOUNCE_MS);
 
   const debouncedSaveTone = useDebouncedCallback((value: string) => {
-    updateTone({ key: "metabot-tone", value });
+    updateTone({ key: "metabot-tone", value, toast: false });
   }, SAVE_DEBOUNCE_MS);
 
   return (

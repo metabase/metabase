@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -14,10 +13,11 @@ import { Text, Textarea } from "metabase/ui";
 import { MetabotNavPane } from "../MetabotNavPane";
 
 import S from "./MetabotSystemPromptsPage.module.css";
+import { useSystemPromptInput } from "./hooks/useSystemPromptInput";
 
 export function MetabotSystemPromptsPage() {
   const applicationName = useSelector(getApplicationName);
-  const [promptText, setPromptText] = useState<string>("");
+  const { inputText, onInputChange } = useSystemPromptInput();
 
   return (
     <AdminSettingsLayout sidebar={<MetabotNavPane />}>
@@ -29,20 +29,10 @@ export function MetabotSystemPromptsPage() {
             </Text>
             <Textarea
               aria-label={t`System prompt`}
-              placeholder={
-                t`# Here’s a section` +
-                "\n" +
-                t`1. Do this` +
-                "\n" +
-                t`2. And this` +
-                "\n" +
-                t`3. And lastly, this`
-              }
-              value={promptText}
-              onChange={(e) => {
-                setPromptText(e.currentTarget.value);
-              }}
               className={S.textareaWrapper}
+              onChange={onInputChange}
+              placeholder={getPlaceholder()}
+              value={inputText}
             />
           </LoadingAndErrorWrapper>
         </SettingsSection>
@@ -50,3 +40,15 @@ export function MetabotSystemPromptsPage() {
     </AdminSettingsLayout>
   );
 }
+
+const getPlaceholder = () => {
+  return (
+    t`# Here’s a section` +
+    "\n" +
+    t`1. Do this` +
+    "\n" +
+    t`2. And this` +
+    "\n" +
+    t`3. And lastly, this`
+  );
+};
