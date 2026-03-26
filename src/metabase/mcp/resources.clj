@@ -2,6 +2,7 @@
   "MCP resource handlers. Provides the visualize-query HTML resource
    that renders interactive Metabase visualizations via the Embedding SDK."
   (:require
+   [metabase.config.core :as config]
    [metabase.session.models.session :as session]
    [metabase.system.core :as system]
    [metabase.util.json :as json]
@@ -49,7 +50,9 @@
      {:instanceUrl     (json/encode (site-url))
       :instanceUrlRaw  (site-url)
       :sessionToken    (when session-key (json/encode session-key))
-      :cacheBuster     (str (System/currentTimeMillis))})))
+      :cacheBuster     (if config/is-dev?
+                         (str (System/currentTimeMillis))
+                         config/mb-version-hash)})))
 
 (defn list-resources
   "Return the list of available MCP resources."

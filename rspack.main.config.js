@@ -106,13 +106,9 @@ const config = {
     "app-public": "./app-public.ts",
     "app-embed": "./app-embed.ts",
     "app-embed-sdk": "./app-embed-sdk.tsx",
-    // Per-entry filename override: no content hash so embed-mcp.html can reference it by a stable name.
-    // The script URL in embed-mcp.html must be absolute (Claude Desktop renders from a ui:// URI),
-    // so we can't use HtmlWebpackPlugin injection here.
-    // runtime: false embeds the webpack runtime directly into this chunk so it is a
-    // self-contained standalone script (no separate runtime.js / vendor.js needed).
-    // embed-mcp.html is served as a Mustache template without HtmlWebpackPlugin injection,
-    // so we cannot rely on the shared runtime chunk being loaded first.
+    // Stable filename (no hash) + runtime: false = self-contained bundle.
+    // embed-mcp.html is a Mustache template served by the backend; cache-busting
+    // is handled via ?v=<mb-version-hash> rather than HtmlWebpackPlugin injection.
     "app-embed-mcp": {
       import: "./app-embed-mcp.tsx",
       filename: "app-embed-mcp.js",
@@ -236,9 +232,6 @@ const config = {
   optimization: {
     runtimeChunk: "single",
     splitChunks: {
-      // Exclude app-embed-mcp: it is served from a Mustache template without HtmlWebpackPlugin,
-      // so it must be a self-contained standalone bundle with no external chunk dependencies.
-      chunks: (chunk) => chunk.name !== "app-embed-mcp",
       cacheGroups: {
         vendors: {
           test: /[\\/]node_modules[\\/](?!(sql-formatter|jspdf|html2canvas|html2canvas-pro)[\\/])/,
@@ -257,6 +250,9 @@ const config = {
           name: "html2canvas",
         },
       },
+
+      // MCP Apps are served from a Mustache template without HtmlWebpackPlugin.
+      chunks: (chunk) => chunk.name !== "app-embed-mcp",
     },
     minimizer: [new rspack.SwcJsMinimizerRspackPlugin()],
   },
@@ -264,8 +260,14 @@ const config = {
   plugins: [
     // Extracts initial CSS into a standard stylesheet that can be loaded in parallel with JavaScript
     new rspack.CssExtractRspackPlugin({
-      filename: isDevMode ? "[name].css" : "[name].[contenthash].css",
       chunkFilename: isDevMode ? "[id].css" : "[id].[contenthash].css",
+
+      // The MCP is served from a Mustache template so it can't reference content hash.
+      // It uses ?v=<mb-version-hash> for cache busting.
+      filename: (path) =>
+        path.chunk?.name === "app-embed-mcp" || isDevMode
+          ? "[name].css"
+          : "[name].[contenthash].css",
 
       // We use CSS modules to scope styles, so this is safe to ignore according to the docs:
       // https://webpack.js.org/plugins/mini-css-extract-plugin/#remove-order-warnings
