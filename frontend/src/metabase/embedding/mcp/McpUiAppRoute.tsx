@@ -17,6 +17,13 @@ import {
 
 const store = getSdkStore();
 
+// CSS for .mcp-loading and .mcp-spinner is defined globally in embed-mcp.html.
+const SimpleLoader = () => (
+  <div className="mcp-loading">
+    <span className="mcp-spinner" />
+  </div>
+);
+
 export function McpUiAppRoute() {
   const { query, hostContext } = useMcpApp();
 
@@ -74,6 +81,19 @@ export function McpUiAppRoute() {
 
   useInjectMcpAppsStyling(hostCssVariables, hostContext?.styles);
 
+  const isReady = !!(
+    instanceUrl &&
+    hostContext &&
+    isSettingsReady &&
+    deserializedCard
+  );
+
+  useEffect(() => {
+    if (isReady) {
+      document.getElementById("mcp-loading")?.remove();
+    }
+  }, [isReady]);
+
   const containerStyle: CSSProperties = {
     boxSizing: "border-box",
     backgroundColor: theme.colors?.background,
@@ -83,7 +103,7 @@ export function McpUiAppRoute() {
     padding: `${Math.max(safeAreaInsets.top, 0)}px ${Math.max(safeAreaInsets.right, 0)}px ${Math.max(safeAreaInsets.bottom, 0)}px ${Math.max(safeAreaInsets.left, 0)}px`,
   };
 
-  if (!instanceUrl || !hostContext || !isSettingsReady || !deserializedCard) {
+  if (!isReady) {
     return null;
   }
 
@@ -92,6 +112,7 @@ export function McpUiAppRoute() {
       authConfig={{ metabaseInstanceUrl: instanceUrl, sessionToken }}
       theme={theme}
       reduxStore={store}
+      loaderComponent={SimpleLoader}
     >
       <div style={containerStyle}>
         <SdkQuestion
@@ -99,7 +120,7 @@ export function McpUiAppRoute() {
           isSaveEnabled={false}
           // we should never show query builder in chat interfaces
           withEditorButton={false}
-          height="100%"
+          height="500px"
         />
       </div>
     </ComponentProvider>
