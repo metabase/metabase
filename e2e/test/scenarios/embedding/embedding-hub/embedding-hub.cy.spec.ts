@@ -982,20 +982,15 @@ describe("scenarios - embedding hub", () => {
                   graph.groups[ALL_EXTERNAL_USERS_GROUP_ID!][WRITABLE_DB_ID];
                 expect(permissions).to.exist;
 
-                const schemaName =
-                  permissions["view-data"].public != null ? "public" : "PUBLIC";
-
-                expect(permissions["view-data"][schemaName]).to.deep.equal({
+                expect(permissions["view-data"].public).to.deep.equal({
                   [ordersTableId]: "sandboxed",
                   [peopleTableId]: "sandboxed",
                 });
 
-                expect(permissions["create-queries"][schemaName]).to.deep.equal(
-                  {
-                    [ordersTableId]: "query-builder",
-                    [peopleTableId]: "query-builder",
-                  },
-                );
+                expect(permissions["create-queries"].public).to.deep.equal({
+                  [ordersTableId]: "query-builder",
+                  [peopleTableId]: "query-builder",
+                });
               });
             },
           );
