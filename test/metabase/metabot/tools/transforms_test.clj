@@ -31,7 +31,7 @@
                    (agent-transforms/write-transform-python-tool
                     {:edit_action {:mode "replace" :new_content "import common\ndef transform(t): return t"}
                      :transform_name "Python Transform"
-                     :source_database 3
+                     :database_id 3
                      :source_tables [{:alias "t" :table_id 10 :schema "PUBLIC" :database_id 3}]}))]
       (is (= "import common\ndef transform(t): return t"
              (get-in result [:structured-output :transform :source :body])))
@@ -58,7 +58,7 @@
                     {:transform_id nil
                      :edit_action {:mode "replace" :new_content "import common\ndef transform(): pass"}
                      :transform_name "Fresh Python"
-                     :source_database 1
+                     :database_id 1
                      :source_tables [{:alias "t" :table_id 1 :schema "PUBLIC" :database_id 1}]}))]
       (is (nil? (get-in result [:structured-output :transform :id])))
       (is (empty? (get-in @memory-atom [:state :transforms])))

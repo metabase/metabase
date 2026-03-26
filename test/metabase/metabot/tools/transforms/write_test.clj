@@ -1,6 +1,7 @@
 (ns metabase.metabot.tools.transforms.write-test
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
    [metabase.metabot.tools.transforms.write :as transforms-write]))
 
 ;;; Edit Application Tests
@@ -104,7 +105,8 @@
                    :memory-atom memory-atom})]
       (is (= "New Transform" (get-in result [:structured-output :transform :name])))
       (is (= "A test transform" (get-in result [:structured-output :transform :description])))
-      (is (= "SELECT 1" (get-in result [:structured-output :transform :source :query]))))))
+      (is (= "SELECT 1" (some-> (get-in result [:structured-output :transform :source :query])
+                                lib/raw-native-query))))))
 
 ;;; Data Parts Tests
 

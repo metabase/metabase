@@ -30,7 +30,7 @@
   (tools.transforms/add-output (transforms-write-tools/get-transform-python-library-details {:path path})
                                format-python-library-output))
 
-(defenterprise-schema write-transform-python-tool
+(defenterprise-schema write-transform-python-tool :- :map
   "Write new Python code or edit existing code for transforms.
 
   Supports two modes:

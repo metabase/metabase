@@ -3,6 +3,8 @@
   Supports both partial edits (targeted string replacements) and full replacement modes."
   (:require
    [clojure.string :as str]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.util.log :as log]))
 
@@ -66,11 +68,9 @@ def transform():
 (defn- source-for-transform-type
   [source-type source-database source-tables]
   (case source-type
-    :sql {:type "query"
-          ;; TODO (lbrdnk 2026-03-20): Figure out if this is ready to work with mbql5 and use that.
-          :query {:type :native
-                  :native {:query fresh-sql-template}
-                  :database source-database}}
+    :sql (let [mp (lib-be/application-database-metadata-provider source-database)]
+           {:type "query"
+            :query (lib/native-query mp fresh-sql-template)})
     :python {:type "python"
              :body fresh-python-template
              :source-database source-database
@@ -137,7 +137,11 @@ def transform():
                             {:agent-error? true
                              :transform-id transform_id})))
 
-        current-sql (get-in current-transform [:source :query :native :query] "")
+        current-sql (some-> (get-in current-transform [:source :query])
+                            lib/raw-native-query)
+        _ (when-not (string? (not-empty current-sql))
+            (throw (ex-info "Failed to extract query string."
+                            {:transform current-transform})))
 
         ;; Apply edits based on mode
         new-sql (case (:mode edit_action)
@@ -152,11 +156,9 @@ def transform():
 
         ;; Build suggested transform
         suggested-transform (cond-> current-transform
-                              true (assoc-in [:source :query :native :query] new-sql)
+                              true (update-in [:source :query] lib/with-native-query new-sql)
                               transform_name (assoc :name transform_name)
                               transform_description (assoc :description transform_description)
-                              ;; TODO (lbrdnk 2026-03-20): Following should be done through the lib when module
-                              ;;                           is converted to mbql5.
                               source_database (assoc-in [:source :database] source_database))]
 
     ;; Store in memory if we have an ID
