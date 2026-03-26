@@ -577,7 +577,13 @@
   For metrics, supports: filters, group_by (aggregation is defined by the metric)."
   {:scope "agent:query:construct"
    :tool  {:name "construct_query"
-           :description "Construct a query against a Metabase table or metric. Returns an opaque query string that can be executed with execute_query.\n\nFor table queries: provide table_id. Supports filters, fields, aggregations, group_by, order_by, and limit.\nFor metric queries: provide metric_id. Supports only filters and group_by (aggregation is defined by the metric).\n\nProvide either table_id or metric_id, not both."
+           :description (str "Construct a query against a Metabase table or metric. "
+                             "Returns an opaque query string that can be executed with execute_query.\n\n"
+                             "For table queries: provide table_id. "
+                             "Supports filters, fields, aggregations, group_by, order_by, and limit.\n\n"
+                             "For metric queries: provide metric_id. "
+                             "Supports only filters and group_by (aggregation is defined by the metric).\n\n"
+                             "Provide either table_id or metric_id, not both.")
            :annotations {:read-only? true :idempotent? true}}}
   [_route-params
    _query-params
@@ -643,7 +649,13 @@
    :tool  {:name "query"
            :description (str "Query a Metabase table or metric. Returns results with column metadata. "
                              "If more rows are available, the response includes a continuation_token — "
-                             "pass it back to get the next page.")}}
+                             "pass it back to get the next page.\n\n"
+                             "For table queries: provide table_id. "
+                             "Supports filters, fields, aggregations, group_by, order_by, and limit.\n\n"
+                             "For metric queries: provide metric_id. "
+                             "Supports only filters and group_by (aggregation is defined by the metric).\n\n"
+                             "For pagination: provide only continuation_token from a previous response.\n\n"
+                             "Provide exactly one of table_id, metric_id, or continuation_token.")}}
   [_route-params
    _query-params
    body :- ::query-request]

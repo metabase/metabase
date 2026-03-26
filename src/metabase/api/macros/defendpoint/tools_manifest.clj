@@ -10,32 +10,64 @@
   - `responseSchema` — from the endpoint's response schema
   - `annotations` — MCP ToolAnnotations (readOnlyHint, destructiveHint, etc.)"
   (:require
-   [clojure.set :as set]
    [clojure.string :as str]
    [malli.core :as mc]
    [malli.json-schema :as mjs]
+   [malli.util :as mut]
    [metabase.api.macros :as api.macros]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
+(defn- merge-with-optional-keys
+  "Build a `:merge` schema from `schemas`, making all map entries optional.
+   Non-map children (e.g. `:enum`, `:string`) are left as-is since `mut/optional-keys`
+   only works on map-like schemas (`:map`, `:merge`, etc.)."
+  [props schemas options]
+  (mc/into-schema :merge props
+                  (mapv (fn [child]
+                          (if (mc/-entry-schema? (mc/deref-all child))
+                            (mut/optional-keys child)
+                            child))
+                        schemas)
+                  options))
+
 (defn- inline-malli-refs
-  "Walk a malli schema, replacing all registered-schema refs with their dereferenced content.
-   This ensures `mjs/transform` never sees refs and thus never generates `$ref` or `$defs`.
-   Malli's `::mc/walked-refs` tracking prevents infinite recursion on cyclic schemas —
-   when a cycle is detected, the walker receives the raw ref name (a string) instead of a
-   walked schema, and we fall back to `:any`."
+  "Walk a malli schema, replacing all registered-schema refs with their dereferenced content
+   and simplifying composite schemas into `:merge` for LLM-compatible JSON Schema output.
+
+   Transformations:
+   - Registered-schema refs → dereferenced content (no `$ref`/`$defs` in JSON Schema)
+   - `:and`   → `:merge` (eliminates `allOf` — merges the `[:map {:encode/...}]` pattern)
+   - `:or`    → `:merge` with all entries optional (eliminates `anyOf` — union of all branches)
+   - `:multi` → `:merge` with all entries optional (eliminates conditional dispatch)
+   - Cyclic refs → `:any` (fallback for recursive schemas)
+
+   Malli's `::mc/walked-refs` tracking prevents infinite recursion on cyclic schemas."
   [schema]
   (mc/walk
    schema
    (fn [node _path children _options]
-     (if (mc/-ref-schema? node)
+     (cond
+       (mc/-ref-schema? node)
        (let [child (first children)]
          (if (mc/schema? child)
            child
-           ;; cycle detected — malli passed back the raw ref name string
            (mc/schema :any)))
+
+       (= :and (mc/type node))
+       (mc/into-schema :merge (mc/properties node) children (mc/options node))
+
+       (= :or (mc/type node))
+       (merge-with-optional-keys (mc/properties node) children (mc/options node))
+
+       (= :multi (mc/type node))
+       (merge-with-optional-keys (dissoc (mc/properties node) :dispatch)
+                                 (mapv (fn [[_k _props schema]] schema) children)
+                                 (mc/options node))
+
+       :else
        (mc/into-schema (mc/type node) (mc/properties node) children (mc/options node))))
    {::mc/walk-refs true ::mc/walk-schema-refs true}))
 
@@ -166,24 +198,6 @@
       task-support      (assoc :execution {:taskSupport (name task-support)})
       (string? scope)   (assoc :scope scope))))
 
-(defn- flatten-any-of
-  "If `schema` has a root-level `:anyOf`, merge all object branches into a single
-   `{:type \"object\", :properties <union>}`. Only properties present in ALL branches'
-   `:required` sets are kept required. Non-anyOf schemas pass through unchanged."
-  [schema]
-  (if-let [branches (:anyOf schema)]
-    (let [all-props     (apply merge (map :properties branches))
-          required-sets (keep #(some-> (:required %) set) branches)
-          common-req    (when (seq required-sets)
-                          (apply set/intersection required-sets))
-          ;; preserve top-level keys like :description that aren't part of anyOf
-          base          (dissoc schema :anyOf)]
-      (merge base
-             {:type "object" :properties all-props}
-             (when (seq common-req)
-               {:required (vec (sort common-req))})))
-    schema))
-
 (defn check-tool-uniqueness
   "Throws if `tools` contains duplicate `:name` values. The exception message lists each
   conflicting name and the endpoints that share it."
@@ -214,12 +228,7 @@
                               (for [[_k endpoint] (api.macros/ns-routes ns-sym)
                                     :when (get-in endpoint [:form :metadata :tool])]
                                 (endpoint->tool-definition prefix endpoint))))
-                    namespace-prefixes)
-        tools (mapv (fn [tool]
-                      (cond-> tool
-                        (:inputSchema tool)
-                        (update :inputSchema flatten-any-of)))
-                    tools)]
+                    namespace-prefixes)]
     (check-tool-uniqueness tools)
     {:$schema "https://json-schema.org/draft/2020-12/schema"
      :version "1.0.0"

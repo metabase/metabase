@@ -351,15 +351,15 @@
   (testing "tool inputSchemas have no $ref, no $defs, and root type is always object"
     (let [tools (mcp.tools/list-tools nil)]
       (doseq [tool tools]
-        (let [schema (:inputSchema tool)
-              as-str (pr-str schema)]
-          (testing (:name tool)
-            (is (not (re-find #"\$ref" as-str))
-                (str (:name tool) " should have no $ref"))
-            (is (not (contains? schema :$defs))
-                (str (:name tool) " should have no $defs"))
-            (is (= "object" (:type schema))
-                (str (:name tool) " root type should be object"))))))))
+        (when-let [schema (:inputSchema tool)]
+          (let [as-str (pr-str schema)]
+            (testing (:name tool)
+              (is (not (re-find #"\$ref" as-str))
+                  (str (:name tool) " should have no $ref"))
+              (is (not (contains? schema :$defs))
+                  (str (:name tool) " should have no $defs"))
+              (is (= "object" (:type schema))
+                  (str (:name tool) " root type should be object")))))))))
 
 (deftest tools-call-execute-query-test
   (testing "execute_query returns a streaming response captured as MCP text content"

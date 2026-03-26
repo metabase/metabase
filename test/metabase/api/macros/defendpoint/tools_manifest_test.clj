@@ -58,32 +58,28 @@
              (get-in jss [:properties :item :properties :nested])))
       (is (not (re-find #"\$ref" (pr-str jss)))))))
 
-(deftest ^:parallel flatten-any-of-test
-  (testing "merges anyOf object branches into single object"
-    (let [schema {:anyOf [{:type "object"
-                           :properties {:a {:type "string"} :b {:type "integer"}}
-                           :required [:a]}
-                          {:type "object"
-                           :properties {:a {:type "string"} :c {:type "boolean"}}
-                           :required [:a :c]}]}
-          result (#'tools-manifest/flatten-any-of schema)]
-      (is (= "object" (:type result)))
-      (is (= {:a {:type "string"} :b {:type "integer"} :c {:type "boolean"}}
-             (:properties result)))
-      (is (= [:a] (:required result))
-          "only properties required in ALL branches are kept required")))
-  (testing "non-anyOf schema passes through unchanged"
-    (let [schema {:type "object" :properties {:x {:type "string"}}}]
-      (is (= schema (#'tools-manifest/flatten-any-of schema)))))
-  (testing "no common required produces no :required key"
-    (let [schema {:anyOf [{:type "object"
-                           :properties {:a {:type "string"}}
-                           :required [:a]}
-                          {:type "object"
-                           :properties {:b {:type "string"}}
-                           :required [:b]}]}
-          result (#'tools-manifest/flatten-any-of schema)]
-      (is (nil? (:required result))))))
+(deftest ^:parallel and-or-flattening-test
+  (testing ":and produces flat object (no allOf)"
+    (let [jss (tools-manifest/malli->json-schema
+               [:and [:map [:a :int]] [:map [:b :string]]])]
+      (is (= "object" (:type jss)))
+      (is (= #{:a :b} (set (keys (:properties jss)))))
+      (is (not (contains? jss :allOf)))))
+  (testing ":or produces flat object with no required (no anyOf)"
+    (let [jss (tools-manifest/malli->json-schema
+               [:or [:map [:a :int]] [:map [:b :string]]])]
+      (is (= "object" (:type jss)))
+      (is (= #{:a :b} (set (keys (:properties jss)))))
+      (is (not (contains? jss :anyOf)))
+      (is (nil? (:required jss))
+          "all entries should be optional after :or → :merge")))
+  (testing ":and with encode map pattern produces flat object"
+    (let [jss (tools-manifest/malli->json-schema
+               [:and [:map [:x :int] [:y {:optional true} :string]]
+                [:map {:encode/foo identity}]])]
+      (is (= "object" (:type jss)))
+      (is (= #{:x :y} (set (keys (:properties jss)))))
+      (is (= [:x] (:required jss))))))
 
 (deftest ^:parallel endpoint->tool-definition-test
   (testing "Basic endpoint conversion"
@@ -230,9 +226,10 @@
         "manifest should not have top-level $defs")))
 
 (deftest ^:parallel refs-are-inlined-in-manifest-test
-  (testing "malli->json-schema with :or produces anyOf but no $ref"
+  (testing "malli->json-schema with :or produces flat object, no $ref or anyOf"
     (let [jss (tools-manifest/malli->json-schema [:or ::ref-target-a ::ref-target-b])]
-      (is (contains? jss :anyOf))
+      (is (= "object" (:type jss)))
+      (is (not (contains? jss :anyOf)))
       (is (not (re-find #"\$ref" (pr-str jss))))))
   (testing "generate-tools-manifest output has no $ref or $defs anywhere"
     (let [manifest (test-manifest)
