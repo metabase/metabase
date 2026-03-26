@@ -19,19 +19,13 @@ export function getUpdateButtonProps(
   unsavedValue: unknown,
   defaultValue?: unknown,
   required?: boolean,
-  positional?: boolean,
 ): { label: string; isDisabled: boolean } {
   const isDefaultValue = areParameterValuesIdentical(
     unsavedValue,
     defaultValue,
-    positional,
   );
   const isEmpty = !hasValue(unsavedValue);
-  const isUnchanged = areParameterValuesIdentical(
-    value,
-    unsavedValue,
-    positional,
-  );
+  const isUnchanged = areParameterValuesIdentical(value, unsavedValue);
 
   if (required) {
     if (isDefaultValue || isEmpty) {
