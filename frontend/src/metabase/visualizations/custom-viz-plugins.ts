@@ -3,13 +3,18 @@ import * as jsxRuntime from "react/jsx-runtime";
 import { t } from "ttag";
 
 import { useListCustomVizPluginsQuery } from "metabase/api";
-import { useToast } from "metabase/common/hooks";
-import type { IconName } from "metabase/ui";
+import { useSetting, useToast } from "metabase/common/hooks";
+import {
+  measureText,
+  measureTextHeight,
+  measureTextWidth,
+} from "metabase/lib/measure-text";
 import type {
   CustomVizPluginRuntime,
   VisualizationDisplay,
 } from "metabase-types/api";
 
+import { buildCustomVizProps } from "./custom-viz-props";
 import type { Visualization } from "./types/visualization";
 
 import visualizations, { registerVisualization } from ".";
@@ -151,7 +156,8 @@ function useCustomVizDevReload(
 export function useAutoLoadCustomVizPlugin(display: string | undefined): {
   loading: boolean;
 } {
-  const plugins = useCustomVizPlugins();
+  const customVizEnabled = useSetting("custom-viz-enabled");
+  const plugins = useCustomVizPlugins({ enabled: customVizEnabled });
   const [sendToast] = useToast();
   const [loading, setLoading] = useState(false);
   const loadingRef = useRef<string | null>(null);
@@ -287,7 +293,13 @@ export async function loadCustomVizPlugin(
     const cacheBust = cacheBustSuffix ? `&t=${Date.now()}` : "";
     const getAssetUrl = (path: string) =>
       `${getPluginAssetUrl(plugin.id, path) ?? ""}${cacheBust}`;
-    const vizDef = factory({ getAssetUrl });
+    const props = buildCustomVizProps({
+      measureText,
+      measureTextWidth,
+      measureTextHeight,
+      getAssetUrl,
+    });
+    const vizDef = factory(props);
     if (!vizDef || !vizDef.VisualizationComponent) {
       throw new Error(
         "Factory must return an object with a VisualizationComponent property",

@@ -8,7 +8,11 @@ type Settings = {
   threshold?: number;
 };
 
-const createVisualization: CreateCustomVisualization<Settings> = ({ getAssetUrl }) => {
+const createVisualization: CreateCustomVisualization<Settings> = ({
+  getAssetUrl,
+  columnTypes,
+  formatValue,
+}) => {
   return {
     id: "__CUSTOM_VIZ_NAME__",
     getName: () => "__CUSTOM_VIZ_NAME__",

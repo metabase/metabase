@@ -432,7 +432,7 @@
                                                                            :title  (tool-friendly-names tool-name "Thinking")
                                                                            :status status}])
                                           (when (= status "complete")
-                                            (slackbot.client/append-markdown-text client channel stream_ts "\n"))
+                                            (swap! pending-text #(str "\n\n" %)))
                                           nil))))
 
         on-tool-start (fn [{:keys [id tool-name]}]

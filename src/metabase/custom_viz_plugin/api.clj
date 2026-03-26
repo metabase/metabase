@@ -9,6 +9,8 @@
    [metabase.custom-viz-plugin.git :as git]
    [metabase.custom-viz-plugin.manifest :as manifest]
    [metabase.custom-viz-plugin.models.custom-viz-plugin]
+   [metabase.custom-viz-plugin.settings :as custom-viz.settings]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -50,6 +52,12 @@
    [:manifest        {:optional true} [:maybe :any]]])
 
 ;;; ------------------------------------------------ Helpers ------------------------------------------------
+
+(defn- check-custom-viz-enabled
+  "Throw a 400 if custom visualizations are not enabled."
+  []
+  (api/check (custom-viz.settings/custom-viz-enabled?)
+    [400 (tru "Custom visualizations are not enabled. Set the MB_CUSTOM_VIZ_ENABLED environment variable to true.")]))
 
 ;; TODO: this should be guarded automatically through a custom mi/to-json defmethod
 (defn- strip-token
@@ -98,6 +106,7 @@
                                                        [:repo_url       ms/NonBlankString]
                                                        [:access_token   {:optional true} [:maybe :string]]
                                                        [:pinned_version {:optional true} [:maybe :string]]]]
+  (check-custom-viz-enabled)
   (api/check-superuser)
   (let [identifier (git/parse-repo-name repo_url)
         plugin     (first (t2/insert-returning-instances! :model/CustomVizPlugin
@@ -116,6 +125,7 @@
 (api.macros/defendpoint :get "/" :- [:sequential CustomVizPluginResponse]
   "List all registered custom visualization plugins."
   []
+  (check-custom-viz-enabled)
   (api/check-superuser)
   (map plugin->response (t2/select :model/CustomVizPlugin {:order-by [[:display_name :asc]]})))
 
@@ -123,6 +133,7 @@
   "List active and enabled custom visualization plugins. Available to any authenticated user.
    Plugins with incompatible Metabase version requirements are excluded."
   []
+  (check-custom-viz-enabled)
   (let [plugins (t2/select [:model/CustomVizPlugin
                             :id :identifier :display_name :icon :resolved_commit
                             :manifest :metabase_version]
@@ -136,6 +147,7 @@
 (api.macros/defendpoint :delete "/:id"
   "Remove a custom visualization plugin and evict its cached bundle."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (check-custom-viz-enabled)
   (api/check-superuser)
   (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))
   (cache/evict! id)
@@ -151,6 +163,7 @@
             [:enabled        {:optional true} [:maybe :boolean]]
             [:access_token   {:optional true} [:maybe :string]]
             [:pinned_version {:optional true} [:maybe :string]]]]
+  (check-custom-viz-enabled)
   (api/check-superuser)
   (let [existing    (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))
         updates    (select-keys body [:enabled :access_token :pinned_version])]
@@ -173,6 +186,7 @@
    _request
    respond
    raise]
+  (check-custom-viz-enabled)
   (try
     (let [plugin  (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))
           dev-url (get @dev-bundle-urls id)
@@ -221,6 +235,7 @@
    _request
    respond
    raise]
+  (check-custom-viz-enabled)
   (try
     (let [asset-path   (validate-asset-path path)
           content-type (image-content-type asset-path)]
@@ -248,6 +263,7 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    {:keys [dev_bundle_url]} :- [:map [:dev_bundle_url [:maybe :string]]]]
+  (check-custom-viz-enabled)
   (api/check-superuser)
   (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))
   (if (seq dev_bundle_url)
@@ -258,6 +274,7 @@
 (api.macros/defendpoint :post "/:id/refresh" :- CustomVizPluginResponse
   "Re-fetch the bundle from the git repository."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (check-custom-viz-enabled)
   (api/check-superuser)
   (let [plugin (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))]
     (cache/evict! id)

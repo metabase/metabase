@@ -1,7 +1,13 @@
 import type { ComponentType } from "react";
 
+import type { ColumnTypes } from "./column-types";
 import type { Column, DatasetData, RowValue, Series } from "./data";
-import type { TextHeightMeasurer, TextWidthMeasurer } from "./measure-text";
+import type { FormatValue } from "./format";
+import type {
+  TextHeightMeasurer,
+  TextMeasurer,
+  TextWidthMeasurer,
+} from "./measure-text";
 
 /**
  * Export this function to define a custom visualization.
@@ -23,12 +29,31 @@ export type CreateCustomVisualizationProps = {
    */
   getAssetUrl: (assetPath: string) => string;
 
-  // settings: CustomVisualizationSettings;
+  /**
+   * Column type predicates for checking semantic/base/effective types of columns.
+   */
+  columnTypes: ColumnTypes;
 
   /**
-   * TODO: add all the isa.js functions, ideally in a single object.
-   * https://linear.app/metabase/issue/GDGT-1923/convert-isajs-to-typescript
+   * Formats a value for display based on column type and options.
+   * Always returns a string (never JSX).
    */
+  formatValue: FormatValue;
+
+  /**
+   * Measures text dimensions (width and height) for given text and font style.
+   */
+  measureText: TextMeasurer;
+
+  /**
+   * Measures text width for given text and font style.
+   */
+  measureTextWidth: TextWidthMeasurer;
+
+  /**
+   * Measures text height for given text and font style.
+   */
+  measureTextHeight: TextHeightMeasurer;
 };
 
 declare const SettingDefinitionSymbol: unique symbol;
@@ -134,7 +159,7 @@ export type CustomVisualizationProps<CustomVisualizationSettings> = {
 
   settings: CustomVisualizationSettings;
 
-  onClick: (
+  onVisualizationClick: (
     clickObject: ClickObject<CustomVisualizationSettings> | null,
   ) => void;
 

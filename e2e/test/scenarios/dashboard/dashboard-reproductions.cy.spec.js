@@ -381,7 +381,7 @@ describe("issue 16559", () => {
       cy.findByRole("tab", { name: "History" }).click();
       cy.log("Dashboard creation");
       cy.findByTestId("dashboard-history-list")
-        .findAllByRole("listitem")
+        .findAllByTestId("revision-history-event")
         .eq(0)
         .findByText("You created this.")
         .should("be.visible");
@@ -399,7 +399,7 @@ describe("issue 16559", () => {
     H.openDashboardInfoSidebar().within(() => {
       cy.contains("button", "History").click();
       cy.findByTestId("dashboard-history-list")
-        .findAllByRole("listitem")
+        .findAllByTestId("revision-history-event")
         .eq(0)
         .findByText("You added a card.")
         .should("be.visible");
@@ -414,7 +414,7 @@ describe("issue 16559", () => {
       cy.contains("button", "History").click();
 
       cy.findByTestId("dashboard-history-list")
-        .findAllByRole("listitem")
+        .findAllByTestId("revision-history-event")
         .eq(0)
         .findByText(
           'You renamed this Dashboard from "16559 Dashboard" to "16559 Dashboard modified".',
@@ -433,7 +433,7 @@ describe("issue 16559", () => {
       cy.contains("button", "History").click();
 
       cy.findByTestId("dashboard-history-list")
-        .findAllByRole("listitem")
+        .findAllByTestId("revision-history-event")
         .eq(0)
         .findByText("You added a description.")
         .should("be.visible");
@@ -451,7 +451,7 @@ describe("issue 16559", () => {
       cy.contains("button", "History").click();
 
       cy.findByTestId("dashboard-history-list")
-        .findAllByRole("listitem")
+        .findAllByTestId("revision-history-event")
         .eq(0)
         .findByText("You set auto apply filters to false.")
         .should("be.visible");
@@ -470,7 +470,7 @@ describe("issue 16559", () => {
     H.openDashboardInfoSidebar().within(() => {
       cy.contains("button", "History").click();
       cy.findByTestId("dashboard-history-list")
-        .findAllByRole("listitem")
+        .findAllByTestId("revision-history-event")
         .eq(0)
         .findByText("You moved this Dashboard to First collection.")
         .should("be.visible");

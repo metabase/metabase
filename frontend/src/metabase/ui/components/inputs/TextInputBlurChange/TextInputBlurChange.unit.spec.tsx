@@ -55,6 +55,14 @@ describe("TextInputBlurChange", () => {
     expect(onBlurChange.mock.results[0].value).toBe("test");
   });
 
+  it("should not trigger onBlurChange if the value hasn't changed", async () => {
+    const { onBlurChange } = setup({ value: 5 }); // should handle numeric values as well
+
+    cleanup();
+
+    expect(onBlurChange).toHaveBeenCalledTimes(0);
+  });
+
   it("should set `internalValue` to the normalized value even if the normalized value is the same as the previous one", async () => {
     const value = "/";
     setup({ value, normalize: (value) => (value as string).trim() });
