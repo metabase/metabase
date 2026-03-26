@@ -2,7 +2,7 @@ import { type ChangeEvent, useMemo } from "react";
 import { c, t } from "ttag";
 import _ from "underscore";
 
-import { Checkbox, Select, Text } from "metabase/ui";
+import { Checkbox, Text } from "metabase/ui";
 import {
   AIToolKey,
   type GroupInfo,
@@ -10,8 +10,8 @@ import {
   type MetabotModelSize,
 } from "metabase-types/api";
 
-import S from "./AiAccessControlsTable.module.css";
-import { getAIToolItems, getModelOptions } from "./utils";
+import S from "./GroupPermissionRow.module.css";
+import { getAIToolItems } from "./utils";
 
 type GroupPermissionRowProps = {
   group: GroupInfo;
@@ -48,7 +48,7 @@ export function GroupPermissionRow(props: GroupPermissionRowProps) {
             onChange={(e: ChangeEvent<HTMLInputElement>) =>
               onPermissionChange(group.id, key, e.target.checked ? "yes" : "no")
             }
-            classNames={{ body: S.inputBody }}
+            classNames={{ body: S.InputBody }}
             disabled={
               permissionMap[AIToolKey.Metabot]?.perm_value === "no" &&
               key !== AIToolKey.Metabot
@@ -56,21 +56,6 @@ export function GroupPermissionRow(props: GroupPermissionRowProps) {
           />
         </td>
       ))}
-      <td className={S.Cell}>
-        <Select
-          aria-label={group.name}
-          className={S.ModelSelect}
-          data={getModelOptions()}
-          defaultValue="default"
-          disabled={permissionMap[AIToolKey.Metabot]?.perm_value === "no"}
-          miw="10rem"
-          size="sm"
-          value={permissionMap[AIToolKey.Model]?.perm_value}
-          onChange={(value) =>
-            onPermissionChange(group.id, AIToolKey.Model, value)
-          }
-        />
-      </td>
     </tr>
   );
 }

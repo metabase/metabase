@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
@@ -28,11 +29,10 @@ export function AiAccessControlsTable(props: AiAccessControlsTableProps) {
           <tr>
             <th className={S.HeaderCell}>{t`Group`}</th>
             {toolItems.map(({ label, key }) => (
-              <th key={key} className={S.HeaderCell}>
+              <th key={key} className={cx(S.HeaderCell, S.CenterText)}>
                 {label}
               </th>
             ))}
-            <th className={S.HeaderCell}>{t`Model`}</th>
           </tr>
         </thead>
         <tbody>

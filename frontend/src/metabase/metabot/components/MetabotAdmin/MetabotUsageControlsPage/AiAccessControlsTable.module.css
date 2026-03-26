@@ -18,42 +18,11 @@
   font-size: 0.75rem;
   font-weight: 600;
   padding: 0.5rem 1rem;
-  text-align: center;
   vertical-align: middle;
   white-space: nowrap;
+  text-align: left;
 
-  &:first-child,
-  &:last-child {
-    text-align: left;
+  &.CenterText {
+    text-align: center;
   }
-}
-
-.Cell {
-  vertical-align: middle;
-  background: var(--mb-color-background-primary);
-  box-sizing: border-box;
-  padding: 0.5rem 1rem;
-  text-align: center;
-
-  &:first-child,
-  &:last-child {
-    text-align: left;
-  }
-}
-
-.Row {
-  border-bottom: 1px solid
-    color-mix(in srgb, var(--mb-color-border), transparent 30%);
-}
-
-.Row:last-child {
-  border-bottom: none;
-}
-
-.ModelSelect {
-  width: 7rem;
-}
-
-.inputBody {
-  justify-content: center;
 }
