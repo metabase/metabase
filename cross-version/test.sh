@@ -243,6 +243,12 @@ migrate_down_step() {
     MIGRATE_DOWN_FAILURE_DETAIL=$(echo "$output" | grep -o "not rolled back.*" | head -1)
     return 1
   fi
+
+  if echo "$output" | grep -q "not rolled back"; then
+    error "migrate down had changesets that were not rolled back (check logs above)"
+    MIGRATE_DOWN_FAILURE_DETAIL=$(echo "$output" | grep -o "not rolled back.*" | head -1)
+    return 1
+  fi
 }
 
 # Cascading migrate down: rolls back multiple major versions one at a time
