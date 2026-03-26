@@ -76,7 +76,7 @@ export function McpUiAppRoute() {
     ]).then(() => setIsSettingsReady(true));
   }, []);
 
-  useInjectMcpAppsStyling(hostCssVariables, hostContext?.styles);
+  useInjectMcpAppsStyling(hostCssVariables);
 
   const isReady = !!(
     instanceUrl &&
