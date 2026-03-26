@@ -2,49 +2,44 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.metabot.tools.charts.edit :as edit-chart]))
+   [metabase.lib.core :as lib]
+   [metabase.metabot.tools.charts.edit :as edit-chart]
+   [metabase.test :as mt]))
 
 (deftest edit-chart-test
   (testing "edits a chart's visualization type"
-    (let [charts-state {"chart-abc" {:chart-id "chart-abc"
-                                     :query-id "q-123"
-                                     :chart-type :bar
-                                     :query-content "SELECT * FROM orders"}}
-          result (edit-chart/edit-chart
-                  {:chart-id "chart-abc"
-                   :new-chart-type :line
-                   :charts-state charts-state})]
+    (let [mp (mt/metadata-provider)
+          charts-state {"chart-abc" {:chart-id "chart-abc"
+                                     :queries [(lib/native-query mp "SELECT * FROM orders")]
+                                     :chart-type :bar}}
+          {:keys [result]} (edit-chart/edit-chart
+                            {:chart-id "chart-abc"
+                             :new-chart-type :line
+                             :charts-state charts-state})]
       (is (contains? result :chart-id))
       (is (string? (:chart-id result)))
       ;; New chart should have a different ID
       (is (not= "chart-abc" (:chart-id result)))
       (is (= :line (:chart-type result)))
-      (is (= "q-123" (:query-id result)))
       (is (str/includes? (:chart-content result) "<chart"))
       (is (str/includes? (:chart-content result) "line"))
       (is (str/starts-with? (:chart-link result) "metabase://chart/"))
       (is (contains? result :instructions))))
 
   (testing "edits chart to various types"
-    (let [charts-state {"chart-456" {:chart-id "chart-456"
-                                     :query-id "q-original"
-                                     :chart-type :bar
-                                     :query-content "SELECT COUNT(*) FROM users"}}]
+    (let [mp (mt/metadata-provider)
+          charts-state {"chart-456" {:chart-id "chart-456"
+                                     :queries [(lib/native-query mp "SELECT * FROM orders")]}}]
       (doseq [new-type [:pie :table :scatter :area :sunburst]]
-        (let [result (edit-chart/edit-chart
-                      {:chart-id "chart-456"
-                       :new-chart-type new-type
-                       :charts-state charts-state})]
+        (let [{:keys [result]} (edit-chart/edit-chart
+                                {:chart-id "chart-456"
+                                 :new-chart-type new-type
+                                 :charts-state charts-state})]
           (is (= new-type (:chart-type result))
-              (str "New chart type " new-type " should be set correctly"))
-          ;; Query ID should be preserved
-          (is (= "q-original" (:query-id result)))))))
+              (str "New chart type " new-type " should be set correctly"))))))
 
   (testing "throws error for invalid chart type"
-    (let [charts-state {"chart-789" {:chart-id "chart-789"
-                                     :query-id "q-test"
-                                     :chart-type :bar
-                                     :query-content "SELECT 1"}}]
+    (let [charts-state {"chart-789" {:chart-id "chart-789"}}]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Invalid chart type"
@@ -60,15 +55,4 @@
          (edit-chart/edit-chart
           {:chart-id "nonexistent"
            :new-chart-type :bar
-           :charts-state {}}))))
-
-  (testing "throws error when chart has no query-id"
-    (let [charts-state {"chart-bad" {:chart-id "chart-bad"
-                                     :chart-type :bar}}]
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"issues accessing the chart data"
-           (edit-chart/edit-chart
-            {:chart-id "chart-bad"
-             :new-chart-type :line
-             :charts-state charts-state}))))))
+           :charts-state {}})))))
