@@ -61,6 +61,18 @@ export type MetabaseAuthConfigWithApiKey = BaseMetabaseAuthConfig & {
 /**
  * @category MetabaseProvider
  */
+export type MetabaseAuthConfigWithSessionToken = BaseMetabaseAuthConfig & {
+  /** A Metabase session token for direct session auth (e.g. from OAuth token exchange). */
+  sessionToken: string;
+  isGuest?: false;
+  apiKey?: never;
+  preferredAuthMethod?: never;
+  fetchRequestToken?: never;
+};
+
+/**
+ * @category MetabaseProvider
+ */
 export type MetabaseIsGuestAuthConfig = BaseMetabaseAuthConfig & {
   /**
    * Defines if SDK should work in a Guest Embed mode
@@ -76,6 +88,7 @@ export type MetabaseIsGuestAuthConfig = BaseMetabaseAuthConfig & {
  */
 export type MetabaseAuthConfig =
   | MetabaseAuthConfigWithApiKey
+  | MetabaseAuthConfigWithSessionToken
   | MetabaseAuthConfigWithJwt
   | MetabaseAuthConfigWithSaml
   | MetabaseIsGuestAuthConfig;

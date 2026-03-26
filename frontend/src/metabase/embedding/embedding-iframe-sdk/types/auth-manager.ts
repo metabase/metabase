@@ -5,6 +5,7 @@ import type { MetabaseFetchRequestTokenFn } from "metabase/embedding-sdk/types/r
 export interface EmbedAuthManagerContext {
   properties: {
     apiKey?: string;
+    sessionToken?: string;
     instanceUrl: string;
     preferredAuthMethod?: MetabaseAuthMethod;
     fetchRequestToken?: MetabaseFetchRequestTokenFn;

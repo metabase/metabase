@@ -55,6 +55,8 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
   { dispatch }: { dispatch: SdkDispatch },
 ) => {
   const { metabaseInstanceUrl, apiKey, isLocalHost } = authConfig;
+  const sessionToken =
+    "sessionToken" in authConfig ? authConfig.sessionToken : undefined;
 
   // remove any stale tokens that might be there from a previous session
   samlTokenStorage.remove();
@@ -118,7 +120,10 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
     metabaseInstanceUrl && metabaseInstanceUrl?.length > 0;
   const isValidApiKeyConfig = apiKey && (isLocalHost || getIsLocalhost());
 
-  if (isValidApiKeyConfig) {
+  if (sessionToken) {
+    // Direct session token auth (e.g. from OAuth token exchange)
+    api.sessionToken = sessionToken;
+  } else if (isValidApiKeyConfig) {
     // API key setup
     api.apiKey = apiKey;
   } else if (EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.useExistingUserSession) {

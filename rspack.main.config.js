@@ -106,6 +106,10 @@ const config = {
     "app-public": "./app-public.ts",
     "app-embed": "./app-embed.ts",
     "app-embed-sdk": "./app-embed-sdk.tsx",
+    // Per-entry filename override: no content hash so embed-mcp.html can reference it by a stable name.
+    // The script URL in embed-mcp.html must be absolute (Claude Desktop renders from a ui:// URI),
+    // so we can't use HtmlWebpackPlugin injection here.
+    "app-embed-mcp": { import: "./app-embed-mcp.tsx", filename: "app-embed-mcp.js" },
     "vendor-styles": "./css/vendor.css",
     styles: "./css/index.module.css",
   },

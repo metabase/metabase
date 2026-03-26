@@ -203,6 +203,8 @@ type CollectionBrowserEntityTypes =
 export type SdkIframeEmbedBaseSettings = {
   isGuest?: boolean;
   apiKey?: string;
+  /** A Metabase session token for direct session auth (e.g. from OAuth token exchange). */
+  sessionToken?: string;
   instanceUrl: string;
   theme?: MetabaseTheme;
   locale?: string;

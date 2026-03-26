@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="robots" content="noindex" />
+    <title>Metabase</title>
+    <style>
+      body {
+        margin: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <script>
+      window.metabaseConfig = {
+        instanceUrl: {{{instanceUrl}}},
+        sessionToken: {{{sessionToken}}}
+      };
+    </script>
+
+    <script defer src="{{{instanceUrl}}}/app/dist/app-embed-mcp.js"></script>
+  </body>
+</html>
