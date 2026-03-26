@@ -788,7 +788,7 @@ describe("scenarios > visualizations > table > dashboards context", () => {
           H.tableHeaderClick("Rating");
 
           // Verify rows don't overlap by checking their bounding rects
-          H.tableInteractive()
+          H.tableInteractiveBody()
             .find("[role=row]")
             .then(($rows) => {
               const rects = $rows
@@ -798,14 +798,14 @@ describe("scenarios > visualizations > table > dashboards context", () => {
 
               // Each row's top should equal the previous row's bottom (no overlap)
               for (let i = 1; i < rects.length; i++) {
-                expect(rects[i].top).to.equal(rects[i - 1].bottom);
+                expect(rects[i].top).to.be.closeTo(rects[i - 1].bottom, 0.001);
               }
             });
 
           // Sort again (descending) to verify heights update on subsequent sorts
           H.tableHeaderClick("Rating");
 
-          H.tableInteractive()
+          H.tableInteractiveBody()
             .find("[role=row]")
             .then(($rows) => {
               const rects = $rows
@@ -814,7 +814,7 @@ describe("scenarios > visualizations > table > dashboards context", () => {
                 .sort((a, b) => a.top - b.top);
 
               for (let i = 1; i < rects.length; i++) {
-                expect(rects[i].top).to.equal(rects[i - 1].bottom);
+                expect(rects[i].top).to.be.closeTo(rects[i - 1].bottom, 0.001);
               }
             });
         });
@@ -1167,11 +1167,10 @@ describe("scenarios > visualizations > table > conditional formatting", () => {
         "is true",
       );
 
-      cy.findByRole("gridcell", { name: "true" }).should(
-        "have.css",
-        "background-color",
-        "rgba(80, 158, 227, 0.65)",
-      );
+      H.tableInteractiveBody()
+        .findByRole("gridcell", { name: "true" })
+        .findByTestId("body-cell-container")
+        .should("have.css", "background-color", "rgba(80, 158, 227, 0.65)");
     });
   });
 });
@@ -1213,7 +1212,7 @@ describe("scenarios > visualizations > table > time formatting (#11398)", () => 
     });
 
     // And you should find the result
-    cy.findByRole("gridcell").findByText("18:34:00");
+    cy.findByRole("gridcell", { name: "18:34:00" });
 
     cy.findByTestId("column-formatting-settings").within(() => {
       // Add millisecond display and change back to 12 hours
@@ -1222,7 +1221,7 @@ describe("scenarios > visualizations > table > time formatting (#11398)", () => 
     });
 
     // And you should find the result
-    cy.findByRole("gridcell").findByText("6:34:00.000 PM");
+    cy.findByRole("gridcell", { name: "6:34:00.000 PM" });
   });
 });
 

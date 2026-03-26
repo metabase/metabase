@@ -8,6 +8,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.appearance.core :as appearance]
    [metabase.initialization-status.core :as init-status]
+   [metabase.oauth-server.api :as oauth-server.api]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.server.auth-wrapper :as auth-wrapper]
    [metabase.server.middleware.embedding-sdk-bundle :as mw.embedding-sdk-bundle]
@@ -97,6 +98,8 @@
   #_{:clj-kondo/ignore [:discouraged-var]}
   (compojure/routes
    auth-wrapper/routes
+   (context "/.well-known" [] oauth-server.api/well-known-routes)
+   (context "/oauth" [] oauth-server.api/oauth-routes)
    ;; ^/$ -> index.html
    (GET "/" [] index/index)
    (GET "/favicon.ico" [] (response/resource-response (appearance/application-favicon-url)))

@@ -37,7 +37,6 @@ import type {
 import type { VisualizationDisplay } from "metabase-types/api/visualization";
 import type { Dispatch, QueryBuilderMode } from "metabase-types/store";
 
-import type { ChartSettingEnumToggleProps } from "../components/settings/ChartSettingEnumToggle";
 import type { ChartSettingGoalInputProps } from "../components/settings/ChartSettingGoalInput";
 import type { ChartSettingMaxCategoriesProps } from "../components/settings/ChartSettingMaxCategories";
 import type { ChartSettingSegmentedControlProps } from "../components/settings/ChartSettingSegmentedControl";
@@ -415,17 +414,15 @@ type Value = unknown;
 type Props = Record<string, unknown>;
 
 /** Object keys are kept in alphabetical order */
-export type VisualizationSettingsDefinitions<
-  LabelValueFrequencyWidgetProps extends Props =
-    | ChartSettingEnumToggleProps<"fit" | "all">
-    | ChartSettingSegmentedControlProps,
-> = {
+export type VisualizationSettingsDefinitions = {
   _column_title_full?: DatasetColumnSettingDefinition<Value, Props>;
   _header_unit?: DatasetColumnSettingDefinition<Value, Props>;
   _numberFormatter?: DatasetColumnSettingDefinition<Value, Props>;
   axis?: SingleSeriesSettingDefinition<Value, Props>;
   "boxplot.points_mode"?: SeriesSettingDefinition<Value, Props>;
+  "boxplot.show_mean"?: SeriesSettingDefinition<Value, Props>;
   "boxplot.show_values_mode"?: SeriesSettingDefinition<Value, Props>;
+  "boxplot.whisker_type"?: SeriesSettingDefinition<Value, Props>;
   "card.description"?: SeriesSettingDefinition<Value, Props>;
   "card.hide_empty"?: SeriesSettingDefinition<Value, Props>;
   "card.title"?: SeriesSettingDefinition<Value, Props>;
@@ -452,9 +449,18 @@ export type VisualizationSettingsDefinitions<
   "graph.goal_label"?: SeriesSettingDefinition<Value, Props>;
   "graph.goal_value"?: SeriesSettingDefinition<Value, Props>;
   "graph.metrics"?: SeriesSettingDefinition<Value, Props>;
+  /**
+   * "graph.label_value_frequency" key is used for 2 different settings:
+   *   - in waterfall viz and every cartesian viz - as a segmented toggle
+   *   - in boxplot viz - as a switch (on/off)
+   *
+   * It's the only case in VisualizationSettingsDefinitions where 1 setting key has 2 meanings.
+   * For simplicity, we're defaulting to segmented toggle widget in types,
+   * and we make an exception for the boxplot with a cast.
+   */
   "graph.label_value_frequency"?: SeriesSettingDefinition<
     Value,
-    LabelValueFrequencyWidgetProps
+    ChartSettingSegmentedControlProps
   >;
   "graph.label_value_formatting"?: SeriesSettingDefinition<Value, Props>;
   "graph.max_categories"?: SeriesSettingDefinition<
@@ -501,6 +507,8 @@ export type VisualizationSettingsDefinitions<
   "line.missing"?: SingleSeriesSettingDefinition<Value, Props>;
   "line.size"?: SingleSeriesSettingDefinition<Value, Props>;
   "line.style"?: SingleSeriesSettingDefinition<Value, Props>;
+  "link.text"?: SeriesSettingDefinition<Value, Props>;
+  "link.url"?: SeriesSettingDefinition<Value, Props>;
   markdown_template?: DatasetColumnSettingDefinition<Value, Props>;
   number_separators?: DatasetColumnSettingDefinition<Value, Props>;
   number_style?: DatasetColumnSettingDefinition<Value, Props>;
@@ -551,6 +559,11 @@ export type VisualizationSettingsDefinitions<
   time_enabled?: DatasetColumnSettingDefinition<Value, Props>;
   time_style?: DatasetColumnSettingDefinition<Value, Props>;
   title?: SingleSeriesSettingDefinition<Value, Props>;
+  view_as?: SeriesSettingDefinition<Value, Props>;
+  "waterfall.decrease_color"?: SeriesSettingDefinition<Value, Props>;
+  "waterfall.increase_color"?: SeriesSettingDefinition<Value, Props>;
+  "waterfall.show_total"?: SeriesSettingDefinition<Value, Props>;
+  "waterfall.total_color"?: SeriesSettingDefinition<Value, Props>;
   /**
    * TODO: next line should be removed when VisualizationSettingsDefinitions and VisualizationSettings are complete.
    * Once that happens, it should be possible to safely use VisualizationSettingKey for
@@ -605,13 +618,13 @@ export type VisualizationDefinition = {
   supportsVisualizer?: boolean;
   disableVisualizer?: boolean;
 
-  minSize: VisualizationGridSize;
-  defaultSize: VisualizationGridSize;
+  minSize?: VisualizationGridSize;
+  defaultSize?: VisualizationGridSize;
 
-  settings: VisualizationSettingsDefinitions;
+  settings?: VisualizationSettingsDefinitions;
 
   transformSeries?: (series: Series) => TransformedSeries;
-  isSensible: (data: DatasetData) => boolean;
+  isSensible?: (data: DatasetData) => boolean;
   columnSettings?:
     | VisualizationSettingsDefinitions
     | ((column: DatasetColumn) => VisualizationSettingsDefinitions);

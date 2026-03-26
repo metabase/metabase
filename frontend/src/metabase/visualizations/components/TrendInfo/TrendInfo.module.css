@@ -1,0 +1,12 @@
+.value {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.increase {
+  color: var(--mb-color-success);
+}
+
+.decrease {
+  color: var(--mb-color-error);
+}

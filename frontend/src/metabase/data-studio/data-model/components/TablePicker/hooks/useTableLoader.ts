@@ -85,7 +85,10 @@ export function useTableLoader() {
         return [];
       }
 
-      const response = await fetchTables(newArgs, true);
+      // Ensuring that we always fetch fresh table data. It's possible that this is triggered by publish/unpublish
+      // for a single table, but if remote sync is enabled we tend to call this before cache invalidation has completed.
+      // https://github.com/metabase/metabase/pull/70954#pullrequestreview-3960445972
+      const response = await fetchTables(newArgs);
 
       return (
         response?.data?.map((table) =>

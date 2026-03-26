@@ -16,7 +16,7 @@
 (deftest ingestable-snapshot-test
   (testing "IngestableSnapshot wraps a snapshot and provides Ingestable interface"
     (let [mock-source (test-helpers/create-mock-source)
-          ingestable (ingestable/->IngestableSnapshot (source.p/snapshot mock-source) (atom nil))]
+          ingestable (ingestable/->IngestableSnapshot (source.p/snapshot mock-source) (atom nil) (atom []))]
 
       (testing "ingest-list returns list of serdes paths"
         (let [paths (serialization/ingest-list ingestable)]
@@ -32,7 +32,7 @@
           (is (contains? entity :serdes/meta) "Should have serdes/meta key")))
 
       (testing "cache is populated after first ingest-list call"
-        (let [ingestable (ingestable/->IngestableSnapshot (source.p/snapshot mock-source) (atom nil))]
+        (let [ingestable (ingestable/->IngestableSnapshot (source.p/snapshot mock-source) (atom nil) (atom []))]
           (is (nil? @(:cache ingestable)) "Cache should be empty initially")
           (serialization/ingest-list ingestable)
           (is (map? @(:cache ingestable)) "Cache should be populated after ingest-list")
@@ -41,7 +41,7 @@
 (deftest callback-ingestable-test
   (testing "CallbackIngestable wraps an ingestable and calls callback on ingest-one"
     (let [mock-source (test-helpers/create-mock-source)
-          base-ingestable (ingestable/->IngestableSnapshot (source.p/snapshot mock-source) (atom nil))
+          base-ingestable (ingestable/->IngestableSnapshot (source.p/snapshot mock-source) (atom nil) (atom []))
           calls (atom [])
           callback (fn [_ path] (swap! calls conj path))
           wrapped (ingestable/->CallbackIngestable base-ingestable callback)]
@@ -79,7 +79,7 @@
                                                                                :initiated_by (:id user)}))
             task-id (:id task)
             mock-source (test-helpers/create-mock-source)
-            base-ingestable (ingestable/->IngestableSnapshot (source.p/snapshot mock-source) (atom nil))
+            base-ingestable (ingestable/->IngestableSnapshot (source.p/snapshot mock-source) (atom nil) (atom []))
             normalize 100]
 
         (testing "creates a CallbackIngestable"
@@ -124,7 +124,7 @@
 (deftest root-dependency-ingestable-test
   (testing "RootDependencyIngestable filters items based on root dependencies"
     (let [mock-source (test-helpers/create-mock-source)
-          base-ingestable (ingestable/->IngestableSnapshot (source.p/snapshot mock-source) (atom nil))]
+          base-ingestable (ingestable/->IngestableSnapshot (source.p/snapshot mock-source) (atom nil) (atom []))]
 
       (testing "with no root dependencies, returns empty list"
         (let [wrapped (ingestable/wrap-root-dep-ingestable [] base-ingestable)
@@ -143,3 +143,73 @@
         (let [root-deps [{:model "Collection" :id "M-Q4pcV0qkiyJ0kiSWECl"}]
               wrapped (ingestable/wrap-root-dep-ingestable root-deps base-ingestable)]
           (is (map? @(:dep-cache wrapped)) "Should have dep-cache atom initialized as empty map"))))))
+
+(deftest ingest-errors-test
+  (testing "IngestableSnapshot collects parse errors and returns them via ingest-errors"
+    (let [bad-yaml  "name: Bad Card\ndataset_query: [invalid\n"
+          files     {"main" {"collections/coll01xxxxxxxxxxxxx_test/coll01xxxxxxxxxxxxx_test.yaml"
+                             (test-helpers/generate-collection-yaml "coll01xxxxxxxxxxxxx" "Test")
+                             "collections/coll01xxxxxxxxxxxxx_test/cards/bad-card.yaml"
+                             bad-yaml}}
+          snapshot  (source.p/snapshot (test-helpers/create-mock-source :initial-files files))
+          ingestable (ingestable/->IngestableSnapshot snapshot (atom nil) (atom []))]
+
+      (testing "ingest-list succeeds, skipping the bad file"
+        (let [paths (serialization/ingest-list ingestable)]
+          (is (seq paths) "Should return paths for valid files")))
+
+      (testing "ingest-errors returns the parse failure"
+        (let [errors (serialization/ingest-errors ingestable)]
+          (is (= 1 (count errors)))
+          (is (instance? Exception (first errors)))))))
+
+  (testing "ingest-errors returns [] when all files parse successfully"
+    (let [snapshot   (source.p/snapshot (test-helpers/create-mock-source))
+          ingestable (ingestable/->IngestableSnapshot snapshot (atom nil) (atom []))]
+      (serialization/ingest-list ingestable)
+      (is (= [] (serialization/ingest-errors ingestable)))))
+
+  (testing "ingest-errors returns [] before cache is populated"
+    (let [bad-yaml  "name: Bad Card\ndataset_query: [invalid\n"
+          files     {"main" {"collections/coll01xxxxxxxxxxxxx_test/coll01xxxxxxxxxxxxx_test.yaml"
+                             (test-helpers/generate-collection-yaml "coll01xxxxxxxxxxxxx" "Test")
+                             "collections/coll01xxxxxxxxxxxxx_test/cards/bad-card.yaml"
+                             bad-yaml}}
+          snapshot  (source.p/snapshot (test-helpers/create-mock-source :initial-files files))
+          ingestable (ingestable/->IngestableSnapshot snapshot (atom nil) (atom []))]
+      (is (= [] (serialization/ingest-errors ingestable))
+          "Before ingest-list is called, ingest-errors should return [] not the real errors")))
+
+  (testing "multiple bad files produce multiple errors"
+    (let [bad-yaml-1 "name: Bad1\ndataset_query: [invalid\n"
+          bad-yaml-2 "name: Bad2\ndataset_query: {broken\n"
+          files      {"main" {"collections/coll01xxxxxxxxxxxxx_test/coll01xxxxxxxxxxxxx_test.yaml"
+                              (test-helpers/generate-collection-yaml "coll01xxxxxxxxxxxxx" "Test")
+                              "collections/coll01xxxxxxxxxxxxx_test/cards/bad1.yaml"
+                              bad-yaml-1
+                              "collections/coll01xxxxxxxxxxxxx_test/cards/bad2.yaml"
+                              bad-yaml-2}}
+          snapshot   (source.p/snapshot (test-helpers/create-mock-source :initial-files files))
+          ingestable (ingestable/->IngestableSnapshot snapshot (atom nil) (atom []))]
+      (serialization/ingest-list ingestable)
+      (is (= 2 (count (serialization/ingest-errors ingestable)))
+          "Each unparseable file should produce a separate error")))
+
+  (testing "wrapper ingestables delegate ingest-errors"
+    (let [bad-yaml  "name: Bad\ndataset_query: [invalid\n"
+          files     {"main" {"collections/coll01xxxxxxxxxxxxx_test/coll01xxxxxxxxxxxxx_test.yaml"
+                             (test-helpers/generate-collection-yaml "coll01xxxxxxxxxxxxx" "Test")
+                             "collections/coll01xxxxxxxxxxxxx_test/cards/bad.yaml"
+                             bad-yaml}}
+          snapshot  (source.p/snapshot (test-helpers/create-mock-source :initial-files files))
+          base      (ingestable/->IngestableSnapshot snapshot (atom nil) (atom []))
+          callback  (ingestable/->CallbackIngestable base (fn [_ _]))
+          root-dep  (ingestable/wrap-root-dep-ingestable [{:model "Collection" :id "coll01xxxxxxxxxxxxx"}] base)]
+      ;; Trigger cache population
+      (serialization/ingest-list base)
+
+      (testing "CallbackIngestable delegates"
+        (is (= 1 (count (serialization/ingest-errors callback)))))
+
+      (testing "RootDependencyIngestable delegates"
+        (is (= 1 (count (serialization/ingest-errors root-dep))))))))

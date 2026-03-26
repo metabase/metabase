@@ -149,6 +149,10 @@ describe("PublishedTableMeasureBreadcrumbs", () => {
       collection_id: null,
     });
 
+    setupCollectionByIdEndpoint({
+      collections: [createMockCollection({ id: "root" })],
+    });
+
     setup({ table: tableNoCollection, collection: null });
 
     await waitFor(() => {

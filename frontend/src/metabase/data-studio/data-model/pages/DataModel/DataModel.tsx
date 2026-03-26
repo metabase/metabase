@@ -43,6 +43,7 @@ import {
   SyncOptionsModal,
   TableSection,
 } from "../../components";
+import type { TreePath } from "../../components/TablePicker/types";
 import { TableAttributesEditBulk } from "../../components/TableSection/components/TableAttributesEditBulk";
 
 import S from "./DataModel.module.css";
@@ -126,9 +127,9 @@ function DataModelContent({ params }: Props) {
   const hasLibrary = hasLibraryCollection(libraryCollection);
   const canPublish = hasLibraryFeature;
 
-  const [onUpdateCallback, setOnUpdateCallback] = useState<(() => void) | null>(
-    null,
-  );
+  const [onUpdateCallback, setOnUpdateCallback] = useState<
+    ((path?: TreePath) => void) | null
+  >(null);
 
   useWindowEvent(
     "keydown",
@@ -287,6 +288,13 @@ function DataModelContent({ params }: Props) {
                     canPublish={canPublish}
                     hasLibrary={hasLibrary}
                     onSyncOptionsClick={openSyncModal}
+                    onUpdate={() =>
+                      onUpdateCallback?.({
+                        databaseId: table.db_id,
+                        schemaName: table.schema,
+                        tableId: table.id,
+                      })
+                    }
                   />
                 )}
               </LoadingAndErrorWrapper>

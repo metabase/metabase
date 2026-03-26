@@ -673,8 +673,8 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   ]);
 
   const dataGridTheme: DataGridTheme = useMemo(
-    () => tableThemeToDataGridTheme(tableTheme),
-    [tableTheme],
+    () => tableThemeToDataGridTheme(tableTheme, theme?.other?.fontSize),
+    [tableTheme, theme?.other?.fontSize],
   );
 
   const dataGridStyles: DataGridStylesProps["styles"] = useMemo(() => {

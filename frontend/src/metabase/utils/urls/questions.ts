@@ -57,7 +57,8 @@ export function question(
   let path: string = card?.type ?? fallbackPath;
 
   if (!card || !card.id) {
-    return `/${path}${query}${hash}`;
+    const unsavedPath = path === "metric" ? "question" : path;
+    return `/${unsavedPath}${query}${hash}`;
   }
 
   const { card_id, id, name } = card;
@@ -140,7 +141,8 @@ export function newQuestion({
   const type = question.type();
 
   if (mode) {
-    return url.replace(/^\/(question|model|metric)/, `/${type}\/${mode}`);
+    const pathType = type === "metric" ? "question" : type;
+    return url.replace(/^\/(question|model|metric)/, `/${pathType}\/${mode}`);
   }
 
   return url;

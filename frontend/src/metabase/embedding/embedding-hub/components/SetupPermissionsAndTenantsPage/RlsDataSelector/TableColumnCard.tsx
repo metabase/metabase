@@ -113,8 +113,12 @@ export const TableColumnCard = ({
         selectedTableIds.includes(pickerItem.id);
       const isOurAnalytics =
         pickerItem.model === "collection" && pickerItem.id === "root";
+      const isSampleDatabase =
+        pickerItem.model === "database" &&
+        "is_sample" in pickerItem &&
+        pickerItem.is_sample === true;
 
-      return isAlreadySelected || isOurAnalytics;
+      return isAlreadySelected || isOurAnalytics || isSampleDatabase;
     },
     [selectedTableIds],
   );

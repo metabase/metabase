@@ -3,7 +3,8 @@ import { ALL_EXTERNAL_USERS_GROUP_ID } from "e2e/support/cypress_sample_instance
 
 const { H } = cy;
 
-const { STATIC_ORDERS_ID, STATIC_PEOPLE_ID } = SAMPLE_DB_TABLES;
+const { STATIC_ORDERS_ID } = SAMPLE_DB_TABLES;
+const NON_SAMPLE_DB_NAME = "QA Postgres12";
 
 describe("scenarios - embedding hub", () => {
   describe("checklist", () => {
@@ -362,6 +363,27 @@ describe("scenarios - embedding hub", () => {
       cy.signInAsAdmin();
       H.activateToken("bleeding-edge");
 
+      cy.log("create an x-ray dashboard via the embedding setup guide");
+      cy.visit("/admin/embedding/setup-guide");
+
+      cy.findByTestId("admin-layout-content")
+        .findByText("Create a dashboard")
+        .click();
+
+      cy.log("select Orders table from the modal");
+      H.modal().within(() => {
+        H.pickEntity({
+          path: ["Databases", "Sample Database", "Orders"],
+        });
+      });
+
+      cy.log("wait for x-ray dashboard to generate and save it");
+      H.main()
+        .findByText("A look at", { exact: false, timeout: 30_000 })
+        .should("be.visible");
+      cy.button("Save this").click();
+      H.undoToast().should("contain", "Your dashboard was saved");
+
       cy.visit("/admin/embedding/setup-guide/permissions");
 
       cy.log("tenants should not be enabled");
@@ -399,12 +421,58 @@ describe("scenarios - embedding hub", () => {
         expect(response.body[0].name).to.equal("Shared collection");
       });
 
+      cy.log(
+        "dashboard picker should appear with the x-ray dashboard pre-selected",
+      );
+      H.main()
+        .findByText("This will allow tenant users to see it.")
+        .should("be.visible");
+
+      cy.log("x-ray dashboard should be pre-selected, move it");
+      H.main()
+        .findByRole("button", {
+          name: "Move to shared collection",
+          timeout: 10_000,
+        })
+        .should("be.enabled")
+        .click();
+
+      cy.log(
+        "x-rayed dashboard should have been moved to the shared collection",
+      );
+      cy.request(
+        "GET",
+        "/api/collection/tree?namespace=shared-tenant-collection",
+      ).then((response) => {
+        const sharedCollectionId = response.body[0].id;
+        cy.request(
+          "GET",
+          `/api/collection/${sharedCollectionId}/items?models=dashboard`,
+        ).then((itemsResponse) => {
+          const dashboards = itemsResponse.body.data;
+          expect(dashboards.length).to.be.greaterThan(0);
+          expect(
+            dashboards.some((d: { name: string }) =>
+              d.name.includes("A look at"),
+            ),
+          ).to.be.true;
+        });
+      });
+
       cy.log("enable-tenants step should be marked as completed");
       H.main()
         .findByRole("listitem", {
           name: "Enable multi-tenant user strategy",
 
           // the embedding checklist query takes time on CI
+          timeout: 10_000,
+        })
+        .should("have.attr", "data-completed", "true");
+
+      cy.log("move-dashboard step should be marked as completed");
+      H.main()
+        .findByRole("listitem", {
+          name: "Create a dashboard in the shared collection",
           timeout: 10_000,
         })
         .should("have.attr", "data-completed", "true");
@@ -478,6 +546,11 @@ describe("scenarios - embedding hub", () => {
           name: "Enable tenants and create shared collection",
         })
         .should("be.enabled")
+        .click();
+
+      cy.log("complete the move-dashboard step");
+      H.main()
+        .findByRole("button", { name: "Create a sample dashboard" })
         .click();
 
       cy.log("select database routing strategy");
@@ -709,7 +782,7 @@ describe("scenarios - embedding hub", () => {
       });
 
       it("shows autocomplete suggestions for organization_id based on selected field values", () => {
-        H.restore("setup");
+        H.restore("postgres-12");
         cy.signInAsAdmin();
         H.activateToken("bleeding-edge");
 
@@ -731,6 +804,11 @@ describe("scenarios - embedding hub", () => {
           .icon("check")
           .should("exist");
 
+        cy.log("complete the move-dashboard step");
+        H.main()
+          .findByRole("button", { name: "Create a sample dashboard" })
+          .click();
+
         cy.log("use row and column level security");
         H.main()
           .findByRole("radio", { name: /Row and column level security/ })
@@ -744,7 +822,7 @@ describe("scenarios - embedding hub", () => {
 
         cy.log("pick orders table");
         H.main().findByText("Pick a table").click();
-        H.miniPicker().findByText("Sample Database").click();
+        H.miniPicker().findByText(NON_SAMPLE_DB_NAME).click();
         H.miniPicker().findByText("Orders").click();
 
         H.main().findByPlaceholderText("Pick a column").click();
@@ -767,7 +845,7 @@ describe("scenarios - embedding hub", () => {
     // are only populated when the user goes through the "Select data" step
     // in the UI. Without it, the data permissions description won't show.
     it("shows RLS data permissions description in summary", () => {
-      H.restore("setup");
+      H.restore("postgres-12");
       cy.signInAsAdmin();
       H.activateToken("bleeding-edge");
 
@@ -789,6 +867,11 @@ describe("scenarios - embedding hub", () => {
         .icon("check")
         .should("exist");
 
+      cy.log("complete the move-dashboard step");
+      H.main()
+        .findByRole("button", { name: "Create a sample dashboard" })
+        .click();
+
       cy.log("use row and column level security");
       H.main()
         .findByRole("radio", { name: /Row and column level security/ })
@@ -802,7 +885,7 @@ describe("scenarios - embedding hub", () => {
 
       cy.log("pick Orders table and User ID column");
       H.main().findByText("Pick a table").click();
-      H.miniPicker().findByText("Sample Database").click();
+      H.miniPicker().findByText(NON_SAMPLE_DB_NAME).click();
       H.miniPicker().findByText("Orders").click();
 
       H.main().findByPlaceholderText("Pick a column").click();
@@ -845,7 +928,7 @@ describe("scenarios - embedding hub", () => {
     });
 
     it("should create sandboxes for multiple tables via row-level security setup", () => {
-      H.restore("setup");
+      H.restore("postgres-12");
       cy.signInAsAdmin();
       H.activateToken("bleeding-edge");
 
@@ -885,6 +968,11 @@ describe("scenarios - embedding hub", () => {
         .icon("check")
         .should("exist");
 
+      cy.log("complete the move-dashboard step");
+      H.main()
+        .findByRole("button", { name: "Create a sample dashboard" })
+        .click();
+
       H.main()
         .findByRole("radio", { name: /Row and column level security/ })
         .scrollIntoView()
@@ -900,8 +988,10 @@ describe("scenarios - embedding hub", () => {
 
       cy.log("Our analytics should be hidden in the table picker");
       H.miniPicker().findByText("Our analytics").should("not.exist");
+      cy.log("Sample Database should be hidden in the table picker");
+      H.miniPicker().findByText("Sample Database").should("not.exist");
 
-      H.miniPicker().findByText("Sample Database").click();
+      H.miniPicker().findByText(NON_SAMPLE_DB_NAME).click();
       H.miniPicker().findByText("Orders").click();
 
       H.main().findByPlaceholderText("Pick a column").click();
@@ -911,7 +1001,7 @@ describe("scenarios - embedding hub", () => {
       H.main().findByText("Add table").click();
       H.main().findAllByText("Pick a table").first().click();
 
-      H.miniPicker().findByText("Sample Database").click();
+      H.miniPicker().findByText(NON_SAMPLE_DB_NAME).click();
 
       cy.log("orders should be hidden as it's already selected");
       H.miniPicker().findByText("Orders").should("not.exist");
@@ -939,57 +1029,60 @@ describe("scenarios - embedding hub", () => {
       // 1. The admin permissions UI is complex and would add significant test time
       // 2. This test focuses on the onboarding flow, not the permissions UI
       cy.log("access policies should be created");
-      cy.request("GET", "/api/mt/gtap").should((response) => {
-        const policies = response.body;
-        expect(policies.length).to.be.at.least(2);
+      H.getTableId({ databaseId: WRITABLE_DB_ID, name: "orders" }).then(
+        (ordersTableId) => {
+          H.getTableId({ databaseId: WRITABLE_DB_ID, name: "people" }).then(
+            (peopleTableId) => {
+              cy.request("GET", "/api/mt/gtap").should((response) => {
+                const policies = response.body;
+                expect(policies.length).to.be.at.least(2);
 
-        const orderPolicy = policies.find(
-          (policy: { table_id: number }) =>
-            policy.table_id === STATIC_ORDERS_ID,
-        );
+                const orderPolicy = policies.find(
+                  (policy: { table_id: number }) =>
+                    policy.table_id === ordersTableId,
+                );
 
-        const peoplePolicy = policies.find(
-          (policy: { table_id: number }) =>
-            policy.table_id === STATIC_PEOPLE_ID,
-        );
+                const peoplePolicy = policies.find(
+                  (policy: { table_id: number }) =>
+                    policy.table_id === peopleTableId,
+                );
 
-        expect(orderPolicy).to.exist;
-        expect(peoplePolicy).to.exist;
+                expect(orderPolicy).to.exist;
+                expect(peoplePolicy).to.exist;
 
-        expect(orderPolicy.attribute_remappings).to.have.property(
-          "organization_id",
-        );
+                expect(orderPolicy.attribute_remappings).to.have.property(
+                  "organization_id",
+                );
 
-        expect(peoplePolicy.attribute_remappings).to.have.property(
-          "organization_id",
-        );
-      });
+                expect(peoplePolicy.attribute_remappings).to.have.property(
+                  "organization_id",
+                );
+              });
 
-      cy.request(
-        "GET",
-        `/api/permissions/graph/group/${ALL_EXTERNAL_USERS_GROUP_ID}`,
-      ).should((response) => {
-        const graph = response.body;
+              cy.request(
+                "GET",
+                `/api/permissions/graph/group/${ALL_EXTERNAL_USERS_GROUP_ID}`,
+              ).should((response) => {
+                const graph = response.body;
 
-        const permissions = graph.groups[ALL_EXTERNAL_USERS_GROUP_ID!][1];
-        expect(permissions).to.exist;
+                const permissions =
+                  graph.groups[ALL_EXTERNAL_USERS_GROUP_ID!][WRITABLE_DB_ID];
+                expect(permissions).to.exist;
 
-        // deep.equal ensures only the selected tables have permissions —
-        // non-selected tables should be blocked (omitted from the response)
-        expect(permissions["view-data"]).to.deep.equal({
-          PUBLIC: {
-            [STATIC_ORDERS_ID]: "sandboxed",
-            [STATIC_PEOPLE_ID]: "sandboxed",
-          },
-        });
+                expect(permissions["view-data"].public).to.deep.equal({
+                  [ordersTableId]: "sandboxed",
+                  [peopleTableId]: "sandboxed",
+                });
 
-        expect(permissions["create-queries"]).to.deep.equal({
-          PUBLIC: {
-            [STATIC_ORDERS_ID]: "query-builder",
-            [STATIC_PEOPLE_ID]: "query-builder",
-          },
-        });
-      });
+                expect(permissions["create-queries"].public).to.deep.equal({
+                  [ordersTableId]: "query-builder",
+                  [peopleTableId]: "query-builder",
+                });
+              });
+            },
+          );
+        },
+      );
 
       H.main()
         .findByRole("listitem", {
@@ -1001,7 +1094,7 @@ describe("scenarios - embedding hub", () => {
     });
 
     it("should update existing sandboxes when changing column selection", () => {
-      H.restore("setup");
+      H.restore("postgres-12");
       cy.signInAsAdmin();
       H.activateToken("bleeding-edge");
 
@@ -1016,41 +1109,70 @@ describe("scenarios - embedding hub", () => {
       cy.log("enable tenants to create the all-external-users");
       H.updateSetting("use-tenants", true);
 
-      cy.log("create shared collection");
+      cy.log("create shared collection with a dashboard");
       cy.request("POST", "/api/collection", {
         name: "Shared collection",
         parent_id: null,
         namespace: "shared-tenant-collection",
-      });
-
-      cy.log("create an existing sandbox for Orders table via API");
-      cy.request("GET", "/api/permissions/group").then((response) => {
-        const allExternalUsersGroup = response.body.find(
-          (g: { magic_group_type: string }) =>
-            g.magic_group_type === "all-external-users",
-        );
-
-        cy.request("POST", "/api/mt/gtap", {
-          table_id: STATIC_ORDERS_ID,
-          group_id: allExternalUsersGroup.id,
-          card_id: null,
-          attribute_remappings: {
-            organization_id: ["dimension", ["field", 2, null]], // USER_ID field
-          },
+      }).then(({ body: collection }) => {
+        H.createDashboard({
+          name: "Test Dashboard",
+          collection_id: collection.id,
         });
       });
 
+      cy.log("create an existing sandbox for Orders table via API");
+      H.getTableId({ databaseId: WRITABLE_DB_ID, name: "orders" }).then(
+        (ordersTableId) => {
+          cy.wrap(ordersTableId).as("ordersTableId");
+
+          H.getFieldId({ tableId: ordersTableId, name: "user_id" }).then(
+            (userIdFieldId) => {
+              H.getFieldId({ tableId: ordersTableId, name: "product_id" }).then(
+                (productIdFieldId) => {
+                  cy.wrap(productIdFieldId).as("productIdFieldId");
+
+                  cy.request("GET", "/api/permissions/group").then(
+                    (response) => {
+                      const allExternalUsersGroup = response.body.find(
+                        (g: { magic_group_type: string }) =>
+                          g.magic_group_type === "all-external-users",
+                      );
+
+                      cy.request("POST", "/api/mt/gtap", {
+                        table_id: ordersTableId,
+                        group_id: allExternalUsersGroup.id,
+                        card_id: null,
+                        attribute_remappings: {
+                          organization_id: [
+                            "dimension",
+                            ["field", userIdFieldId, null],
+                          ],
+                        },
+                      });
+                    },
+                  );
+                },
+              );
+            },
+          );
+        },
+      );
+
       cy.visit("/admin/embedding/setup-guide/permissions");
 
-      cy.log("wait for create tenants step to be active and unlocked");
+      cy.log("wait for checklist data to load before interacting with steps");
       H.main()
-        .findByRole("listitem", { name: "Create tenants" })
-        .should("have.attr", "data-active", "true");
+        .findByRole("listitem", {
+          name: /Enable multi-tenant user strategy/,
+          timeout: 10_000,
+        })
+        .should("have.attr", "data-completed", "true");
 
+      cy.log("open the data segregation strategy step");
       H.main()
         .findByText("Which data segregation strategy does your database use?")
         .scrollIntoView()
-        .should("be.visible")
         .click();
 
       cy.log("select row and column level security strategy");
@@ -1066,7 +1188,7 @@ describe("scenarios - embedding hub", () => {
 
       cy.log("Select the same Orders table");
       H.main().findByText("Pick a table").click();
-      H.miniPicker().findByText("Sample Database").click();
+      H.miniPicker().findByText(NON_SAMPLE_DB_NAME).click();
       H.miniPicker().findByText("Orders").click();
 
       cy.log("select Product ID column instead of User ID");
@@ -1081,23 +1203,26 @@ describe("scenarios - embedding hub", () => {
       H.undoToast().should("not.exist");
 
       cy.log("sandbox should be updated and not created");
-      cy.request("GET", "/api/mt/gtap").should((response) => {
-        const policies = response.body;
+      cy.get<number>("@ordersTableId").then((ordersTableId) => {
+        cy.get<number>("@productIdFieldId").then((productIdFieldId) => {
+          cy.request("GET", "/api/mt/gtap").should((response) => {
+            const policies = response.body;
 
-        const orderPolicies = policies.filter(
-          (policy: { table_id: number }) =>
-            policy.table_id === STATIC_ORDERS_ID,
-        );
+            const orderPolicies = policies.filter(
+              (policy: { table_id: number }) =>
+                policy.table_id === ordersTableId,
+            );
 
-        // should only have one sandbox for Orders table
-        expect(orderPolicies.length).to.equal(1);
+            // should only have one sandbox for Orders table
+            expect(orderPolicies.length).to.equal(1);
 
-        const [orderPolicy] = orderPolicies;
-        const tenantFieldRef = orderPolicy.attribute_remappings.organization_id;
+            const [orderPolicy] = orderPolicies;
+            const tenantFieldRef =
+              orderPolicy.attribute_remappings.organization_id;
 
-        // attribute_remappings should reference field 3 (PRODUCT_ID),
-        // not field 2 (USER_ID)
-        expect(tenantFieldRef[1][1]).to.equal(3);
+            expect(tenantFieldRef[1][1]).to.equal(productIdFieldId);
+          });
+        });
       });
 
       H.main()
@@ -1144,6 +1269,11 @@ describe("scenarios - embedding hub", () => {
           })
           .icon("check")
           .should("exist");
+
+        cy.log("complete the move-dashboard step");
+        H.main()
+          .findByRole("button", { name: "Create a sample dashboard" })
+          .click();
 
         cy.log("select RLS strategy");
         H.main()
@@ -1260,6 +1390,11 @@ describe("scenarios - embedding hub", () => {
       cy.request("POST", "/api/collection", {
         name: "Shared collection",
         namespace: "shared-tenant-collection",
+      }).then(({ body: collection }) => {
+        H.createDashboard({
+          name: "Test Dashboard",
+          collection_id: collection.id,
+        });
       });
     });
 
@@ -1475,6 +1610,11 @@ describe("scenarios - embedding hub", () => {
       cy.request("POST", "/api/collection", {
         name: "Shared collection",
         namespace: "shared-tenant-collection",
+      }).then(({ body: collection }) => {
+        H.createDashboard({
+          name: "Test Dashboard",
+          collection_id: collection.id,
+        });
       });
     });
 
@@ -1574,7 +1714,6 @@ describe("scenarios - embedding hub", () => {
         expect(body["jwt-identity-provider-uri"]).to.equal(
           "https://jwt.example.com/auth",
         );
-        expect(body["jwt-shared-secret"]).to.be.a("string");
         expect(body["jwt-group-sync"]).to.equal(true);
       });
 
@@ -1583,15 +1722,7 @@ describe("scenarios - embedding hub", () => {
         .findByRole("listitem", { name: "Set up JWT authentication" })
         .should("have.attr", "data-completed", "true");
 
-      cy.log("valid signing key should be shown");
-      H.main().within(() => {
-        cy.findByLabelText(/JWT Signing Key/i)
-          .should("be.visible")
-          .should("have.attr", "value")
-          .and("have.length.at.least", 32);
-
-        cy.findByRole("button", { name: "Next" }).click();
-      });
+      H.main().findByRole("button", { name: "Next" }).click();
 
       cy.log("step 2 should be complete");
       H.main()

@@ -3,6 +3,7 @@
   (:refer-clojure :exclude [every?])
   (:require
    [metabase.lib.core :as lib]
+   [metabase.lib.filter :as lib.filter]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -179,5 +180,5 @@
         :else
         (let [filter-clause (or (build-filter-clause query stage-path (assoc param :value param-value))
                                 (log/warnf "build-filter-clause did not return a valid clause for param %s" (pr-str param)))
-              stage'        (lib/add-filter-to-stage stage filter-clause)]
+              stage'        (lib.filter/add-filter-to-stage stage filter-clause)]
           (recur stage' more-params))))))

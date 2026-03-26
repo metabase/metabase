@@ -15,7 +15,7 @@ import {
   type CodeMirrorRef,
 } from "metabase/common/components/CodeMirror";
 import { isEventOverElement } from "metabase/utils/dom";
-import { useLlmSqlGenerationEnabled } from "metabase/metabot/hooks";
+import { useMetabotEnabledEmbeddingAware } from "metabase/metabot/hooks";
 import * as Lib from "metabase-lib";
 import type { CardId } from "metabase-types/api";
 
@@ -72,9 +72,9 @@ export const CodeMirrorEditor = forwardRef<
   ref,
 ) {
   const editorRef = useRef<CodeMirrorRef>(null);
-  const isLlmEnabled = useLlmSqlGenerationEnabled();
+  const isEnabled = useMetabotEnabledEmbeddingAware();
   const placeholder =
-    placeholderProp ?? getPlaceholderText(Lib.engine(query), isLlmEnabled);
+    placeholderProp ?? getPlaceholderText(Lib.engine(query), isEnabled);
   const baseExtensions = useExtensions({
     query,
     diff: !!proposedQuery,

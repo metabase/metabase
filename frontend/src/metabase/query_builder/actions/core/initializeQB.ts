@@ -188,7 +188,7 @@ async function fetchAndPrepareAdHocQuestionCards(
 
 type ResolveCardsResult = {
   card: Card;
-  originalCard?: Card;
+  originalCard?: Card | null;
 };
 
 export async function resolveCards({

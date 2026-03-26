@@ -11,14 +11,14 @@ import {
   resetConversation,
 } from "metabase/metabot/state";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
-import type { DatabaseId, GenerateSqlResponse } from "metabase-types/api";
+import type { DatabaseId } from "metabase-types/api";
 
 import { useMetabotAgent } from "./use-metabot-agent";
 
 export interface UseMetabotSQLSuggestionOptions {
   databaseId: DatabaseId | null;
   bufferId: string;
-  onGenerated?: (result?: GenerateSqlResponse) => void;
+  onGenerated?: () => void;
 }
 
 type SubmitInputResult = Awaited<

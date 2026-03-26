@@ -1250,9 +1250,30 @@ describe("scenarios > question > offset", () => {
       display: "scalar",
     };
 
-    H.createQuestion(ORDERS_SCALAR_METRIC).then(({ body: card }) =>
-      H.visitMetric(card.id),
-    );
+    H.createQuestion(ORDERS_SCALAR_METRIC).then(({ body: metric }) => {
+      H.createQuestion(
+        {
+          name: "Question with metric",
+          type: "question",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["metric", metric.id]],
+            breakout: [
+              [
+                "field",
+                ORDERS.CREATED_AT,
+                {
+                  "base-type": "type/DateTime",
+                  "temporal-unit": "month",
+                },
+              ],
+            ],
+          },
+          display: "line",
+        },
+        { visitQuestion: true },
+      );
+    });
 
     H.openNotebook();
 
@@ -1263,7 +1284,9 @@ describe("scenarios > question > offset", () => {
 
     H.visualize();
 
-    cy.findByTestId("chart-container").should("contain", "January 2024");
+    H.echartsContainer().within(() => {
+      cy.contains("January 2024").should("be.visible");
+    });
   });
 });
 
@@ -1330,9 +1353,9 @@ function verifyLineChart({
   }
 }
 
-function verifyTableContent(rows: string[][]) {
-  const columnsCount = rows[0].length;
-  const pairs = rows.flatMap((row, rowIndex) => {
+function verifyTableContent(dataRows: string[][]) {
+  const columnsCount = dataRows[0].length;
+  const pairs = dataRows.flatMap((row, rowIndex) => {
     return row.map((text, cellIndex) => {
       const index = rowIndex * columnsCount + cellIndex;
       return { index, text };
@@ -1340,13 +1363,19 @@ function verifyTableContent(rows: string[][]) {
   });
 
   for (const { index, text } of pairs) {
+    cy.log("index", index);
+    cy.log("text", text);
     verifyTableCellContent(index, text);
   }
 }
 
 function verifyTableCellContent(index: number, text: string) {
   // eslint-disable-next-line metabase/no-unsafe-element-filtering
-  cy.findAllByRole("gridcell").eq(index).should("have.text", text);
+  H.tableInteractiveBody()
+    .findByTestId("center-center-quadrant")
+    .findAllByRole("gridcell")
+    .eq(index)
+    .should("have.text", text);
 }
 
 function verifyNoQuestionError() {

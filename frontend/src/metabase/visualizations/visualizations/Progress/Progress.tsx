@@ -217,6 +217,8 @@ export function Progress(props: VisualizationProps) {
   );
 }
 
+const minSize = checkNotNull(PROGRESS_CHART_DEFINITION.minSize);
+
 function computeBarHeight({
   cardHeight,
   componentHeight,
@@ -230,7 +232,7 @@ function computeBarHeight({
     return `${MAX_BAR_HEIGHT}px`;
   }
 
-  const isSmallCard = cardHeight === PROGRESS_CHART_DEFINITION.minSize.height;
+  const isSmallCard = cardHeight === minSize.height;
   if (isSmallCard && !isMobile) {
     const computedHeight =
       MIN_BAR_HEIGHT + (componentHeight - COMPONENT_HEIGHT_TO_MIN_BAR_HEIGHT);

@@ -66,7 +66,7 @@ interface SerializedProjectionConfig {
 interface SerializedTab {
   id: string;
   type: MetricsViewerTabType;
-  label: string;
+  label: string | null;
   display: MetricsViewerDisplayType;
   definitions: SerializedTabDef[];
   projectionConfig?: SerializedProjectionConfig;
@@ -243,7 +243,7 @@ const projectionConfigSchema = defineCompactSchema<SerializedProjectionConfig>({
 const tabSchema = defineCompactSchema<SerializedTab>({
   id: "i",
   type: "t",
-  label: { key: "l", default: "" },
+  label: { key: "l", default: null },
   display: { key: "d", default: "line" },
   definitions: { key: "D", schema: tabDefSchema, default: [] },
   projectionConfig: {

@@ -406,7 +406,7 @@ export interface ListCardsRequest {
 }
 
 export interface GetCardRequest {
-  id: CardId;
+  id: CardId | EntityToken;
   context?: "collection";
   ignore_view?: boolean;
   ignore_error?: boolean;

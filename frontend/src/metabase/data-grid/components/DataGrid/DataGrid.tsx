@@ -257,6 +257,7 @@ export const DataGrid = function DataGrid<TData>({
             <div
               ref={headerRef}
               data-testid="table-header"
+              role="rowgroup"
               className={cx(S.headerContainer, classNames?.headerContainer)}
               style={{
                 backgroundColor: stickyElementsBackgroundColor,
@@ -286,6 +287,7 @@ export const DataGrid = function DataGrid<TData>({
             ) : (
               <div
                 data-testid="table-body"
+                role="rowgroup"
                 className={cx(
                   S.bodyContainer,
                   {
