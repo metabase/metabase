@@ -15,6 +15,7 @@
    [metabase-enterprise.checker.format.hybrid :as hybrid]
    [metabase-enterprise.checker.format.lenient :as lenient]
    [metabase-enterprise.checker.source :as source]
+   [metabase-enterprise.checker.store :as store]
    [metabase.util.yaml :as yaml]))
 
 (set! *warn-on-reflection* true)
@@ -266,7 +267,7 @@
                       :result_metadata []}])
           ;; Use concise source (has schema) so we get real engine
           enums (concise/make-enumerators card-src)
-          store (checker/make-store card-src enums)
+          store (store/make-store card-src enums)
           provider (checker/make-provider store)
           results (checker/check-cards card-src enums ["native-q"])
           result (get results "native-q")]

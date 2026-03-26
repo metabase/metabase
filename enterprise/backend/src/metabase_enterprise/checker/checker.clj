@@ -5,129 +5,25 @@
    Works with any MetadataSource implementation.
 
    Architecture:
-   1. A *store* (atom) holds a MetadataSource, entity caches, and a bidirectional
-      ID registry that maps portable refs ↔ synthetic integer IDs.
+   1. A *store* (checker.store) holds a MetadataSource, entity caches, and a
+      bidirectional ID registry that maps portable refs ↔ synthetic integer IDs.
    2. Entities are loaded lazily from the source and cached with assigned IDs.
    3. A MetadataProvider backed by the store serves lib/query.
    4. lib/query and lib/find-bad-refs validate the cards.
-
-   All mutable state lives in the store atom. There are no dynamic vars —
-   the store is passed explicitly to every function that needs it."
+   5. checker.native validates native SQL using sql-parsing and sql-tools."
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [metabase-enterprise.checker.native :as native]
    [metabase-enterprise.checker.source :as source]
-   [metabase.driver :as driver]
+   [metabase-enterprise.checker.store :as store]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.models.serialization.resolve :as resolve]
-   [metabase.query-processor.compile :as qp.compile]
-   [metabase.sql-parsing.core :as sql-parsing]
-   [metabase.sql-tools.core :as sql-tools]
-   [metabase.sql-tools.init]))
+   [metabase.models.serialization.resolve :as resolve]))
 
 (set! *warn-on-reflection* true)
-
-;;; ===========================================================================
-;;; Store — source + ID registry + entity caches
-;;; ===========================================================================
-
-(defn make-store
-  "Create a fresh store for a checking session.
-
-   `enumerators` is a map of thunks that list all entities of each kind:
-   :databases → (fn [] [\"db-name\" ...])
-   :tables    → (fn [] [[\"db\" \"schema\" \"table\"] ...])
-   :fields    → (fn [] [[\"db\" \"schema\" \"table\" \"field\"] ...])
-   :cards     → (fn [] [\"entity-id\" ...])"
-  [source enumerators]
-  (atom {:source      source
-         :enumerators enumerators
-         :id-counter  0
-         ;; Bidirectional ID registry, keyed by kind (:database, :table, :field, :card)
-         :ref->id     {}   ; {kind {ref id}}
-         :id->ref     {}   ; {kind {id ref}}
-         ;; Entity caches (raw data from source, with :id stamped on)
-         :entities    {}})) ; {kind {ref data}}
-
-;;; ---------------------------------------------------------------------------
-;;; ID registry — assign synthetic integer IDs to portable refs
-;;; ---------------------------------------------------------------------------
-
-(defn- next-id! [store]
-  (:id-counter (swap! store update :id-counter inc)))
-
-(defn- get-or-assign!
-  "Return the integer ID for `ref` under `kind`, assigning one if needed."
-  [store kind ref]
-  (or (get-in @store [:ref->id kind ref])
-      (let [id (next-id! store)]
-        (swap! store (fn [s]
-                       (-> s
-                           (assoc-in [:ref->id kind ref] id)
-                           (assoc-in [:id->ref kind id] ref))))
-        id)))
-
-(defn id->ref
-  "Look up the portable ref for an integer ID. Returns nil if unknown."
-  [store kind id]
-  (get-in @store [:id->ref kind id]))
-
-(defn ref->id
-  "Look up the integer ID for a portable ref. Returns nil if not yet assigned."
-  [store kind ref]
-  (get-in @store [:ref->id kind ref]))
-
-;;; ---------------------------------------------------------------------------
-;;; Entity loading — lazy load from source, cache with assigned IDs
-;;; ---------------------------------------------------------------------------
-
-(defn- store-source [store] (:source @store))
-
-(defn- cached-entity [store kind ref]
-  (get-in @store [:entities kind ref]))
-
-(defn- cache-entity! [store kind ref data]
-  (swap! store assoc-in [:entities kind ref] data)
-  data)
-
-(defn load-database!
-  "Load and cache a database, assigning it an integer ID. Returns data or nil."
-  [store db-name]
-  (or (cached-entity store :database db-name)
-      (when-let [data (source/resolve-database (store-source store) db-name)]
-        (let [id (get-or-assign! store :database db-name)]
-          (cache-entity! store :database db-name (assoc data :id id))))))
-
-(defn load-table!
-  "Load and cache a table, assigning it and its database integer IDs."
-  [store table-path]
-  (or (cached-entity store :table table-path)
-      (when-let [data (source/resolve-table (store-source store) table-path)]
-        (let [[db-name _ _] table-path
-              id    (get-or-assign! store :table table-path)
-              db-id (get-or-assign! store :database db-name)]
-          (cache-entity! store :table table-path (assoc data :id id :db_id db-id))))))
-
-(defn load-field!
-  "Load and cache a field, assigning it and its table integer IDs."
-  [store field-path]
-  (or (cached-entity store :field field-path)
-      (when-let [data (source/resolve-field (store-source store) field-path)]
-        (let [[db-name schema table-name _] field-path
-              id       (get-or-assign! store :field field-path)
-              table-id (get-or-assign! store :table [db-name schema table-name])]
-          (cache-entity! store :field field-path (assoc data :id id :table_id table-id))))))
-
-(defn load-card!
-  "Load and cache a card, assigning it an integer ID."
-  [store entity-id]
-  (or (cached-entity store :card entity-id)
-      (when-let [data (source/resolve-card (store-source store) entity-id)]
-        (let [id (get-or-assign! store :card entity-id)]
-          (cache-entity! store :card entity-id (assoc data :id id))))))
 
 ;;; ===========================================================================
 ;;; Reference resolution — resolve portable refs to IDs, collecting failures
@@ -147,19 +43,19 @@
    metadata in the provider, so lib will flag it."
   [store kind ref unresolved failure-info & {:keys [sentinel?]}]
   (when ref
-    (or (ref->id store kind ref)
+    (or (store/ref->id store kind ref)
         (let [resolve-fn (case kind
                            :field    source/resolve-field
                            :table    source/resolve-table
                            :database source/resolve-database
                            :card     source/resolve-card)]
-          (when (resolve-fn (store-source store) ref)
-            (get-or-assign! store kind ref)))
+          (when (resolve-fn (store/source store) ref)
+            (store/get-or-assign! store kind ref)))
         (do (when unresolved (swap! unresolved conj failure-info))
             (when sentinel?
               ;; Assign an ID so the query can be constructed, but no metadata
               ;; will exist for this ID — lib/find-bad-refs will catch it.
-              (get-or-assign! store kind ref))))))
+              (store/get-or-assign! store kind ref))))))
 
 (defn- resolve-field-path
   ([store unresolved field-path]
@@ -317,14 +213,12 @@
 ;;; MetadataProvider — serves lib/query from the store
 ;;; ===========================================================================
 
-(defn- enumerator [store kind]
-  (get-in @store [:enumerators kind]))
 
 (deftype SourceMetadataProvider [store]
   lib.metadata.protocols/MetadataProvider
   (database [_this]
-    (when-let [db-name (first ((enumerator store :databases)))]
-      (when-let [data (load-database! store db-name)]
+    (when-let [db-name (first ((store/enumerator store :databases)))]
+      (when-let [data (store/load-database! store db-name)]
         (->database-metadata data))))
 
   (metadatas [_this {:keys [lib/type id table-id]}]
@@ -333,13 +227,13 @@
       (vec
        (if id
          (for [tid id
-               :let [path (id->ref store :table tid)]
+               :let [path (store/id->ref store :table tid)]
                :when path
-               :let [data (load-table! store path)]
+               :let [data (store/load-table! store path)]
                :when data]
            (->table-metadata data))
-         (for [path ((enumerator store :tables))
-               :let [data (load-table! store path)]
+         (for [path ((store/enumerator store :tables))
+               :let [data (store/load-table! store path)]
                :when data]
            (->table-metadata data))))
 
@@ -348,26 +242,26 @@
        (cond
          id
          (for [fid id
-               :let [path (id->ref store :field fid)]
+               :let [path (store/id->ref store :field fid)]
                :when path
-               :let [data (load-field! store path)]
+               :let [data (store/load-field! store path)]
                :when data]
            (->field-metadata store nil data))
 
          table-id
-         (let [[db schema tbl] (id->ref store :table table-id)]
+         (let [[db schema tbl] (store/id->ref store :table table-id)]
            (when db
-             (for [fpath ((enumerator store :fields))
+             (for [fpath ((store/enumerator store :fields))
                    :when (and (= db (first fpath))
                               (= schema (second fpath))
                               (= tbl (nth fpath 2)))
-                   :let [data (load-field! store fpath)]
+                   :let [data (store/load-field! store fpath)]
                    :when data]
                (->field-metadata store nil data))))
 
          :else
-         (for [path ((enumerator store :fields))
-               :let [data (load-field! store path)]
+         (for [path ((store/enumerator store :fields))
+               :let [data (store/load-field! store path)]
                :when data]
            (->field-metadata store nil data))))
 
@@ -375,13 +269,13 @@
       (vec
        (if id
          (for [cid id
-               :let [eid (id->ref store :card cid)]
+               :let [eid (store/id->ref store :card cid)]
                :when eid
-               :let [data (load-card! store eid)]
+               :let [data (store/load-card! store eid)]
                :when data]
            (->card-metadata store data))
-         (for [eid ((enumerator store :cards))
-               :let [data (load-card! store eid)]
+         (for [eid ((store/enumerator store :cards))
+               :let [data (store/load-card! store eid)]
                :when data]
            (->card-metadata store data))))
 
@@ -404,93 +298,6 @@
   (->SourceMetadataProvider store))
 
 ;;; ===========================================================================
-;;; Native SQL parsing — compile via QP then extract refs with SQLGlot
-;;;
-;;; Native queries can contain template tags ({{var}}, {{snippet:}}, {{#card}},
-;;; [[optional]]) that aren't valid SQL. Rather than stripping these ourselves,
-;;; we use the real QP compile path:
-;;;   1. lib/add-parameters-for-template-tags — adds dummy param values
-;;;   2. qp.compile/compile-with-inline-parameters — full compile with inlining
-;;; This gives us clean, parseable SQL that SQLGlot can analyze.
-;;; ===========================================================================
-
-;; metabase.sql-tools.sqlglot.core/driver->dialect but don't want to bring in the dep
-(def ^:private engine->dialect
-  "Map engine names to SQLGlot dialect strings. nil means use default dialect."
-  {"postgres"           "postgres"
-   "mysql"              "mysql"
-   "snowflake"          "snowflake"
-   "bigquery"           "bigquery"
-   "bigquery-cloud-sdk" "bigquery"
-   "redshift"           "redshift"
-   "sqlserver"          "tsql"
-   "sparksql"           "spark"
-   "presto-jdbc"        "presto"})
-
-(defn- compile-query-to-sql
-  "Compile a pMBQL query to SQL.
-
-   For native-only queries: adds dummy parameter values for template tags
-   and then uses compile-with-inline-parameters to produce clean SQL with
-   {{tags}} and [[optionals]] resolved. Falls back to raw SQL extraction
-   if the full compile path isn't available (e.g. test environments without
-   driver implementations).
-
-   For MBQL queries: uses the full QP compile path with the driver to
-   generate SQL from the MBQL structure.
-
-   Returns the compiled SQL string, or nil on failure."
-  [driver query]
-  (try
-    (let [with-params (lib/add-parameters-for-template-tags query)
-          compiled    (binding [driver/*driver* driver]
-                        (qp.compile/compile-with-inline-parameters with-params))]
-      (:query compiled))
-    (catch Exception _
-      ;; Fallback for native queries: extract raw SQL from the query stage.
-      ;; This works when the full QP setup isn't available (no driver impls),
-      ;; but won't resolve template tags.
-      (when (lib/native-only-query? query)
-        (:native (lib/query-stage query -1))))))
-
-(defn- parse-sql-refs
-  "Parse SQL string with SQLGlot, resolve refs against the store.
-   Returns {:tables [...] :fields [...]}."
-  [store db-name dialect sql]
-  (let [raw-tables  (sql-parsing/referenced-tables dialect sql)
-        raw-fields  (sql-parsing/referenced-fields dialect sql)
-        table-paths (mapv (fn [[_cat schema table]]
-                            [db-name schema table])
-                          raw-tables)
-        field-paths (mapv (fn [[_cat schema table field]]
-                            [db-name schema table field])
-                          raw-fields)]
-    ;; Resolve each ref against the store so IDs get assigned
-    ;; and lenient sources track them
-    (doseq [tp table-paths]
-      (load-table! store tp))
-    (doseq [fp field-paths]
-      (load-field! store fp))
-    {:tables (mapv #(str/join "." (remove nil? %)) table-paths)
-     :fields (mapv #(str/join "." (remove nil? %)) field-paths)}))
-
-(defn- parse-native-sql-refs
-  "Extract table and field references from a native query.
-
-   Uses the full QP compile path to resolve template tags, parameters, etc.
-   into clean SQL, then parses with SQLGlot.
-
-   Resolves each discovered ref against the store so they get IDs assigned
-   and (for lenient sources) get tracked in the manifest."
-  [store db-name query]
-  (let [engine  (:engine (cached-entity store :database db-name))
-        driver  (keyword engine)
-        dialect (get engine->dialect engine)
-        sql     (compile-query-to-sql driver query)]
-    (when sql
-      (parse-sql-refs store db-name dialect sql))))
-
-;;; ===========================================================================
 ;;; Card validation
 ;;; ===========================================================================
 
@@ -498,11 +305,11 @@
   "Convert an integer ID back to a human-readable path string for error messages."
   [store id id-type]
   (case id-type
-    :table    (some->> (id->ref store :table id) (str/join "."))
-    :field    (some->> (id->ref store :field id) (str/join "."))
-    :card     (when-let [eid (id->ref store :card id)]
-                (or (:name (cached-entity store :card eid)) eid))
-    :database (id->ref store :database id)
+    :table    (some->> (store/id->ref store :table id) (str/join "."))
+    :field    (some->> (store/id->ref store :field id) (str/join "."))
+    :card     (when-let [eid (store/id->ref store :card id)]
+                (or (:name (store/cached-entity store :card eid)) eid))
+    :database (store/id->ref store :database id)
     nil))
 
 (declare extract-refs-from-card)
@@ -533,50 +340,10 @@
         (extract-refs-from-query store (lib/query provider dq) provider visited)))
     (catch Exception _ {:tables [] :fields [] :source-cards []})))
 
-(defn- field-exists-in-store?
-  "Check if a column name exists for any table in the given database in our store."
-  [store db-name col-name]
-  (let [norm-col (str/lower-case (str col-name))]
-    (some (fn [field-path]
-            (when (= db-name (first field-path))
-              (= norm-col (str/lower-case (str (nth field-path 3))))))
-          (keys (get-in @store [:ref->id :field])))))
-
-(defn- validate-native-sql
-  "Validate native SQL using sql-tools. Compiles the query to SQL, then uses
-   sql-tools/validate-query to check that referenced tables and columns exist
-   in the metadata provider.
-
-   Filters out :missing-column false positives caused by schema-less databases
-   where sql-tools can't match tables due to nil vs default-schema mismatch.
-
-   Returns a set of error maps, or nil if validation passes or isn't applicable."
-  [store provider query db-name]
-  (when db-name
-    (let [engine (keyword (:engine (cached-entity store :database db-name)))
-          sql    (compile-query-to-sql engine query)]
-      (when sql
-        (try
-          (let [native-query (lib/native-query provider sql)
-                errors       (binding [driver/*driver* engine]
-                               (sql-tools/validate-query engine native-query))]
-            (when (seq errors)
-              ;; Filter out :missing-column errors for columns that DO exist in the store.
-              ;; These are false positives caused by schema-less databases (nil schema)
-              ;; where sql-tools assumes the default schema (e.g., "public").
-              (let [filtered (remove (fn [err]
-                                       (and (= :missing-column (:type err))
-                                            (field-exists-in-store? store db-name (:name err))))
-                                     errors)]
-                (when (seq filtered)
-                  (set filtered)))))
-          (catch Exception _
-            nil))))))
-
 (defn check-card
   "Check a single card. Returns result map with :name, :refs, :unresolved, :bad-refs, :error, :native-errors."
   [store provider entity-id]
-  (let [data     (load-card! store entity-id)
+  (let [data     (store/load-card! store entity-id)
         card-id  (:id data)
         card-meta (->card-metadata store data)]
     (if-let [missing-db (::unresolved-database card-meta)]
@@ -590,12 +357,10 @@
         (let [card      (lib.metadata/card provider card-id)
               query     (lib/query provider (:dataset-query card))
               refs      (extract-refs-from-query store query provider #{card-id})
-              ;; Compile native queries to SQL via QP, then parse for table/field refs
               db-name   (get-in data [:dataset_query :database])
               is-native? (get-in data [:dataset_query :native :query])
               sql-refs  (when (and is-native? db-name)
-                          (parse-native-sql-refs store db-name query))
-              ;; Merge MBQL refs with SQL-parsed refs
+                          (native/extract-sql-refs store db-name query))
               refs      (if sql-refs
                           (-> refs
                               (update :tables into (:tables sql-refs))
@@ -604,9 +369,8 @@
                               (update :fields #(vec (distinct %))))
                           refs)
               bad-refs      (lib/find-bad-refs query)
-              ;; Run native SQL validation for deeper error detection
               native-errors (when is-native?
-                              (validate-native-sql store provider query db-name))]
+                              (native/validate-native-sql store provider query db-name))]
           (cond-> {:card-id    card-id
                    :name       (:name data)
                    :entity-id  entity-id
@@ -626,7 +390,7 @@
 
    `enumerators` is a map of thunks for listing entities (see [[make-store]])."
   [source enumerators card-ids]
-  (let [store    (make-store source enumerators)
+  (let [store    (store/make-store source enumerators)
         provider (make-provider store)]
     (into {}
           (for [eid card-ids]
@@ -757,9 +521,9 @@
   ;; Dig into the store to see what got loaded
   (require '[metabase-enterprise.checker.format.serdes :as serdes-format])
   (def source (serdes-format/make-source "/path/to/export"))
-  (def store (make-store source (serdes-format/make-enumerators source)))
-  (load-database! store "My Database")
-  (load-table! store ["My Database" "PUBLIC" "ORDERS"])
+  (def store (store/make-store source (serdes-format/make-enumerators source)))
+  (store/load-database! store "My Database")
+  (store/load-table! store ["My Database" "PUBLIC" "ORDERS"])
   (:ref->id @store)   ; all assigned IDs
   (:entities @store)   ; all cached entities
   )

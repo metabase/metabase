@@ -8,7 +8,8 @@
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.checker.checker :as checker]
    [metabase-enterprise.checker.format.serdes :as serdes-format]
-   [metabase-enterprise.checker.source :as source]))
+   [metabase-enterprise.checker.source :as source]
+   [metabase-enterprise.checker.store :as store]))
 
 (set! *warn-on-reflection* true)
 
@@ -131,7 +132,7 @@
   (testing "FK target in field metadata is resolved to integer ID"
     (let [source (make-test-source)
           enumerators (serdes-format/make-enumerators source)
-          store (checker/make-store source enumerators)
+          store (store/make-store source enumerators)
           provider (checker/make-provider store)
           ;; Get the product_id field which has FK to products.id
           fields (metabase.lib.metadata.protocols/metadatas
