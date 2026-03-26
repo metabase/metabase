@@ -367,6 +367,10 @@ export const UtilApi = {
   },
 };
 
+export const FrontendErrorsApi = {
+  report: POST("/api/frontend-errors"),
+};
+
 export const ActionsApi = {
   execute: POST("/api/action/:id/execute"),
   prefetchValues: GET("/api/action/:id/execute"),

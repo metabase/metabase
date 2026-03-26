@@ -2,6 +2,7 @@ import { memo, useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { SidebarContent } from "metabase/common/components/SidebarContent";
 import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
@@ -9,7 +10,6 @@ import {
   onOpenChartType,
   onReplaceAllVisualizationSettings,
 } from "metabase/query_builder/actions";
-import { SidebarContent } from "metabase/query_builder/components/SidebarContent";
 import {
   getUiControls,
   getVisualizationSettings,

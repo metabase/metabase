@@ -30,6 +30,7 @@ describe("scenarios > embedding-sdk > guest-embed reproductions", () => {
       display,
     }).then(({ body: question }) => {
       cy.wrap(question.id).as("questionId");
+      cy.wrap(question.entity_id).as("questionEntityId");
     });
 
     cy.signOut();
@@ -64,6 +65,24 @@ describe("scenarios > embedding-sdk > guest-embed reproductions", () => {
           downloadUrl: "/api/embed/card/*/query/csv*",
           downloadMethod: "GET",
         });
+      });
+    });
+  });
+
+  it("should show question with a token containing entity id (EMB-1473)", () => {
+    setup();
+
+    cy.get("@questionEntityId").then(async (questionEntityId) => {
+      const token = await getSignedJwtForResource({
+        resourceId: questionEntityId as unknown as number,
+        resourceType: "question",
+      });
+
+      mountGuestEmbedQuestion({ token, title: true, withDownloads: true });
+
+      getSdkRoot().within(() => {
+        cy.findByText("Product ID").should("be.visible");
+        cy.findByText("Max of Quantity").should("be.visible");
       });
     });
   });

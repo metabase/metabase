@@ -62,18 +62,44 @@ export function formatRunMethod(trigger: TransformRunMethod) {
   }
 }
 
+export type DatabaseValidationResult = {
+  isValid: boolean;
+  message?: string;
+};
+
+export function validateDatabase(database: Database): DatabaseValidationResult {
+  if (database.is_sample) {
+    return {
+      isValid: false,
+      message: t`Transforms can't be enabled on a Sample Database.`,
+    };
+  }
+  if (database.is_audit) {
+    return {
+      isValid: false,
+      message: t`Transforms can't be enabled on a Usage Analytics database.`,
+    };
+  }
+  if (database.router_user_attribute || database.router_database_id) {
+    return {
+      isValid: false,
+      message: t`Transforms can't be enabled when database routing is enabled.`,
+    };
+  }
+  if (!hasFeature(database, "transforms/table")) {
+    return {
+      isValid: false,
+      message: t`Transforms can't be enabled on this database.`,
+    };
+  }
+  return { isValid: true };
+}
+
 export function doesDatabaseSupportTransforms(database?: Database): boolean {
   if (!database) {
     return false;
   }
-
-  return (
-    !database.is_sample &&
-    !database.is_audit &&
-    !database.router_user_attribute &&
-    !database.router_database_id &&
-    hasFeature(database, "transforms/table")
-  );
+  return validateDatabase(database).isValid;
 }
 
 export function sourceDatabaseId(source: TransformSource): DatabaseId | null {

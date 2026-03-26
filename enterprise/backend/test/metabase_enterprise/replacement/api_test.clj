@@ -1,4 +1,4 @@
-(ns metabase-enterprise.replacement.api-test
+(ns ^:mb/driver-tests metabase-enterprise.replacement.api-test
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.dependencies.events]
@@ -9,6 +9,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
+   [metabase.transforms.core :as transforms]
+   [metabase.transforms.test-util :refer [with-transform-cleanup!]]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -343,6 +345,90 @@
     (mt/with-premium-features #{:dependencies}
       (mt/user-http-request :crowberto :post 404 "ee/replacement/runs/999999/cancel"))))
 
+;;; ---------------------------------------- POST /replace-model-with-transform ----------------------------------------
+
+(deftest ^:mb/driver-tests replace-model-with-transform-test
+  (testing "POST /replace-model-with-transform — creates transform, executes it, swaps child, converts model to question"
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/with-premium-features #{:dependencies}
+        (let [mp     (mt/metadata-provider)
+              schema (t2/select-one-fn :schema :model/Table (mt/id :orders))]
+          (with-transform-cleanup! [target {:type   "table"
+                                            :schema schema
+                                            :name   "model_transform"}]
+            (mt/with-temp [:model/Card {model-id :id :as model-card}
+                           {:database_id   (mt/id)
+                            :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                            :type          :model
+                            :name          "Model"}
+
+                           :model/Card {question-id-id :id :as question-card}
+                           {:database_id   (mt/id)
+                            :dataset_query (lib/query mp (lib.metadata/card mp model-id))
+                            :type          :question
+                            :name          "Question"}]
+              (mt/with-model-cleanup [:model/ReplacementRun]
+                ;; Populate dependencies via events
+                (doseq [card [model-card question-card]]
+                  (events/publish-event! :event/card-create {:object card :user-id (mt/user->id :crowberto)}))
+
+                (let [response (mt/user-http-request :crowberto :post 202
+                                                     "ee/replacement/replace-model-with-transform"
+                                                     {:card_id              model-id
+                                                      :transform_name       "Orders Transform"
+                                                      :transform_target     {:type     "table"
+                                                                             :schema   schema
+                                                                             :name     (:name target)
+                                                                             :database (mt/id)}
+                                                      :target_collection_id nil})
+                      run-id   (:run_id response)
+                      final    (poll-run run-id :timeout-ms 30000)]
+
+                  (is (= "succeeded" (:status final)))
+
+                  (testing "model is converted to a saved question"
+                    (is (= :question (t2/select-one-fn :type :model/Card :id model-id))))
+
+                  (testing "dependent question now references the output table"
+                    (let [question-query (t2/select-one-fn :dataset_query :model/Card :id question-id-id)
+                          transform      (t2/select-one :model/Transform :name "Orders Transform")
+                          output-table   (transforms/output-table transform)]
+                      (is (some? output-table)
+                          "transforms/output-table should return the output table")
+                      (is (= (:id output-table)
+                             (lib/primary-source-table-id question-query))))))))))))))
+
+(deftest replace-model-with-transform-failure-test
+  (testing "POST /replace-model-with-transform — transform execution failure leaves model unchanged"
+    (mt/with-premium-features #{:dependencies}
+      (let [mp (mt/metadata-provider)]
+        (mt/with-temp [:model/Card {model-id :id}
+                       {:database_id   (mt/id)
+                        :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                        :type          :model
+                        :name          "Model"}]
+          (mt/with-model-cleanup [:model/ReplacementRun :model/Transform]
+            (with-redefs [transforms/execute! (fn [_ _] (throw (ex-info "Simulated transform failure" {})))]
+              (let [response (mt/user-http-request :crowberto :post 202
+                                                   "ee/replacement/replace-model-with-transform"
+                                                   {:card_id          model-id
+                                                    :transform_name   "Failing Transform"
+                                                    :transform_target {:type     "table"
+                                                                       :schema   "PUBLIC"
+                                                                       :name     "fail_transform"
+                                                                       :database (mt/id)}})
+                    run-id   (:run_id response)
+                    final    (poll-run run-id)]
+
+                (testing "run reaches failed status"
+                  (is (= "failed" (:status final))))
+
+                (testing "error message is captured"
+                  (is (some? (:message final))))
+
+                (testing "model is NOT converted to a question"
+                  (is (= :model (t2/select-one-fn :type :model/Card :id model-id))))))))))))
+
 (deftest all-endpoints-require-superuser-test
   (testing "All /ee/replacement/ endpoints return 403 for non-admin users"
     (mt/with-premium-features #{:dependencies}
@@ -359,6 +445,18 @@
                    (if params
                      (mt/user-http-request :rasta method 403 url params)
                      (mt/user-http-request :rasta method 403 url))))))))))
+
+(deftest multiple-pending-runs-do-not-violate-unique-constraint-test
+  (testing "Creating multiple pending runs does not violate the is_active unique constraint"
+    (mt/with-model-cleanup [:model/ReplacementRun]
+      (let [run-1 (replacement-run/create-run! :card 1 :table 2 (mt/user->id :crowberto))
+            run-2 (replacement-run/create-run! :card 3 :table 4 (mt/user->id :crowberto))]
+        (is (some? (:id run-1)))
+        (is (some? (:id run-2)))
+        (is (not= (:id run-1) (:id run-2)))
+        (testing "both runs have nil is_active"
+          (is (nil? (:is_active run-1)))
+          (is (nil? (:is_active run-2))))))))
 
 (deftest all-endpoints-require-dependencies-feature-test
   (testing "All /ee/replacement/ endpoints return 402 without the :dependencies feature flag"

@@ -2,6 +2,7 @@ import { Route } from "react-router";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
+import { setupCollectionByIdEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import type {
@@ -10,6 +11,7 @@ import type {
   TokenFeatures,
 } from "metabase-types/api";
 import {
+  createMockCollection,
   createMockNativeQuerySnippet,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
@@ -24,6 +26,10 @@ type SetupOps = {
 
 const setup = ({ snippet = {}, remoteSyncType }: SetupOps) => {
   const mockSnippet = createMockNativeQuerySnippet(snippet);
+
+  setupCollectionByIdEndpoint({
+    collections: [createMockCollection({ id: "root" })],
+  });
 
   const tokenFeatures: Partial<TokenFeatures> = {
     remote_sync: !!remoteSyncType,

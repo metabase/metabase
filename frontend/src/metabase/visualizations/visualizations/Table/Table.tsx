@@ -8,6 +8,7 @@ import { displayNameForColumn } from "metabase/lib/formatting";
 import type { OptionsType } from "metabase/lib/formatting/types";
 import { getSubpathSafeUrl } from "metabase/lib/urls";
 import ChartSettingLinkUrlInput from "metabase/visualizations/components/settings/ChartSettingLinkUrlInput";
+import { ChartSettingNumberInput } from "metabase/visualizations/components/settings/ChartSettingNumberInput";
 import {
   ChartSettingsTableFormatting,
   isFormattable,
@@ -106,7 +107,7 @@ export class Table extends Component<TableProps, TableState> {
     },
     "table.row_index": {
       get section() {
-        return t`Columns`;
+        return t`Display`;
       },
       get title() {
         return t`Show row index`;
@@ -114,6 +115,66 @@ export class Table extends Component<TableProps, TableState> {
       inline: true,
       widget: "toggle",
       getDefault: () => false,
+    },
+    "table.freeze_columns": {
+      get section() {
+        return t`Display`;
+      },
+      get title() {
+        return t`Freeze columns`;
+      },
+      inline: true,
+      widget: "toggle",
+      default: false,
+      getHidden: (series: Series, settings: ComputedVisualizationSettings) =>
+        _isPivoted(series, settings),
+      readDependencies: ["table.pivot"],
+    },
+    "table.freeze_columns_count": {
+      get section() {
+        return t`Display`;
+      },
+      get title() {
+        return t`Number of columns to freeze`;
+      },
+      widget: ChartSettingNumberInput,
+      default: 1,
+      isValid: (_series: Series, settings: VisualizationSettings) =>
+        settings["table.freeze_columns_count"] >= 1,
+      getHidden: (series: Series, settings: ComputedVisualizationSettings) =>
+        !settings["table.freeze_columns"] || _isPivoted(series, settings),
+      readDependencies: ["table.freeze_columns", "table.pivot"],
+      getProps: () => ({ min: 1 }),
+    },
+    "table.freeze_rows": {
+      get section() {
+        return t`Display`;
+      },
+      get title() {
+        return t`Freeze rows`;
+      },
+      inline: true,
+      widget: "toggle",
+      default: false,
+      getHidden: (series: Series, settings: ComputedVisualizationSettings) =>
+        _isPivoted(series, settings),
+      readDependencies: ["table.pivot"],
+    },
+    "table.freeze_rows_count": {
+      get section() {
+        return t`Display`;
+      },
+      get title() {
+        return t`Number of rows to freeze`;
+      },
+      widget: ChartSettingNumberInput,
+      default: 1,
+      isValid: (_series: Series, settings: VisualizationSettings) =>
+        settings["table.freeze_rows_count"] >= 1,
+      getHidden: (series: Series, settings: ComputedVisualizationSettings) =>
+        !settings["table.freeze_rows"] || _isPivoted(series, settings),
+      readDependencies: ["table.freeze_rows", "table.pivot"],
+      getProps: () => ({ min: 1 }),
     },
     "table.pivot": {
       get section() {

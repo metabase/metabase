@@ -1,12 +1,12 @@
 import { type HTMLAttributes, useCallback, useMemo } from "react";
 import { c, t } from "ttag";
 
+import { Schedule } from "metabase/common/components/Schedule/Schedule";
 import {
   cronToScheduleSettings,
   cronUnitToNumber,
   isRepeatingEvery,
-} from "metabase/admin/performance/utils";
-import { Schedule } from "metabase/common/components/Schedule/Schedule";
+} from "metabase/common/components/Schedule/cron";
 import { getScheduleExplanation } from "metabase/lib/cron";
 import { formatNotificationScheduleDescription } from "metabase/lib/notifications";
 import { useSelector } from "metabase/lib/redux";

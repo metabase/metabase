@@ -2,6 +2,7 @@
   (:require
    [metabase.api.util.handlers :as handlers]
    [metabase.config.core :as config]
+   [metabase.sso.api.slack-connect :as slack-connect.api]
    [ring.util.response :as response]))
 
 (let [bad-req (response/bad-request {:message "The auth/sso endpoint only exists in enterprise builds"
@@ -11,11 +12,14 @@
     (respond bad-req)))
 
 (def ^{:arglists '([request respond raise])} ee-missing-routes
-  "Ring routes for auth (SAML) API endpoints."
+  "Ring routes for auth (SAML) API endpoints.
+   Slack Connect routes are always available (OSS). Other SSO routes require EE."
   ;; follows the same form as [[metabase-enterprise.sso.api.routes]]. Compojure is a bit opaque so need to manually keep
   ;; them in sync.
   (handlers/route-map-handler
-   {"/auth" {"/sso"  not-enabled}
+   {"/auth" {"/sso"  (handlers/route-map-handler
+                      {"/slack-connect" slack-connect.api/routes
+                       "/"              not-enabled})}
     "/api"  {"/saml" not-enabled
              "/ee"   {"/sso" {"/oidc" not-enabled}}}}))
 

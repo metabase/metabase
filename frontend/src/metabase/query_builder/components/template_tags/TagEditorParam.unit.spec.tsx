@@ -164,11 +164,11 @@ describe("TagEditorParam", () => {
       });
 
       expect(
-        screen.getByRole("switch", { name: /emit table alias/i }),
+        screen.getByRole("switch", { name: /use variable name as alias/i }),
       ).toBeChecked();
 
       await userEvent.click(
-        screen.getByRole("switch", { name: /emit table alias/i }),
+        screen.getByRole("switch", { name: /use variable name as alias/i }),
       );
       expect(setTemplateTag).toHaveBeenLastCalledWith(
         expect.objectContaining({

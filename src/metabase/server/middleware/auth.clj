@@ -5,15 +5,9 @@
    [buddy.core.bytes :as bytes]
    [buddy.core.codecs :as codecs]
    [buddy.core.mac :as mac]
-   [metabase.premium-features.core :refer [defenterprise]]))
+   [metabase.server.settings :as server.settings]))
 
 (set! *warn-on-reflection* true)
-
-(defenterprise metabot-slack-signing-secret-setting
-  "Returns the Slack signing secret for Metabot (EE only)."
-  metabase-enterprise.slackbot.settings
-  []
-  nil)
 
 (def ^:private ^:const max-slack-timestamp-age-seconds
   "Maximum age in seconds for a Slack request timestamp. Requests older than this are rejected
@@ -64,7 +58,7 @@
    Returns nil if no signing secret is configured, false if timestamp is too old
    (replay attack prevention) or signature is invalid, true if valid."
   [request-body timestamp slack-signature]
-  (when-let [signing-secret (metabot-slack-signing-secret-setting)]
+  (when-let [signing-secret (server.settings/unobfuscated-metabot-slack-signing-secret)]
     (and (slack-timestamp-valid? timestamp)
          (some? slack-signature)
          (let [message (str "v0:" timestamp ":" request-body)

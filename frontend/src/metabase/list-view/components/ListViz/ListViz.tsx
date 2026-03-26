@@ -20,6 +20,7 @@ import {
 } from "metabase/visualizations/shared/utils/sizes";
 import type {
   ColumnSettingDefinition,
+  VisualizationDefinition,
   VisualizationProps,
 } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
@@ -39,7 +40,7 @@ import { ListViewConfiguration } from "../ListView/ListViewConfiguration";
 
 import S from "./ListViz.module.css";
 
-const vizDefinition = {
+const vizDefinition: VisualizationDefinition = {
   identifier: "list",
   iconName: "list",
   getUiName: () => t`List`,

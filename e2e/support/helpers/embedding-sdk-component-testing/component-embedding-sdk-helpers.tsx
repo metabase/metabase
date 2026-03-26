@@ -45,15 +45,17 @@ export function mountSdkContent(
   }
 
   const reactNode = (
-    <MetabaseProvider
-      {...sdkProviderProps}
-      authConfig={{
-        ...DEFAULT_SDK_AUTH_PROVIDER_CONFIG,
-        ...sdkProviderProps?.authConfig,
-      }}
-    >
-      {children}
-    </MetabaseProvider>
+    <div style={{ height: 800 }}>
+      <MetabaseProvider
+        {...sdkProviderProps}
+        authConfig={{
+          ...DEFAULT_SDK_AUTH_PROVIDER_CONFIG,
+          ...sdkProviderProps?.authConfig,
+        }}
+      >
+        {children}
+      </MetabaseProvider>
+    </div>
   );
 
   if (strictMode) {
