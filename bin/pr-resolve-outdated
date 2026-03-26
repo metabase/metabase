@@ -1,0 +1,107 @@
+#!/usr/bin/env bash
+# Resolve specific review comment threads on a GitHub PR by thread number.
+# Thread numbers correspond to the order shown by bin/pr-comments.
+#
+# Usage: bin/pr-resolve-outdated THREAD_NUM [THREAD_NUM ...] [--pr PR_NUMBER]
+#   If --pr is omitted, uses the PR associated with the current branch.
+#
+# Examples:
+#   bin/pr-resolve-outdated 1 3        # resolve threads 1 and 3
+#   bin/pr-resolve-outdated 1 2 3      # resolve threads 1, 2, and 3
+#   bin/pr-resolve-outdated 2 --pr 71471
+
+set -euo pipefail
+
+REPO="metabase/metabase"
+PR_NUMBER=""
+THREAD_NUMS=()
+
+# Parse args
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --pr)
+      PR_NUMBER="$2"
+      shift 2
+      ;;
+    *)
+      if ! [[ "$1" =~ ^[0-9]+$ ]]; then
+        echo "Error: Invalid thread number: $1 (must be a positive integer)" >&2
+        exit 1
+      fi
+      THREAD_NUMS+=("$1")
+      shift
+      ;;
+  esac
+done
+
+if [[ ${#THREAD_NUMS[@]} -eq 0 ]]; then
+  echo "Usage: bin/pr-resolve-outdated THREAD_NUM [THREAD_NUM ...] [--pr PR_NUMBER]" >&2
+  echo "Thread numbers match the order shown by bin/pr-comments." >&2
+  exit 1
+fi
+
+if [[ -z "$PR_NUMBER" ]]; then
+  PR_NUMBER=$(gh pr view --json number --jq '.number' 2>/dev/null) || true
+  if [[ -z "$PR_NUMBER" ]]; then
+    echo "Error: No PR found for current branch and no PR number provided." >&2
+    exit 1
+  fi
+fi
+
+# Fetch all unresolved threads (same order as bin/pr-comments)
+THREADS=$(gh api graphql -f query='
+query($owner: String!, $repo: String!, $pr: Int!) {
+  repository(owner: $owner, name: $repo) {
+    pullRequest(number: $pr) {
+      reviewThreads(first: 100) {
+        nodes {
+          id
+          isResolved
+          path
+          line
+          comments(first: 1) {
+            nodes {
+              body
+            }
+          }
+        }
+      }
+    }
+  }
+}' -f owner="${REPO%/*}" -f repo="${REPO#*/}" -F pr="$PR_NUMBER" \
+  --jq '[.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved == false)] | to_entries[] | "\(.key + 1)\t\(.value.id)\t\(.value.path):\(.value.line // "file" | tostring)\t\(.value.comments.nodes[0].body | split("\n")[0][:80])"')
+
+if [[ -z "$THREADS" ]]; then
+  echo "No unresolved threads on PR #${PR_NUMBER}."
+  exit 0
+fi
+
+TOTAL=$(echo "$THREADS" | wc -l | tr -d ' ')
+RESOLVED=0
+
+for num in "${THREAD_NUMS[@]}"; do
+  LINE=$(echo "$THREADS" | awk -F'\t' -v n="$num" '$1 == n')
+  if [[ -z "$LINE" ]]; then
+    echo "Warning: thread #${num} not found (PR has ${TOTAL} unresolved threads)" >&2
+    continue
+  fi
+
+  THREAD_ID=$(echo "$LINE" | cut -f2)
+  LOCATION=$(echo "$LINE" | cut -f3)
+  PREVIEW=$(echo "$LINE" | cut -f4)
+
+  echo "Resolving #${num} ${LOCATION}: ${PREVIEW}"
+  RESPONSE=$(gh api graphql -f query='mutation($threadId: ID!) { resolveReviewThread(input: {threadId: $threadId}) { thread { isResolved } } }' -f threadId="$THREAD_ID" 2>&1) || true
+  if ! echo "$RESPONSE" | jq -e . >/dev/null 2>&1; then
+    echo "Error: gh api call failed for thread #${num}" >&2
+    continue
+  fi
+  if echo "$RESPONSE" | jq -e '.errors' >/dev/null 2>&1; then
+    ERROR_MSG=$(echo "$RESPONSE" | jq -r '.errors[0].message // "unknown error"')
+    echo "Error resolving thread #${num}: ${ERROR_MSG}" >&2
+    continue
+  fi
+  RESOLVED=$((RESOLVED + 1))
+done
+
+echo "Done. Resolved ${RESOLVED} thread(s)."

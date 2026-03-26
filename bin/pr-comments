@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+# Fetch all unresolved review comment threads from a GitHub PR.
+# Usage: bin/pr-comments [PR_NUMBER]
+#   If PR_NUMBER is omitted, uses the PR associated with the current branch.
+
+set -euo pipefail
+
+REPO="metabase/metabase"
+
+if [[ $# -ge 1 ]]; then
+  PR_NUMBER="$1"
+else
+  PR_NUMBER=$(gh pr view --json number --jq '.number' 2>/dev/null) || true
+  if [[ -z "$PR_NUMBER" ]]; then
+    echo "Error: No PR found for current branch and no PR number provided." >&2
+    exit 1
+  fi
+fi
+
+if ! [[ "$PR_NUMBER" =~ ^[0-9]+$ ]]; then
+  echo "Error: Invalid PR number: $PR_NUMBER" >&2
+  exit 1
+fi
+
+# Use the GraphQL API to get review threads with resolved status
+gh api graphql -f query='
+query($owner: String!, $repo: String!, $pr: Int!) {
+  repository(owner: $owner, name: $repo) {
+    pullRequest(number: $pr) {
+      title
+      url
+      number
+      reviewThreads(first: 100) {
+        pageInfo { hasNextPage }
+        nodes {
+          isResolved
+          isOutdated
+          path
+          line
+          comments(first: 50) {
+            pageInfo { hasNextPage }
+            nodes {
+              author { login }
+              body
+              createdAt
+              url
+            }
+          }
+        }
+      }
+    }
+  }
+}' -f owner="${REPO%/*}" -f repo="${REPO#*/}" -F pr="$PR_NUMBER" \
+  --jq '
+    .data.repository.pullRequest as $pr |
+    "PR #\($pr.number): \($pr.title)\n\($pr.url)\n" +
+    (if $pr.reviewThreads.pageInfo.hasNextPage then
+      "WARNING: More than 100 review threads exist; some may be missing.\n"
+    else "" end) +
+    (
+      [ $pr.reviewThreads.nodes[] | select(.isResolved == false) ] as $threads |
+      if ($threads | length) == 0 then
+        "No unresolved comment threads."
+      else
+        "\(($threads | length)) unresolved thread(s):\n" +
+        (
+          [ $threads | to_entries[] |
+            (.key + 1) as $num | .value |
+            .path as $path | .line as $line |
+            .comments.nodes as $comments |
+            "\n--- [\($num)] \($path):\($line // "file-level") ---" +
+            (if .comments.pageInfo.hasNextPage then
+              "\n  (WARNING: Thread has more than 50 comments; some may be missing.)"
+            else "" end) +
+            ([ $comments[] |
+              "\n  @\(.author.login) (\(.createdAt | split("T")[0])):\n\(.body | split("\n") | map("    " + .) | join("\n"))"
+            ] | join("\n"))
+          ] | join("\n")
+        )
+      end
+    )
+  '
