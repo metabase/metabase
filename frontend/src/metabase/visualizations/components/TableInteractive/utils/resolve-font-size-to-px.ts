@@ -16,9 +16,14 @@ export function resolveFontSizeToPx(
   fontSize: string,
   baseFontSize?: string,
 ): string {
-  const isEmFont = fontSize.endsWith("em") && !fontSize.endsWith("rem");
+  const isRem = fontSize.endsWith("rem");
+  const isEm = fontSize.endsWith("em") && !isRem;
 
-  if (!isEmFont) {
+  if (!isEm) {
+    console.warn(
+      `resolveFontSizeToPx: fontSize "${fontSize}" is not in em. ` +
+        `Column width measurement may be inaccurate.`,
+    );
     return fontSize;
   }
 
