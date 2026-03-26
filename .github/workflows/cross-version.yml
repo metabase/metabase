@@ -18,6 +18,11 @@ on:
       - ".github/workflows/cross-version.yml"
       - ".github/scripts/build-cross-version-matrix.js"
 
+  # TEMP: test Slack notification on this branch
+  push:
+    branches:
+      - DEV-1671-cross-version-slack
+
   schedule:
     # Run nightly at 3 AM UTC
     - cron: "0 3 * * *"
@@ -102,7 +107,8 @@ jobs:
 
   # Notify Slack on nightly failures
   notify-on-failure:
-    if: always() && github.event_name == 'schedule' && needs.test-matrix.result == 'failure'
+    # TEMP: changed from 'schedule' to test on push
+    if: always() && needs.test-matrix.result == 'failure'
     needs: [test-matrix]
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
@@ -170,7 +176,8 @@ jobs:
 
             const failures = buildFailureResults(failedJobs, artifactData);
             const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${context.runId}`;
-            await sendCrossVersionSlackNotification(failures, runUrl, process.env.SLACK_BOT_TOKEN);
+            // TEMP: using bot-testing channel instead of engineering-ci
+            await sendCrossVersionSlackNotification(failures, runUrl, process.env.SLACK_BOT_TOKEN, 'bot-testing');
             console.log('Slack notification sent');
 
   # Manual test for workflow_dispatch

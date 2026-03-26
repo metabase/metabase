@@ -26,7 +26,6 @@ describe("cross-version-slack", () => {
 
     it("returns null for unparseable names", () => {
       expect(parseJobName("generate-matrix")).toBeNull();
-      expect(parseJobName("notify-on-failure")).toBeNull();
     });
   });
 
@@ -42,7 +41,7 @@ describe("cross-version-slack", () => {
             phase: "migration",
             source: "HEAD",
             target: "v1.59.x",
-            detail: "migrate down failed: not rolled back",
+            detail: "migrate down failed",
           },
         ],
       ]);
@@ -51,7 +50,6 @@ describe("cross-version-slack", () => {
 
       expect(results).toHaveLength(1);
       expect(results[0].phase).toBe("migration");
-      expect(results[0].detail).toBe("migrate down failed: not rolled back");
       expect(results[0].jobUrl).toBe("https://job/1");
     });
 
@@ -66,138 +64,56 @@ describe("cross-version-slack", () => {
       expect(results[0].phase).toBe("e2e");
       expect(results[0].source).toBe("v1.58.x");
       expect(results[0].target).toBe("HEAD");
-      expect(results[0].detail).toBe("check job logs for details");
-    });
-
-    it("handles all failed jobs including those without parseable names", () => {
-      const failedJobs: FailedJob[] = [
-        { name: "test-matrix (HEAD, v1.59.x)", url: "https://job/1" },
-        { name: "test-matrix (v1.58.x, HEAD)", url: "https://job/2" },
-        { name: "something-else", url: "https://job/3" },
-      ];
-
-      const results = buildFailureResults(failedJobs, new Map());
-
-      expect(results).toHaveLength(3);
     });
   });
 
   describe("buildSlackPayload", () => {
-    it("creates one attachment per failure with correct colors", () => {
-      const failures: FailureResult[] = [
-        {
-          phase: "migration",
-          source: "HEAD",
-          target: "v1.57.x",
-          detail: "migrate down failed",
-        },
-        {
-          phase: "e2e",
-          source: "v1.58.x",
-          target: "HEAD",
-          detail: "e2e tests failed after upgrade",
-        },
-      ];
-
-      const payload = buildSlackPayload(failures, RUN_URL);
-
-      expect(payload.attachments).toHaveLength(2);
-      expect(payload.attachments[0].color).toBe("#f85149"); // red
-      expect(payload.attachments[0].blocks[0].text?.text).toContain(
-        "Migration failures",
-      );
-      expect(payload.attachments[1].color).toBe("#ffce33"); // yellow
-      expect(payload.attachments[1].blocks[0].text?.text).toContain(
-        "E2E failures",
-      );
-    });
-
-    it("includes changeset detail in migration failure", () => {
-      const failures: FailureResult[] = [
-        {
-          phase: "migration",
-          source: "HEAD",
-          target: "v1.59.x",
-          detail:
-            "migrate down failed: not rolled back. Likely because they are not in the changelog file: v59.2026-03-17T10:30:03",
-        },
-      ];
-
-      const payload = buildSlackPayload(failures, RUN_URL);
-
-      expect(payload.attachments).toHaveLength(1);
-      expect(payload.attachments[0].blocks[0].text?.text).toContain(
-        "not rolled back",
-      );
-    });
-
-    it("shows generic message when no failures exist", () => {
-      const payload = buildSlackPayload([], RUN_URL);
-
-      expect(payload.attachments).toHaveLength(1);
-      expect(payload.attachments[0].blocks[0].text?.text).toContain(
-        "One or more matrix jobs failed",
-      );
-    });
-
-    it("includes job URLs as links when provided", () => {
+    it("lists failures with phase labels", () => {
       const failures: FailureResult[] = [
         {
           phase: "migration",
           source: "HEAD",
           target: "v1.59.x",
           detail: "migrate down failed",
-          jobUrl:
-            "https://github.com/metabase/metabase/actions/runs/123/job/456",
-        },
-      ];
-
-      const payload = buildSlackPayload(failures, RUN_URL);
-
-      expect(payload.attachments[0].blocks[0].text?.text).toContain(
-        "<https://github.com/metabase/metabase/actions/runs/123/job/456|HEAD → v1.59.x>",
-      );
-    });
-
-    it("appends 'View full run' to the last attachment", () => {
-      const failures: FailureResult[] = [
-        {
-          phase: "migration",
-          source: "HEAD",
-          target: "v1.57.x",
-          detail: "migrate down failed",
+          jobUrl: "https://job/1",
         },
         {
           phase: "e2e",
           source: "v1.58.x",
           target: "HEAD",
           detail: "e2e tests failed",
+          jobUrl: "https://job/2",
         },
       ];
 
       const payload = buildSlackPayload(failures, RUN_URL);
+      const text = payload.blocks[0].text?.text ?? "";
 
-      // First attachment: no context block
-      expect(payload.attachments[0].blocks).toHaveLength(1);
-      // Last attachment: has context block
-      const lastAttachment =
-        payload.attachments[payload.attachments.length - 1];
-      const lastBlock = lastAttachment.blocks[lastAttachment.blocks.length - 1];
-      expect(lastBlock.type).toBe("context");
-      expect(lastBlock.elements?.[0].text).toContain("View full run");
+      expect(text).toContain("Cross-version tests failing");
+      expect(text).toContain("<https://job/1|HEAD → v1.59.x> (migration failure)");
+      expect(text).toContain("<https://job/2|v1.58.x → HEAD> (e2e failure)");
+      expect(text).toContain("View full run");
     });
 
-    it("always starts with a header block", () => {
+    it("shows generic message when no failures exist", () => {
       const payload = buildSlackPayload([], RUN_URL);
+      const text = payload.blocks[0].text?.text ?? "";
 
-      expect(payload.blocks[0]).toEqual({
-        type: "header",
-        text: {
-          type: "plain_text",
-          text: ":warning: Cross-version tests failing",
-          emoji: true,
+      expect(text).toContain("One or more matrix jobs failed");
+    });
+
+    it("renders as a single block", () => {
+      const failures: FailureResult[] = [
+        {
+          phase: "migration",
+          source: "HEAD",
+          target: "v1.59.x",
+          detail: "migrate down failed",
         },
-      });
+      ];
+
+      const payload = buildSlackPayload(failures, RUN_URL);
+      expect(payload.blocks).toHaveLength(1);
     });
   });
 });

@@ -20,24 +20,14 @@ interface SlackBlock {
   elements?: Array<{ type: string; text: string }>;
 }
 
-interface SlackAttachment {
-  color: string;
-  blocks: SlackBlock[];
-}
-
 export interface SlackPayload {
   blocks: SlackBlock[];
-  attachments: SlackAttachment[];
 }
 
 export interface FailedJob {
   name: string;
   url: string;
 }
-
-// Red for migration failures, yellow for e2e
-const COLOR_MIGRATION = "#f85149";
-const COLOR_E2E = "#ffce33";
 
 /**
  * Parse source and target versions from a matrix job name.
@@ -94,67 +84,32 @@ const formatFailureItem = (f: FailureResult): string => {
   const versions = f.jobUrl
     ? `<${f.jobUrl}|${f.source} → ${f.target}>`
     : `${f.source} → ${f.target}`;
-  return `• ${versions} — ${f.detail}`;
+  const label = f.phase === "migration" ? "migration failure" : "e2e failure";
+  return `• ${versions} (${label})`;
 };
-
-const labelForPhase = (phase: "migration" | "e2e"): string =>
-  phase === "migration"
-    ? ":rotating_light: *Migration failures*"
-    : ":test_tube: *E2E failures*";
-
-const colorForPhase = (phase: "migration" | "e2e"): string =>
-  phase === "migration" ? COLOR_MIGRATION : COLOR_E2E;
 
 export const buildSlackPayload = (
   failures: FailureResult[],
   runUrl: string,
 ): SlackPayload => {
-  const attachments: SlackAttachment[] = failures.map(f => ({
-    color: colorForPhase(f.phase),
+  const lines = failures.map(formatFailureItem);
+
+  if (lines.length === 0) {
+    lines.push(
+      "One or more matrix jobs failed. Check the workflow run for details.",
+    );
+  }
+
+  return {
     blocks: [
       {
         type: "section",
         text: {
           type: "mrkdwn",
-          text: `${labelForPhase(f.phase)}\n${formatFailureItem(f)}`,
+          text: `:warning: *Cross-version tests failing*\n${lines.join("\n")}\n<${runUrl}|View full run>`,
         },
       },
     ],
-  }));
-
-  if (attachments.length === 0) {
-    attachments.push({
-      color: COLOR_E2E,
-      blocks: [
-        {
-          type: "section",
-          text: {
-            type: "mrkdwn",
-            text: "One or more matrix jobs failed. Check the workflow run for details.",
-          },
-        },
-      ],
-    });
-  }
-
-  // Add "View full run" to the last attachment
-  attachments[attachments.length - 1].blocks.push({
-    type: "context",
-    elements: [{ type: "mrkdwn", text: `<${runUrl}|View full run>` }],
-  });
-
-  return {
-    blocks: [
-      {
-        type: "header",
-        text: {
-          type: "plain_text",
-          text: ":warning: Cross-version tests failing",
-          emoji: true,
-        },
-      },
-    ],
-    attachments,
   };
 };
 
@@ -165,12 +120,11 @@ export const sendCrossVersionSlackNotification = async (
   channel = "engineering-ci",
 ): Promise<void> => {
   const slack = new WebClient(slackBotToken);
-  const { blocks, attachments } = buildSlackPayload(failures, runUrl);
+  const { blocks } = buildSlackPayload(failures, runUrl);
 
   await slack.chat.postMessage({
     channel,
     text: "Cross-version tests failing",
     blocks,
-    attachments,
   });
 };
