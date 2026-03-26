@@ -204,7 +204,7 @@ const getFormValues = (settingDetails: SettingDefinitionMap): JWTFormValues => {
     "jwt-attribute-tenant",
   ]);
 
-  if (!jwtSettings["jwt-user-provisioning-enabled?"]?.value) {
+  if (jwtSettings["jwt-user-provisioning-enabled?"]?.value == null) {
     // cast empty to false
     jwtSettings["jwt-user-provisioning-enabled?"] = {
       ...jwtSettings["jwt-user-provisioning-enabled?"],
