@@ -1993,3 +1993,21 @@
                     db        (t2/select-one :model/Database :name "my-db")]
                 (is (some? transform))
                 (is (= (:id db) (:source_database_id transform)))))))))))
+
+(deftest dashboard-minimal-required-properties-test
+  (testing "Dashboard deserialized with only: entity_id, name, creator_id"
+    (let [serialized (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [_dash (ts/create! :model/Dashboard :name "Test Dashboard")]
+            (reset! serialized (into [] (serdes.extract/extract {})))))
+
+        (let [minimal (mapv (fn [entity]
+                              (if (= "Dashboard" (-> entity :serdes/meta last :model))
+                                (select-keys entity [:serdes/meta :entity_id :name :creator_id])
+                                entity))
+                            @serialized)]
+          (ts/with-db dest-db
+            (serdes.load/load-metabase! (ingestion-in-memory minimal))
+            (let [dashboard (t2/select-one :model/Dashboard :name "Test Dashboard")]
+              (is (some? dashboard)))))))))
