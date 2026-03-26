@@ -19,9 +19,19 @@ interface SlackBlock {
   elements?: Array<{ type: string; text: string }>;
 }
 
-export interface SlackPayload {
+interface SlackAttachment {
+  color: string;
   blocks: SlackBlock[];
 }
+
+export interface SlackPayload {
+  blocks: SlackBlock[];
+  attachments: SlackAttachment[];
+}
+
+// Red for migration failures, yellow for e2e-only
+const COLOR_MIGRATION = "#f85149";
+const COLOR_E2E = "#ffce33";
 
 export const buildSlackPayload = (
   failures: FailureResult[],
@@ -30,13 +40,13 @@ export const buildSlackPayload = (
   const migration = failures.filter(f => f.phase === "migration");
   const e2e = failures.filter(f => f.phase === "e2e");
 
-  const sections: SlackBlock[] = [];
+  const attachmentBlocks: SlackBlock[] = [];
 
   if (migration.length > 0) {
     const items = migration
       .map(f => `• ${f.source} → ${f.target} — ${f.detail}`)
       .join("\n");
-    sections.push({
+    attachmentBlocks.push({
       type: "section",
       text: {
         type: "mrkdwn",
@@ -49,7 +59,7 @@ export const buildSlackPayload = (
     const items = e2e
       .map(f => `• ${f.source} → ${f.target} — ${f.detail}`)
       .join("\n");
-    sections.push({
+    attachmentBlocks.push({
       type: "section",
       text: {
         type: "mrkdwn",
@@ -58,8 +68,8 @@ export const buildSlackPayload = (
     });
   }
 
-  if (sections.length === 0) {
-    sections.push({
+  if (attachmentBlocks.length === 0) {
+    attachmentBlocks.push({
       type: "section",
       text: {
         type: "mrkdwn",
@@ -68,10 +78,12 @@ export const buildSlackPayload = (
     });
   }
 
-  sections.push({
+  attachmentBlocks.push({
     type: "context",
     elements: [{ type: "mrkdwn", text: `<${runUrl}|View full run>` }],
   });
+
+  const color = migration.length > 0 ? COLOR_MIGRATION : COLOR_E2E;
 
   return {
     blocks: [
@@ -83,8 +95,8 @@ export const buildSlackPayload = (
           emoji: true,
         },
       },
-      ...sections,
     ],
+    attachments: [{ color, blocks: attachmentBlocks }],
   };
 };
 
@@ -95,11 +107,12 @@ export const sendCrossVersionSlackNotification = async (
   channel = "engineering-ci",
 ): Promise<void> => {
   const slack = new WebClient(slackBotToken);
-  const { blocks } = buildSlackPayload(failures, runUrl);
+  const { blocks, attachments } = buildSlackPayload(failures, runUrl);
 
   await slack.chat.postMessage({
     channel,
     text: "Cross-version tests failing",
     blocks,
+    attachments,
   });
 };
