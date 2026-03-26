@@ -7112,6 +7112,10 @@
         "type" : "string",
         "enum" : [ "default", "write-data" ]
       },
+      "metabase.frontend-errors.api.frontend-error-type" : {
+        "type" : "string",
+        "enum" : [ "component-crash", "chart-render-error" ]
+      },
       "metabase.legacy-mbql.schema.-" : {
         "description" : "schema for a valid MBQL 4 :- clause",
         "allOf" : [ ]
@@ -34495,6 +34499,41 @@
           }
         },
         "tags" : [ "/api/field" ]
+      }
+    },
+    "/api/frontend-errors" : {
+      "post" : {
+        "operationId" : "post-api-frontend-errors",
+        "summary" : "POST /api/frontend-errors",
+        "description" : "Endpoint for the frontend to report errors. Increments a Prometheus counter\n   with the given `type` label.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "type" : {
+                    "$ref" : "#/components/schemas/metabase.frontend-errors.api.frontend-error-type"
+                  }
+                },
+                "required" : [ "type" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/frontend-errors" ]
       }
     },
     "/api/geojson" : {
