@@ -38,27 +38,69 @@
 
 ;;; Querying DB
 
+;;; ----------------------------------------- Request-scoped cache -----------------------------------------
+
+(def ^:dynamic *cache-strategy-cache*
+  "When bound to an atom (via [[with-cache-strategy-cache]]), caches the shared (non-question)
+  cache config lookup so it isn't repeated for every card on the same dashboard+database.
+  nil outside of a cached context."
+  nil)
+
+(defmacro with-cache-strategy-cache
+  "Bind a cache-strategy lookup cache for the duration of `body`."
+  [& body]
+  `(binding [*cache-strategy-cache* (atom {})]
+     ~@body))
+
+(defn- cached
+  "Look up `k` in [[*cache-strategy-cache*]], computing `(f)` on miss.
+  Passes through to `(f)` when the cache is unbound."
+  [k f]
+  (if-not *cache-strategy-cache*
+    (f)
+    (let [v (get @*cache-strategy-cache* k ::miss)]
+      (if (identical? v ::miss)
+        (let [result (f)]
+          (swap! *cache-strategy-cache* assoc k result)
+          result)
+        v))))
+
+(defn- find-question-cache-config
+  "Look up question-level cache config for a specific card. Returns a CacheConfig or nil."
+  [card-id]
+  (t2/select-one :model/CacheConfig
+                 :model "question"
+                 :model_id card-id))
+
+(defn- find-shared-cache-config
+  "Look up the highest-priority shared (dashboard/database/root) cache config.
+  Result is cached across cards when [[*cache-strategy-cache*]] is bound."
+  [dashboard-id database-id]
+  (cached [::shared-config dashboard-id database-id]
+          (fn []
+            (let [qs (for [[i model model-id] [[2 "dashboard" dashboard-id]
+                                               [3 "database"  database-id]
+                                               [4 "root"      0]]
+                           :when               model-id]
+                       {:from   [:cache_config]
+                        :select [:id
+                                 [[:inline i] :ordering]]
+                        :where  [:and
+                                 [:= :model [:inline model]]
+                                 [:= :model_id model-id]]})
+                  q  {:from     [[{:union-all qs} :unused_alias]]
+                      :select   [:id]
+                      :order-by :ordering
+                      :limit    [:inline 1]}]
+              (t2/select-one :model/CacheConfig :id q)))))
+
 (defenterprise-schema cache-strategy :- [:maybe ::cache-strategy]
   "Returns the granular cache strategy for a card."
   :feature :cache-granular-controls
   [card         :- :metabase.queries.schema/card
    dashboard-id :- [:maybe :metabase.lib.schema.id/dashboard]]
-  (let [qs   (for [[i model model-id] [[1 "question"   (:id card)]
-                                       [2 "dashboard"  dashboard-id]
-                                       [3 "database"   (:database_id card)]
-                                       [4 "root"       0]]
-                   :when              model-id]
-               {:from   [:cache_config]
-                :select [:id
-                         [[:inline i] :ordering]]
-                :where  [:and
-                         [:= :model [:inline model]]
-                         [:= :model_id model-id]]})
-        q    {:from     [[{:union-all qs} :unused_alias]]
-              :select   [:id]
-              :order-by :ordering
-              :limit    [:inline 1]}
-        item (t2/select-one :model/CacheConfig :id q)]
+  (let [item (or (find-question-cache-config (:id card))
+                 (find-shared-cache-config dashboard-id (:database_id card)))]
     (cache/card-strategy item card)))
 
 ;;; Strategy execution
