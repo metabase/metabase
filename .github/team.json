@@ -1,13 +1,13 @@
 {
   "teams": [
     {
-      "name": "Querying",
-      "label": ".Team/Querying",
+      "name": "Querying Platform",
+      "label": ".Team/QueryingPlatform",
       "members": [
         "bshepherdson",
         "metamben",
         "rileythomp",
-        "camsual"
+        "camsaul"
       ]
     },
     {

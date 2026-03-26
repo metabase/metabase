@@ -566,7 +566,6 @@
     :enhancements
     :etl-connections
     :etl-connections-pg
-    :llm-autodescription
     :query-reference-validation
     :cloud-custom-smtp
     :session-timeout-config

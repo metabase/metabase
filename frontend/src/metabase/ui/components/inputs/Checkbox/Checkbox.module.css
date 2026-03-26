@@ -65,7 +65,6 @@
 }
 
 .input {
-  cursor: pointer;
   border: 1px solid var(--mb-color-border);
   background-color: var(--mb-color-background-primary);
 
@@ -81,6 +80,10 @@
     background-color: var(--mb-color-brand);
   }
 
+  &:not(:disabled) {
+    cursor: pointer;
+  }
+
   &:disabled {
     border-color: var(--mb-color-background-disabled);
     background-color: var(--mb-color-background-disabled);
@@ -91,7 +94,6 @@
   color: var(--mb-color-text-primary);
   font-size: var(--mantine-font-size-md);
   line-height: var(--mantine-line-height-md);
-  cursor: pointer;
 }
 
 .description {
@@ -99,7 +101,6 @@
   font-size: var(--mantine-font-size-sm);
   line-height: var(--mantine-line-height-sm);
   margin-top: var(--mantine-spacing-xs);
-  cursor: pointer;
 }
 
 .icon {

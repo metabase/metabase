@@ -17,12 +17,14 @@
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log.capture :as log.capture]
+   [metabase.warehouses.models.database :as models.database]
    [toucan2.core :as t2]))
 
 ;; `reindex!` below is ok in a parallel test since it's not actually executing anything
 #_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (use-fixtures :each (fn [thunk]
-                      (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
+                      (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)
+                                                  models.database/assert-not-h2! (constantly nil)]
                         (thunk))))
 
 (defn- no-labels [path]
@@ -46,7 +48,9 @@
       (ingest-list [_]
         (keys mapped))
       (ingest-one [_ path]
-        (get mapped (no-labels path))))))
+        (get mapped (no-labels path)))
+      (ingest-errors [_]
+        []))))
 
 ;;; WARNING for test authors: [[extract/extract]] returns a lazy reducible value. To make sure you don't
 ;;; confound your tests with data from your dev appdb, remember to eagerly

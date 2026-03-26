@@ -105,7 +105,7 @@ export const SdkIframeEmbedRoute = () => {
       isLocalHost={embedSettings._isLocalhost}
     >
       <Stack
-        mih="100vh"
+        h="100vh"
         className={SdkIframeEmbedRouteS.Container}
         style={{
           backgroundColor: adjustedTheme?.colors?.background,
