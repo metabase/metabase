@@ -258,13 +258,23 @@
                  (approved-port? (:port origin) (:port approved-origin))))
               approved-list))))))
 
+;; TODO(Poom, 2026-03-27, EMB-1489): remove this temporary allowlist and add CORS for OSS
+(defn- mcp-sandbox-origin?
+  "Returns true if the origin is a Claude MCP sandbox (*.claudemcpcontent.com).
+   Hardcoded allowlist for MCP app CORS. To be replaced with a proper solution before merge."
+  [raw-origin]
+  (when raw-origin
+    (let [{:keys [domain]} (parse-url raw-origin)]
+      (and domain (str/ends-with? domain ".claudemcpcontent.com")))))
+
 (defn access-control-headers
   "Returns headers for CORS requests"
   [origin enabled? approved-origins]
-  (let [localhost-allowed? (and (localhost-origin? origin) (not (server.settings/disable-cors-on-localhost)))]
-    (when (or enabled? localhost-allowed?)
+  (let [localhost-allowed? (and (localhost-origin? origin) (not (server.settings/disable-cors-on-localhost)))
+        mcp-sandbox?       (mcp-sandbox-origin? origin)]
+    (when (or enabled? localhost-allowed? mcp-sandbox?)
       (merge
-       (when (approved-origin? origin approved-origins)
+       (when (or (approved-origin? origin approved-origins) mcp-sandbox?)
          {"Access-Control-Allow-Origin" origin
           "Vary"                        "Origin"})
        {"Access-Control-Allow-Headers"  "*"
