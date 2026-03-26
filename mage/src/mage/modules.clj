@@ -118,6 +118,7 @@
      llm
      login-history
      metabot
+     mq
      notification
      permissions
      premium-features

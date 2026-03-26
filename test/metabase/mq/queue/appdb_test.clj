@@ -241,4 +241,3 @@
             (is (= 0 (:failures row))))))
       (finally
         (t2/delete! :queue_message_batch :queue_name (name queue-name))))))
-
