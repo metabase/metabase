@@ -23,7 +23,7 @@
   (mt/with-clock #t "2020-02-04T12:22-08:00[US/Pacific]"
     (let [original-hash (qp.util/query-hash query)
           result        (promise)]
-      (with-redefs [process-userland-query/save-execution-metadata!*
+      (with-redefs [process-userland-query/save-execution-metadata!
                     (fn [query-execution]
                       (when-let [^bytes qe-hash (:hash query-execution)]
                         (deliver

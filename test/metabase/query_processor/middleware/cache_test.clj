@@ -417,17 +417,12 @@
 (deftest e2e-test-2
   (testing "Cached results don't impact average execution time"
     (let [save-execution-metadata-count       (atom 0)
-          update-avg-execution-count          (atom 0)
           called-promise                      (promise)
-          save-execution-metadata-original    (var-get #'process-userland-query/save-execution-metadata!*)
-          save-query-update-avg-time-original query/save-query-and-update-average-execution-time!]
-      (with-redefs [process-userland-query/save-execution-metadata!*     (fn [& args]
-                                                                           (swap! save-execution-metadata-count inc)
-                                                                           (apply save-execution-metadata-original args)
-                                                                           (deliver called-promise true))
-                    query/save-query-and-update-average-execution-time! (fn [& args]
-                                                                          (swap! update-avg-execution-count inc)
-                                                                          (apply save-query-update-avg-time-original args))]
+          save-execution-metadata-original    (var-get #'process-userland-query/save-execution-metadata!)]
+      (with-redefs [process-userland-query/save-execution-metadata!     (fn [& args]
+                                                                          (swap! save-execution-metadata-count inc)
+                                                                          (apply save-execution-metadata-original args)
+                                                                          (deliver called-promise true))]
         (let [query  (assoc (mt/mbql-query venues {:order-by [[:asc $id]] :limit 42})
                             :cache-strategy (assoc (ttl-strategy) :multiplier 5000))
               q-hash (qp.util/query-hash query)]
@@ -437,7 +432,6 @@
             (a/alts!! [save-chan (a/timeout 200)]) ;; wait-for-result closes the channel
             (u/deref-with-timeout called-promise 500)
             (is (= 1 @save-execution-metadata-count))
-            (is (= 1 @update-avg-execution-count))
             (let [avg-execution-time (query/average-execution-time-ms q-hash)]
               (is (pos? avg-execution-time))
               ;; rerun query getting cached results
@@ -446,8 +440,6 @@
               (mt/wait-for-result save-chan)
               (is (= 2 @save-execution-metadata-count)
                   "Saving execution times of a cache lookup")
-              (is (= 1 @update-avg-execution-count)
-                  "Cached query execution should not update average query duration")
               (is (= avg-execution-time (query/average-execution-time-ms q-hash))))))))))
 
 (def ^:private expected-inner-metadata
