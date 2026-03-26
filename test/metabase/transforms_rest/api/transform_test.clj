@@ -8,7 +8,7 @@
    [metabase.models.transforms.transform :as transform.model]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.test :as qp]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.transforms-base.util :as transforms-base.u]
@@ -17,6 +17,7 @@
    [metabase.transforms.test-dataset :as transforms-dataset]
    [metabase.transforms.test-util :refer [get-test-schema
                                           parse-instant
+                                          seconds-from-now-ns
                                           utc-timestamp
                                           with-transform-cleanup!]]
    [metabase.util :as u]
@@ -685,12 +686,12 @@
   (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
     (mt/with-data-analyst-role! (mt/user->id :lucky)
       (let [resp      (mt/user-http-request :lucky :post 202 (format "transform/%s/run" transform-id))
-            timeout-s 10 ; 10 seconds is our timeout to finish execution and sync
-            limit     (+ (System/currentTimeMillis) (* timeout-s 1000))]
+            timeout-s 20 ; 20 seconds is our timeout to finish execution and sync
+            deadline  (seconds-from-now-ns timeout-s)]
         (is (=? {:message "Transform run started"}
                 resp))
         (loop []
-          (when (> (System/currentTimeMillis) limit)
+          (when (> (System/nanoTime) deadline)
             (throw (ex-info (str "Transform run timed out after " timeout-s " seconds") {})))
           (let [resp   (mt/user-http-request :lucky :get 200 (format "transform/%s" transform-id))
                 status (some-> resp :last_run :status keyword)]

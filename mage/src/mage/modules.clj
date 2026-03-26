@@ -102,6 +102,7 @@
      config
      content-verification
      dashboards
+     documents
      eid-translation
      embedding
      enterprise/api
@@ -114,7 +115,9 @@
      formatter
      initialization-status
      internal-stats
+     llm
      login-history
+     metabot
      notification
      permissions
      premium-features
@@ -128,6 +131,7 @@
      session
      settings
      setup
+     slackbot
      sso
      startup
      system
@@ -140,7 +144,8 @@
      util
      version
      view-log
-     warehouse-schema})
+     warehouse-schema
+     workspaces})
 
 (defn- affected-modules
   "Set of modules that are direct or indirect dependents of `modules`, and thus are affected by changes to them.

@@ -1,10 +1,10 @@
 import { useMemo } from "react";
 
 import { useTranslateContent } from "metabase/i18n/hooks";
-import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
 import * as Lib from "metabase-lib";
 import { getUniqueExpressionName } from "metabase-lib/v1/queries/utils/expression";
 
+import { ExpressionWidget } from "../../../components/expressions/ExpressionWidget";
 import type { NotebookStepProps } from "../../types";
 import { ClauseStep } from "../ClauseStep";
 

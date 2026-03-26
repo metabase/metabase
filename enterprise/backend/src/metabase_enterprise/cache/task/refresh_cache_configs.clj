@@ -6,7 +6,7 @@
    [java-time.api :as t]
    [metabase-enterprise.cache.strategies :as strategies]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.core :as qp]
    [metabase.task.core :as task]
    [metabase.util.log :as log]
    [toucan2.core :as t2])

@@ -63,7 +63,7 @@
     (let [embedding-model {:provider "openai"
                            :model-name "text-embedding-3-small"
                            :vector-dimensions 1536}]
-      (mt/with-temporary-setting-values [ee-openai-api-key nil]
+      (mt/with-temporary-setting-values [llm-openai-api-key nil]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"OpenAI API key not configured"
@@ -174,7 +174,7 @@
           (is (thrown? Exception (decode [{:embedding invalid-base64}]))))))))
 
 (deftest test-get-embedding
-  (mt/with-temporary-setting-values [ee-openai-api-key              "mock-openai-api-key"
+  (mt/with-temporary-setting-values [llm-openai-api-key              "sk-mock-openai-api-key"
                                      ee-embedding-service-base-url  "http://mock-embedding-service"
                                      ee-embedding-service-api-key   "mock-embedding-service-key"]
     (let [mock-embedding  [1.0 2.0 3.0 4.0]

@@ -3,20 +3,18 @@ import cx from "classnames";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import {
-  canDownloadResults,
-  canEditQuestion,
-} from "metabase/dashboard/components/DashCard/DashCardMenu/utils";
+import { QuestionDownloadWidget } from "metabase/common/components/QuestionDownloadWidget";
+import { useDownloadData } from "metabase/common/components/QuestionDownloadWidget/use-download-data";
+import { canEditQuestion } from "metabase/dashboard/components/DashCard/DashCardMenu/utils";
 import {
   type DashboardContextReturned,
   useDashboardContext,
 } from "metabase/dashboard/context";
 import { getParameterValuesBySlugMap } from "metabase/dashboard/selectors";
 import { transformSdkQuestion } from "metabase/embedding-sdk/lib/transform-question";
+import { canDownloadResults } from "metabase/lib/downloads";
 import { useStore } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
-import { QuestionDownloadWidget } from "metabase/query_builder/components/QuestionDownloadWidget";
-import { useDownloadData } from "metabase/query_builder/components/QuestionDownloadWidget/use-download-data";
 import { ActionIcon, Icon, Menu, type MenuProps } from "metabase/ui";
 import { SAVING_DOM_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-chart-image";
 import type Question from "metabase-lib/v1/Question";

@@ -6,7 +6,7 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.core :as qp]
    [metabase.transforms-base.core :as transforms-base]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.log :as log]
