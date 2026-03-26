@@ -162,7 +162,7 @@
   (every? #(not (#{"PENDING" "IN_PROGRESS" "QUEUED"} (:state %))) checks))
 
 (defn- failed-checks [checks]
-  (filter #(#{"FAILURE" "ERROR"} (:state %)) checks))
+  (filter #(#{"FAILURE" "ERROR" "CANCELLED" "STARTUP_FAILURE"} (:state %)) checks))
 
 (defn- failed-run-ids
   "Distinct run IDs from failed checks."
@@ -265,5 +265,5 @@
                     (doseq [{:keys [test link]} test-failures]
                       (when link
                         (log-warn (format "    %s → %s" (or test "(unknown test)") link))))))))
-              (rerun-failed! run-ids)
-              (recur (inc attempt))))))))
+          (rerun-failed! run-ids)
+          (recur (inc attempt)))))))
