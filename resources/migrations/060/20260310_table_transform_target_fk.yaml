@@ -3,7 +3,7 @@
 databaseChangeLog:
   - logicalFilePath: migrations/060_update_migrations.yaml
   - changeSet:
-      id: v60.2026-03-10T00:00:00
+      id: v60.f8c3be
       author: christruter
       comment: Add target_table_id column to transform table
       changes:
@@ -22,7 +22,7 @@ databaseChangeLog:
             columnName: target_table_id
 
   - changeSet:
-      id: v60.2026-03-10T00:00:01
+      id: v60.424636
       author: christruter
       comment: Add index on transform.target_table_id
       changes:
@@ -34,7 +34,7 @@ databaseChangeLog:
                   name: target_table_id
 
   - changeSet:
-      id: v60.2026-03-10T00:00:02
+      id: v60.11c90d
       author: christruter
       comment: Add FK from transform.target_table_id to metabase_table with SET NULL
       preConditions:
@@ -50,9 +50,13 @@ databaseChangeLog:
             referencedTableName: metabase_table
             referencedColumnNames: id
             onDelete: SET NULL
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: transform
+            constraintName: fk_transform_target_table_id
 
   - changeSet:
-      id: v60.2026-03-10T00:00:03
+      id: v60.63e509
       author: christruter
       comment: Backfill transform.target_table_id from target JSON column
       changes:
@@ -61,7 +65,7 @@ databaseChangeLog:
       rollback:
 
   - changeSet:
-      id: v60.2026-03-10T00:00:04
+      id: v60.89dd63
       author: christruter
       comment: Add index on workspace_output.global_table_id
       changes:
@@ -73,7 +77,7 @@ databaseChangeLog:
                   name: global_table_id
 
   - changeSet:
-      id: v60.2026-03-10T00:00:05
+      id: v60.37bf26
       author: christruter
       comment: Add FK from workspace_output.global_table_id to metabase_table with SET NULL
       preConditions:
@@ -89,9 +93,13 @@ databaseChangeLog:
             referencedTableName: metabase_table
             referencedColumnNames: id
             onDelete: SET NULL
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: workspace_output
+            constraintName: fk_workspace_output_global_table_id
 
   - changeSet:
-      id: v60.2026-03-10T00:00:06
+      id: v60.ec5be6
       author: christruter
       comment: Add index on workspace_output.isolated_table_id
       changes:
@@ -103,7 +111,7 @@ databaseChangeLog:
                   name: isolated_table_id
 
   - changeSet:
-      id: v60.2026-03-10T00:00:07
+      id: v60.1ce739
       author: christruter
       comment: Add FK from workspace_output.isolated_table_id to metabase_table with SET NULL
       preConditions:
@@ -119,27 +127,13 @@ databaseChangeLog:
             referencedTableName: metabase_table
             referencedColumnNames: id
             onDelete: SET NULL
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: workspace_output
+            constraintName: fk_workspace_output_isolated_table_id
 
   - changeSet:
-      id: v60.2026-03-10T00:00:08
-      author: christruter
-      comment: Add FK from workspace_input.table_id to metabase_table with SET NULL
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - foreignKeyConstraintExists:
-                foreignKeyName: fk_workspace_input_table_id
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: workspace_input
-            baseColumnNames: table_id
-            constraintName: fk_workspace_input_table_id
-            referencedTableName: metabase_table
-            referencedColumnNames: id
-            onDelete: SET NULL
-
-  - changeSet:
-      id: v60.2026-03-10T00:00:09
+      id: v60.b40e42
       author: christruter
       comment: Add index on workspace_input_external.table_id
       changes:
@@ -151,7 +145,7 @@ databaseChangeLog:
                   name: table_id
 
   - changeSet:
-      id: v60.2026-03-10T00:00:10
+      id: v60.eea5db
       author: christruter
       comment: Add FK from workspace_input_external.table_id to metabase_table with SET NULL
       preConditions:
@@ -167,9 +161,13 @@ databaseChangeLog:
             referencedTableName: metabase_table
             referencedColumnNames: id
             onDelete: SET NULL
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: workspace_input_external
+            constraintName: fk_workspace_input_external_table_id
 
   - changeSet:
-      id: v60.2026-03-10T00:00:11
+      id: v60.d79009
       author: christruter
       comment: Add index on workspace_output_external.global_table_id
       changes:
@@ -181,7 +179,7 @@ databaseChangeLog:
                   name: global_table_id
 
   - changeSet:
-      id: v60.2026-03-10T00:00:12
+      id: v60.914975
       author: christruter
       comment: Add FK from workspace_output_external.global_table_id to metabase_table with SET NULL
       preConditions:
@@ -197,9 +195,13 @@ databaseChangeLog:
             referencedTableName: metabase_table
             referencedColumnNames: id
             onDelete: SET NULL
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: workspace_output_external
+            constraintName: fk_workspace_output_external_global_table_id
 
   - changeSet:
-      id: v60.2026-03-10T00:00:13
+      id: v60.253748
       author: christruter
       comment: Add index on workspace_output_external.isolated_table_id
       changes:
@@ -211,7 +213,7 @@ databaseChangeLog:
                   name: isolated_table_id
 
   - changeSet:
-      id: v60.2026-03-10T00:00:14
+      id: v60.4909e1
       author: christruter
       comment: Add FK from workspace_output_external.isolated_table_id to metabase_table with SET NULL
       preConditions:
@@ -227,3 +229,7 @@ databaseChangeLog:
             referencedTableName: metabase_table
             referencedColumnNames: id
             onDelete: SET NULL
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: workspace_output_external
+            constraintName: fk_workspace_output_external_isolated_table_id
