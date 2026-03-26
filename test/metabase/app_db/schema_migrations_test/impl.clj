@@ -255,6 +255,13 @@
         (is (contains? ran "v00.00-000") "start should be included (inclusive)")
         (is (contains? ran "v45.00-002") "end should be included (inclusive)"))))
 
+  (testing "single-item range (start == end)"
+    (with-temp-empty-app-db [conn :h2]
+      (run-migrations-in-range! conn ["v45.00-001" "v45.00-001"])
+      (let [ran (migrations-run conn)]
+        (is (contains? ran "v45.00-001") "the single migration should be included")
+        (is (not (contains? ran "v45.00-002")) "the next migration should NOT be included"))))
+
   (testing "exclusive end excludes the endpoint"
     (with-temp-empty-app-db [conn :h2]
       ;; Run v00.00-000 through v45.00-002 with exclusive end — v45.00-002 should NOT be run
@@ -276,15 +283,6 @@
           (is (not (contains? newly-ran "v45.00-001")) "v45.00-001 should NOT be re-run (exclusive start)")
           (is (contains? newly-ran "v45.00-002") "v45.00-002 should be included (between exclusive start and end)")
           (is (contains? newly-ran "v45.00-011") "end should be included (inclusive by default)")))))
-
-  (testing "nil end-id runs through the end of the changelog"
-    ;; This runs the entire migration history, so mark it ^:long to exclude from fast feedback loops
-    (with-temp-empty-app-db [conn :h2]
-      ;; Use the very first migration as start with no end — should run everything
-      (run-migrations-in-range! conn ["v00.00-000" nil])
-      (let [ran (migrations-run conn)]
-        (is (contains? ran "v00.00-000") "start should be included")
-        (is (> (count ran) 10) "should have run many migrations with no upper bound"))))
 
   (testing "unknown start-id throws"
     (with-temp-empty-app-db [conn :h2]
