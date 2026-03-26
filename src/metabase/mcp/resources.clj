@@ -48,7 +48,8 @@
      "frontend_client/embed-mcp.html"
      {:instanceUrl     (json/encode (site-url))
       :instanceUrlRaw  (site-url)
-      :sessionToken    (when session-key (json/encode session-key))})))
+      :sessionToken    (when session-key (json/encode session-key))
+      :cacheBuster     (str (System/currentTimeMillis))})))
 
 (defn list-resources
   "Return the list of available MCP resources."
