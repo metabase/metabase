@@ -541,7 +541,6 @@ interface PublicSettings {
   "cloud-gateway-ips": string[] | null;
   "custom-formatting": FormattingSettings;
   "custom-geojson": CustomGeoJSONSetting;
-  "custom-viz-enabled": boolean;
   "custom-homepage": boolean;
   "custom-homepage-dashboard": DashboardId | null;
   "development-mode?": boolean;

@@ -9,7 +9,7 @@
    [metabase.custom-viz-plugin.git :as git]
    [metabase.custom-viz-plugin.manifest :as manifest]
    [metabase.custom-viz-plugin.models.custom-viz-plugin]
-   [metabase.custom-viz-plugin.settings :as custom-viz.settings]
+   [metabase.premium-features.core :as premium-features]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -54,10 +54,10 @@
 ;;; ------------------------------------------------ Helpers ------------------------------------------------
 
 (defn- check-custom-viz-enabled
-  "Throw a 400 if custom visualizations are not enabled."
+  "Throw a 402 if custom visualizations are not enabled."
   []
-  (api/check (custom-viz.settings/custom-viz-enabled?)
-             [400 (tru "Custom visualizations are not enabled. Set the MB_CUSTOM_VIZ_ENABLED environment variable to true.")]))
+  (api/check (premium-features/has-feature? :custom-viz)
+             [402 (tru "Custom visualizations require a Pro or Enterprise license.")]))
 
 ;; TODO: this should be guarded automatically through a custom mi/to-json defmethod
 (defn- strip-token

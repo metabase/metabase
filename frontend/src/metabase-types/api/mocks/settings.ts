@@ -225,7 +225,6 @@ export const createMockSettings = (
   "custom-formatting": {},
   "custom-homepage": false,
   "custom-homepage-dashboard": null,
-  "custom-viz-enabled": false,
   "help-link": "metabase",
   "help-link-custom-destination": "",
   "deprecation-notice-version": undefined,
