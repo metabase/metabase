@@ -15,10 +15,10 @@ import { AppearanceSettingsPage } from "./settings/components/SettingsPages/Appe
 import { AuthenticationSettingsPage } from "./settings/components/SettingsPages/AuthenticationSettingsPage";
 import { CloudSettingsPage } from "./settings/components/SettingsPages/CloudSettingsPage";
 import {
-  CustomVizDevelopmentPage,
-  CustomVizFormPage,
-  ManageCustomVisualizationsPage,
-} from "./settings/components/SettingsPages/CustomVizPluginsSettingsPage";
+  CustomVisualizationsDevelopmentPage,
+  CustomVisualizationsFormPage,
+  CustomVisualizationsManagePage,
+} from "./settings/components/SettingsPages/CustomVisualizationsSettingsPage";
 import { EmailSettingsPage } from "./settings/components/SettingsPages/EmailSettingsPage";
 import { GeneralSettingsPage } from "./settings/components/SettingsPages/GeneralSettingsPage";
 import { LicenseSettingsPage } from "./settings/components/SettingsPages/LicenseSettingsPage";
@@ -78,16 +78,19 @@ export const getSettingsRoutes = () => (
     <Route path="localization" component={LocalizationSettingsPage} />
     <Route
       path="custom-visualizations"
-      component={ManageCustomVisualizationsPage}
+      component={CustomVisualizationsManagePage}
     />
-    <Route path="custom-visualizations/new" component={CustomVizFormPage} />
+    <Route
+      path="custom-visualizations/new"
+      component={CustomVisualizationsFormPage}
+    />
     <Route
       path="custom-visualizations/edit/:id"
-      component={CustomVizFormPage}
+      component={CustomVisualizationsFormPage}
     />
     <Route
       path="custom-visualizations/development"
-      component={CustomVizDevelopmentPage}
+      component={CustomVisualizationsDevelopmentPage}
     />
     <Route path="uploads" component={UploadSettingsPage} />
     <Route

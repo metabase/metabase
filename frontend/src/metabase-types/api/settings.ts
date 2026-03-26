@@ -322,6 +322,7 @@ export const tokenFeatures = [
   "cloud_custom_smtp",
   "content_translation",
   "content_verification",
+  "custom-viz",
   "disable_password_login",
   "embedding",
   "embedding_sdk",

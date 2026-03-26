@@ -23,6 +23,7 @@ import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { formatNumber } from "metabase/lib/formatting";
 import { connect } from "metabase/lib/redux";
 import { equals } from "metabase/lib/utils";
+import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import {
   getIsShowingRawTable,
   getUiControls,
@@ -40,7 +41,6 @@ import { getMode } from "metabase/visualizations/click-actions/lib/modes";
 import ChartCaption from "metabase/visualizations/components/ChartCaption";
 import ChartTooltip from "metabase/visualizations/components/ChartTooltip";
 import { ConnectedClickActionsPopover } from "metabase/visualizations/components/ClickActions";
-import { useAutoLoadCustomVizPlugin } from "metabase/visualizations/custom-viz-plugins";
 import { performDefaultAction } from "metabase/visualizations/lib/action";
 import {
   ChartSettingsError,
@@ -1035,7 +1035,7 @@ export default _.compose(
     function VisualizationForwardRef(props, ref) {
       const display = props.rawSeries?.[0]?.card?.display;
       const { loading: customVizLoading } =
-        useAutoLoadCustomVizPlugin(display);
+        PLUGIN_CUSTOM_VIZ.useAutoLoadCustomVizPlugin(display);
 
       if (customVizLoading) {
         return <LoadingView isSlow={undefined} />;

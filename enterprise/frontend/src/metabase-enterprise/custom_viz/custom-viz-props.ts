@@ -1,3 +1,4 @@
+import type { CreateCustomVisualizationProps } from "custom-viz/src/types/viz";
 import { t } from "ttag";
 
 import type { OptionsType } from "metabase/lib/formatting/types";
@@ -7,8 +8,6 @@ import type {
   TextMeasurer,
 } from "metabase/visualizations/shared/types/measure-text";
 import * as isa from "metabase-lib/v1/types/utils/isa";
-
-import type { CreateCustomVisualizationProps } from "../../custom-viz/src/types/viz";
 
 type TextWidthMeasurer = (text: string, style: FontStyle) => number;
 type TextHeightMeasurer = (text: string, style: FontStyle) => number;

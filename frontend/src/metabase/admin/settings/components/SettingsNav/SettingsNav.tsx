@@ -27,7 +27,7 @@ export function SettingsNav() {
   const hasScim = useHasTokenFeature("scim");
   const hasPythonTransforms = useHasTokenFeature("transforms-python");
   const isHosted = useSetting("is-hosted?");
-  const customVizEnabled = useSetting("custom-viz-enabled");
+  const hasCustomViz = useHasTokenFeature("custom-viz");
 
   return (
     <AdminNavWrapper>
@@ -63,22 +63,30 @@ export function SettingsNav() {
         label={t`Localization`}
         icon="globe"
       />
-      {customVizEnabled && (
-        <SettingsNavItem
-          label={t`Custom visualizations`}
-          icon="bar"
-          folderPattern="custom-visualizations"
-        >
+      <SettingsNavItem
+        path={!hasCustomViz ? "custom-visualizations" : undefined}
+        folderPattern="custom-visualizations"
+        label={
+          <Flex gap="sm" align="center">
+            <span>{t`Custom visualizations`}</span>
+            {!hasCustomViz && <UpsellGem />}
+          </Flex>
+        }
+        icon="bar"
+      >
+        {hasCustomViz && [
           <SettingsNavItem
+            key="manage"
             path="custom-visualizations"
             label={t`Manage visualizations`}
-          />
+          />,
           <SettingsNavItem
+            key="dev"
             path="custom-visualizations/development"
             label={t`Development`}
-          />
-        </SettingsNavItem>
-      )}
+          />,
+        ]}
+      </SettingsNavItem>
       <SettingsNavItem path="maps" label={t`Maps`} icon="pinmap" />
       <SettingsNavItem
         path={!hasWhitelabel ? "whitelabel" : undefined}

@@ -9,15 +9,16 @@ import {
   measureTextHeight,
   measureTextWidth,
 } from "metabase/lib/measure-text";
+import visualizations, {
+  registerVisualization,
+} from "metabase/visualizations";
+import type { Visualization } from "metabase/visualizations/types/visualization";
 import type {
   CustomVizPluginRuntime,
   VisualizationDisplay,
 } from "metabase-types/api";
 
 import { buildCustomVizProps } from "./custom-viz-props";
-import type { Visualization } from "./types/visualization";
-
-import visualizations, { registerVisualization } from ".";
 
 type CustomVizPluginDefinition = {
   VisualizationComponent: Visualization;
