@@ -2011,3 +2011,31 @@
             (serdes.load/load-metabase! (ingestion-in-memory minimal))
             (let [dashboard (t2/select-one :model/Dashboard :name "Test Dashboard")]
               (is (some? dashboard)))))))))
+
+(deftest dashboard-with-dashcard-minimal-required-properties-test
+  (testing "DashboardCard minimal required properties: entity_id, row, col, size_x, size_y"
+    (let [serialized (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [dash (ts/create! :model/Dashboard :name "Test Dashboard")
+                _dc  (ts/create! :model/DashboardCard :dashboard_id (:id dash))]
+            (reset! serialized (into [] (serdes.extract/extract {})))))
+
+        (let [minimal (mapv (fn [entity]
+                              (let [model (-> entity :serdes/meta last :model)]
+                                (case model
+                                  "Dashboard" (-> (select-keys entity [:serdes/meta :entity_id :name :creator_id
+                                                                       :dashcards])
+                                                  (update :dashcards
+                                                          (fn [dcs]
+                                                            (mapv #(select-keys % [:serdes/meta :entity_id
+                                                                                   :row :col :size_x :size_y])
+                                                                  dcs))))
+                                  entity)))
+                            @serialized)]
+          (ts/with-db dest-db
+            (serdes.load/load-metabase! (ingestion-in-memory minimal))
+            (let [dashboard (t2/select-one :model/Dashboard :name "Test Dashboard")
+                  dashcards (t2/select :model/DashboardCard :dashboard_id (:id dashboard))]
+              (is (some? dashboard))
+              (is (= 1 (count dashcards))))))))))
