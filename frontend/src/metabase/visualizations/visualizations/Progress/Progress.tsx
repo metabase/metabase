@@ -3,8 +3,9 @@ import { type MouseEvent, useCallback, useEffect, useRef } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { formatValue } from "metabase/utils/formatting";
 import { Flex, Icon } from "metabase/ui";
+import { formatValue } from "metabase/utils/formatting";
+import { checkNotNull } from "metabase/utils/types";
 import type { VisualizationProps } from "metabase/visualizations/types";
 
 import { PROGRESS_CHART_DEFINITION } from "./chart-definition";
