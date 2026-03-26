@@ -549,6 +549,12 @@
 
 (defonce ^:private deprecated-db-key-warned (atom #{}))
 
+(defn reset-deprecated-db-key-warnings!
+  "Reset the set of deprecated DB keys that have already been warned about.
+  Intended for use in tests so that warning behaviour can be tested in isolation."
+  []
+  (reset! deprecated-db-key-warned #{}))
+
 (defn- db-or-cache-value
   "Get the value, if any, of `setting-definition-or-name` from the DB (using / restoring the cache as needed).
   When the primary key is absent and the setting has a `:deprecated-name`, the deprecated key is checked as a fallback."

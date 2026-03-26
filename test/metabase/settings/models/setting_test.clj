@@ -1860,7 +1860,7 @@
   [[k v] & body]
   `(let [k# (name ~k)]
      (try
-       (reset! @#'setting/deprecated-db-key-warned #{})
+       (setting/reset-deprecated-db-key-warnings!)
        (if (t2/select-one :model/Setting :key k#)
          (t2/update! :model/Setting :key k# {:value ~v})
          (t2/insert! :model/Setting {:key k# :value ~v}))
