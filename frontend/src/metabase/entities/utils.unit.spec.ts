@@ -1,4 +1,7 @@
-import { entityTypeForModel, entityTypeForObject } from "./schema";
+import {
+  entityTypeForModel,
+  entityTypeForObject,
+} from "metabase/entities/utils";
 
 describe("schemas", () => {
   const MODEL_ENTITY_TYPE = [
