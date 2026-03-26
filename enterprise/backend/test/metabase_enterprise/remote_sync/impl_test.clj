@@ -88,8 +88,6 @@
                              "collections/coll01xxxxxxxxxxxxx_test/cards/bad-card-entity0001.yaml"
                              bad-yaml}}
           result    (impl/import! (source.p/snapshot (test-helpers/create-mock-source :initial-files files)) task-id)]
-      ;; Currently this returns :success because the unparseable card is silently dropped.
-      ;; It should return :error — silently losing data is worse than failing.
       (is (= :error (:status result))
           "Import should fail when a YAML file cannot be parsed, not silently skip it"))))
 

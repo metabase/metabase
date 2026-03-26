@@ -169,6 +169,32 @@
       (serialization/ingest-list ingestable)
       (is (= [] (serialization/ingest-errors ingestable)))))
 
+  (testing "ingest-errors returns [] before cache is populated"
+    (let [bad-yaml  "name: Bad Card\ndataset_query: [invalid\n"
+          files     {"main" {"collections/coll01xxxxxxxxxxxxx_test/coll01xxxxxxxxxxxxx_test.yaml"
+                             (test-helpers/generate-collection-yaml "coll01xxxxxxxxxxxxx" "Test")
+                             "collections/coll01xxxxxxxxxxxxx_test/cards/bad-card.yaml"
+                             bad-yaml}}
+          snapshot  (source.p/snapshot (test-helpers/create-mock-source :initial-files files))
+          ingestable (ingestable/->IngestableSnapshot snapshot (atom nil) (atom []))]
+      (is (= [] (serialization/ingest-errors ingestable))
+          "Before ingest-list is called, ingest-errors should return [] not the real errors")))
+
+  (testing "multiple bad files produce multiple errors"
+    (let [bad-yaml-1 "name: Bad1\ndataset_query: [invalid\n"
+          bad-yaml-2 "name: Bad2\ndataset_query: {broken\n"
+          files      {"main" {"collections/coll01xxxxxxxxxxxxx_test/coll01xxxxxxxxxxxxx_test.yaml"
+                              (test-helpers/generate-collection-yaml "coll01xxxxxxxxxxxxx" "Test")
+                              "collections/coll01xxxxxxxxxxxxx_test/cards/bad1.yaml"
+                              bad-yaml-1
+                              "collections/coll01xxxxxxxxxxxxx_test/cards/bad2.yaml"
+                              bad-yaml-2}}
+          snapshot   (source.p/snapshot (test-helpers/create-mock-source :initial-files files))
+          ingestable (ingestable/->IngestableSnapshot snapshot (atom nil) (atom []))]
+      (serialization/ingest-list ingestable)
+      (is (= 2 (count (serialization/ingest-errors ingestable)))
+          "Each unparseable file should produce a separate error")))
+
   (testing "wrapper ingestables delegate ingest-errors"
     (let [bad-yaml  "name: Bad\ndataset_query: [invalid\n"
           files     {"main" {"collections/coll01xxxxxxxxxxxxx_test/coll01xxxxxxxxxxxxx_test.yaml"

@@ -28,14 +28,14 @@
                               :let [content (try
                                               (source.p/read-file snapshot path)
                                               (catch Exception e
-                                                (log/warnf (u/strip-error e "Error reading file during ingestion"))
+                                                (log/warn (u/strip-error e "Error reading file during ingestion"))
                                                 (swap! errors conj e)
                                                 nil))
                                     loaded (try
                                              (when content
                                                (serdes/path (ingest-content content)))
                                              (catch Exception e
-                                               (log/warnf (u/strip-error e "Error parsing file during ingestion"))
+                                               (log/warn (u/strip-error e "Error parsing file during ingestion"))
                                                (swap! errors conj e)
                                                nil))]
                               :when loaded]

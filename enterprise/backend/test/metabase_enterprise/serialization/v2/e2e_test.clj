@@ -918,8 +918,8 @@
             (let [result (serdes/with-cache
                            (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)
                                                        {:continue-on-error true}))]
-              (is (seq (:errors result))
-                  "Should have collected ingestion errors")
+              (is (= 1 (count (:errors result)))
+                  "Should have collected exactly 1 ingestion error")
               (is (seq (:seen result))
                   "Should have still loaded the valid entities"))))))))
 

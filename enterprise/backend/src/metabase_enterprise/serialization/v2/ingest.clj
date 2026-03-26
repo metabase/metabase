@@ -97,7 +97,7 @@
                               :let [hierarchy (try
                                                 (serdes/path (ingest-file file))
                                                 (catch Exception e
-                                                  (log/warnf (u/strip-error e "Error reading file during ingestion"))
+                                                  (log/warn (u/strip-error e "Error reading file during ingestion"))
                                                   (swap! errors conj e)
                                                   nil))]
                               :when hierarchy]
