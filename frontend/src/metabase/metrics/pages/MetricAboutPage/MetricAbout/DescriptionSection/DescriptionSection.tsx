@@ -93,11 +93,11 @@ export function DescriptionSection({ card, urls }: DescriptionSectionProps) {
               : t`Last edited at`}
           </Text>
         </Card.Section>
-        <Card.Section withBorder p="md">
-          <Group gap="sm" mb={4}>
-            <Icon name="database" c="brand" />
-            {database ? (
-              databaseUrl ? (
+        {database && (
+          <Card.Section withBorder p="md">
+            <Group gap="sm" mb={4}>
+              <Icon name="database" c="brand" />
+              {databaseUrl ? (
                 <Link to={databaseUrl} className={S.metricLink}>
                   <Text size="md" fw={600} lh="1rem">
                     {database.name}
@@ -107,28 +107,26 @@ export function DescriptionSection({ card, urls }: DescriptionSectionProps) {
                 <Text size="md" fw={600} lh="1rem">
                   {database.name}
                 </Text>
-              )
-            ) : (
-              <Text size="md" fw={600} lh="1rem">
-                —
-              </Text>
-            )}
-          </Group>
-          <Text size="sm" c="text-secondary" lh="1rem" ml="1.5rem">
-            {t`Database`}
-          </Text>
-        </Card.Section>
-        <Card.Section withBorder p="md">
-          <Group gap="sm" mb={4}>
-            <Icon name="table" c={table ? "brand" : "icon-secondary"} />
-            <Text size="md" fw={600} lh="1rem">
-              {table?.display_name || table?.name || "—"}
+              )}
+            </Group>
+            <Text size="sm" c="text-secondary" lh="1rem" ml="1.5rem">
+              {t`Database`}
             </Text>
-          </Group>
-          <Text size="sm" c="text-secondary" lh="1rem" ml="1.5rem">
-            {t`Source table`}
-          </Text>
-        </Card.Section>
+          </Card.Section>
+        )}
+        {table && (
+          <Card.Section withBorder p="md">
+            <Group gap="sm" mb={4}>
+              <Icon name="table" c="brand" />
+              <Text size="md" fw={600} lh="1rem">
+                {table.display_name || table.name}
+              </Text>
+            </Group>
+            <Text size="sm" c="text-secondary" lh="1rem" ml="1.5rem">
+              {t`Source table`}
+            </Text>
+          </Card.Section>
+        )}
       </Card>
 
       {isDependenciesEnabled && (

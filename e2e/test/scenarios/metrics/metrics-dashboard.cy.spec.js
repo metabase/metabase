@@ -142,14 +142,12 @@ describe("scenarios > metrics > dashboard", () => {
   it("should be possible to add metric to a dashboard via context menu (metabase#44220)", () => {
     H.createQuestion(ORDERS_SCALAR_METRIC).then(
       ({ body: { id: metricId } }) => {
-        cy.intercept("POST", "/api/dataset").as("dataset");
-        cy.visit(`/metric/${metricId}`);
-        cy.wait("@dataset");
-        cy.findByTestId("scalar-value").should("have.text", "18,760");
+        H.visitMetric(metricId);
+        H.MetricPage.aboutPage().should("be.visible");
 
         cy.log("Add metric to a dashboard via context menu");
-        H.openQuestionActions();
-        H.popover().findByTextEnsureVisible("Add to dashboard").click();
+        H.MetricPage.moreMenu().click();
+        H.popover().findByTextEnsureVisible("Add to a dashboard").click();
         H.modal().within(() => {
           cy.findByRole("heading", {
             name: "Add this metric to a dashboard",
