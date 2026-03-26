@@ -42,6 +42,7 @@
     "@mantine/core": "8.3.18",
     "@mantine/dates": "8.3.18",
     "@mantine/hooks": "8.3.18",
+    "@modelcontextprotocol/ext-apps": "^1.3.2",
     "@popperjs/core": "^2.11.8",
     "@react-oauth/google": "^0.11.1",
     "@reduxjs/toolkit": "^2.5.0",
