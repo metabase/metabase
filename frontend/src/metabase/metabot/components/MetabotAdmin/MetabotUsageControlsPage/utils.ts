@@ -7,9 +7,16 @@ import {
   useUpdateMetabotPermissionsMutation,
 } from "metabase/api";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { AIToolKey, type MetabotGroupPermission } from "metabase-types/api";
+import {
+  AIToolKey,
+  type MetabotGroupPermission,
+  type MetabotModelSize,
+} from "metabase-types/api";
 
-export const getModelOptions = () => {
+export const getModelOptions = (): Array<{
+  value: MetabotModelSize;
+  label: string;
+}> => {
   return [
     { value: "default", label: t`Default` },
     { value: "small", label: t`Small` },
@@ -61,14 +68,14 @@ export const useMetabotGroupPermissions = () => {
   const onPermissionChange = (
     groupId: number,
     tool: AIToolKey,
-    enabled: boolean,
+    value: "yes" | "no" | MetabotModelSize,
   ) => {
     setGroupPermissions((prevPermissions) => {
       const updatedPermissions = prevPermissions.map((permission) => {
         if (permission.group_id === groupId && permission.perm_type === tool) {
           return {
             ...permission,
-            perm_value: enabled ? "yes" : "no",
+            perm_value: value,
           } as MetabotGroupPermission;
         }
 

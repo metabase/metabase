@@ -47,10 +47,10 @@ import type {
 } from "metabase-types/api";
 
 import { MetabotPromptSuggestionPane } from "./MetabotAdminSuggestedPrompts";
-import { MetabotSystemPromptsPage } from "./MetabotCustomizationPage";
+import { MetabotCustomizationPage } from "./MetabotCustomizationPage";
 import { MetabotNavPane } from "./MetabotNavPane";
 import { MetabotSQLGenerationSettingsSection } from "./MetabotSQLGenerationSettingsSection";
-import { MetabotCustomizationPage } from "./MetabotSystemPromptsPage";
+import { MetabotSystemPromptsPage } from "./MetabotSystemPromptsPage";
 import { MetabotUsageControlsPage } from "./MetabotUsageControlsPage";
 import { useMetabotIdPath } from "./utils";
 

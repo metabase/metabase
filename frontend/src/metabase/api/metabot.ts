@@ -125,6 +125,7 @@ export const metabotApi = Api.injectEndpoints({
         url: "/api/metabot/permissions",
         body,
       }),
+      invalidatesTags: [listTag("metabot-permissions")],
     }),
   }),
 });

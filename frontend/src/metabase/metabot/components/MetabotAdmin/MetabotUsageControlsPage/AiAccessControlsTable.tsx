@@ -1,17 +1,12 @@
-import { type ChangeEvent, useMemo } from "react";
-import { c, t } from "ttag";
+import { useMemo } from "react";
+import { t } from "ttag";
 import _ from "underscore";
 
-import { Checkbox, Select, Text } from "metabase/ui";
-import type { GroupInfo, MetabotGroupPermission } from "metabase-types/api";
+import type { GroupInfo } from "metabase-types/api";
 
 import S from "./AiAccessControlsTable.module.css";
-import {
-  type AIToolKey,
-  getAIToolItems,
-  getModelOptions,
-  useMetabotGroupPermissions,
-} from "./utils";
+import { GroupPermissionRow } from "./GroupPermissionRow";
+import { getAIToolItems, useMetabotGroupPermissions } from "./utils";
 
 export type AiAccessControlsTableProps = {
   groups: GroupInfo[];
@@ -52,61 +47,5 @@ export function AiAccessControlsTable(props: AiAccessControlsTableProps) {
         </tbody>
       </table>
     </div>
-  );
-}
-
-type GroupPermissionRowProps = {
-  group: GroupInfo;
-  groupPermissions: MetabotGroupPermission[];
-  onPermissionChange: (
-    groupId: number,
-    toolKey: AIToolKey,
-    enabled: boolean,
-  ) => void;
-};
-
-function GroupPermissionRow(props: GroupPermissionRowProps) {
-  const { onPermissionChange, groupPermissions, group } = props;
-  const modelOptions = getModelOptions();
-
-  const permissionMap = useMemo(() => {
-    return _.indexBy(groupPermissions, "perm_type");
-  }, [groupPermissions]);
-
-  return (
-    <tr
-      aria-label={c("{0} is the user group name").t`${group.name} permissions`}
-      className={S.Row}
-      key={group.id}
-    >
-      <td className={S.Cell}>
-        <Text>{group.name}</Text>
-      </td>
-      {getAIToolItems().map(({ key, label }) => (
-        <td key={key} className={S.Cell}>
-          <Checkbox
-            aria-label={t`Allow ${group.name} user group to access ${label} AI tool.`}
-            size="sm"
-            checked={permissionMap[key]?.perm_value === "yes"}
-            onChange={(e: ChangeEvent<HTMLInputElement>) =>
-              onPermissionChange(group.id, key, e.target.checked)
-            }
-            classNames={{
-              body: S.inputBody,
-            }}
-          />
-        </td>
-      ))}
-      <td className={S.Cell}>
-        <Select
-          aria-label={group.name}
-          className={S.ModelSelect}
-          data={modelOptions}
-          defaultValue="default"
-          miw="10rem"
-          size="sm"
-        />
-      </td>
-    </tr>
   );
 }

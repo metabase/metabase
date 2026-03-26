@@ -303,11 +303,19 @@ export enum AIToolKey {
   OtherTools = "permission/metabot-other-tools",
 }
 
-export type MetabotGroupPermission = {
-  group_id: number;
-  perm_type: AIToolKey;
-  perm_value: "yes" | "no";
-};
+export type MetabotModelSize = "small" | "medium" | "large" | "default";
+
+export type MetabotGroupPermission =
+  | {
+      group_id: number;
+      perm_type: Exclude<AIToolKey, AIToolKey.Model>;
+      perm_value: "yes" | "no";
+    }
+  | {
+      group_id: number;
+      perm_type: AIToolKey.Model;
+      perm_value: MetabotModelSize;
+    };
 
 export type MetabotPermissionsResponse = {
   permissions: MetabotGroupPermission[];

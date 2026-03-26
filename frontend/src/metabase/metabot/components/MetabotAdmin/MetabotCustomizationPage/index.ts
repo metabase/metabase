@@ -1,1 +1,1 @@
-export { MetabotSystemPromptsPage } from "./MetabotSystemPromptsPage";
+export { MetabotCustomizationPage } from "./MetabotCustomizationPage";
