@@ -70,9 +70,18 @@ jobs:
       - name: Run cross-version test
         env:
           CURRENT_VERSION: ${{ vars.CURRENT_VERSION }}
+          RESULT_FILE: ${{ runner.temp }}/cross-version-result.json
         run: |
           cd cross-version
           ./test.sh --source "${{ matrix.source }}" --target "${{ matrix.target }}"
+
+      - name: Upload failure result
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: failure-result-${{ matrix.source }}-${{ matrix.target }}
+          path: ${{ runner.temp }}/cross-version-result.json
+          if-no-files-found: ignore
 
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v4
@@ -90,6 +99,102 @@ jobs:
           cd cross-version
           docker compose logs metabase || true
           docker compose logs postgres || true
+
+  # Notify Slack on nightly failures
+  notify-on-failure:
+    if: always() && github.event_name == 'schedule' && needs.test-matrix.result == 'failure'
+    needs: [test-matrix]
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    steps:
+      - name: Download failure results
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          pattern: failure-result-*
+          path: failure-results
+          merge-multiple: true
+
+      - name: Build Slack payload
+        id: payload
+        continue-on-error: true
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const resultsDir = 'failure-results';
+
+            const failures = { migration: [], e2e: [] };
+            if (fs.existsSync(resultsDir)) {
+              for (const file of fs.readdirSync(resultsDir)) {
+                if (!file.endsWith('.json')) continue;
+                try {
+                  const result = JSON.parse(fs.readFileSync(path.join(resultsDir, file), 'utf8'));
+                  const category = result.phase === 'migration' ? 'migration' : 'e2e';
+                  failures[category].push(result);
+                } catch (e) {
+                  console.log(`Skipping malformed result: ${file}`);
+                }
+              }
+            }
+
+            const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
+            const sections = [];
+
+            if (failures.migration.length > 0) {
+              const items = failures.migration
+                .map(f => `• ${f.source} → ${f.target} — ${f.detail}`)
+                .join('\n');
+              sections.push({
+                type: 'section',
+                text: { type: 'mrkdwn', text: `:rotating_light: *Migration failures*\n${items}` },
+              });
+            }
+
+            if (failures.e2e.length > 0) {
+              const items = failures.e2e
+                .map(f => `• ${f.source} → ${f.target} — ${f.detail}`)
+                .join('\n');
+              sections.push({
+                type: 'section',
+                text: { type: 'mrkdwn', text: `:test_tube: *E2E failures*\n${items}` },
+              });
+            }
+
+            if (sections.length === 0) {
+              sections.push({
+                type: 'section',
+                text: { type: 'mrkdwn', text: 'One or more matrix jobs failed. Check the workflow run for details.' },
+              });
+            }
+
+            sections.push({
+              type: 'context',
+              elements: [{ type: 'mrkdwn', text: `<${runUrl}|View full run>` }],
+            });
+
+            const payload = {
+              blocks: [
+                {
+                  type: 'header',
+                  text: { type: 'plain_text', text: ':warning: Cross-version tests failing', emoji: true },
+                },
+                ...sections,
+              ],
+            };
+
+            core.setOutput('json', JSON.stringify(payload));
+
+      - name: Notify Slack
+        if: steps.payload.outcome == 'success'
+        continue-on-error: true
+        uses: slackapi/slack-github-action@70cd7be8e40a46e8b0eced40b0de447bdb42f68e # v1.26.0
+        with:
+          payload: ${{ steps.payload.outputs.json }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.CROSS_VERSION_SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
 
   # Manual test for workflow_dispatch
   test-manual:
