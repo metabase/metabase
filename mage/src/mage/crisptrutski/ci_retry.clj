@@ -206,7 +206,7 @@
         (log-ok (format "Triggered rerun for run %s" run-id))
         (log-warn (format "Failed to trigger rerun for run %s (may already be rerunning)" run-id)))))
   ;; Give GitHub a moment to register the reruns before we start polling
-  (Thread/sleep 5000))
+  (Thread/sleep 10000))
 
 (defn ci-retry!
   "Poll checks for a PR, rerun failures up to 3 times."
@@ -264,6 +264,6 @@
                     (log-warn (format "  %s:" check-name))
                     (doseq [{:keys [test link]} test-failures]
                       (when link
-                        (log-warn (format "    %s → %s" (or test "(unknown test)") link))))))))
-          (rerun-failed! run-ids)
-          (recur (inc attempt)))))))
+                        (log-warn (format "    %s → %s" (or test "(unknown test)") link)))))))
+              (rerun-failed! run-ids)
+              (recur (inc attempt))))))))
