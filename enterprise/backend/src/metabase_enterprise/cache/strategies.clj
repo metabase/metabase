@@ -65,6 +65,13 @@
           result)
         v))))
 
+(defenterprise cache-strategy-batch-cache-bindings
+  "Returns a Var->atom bindings map for the cache-strategy request-scoped cache, suitable for
+  conveying to worker threads via `with-bindings`."
+  :feature :cache-granular-controls
+  []
+  {#'*cache-strategy-cache* (atom {})})
+
 (defn- find-question-cache-config
   "Look up question-level cache config for a specific card. Returns a CacheConfig or nil."
   [card-id]

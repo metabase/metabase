@@ -8,10 +8,11 @@
    [metabase.api.common :as api]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.events.core :as events]
-   [metabase.lib-be.metadata.jvm :as lib-be.jvm]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
@@ -19,6 +20,7 @@
    [metabase.users.models.user-parameter-value :as user-parameter-value]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.performance :as perf]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
@@ -37,6 +39,33 @@
 
 (defonce ^:private default-thread-pool
   (delay (cp/threadpool 8 :name "batch-card-query-pool")))
+
+;;; -------------------------------------- EE Request-Scoped Cache Bindings --------------------------------------
+
+(defenterprise impersonation-batch-cache-bindings
+  "Returns a Var->atom bindings map for EE impersonation caching. OSS returns {}."
+  metabase-enterprise.impersonation.driver
+  []
+  {})
+
+(defenterprise routing-batch-cache-bindings
+  "Returns a Var->atom bindings map for EE database routing caching. OSS returns {}."
+  metabase-enterprise.database-routing.common
+  []
+  {})
+
+(defenterprise cache-strategy-batch-cache-bindings
+  "Returns a Var->atom bindings map for EE cache strategy caching. OSS returns {}."
+  metabase-enterprise.cache.strategies
+  []
+  {})
+
+(defn- ee-batch-cache-bindings
+  "Collect all EE request-scoped cache bindings for batch query execution."
+  []
+  (merge (impersonation-batch-cache-bindings)
+         (routing-batch-cache-bindings)
+         (cache-strategy-batch-cache-bindings)))
 
 ;;; ------------------------------------------------ NDJSON Writing ------------------------------------------------
 
@@ -189,7 +218,7 @@
           dashboard-param-id->param (build-dashboard-param-map dashboard)
           ;; Determine which cards to run
           cards                  (or (seq cards) (get-all-dashcards dashboard-id))
-          _                      (when (empty? cards)
+          _                      (when (perf/empty? cards)
                                    (api/check-404 false))
           ;; Batch validate membership
           valid-pairs            (batch-validate-card-membership dashboard-id cards)
@@ -200,18 +229,12 @@
           ;; Current user info for binding conveyance
           current-user-id        api/*current-user-id*
           current-user-perms     @api/*current-user-permissions-set*
-          metadata-cache         lib-be.jvm/*metadata-provider-cache*
+          metadata-cache         lib-be/*metadata-provider-cache*
           ;; Pre-warm metadata providers so worker threads don't all race to fetch database metadata.
           _                      (doseq [db-id (distinct (vals card-db-ids))]
-                                   (lib.metadata/database (lib-be.jvm/application-database-metadata-provider db-id)))
-          ;; Request-scoped caches for cross-card deduplication of EE permission/routing lookups.
-          ;; Each EE namespace owns its own cache var; we create atoms here and convey them to threads.
-          impersonation-cache-var (resolve 'metabase-enterprise.impersonation.driver/*impersonation-cache*)
-          routing-cache-var       (resolve 'metabase-enterprise.database-routing.common/*routing-cache*)
-          cache-strategy-cache-var (resolve 'metabase-enterprise.cache.strategies/*cache-strategy-cache*)
-          impersonation-cache     (when impersonation-cache-var (atom {}))
-          routing-cache           (when routing-cache-var (atom {}))
-          cache-strategy-cache    (when cache-strategy-cache-var (atom {}))]
+                                   (lib.metadata/database (lib-be/application-database-metadata-provider db-id)))
+          ;; Request-scoped caches for cross-card deduplication of EE permission/routing/cache-strategy lookups.
+          ee-bindings            (ee-batch-cache-bindings)]
       ;; Fire dashboard-queried event once
       (events/publish-event! :event/dashboard-queried {:object-id dashboard-id :user-id current-user-id})
       ;; Store user parameter values once
@@ -252,12 +275,10 @@
           ;; Run queries via claypoole — results stream in completion order
           (doseq [result (cp/upmap pool
                                    (fn [{:keys [dashcard-id card-id]}]
-                                     (let [bindings (cond-> {#'api/*current-user-id*                current-user-id
-                                                             #'api/*current-user-permissions-set*   (atom current-user-perms)
-                                                             #'lib-be.jvm/*metadata-provider-cache* metadata-cache}
-                                                      impersonation-cache-var  (assoc impersonation-cache-var impersonation-cache)
-                                                      routing-cache-var        (assoc routing-cache-var routing-cache)
-                                                      cache-strategy-cache-var (assoc cache-strategy-cache-var cache-strategy-cache))]
+                                     (let [bindings (merge {#'api/*current-user-id*                current-user-id
+                                                            #'api/*current-user-permissions-set*   (atom current-user-perms)
+                                                            #'lib-be/*metadata-provider-cache* metadata-cache}
+                                                           ee-bindings)]
                                        (with-bindings bindings
                                          {:dashcard-id dashcard-id
                                           :card-id     card-id

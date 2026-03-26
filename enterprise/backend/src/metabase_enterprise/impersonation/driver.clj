@@ -77,6 +77,13 @@
   `(binding [*impersonation-cache* (atom {})]
      ~@body))
 
+(defenterprise impersonation-batch-cache-bindings
+  "Returns a Var->atom bindings map for the impersonation request-scoped cache, suitable for
+  conveying to worker threads via `with-bindings`."
+  :feature :advanced-permissions
+  []
+  {#'*impersonation-cache* (atom {})})
+
 ;;; ----------------------------------------------------------------------------------------------------------
 
 (defn enforced-impersonations-for-db
