@@ -510,12 +510,17 @@
 (defn- sqlite-handle-timestamp
   [^ResultSet rs ^Integer i]
   (let [obj (.getObject rs i)]
-    (cond
-      ;; For strings, use our own parser which is more flexible than sqlite-jdbc's and handles timezones correctly
-      (instance? String obj) (u.date/parse obj)
-      ;; For other types, fallback to sqlite-jdbc's parser
-      ;; Even in DATE column, it is possible to put DATETIME, so always treat as DATETIME
-      (some? obj) (t/local-date-time (.getTimestamp rs i)))))
+    (try
+      (cond
+        ;; For strings, use our own parser which is more flexible than sqlite-jdbc's and handles timezones correctly
+        (instance? String obj) (u.date/parse obj)
+        ;; For other types, fallback to sqlite-jdbc's parser
+        ;; Even in DATE column, it is possible to put DATETIME, so always treat as DATETIME
+        (some? obj) (t/local-date-time (.getTimestamp rs i)))
+      (catch Exception e
+        ;; Just return the object as is if we are unable to parse it as a date.
+        ;; This can happen when there are non-date objects in the column (#71205).
+        obj))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:sqlite Types/DATE]
   [_ ^ResultSet rs _ ^Integer i]
