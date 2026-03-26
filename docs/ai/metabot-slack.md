@@ -7,7 +7,7 @@ summary: Chat with Metabot directly in Slack to ask questions about your data, g
 
 ![Metabot in Slack](./metabot-slack.png)
 
-Chat with [Metabot](/docs/ai/metabot.md) in Slack. Direct message Metabot for private analysis, or mention @Metabot in a channel to collaborate with your team.
+Chat with [Metabot](./metabot.md) in Slack. Direct message Metabot for private analysis, or mention @Metabot in a channel to collaborate with your team.
 
 ## What Metabot can do
 
