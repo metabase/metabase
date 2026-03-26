@@ -547,13 +547,9 @@
           (t2/select-one-fn :value :model/Setting :key setting-name-str)
           (core/get cache setting-name-str))))))
 
-(defonce ^:private deprecated-db-key-warned (atom #{}))
-
-(defn reset-deprecated-db-key-warnings!
-  "Reset the set of deprecated DB keys that have already been warned about.
-  Intended for use in tests so that warning behaviour can be tested in isolation."
-  []
-  (reset! deprecated-db-key-warned #{}))
+(def ^:dynamic *deprecated-db-key-warned*
+  "Set of deprecated DB keys that have already triggered a warning. Dynamic so tests can rebind it."
+  (atom #{}))
 
 (defn- db-or-cache-value
   "Get the value, if any, of `setting-definition-or-name` from the DB (using / restoring the cache as needed).
@@ -566,7 +562,7 @@
           (when-let [deprecated-name (:deprecated-name setting)]
             (when-let [v (not-empty (db-or-cache-value* (setting-name deprecated-name)))]
               (let [dep-key (setting-name deprecated-name)
-                    [old-warned _] (swap-vals! deprecated-db-key-warned conj dep-key)]
+                    [old-warned _] (swap-vals! *deprecated-db-key-warned* conj dep-key)]
                 (when-not (contains? old-warned dep-key)
                   (log/warnf "Deprecated setting key %s found in database; rename it to %s."
                              dep-key (setting-name setting))))

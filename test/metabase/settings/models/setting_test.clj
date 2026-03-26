@@ -1856,19 +1856,19 @@
 
 (defmacro ^:private with-setting-row-in-db
   "Set up a raw DB row for a setting key (primary or deprecated), refresh the cache, execute body, then clean up.
-  Also resets the deprecated-db-key-warned atom so warning behaviour can be tested in isolation."
+  Binds a fresh warned-set so warning behaviour can be tested in isolation."
   [[k v] & body]
   `(let [k# (name ~k)]
-     (try
-       (setting/reset-deprecated-db-key-warnings!)
-       (if (t2/select-one :model/Setting :key k#)
-         (t2/update! :model/Setting :key k# {:value ~v})
-         (t2/insert! :model/Setting {:key k# :value ~v}))
-       (setting.cache/restore-cache!)
-       ~@body
-       (finally
-         (t2/delete! (t2/table-name :model/Setting) :key k#)
-         (setting.cache/restore-cache!)))))
+     (binding [setting/*deprecated-db-key-warned* (atom #{})]
+       (try
+         (if (t2/select-one :model/Setting :key k#)
+           (t2/update! :model/Setting :key k# {:value ~v})
+           (t2/insert! :model/Setting {:key k# :value ~v}))
+         (setting.cache/restore-cache!)
+         ~@body
+         (finally
+           (t2/delete! (t2/table-name :model/Setting) :key k#)
+           (setting.cache/restore-cache!))))))
 
 (deftest deprecated-name-db-fallback-only-legacy-test
   (testing "When only the deprecated key exists in the DB, the new setting reads its value"
