@@ -376,6 +376,29 @@ export function parseDataUri(
   return null;
 }
 
+export function initializeIframeResizer(onReady = () => {}): void {
+  if (!isWithinIframe()) {
+    return;
+  }
+
+  // Make iFrameResizer available so that embed users can
+  // have their embeds autosize to their content
+  if (window.iFrameResizer) {
+    console.error("iFrameResizer resizer already defined.");
+    onReady();
+  } else {
+    window.iFrameResizer = {
+      autoResize: true,
+      heightCalculationMethod: "max",
+      onReady,
+    };
+
+    // Make iframe-resizer available to the embed
+    // We only care about contentWindow so require that minified file
+    import("iframe-resizer/js/iframeResizer.contentWindow.js");
+  }
+}
+
 export function isEventOverElement(
   event: Pick<MouseEvent, "clientX" | "clientY">,
   element: Element,
