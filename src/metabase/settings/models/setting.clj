@@ -547,6 +547,8 @@
           (t2/select-one-fn :value :model/Setting :key setting-name-str)
           (core/get cache setting-name-str))))))
 
+(defonce ^:private deprecated-db-key-warned (atom #{}))
+
 (defn- db-or-cache-value
   "Get the value, if any, of `setting-definition-or-name` from the DB (using / restoring the cache as needed).
   When the primary key is absent and the setting has a `:deprecated-name`, the deprecated key is checked as a fallback."
@@ -557,8 +559,11 @@
       (or (not-empty (db-or-cache-value* (setting-name setting)))
           (when-let [deprecated-name (:deprecated-name setting)]
             (when-let [v (not-empty (db-or-cache-value* (setting-name deprecated-name)))]
-              (log/warnf "Deprecated setting key %s found in database; rename it to %s."
-                         (setting-name deprecated-name) (setting-name setting))
+              (let [dep-key (setting-name deprecated-name)]
+                (when-not (contains? @deprecated-db-key-warned dep-key)
+                  (swap! deprecated-db-key-warned conj dep-key)
+                  (log/warnf "Deprecated setting key %s found in database; rename it to %s."
+                             dep-key (setting-name setting))))
               v))))))
 
 (defonce ^:private ^ReentrantLock init-lock (ReentrantLock.))
