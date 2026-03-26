@@ -69,10 +69,10 @@ export function MetricsViewerTabs({
             key={tab.id}
             value={tab.id}
             pl="lg"
-            aria-label={tab.label}
+            aria-label={tab.label ?? undefined}
             className={S.tab}
           >
-            {isLoading ? (
+            {isLoading || tab.label == null ? (
               <Skeleton display="inline-block" w="4.5rem" h="1em" />
             ) : (
               tab.label
@@ -82,7 +82,9 @@ export function MetricsViewerTabs({
               size="xs"
               variant="subtle"
               ml="xs"
-              aria-label={t`Remove ${tab.label} tab`}
+              aria-label={
+                tab.label != null ? t`Remove ${tab.label} tab` : undefined
+              }
               onClick={(e) => handleRemoveTab(e, tab.id)}
             >
               <Icon name="close" size={10} />

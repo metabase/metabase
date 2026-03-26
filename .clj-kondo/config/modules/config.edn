@@ -1137,7 +1137,8 @@
 
   llm
   {:team "Metabot"
-   :api  #{metabase.llm.api
+   :api  #{metabase.llm.anthropic
+           metabase.llm.api
            metabase.llm.init
            metabase.llm.settings}
    :uses #{analytics
@@ -1856,7 +1857,8 @@
            metabase.search.ingestion
            metabase.search.init
            metabase.search.scoring
-           metabase.search.spec}
+           metabase.search.spec
+           metabase.search.task.search-index}
    :uses #{analytics
            api
            app-db

@@ -1134,11 +1134,18 @@ describe("scenarios - embedding hub", () => {
 
       cy.visit("/admin/embedding/setup-guide/permissions");
 
+      cy.log("wait for checklist data to load before interacting with steps");
+      H.main()
+        .findByRole("listitem", {
+          name: /Enable multi-tenant user strategy/,
+          timeout: 10_000,
+        })
+        .should("have.attr", "data-completed", "true");
+
       cy.log("open the data segregation strategy step");
       H.main()
         .findByText("Which data segregation strategy does your database use?")
         .scrollIntoView()
-        .should("be.visible")
         .click();
 
       cy.log("select row and column level security strategy");

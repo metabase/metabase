@@ -20,6 +20,9 @@ export const SetupSsoPage = () => {
   const { data: checklistResponse } = useGetEmbeddingHubChecklistQuery();
   const checklist = checklistResponse?.checklist;
 
+  // Prefer in-session success state; fall back to backend detection on reload.
+  const [isJwtConfigured, setIsJwtConfigured] = useState(false);
+
   // UI-only confirmation state for step 2
   const [isAddEndpointConfirmed, setIsAddEndpointConfirmed] = useState(false);
 
@@ -31,13 +34,22 @@ export const SetupSsoPage = () => {
   const completedSteps = useMemo(() => {
     const isSsoAuthManualTested =
       checklist?.["sso-auth-manual-tested"] ?? false;
+    const isJwtSetupDone =
+      isJwtConfigured || (checklist?.["sso-configured"] ?? false);
 
     return {
-      "setup-jwt": checklist?.["sso-configured"] ?? false,
+      "setup-jwt": isJwtSetupDone,
       "add-endpoint": isAddEndpointConfirmed || isSsoAuthManualTested,
       "test-jwt": isSsoAuthManualTested,
     };
-  }, [checklist, isAddEndpointConfirmed]);
+  }, [checklist, isAddEndpointConfirmed, isJwtConfigured]);
+
+  const lockedSteps = useMemo(() => {
+    return {
+      "add-endpoint": !completedSteps["setup-jwt"],
+      "test-jwt": !completedSteps["setup-jwt"],
+    };
+  }, [completedSteps]);
 
   return (
     <Stack mx="auto" gap="sm" maw={680}>
@@ -55,13 +67,18 @@ export const SetupSsoPage = () => {
       <OnboardingStepper
         ref={stepperRef}
         completedSteps={completedSteps}
-        lockedSteps={{}}
+        lockedSteps={lockedSteps}
       >
         <OnboardingStepper.Step
           stepId="setup-jwt"
           title={t`Set up JWT authentication`}
         >
-          <SetupJwtStep onSuccess={() => stepperRef.current?.goToNextStep()} />
+          <SetupJwtStep
+            onSuccess={() => {
+              setIsJwtConfigured(true);
+              stepperRef.current?.goToNextStep();
+            }}
+          />
         </OnboardingStepper.Step>
 
         <OnboardingStepper.Step

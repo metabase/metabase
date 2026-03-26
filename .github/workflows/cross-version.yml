@@ -61,12 +61,28 @@ jobs:
       - name: Prepare release scripts
         uses: ./.github/actions/prepare-release-scripts
 
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+
+      - name: Prepare Cypress environment
+        uses: ./.github/actions/prepare-cypress
+
       - name: Run cross-version test
         env:
           CURRENT_VERSION: ${{ vars.CURRENT_VERSION }}
         run: |
           cd cross-version
           ./test.sh --source "${{ matrix.source }}" --target "${{ matrix.target }}"
+
+      - name: Upload Cypress Artifacts upon failure
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: cypress-recording-${{ matrix.source }}-${{ matrix.target }}
+          path: |
+            ./cypress
+            ./logs/test.log
+          if-no-files-found: ignore
 
       - name: Show logs on failure
         if: failure()
@@ -87,12 +103,28 @@ jobs:
       - name: Prepare release scripts
         uses: ./.github/actions/prepare-release-scripts
 
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+
+      - name: Prepare Cypress environment
+        uses: ./.github/actions/prepare-cypress
+
       - name: Run cross-version test
         env:
           CURRENT_VERSION: ${{ vars.CURRENT_VERSION }}
         run: |
           cd cross-version
           ./test.sh --source "${{ inputs.source_version }}" --target "${{ inputs.target_version }}"
+
+      - name: Upload Cypress Artifacts upon failure
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: cypress-recording-${{ inputs.source_version }}-${{ inputs.target_version }}
+          path: |
+            ./cypress
+            ./logs/test.log
+          if-no-files-found: ignore
 
       - name: Show logs on failure
         if: failure()
