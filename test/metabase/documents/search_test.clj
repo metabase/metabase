@@ -3,9 +3,9 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.events.core :as events]
-   [metabase.mq.test-util :as mq.tu]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.search.impl :as search.impl]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -34,29 +34,28 @@
     :visualization_settings {:global {:title nil}}}))
 
 (deftest card-search-exclusion-test
-  (mq.tu/with-sync-mq
-    (testing "Cards with document_id are excluded from search indexing"
-      (let [card-name (mt/random-name)
-            regular-card-name (str card-name "-regular")]
-        (search.tu/with-temp-index-table
-          (mt/with-temp [:model/Document document {:name "Test Document"
-                                                   :document (text->prose-mirror-ast "")}
-                         :model/Card document-card (-> (card-with-name-and-query card-name)
-                                                       (assoc :document_id (u/the-id document)))
-                         :model/Card regular-card (card-with-name-and-query regular-card-name)]
-
-            (testing "Search API excludes document cards"
-              (let [results (mt/user-http-request :crowberto :get 200 "search" :q card-name :models "card")]
-                (is (not (some #(= (:id %) (u/the-id document-card)) (:data results)))
-                    "Document card should not appear in search results"))
-              (let [regular-results (mt/user-http-request :crowberto :get 200 "search" :q regular-card-name :models "card")]
-                (is (some #(= (:id %) (u/the-id regular-card)) (:data regular-results))
-                    "Regular card should appear in search results")))))))))
+  (testing "Cards with document_id are excluded from search indexing"
+    (let [card-name (mt/random-name)
+          regular-card-name (str card-name "-regular")]
+      (search.tu/with-temp-index-table-for-http
+        (mt/with-temp [:model/Document document {:name "Test Document"
+                                                 :document (text->prose-mirror-ast "")}
+                       :model/Card document-card (-> (card-with-name-and-query card-name)
+                                                     (assoc :document_id (u/the-id document)))
+                       :model/Card regular-card (card-with-name-and-query regular-card-name)]
+          (search.impl/sync-reindex! {:in-place? true})
+          (testing "Search API excludes document cards"
+            (let [results (mt/user-http-request :crowberto :get 200 "search" :q card-name :models "card")]
+              (is (not (some #(= (:id %) (u/the-id document-card)) (:data results)))
+                  "Document card should not appear in search results"))
+            (let [regular-results (mt/user-http-request :crowberto :get 200 "search" :q regular-card-name :models "card")]
+              (is (some #(= (:id %) (u/the-id regular-card)) (:data regular-results))
+                  "Regular card should appear in search results"))))))))
 
 (deftest document-permission-filtering-test
   (testing "Document search respects collection-based permissions"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (search.tu/with-temp-index-table
+      (search.tu/with-temp-index-table-for-http
         (mt/with-temp [:model/Collection {coll-id :id} {}
                        :model/Collection {private-coll-id :id} {}
                        :model/Document {doc-in-public-coll :id} {:name "Public Document"
@@ -69,6 +68,7 @@
                                                            :collection_id coll-id
                                                            :archived true
                                                            :document (text->prose-mirror-ast "content")}]
+          (search.impl/sync-reindex! {:in-place? true})
           ;; Give user read access to first collection only
           (perms/grant-collection-read-permissions! (perms-group/all-users) coll-id)
 

@@ -7,6 +7,7 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.search.core :as search]
+   [metabase.search.impl :as search.impl]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.util.random :refer [random-name]]))
@@ -142,7 +143,7 @@
                              our-result)))))))))))))
 
 (deftest unpublished-table-visible-with-data-perms-test
-  (search.tu/with-sync-search-indexing
+  (search.tu/with-temp-index-table-for-http
     (testing "Unpublished tables are discoverable when the user has data/query permissions"
       (let [search-term (random-name)
             table-name  (str search-term " unpublished")]
@@ -152,7 +153,7 @@
             (data-perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
             (data-perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder)
             (doseq [engine ["in-place" "appdb"]]
-              (search/async-reindex! {:in-place? true})
+              (search.impl/sync-reindex! {:in-place? true})
               (mt/with-non-admin-groups-no-root-collection-perms
                 (let [result-ids (->> (mt/user-http-request :rasta :get 200 "search"
                                                             :q search-term :models "table" :search_engine engine)

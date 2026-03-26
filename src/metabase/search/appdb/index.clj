@@ -450,3 +450,16 @@
            (finally
              (#'drop-table! table-name#)
              (t2/delete! :model/SearchIndexMetadata :version version#)))))))
+
+(defn expose-temp-table-to-server-threads!
+  "In tests that use HTTP requests, the server thread can't see the test's `*indexes*` binding.
+  Call this after `with-temp-index-table` to update the global atom so server threads find the temp table.
+  Returns a 0-arity fn that restores the previous state — call it in a `finally` block."
+  []
+  (let [prev-indexes @@#'*indexes*
+        prev-sync-at @@#'next-sync-at]
+    (reset! @#'*indexes* {:active (active-table)})
+    (reset! @#'next-sync-at (+ (long (#'now)) (long (* 24 60 60e9))))
+    (fn []
+      (reset! @#'*indexes* prev-indexes)
+      (reset! @#'next-sync-at prev-sync-at))))

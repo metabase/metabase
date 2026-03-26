@@ -32,6 +32,22 @@
          ~@body))))
 
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
+(defmacro with-temp-index-table-for-http
+  "Like [[with-temp-index-table]] but also exposes the temp table to server threads (HTTP handlers).
+  Use this when your test makes HTTP search requests via `mt/user-http-request`.
+  Includes a `sync-reindex!` to populate the index."
+  [& body]
+  `(when (search/supports-index?)
+     (search.index/with-temp-index-table
+       (with-sync-search-indexing
+         (let [restore-fn# (search.index/expose-temp-table-to-server-threads!)]
+           (try
+             (search.impl/sync-reindex! {:in-place? true})
+             ~@body
+             (finally
+               (restore-fn#))))))))
+
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-new-search-if-available*
   "Create a temporary index table for the duration of the body."
   [& body]
