@@ -26,6 +26,7 @@ Metabot can help you to:
 - [Analyze a chart](#analyze-charts-with-metabot).
 - [Fix errors in SQL code](#have-metabot-fix-sql-queries).
 - Answer questions from our documentation (as in, the literature you're reading right now).
+- [Chat with Metabot in Slack](./metabot-slack.md).
 
 Like with all generative AI, you'll always need to double-check results.
 
@@ -123,6 +124,10 @@ Use **AI exploration** to start a new conversation with Metabot when you don’t
 Open it from **+ New → AI exploration**, then ask a question or pick one of the suggested prompts.
 
 When answering questions in AI exploration, Metabot searches a limited set of content instead of your entire Metabase. Admins can set a **Collection for natural language querying** to scope AI exploration to a specific collection and its subcollections. You can still refer to content outside that scope by explicitly @-mentioning it in your prompt. See [Metabot AI settings](../ai/settings.md) for more details.
+
+## Metabot in Slack
+
+Slack Metabot directly or @mention it in a channel to ask questions about your data. See [Metabot in Slack](./metabot-slack.md).
 
 ## Giving feedback on Metabot responses
 
