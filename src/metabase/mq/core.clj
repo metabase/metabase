@@ -85,4 +85,3 @@
 
  [topic.impl
   with-topic])
-
