@@ -54,6 +54,7 @@
   (if (and (string? color)
            (or (re-matches #"[a-zA-Z]+" color)
                (and (re-matches #"#[0-9a-fA-F]+" color)
+                    ;; valid lengths including the #: #RGB=4, #RGBA=5, #RRGGBB=7, #RRGGBBAA=9
                     (#{4 5 7 9} (count color)))))
     color
     default-brand-color))
