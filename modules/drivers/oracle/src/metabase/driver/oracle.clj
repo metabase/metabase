@@ -759,4 +759,4 @@
   (= (.getErrorCode e) 942))
 
 (defmethod driver/llm-sql-dialect-resource :oracle [_]
-  "llm/prompts/dialects/oracle.md")
+  "metabot/prompts/dialects/oracle.md")
