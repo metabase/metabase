@@ -27,10 +27,9 @@
       (is (contains? result :instructions))))
 
   (testing "edits chart to various types"
-    (let [charts-state {"chart-456" {:chart-id "chart-456"
-                                     :query-id "q-original"
-                                     :chart-type :bar
-                                     :query-content "SELECT COUNT(*) FROM users"}}]
+    (let [mp (mt/metadata-provider)
+          charts-state {"chart-456" {:chart-id "chart-456"
+                                     :queries [(lib/native-query mp "SELECT * FROM orders")]}}]
       (doseq [new-type [:pie :table :scatter :area :sunburst]]
         (let [{:keys [result]} (edit-chart/edit-chart
                                 {:chart-id "chart-456"
@@ -40,10 +39,7 @@
               (str "New chart type " new-type " should be set correctly"))))))
 
   (testing "throws error for invalid chart type"
-    (let [charts-state {"chart-789" {:chart-id "chart-789"
-                                     :query-id "q-test"
-                                     :chart-type :bar
-                                     :query-content "SELECT 1"}}]
+    (let [charts-state {"chart-789" {:chart-id "chart-789"}}]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Invalid chart type"

@@ -67,8 +67,7 @@
   Provide a new chart_type in new_viz_settings."
   [{:keys [chart_id new_viz_settings]} :- edit-chart-schema]
   (try
-    ;; alt approach
-    (let [new-viz (:chart_type new_viz_settings)
+    (let [new-viz (keyword (get new_viz_settings :chart_type))
           chart (get (shared/current-charts-state) chart_id)
           queries (:queries chart)
           query (first queries)
@@ -76,7 +75,7 @@
           {:keys [new-chart-data result]}
           (edit-chart-tools/edit-chart
            {:chart-id chart_id
-            :new-chart-type (keyword (get new_viz_settings :chart_type))
+            :new-chart-type new-viz
             :charts-state (shared/current-charts-state)})
 
           structured (assoc result :result-type :chart)]

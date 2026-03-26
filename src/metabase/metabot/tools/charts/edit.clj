@@ -20,15 +20,15 @@
   (apply str
          (into ["<chart id=\"" chart_id "\">\n"
                 "The chart is powered by the following queries:\n"]
-               cat
+               (comp cat
+                     (remove nil?))
                [(for [query queries]
                   (str "\n<query>\n"
                        query "\n"
                        "</query>\n"))
-                ["<visualization>{\"chart_type\": \""
-                 (name (get-in chart-data [:visualization_settings :chart_type]))
-                 "\"}</visualization>\n"
-                 "</chart>"]])))
+                [(when-some [viz (get-in chart-data [:visualization_settings :chart_type])]
+                   (str "<visualization>{\"chart_type\": \"" (name viz) "\"}</visualization>\n"))
+                 "\n</chart>"]])))
 
 (defn edit-chart
   "Edit an existing chart's visualization settings.
