@@ -22,6 +22,7 @@
    [metabase.server.streaming-response :as streaming-response]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -799,17 +800,17 @@
 (defn- enforce-authentication
   "Middleware that ensures requests are authenticated.
 
-   Ensures `:token-scopes` is present on authenticated requests — preserves any pre-existing value,
-   defaults to `#{::scope/unrestricted}` for unrestricted access (session auth or unscoped JWTs),
-   or the parsed scope set for scoped JWTs. This ensures downstream scope enforcement never has to
-   special-case nil within the agent API.
+   Ensures `:token-scopes` is present on authenticated requests.
 
-   Supports two authentication modes:
-   - **Session-based**: Uses `X-Metabase-Session` header, validated by standard Metabase
-     session middleware (which runs before this). If `:metabase-user-id` is set on the
-     request, the user is already authenticated.
-   - **Stateless JWT**: Uses `Authorization: Bearer <jwt>` header. The JWT is validated
-     using the same auth-identity system as the /auth/sso endpoint."
+   - For **session-authenticated** requests (where `:metabase-user-id` is already set by
+     upstream middleware), preserves any pre-existing `:token-scopes` value if present,
+     otherwise defaults to `#{::scope/unrestricted}` for unrestricted access.
+   - For **JWT-authenticated** requests, derives `:token-scopes` from the JWT when a
+     `\"scope\"` claim is present, falls back to any pre-existing `:token-scopes` on the
+     request, and finally defaults to `#{::scope/unrestricted}` for unscoped JWTs.
+
+   This ensures downstream scope enforcement never has to special-case nil within the
+   agent API."
   [handler]
   (fn [{:keys [headers metabase-user-id token-scopes] :as request} respond raise]
     (cond
@@ -840,10 +841,17 @@
           :else
           (let [result (authenticate-with-jwt bearer-token)]
             (if-let [user (:user result)]
-              (request/with-current-user (:id user)
-                (handler (assoc request :token-scopes (or (:scopes result) #{::scope/unrestricted}))
-                         respond raise))
+              (do
+                (when (and (:scopes result) token-scopes (not= (:scopes result) token-scopes))
+                  (log/warn "JWT scopes" (:scopes result)
+                            "differ from pre-existing token-scopes" token-scopes))
+                (request/with-current-user (:id user)
+                  (handler (assoc request :token-scopes (or (:scopes result)
+                                                            token-scopes
+                                                            #{::scope/unrestricted}))
+                           respond raise)))
               (respond (error-response (:error result) (:message result))))))))))
+
 (def +auth
   "Agent API authentication middleware. Supports both session-based and stateless JWT authentication."
   (api.routes.common/wrap-middleware-for-open-api-spec-generation enforce-authentication))

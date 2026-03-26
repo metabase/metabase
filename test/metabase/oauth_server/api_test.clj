@@ -411,7 +411,7 @@
           (is (= "csrf_validation_failed" (:error (:body response)))))))))
 
 (deftest authorize-decision-params-tampered-test
-  (testing "POST /oauth/authorize/decision with modified scope returns 403 params_tampered"
+  (testing "POST /oauth/authorize/decision with tampered state returns 403 params_tampered"
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (let [client       (create-test-client!)

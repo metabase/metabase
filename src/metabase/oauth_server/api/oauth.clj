@@ -234,6 +234,7 @@
                         parsed-params (select-keys parsed oauth-param-keys)]
                     (if (or (str/blank? params-sig)
                             (not (re-matches #"[a-fA-F0-9]+" params-sig))
+                            (odd? (count params-sig))
                             (not (verify-oauth-params-signature cookie-token parsed-params params-sig)))
                       {:status  403
                        :headers {"Content-Type" "application/json"}
