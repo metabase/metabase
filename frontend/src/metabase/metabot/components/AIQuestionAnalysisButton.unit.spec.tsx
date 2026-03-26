@@ -23,6 +23,7 @@ function setup({
   isMetabotEnabled = true,
 }: { isMetabotEnabled?: boolean } = {}) {
   const settings = mockSettings({
+    "llm-metabot-configured?": true,
     "metabot-enabled?": isMetabotEnabled,
     "token-features": createMockTokenFeatures({
       metabot_v3: true,

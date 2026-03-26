@@ -12,7 +12,6 @@ import "./shared";
 import { initializePlugin as initializeContentTranslation } from "./content_translation";
 import { initializePlugin as initializeEmbedding } from "./embedding";
 import { initializePlugin as initializeEmbeddingSdk } from "./embedding-sdk";
-import { initializePlugin as initializeMetabot } from "./metabot";
 import { initializePlugin as initializeSharing } from "./sharing";
 import { initializePlugin as initializeTenants } from "./tenants";
 import { initializePlugin as initializeWhitelabelPlugin } from "./whitelabel";
@@ -27,7 +26,6 @@ import { initializePlugin as initializeNotifications } from "../embedding-sdk-ee
 export function initializePlugins() {
   initializeEmbedding?.();
   initializeEmbeddingSdk?.();
-  initializeMetabot?.();
   initializeTenants?.();
   initializeWhitelabelPlugin?.();
   initializeWhitelabelOverridePlugin?.();

@@ -1,14 +1,12 @@
 import { useDisclosure } from "@mantine/hooks";
-import type { ReactNode } from "react";
-import { IndexRoute, Redirect, Route } from "react-router";
+import { type ReactNode, useEffect, useMemo } from "react";
+import { IndexRoute, Route } from "react-router";
+import { push } from "react-router-redux";
 import { P, match } from "ts-pattern";
 import { c, t } from "ttag";
+import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import {
-  AdminNavItem,
-  AdminNavWrapper,
-} from "metabase/admin/components/AdminNav";
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import {
@@ -22,13 +20,14 @@ import { canonicalCollectionId } from "metabase/collections/utils";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
-import { useToast } from "metabase/common/hooks";
+import { useSetting, useToast } from "metabase/common/hooks";
 import { getIcon } from "metabase/lib/icon";
+import { useDispatch } from "metabase/lib/redux";
 import {
   FIXED_METABOT_ENTITY_IDS,
   FIXED_METABOT_IDS,
 } from "metabase/metabot/constants";
-import { PLUGIN_METABOT, PLUGIN_MODERATION } from "metabase/plugins";
+import { PLUGIN_MODERATION } from "metabase/plugins";
 import {
   Box,
   Button,
@@ -48,65 +47,54 @@ import type {
 
 import { MetabotPromptSuggestionPane } from "./MetabotAdminSuggestedPrompts";
 import { MetabotNavPane } from "./MetabotNavPane";
-import { MetabotSQLGenerationSettingsSection } from "./MetabotSQLGenerationSettingsSection";
+import { MetabotSetup } from "./MetabotSetup";
 import { useMetabotIdPath } from "./utils";
 
 export function getAdminRoutes() {
-  return (
-    PLUGIN_METABOT.getAdminRoutes?.() ?? [
-      <IndexRoute key="index" component={OssMetabotAdminPage} />,
-      <Redirect key="redirect" from="*" to="/admin/metabot" />,
-    ]
-  );
-}
-
-export function getFullAdminRoutes() {
   return [
     <IndexRoute key="index" component={MetabotAdminPage} />,
+    <Route key="setup" path="setup" component={MetabotSetup} />,
     <Route key="metabot" path=":metabotId" component={MetabotAdminPage} />,
   ];
 }
 
-function OssMetabotAdminPage() {
-  return (
-    <AdminSettingsLayout sidebar={<OssNavPane />}>
-      <ErrorBoundary>
-        <MetabotSQLGenerationSettingsSection />
-      </ErrorBoundary>
-    </AdminSettingsLayout>
-  );
-}
-
-function OssNavPane() {
-  return (
-    <Flex direction="column" flex="0 0 auto">
-      <AdminNavWrapper>
-        <AdminNavItem
-          icon="sql"
-          label={t`SQL Generation`}
-          path="/admin/metabot"
-        />
-      </AdminNavWrapper>
-    </Flex>
-  );
-}
-
 export function MetabotAdminPage() {
+  const isConfigured = useSetting("llm-metabot-configured?");
+
   const metabotId = useMetabotIdPath() ?? FIXED_METABOT_IDS.DEFAULT;
   const { data, isLoading, error } = useListMetabotsQuery();
 
   const metabot = data?.items?.find((bot) => bot.id === metabotId);
 
-  if (isLoading || !metabot) {
+  const dispatch = useDispatch();
+
+  const metabots = useMemo(() => _.sortBy(data?.items ?? [], "id"), [data]);
+
+  useEffect(() => {
+    if (!isConfigured) {
+      dispatch(push("/admin/metabot/setup"));
+    }
+  }, [isConfigured, dispatch]);
+
+  useEffect(() => {
+    if (!metabot && metabots.length) {
+      dispatch(push(`/admin/metabot/${metabots[0]?.id}`));
+    }
+  }, [metabots, metabotId, dispatch, metabot, isLoading]);
+
+  if (isLoading || !metabot || !isConfigured) {
     return (
       <LoadingAndErrorWrapper
         loading={isLoading || !data}
-        error={match({ isLoading, error, metabot })
+        error={match({ isLoading, error, metabot, isConfigured })
           .with(
-            { isLoading: false, error: P.not(null) },
+            { isLoading: false, error: P.not(null), isConfigured: true },
             () => t`Error fetching Metabots`,
           )
-          .with({ isLoading: false, metabot: undefined }, () => t`Not found.`)
+          .with(
+            { isLoading: false, metabot: undefined, isConfigured: true },
+            () => t`Not found.`,
+          )
           .otherwise(() => null)}
       />
     );
