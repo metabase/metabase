@@ -115,13 +115,13 @@
     (let [database   (.getDatabase liquibase)
           id->index  (into {} (map-indexed (fn [i ^ChangeSet cs] [(.getId cs) i])
                                            (.getChangeSets (.getDatabaseChangeLog liquibase))))
+          resolve-id (fn [id]
+                       (or (id->index id)
+                           (throw (ex-info (format "Migration ID not found in changelog: %s" id) {:id id}))))
           {:keys [inclusive-start? inclusive-end?]
            :or   {inclusive-start? true inclusive-end? true}} range-options
-          start-idx  (or (id->index start-id)
-                         (throw (ex-info (format "Migration ID not found in changelog: %s" start-id) {:id start-id})))
-          end-idx    (when end-id
-                       (or (id->index end-id)
-                           (throw (ex-info (format "Migration ID not found in changelog: %s" end-id) {:id end-id}))))
+          start-idx  (resolve-id start-id)
+          end-idx    (when end-id (resolve-id end-id))
           change-set-filters [(reify ChangeSetFilter
                                 (accepts [this change-set]
                                   (let [id      (.getId ^ChangeSet change-set)
