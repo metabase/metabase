@@ -9,10 +9,6 @@ import "ee-overrides";
 
 import "metabase/utils/dayjs";
 
-// If enabled this monkeypatches `t` and `jt` to return blacked out
-// strings/elements to assist in finding untranslated strings.
-import "metabase/utils/i18n-debug";
-
 // set the locale before loading anything else
 import "metabase/utils/i18n";
 
@@ -35,6 +31,12 @@ import { syncHistoryWithStore } from "react-router-redux";
 
 import { initializePlugins } from "ee-plugins";
 import { ModifiedBackend } from "metabase/common/components/dnd/ModifiedBackend";
+import { MetabotProvider } from "metabase/metabot/context";
+import { PLUGIN_APP_INIT_FUNCTIONS } from "metabase/plugins";
+import { refreshSiteSettings } from "metabase/redux/settings";
+import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
+import { GlobalStyles } from "metabase/styled-components/containers/GlobalStyles";
+import { ThemeProvider } from "metabase/ui";
 import { createTracker } from "metabase/utils/analytics";
 import api from "metabase/utils/api";
 import { initializeEmbedding } from "metabase/utils/embed";
@@ -42,12 +44,6 @@ import { captureConsoleErrors } from "metabase/utils/errors";
 import { initTracing, rotateTraceId } from "metabase/utils/otel";
 import { MetabaseReduxProvider } from "metabase/utils/redux/custom-context";
 import MetabaseSettings from "metabase/utils/settings";
-import { MetabotProvider } from "metabase/metabot/context";
-import { PLUGIN_APP_INIT_FUNCTIONS } from "metabase/plugins";
-import { refreshSiteSettings } from "metabase/redux/settings";
-import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
-import { GlobalStyles } from "metabase/styled-components/containers/GlobalStyles";
-import { ThemeProvider } from "metabase/ui";
 import registerVisualizations from "metabase/visualizations/register";
 
 import { HistoryProvider } from "./history";
