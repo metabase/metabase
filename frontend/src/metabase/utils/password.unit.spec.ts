@@ -1,6 +1,6 @@
 import MetabaseSettings from "metabase/utils/settings";
 
-import { generatePassword } from "./security";
+import { generatePassword } from "./password";
 
 describe("generatePassword", () => {
   it("defaults to at least 14 characters even if password-complexity requirements are lower", () => {
