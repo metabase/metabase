@@ -32,6 +32,7 @@ import { requestSessionTokenFromEmbedJs } from "metabase/embedding/embedding-ifr
 import {
   EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG,
   isEmbeddingEajs,
+  isEmbeddingMcpApp,
 } from "metabase/embedding-sdk/config";
 import { samlTokenStorage } from "metabase/embedding-sdk/lib/saml-token-storage";
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
@@ -54,6 +55,11 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
   authConfig: MetabaseAuthConfig & { isLocalHost?: boolean },
   { dispatch }: { dispatch: SdkDispatch },
 ) => {
+  // MCP Apps inject a session token directly and manage user/settings themselves.
+  if (isEmbeddingMcpApp()) {
+    return;
+  }
+
   const { metabaseInstanceUrl, apiKey, isLocalHost } = authConfig;
 
   // remove any stale tokens that might be there from a previous session

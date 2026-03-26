@@ -9,16 +9,20 @@
    [metabase.api.common :as api]
    [metabase.api.macros.scope :as scope]
    [metabase.api.open-api :as open-api]
+   [metabase.mcp.resources :as mcp.resources]
    [metabase.mcp.tools :as mcp.tools]
    [metabase.mcp.validation :as mcp.validation]
    [metabase.oauth-server.core :as oauth-server]
    [metabase.request.core :as request]
    [metabase.server.streaming-response :as streaming-response]
+   [metabase.session.core :as session]
    [metabase.system.core :as system]
+   [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [oidc-provider.store :as oidc.store]
-   [throttle.core :as throttle])
+   [throttle.core :as throttle]
+   [toucan2.core :as t2])
   (:import
    (java.io BufferedWriter OutputStreamWriter)
    (java.net URI)
@@ -29,13 +33,67 @@
 
 ;;; --------------------------------------------------- Sessions ----------------------------------------------------
 
+(defonce ^:private sessions
+  (atom {}))
+
+(def ^:private session-ttl-ms
+  "Sessions expire after 1 hour."
+  (* 60 60 1000))
+
+(defn- delete-embedding-session!
+  "Delete a Metabase session by its session key (hashed lookup)."
+  [session-key]
+  (t2/delete! :model/Session :key_hashed (session/hash-session-key session-key)))
+
+(defn- cleanup-embedding-sessions!
+  "Delete any Metabase embedding sessions associated with an MCP session."
+  [session]
+  (doseq [key (:embedding-session-keys session)]
+    (try
+      (delete-embedding-session! key)
+      (catch Exception e
+        (log/debugf "Failed to clean up embedding session: %s" (ex-message e))))))
+
+(defn- sweep-expired-sessions!
+  "Remove all sessions whose TTL has elapsed. Called on session creation to
+   prevent abandoned sessions from accumulating in memory."
+  []
+  (let [expired? (fn [{:keys [timer]}] (>= (u/since-ms timer) session-ttl-ms))
+        expired  (into {} (filter (fn [[_ session]] (expired? session))) @sessions)]
+    (doseq [[_ session] expired]
+      (cleanup-embedding-sessions! session))
+    (swap! sessions #(apply dissoc % (keys expired)))))
+
 (defn- create-session!
   "Generate an MCP session ID for protocol compatibility.
    The server currently treats MCP sessions as degenerate: callers must still
    send a session ID after `initialize`, but the ID is not otherwise required
    for auth, initialization state, or server-side validation."
-  [_user-id]
-  (str (UUID/randomUUID)))
+  [user-id]
+  (sweep-expired-sessions!)
+  (let [session-id (str (UUID/randomUUID))]
+    (swap! sessions assoc session-id {:timer        (u/start-timer)
+                                      :initialized? false
+                                      :user-id      user-id})
+    session-id))
+
+(defn- delete-session! [session-id]
+  (when-let [session (get @sessions session-id)]
+    (cleanup-embedding-sessions! session))
+  (swap! sessions dissoc session-id))
+
+(defn- session-initialized? [session-id]
+  (get-in @sessions [session-id :initialized?]))
+
+(defn- mark-session-initialized! [session-id]
+  (swap! sessions assoc-in [session-id :initialized?] true))
+
+(defmacro ^:private when-initialized
+  "Execute `body` only when the MCP session has been initialized; otherwise return a JSON-RPC error."
+  [id session-id & body]
+  `(if (session-initialized? ~session-id)
+     (do ~@body)
+     (jsonrpc-error ~id -32600 "Session not initialized")))
 
 ;;; -------------------------------------------------- Auth --------------------------------------------------------
 
@@ -74,7 +132,7 @@
   (jsonrpc-response
    id
    {:protocolVersion protocol-version
-    :capabilities    {:tools {}}
+    :capabilities    {:tools {} :resources {}}
     :serverInfo      server-info}))
 
 (defn- handle-tools-list [id _params token-scopes]
@@ -85,20 +143,50 @@
         arguments (or (:arguments params) {})]
     (jsonrpc-response id (mcp.tools/call-tool token-scopes tool-name arguments))))
 
+(defn- handle-resources-list [id _params token-scopes]
+  (jsonrpc-response id (mcp.resources/list-resources token-scopes)))
+
+(defn- create-embedding-session!
+  "Create a Metabase session for embedding SDK auth.
+   Returns the session key (the value the SDK uses as X-Metabase-Session)."
+  [user-id]
+  (let [session-key (session/generate-session-key)
+        session-id  (session/generate-session-id)]
+    (t2/insert! :model/Session
+                {:id          session-id
+                 :user_id     user-id
+                 :session_key session-key})
+    session-key))
+
+(defn- handle-resources-read [id params session-id token-scopes]
+  (let [uri    (:uri params)
+        access (mcp.resources/check-resource-access uri token-scopes)]
+    (case access
+      (:not-found
+       :scope-denied) (jsonrpc-error id -32602 "Resource not found")
+      :ok             (let [user-id     api/*current-user-id*
+                            session-key (when user-id (create-embedding-session! user-id))]
+                        ;; Track the embedding session key in the MCP session for cleanup
+                        (when session-key
+                          (swap! sessions update-in [session-id :embedding-session-keys] (fnil conj #{}) session-key))
+                        (jsonrpc-response id (mcp.resources/read-resource uri {:session-key session-key}))))))
+
 (defn- handle-ping [id _params]
   (jsonrpc-response id {}))
 
 (defn- dispatch-request
   "Dispatch a single JSON-RPC request. Returns a response map or nil for notifications."
-  [msg _session-id token-scopes]
+  [msg session-id token-scopes]
   (let [id     (:id msg)
         method (:method msg)
         params (:params msg)]
     (try
       (case method
-        "notifications/initialized" nil
+        "notifications/initialized" (do (mark-session-initialized! session-id) nil)
         "tools/list"                (handle-tools-list id params token-scopes)
         "tools/call"                (handle-tools-call id params token-scopes)
+        "resources/list"            (handle-resources-list id params token-scopes)
+        "resources/read"            (when-initialized id session-id (handle-resources-read id params session-id token-scopes))
         "ping"                      (handle-ping id params)
         (if id
           (jsonrpc-error id -32601 (str "Method not found: " method))
@@ -246,7 +334,8 @@
   (let [session-id (get-in request [:headers "mcp-session-id"])
         session-err (session-error-response session-id)]
     (or session-err
-        {:status 200 :headers {"Content-Type" "application/json"} :body ""})))
+        (do (delete-session! session-id)
+            {:status 200 :headers {"Content-Type" "application/json"} :body ""}))))
 
 ;;; -------------------------------------------------- Throttling --------------------------------------------------
 

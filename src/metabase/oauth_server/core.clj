@@ -12,10 +12,15 @@
 
 (defonce ^:private provider (atom nil))
 
+(def ^:private extra-mcp-tool-scopes
+  "OAuth scopes for MCP tools that are not registered as agent-api defendpoints."
+  ["agent:visualize"])
+
 (defn all-agent-scopes
-  "All supported OAuth scopes derived from defendpoint metadata on the agent API."
+  "All supported OAuth scopes derived from defendpoint metadata on the agent API,
+   plus additional scopes for tools not registered as defendpoints (e.g. visualize_query)."
   []
-  (into []
+  (into extra-mcp-tool-scopes
         (comp (keep #(get-in % [:form :metadata :scope]))
               (filter string?)
               (distinct))
