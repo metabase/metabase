@@ -1,10 +1,8 @@
-import {
-  getSemanticTypeIcon,
-  getSemanticTypeName,
-} from "metabase/utils/schema_metadata";
 import { TYPE } from "metabase-lib/v1/types/constants";
 
-describe("schema_metadata", () => {
+import { getSemanticTypeIcon, getSemanticTypeName } from "./fields";
+
+describe("fields", () => {
   describe("getSemanticTypeIcon", () => {
     it("should return an icon associated with the given semantic type", () => {
       expect(getSemanticTypeIcon(TYPE.PK)).toEqual("label");

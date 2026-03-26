@@ -3,7 +3,7 @@ import { t } from "ttag";
 import {
   getSemanticTypeIcon,
   getSemanticTypeName,
-} from "metabase/utils/schema_metadata";
+} from "metabase/common/utils/fields";
 
 import {
   Label,
