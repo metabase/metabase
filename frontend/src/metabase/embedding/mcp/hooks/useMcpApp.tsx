@@ -70,32 +70,9 @@ export function useMcpApp(): McpAppState {
       return () => window.removeEventListener("message", listener);
     }
 
-    function applyHostContext(ctx: HostContext | null | undefined) {
-      if (!ctx) {
-        return;
-      }
-
-      if (ctx.styles?.variables) {
-        const root = document.documentElement;
-
-        Object.entries(ctx.styles.variables).forEach(([key, value]) => {
-          root.style.setProperty(key, value);
-        });
-      }
-
-      if (ctx.styles?.css?.fonts) {
-        const style = document.createElement("style");
-
-        style.textContent = ctx.styles.css.fonts;
-        document.head.appendChild(style);
-      }
-
-      setHostContext(ctx);
-    }
-
     const cleanupHostContext = addMessageListener<HostContext>(
       "ui/notifications/host-context-changed",
-      (params) => applyHostContext(params),
+      (context) => context && setHostContext(context),
     );
 
     const cleanupToolInput = addMessageListener<{
@@ -140,7 +117,11 @@ export function useMcpApp(): McpAppState {
       protocolVersion: "2026-01-26",
     })
       .then((result) => {
-        applyHostContext((result as { hostContext?: HostContext }).hostContext);
+        const { hostContext } = (result as { hostContext?: HostContext }) ?? {};
+
+        if (hostContext) {
+          setHostContext(hostContext);
+        }
 
         // Signal to the host that the app is ready to receive notifications
         // e.g. tool-input, tool-result, etc.
@@ -154,6 +135,7 @@ export function useMcpApp(): McpAppState {
       cleanupHostContext();
       cleanupToolInput();
       cleanupToolResult();
+
       resizeObserver.disconnect();
     };
   }, []);
