@@ -581,14 +581,17 @@
               ["./bin/mage -johnswanson-dev-env up --no-frontend" "Start without frontend dev server"]
               ["./bin/mage -johnswanson-dev-env up --no-backend" "Start containers only, no backend process"]
               ["./bin/mage -johnswanson-dev-env add mongo" "Add MongoDB warehouse to running env"]
+              ["./bin/mage -johnswanson-dev-env logs" "Show last 100 lines from all log sources"]
+              ["./bin/mage -johnswanson-dev-env logs backend -f" "Stream backend logs"]
               ["./bin/mage -johnswanson-dev-env stop" "Stop processes and containers (preserves data)"]
               ["./bin/mage -johnswanson-dev-env down" "Tear down everything (removes containers and config)"]]
    :requires [[mage.johnswanson.dev-env :as jds-dev-env]]
    :custom-help? true
    :arg-schema [:or
                 [:tuple]
-                [:tuple [:enum "up" "stop" "down" "status"]]
-                [:cat [:= "add"] [:* :string]]]
+                [:tuple [:enum "up" "stop" "down" "status" "list"]]
+                [:cat [:= "add"] [:* :string]]
+                [:cat [:= "logs"] [:* :string]]]
    :options [["-h" "--help" "Show help for a command"]
              ["-e" "--edition EDITION" "ee or oss (default: prompt)"]
              ["-t" "--token TOKEN" "Token type: all-features, starter-cloud, pro-cloud, pro-self-hosted, none"]
@@ -598,7 +601,11 @@
              [nil "--no-frontend" "Skip frontend dev server"]
              [nil "--no-backend" "Skip backend process (containers + config only)"]
              [nil "--slot SLOT" "Override port slot (0-99)" :parse-fn Integer/parseInt]
-             [nil "--fresh" "Force-recreate containers from scratch"]]
+             [nil "--fresh" "Force-recreate containers from scratch"]
+             ["-f" "--follow" "Stream logs in real time (for logs subcommand)"]
+             [nil "--tail N" "Number of lines to show (default 100, for logs subcommand)" :default 100 :parse-fn Integer/parseInt]
+             [nil "--stop" "With list: select envs to stop"]
+             [nil "--down" "With list: select envs to tear down"]]
    :task (task! (jds-dev-env/dev-env! parsed))}
 
   -bgrabow-ci-test-repl

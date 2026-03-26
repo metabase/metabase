@@ -568,9 +568,11 @@
   (println (c/bold "Commands:"))
   (println (c/cyan "  up     ") "Start everything (idempotent)")
   (println (c/cyan "  add    ") "Add warehouse services to running env")
+  (println (c/cyan "  logs   ") "Show logs (backend, frontend, docker services)")
   (println (c/cyan "  stop   ") "Stop processes + containers (preserves data)")
   (println (c/cyan "  down   ") "Tear down everything (removes containers and config)")
   (println (c/cyan "  status ") "Show current status")
+  (println (c/cyan "  list   ") "List dev envs across all worktrees")
   (println)
   (println "Run" (c/yellow (str command-prefix " <command> -h")) "for command-specific help."))
 
@@ -624,8 +626,155 @@
         (println)
         (println "Displays running processes, container statuses, and port assignments."))
 
+    "logs"
+    (do (println (c/bold "logs") "- Show logs for backend, frontend, or docker services")
+        (println)
+        (println "Without arguments, shows the last 100 lines from all log sources.")
+        (println "Use -f to stream logs in real time with [source] prefixes.")
+        (println)
+        (println (c/bold "Usage:"))
+        (println (str "  " command-prefix " logs              Show last 100 lines from all sources"))
+        (println (str "  " command-prefix " logs -f           Stream all logs (interleaved)"))
+        (println (str "  " command-prefix " logs backend      Show last 100 lines of backend"))
+        (println (str "  " command-prefix " logs backend -f   Stream backend logs"))
+        (println (str "  " command-prefix " logs postgres     Show last 100 lines of postgres"))
+        (println)
+        (println (c/bold "Options:"))
+        (println "  -f, --follow      Stream logs in real time")
+        (println "  --tail N          Number of lines to show (default 100)"))
+
+    "list"
+    (do (println (c/bold "list") "- List dev envs across all worktrees")
+        (println)
+        (println "Scans all git worktrees for dev-env state files, shows which have")
+        (println "running processes or containers. Select entries with fzf to stop them."))
+
     ;; No subcommand
     (print-commands!)))
+
+(defn- all-worktree-paths
+  "Return a seq of absolute paths for every git worktree."
+  []
+  (let [{:keys [out]} (shell/sh* {:quiet? true} "git" "worktree" "list" "--porcelain")]
+    (->> out
+         (filter #(str/starts-with? % "worktree "))
+         (mapv #(subs % (count "worktree "))))))
+
+(defn- worktree-env-info
+  "For a given worktree path, read its state file and check liveness.
+   Returns nil if no state file exists."
+  [wt-path]
+  (let [state-path (str wt-path "/local/.dev-env-state.edn")
+        f          (java.io.File. state-path)]
+    (when (.exists f)
+      (when-let [state (try (edn/read-string (slurp f)) (catch Exception _ nil))]
+        (let [wt-name    (last (str/split wt-path #"/"))
+              be-pid     (get-in state [:backend :pid])
+              fe-pid     (get-in state [:frontend :pid])
+              be-alive?  (and be-pid (pid-alive? be-pid))
+              fe-alive?  (and fe-pid (pid-alive? fe-pid))
+              prefix     (str "mb-" wt-name "-")
+              {:keys [out]} (shell/sh* {:quiet? true}
+                                       "docker" "ps"
+                                       "--filter" (str "name=^" prefix)
+                                       "--format" "{{.Names}}")
+              containers (when (seq out) (vec (remove str/blank? out)))]
+          {:path       wt-path
+           :name       wt-name
+           :slot       (:slot state)
+           :backend    (cond (nil? be-pid) nil be-alive? :running :else :stopped)
+           :frontend   (cond (nil? fe-pid) nil fe-alive? :running :else :stopped)
+           :be-pid     be-pid
+           :fe-pid     fe-pid
+           :containers containers
+           :state      state})))))
+
+(defn- stop-worktree-env!
+  "Stop processes and containers for a worktree env (preserves containers)."
+  [{:keys [name be-pid fe-pid containers state path]}]
+  (when (and be-pid (pid-alive? be-pid))
+    (kill-pid! be-pid (str name " backend")))
+  (when (and fe-pid (pid-alive? fe-pid))
+    (kill-pid! fe-pid (str name " frontend")))
+  (doseq [cname containers]
+    (println (c/yellow "  Stopping " cname))
+    (stop-container! cname))
+  ;; Clear PIDs from state file
+  (let [state-path (str path "/local/.dev-env-state.edn")]
+    (spit state-path (pr-str (dissoc state :backend :frontend)))))
+
+(defn- down-worktree-env!
+  "Tear down processes, containers, and config for a worktree env."
+  [{:keys [name be-pid fe-pid path]}]
+  (when (and be-pid (pid-alive? be-pid))
+    (kill-pid! be-pid (str name " backend")))
+  (when (and fe-pid (pid-alive? fe-pid))
+    (kill-pid! fe-pid (str name " frontend")))
+  ;; Kill all containers for this worktree (not just running ones)
+  (let [prefix (str "mb-" name "-")
+        {:keys [out]} (shell/sh* {:quiet? true}
+                                 "docker" "ps" "-a"
+                                 "--filter" (str "name=^" prefix)
+                                 "--format" "{{.Names}}")
+        all-containers (when (seq out) (vec (remove str/blank? out)))]
+    (doseq [cname all-containers]
+      (println (c/red "  Killing " cname))
+      (kill-container! cname)))
+  ;; Remove mise.local.toml and state file
+  (let [toml  (java.io.File. (str path "/mise.local.toml"))
+        state (java.io.File. (str path "/local/.dev-env-state.edn"))]
+    (when (.exists toml)
+      (.delete toml)
+      (println (c/green "  Removed " (.getPath toml))))
+    (when (.exists state)
+      (.delete state)
+      (println (c/green "  Removed " (.getPath state))))))
+
+(defn- status-label [status]
+  (case status
+    :running (c/green "running")
+    :stopped (c/red "stopped")
+    ""))
+
+(defn- list-all!
+  "List dev envs across all git worktrees. Optionally stop or tear down selected envs."
+  [opts]
+  (let [paths (all-worktree-paths)
+        envs  (->> paths
+                   (keep worktree-env-info)
+                   (sort-by :name))]
+    (if (empty? envs)
+      (println (c/yellow "No dev environments found across any worktree."))
+      (do
+        (println)
+        (println (c/bold "Dev environments across all worktrees:"))
+        (println)
+        (t/table (mapv (fn [{:keys [name slot backend frontend containers]}]
+                         {:worktree   name
+                          :slot       (or slot "")
+                          :backend    (status-label backend)
+                          :frontend   (status-label frontend)
+                          :containers (count containers)})
+                       envs)
+                 :style :unicode)
+        (when (or (:stop opts) (:down opts))
+          (let [active   (filter (fn [{:keys [backend frontend containers]}]
+                                   (or (= backend :running) (= frontend :running) (seq containers)))
+                                 envs)
+                action   (if (:down opts) "down" "stop")]
+            (if (empty? active)
+              (println (c/yellow "\nNo active environments to " action "."))
+              (let [names    (mapv :name active)
+                    selected (u/fzf-select! names
+                                            (str fzf-opts " --multi --prompt='Select envs to " action ": '"))]
+                (when-not (str/blank? selected)
+                  (let [chosen (set (str/split-lines selected))]
+                    (doseq [env (filter #(chosen (:name %)) active)]
+                      (println)
+                      (println (c/bold (if (:down opts) "Tearing down: " "Stopping: ") (:name env)))
+                      (if (:down opts)
+                        (down-worktree-env! env)
+                        (stop-worktree-env! env)))))))))))))
 
 (defn- print-status!
   "Unified status display. Reads state file for config + process info, queries docker for container status."
@@ -846,6 +995,114 @@
             (write-state-file! new-state)))
         (print-status!)))))
 
+(defn- prefix-pump!
+  "Read lines from reader, print each with prefix. Blocks until EOF."
+  [^java.io.BufferedReader reader prefix]
+  (loop []
+    (when-let [line (.readLine reader)]
+      (locking *out*
+        (println (str prefix " " line)))
+      (recur))))
+
+(defn- build-log-sources
+  "Build a vector of {:name :type :target} log sources from state."
+  [state]
+  (cond-> []
+    (get-in state [:backend :log-file])
+    (conj {:name   "backend"
+           :type   :file
+           :target (get-in state [:backend :log-file])})
+
+    (get-in state [:frontend :log-file])
+    (conj {:name   "frontend"
+           :type   :file
+           :target (get-in state [:frontend :log-file])})
+
+    (:containers state)
+    (into (map (fn [cname]
+                 (let [svc (-> cname
+                               (str/replace (container-prefix) "")
+                               (str/replace #"-(app|wh)$" ""))]
+                   {:name svc :type :docker :target cname})))
+          (:containers state))))
+
+(def ^:private log-colors
+  "Color functions cycled across log sources for visual distinction."
+  [c/cyan c/green c/magenta c/yellow c/blue c/red])
+
+(defn- assign-colors
+  "Assign a color function to each source by index."
+  [sources]
+  (mapv (fn [src i]
+          (assoc src :color (nth log-colors (mod i (count log-colors)))))
+        sources (range)))
+
+(defn- logs!
+  "Show logs for backend, frontend, or docker services."
+  [opts arguments]
+  (let [state (read-state-file)]
+    (when-not (and state (:config state))
+      (println (c/red "No dev environment configured yet. Run `up` first."))
+      (u/exit 1))
+    (let [follow?     (:follow opts)
+          tail-n      (str (or (:tail opts) 100))
+          filter-name (first arguments)
+          all-sources (build-log-sources state)
+          sources     (if filter-name
+                        (filterv #(= (:name %) filter-name) all-sources)
+                        all-sources)
+          sources     (assign-colors sources)]
+      (when (empty? sources)
+        (println (c/red (if filter-name
+                          (str "No log source found for '" filter-name "'.")
+                          "No log sources found.")))
+        (when (and filter-name (seq all-sources))
+          (println "Available:" (str/join ", " (distinct (map :name all-sources)))))
+        (u/exit 1))
+      (if follow?
+        ;; Stream mode: spawn processes, prefix lines, wait for ctrl-c
+        (let [procs (into []
+                          (keep (fn [{:keys [type target name color]}]
+                                  (let [proc (case type
+                                               :file   (when (.exists (java.io.File. ^String target))
+                                                         (p/process {:out :pipe :err :pipe}
+                                                                    "tail" "-f" "-n" tail-n target))
+                                               :docker (p/process {:out :pipe :err :pipe}
+                                                                  "docker" "logs" "-f" "--tail" tail-n target))]
+                                    (when proc
+                                      {:proc proc :name name :color color}))))
+                          sources)]
+          (when (empty? procs)
+            (println (c/red "No active log sources to follow."))
+            (u/exit 1))
+          (let [futures (into []
+                              (mapcat (fn [{:keys [proc name color]}]
+                                        (let [prefix (color (str "[" name "]"))]
+                                          [(future (prefix-pump! (java.io.BufferedReader.
+                                                                  (java.io.InputStreamReader. (:out proc)))
+                                                                 prefix))
+                                           (future (prefix-pump! (java.io.BufferedReader.
+                                                                  (java.io.InputStreamReader. (:err proc)))
+                                                                 prefix))])))
+                              procs)]
+            (try
+              ;; Block until interrupted
+              (deref (promise))
+              (finally
+                (run! #(p/destroy-tree (:proc %)) procs)
+                (run! future-cancel futures)))))
+        ;; Dump mode: print last N lines sequentially
+        (doseq [{:keys [type target name color]} sources]
+          (when (> (count sources) 1)
+            (println)
+            (println (c/bold (color (str "==> " name " <=="))))
+            (println))
+          (case type
+            :file   (if (.exists (java.io.File. ^String target))
+                      (p/shell {:out :inherit :err :inherit} "tail" "-n" tail-n target)
+                      (println (c/yellow "Log file not found: " target)))
+            :docker (p/shell {:out :inherit :err :inherit} "docker" "logs" "--tail" tail-n target)))))))
+
 (defn dev-env!
   "Top-level dispatcher for dev-env command."
   [{:keys [options arguments]}]
@@ -854,7 +1111,9 @@
     (case (first arguments)
       "up"     (stand-up! options)
       "add"    (add-services! (rest arguments))
+      "logs"   (logs! options (rest arguments))
       "stop"   (stop!)
       "down"   (tear-down!)
       "status" (print-status!)
+      "list"   (list-all! options)
       (print-status!))))
