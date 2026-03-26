@@ -31,3 +31,16 @@
 
   (resolve-card [this entity-id]
     "Resolve card by entity-id. Returns map with :name, :dataset-query, :result-metadata, etc. or nil."))
+
+(deftype CompositeSource [db-source card-source]
+  MetadataSource
+  (resolve-database [_ db-name]   (resolve-database db-source db-name))
+  (resolve-table    [_ table-path] (resolve-table db-source table-path))
+  (resolve-field    [_ field-path] (resolve-field db-source field-path))
+  (resolve-card     [_ entity-id]  (resolve-card card-source entity-id)))
+
+(defn composite-source
+  "Create a source that resolves databases/tables/fields from `db-source`
+   and cards from `card-source`."
+  [db-source card-source]
+  (->CompositeSource db-source card-source))

@@ -485,45 +485,46 @@
       (.write w (str (format-result entry) "\n\n"))))
   (println "Results written to:" output-file))
 
+(defn- make-source-and-enumerators
+  "Build a composite source (db schemas from `schema-dir`, cards from `export-dir`)
+   and the matching enumerators map."
+  [export-dir schema-dir]
+  (let [serdes-source   (requiring-resolve 'metabase-enterprise.checker.format.serdes/make-source)
+        serdes-db       (requiring-resolve 'metabase-enterprise.checker.format.serdes/make-database-source)
+        serdes-db-names (requiring-resolve 'metabase-enterprise.checker.format.serdes/all-database-names)
+        serdes-tables   (requiring-resolve 'metabase-enterprise.checker.format.serdes/all-table-paths)
+        serdes-fields   (requiring-resolve 'metabase-enterprise.checker.format.serdes/all-field-paths)
+        serdes-cards    (requiring-resolve 'metabase-enterprise.checker.format.serdes/all-card-ids)
+        db-source   (serdes-db schema-dir)
+        card-source (serdes-source export-dir)
+        src         (source/composite-source db-source card-source)
+        enums       {:databases #(serdes-db-names db-source)
+                     :tables    #(serdes-tables db-source)
+                     :fields    #(serdes-fields db-source)
+                     :cards     #(serdes-cards card-source)}]
+    {:source src :enumerators enums :card-source card-source}))
+
 (defn check
-  "Check cards in an export directory (auto-detects format).
+  "Check cards in an export directory against database schemas.
 
-   With just an export dir, checks all cards.
-   With entity-ids, checks only those cards.
+   `export-dir`  — directory containing serdes-exported cards (collections/)
+   `schema-dir`  — directory containing serdes-exported database schemas
+   `entity-ids`  — optional seq of card entity-ids to check (defaults to all)
 
-   Options:
-     :lenient?   true to force lenient mode.
-     :schema-dir load database schemas from a separate directory.
-
-   Returns a map with :results, :type, and :source (see hybrid/check)."
-  ([export-dir]
-   (let [hybrid-check (requiring-resolve 'metabase-enterprise.checker.format.hybrid/check)]
-     (hybrid-check export-dir)))
-  ([export-dir entity-ids]
-   (check export-dir entity-ids {}))
-  ([export-dir entity-ids {:keys [lenient? schema-dir]}]
-   (let [make-source*      (requiring-resolve 'metabase-enterprise.checker.format.hybrid/make-source)
-         make-enumerators* (requiring-resolve 'metabase-enterprise.checker.format.hybrid/make-enumerators)
-         {:keys [source type] :as src-info} (make-source* export-dir :lenient? lenient? :schema-dir schema-dir)
-         enums (make-enumerators* src-info)]
-     {:results (check-cards source enums entity-ids)
-      :type    type
+   Returns a map with :results and :source."
+  ([export-dir schema-dir]
+   (let [{:keys [source enumerators card-source]} (make-source-and-enumerators export-dir schema-dir)
+         all-card-ids (requiring-resolve 'metabase-enterprise.checker.format.serdes/all-card-ids)
+         card-ids     (all-card-ids card-source)]
+     {:results (check-cards source enumerators card-ids)
+      :source  source}))
+  ([export-dir schema-dir entity-ids]
+   (let [{:keys [source enumerators]} (make-source-and-enumerators export-dir schema-dir)]
+     {:results (check-cards source enumerators entity-ids)
       :source  source})))
 
 (comment
-  ;; Quick check — all cards, auto-detect format
-  (def check-result (check "/Users/dan/projects/work/yaml-checked-files-v1/exports/sqlite-based-mixed-versions"))
-  (summarize-results (:results check-result))
+  (def r (check "/path/to/export" "/path/to/schemas"))
+  (summarize-results (:results r))
 
-  ;; Check just one card
-  (check "/path/to/export" ["some-entity-id"])
-
-  ;; Dig into the store to see what got loaded
-  (require '[metabase-enterprise.checker.format.serdes :as serdes-format])
-  (def source (serdes-format/make-source "/path/to/export"))
-  (def store (store/make-store source (serdes-format/make-enumerators source)))
-  (store/load-database! store "My Database")
-  (store/load-table! store ["My Database" "PUBLIC" "ORDERS"])
-  (:ref->id @store)   ; all assigned IDs
-  (:entities @store)   ; all cached entities
-  )
+  (check "/path/to/export" "/path/to/schemas" ["some-entity-id"]))

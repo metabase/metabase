@@ -2,15 +2,13 @@
   "CLI entrypoints for the checker module.
 
    Invoked from metabase.core.bootstrap:
-     java -jar metabase.jar --mode checker --checker cards --export /path/to/export
+     java -jar metabase.jar --mode checker --checker cards --export /path/to/export --schema-dir /path/to/schemas
      java -jar metabase.jar --mode checker --checker structural --export /path/to/export"
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.tools.cli :as cli]
    [metabase-enterprise.checker.checker :as checker]
-   [metabase-enterprise.checker.format.hybrid :as hybrid]
-   [metabase-enterprise.checker.format.lenient :as lenient]
    [metabase-enterprise.checker.structural :as structural]))
 
 (set! *warn-on-reflection* true)
@@ -36,12 +34,15 @@
       (fail! (str "Not a directory: " path)))))
 
 (defn- run-cards-checker
-  "Run the cards checker. Auto-detects format (serdes or concise/hybrid/lenient)."
-  [export-dir {:keys [output manifest lenient errors-only schema-dir]}]
-  (let [{:keys [results type source]} (try
-                                        (hybrid/check export-dir :lenient? lenient :schema-dir schema-dir)
-                                        (catch clojure.lang.ExceptionInfo e
-                                          (fail! (.getMessage e))))
+  "Run the cards checker."
+  [export-dir {:keys [output errors-only schema-dir]}]
+  (when-not schema-dir
+    (fail! "Missing --schema-dir option (required for cards checker)"))
+  (validate-directory! schema-dir)
+  (let [{:keys [results]} (try
+                            (checker/check export-dir schema-dir)
+                            (catch clojure.lang.ExceptionInfo e
+                              (fail! (.getMessage e))))
         summary  (checker/summarize-results results)
         failures (filter #(not= :ok (checker/result-status (second %))) results)]
     (if errors-only
@@ -56,16 +57,9 @@
         (when output
           (spit output (pr-str results))
           (println "Results written to:" output))
-        ;; Write manifest if lenient source was used
-        (when (= :lenient type)
-          (lenient/write-manifest! source (or manifest (str export-dir "/manifest.yaml"))))
-        ;; Write manifest if explicitly requested and source is not lenient
-        (when (and manifest (not= :lenient type))
-          (println "Note: --manifest is only written when no database schema files are present (lenient mode)"))
         ;; Print summary
         (println "Card Check Results")
         (println "==================")
-        (println "Format:" (name type))
         (println "Total cards:" (:total summary))
         (println "  OK:" (:ok summary))
         (println "  Errors:" (:errors summary))
@@ -122,12 +116,10 @@
   "CLI options for checker mode."
   [[nil "--mode MODE" "Mode (handled by bootstrap, included here for completeness)"]
    [nil "--checker CHECKER" "Which checker to run (cards, structural)"]
-   [nil "--export PATH" "Path to serdes export directory"]
-   [nil "--schema-dir PATH" "Path to database schema directory (defaults to export dir)"]
+   [nil "--export PATH" "Path to serdes export directory (cards/dashboards)"]
+   [nil "--schema-dir PATH" "Path to database schema directory (required for cards checker)"]
    [nil "--output PATH" "Path to output file for results"]
    [nil "--errors-only" "Output only errors to stdout (concise format for LLM consumption)"]
-   [nil "--manifest PATH" "Path to write manifest YAML (referenced databases/tables/fields)"]
-   [nil "--lenient" "Force lenient mode: ignore schema files on disk, fabricate metadata on demand"]
    ["-h" "--help" "Show this help"]])
 
 (defn- usage [summary]
@@ -166,8 +158,6 @@
       :else
       (do
         (validate-directory! export)
-        (when-let [sd (:schema-dir options)]
-          (validate-directory! sd))
         (if-let [checker-fn (get checkers checker)]
           (checker-fn export options)
           (fail! (str "Unknown checker: " checker)
