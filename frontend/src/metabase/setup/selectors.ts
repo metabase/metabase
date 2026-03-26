@@ -1,6 +1,6 @@
 import { createSelector } from "@reduxjs/toolkit";
 
-import { isEEBuild } from "metabase/utils/utils";
+import { PLUGIN_IS_EE_BUILD } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
 import type {
   DatabaseData,
@@ -116,7 +116,8 @@ export const getSteps = createSelector(
 
     const shouldShowDBConnectionStep = usageReason !== "embedding";
     const shouldShowLicenseStep =
-      isEEBuild() && (!isPaidPlan || hasAddedPaidPlanInPreviousStep);
+      PLUGIN_IS_EE_BUILD.isEEBuild() &&
+      (!isPaidPlan || hasAddedPaidPlanInPreviousStep);
 
     // note: when hosting is true, we should be on cloud and therefore not show
     // the token step. There is an edge case that it's probably not possible in
