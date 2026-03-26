@@ -18,6 +18,43 @@
         color: var(--color-text-primary);
         font-family: var(--font-sans);
       }
+
+      .mcp-loading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+      }
+
+      @keyframes mcp-spinner-animation {
+        0% {
+          transform: rotate(0deg);
+        }
+
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      .mcp-spinner {
+        display: inline-block;
+        box-sizing: border-box;
+        width: 1.5rem;
+        height: 1.5rem;
+      }
+
+      .mcp-spinner::after {
+        content: "";
+        display: block;
+        box-sizing: border-box;
+        width: 1.5rem;
+        height: 1.5rem;
+        border-radius: 10000px;
+        border-width: calc(1.5rem / 8);
+        border-style: solid;
+        border-color: #509ee3 #509ee3 #509ee3 transparent;
+        animation: mcp-spinner-animation 1.2s linear infinite;
+      }
     </style>
 
     <link
@@ -27,6 +64,9 @@
   </head>
   <body>
     <div id="root"></div>
+    <div id="mcp-loading" class="mcp-loading">
+      <span class="mcp-spinner"></span>
+    </div>
 
     <script>
       window.metabaseConfig = {
