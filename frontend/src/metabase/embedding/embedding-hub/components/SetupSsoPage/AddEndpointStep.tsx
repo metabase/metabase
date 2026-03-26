@@ -2,6 +2,7 @@
 
 import { jt, t } from "ttag";
 
+import expressSnippet from "docs/embedding/sdk/snippets/authentication/express-server-interactive-and-sdk";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { CopyButton } from "metabase/common/components/CopyButton";
 import { useDocsUrl, useSetting } from "metabase/common/hooks";
@@ -15,7 +16,6 @@ import {
   Text,
   TextInput,
 } from "metabase/ui";
-import expressSnippet from "sdk-docs-snippets/authentication/express-server-interactive-and-sdk.ts";
 
 import S from "./SetupSsoPage.module.css";
 
