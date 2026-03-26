@@ -26,7 +26,8 @@ import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-pi
 export type SdkIframeEmbedTagMessage =
   | SdkIframeEmbedTagIframeReadyMessage
   | SdkIframeEmbedTagRequestSessionTokenMessage
-  | SdkIframeEmbedTagHandleLinkMessage;
+  | SdkIframeEmbedTagHandleLinkMessage
+  | SdkIframeEmbedTagRequestGuestTokenRefreshMessage;
 
 export type SdkIframeEmbedTagIframeReadyMessage = {
   type: "metabase.embed.iframeReady";
@@ -38,6 +39,12 @@ export type SdkIframeEmbedTagHandleLinkMessage = {
   type: "metabase.embed.handleLink";
   data: { url: string; requestId: string };
 };
+export type SdkIframeEmbedTagRequestGuestTokenRefreshMessage = {
+  type: "metabase.embed.requestGuestTokenRefresh";
+  data: {
+    expiredToken: string;
+  };
+};
 
 /** Events that the sdk embed route listens for */
 export type SdkIframeEmbedMessage =
@@ -45,7 +52,8 @@ export type SdkIframeEmbedMessage =
   | SdkIframeEmbedSubmitSessionTokenMessage
   | SdkIframeEmbedReportAuthenticationError
   | SdkIframeEmbedReportAnalytics
-  | SdkIframeEmbedHandleLinkResponse;
+  | SdkIframeEmbedHandleLinkResponse
+  | SdkIframeEmbedSubmitRefreshedGuestTokenMessage;
 
 export type SdkIframeEmbedSetSettingsMessage = {
   type: "metabase.embed.setSettings";
@@ -75,6 +83,12 @@ export type SdkIframeEmbedHandleLinkResponse = {
   type: "metabase.embed.handleLinkResponse";
   data: { requestId: string; handled: boolean };
 };
+export type SdkIframeEmbedSubmitRefreshedGuestTokenMessage = {
+  type: "metabase.embed.submitRefreshedGuestToken";
+  data: {
+    guestToken: string;
+  };
+};
 
 // --- Embed Option Interfaces ---
 
@@ -93,6 +107,8 @@ export type DashboardEmbedOptions = StrictUnion<
   initialParameters?: ParameterValues;
   hiddenParameters?: string[];
   enableEntityNavigation?: boolean;
+
+  customContext?: string | Record<string, unknown>;
 
   // incompatible options
   template?: never;
@@ -115,6 +131,8 @@ export type QuestionEmbedOptions = StrictUnion<
   // parameters
   initialSqlParameters?: SqlParameterValues;
   hiddenParameters?: string[];
+
+  customContext?: string | Record<string, unknown>;
 
   // incompatible options
   template?: never;
@@ -212,6 +230,14 @@ export type SdkIframeEmbedBaseSettings = {
 
   /** Whether we should use the existing user session (i.e. admin user's cookie) */
   useExistingUserSession?: boolean;
+
+  /**
+   * URL endpoint for fetching and refreshing guest embed JWT tokens (iframe only, not applicable for SDK's guest mode).
+   * Supports token refresh on expiry. Optionally also handles the initial token fetch
+   * when no static token is provided to the guest embed components (e.g. metabase-dashboard, metabase-question).
+   * The endpoint should return { jwt: string } with the new token.
+   */
+  guestEmbedProviderUri?: string;
 
   // Whether the embed is running on localhost. Cannot be set by the user.
   _isLocalhost?: boolean;

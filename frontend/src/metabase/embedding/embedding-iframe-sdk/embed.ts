@@ -1,10 +1,12 @@
 import { MetabaseError, SSO_NOT_ALLOWED } from "embedding-sdk-bundle/errors";
+import * as MetabaseErrors from "embedding-sdk-bundle/errors";
 import { PLUGIN_EMBED_JS_EE } from "metabase/embedding/embedding-iframe-sdk/plugin";
 import type {
   EmbedAuthManager,
   EmbedAuthManagerContext,
 } from "metabase/embedding/embedding-iframe-sdk/types/auth-manager";
 import type { ComponentToAttributes } from "metabase/embedding/embedding-iframe-sdk/types/modular-embedding";
+import { decodeJwt } from "metabase/lib/jwt";
 
 import { debouncedReportAnalytics } from "./analytics";
 import {
@@ -157,6 +159,12 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     Set<SdkIframeEmbedEventHandler>
   > = new Map();
   private _authManager: EmbedAuthManager | null = null;
+  ["custom-context"]: unknown;
+
+  constructor() {
+    super();
+    this["custom-context"] = undefined;
+  }
 
   get globalSettings() {
     return (window as any).metabaseConfig || {};
@@ -428,12 +436,25 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
         // this is used from tests to await the loading of the iframe
         this._iframe.setAttribute("data-iframe-loaded", "true");
       }
-      this._updateSettings(this.properties);
+
+      const { guestEmbedProviderUri, token } = this.properties;
+
+      // No static token provided — fetch initial guest token first, then send settings
+      if (guestEmbedProviderUri && !token) {
+        await this._fetchInitialGuestToken();
+      } else {
+        this._updateSettings(this.properties);
+      }
+
       this._emitEvent({ type: "ready" });
     }
 
     if (event.data.type === "metabase.embed.requestSessionToken") {
       await this._authenticate();
+    }
+
+    if (event.data.type === "metabase.embed.requestGuestTokenRefresh") {
+      await this._refreshGuestToken(event.data.data.expiredToken);
     }
 
     // Note: if we wrap other functions like this, let's come up with a generic utility function
@@ -498,6 +519,122 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     }
 
     await this._authManager.authenticate();
+  }
+
+  /**
+   * Handles token refresh, and the initial token fetch if no static token is provided.
+   * Unlike the SSO counterpart which lives in the plugin system (EE-only),
+   * guest embeds are OSS so this is implemented directly here in embed.ts.
+   */
+  private async _callGuestTokenProvider(
+    expiredToken?: string,
+  ): Promise<string> {
+    const { guestEmbedProviderUri, componentName, dashboardId, questionId } =
+      this.properties;
+
+    // Callers always guard guestEmbedProviderUri before invoking this function.
+    // This check is only to satisfy TypeScript's type narrowing.
+    if (!guestEmbedProviderUri) {
+      return "";
+    }
+
+    const guestEmbedProviderUrl = new URL(
+      guestEmbedProviderUri,
+      window.location.origin,
+    );
+    guestEmbedProviderUrl.searchParams.set("response", "json");
+
+    const entityType =
+      componentName === "metabase-dashboard" ? "dashboard" : "question";
+
+    const isRefreshingToken = expiredToken !== undefined;
+
+    // If the user supplies dashboardId/questionId without a static token prop
+    // (token fetch and refresh handled by their JWT endpoint), use those attributes.
+    // Otherwise, for the static token case (token={jwt}), fall back to decoding
+    // the expired token's payload to extract the entity ID.
+    const attributeEntityId =
+      componentName === "metabase-dashboard" ? dashboardId : questionId;
+    const tokenEntityId = isRefreshingToken
+      ? decodeJwt(expiredToken)?.resource?.[entityType]
+      : undefined;
+    const entityId = attributeEntityId ?? tokenEntityId;
+
+    const customContext = this["custom-context"];
+    const body = {
+      entityType,
+      entityId,
+      ...(customContext !== undefined && { customContext }),
+    };
+
+    const response = await fetch(guestEmbedProviderUrl.toString(), {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      throw MetabaseErrors.CANNOT_FETCH_JWT_TOKEN({
+        url: guestEmbedProviderUri,
+        status: String(response.status),
+      });
+    }
+
+    const data = await response.json();
+
+    if (typeof data !== "object" || typeof data.jwt !== "string") {
+      throw MetabaseErrors.DEFAULT_ENDPOINT_ERROR({
+        actual: JSON.stringify(data),
+      });
+    }
+
+    return data.jwt;
+  }
+
+  /**
+   * Fetches the initial guest token when no static token is provided.
+   * Stores the result and sends settings to the iframe.
+   */
+  private async _fetchInitialGuestToken(): Promise<void> {
+    try {
+      const token = await this._callGuestTokenProvider();
+      this._updateSettings({ token });
+    } catch (error) {
+      this.sendMessage("metabase.embed.reportAuthenticationError", {
+        error:
+          error instanceof MetabaseError
+            ? error
+            : MetabaseErrors.CANNOT_FETCH_JWT_TOKEN({
+                url: this.properties.guestEmbedProviderUri ?? "",
+                message: error instanceof Error ? error.message : String(error),
+              }),
+      });
+      // Send settings without a token so ComponentProvider can mount and display the error.
+      this._updateSettings(this.properties);
+    }
+  }
+
+  /**
+   * Called when the iframe requests a token refresh.
+   */
+  private async _refreshGuestToken(expiredToken: string): Promise<void> {
+    try {
+      const token = await this._callGuestTokenProvider(expiredToken);
+      this.sendMessage("metabase.embed.submitRefreshedGuestToken", {
+        guestToken: token,
+      });
+    } catch (error) {
+      this.sendMessage("metabase.embed.reportAuthenticationError", {
+        error:
+          error instanceof MetabaseError
+            ? error
+            : MetabaseErrors.CANNOT_FETCH_JWT_TOKEN({
+                url: this.properties.guestEmbedProviderUri ?? "",
+                message: error instanceof Error ? error.message : String(error),
+              }),
+      });
+    }
   }
 }
 
