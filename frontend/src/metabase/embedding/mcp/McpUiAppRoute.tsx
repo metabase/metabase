@@ -97,6 +97,8 @@ export function McpUiAppRoute() {
         <SdkQuestion
           deserializedCard={deserializedCard}
           isSaveEnabled={false}
+          // we should never show query builder in chat interfaces
+          withEditorButton={false}
           height="100%"
         />
       </div>

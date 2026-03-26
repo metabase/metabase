@@ -125,6 +125,7 @@ export function useMcpApp(): McpAppState {
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const { width, height } = entry.contentRect;
+
         sendMessage("ui/notifications/size-changed", {
           params: { width: Math.ceil(width), height: Math.ceil(height) },
         });
