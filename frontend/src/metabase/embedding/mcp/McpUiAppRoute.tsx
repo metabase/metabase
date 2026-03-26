@@ -77,8 +77,8 @@ export function McpUiAppRoute() {
 
   const containerStyle: CSSProperties = {
     boxSizing: "border-box",
-    minHeight: "100vh",
     backgroundColor: theme.colors?.background,
+    height: "500px",
 
     // Apply safe area insets from the host environment.
     padding: `${Math.max(safeAreaInsets.top, 0)}px ${Math.max(safeAreaInsets.right, 0)}px ${Math.max(safeAreaInsets.bottom, 0)}px ${Math.max(safeAreaInsets.left, 0)}px`,
@@ -99,6 +99,7 @@ export function McpUiAppRoute() {
           <SdkQuestion
             deserializedCard={deserializedCard}
             isSaveEnabled={false}
+            height="100%"
           />
         ) : (
           <SdkLoader />
