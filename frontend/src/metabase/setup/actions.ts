@@ -83,9 +83,6 @@ export const updateLocale = createAsyncThunk(
   },
 );
 
-export const SUBMIT_LANGUAGE = "metabase/setup/SUBMIT_LANGUAGE";
-export const submitLanguage = createAction(SUBMIT_LANGUAGE);
-
 export const submitUser = createAsyncThunk<void, UserInfo, ThunkConfig>(
   "metabase/setup/SUBMIT_USER_INFO",
   async (user: UserInfo, { dispatch, getState, rejectWithValue }) => {

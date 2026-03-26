@@ -11,12 +11,6 @@ import { isObject } from "metabase-types/guards";
 
 import { checkNotNull } from "./types";
 
-// IE doesn't support scrollX/scrollY:
-export const getScrollX = (): number =>
-  typeof window.scrollX === "undefined" ? window.pageXOffset : window.scrollX;
-export const getScrollY = (): number =>
-  typeof window.scrollY === "undefined" ? window.pageYOffset : window.scrollY;
-
 // denotes whether the current page is loaded in an iframe or not
 // Cypress renders the whole app within an iframe, but we want to exclude it from this check to avoid certain components (like Nav bar) not rendering
 // Storybook also uses an iframe to display story content, so we want to ignore it
@@ -91,38 +85,6 @@ export function isObscured(
   };
   const elem = document.elementFromPoint(position.left, position.top);
   return !element.contains(elem);
-}
-
-// based on http://stackoverflow.com/a/38039019/113
-export function elementIsInView(
-  element: HTMLElement,
-  percentX: number = 1,
-  percentY: number = 1,
-): boolean {
-  const tolerance = 0.01; //needed because the rects returned by getBoundingClientRect provide the position up to 10 decimals
-
-  const elementRect = element.getBoundingClientRect();
-  const parentRects = [];
-
-  while (element.parentElement != null) {
-    parentRects.push(element.parentElement.getBoundingClientRect());
-    element = element.parentElement;
-  }
-
-  return parentRects.every((parentRect) => {
-    const visiblePixelX =
-      Math.min(elementRect.right, parentRect.right) -
-      Math.max(elementRect.left, parentRect.left);
-    const visiblePixelY =
-      Math.min(elementRect.bottom, parentRect.bottom) -
-      Math.max(elementRect.top, parentRect.top);
-    const visiblePercentageX = visiblePixelX / elementRect.width;
-    const visiblePercentageY = visiblePixelY / elementRect.height;
-    return (
-      visiblePercentageX + tolerance > percentX &&
-      visiblePercentageY + tolerance > percentY
-    );
-  });
 }
 
 export function getSitePath(): string {
@@ -414,39 +376,6 @@ export function parseDataUri(
   return null;
 }
 
-/**
- * @returns the clip-path CSS property referencing the clip path in the current document, taking into account the <base> tag.
- */
-export function clipPathReference(id: string): string {
-  // add the current page URL (with fragment removed) to support pages with <base> tag.
-  // https://stackoverflow.com/questions/18259032/using-base-tag-on-a-page-that-contains-svg-marker-elements-fails-to-render-marke
-  const url = window.location.href.replace(/#.*$/, "") + "#" + id;
-  return `url(${url})`;
-}
-
-export function initializeIframeResizer(onReady = () => {}): void {
-  if (!isWithinIframe()) {
-    return;
-  }
-
-  // Make iFrameResizer available so that embed users can
-  // have their embeds autosize to their content
-  if (window.iFrameResizer) {
-    console.error("iFrameResizer resizer already defined.");
-    onReady();
-  } else {
-    window.iFrameResizer = {
-      autoResize: true,
-      heightCalculationMethod: "max",
-      onReady,
-    };
-
-    // Make iframe-resizer available to the embed
-    // We only care about contentWindow so require that minified file
-    import("iframe-resizer/js/iframeResizer.contentWindow.js");
-  }
-}
-
 export function isEventOverElement(
   event: Pick<MouseEvent, "clientX" | "clientY">,
   element: Element,
@@ -460,11 +389,6 @@ export function isEventOverElement(
 export function isReducedMotionPreferred(): boolean {
   const mediaQuery = window.matchMedia?.("(prefers-reduced-motion: reduce)");
   return mediaQuery != null && mediaQuery.matches;
-}
-
-export function getMainElement(): HTMLElement | undefined {
-  const [main] = document.getElementsByTagName("main");
-  return main;
 }
 
 export function isSmallScreen(): boolean {

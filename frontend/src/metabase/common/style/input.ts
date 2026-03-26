@@ -38,18 +38,6 @@ const inputTypographyBySize = {
 export const inputTypography = (size: InputSize = "medium") =>
   inputTypographyBySize[size];
 
-export const numericInputReset = () => css`
-  &::-webkit-outer-spin-button,
-  &::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-  }
-
-  &[type="number"] {
-    -moz-appearance: textfield;
-  }
-`;
-
 export const focusOutlineStyle = (color: string) => css`
   &:focus {
     outline: 2px solid ${getFocusColor(color)};

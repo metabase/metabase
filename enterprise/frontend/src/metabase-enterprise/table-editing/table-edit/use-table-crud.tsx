@@ -245,15 +245,3 @@ export const useTableCRUD = ({
     handleRowDeleteWithCascade,
   };
 };
-
-export const isForeignKeyConstraintErrorResponse = (error: any): boolean => {
-  if (!error?.data?.errors) {
-    return false;
-  }
-
-  return isForeignKeyConstraintError(error.data.errors);
-};
-
-export function isForeignKeyConstraintError(error: any): boolean {
-  return error?.type === "metabase.actions.error/children-exist";
-}
