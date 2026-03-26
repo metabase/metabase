@@ -1,7 +1,6 @@
 import { msgid, ngettext, t } from "ttag";
 
 import MetabaseSettings from "metabase/utils/settings";
-import { numberToWord } from "metabase/utils/utils";
 import type { PasswordComplexity } from "metabase-types/api";
 
 const LOWER = "abcdefghijklmnopqrstuvwxyz";
@@ -62,7 +61,27 @@ export const generatePassword = (
   return chars.join("");
 };
 
-const n2w = (n: number) => numberToWord(n);
+// pretty limited.  just does 0-9 for right now.
+export function numberToWord(num: number) {
+  const names = [
+    t`zero`,
+    t`one`,
+    t`two`,
+    t`three`,
+    t`four`,
+    t`five`,
+    t`six`,
+    t`seven`,
+    t`eight`,
+    t`nine`,
+  ];
+
+  if (num >= 0 && num <= 9) {
+    return names[num];
+  } else {
+    return "" + num;
+  }
+}
 
 function makeRegexTest(property: string, regex: RegExp) {
   return (requirements: Record<string, any>, password = "") =>
@@ -74,8 +93,8 @@ const PASSWORD_COMPLEXITY_CLAUSES = {
     test: ({ total = 0 }, password = "") => password.length >= total,
     description: ({ total = 0 }) =>
       ngettext(
-        msgid`at least ${n2w(total)} character long`,
-        `at least ${n2w(total)} characters long`,
+        msgid`at least ${numberToWord(total)} character long`,
+        `at least ${numberToWord(total)} characters long`,
         total,
       ),
   },
@@ -83,8 +102,8 @@ const PASSWORD_COMPLEXITY_CLAUSES = {
     test: makeRegexTest("lower", /[a-z]/g),
     description: ({ lower = 0 }) =>
       ngettext(
-        msgid`${n2w(lower)} lower case letter`,
-        `${n2w(lower)} lower case letters`,
+        msgid`${numberToWord(lower)} lower case letter`,
+        `${numberToWord(lower)} lower case letters`,
         lower,
       ),
   },
@@ -92,22 +111,26 @@ const PASSWORD_COMPLEXITY_CLAUSES = {
     test: makeRegexTest("upper", /[A-Z]/g),
     description: ({ upper = 0 }) =>
       ngettext(
-        msgid`${n2w(upper)} upper case letter`,
-        `${n2w(upper)} upper case letters`,
+        msgid`${numberToWord(upper)} upper case letter`,
+        `${numberToWord(upper)} upper case letters`,
         upper,
       ),
   },
   digit: {
     test: makeRegexTest("digit", /[0-9]/g),
     description: ({ digit = 0 }) =>
-      ngettext(msgid`${n2w(digit)} number`, `${n2w(digit)} numbers`, digit),
+      ngettext(
+        msgid`${numberToWord(digit)} number`,
+        `${numberToWord(digit)} numbers`,
+        digit,
+      ),
   },
   special: {
     test: makeRegexTest("special", /[^a-zA-Z0-9]/g),
     description: ({ special = 0 }) =>
       ngettext(
-        msgid`${n2w(special)} special character`,
-        `${n2w(special)} special characters`,
+        msgid`${numberToWord(special)} special character`,
+        `${numberToWord(special)} special characters`,
         special,
       ),
   },
