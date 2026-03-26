@@ -167,6 +167,19 @@ const SdkIframeEmbedView = ({
           componentName: "metabase-dashboard",
           token: P.nonNullable,
         },
+        /**
+         * Need for initial token flow with JWT provider when the provider returns errors.
+         * Without this, the InteractiveDashboard component will be rendered because
+         * there is no `token`. And the error component will not be rendered because
+         * guest embed doesn't support InteractiveDashboard.
+         *
+         * We don't need to check guestEmbedProviderUri for questions because it seems to
+         * already render correctly.
+         */
+        {
+          componentName: "metabase-dashboard",
+          guestEmbedProviderUri: P.nonNullable,
+        },
         (settings) => {
           const entityProps: SdkDashboardEntityPublicProps = settings.token
             ? {
