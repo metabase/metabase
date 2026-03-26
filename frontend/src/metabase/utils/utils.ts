@@ -1,10 +1,4 @@
-import _ from "underscore";
-
 import { PLUGIN_IS_EE_BUILD } from "metabase/plugins";
-
-export function equals(a: unknown, b: unknown) {
-  return _.isEqual(a, b);
-}
 
 /**
  * @deprecated

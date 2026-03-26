@@ -1,6 +1,7 @@
+import _ from "underscore";
+
 import { b64hash_to_utf8, utf8_to_b64url } from "metabase/utils/encoding";
 import { stableStringify } from "metabase/utils/objects";
-import { equals } from "metabase/utils/utils";
 import type { Card, ParameterValuesMap, UnsavedCard } from "metabase-types/api";
 
 export type SerializeCardOptions = {
@@ -64,7 +65,7 @@ function getCleanCard(
 
 export function isEqualCard(card1?: Card | null, card2?: Card | null) {
   if (card1 && card2) {
-    return equals(getCleanCard(card1), getCleanCard(card2));
+    return _.isEqual(getCleanCard(card1), getCleanCard(card2));
   } else {
     return false;
   }
