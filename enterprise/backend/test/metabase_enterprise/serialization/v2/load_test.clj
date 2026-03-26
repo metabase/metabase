@@ -1959,7 +1959,7 @@
               (is (= :query (:query_type card))))))))))
 
 (deftest transform-minimal-required-properties-test
-  (testing "Transform deserialized with only: entity_id, name, source, target"
+  (testing "Transform deserialized with only: serdes/meta, entity_id, name, source, target"
     (mt/with-premium-features #{:transforms-basic}
       (let [serialized (atom nil)]
         (ts/with-dbs [source-db dest-db]
@@ -1995,7 +1995,7 @@
                 (is (= (:id db) (:source_database_id transform)))))))))))
 
 (deftest dashboard-minimal-required-properties-test
-  (testing "Dashboard deserialized with only: entity_id, name, creator_id"
+  (testing "Dashboard deserialized with only: serdes/meta, entity_id, name, creator_id"
     (let [serialized (atom nil)]
       (ts/with-dbs [source-db dest-db]
         (ts/with-db source-db
@@ -2013,7 +2013,7 @@
               (is (some? dashboard)))))))))
 
 (deftest dashboard-with-dashcard-minimal-required-properties-test
-  (testing "DashboardCard minimal required properties: entity_id, row, col, size_x, size_y"
+  (testing "DashboardCard minimal required properties: serdes/meta, entity_id, row, col, size_x, size_y"
     (let [serialized (atom nil)]
       (ts/with-dbs [source-db dest-db]
         (ts/with-db source-db
@@ -2039,3 +2039,43 @@
                   dashcards (t2/select :model/DashboardCard :dashboard_id (:id dashboard))]
               (is (some? dashboard))
               (is (= 1 (count dashcards))))))))))
+
+(deftest dashcard-series-minimal-required-properties-test
+  (testing "DashboardCardSeries minimal required properties: card_id, position"
+    (let [serialized (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [dash         (ts/create! :model/Dashboard :name "Test Dashboard")
+                card         (ts/create! :model/Card :name "Main Card")
+                series-card  (ts/create! :model/Card :name "Series Card")
+                dc           (ts/create! :model/DashboardCard :dashboard_id (:id dash) :card_id (:id card))
+                _series      (ts/create! :model/DashboardCardSeries :dashboardcard_id (:id dc)
+                                         :card_id (:id series-card) :position 0)]
+            (reset! serialized (into [] (serdes.extract/extract {})))))
+
+        (let [minimal (mapv (fn [entity]
+                              (let [model (-> entity :serdes/meta last :model)]
+                                (case model
+                                  "Dashboard"     (-> (select-keys entity [:serdes/meta :entity_id :name :creator_id
+                                                                           :dashcards])
+                                                      (update :dashcards
+                                                              (fn [dcs]
+                                                                (mapv (fn [dc]
+                                                                        (-> (select-keys dc [:serdes/meta :entity_id
+                                                                                             :row :col :size_x :size_y
+                                                                                             :card_id :series])
+                                                                            (update :series
+                                                                                    (fn [ss]
+                                                                                      (mapv #(select-keys % [:card_id :position])
+                                                                                            ss)))))
+                                                                      dcs))))
+                                  entity)))
+                            @serialized)]
+          (ts/with-db dest-db
+            (serdes.load/load-metabase! (ingestion-in-memory minimal))
+            (let [dashboard (t2/select-one :model/Dashboard :name "Test Dashboard")
+                  dashcards (t2/select :model/DashboardCard :dashboard_id (:id dashboard))
+                  series    (t2/select :model/DashboardCardSeries :dashboardcard_id (:id (first dashcards)))]
+              (is (some? dashboard))
+              (is (= 1 (count dashcards)))
+              (is (= 1 (count series))))))))))
