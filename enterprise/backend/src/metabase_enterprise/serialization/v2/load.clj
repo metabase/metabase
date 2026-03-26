@@ -221,9 +221,13 @@
               ctx           (cond-> (new-context ingestion)
                               (seq ingest-errors) (update :errors into ingest-errors))]
           (when (and (seq ingest-errors) (not continue-on-error))
-            (throw (ex-info (format "Failed to read %d file(s) during ingestion" (count ingest-errors))
-                            {:ingest-errors ingest-errors}
-                            (first ingest-errors))))
+            (let [file-names (mapv #(or (:file (ex-data %)) (ex-message %)) ingest-errors)]
+              (throw (ex-info (format "Failed to read %d file(s) during ingestion: %s"
+                                      (count ingest-errors)
+                                      (str/join ", " file-names))
+                              {:ingest-errors ingest-errors
+                               :files         file-names}
+                              (first ingest-errors)))))
           (log/infof "Starting deserialization, total %s documents" (count contents))
           (reduce (fn [ctx item]
                     (try

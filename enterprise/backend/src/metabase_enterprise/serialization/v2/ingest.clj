@@ -94,11 +94,12 @@
                                          (str/ends-with? (.getName file) ".yaml")
                                          (let [rel (.relativize (.toPath root-dir) (.toPath file))]
                                            (-> rel (.subpath 0 1) (.toString) legal-top-level-paths)))
-                              :let [hierarchy (try
+                              :let [file-name (.getName file)
+                                    hierarchy (try
                                                 (serdes/path (ingest-file file))
                                                 (catch Exception e
                                                   (log/warn (u/strip-error e "Error reading file during ingestion"))
-                                                  (swap! errors conj e)
+                                                  (swap! errors conj (ex-info (format "Failed to parse file: %s" file-name) {:file file-name} e))
                                                   nil))]
                               :when hierarchy]
                           [(strip-labels hierarchy) [hierarchy file]]))

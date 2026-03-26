@@ -29,14 +29,14 @@
                                               (source.p/read-file snapshot path)
                                               (catch Exception e
                                                 (log/warn (u/strip-error e "Error reading file during ingestion"))
-                                                (swap! errors conj e)
+                                                (swap! errors conj (ex-info (format "Failed to read file: %s" path) {:file path} e))
                                                 nil))
                                     loaded (try
                                              (when content
                                                (serdes/path (ingest-content content)))
                                              (catch Exception e
                                                (log/warn (u/strip-error e "Error parsing file during ingestion"))
-                                               (swap! errors conj e)
+                                               (swap! errors conj (ex-info (format "Failed to parse file: %s" path) {:file path} e))
                                                nil))]
                               :when loaded]
                           [(serialization/strip-labels loaded) [loaded content]]))

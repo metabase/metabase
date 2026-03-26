@@ -910,7 +910,7 @@
           (spit (io/file dump-dir "collections" "corrupt.yaml") "\0")
 
           (testing "continue-on-error false (default) — throws on ingestion errors"
-            (is (thrown-with-msg? Exception #"Failed to read 1 file\(s\) during ingestion"
+            (is (thrown-with-msg? Exception #"Failed to read 1 file\(s\) during ingestion: corrupt\.yaml"
                                   (serdes/with-cache
                                     (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir))))))
 
