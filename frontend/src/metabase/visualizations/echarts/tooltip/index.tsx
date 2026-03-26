@@ -8,7 +8,6 @@ import {
   isEmbeddingSdk,
 } from "metabase/embedding-sdk/config";
 import { getCspNonce } from "metabase/utils/csp";
-import { getObjectValues } from "metabase/utils/objects";
 import { isNotNull } from "metabase/utils/types";
 import TooltipStyles from "metabase/visualizations/components/ChartTooltip/EChartsTooltip/EChartsTooltip.module.css";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
@@ -179,7 +178,7 @@ export const useCartesianChartSeriesColorsClasses = (
 
 export const useSankeyChartColorsClasses = (chartModel: SankeyChartModel) => {
   const hexColors = useMemo(() => {
-    return getObjectValues(chartModel.nodeColors).filter(isNotNull);
+    return Object.values(chartModel.nodeColors).filter(isNotNull);
   }, [chartModel]);
 
   return useInjectSeriesColorsClasses(hexColors);

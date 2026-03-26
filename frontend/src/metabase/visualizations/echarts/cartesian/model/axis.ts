@@ -5,11 +5,7 @@ import _ from "underscore";
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import { formatValue } from "metabase/utils/formatting";
 import type { OptionsType } from "metabase/utils/formatting/types";
-import {
-  getObjectEntries,
-  getObjectKeys,
-  getObjectValues,
-} from "metabase/utils/objects";
+import { getObjectEntries, getObjectKeys } from "metabase/utils/objects";
 import { isNotNull, isNumber } from "metabase/utils/types";
 import {
   ECHARTS_CATEGORY_AXIS_NULL_VALUE,
@@ -960,7 +956,7 @@ function getTimeSeriesXAxisInfo(
   // 2. count - how many intervals per tick?
   // 3. timezone - what timezone are values in? days vary in length by timezone
   const unit = minTimeseriesUnit(
-    getObjectValues(dimensionModel.columnByCardId)
+    Object.values(dimensionModel.columnByCardId)
       .map((column) =>
         isAbsoluteDateTimeUnit(column.unit) ? column.unit : null,
       )
