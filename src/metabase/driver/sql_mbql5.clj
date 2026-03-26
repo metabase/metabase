@@ -7,9 +7,11 @@
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.lib.core :as lib]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.util :as lib.util]
+   [metabase.query-processor.util.add-alias-info :as add]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [mapv get-in]]))
@@ -88,6 +90,7 @@
 (defn- agg-by-id [aggs agg-uuid]
   (m/find-first #(= (lib.options/uuid %) agg-uuid) aggs))
 
+;; Should mirror the logic in `sql.qp/->honeysql [:sql :aggregation]`
 (defmethod sql.qp/->honeysql [:sql-mbql5 :aggregation]
   [driver [_ _opts _agg-uuid :as clause]]
   (driver-api/match-lite clause
@@ -161,6 +164,12 @@
 (defmethod sql.qp/expression-by-name :sql-mbql5
   [_driver inner-query expression-name]
   (m/find-first #(= expression-name (lib.util/expression-name %)) (:expressions inner-query)))
+
+(defmethod sql.qp/aggregation-name :sql-mbql5
+  [_driver inner-query ag-clause]
+  (or (::add/desired-alias (lib/options ag-clause))
+      (:name (lib/options ag-clause))
+      (lib/column-name inner-query ag-clause)))
 
 (defmethod sql.qp/clause-value-idx :sql-mbql5 [_driver] 2)
 

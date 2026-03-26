@@ -10,6 +10,7 @@ title: Driver interface changelog
   - `compile-mbql` - Compiles an MBQL inner query to HoneySQL.
   - `mbql-clause-with-opts` - Returns an MBQL clause in the desired MBQL format of the driver.
   - `expression-by-name` - Gets an expression from a query or stage (`*inner-query`) by name.
+  - `aggregation-name` - Returns the name of an aggregation clause.
   - `over-order-by->honeysql` - Returns the HoneySQL for an order by clause in the over clause of a window function.
   - `clause-value-idx` - Returns the index of the value in a value clause.
   - `breakout-options-index` - Returns the index of options in a breakout clause.
@@ -17,6 +18,9 @@ title: Driver interface changelog
   implement these methods. Drivers can opt-in to MBQL5 compilation by adding the `:sql-mbql5` driver as a parent.
   See the `:h2` driver for an example. These methods will eventually be deprecated in favour of the `:sql-mbql5`
   implementations once all drivers have been migrated.
+
+- Added a `driver` parameter to `sql.qp/maybe-cast-uuid-for-text-compare`. Any drivers that call this function should
+  update it to pass in the `driver` parameter now. An example is in the Snowflake driver's `string-filter` function.
 
 ## Metabase 0.59.0
 

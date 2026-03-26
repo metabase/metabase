@@ -13,6 +13,7 @@ import { isReducedMotionPreferred } from "metabase/lib/dom";
 
 import type { SizeToFitOptions } from "./SizeToFitModifier";
 import { sizeToFitModifierFn } from "./SizeToFitModifier";
+import "./Popover.module.css";
 
 const TippyComponent = TippyReact.default;
 type TippyProps = TippyReact.TippyProps;
