@@ -4,7 +4,7 @@ import type { ContextType } from "react";
 import { EmbeddingEntityContext } from "metabase/embedding/context";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { GET } from "metabase/utils/api";
-import { isWithinIframe } from "metabase/utils/dom";
+import { isWithinIframe } from "metabase/utils/iframe";
 import type { DashboardId } from "metabase-types/api";
 
 import { getTileUrl } from "../lib/map";

@@ -1,4 +1,4 @@
-import { isWithinIframe } from "metabase/utils/dom";
+import { isWithinIframe } from "metabase/utils/iframe";
 import type {
   InteractiveEmbeddingOptionsState,
   State,

@@ -5,34 +5,11 @@ import _ from "underscore";
 
 import { handleLinkSdkPlugin } from "embedding-sdk-shared/lib/sdk-global-plugins";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { isCypressActive, isStorybookActive } from "metabase/env";
+import { isWithinIframe } from "metabase/utils/iframe";
 import MetabaseSettings from "metabase/utils/settings";
 import { isObject } from "metabase-types/guards";
 
 import { checkNotNull } from "./types";
-
-// denotes whether the current page is loaded in an iframe or not
-// Cypress renders the whole app within an iframe, but we want to exclude it from this check to avoid certain components (like Nav bar) not rendering
-// Storybook also uses an iframe to display story content, so we want to ignore it
-export const isWithinIframe = function (): boolean {
-  try {
-    // Mock that we're embedding, so we could test embed components
-    if (window.overrideIsWithinIframe) {
-      return true;
-    }
-
-    if (isCypressActive || isStorybookActive) {
-      return false;
-    }
-
-    return window.self !== window.top;
-  } catch (e) {
-    return true;
-  }
-};
-
-// add a global so we can check if the parent iframe is Metabase
-window.METABASE = true;
 
 // check whether scrollbars are visible to the user,
 // this is off by default on Macs, but can be changed

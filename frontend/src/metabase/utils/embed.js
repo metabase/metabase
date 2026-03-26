@@ -2,9 +2,8 @@ import { push } from "react-router-redux";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
-import { isWithinIframe } from "metabase/utils/dom";
-import { IFRAMED_IN_SELF } from "metabase/utils/iframe";
 import { setInitialUrlOptions } from "metabase/redux/embed";
+import { IFRAMED_IN_SELF, isWithinIframe } from "metabase/utils/iframe";
 
 // detect if this page is embedded in itself, i.e. it's a embed preview
 // will need to do something different if we ever embed metabase in itself for another reason

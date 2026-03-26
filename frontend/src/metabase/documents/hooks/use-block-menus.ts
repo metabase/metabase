@@ -9,7 +9,7 @@ import {
   getHoveredChildTargetId,
 } from "metabase/documents/selectors";
 import { isTopLevel } from "metabase/documents/utils/editorNodeUtils";
-import { isWithinIframe } from "metabase/utils/dom";
+import { isWithinIframe } from "metabase/utils/iframe";
 import { useSelector } from "metabase/utils/redux";
 import { documentWithAnchor } from "metabase/utils/urls";
 

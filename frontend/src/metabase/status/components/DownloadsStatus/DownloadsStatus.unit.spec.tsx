@@ -13,10 +13,14 @@ import { DownloadsStatus } from "./DownloadsStatus";
 
 jest.mock("metabase/utils/dom", () => ({
   ...jest.requireActual("metabase/utils/dom"),
+  openSaveDialog: jest.fn(),
+}));
+
+jest.mock("metabase/utils/iframe", () => ({
+  ...jest.requireActual("metabase/utils/iframe"),
   // For some reason, this is undefined. I think it's because we're requiring while mocking, but
   // It's unclear.
   isWithinIframe: () => false,
-  openSaveDialog: jest.fn(),
 }));
 
 const getDownloadDatasetAction = () =>

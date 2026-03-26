@@ -11,7 +11,7 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
-import * as domUtils from "metabase/utils/dom";
+import * as iframeUtils from "metabase/utils/iframe";
 import { createMockDatabase, createMockUser } from "metabase-types/api/mocks";
 import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 import { createMockState } from "metabase-types/store/mocks";
@@ -196,7 +196,7 @@ async function setup({
   setupUpdateSettingEndpoint();
 
   if (isEmbeddingIframe) {
-    jest.spyOn(domUtils, "isWithinIframe").mockReturnValue(true);
+    jest.spyOn(iframeUtils, "isWithinIframe").mockReturnValue(true);
   }
 
   const embeddingDataPickerState = entityTypes
