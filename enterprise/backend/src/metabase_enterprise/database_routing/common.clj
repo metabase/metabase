@@ -34,6 +34,13 @@
   `(binding [*routing-cache* (atom {})]
      ~@body))
 
+(defenterprise routing-batch-cache-bindings
+  "Returns a Var->atom bindings map for the routing request-scoped cache, suitable for
+  conveying to worker threads via `with-bindings`."
+  :feature :database-routing
+  []
+  {#'*routing-cache* (atom {})})
+
 ;;; ----------------------------------------------------------------------------------------------------------
 
 (defn- user-attribute
