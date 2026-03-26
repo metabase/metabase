@@ -112,7 +112,7 @@
                                  :new_content "SELECT 1"}
                    :transform_name "New Transform"
                    :transform_description "A test transform"
-                   :database_id 1
+                   :database_id (mt/id)
                    :memory-atom memory-atom})]
       (is (= "New Transform" (get-in result [:structured-output :transform :name])))
       (is (= "A test transform" (get-in result [:structured-output :transform :description])))

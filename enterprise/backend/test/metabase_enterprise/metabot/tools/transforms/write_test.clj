@@ -2,7 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.metabot.tools.transforms.write :as transforms-write]
-   [metabase.metabot.tools.transforms.write :as oss-transforms-write]))
+   [metabase.metabot.tools.transforms.write :as oss-transforms-write]
+   [metabase.test :as mt]))
 
 (deftest create-fresh-python-template-test
   (testing "fresh Python transforms include common import"
@@ -18,7 +19,7 @@
                   {:edit_action {:mode "replace"
                                  :new_content "def transform():\n    return pd.DataFrame()"}
                    :transform_name "Python Transform"
-                   :source_database 1
+                   :source_database (mt/id)
                    :source_tables [{:alias "t" :table_id 1 :schema "PUBLIC" :database_id 1}]
                    :memory-atom memory-atom})]
       (is (= "Python Transform" (get-in result [:structured-output :transform :name])))

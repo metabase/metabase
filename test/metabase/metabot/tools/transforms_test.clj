@@ -34,11 +34,11 @@
                    (agent-transforms/write-transform-python-tool
                     {:edit_action {:mode "replace" :new_content "import common\ndef transform(t): return t"}
                      :transform_name "Python Transform"
-                     :database_id 3
-                     :source_tables [{:alias "t" :table_id 10 :schema "PUBLIC" :database_id 3}]}))]
+                     :database_id (mt/id)
+                     :source_tables [{:alias "t" :table_id 10 :schema "PUBLIC" :database_id (mt/id)}]}))]
       (is (= "import common\ndef transform(t): return t"
              (get-in result [:structured-output :transform :source :body])))
-      (is (= [{:alias "t" :table_id 10 :schema "PUBLIC" :database_id 3}]
+      (is (= [{:alias "t" :table_id 10 :schema "PUBLIC" :database_id (mt/id)}]
              (get-in result [:structured-output :transform :source :source-tables])))
       (is (= "transform_suggestion" (-> result :data-parts first :data-type))))))
 
@@ -50,7 +50,7 @@
                     {:transform_id nil
                      :edit_action {:mode "replace" :new_content "SELECT 1"}
                      :transform_name "Fresh SQL"
-                     :database_id 1}))]
+                     :database_id (mt/id)}))]
       (is (nil? (get-in result [:structured-output :transform :id])))
       (is (empty? (get-in @memory-atom [:state :transforms])))
       (is (= "transform_suggestion" (-> result :data-parts first :data-type)))))
@@ -61,8 +61,8 @@
                     {:transform_id nil
                      :edit_action {:mode "replace" :new_content "import common\ndef transform(): pass"}
                      :transform_name "Fresh Python"
-                     :database_id 1
-                     :source_tables [{:alias "t" :table_id 1 :schema "PUBLIC" :database_id 1}]}))]
+                     :database_id (mt/id)
+                     :source_tables [{:alias "t" :table_id 1 :schema "PUBLIC" :database_id (mt/id)}]}))]
       (is (nil? (get-in result [:structured-output :transform :id])))
       (is (empty? (get-in @memory-atom [:state :transforms])))
       (is (= "transform_suggestion" (-> result :data-parts first :data-type))))))
