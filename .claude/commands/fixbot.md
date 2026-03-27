@@ -1,4 +1,4 @@
-You are the orchestrator for the fixbot workflow. Your job is to fetch a Linear issue, analyze it, determine the right database, write an agent prompt, and launch the workmux session.
+You are the orchestrator for the fixbot workflow. Your job is to resolve the issue ID, generate the agent prompt, and launch the workmux session.
 
 ## Steps
 
@@ -41,65 +41,43 @@ Run:
 ./bin/mage -fixbot-fetch-issue <ISSUE_ID>
 ```
 
-Read the output carefully. Extract:
-- Issue title
-- Issue description
-- All comments (author, timestamp, body)
-- Issue URL
+Read the output to extract:
 - Branch name (the suggested branch name from Linear)
+
+Also determine the app database from the issue description/comments:
+- If the issue mentions **MySQL** problems, MySQL-specific SQL syntax, or MySQL error messages → `mysql`
+- If the issue mentions **MariaDB** specifically → `mariadb`
+- Otherwise → `postgres` (the default)
 
 If the issue is not found, tell the user and stop.
 
-### 4. Determine the app database
+### 4. Generate the agent prompt
 
-Analyze the issue description and comments to determine which database is needed:
+Run:
+```
+./bin/mage -bot-generate-prompt \
+  --template dev/bot/fixbot/fixbot-agent.md \
+  --output .fixbot/metabase-fixbot-<ISSUE_ID>-prompt.md \
+  --set ISSUE_ID=<ISSUE_ID> \
+  --set "BRANCH_NAME=<branch>" \
+  --set "APP_DB=<Postgres|Mysql|Mariadb>"
+```
 
-- If the issue mentions **MySQL** problems, MySQL-specific SQL syntax, or MySQL error messages → use `mysql`
-- If the issue mentions **MariaDB** specifically → use `mariadb`
-- If the issue mentions **Postgres/PostgreSQL** specifically, or doesn't mention any database → use `postgres` (the default)
-- If unclear, default to `postgres`
+The worktree agent will fetch the issue details itself during Phase 1.
 
-### 5. Write the agent prompt
-
-Read the reference template at `.claude/fixbot/fixbot-agent.md` to understand the required structure.
-
-**Always rewrite** the prompt file at `.fixbot/metabase-fixbot-<ISSUE_ID>-prompt.md` — even if it already exists from a previous session. The template or prompt logic may have changed since it was first written. Use the `Read` tool on the file first (it may not exist, and that's fine), then use the `Write` tool. Do NOT use Bash `cat`/`echo` to create this file.
-
-The prompt should include:
-
-- The issue ID, title, and Linear URL
-- The branch name from Linear
-- The full issue description
-- All comments formatted with author and timestamp
-- The correct database type and appropriate port information
-- Pre-configured instance: users and API keys are auto-created via config file (admin: `admin@example.com` / `admin123`, regular: `regular@example.com` / `regular123`, API keys: `mb_admin_apikey` and `mb_regular_apikey`)
-- User context: the user is NOT a developer — the agent must work autonomously on all code/technical decisions, but should consult the user on product behavior questions and acceptance testing (they are an expert Metabase user)
-- All the workflow instructions from the reference template (Phase 1-5, important rules)
-- Red/green TDD requirement for both backend (Clojure with `./bin/test-agent`) and frontend (Jest/Cypress) changes
-- Self-review requirement: after fixing, use `/clojure-review` and `/typescript-review` to review changes, fix findings, and re-review if significant changes were made — repeat until clean before asking user to verify
-- **Backend reload reminder:** After finishing code changes and before asking the user to verify, use `clj-nrepl-eval` to reload any modified backend namespaces. This is critical — the user interacts with the running server through their browser, and they won't see changes until the backend is reloaded.
-- Tell the agent that when the user is ready to ship, it should commit, push, create the PR with `gh pr create`, and run `/fixbot-ci` to monitor CI
-- **Browser automation:** The agent has `playwright-cli` available for interacting with the running Metabase instance in a real browser. It should use this to reproduce UI issues (Phase 1), self-validate fixes before asking the user to verify (Phase 4), and troubleshoot rendering/interaction problems. Include the usage patterns from the reference template.
-- **Troubleshooting with backend logs:** When the user reports something isn't working, or when API calls are failing or behaving unexpectedly, check the backend logs — they are often the best source of error messages, warnings, and info-level diagnostics. If the logs aren't revealing enough, increase the logging level to debug for the relevant namespace(s) to get more detail.
-- Enterprise Edition: the dev environment always runs EE. If the fix requires OSS-only behavior, the agent should stop and tell the user.
-
-Use the port computation: ports are based on a deterministic slot derived from the worktree name. Since you don't know the exact worktree name yet, use placeholder descriptions like "the port shown in your environment" and note that the dev environment will be configured automatically.
-
-### 6. Launch the workmux session
+### 5. Launch the workmux session
 
 Run:
 ```
 ./bin/mage fixbot-go <ISSUE_ID> --app-db <DB> --prompt-file .fixbot/metabase-fixbot-<ISSUE_ID>-prompt.md --branch '<BRANCH_NAME>'
 ```
 
-Where:
-- `<DB>` is the database you determined in step 3 (postgres, mysql, or mariadb)
-- `<BRANCH_NAME>` is the branch name from Linear (from step 2)
+Using the values from step 3.
 
-### 7. Report
+### 6. Report
 
 Tell the user:
 - Which issue you're fixing
-- Which database you chose and why
+- Which database was chosen and why
 - That the workmux session has been launched
 - That they can run `./bin/mage -fixbot-dashboard` in a separate terminal for a live TUI dashboard showing all active agents

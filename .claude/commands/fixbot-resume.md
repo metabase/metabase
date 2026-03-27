@@ -43,7 +43,16 @@ If this succeeds, the session is resumed — report success and stop.
    gh pr view <NUM> --json title,body
    ```
 
-6. **Write the agent prompt** — read the reference template at `.claude/fixbot/fixbot-agent.md`, then write a completed prompt to `.fixbot/metabase-fixbot-<ISSUE_ID>-prompt.md`. Include all the same content as `/fixbot` step 5 (issue details, comments, database info, credentials, workflow instructions, TDD requirements, etc.).
+6. **Generate the agent prompt** — fetch the issue with `./bin/mage -fixbot-fetch-issue <ISSUE_ID>` to get the branch name and determine the app database, then run:
+   ```
+   ./bin/mage -bot-generate-prompt \
+     --template dev/bot/fixbot/fixbot-agent.md \
+     --output .fixbot/metabase-fixbot-<ISSUE_ID>-prompt.md \
+     --set ISSUE_ID=<ID> \
+     --set "BRANCH_NAME=<branch>" \
+     --set "APP_DB=<Postgres|Mysql|Mariadb>"
+   ```
+   The worktree agent will fetch the issue details itself during Phase 1.
 
 7. **Launch the session:**
    ```

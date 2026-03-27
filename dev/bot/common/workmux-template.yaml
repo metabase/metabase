@@ -1,0 +1,44 @@
+agent: claude
+
+files:
+  symlink:
+    - node_modules
+    - bin/bb
+
+post_create:
+  # Copy bot tooling from source repo (worktree is based on master, not the bot branch)
+  - mkdir -p .claude/{{BOT_NAME}}
+  - cp -r {{SOURCE_REPO}}/dev/bot/{{BOT_NAME}}/* .claude/{{BOT_NAME}}/
+  - cp -r {{SOURCE_REPO}}/dev/bot/common/* .claude/{{BOT_NAME}}/
+  - cp -r {{SOURCE_REPO}}/mage/src/mage/ mage/src/mage/
+  - cp {{SOURCE_REPO}}/bb.edn bb.edn
+
+  - sed "s|{{pwd}}|$(pwd)|;s|{{tmpdir}}|${TMPDIR%/}|" .claude/{{BOT_NAME}}/settings.local-template.json > .claude/settings.local.json
+  - mkdir -p .{{BOT_NAME}}
+  - "echo 'Starting up' > .{{BOT_NAME}}/llm-status.txt"
+  - rm -f .claude/commands/{{BOT_NAME}}*.md
+  - cp .claude/{{BOT_NAME}}/commands/*.md .claude/commands/
+  - mkdir -p .github/hooks/workmux-status
+  - echo '{"version":1,"hooks":{"userPromptSubmitted":[{"type":"command","bash":"workmux set-window-status working"}],"postToolUse":[{"type":"command","bash":"workmux set-window-status working"}],"agentStop":[{"type":"command","bash":"workmux set-window-status done"}]}}' > .github/hooks/workmux-status/hooks.json
+{{BOT_POST_CREATE}}
+  - mise trust mise.local.toml
+  - bun install
+  - 'echo ''{"mcpServers":{"playwright":{"command":"npx","args":["-y","@playwright/mcp","--headless","--browser","chrome"]}}}'' > .mcp.json'
+
+pre_remove:
+  - ./bin/mage -bot-dev-env --down
+
+panes:
+  - command: <agent>
+    focus: true
+
+  - command: mise x -- clj -M:dev:dev-start:drivers:drivers-dev:ee:ee-dev 2>&1 | tee .{{BOT_NAME}}/backend-$(date +%Y%m%d-%H%M%S).log
+    split: horizontal
+    percentage: 30
+
+  - command: mise x -- bun run build-hot 2>&1 | tee .{{BOT_NAME}}/frontend-$(date +%Y%m%d-%H%M%S).log
+    split: vertical
+
+  - command: mise x -- ./bin/mage -fixbot-status .{{BOT_NAME}}/llm-status.txt
+    split: vertical
+    size: 7

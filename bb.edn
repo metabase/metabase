@@ -630,16 +630,36 @@
              [nil "--base BASE" "Base branch/commit to branch from"]]
    :task (task! (fixbot-go/run! parsed))}
 
-  -fixbot-dev-env
-  {:doc "Stand up dev environment for auto-fix workflow"
-   :examples [["./bin/mage -fixbot-dev-env --app-db postgres" "Postgres app-db"]
-              ["./bin/mage -fixbot-dev-env --down" "Tear down"]]
-   :requires [[mage.fixbot.dev-env :as fixbot-dev-env]]
+  -bot-generate-prompt
+  {:doc "Fill a template with placeholders and write an agent prompt"
+   :examples [["./bin/mage -bot-generate-prompt --template dev/bot/fixbot/fixbot-agent.md --output .fixbot/prompt.md --set ISSUE_ID=MB-123 --set APP_DB=Postgres"
+               "Generate fixbot prompt"]]
+   :requires [[mage.bot.prompt :as bot-prompt]]
+   :options [[nil "--template FILE" "Template file path"]
+             [nil "--output FILE" "Output file path"]
+             [nil "--set KEY=VALUE" "Set a template variable (can be repeated)"
+              :multi true :default [] :update-fn conj]]
+   :task (task! (bot-prompt/generate-prompt! parsed))}
+
+  -bot-dev-env
+  {:doc "Stand up/tear down dev environment (BE, FE, DB) for bot worktrees"
+   :examples [["./bin/mage -bot-dev-env --app-db postgres" "Postgres app-db"]
+              ["./bin/mage -bot-dev-env --down" "Tear down"]]
+   :requires [[mage.bot.dev-env :as bot-dev-env]]
    :options [[nil "--app-db DB" "App database: postgres (default), mysql, h2" :default "postgres"]
              [nil "--down" "Tear down containers"]
              [nil "--status" "Show status"]
              [nil "--slot SLOT" "Override port slot" :parse-fn Integer/parseInt]]
-   :task (task! (fixbot-dev-env/dev-env! parsed))}
+   :task (task! (bot-dev-env/dev-env! parsed))}
+
+  ;; Alias for backward compat
+  -fixbot-dev-env
+  {:doc "Alias for -bot-dev-env"
+   :requires [[mage.bot.dev-env :as bot-dev-env]]
+   :options [[nil "--app-db DB" :default "postgres"]
+             [nil "--down"] [nil "--status"]
+             [nil "--slot SLOT" :parse-fn Integer/parseInt]]
+   :task (task! (bot-dev-env/dev-env! parsed))}
 
   -fixbot-fetch-issue
   {:doc "Fetch a Linear issue by identifier"
@@ -685,4 +705,24 @@
   {:doc "Open fixbot TUI dashboard"
    :examples [["./bin/mage -fixbot-dashboard" "Open dashboard"]]
    :requires [[mage.fixbot.session :as session]]
-   :task (task! (session/dashboard!))}}}
+   :task (task! (session/dashboard!))}
+
+  ;;; UXBot tasks
+
+  uxbot-go
+  {:doc "Launch UX testing session for a branch"
+   :examples [["./bin/mage uxbot-go my-feature-branch --prompt-file .uxbot/prompt.md"
+               "Launch uxbot session"]]
+   :requires [[mage.uxbot.go :as uxbot-go]]
+   :arg-schema [:tuple [:string {:name "branch-name"}]]
+   :options [[nil "--app-db DB" "App database" :default "postgres"]
+             [nil "--prompt-file FILE" "Path to agent prompt file"]
+             [nil "--base BASE" "Base branch/commit to branch from"]]
+   :task (task! (uxbot-go/run! parsed))}
+
+  -uxbot-stop
+  {:doc "Stop a uxbot session (kill tmux + dev env, keep worktree)"
+   :examples [["./bin/mage -uxbot-stop my-branch" "Stop session"]]
+   :requires [[mage.uxbot.session :as uxbot-session]]
+   :arg-schema [:tuple [:string {:name "name-or-id"}]]
+   :task (task! (uxbot-session/stop! parsed))}}}

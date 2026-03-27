@@ -15,6 +15,7 @@
 .eastwood
 /.beads/
 /.fixbot/
+/.uxbot/
 .idea/
 .nrepl-port
 .portal

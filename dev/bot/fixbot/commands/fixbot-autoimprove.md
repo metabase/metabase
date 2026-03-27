@@ -71,6 +71,6 @@ Write `FIXBOT-SUGGESTIONS.md` with this structure:
 - **Be actionable** — every suggestion must propose a concrete fix that can be applied. If you can't propose a specific change, it's not ready to be a suggestion.
 - **Be honest** — if you made a mistake due to your own reasoning (not a prompt gap), say so. Not everything is the prompt's fault.
 - **Prioritize by impact** — order suggestions within each category by how much time/frustration they would save in future sessions.
-- **Include prompt text diffs** — for prompt gap suggestions, show the exact text you'd add to the prompt file (e.g., `.fixbot/metabase-fixbot-<ID>-prompt.md` template or `.claude/fixbot/fixbot-agent.md`) as a before/after or insertion.
+- **Include prompt text diffs** — for prompt gap suggestions, show the exact text you'd add to the prompt file (e.g., `.fixbot/metabase-fixbot-<ID>-prompt.md` template or `dev/bot/fixbot/fixbot-agent.md`) as a before/after or insertion.
 - **Cover the fixbot orchestrator too** — if the issue was in how the session was set up (database choice, prompt generation, environment config), suggest changes to `.claude/commands/fixbot.md` as well.
 - **Don't suggest things that are already documented** — if the answer was in the prompt and you just missed it, that's a different problem than a missing instruction. Note which it was.

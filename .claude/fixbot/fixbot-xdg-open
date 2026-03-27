@@ -1,4 +1,0 @@
-#!/bin/bash
-# Proxy for xdg-open that works on macOS host.
-# Used by Claude Code inside the sandbox to open browser for OAuth login.
-exec open "$@"

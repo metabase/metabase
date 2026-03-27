@@ -1,0 +1,25 @@
+{
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": true,
+    "filesystem": {
+      "allowWrite": [".", "{{pwd}}", "~/.m2", "~/.local/state/workmux", "~/.cache/workmux", "{{tmpdir}}", "/tmp", "/private/tmp", "~/Library/Caches/ms-playwright"],
+      "allowRead": [".", "{{pwd}}", "~/.m2", "~/.local/state/workmux", "~/.cache/workmux", "{{tmpdir}}", "/tmp", "/private/tmp", "~/Library/Caches/ms-playwright"],
+      "denyRead": ["{{pwd}}/src", "{{pwd}}/test", "{{pwd}}/test_resources", "{{pwd}}/resources", "{{pwd}}/enterprise", "{{pwd}}/frontend/src", "{{pwd}}/frontend/test"]
+    },
+    "excludedCommands": ["docker"],
+    "network": {
+      "allowLocalBinding": true,
+      "allowAllUnixSockets": true
+    }
+  },
+  "permissions": {
+    "allow": [
+      "Read",
+      "Write",
+      "mcp__playwright__*",
+      "WebFetch(domain:metabase.com)"
+    ]
+  },
+  "skipDangerousModePermissionPrompt": true
+}
