@@ -5,26 +5,36 @@
    [hooks.common]
    [hooks.common.modules :as modules]))
 
-(defn- warn-about-disallowed-parallel-forms [form config]
-  (letfn [(error! [form message]
-            (hooks/reg-finding! (assoc (meta form)
-                                       :message message
-                                       :type :metabase/validate-deftest)))
-          (f [form]
-            (when-let [qualified-symbol (hooks.common/node->qualified-symbol form)]
-              (cond
-                (contains? (:parallel/unsafe config) qualified-symbol)
-                (error! form (format "%s is not allowed inside a ^:parallel test or test fixture [:metabase/validate-deftest]" qualified-symbol))
+(defn- disallowed-parallel-form
+  "If `form` is a disallowed parallel form, return the qualified symbol. Otherwise return nil."
+  [form config]
+  (when-let [qualified-symbol (hooks.common/node->qualified-symbol form)]
+    (cond
+      (contains? (:parallel/unsafe config) qualified-symbol)
+      qualified-symbol
 
-                (and (not (contains? (:parallel/safe config) qualified-symbol))
-                     (str/ends-with? (name qualified-symbol) "!"))
-                (error! form (format "destructive functions like %s are not allowed inside a ^:parallel test or test fixture. If this should be allowed, add it to the whitelist in the Kondo config file [:metabase/validate-deftest]"
-                                     qualified-symbol)))))
-          (walk [form]
-            (f form)
-            (doseq [child (:children form)]
-              (walk child)))]
-    (walk form)))
+      (and (not (contains? (:parallel/safe config) qualified-symbol))
+           (str/ends-with? (name qualified-symbol) "!"))
+      qualified-symbol)))
+
+(defn detect-disallowed-parallel-forms
+  "Walk `form` and return a vector of `{:node node, :symbol symbol}` maps for all disallowed parallel forms found."
+  [form config]
+  (let [result (when-let [sym (disallowed-parallel-form form config)]
+                 [{:node form, :symbol sym}])]
+    (into (vec result)
+          (mapcat #(detect-disallowed-parallel-forms % config))
+          (:children form))))
+
+(defn- warn-about-disallowed-parallel-forms [form config]
+  (doseq [{:keys [node symbol]} (detect-disallowed-parallel-forms form config)]
+    (hooks/reg-finding!
+     (assoc (meta node)
+            :message (if (contains? (:parallel/unsafe config) symbol)
+                       (format "%s is not allowed inside a ^:parallel test or test fixture [:metabase/validate-deftest]" symbol)
+                       (format "destructive functions like %s are not allowed inside a ^:parallel test or test fixture. If this should be allowed, add it to the whitelist in the Kondo config file [:metabase/validate-deftest]"
+                               symbol))
+            :type :metabase/validate-deftest))))
 
 (defn- deftest-check-parallel
   "1. Check if test is marked ^:parallel / ^:synchronized correctly
@@ -186,5 +196,11 @@
   {:node node})
 
 (defn use-fixtures [{:keys [node config]}]
-  (warn-about-disallowed-parallel-forms node config)
+  (let [{[_ fixture-type-node & body] :children} node]
+    (when (and fixture-type-node
+               (hooks/keyword-node? fixture-type-node)
+               (= :each (hooks/sexpr fixture-type-node)))
+      (let [linter-config (get-in config [:linters :metabase/validate-deftest])]
+        (doseq [form body]
+          (warn-about-disallowed-parallel-forms form linter-config)))))
   {:node node})
