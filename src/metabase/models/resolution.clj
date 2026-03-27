@@ -57,7 +57,6 @@
     :model/Metabot                           metabase.metabot.models.metabot
     :model/MetabotConversation               metabase.metabot.models.metabot-conversation
     :model/MetabotMessage                    metabase.metabot.models.metabot-message
-    :model/MetabotCustomPrompt               metabase.metabot.models.metabot-custom-prompt
     :model/MetabotPermissions                metabase.metabot.models.metabot-permissions
     :model/MetabotPrompt                     metabase.metabot.models.metabot-prompt
     :model/ModelIndex                        metabase.indexed-entities.models.model-index
