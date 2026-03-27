@@ -1723,7 +1723,18 @@ describe("scenarios - embedding hub", () => {
         .findByRole("listitem", { name: "Set up JWT authentication" })
         .should("have.attr", "data-completed", "true");
 
-      H.main().findByRole("button", { name: "Next" }).click();
+      cy.log("valid signing key should be shown");
+      H.main().within(() => {
+        cy.findByText(
+          /This example code for Node.js sets up an endpoint using Express/,
+        ).should("be.visible");
+
+        cy.log("express.js code snippet should be shown inline");
+        cy.contains("METABASE_JWT_SHARED_SECRET").should("exist");
+        cy.contains("METABASE_INSTANCE_URL").should("exist");
+
+        cy.findByRole("button", { name: "Next" }).scrollIntoView().click();
+      });
 
       cy.log("step 2 should be complete");
       H.main()
