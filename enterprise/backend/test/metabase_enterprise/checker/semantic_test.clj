@@ -456,6 +456,92 @@
       (is (nil? (:error result)))
       (is (empty? (:unresolved result)) "nil collection_id should be fine"))))
 
+;;; ===========================================================================
+;;; Dashboard ID reference tests
+;;; ===========================================================================
+
+(deftest card-with-missing-dashboard-id-test
+  (testing "Card with dashboard_id pointing to nonexistent dashboard is flagged"
+    (let [entities {:databases {"DB" {:name "DB" :engine "h2"}}
+                    :tables {["DB" "PUBLIC" "T"] {:name "T" :schema "PUBLIC"}}
+                    :fields {}
+                    :cards {"card-1" {:name "Orphaned Card"
+                                      :entity_id "card-1"
+                                      :dashboard_id "nonexistent-dash"
+                                      :dataset_query {:database "DB"
+                                                      :type "query"
+                                                      :query {:source-table ["DB" "PUBLIC" "T"]}}}}}
+          source (make-memory-source entities)
+          index (make-memory-index entities)
+          results (checker/check-cards source index ["card-1"])
+          result (get results "card-1")]
+      (is (seq (:unresolved result)) "Missing dashboard_id should be flagged")
+      (is (some #(= :dashboard (:type %)) (:unresolved result))
+          "Should have unresolved dashboard ref"))))
+
+(deftest card-with-valid-dashboard-id-test
+  (testing "Card with dashboard_id pointing to a known dashboard passes"
+    (let [entities {:databases {"DB" {:name "DB" :engine "h2"}}
+                    :tables {["DB" "PUBLIC" "T"] {:name "T" :schema "PUBLIC"}}
+                    :fields {}
+                    :cards {"card-1" {:name "Dashboard Card"
+                                      :entity_id "card-1"
+                                      :dashboard_id "dash-1"
+                                      :dataset_query {:database "DB"
+                                                      :type "query"
+                                                      :query {:source-table ["DB" "PUBLIC" "T"]}}}}}
+          source (make-memory-source entities)
+          index (assoc (make-memory-index entities)
+                       :dashboard {"dash-1" :memory})
+          results (checker/check-cards source index ["card-1"])
+          result (get results "card-1")]
+      (is (nil? (:error result)))
+      (is (empty? (:unresolved result)) "Valid dashboard_id should not produce unresolved refs"))))
+
+(deftest card-with-null-dashboard-id-test
+  (testing "Card with nil dashboard_id is fine"
+    (let [entities {:databases {"DB" {:name "DB" :engine "h2"}}
+                    :tables {["DB" "PUBLIC" "T"] {:name "T" :schema "PUBLIC"}}
+                    :fields {}
+                    :cards {"card-1" {:name "Standalone Card"
+                                      :entity_id "card-1"
+                                      :dashboard_id nil
+                                      :dataset_query {:database "DB"
+                                                      :type "query"
+                                                      :query {:source-table ["DB" "PUBLIC" "T"]}}}}}
+          source (make-memory-source entities)
+          index (make-memory-index entities)
+          results (checker/check-cards source index ["card-1"])
+          result (get results "card-1")]
+      (is (nil? (:error result)))
+      (is (empty? (:unresolved result)) "nil dashboard_id should be fine"))))
+
+(deftest card-with-dashboard-id-pointing-to-card-test
+  (testing "Card with dashboard_id pointing to another card (not a dashboard) is flagged"
+    (let [entities {:databases {"DB" {:name "DB" :engine "h2"}}
+                    :tables {["DB" "PUBLIC" "T"] {:name "T" :schema "PUBLIC"}}
+                    :fields {}
+                    :cards {"card-1" {:name "Bad Dash Ref"
+                                      :entity_id "card-1"
+                                      :dashboard_id "card-2"
+                                      :dataset_query {:database "DB"
+                                                      :type "query"
+                                                      :query {:source-table ["DB" "PUBLIC" "T"]}}}
+                            "card-2" {:name "Other Card"
+                                      :entity_id "card-2"
+                                      :dataset_query {:database "DB"
+                                                      :type "query"
+                                                      :query {:source-table ["DB" "PUBLIC" "T"]}}}}}
+          source (make-memory-source entities)
+          index (make-memory-index entities)
+          results (checker/check-cards source index ["card-1"])
+          result (get results "card-1")]
+      (is (seq (:unresolved result)) "dashboard_id pointing to a card should be flagged")
+      (is (some #(and (= :dashboard (:type %))
+                       (re-find #"card" (or (:message %) "")))
+                 (:unresolved result))
+          "Error should mention it points to a card"))))
+
 (deftest dashboard-bad-collection-id-test
   (testing "Dashboard with invalid collection_id is flagged via file-based check"
     (let [dir (java.io.File/createTempFile "dash-coll-test" "")]

@@ -324,12 +324,28 @@
         {:type :collection :entity-id coll-id
          :message (str "collection_id " coll-id " points to a " (name kind) ", not a collection")}))))
 
+(defn- validate-dashboard-id
+  "Validate that `dashboard_id` in `data` points to a known dashboard.
+   Returns a failure map or nil."
+  [store data]
+  (when-let [dash-id (:dashboard_id data)]
+    (let [kind (store/index-kind-of store dash-id)]
+      (cond
+        (nil? kind)
+        {:type :dashboard :entity-id dash-id
+         :message (str "dashboard_id " dash-id " not found")}
+
+        (not= :dashboard kind)
+        {:type :dashboard :entity-id dash-id
+         :message (str "dashboard_id " dash-id " points to a " (name kind) ", not a dashboard")}))))
+
 (defn- check-common
   "Run checks that apply to any entity (card, dashboard, metric, etc.).
    Returns a vector of failure maps, or empty vector if all checks pass."
   [store data]
   (filterv some?
-           [(validate-collection-id store data)]))
+           [(validate-collection-id store data)
+            (validate-dashboard-id store data)]))
 
 ;;; ===========================================================================
 ;;; Dashboard-specific checks
