@@ -39,6 +39,49 @@
                 (when-not (= driver/*driver* :athena)
                   (do-something)))")))))
 
+(defn- use-fixtures-warnings
+  [form]
+  (binding [clj-kondo.impl.utils/*ctx* {:config     {:linters {:metabase/validate-deftest {:level :warning}}}
+                                        :ignores    (atom nil)
+                                        :findings   (atom [])
+                                        :namespaces (atom {})}]
+    (hooks.clojure.test/use-fixtures {:node   (api/parse-string form)
+                                      :config {:linters
+                                               {:metabase/validate-deftest
+                                                {:parallel/unsafe #{'clojure.core/with-redefs}
+                                                 :parallel/safe   #{'clojure.core/reset!}}}}})
+    (mapv :message @(:findings clj-kondo.impl.utils/*ctx*))))
+
+(deftest ^:parallel use-fixtures-each-checks-thread-safety-test
+  (testing ":each fixture with unsafe form produces warning"
+    (is (= ["clojure.core/with-redefs is not allowed inside a ^:parallel test or test fixture [:metabase/validate-deftest]"]
+           (use-fixtures-warnings
+             "(use-fixtures :each (fn [thunk] (clojure.core/with-redefs [foo bar] (thunk))))")))))
+
+(deftest ^:parallel use-fixtures-once-skips-thread-safety-test
+  (testing ":once fixture with unsafe form produces no warning"
+    (is (= []
+           (use-fixtures-warnings
+             "(use-fixtures :once (fn [thunk] (clojure.core/with-redefs [foo bar] (thunk))))")))))
+
+(deftest ^:parallel use-fixtures-each-safe-forms-test
+  (testing ":each fixture with safe forms produces no warning"
+    (is (= []
+           (use-fixtures-warnings
+             "(use-fixtures :each (fn [thunk] (clojure.core/reset! my-atom 0) (thunk)))")))))
+
+(deftest ^:parallel use-fixtures-each-bang-suffix-not-in-safe-list-test
+  (testing ":each fixture with !-suffixed function not in safe list produces warning"
+    (is (= ["destructive functions like some.ns/mutate! are not allowed inside a ^:parallel test or test fixture. If this should be allowed, add it to the whitelist in the Kondo config file [:metabase/validate-deftest]"]
+           (use-fixtures-warnings
+             "(use-fixtures :each (fn [thunk] (some.ns/mutate! x) (thunk)))")))))
+
+(deftest ^:parallel use-fixtures-no-args-test
+  (testing "use-fixtures with no args does not crash"
+    (is (= []
+           (use-fixtures-warnings
+             "(use-fixtures)")))))
+
 (deftest ^:parallel check-driver-keywords-test
   (testing "Make sure we keep hooks.clojure.test/driver-keywords up to date"
     (let [driver-keywords (-> (slurp ".clj-kondo/config.edn")
