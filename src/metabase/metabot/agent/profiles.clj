@@ -189,14 +189,34 @@
         ;; gracefully without requiring a map update.
         (keyword (-> (str cap) (str/replace ":" "-") (str/replace "_" "-"))))))
 
+;; TODO (lbrdnk 2026-03-18): `api-string->capability-keyword` hints there is need for feature snippets. I was unable
+;;                           to find matching logic in ai-service. I'll remove that in followup with related logic.
+(comment
+  (filter #(re-find #"snippet" (name %)) (keys (premium-features/token-features))))
+  ;;=> (:snippet_collections) <--- very probably we do not want to sentinel on this feature
+
+(def relevant-features
+  "Metabase features to add to capabilities set."
+  #{:transforms :transforms-python})
+
+(defn feature-capability-kws
+  "Get capabilities per features of this Metabase instance. Not cached to avoid staleness."
+  []
+  (into #{}
+        (comp (filter premium-features/has-feature?)
+              (map #(keyword (str "feature-" (name %)))))
+        relevant-features))
+
 (defn- filter-by-capabilities
   "Filter tool vars by user capabilities.
   Removes tools that require capabilities the user doesn't have.
   Capabilities from the API arrive as strings (e.g. \"frontend:navigate_user_v1\")
-  while tool definitions use keywords (e.g. :frontend-navigate-user-v1), so we
+  while tool metadata uses keywords (e.g. :frontend-navigate-user-v1), so we
   normalize to keywords before comparing."
   [tool-vars capabilities]
-  (let [capabilities-set (into #{} (map capability->keyword) capabilities)]
+  (let [capabilities-set (into (feature-capability-kws)
+                               (map capability->keyword)
+                               capabilities)]
     (filter (fn [tool-var]
               (every? capabilities-set (:capabilities (meta tool-var))))
             tool-vars)))

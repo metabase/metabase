@@ -1180,4 +1180,4 @@
                                           qu)])))))
 
 (defmethod driver/llm-sql-dialect-resource :sqlserver [_]
-  "llm/prompts/dialects/sqlserver.md")
+  "metabot/prompts/dialects/sqlserver.md")

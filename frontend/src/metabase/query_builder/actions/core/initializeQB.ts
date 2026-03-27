@@ -427,6 +427,7 @@ async function handleQBInit(
       updateUrl(question, {
         replaceState: true,
         preserveParameters: hasCard,
+        preserveNavbarState: true,
         objectId,
       }),
     );

@@ -118,8 +118,7 @@
       (is (not (re-find #"value_in_samples" without-queries)))
       (is (not (re-find #"Show me X" without-queries))))
     (testing "general sections remain even without query tools"
-      (is (re-find #"Metabot" without-queries))
-      (is (re-find #"Context Grounding" without-queries))
+      (is (re-find #"data analysis assistant" without-queries))
       (is (re-find #"Communication Style" without-queries))
       (is (re-find #"search_request" without-queries))
       (is (re-find #"Find \[existing content\]" without-queries)))
@@ -132,8 +131,7 @@
 (deftest prompt-all-no-permissions-test
   (let [rendered (render-internal-template all-no-perms)]
     (testing "core prompt structure still renders"
-      (is (re-find #"Metabot" rendered))
-      (is (re-find #"Context Grounding" rendered))
+      (is (re-find #"data analysis assistant" rendered))
       (is (re-find #"Communication Style" rendered)))
     (testing "all gated sections are excluded"
       (is (not (re-find #"sql_construction" rendered)))
@@ -212,8 +210,8 @@
 (deftest slackbot-all-no-permissions-test
   (let [rendered (render-slackbot-template all-no-perms)]
     (testing "core structure still renders"
-      (is (re-find #"Metabot" rendered))
-      (is (re-find #"Core Operating Principles" rendered)))
+      (is (re-find #"expert data analyst" rendered))
+      (is (re-find #"business-validated insights" rendered)))
     (testing "NLQ and viz sections excluded"
       (is (not (re-find #"construct_notebook_query" rendered)))
       (is (not (re-find #"static_viz" rendered))))

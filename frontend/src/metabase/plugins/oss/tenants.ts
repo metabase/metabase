@@ -1,4 +1,5 @@
 import type React from "react";
+import type { SetStateAction } from "react";
 
 import type {
   OmniPickerCollectionItem,
@@ -39,6 +40,8 @@ const getDefaultPluginTenants = () => ({
   tenantsRoutes: null as React.ReactElement | null,
   CreateTenantsOnboardingStep: PluginPlaceholder as React.ComponentType<{
     onTenantsCreated?: (tenants: CreatedTenantData[]) => void;
+    tenants: CreatedTenantData[];
+    onTenantsChange: (value: SetStateAction<CreatedTenantData[]>) => void;
     selectedFieldIds?: number[];
     strategy?: DataSegregationStrategy | null;
     rlsColumnName?: string | null;
@@ -113,6 +116,8 @@ export const PLUGIN_TENANTS: {
   tenantsRoutes: React.ReactElement | null;
   CreateTenantsOnboardingStep: React.ComponentType<{
     onTenantsCreated?: (tenants: CreatedTenantData[]) => void;
+    tenants: CreatedTenantData[];
+    onTenantsChange: (value: SetStateAction<CreatedTenantData[]>) => void;
     selectedFieldIds?: number[];
     strategy?: DataSegregationStrategy | null;
     rlsColumnName?: string | null;
